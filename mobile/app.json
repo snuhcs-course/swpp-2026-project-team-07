@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "OutLoud",
+    "slug": "outloud-team07",
+    "scheme": "outloud",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "platforms": [
+      "android"
+    ],
+    "icon": "./assets/icon.png",
+    "android": {
+      "package": "com.team07.outloud",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ],
+      "predictiveBackGestureEnabled": true
+    },
+    "plugins": [
+      "expo-router",
+      "expo-dev-client",
+      [
+        "expo-audio",
+        {
+          "recordAudioAndroid": true,
+          "enableBackgroundRecording": false,
+          "enableBackgroundPlayback": false
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

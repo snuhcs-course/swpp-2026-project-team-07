@@ -1,0 +1,59 @@
+# Local development services. Do not expose this configuration publicly.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: outloud
+      POSTGRES_USER: outloud
+      POSTGRES_PASSWORD: outloud-local-only
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U outloud -d outloud"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+  api:
+    build: ./backend
+    env_file: backend/.env
+    environment: &backend_environment
+      POSTGRES_HOST: db
+      CELERY_BROKER_URL: redis://redis:6379/0
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - ./backend:/app
+      - media_data:/app/media
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  worker:
+    build: ./backend
+    env_file: backend/.env
+    environment: *backend_environment
+    command: celery -A config worker --loglevel=info
+    volumes:
+      - ./backend:/app
+      - media_data:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+volumes:
+  postgres_data:
+  media_data:
