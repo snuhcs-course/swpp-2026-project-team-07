@@ -8,6 +8,13 @@ On `feature/whisper-alignment`, the hosted Whisper adapter, standalone word-to-s
 proposed internal output and a runnable example. It is not yet wired into the
 worker, API, or app. [Whisper setup](docs/whisper-transcription.md) explains how to run a real-audio check; a live TTS transcription/alignment check passed; human-speech accuracy remains unverified.
 
+On `feature/transcription-client-and-playback`, the [mobile transcription client](docs/mobile-transcription.md)
+implements upload, processing requests, validated results, retries, and cancellable
+polling with mocked-network tests. Recorder, real feature endpoints, and live result-screen
+wiring remain pending. The result screen now displays the saved Whisper TTS transcript,
+synchronized local-audio word highlighting and tap-to-seek. Processing/failure/retry
+states remain explicitly simulated.
+
 ## Start here
 
 - [Understand everything in this setup](docs/setup-explained.md)
@@ -60,7 +67,7 @@ export PATH="$ANDROID_HOME/platform-tools:$PATH"
 
 That Java command requires a macOS-registered JDK 17. If Gradle provisioned your JDK instead, point `JAVA_HOME` directly to its `Contents/Home` directory. The exact path used on the setup machine is recorded in [setup-explained.md](docs/setup-explained.md).
 
-The screen preview runs without backend services or provider keys: **Open sample slides → Preview rehearsal → Preview transcript and feedback**. Recording/playback buttons are disabled until implemented.
+The screen preview runs without backend services or provider keys: **Open sample slides → Preview rehearsal → Preview transcript and feedback**. Recording remains a preview; the result screen can play the matching local TTS audio with synchronized word highlighting.
 
 ## Run the backend
 

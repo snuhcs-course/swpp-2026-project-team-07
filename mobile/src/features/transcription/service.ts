@@ -1,9 +1,14 @@
-import type { AttemptResult, LocalRecording } from "../../contracts";
+import { File } from "expo-file-system";
+import { fetch as expoFetch } from "expo/fetch";
+import { API_URL } from "../../services/api";
+import { createTranscriptionClient } from "./client";
 
-// Whisper owner: send multipart audio + JSON metadata; poll the returned attempt ID.
-// Never call OpenAI from the app. Keep recordings available after upload failure.
-export interface TranscriptionService {
-  submit(recording: LocalRecording): Promise<{ attempt_id: string }>;
-  getResult(attemptId: string): Promise<AttemptResult>;
-  retry(attemptId: string): Promise<void>;
-}
+// Backend-only provider credentials. This service never deletes local recordings.
+export const transcriptionService = createTranscriptionClient({
+  baseUrl: API_URL,
+  fetch: expoFetch as typeof fetch,
+  audioFile: (uri) => new File(uri),
+});
+
+export type TranscriptionService = ReturnType<typeof createTranscriptionClient>;
+export { TranscriptionClientError } from "./client";
