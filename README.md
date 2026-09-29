@@ -2,7 +2,11 @@
 
 An Android presentation practice app connecting PDF slides, recordings, slide-aligned transcripts, and feedback.
 
-**Current status: Iteration 1 team scaffold.** The four screen frames use labeled sample data. Real PDF import/rendering, recording, Whisper transcription, slide matching, and Gemini feedback are implementation tasks for the team. This scaffold provides navigation, an API connection check, shared types, database models, development infrastructure, and feature entry points.
+**Current status: Iteration 1 team scaffold.** The four screen frames use labeled sample data. Real PDF import/rendering, recording, and Gemini feedback remain implementation tasks for the team; transcription/alignment progress is noted below. This scaffold provides navigation, an API connection check, shared types, database models, development infrastructure, and feature entry points.
+
+On `feature/whisper-alignment`, the hosted Whisper adapter, standalone word-to-slide matcher, and mocked/synthetic tests are implemented. [Alignment notes](docs/word-alignment.md) describe its
+proposed internal output and a runnable example. It is not yet wired into the
+worker, API, or app. [Whisper setup](docs/whisper-transcription.md) explains how to run a real-audio check; a live TTS transcription/alignment check passed; human-speech accuracy remains unverified.
 
 ## Start here
 

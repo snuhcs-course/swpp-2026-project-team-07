@@ -32,6 +32,51 @@ backend in `backend/`, with PostgreSQL and Redis for local development.
   rather than maintaining competing copies. Flag unresolved conflicts instead
   of silently choosing a new product requirement.
 
+## Review before commits and pushes for Injoon's work
+
+Standing user request received 2026-09-29: apply this workflow to every commit
+and push performed by an agent for Injoon in this repository. This is the user's
+workflow preference, not an independently verified course-wide or team-wide rule.
+
+Preferred sequence: implement → stage intended changes → AI review → fix and test
+→ stage fixes → review the changed scope → user final inspection → commit → push.
+
+- Staging is a snapshot, not a live selection. Later edits are not automatically
+  included. Use `git diff --cached` for the proposed commit, `git diff` for edits
+  made after staging, and `git status --short` to spot files with both changes.
+  After fixes, stage the intended files again and inspect the final staged diff.
+- Tests normally run against working-tree files, not the staged snapshot. Before
+  committing, ensure the staged code matches the code actually reviewed and tested.
+  Do not claim a tested fix is included while it remains unstaged; preserve unrelated
+  edits and do not stage them merely to make the working tree clean.
+- Before committing, review the exact staged diff, including newly added files,
+  against the relevant contracts. For substantive code changes, use a separate
+  reviewer agent with the diff, relevant source/contracts, and test instructions;
+  ask it to find concrete failure cases without relying on the author's rationale.
+  The user authorizes this review delegation as part of the standing workflow.
+  If unavailable, disclose that limitation and distinguish self-review from
+  independent review; do not silently claim the latter occurred.
+- Check correctness, failure paths, boundary conditions, sensitive/generated files,
+  and whether tests meaningfully exercise the changed behavior. Fix confirmed
+  defects and rerun relevant checks. Review fixes before including them.
+- Before pushing, inspect all outgoing commits against the intended remote branch
+  (or the PR base for a new branch). Ensure review evidence covers their final
+  content. Existing review/test results may be reused for unchanged content;
+  changes since review require renewed review of the affected scope.
+  A commit followed by a push does not itself require a duplicate AI review.
+  Verify the outgoing commits match the reviewed content and contain no secrets
+  or unintended files. Reassess changes introduced by fixes, merges, or rebases;
+  rerun affected tests when the code or its dependencies/context have changed.
+- Summarize findings, fixes, checks and remaining limitations for the user, and
+  record evidence in docs/ai-use.md tied to the reviewed files or revisions.
+  Do not present unresolved material defects or unperformed required checks as
+  a passed review. Preserve the existing teammate-review agreement.
+- Documentation-only changes need a proportionate accuracy/link/diff review;
+  they do not require application builds or an extra code-review agent.
+- This rule does not authorize commits, pushes or merges by itself. AGENTS.md
+  guides agent actions; it does not intercept direct terminal commands or enforce
+  checks through Git hooks, CI, or branch protections.
+
 ## Preserve data and honest behavior
 
 - Follow the API contract's zero-based slide indexes and integer milliseconds

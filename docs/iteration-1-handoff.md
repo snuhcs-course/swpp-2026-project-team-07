@@ -29,7 +29,7 @@ The last row is an integration responsibility, not necessarily a fourth person. 
 - Recording controls are disabled. Implement `RecordingService` before enabling them; a timer alone does not establish audio capture.
 - Results use hand-written samples. Connect the shared `AttemptResult` contract.
 - Feature API routes return HTTP 501. Implement real storage/processing instead of fake success responses.
-- The Celery task and processing adapters raise `NotImplementedError` until implemented.
+- The Celery task, PDF, and feedback adapters still raise `NotImplementedError`. The [Whisper adapter](whisper-transcription.md) is implemented with mocked-provider tests; a live synthetic TTS check passed; human-recorded speech verification is pending. The standalone [word alignment function](word-alignment.md) is implemented and tested on `feature/whisper-alignment`; its proposed output needs integration review before worker wiring.
 
 ## Shared rules
 
