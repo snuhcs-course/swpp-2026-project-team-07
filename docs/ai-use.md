@@ -198,3 +198,110 @@ This file does not automatically publish or submit the course report.
 - Remote main remains the branch base b11ce27. The PR covers backend adapters,
   tests, documentation, and the user's standing review workflow. App integration
   remains separate follow-up work after merge. Merge is not authorized here.
+
+## 2026-09-29 — Mobile transcription client before recorder integration
+
+- Contributor: Injoon requested work that can proceed while the recording teammate
+  has not started. Scope is the mobile upload/request/result client, not taking
+  ownership of server upload/storage or microphone capture.
+- Tool: OpenAI Codex generated client.ts, wired the Expo File/fetch adapter in
+  service.ts, added synthetic/mocked tests and npm test/check integration, and
+  documented the handoff in docs/mobile-transcription.md.
+- Verification: 13 mocked-network tests passed, TypeScript/lint checks passed,
+  Android JavaScript export passed. The tests do not establish native file upload,
+  Android device behavior, real server integration, or provider accuracy.
+- No provider calls, real audio uploads, public contract changes, or new dependencies
+  were introduced. Server 501 is an explicit error; preview UI remains labeled.
+- Human review and integration verification remain pending. Changes are local;
+  no staging, commit, push, or PR publication was requested for this step.
+
+### Independent review follow-up
+
+- A separate Codex reviewer found that coercing response status with String()
+  allowed an array such as ["completed"] through validation. Codex required a
+  string and added the reproducing malformed-response case, plus active-request
+  and post-upload cancellation tests. The reviewer inspected the fix and reran
+  all 15 tests successfully, with no further findings in the changed scope.
+- TypeScript/lint and Android export passed; native upload/device verification
+  remains pending. Final review targets are recorded below as Git blob IDs.
+  - client.ts: f7592a5c611b66776354998bf06796dab0c8e5e5
+  - service.ts: 042467388840e45214a29b2f395e69ba8dc89d7d
+  - transcription.test.mjs: 9b01486b9a7f7c42f0fa74feca09b4dd0a1272c5
+  - package.json: ad247d80fa63cc4ca73a07f0b1de806c714ae278
+
+## 2026-09-29 — Saved Whisper transcript screen
+
+- Injoon accepted building the result screen from the saved Whisper result while
+  server/recording integration remains pending. Codex replaced the hand-written
+  slide/feedback preview with full transcript and optional word timestamps.
+- Only normalized text and words from the user-approved synthetic speech result
+  were copied into a source fixture. The original ignored audio/script/result
+  files remain excluded; no raw provider metadata, keys or private recordings
+  were added. The fixture is necessary for a reproducible screen preview.
+- Processing/failure and one-second retry are explicitly local simulations.
+  Timers clear on state changes and unmount. No new API calls were made.
+- Checks: mobile typecheck/lint, existing 15 client tests, and Android JS export
+  passed. Separate AI static review of the screen and fixture found no actionable
+  issues. Codex verified completed/processing/failed/retry and timestamp expansion
+  in the Android 36 emulator using an existing dev APK with this branch's Metro.
+- Human review remains pending. This does not verify actual mobile upload, worker
+  execution, playback, slide-specific results, or human-speech accuracy. Changes
+  remain local/unstaged; no commit or push was performed.
+
+## 2026-09-29 — Integrated audio-follow transcript
+
+- User corrected the separate transcript/timestamp presentation: words should
+  highlight with recording progress. Codex used the frontend-design skill and
+  Expo SDK 57 audio/picker documentation to implement a fixed player, flowing
+  transcript, native-position highlighting and word tap-to-seek. No new dependency.
+- Saved TTS audio is selected locally; filename/duration only guard obvious
+  mismatches. Audio/script/raw JSON remain ignored. No new provider call or upload.
+- Separate reviewer identified a late Replay seek that could resume after newer
+  navigation/source intent and a swallowed seek failure. Codex added intent/focus
+  guards and awaited successful seeks; two regression tests cover the helper.
+  Reviewer reran all 21 tests and found no additional material issue on re-review.
+- Typecheck, 21 tests and Android JS export passed. Lint: zero errors, one
+  react-hooks/exhaustive-deps warning about the intent ref read during cleanup.
+- Agent-operated Android 36 check: local file selection, playback to about 0:05
+  with 소개하겠습니다 highlighted, pause, and tapping 안녕하세요 to return to 0:00.
+  Existing development APK/current Metro used. Emulator audio output was disabled;
+  audible timing, new APK build, native upload and live backend flow remain unverified.
+- Human review pending. Changes are unstaged; no commit/push. Earlier saved-screen
+  evidence above is historical; current structure is documented in mobile-transcription.md.
+
+## 2026-09-29 — Final pre-staging independent review
+
+- User requested another AI verification and staging only if no problems were found.
+- A separate Codex reviewer inspected the complete 12-file working-tree change,
+  including untracked client/playback code, fixture, tests and documentation,
+  against the shared API contracts. No actionable blocking defect was found.
+- Reviewer ran npm run check: TypeScript passed, all 21 tests passed, lint had
+  zero errors and the existing single intent-ref cleanup warning. The warning
+  was assessed as nonblocking; the ref is a mutable operation counter, not a DOM ref.
+  git diff --check passed. Prior successful Android export and emulator checks
+  remain applicable because the application code has not changed since those checks.
+- The emulator was subsequently restarted without -no-audio; audible timing has
+  not been independently measured or confirmed by the user. Live upload/server
+  integration remains unverified and is not represented as implemented end-to-end.
+- Staging is authorized; commit/push and final human inspection remain pending.
+  Generated media, raw provider output and credentials remain excluded.
+
+## 2026-09-29 — Human inspection and branch naming
+
+- User reported no apparent issue after direct inspection, asked to assess/rename
+  the branch, and explicitly deferred improving the unsatisfactory transcript UI.
+  This is functional review feedback, not final visual-design approval.
+- Codex renamed the local branch from feature/transcript-screen to
+  feature/transcription-client-and-playback and updated current documentation.
+  Earlier branch names and review status above remain historical records.
+- Application code is unchanged from the independently reviewed staged snapshot.
+  Documentation changes were checked for consistency and staged; no commit/push.
+
+## 2026-09-29 — Publication authorization
+
+- After direct inspection and branch renaming, the user explicitly authorized
+  commit, push and PR creation. Final staged application/test blobs match the
+  separate review's recorded hashes; no application changes followed that review.
+- Refreshed origin/main matches this branch's base. Staged whitespace and
+  working-tree/index consistency checks passed. Existing verification applies;
+  UI refinement and live backend integration remain follow-up work.
