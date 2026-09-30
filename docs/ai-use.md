@@ -305,3 +305,44 @@ This file does not automatically publish or submit the course report.
 - Refreshed origin/main matches this branch's base. Staged whitespace and
   working-tree/index consistency checks passed. Existing verification applies;
   UI refinement and live backend integration remain follow-up work.
+
+## 2026-09-30 — Mobile recording timeline and local preview
+
+- Contributor: Injoon (requester); OpenAI Codex implemented the scoped mobile
+  recording, timeline, local-preview, and existing-client handoff changes.
+- Tool: OpenAI Codex, using the Expo SDK 57 `expo-audio` documentation and a
+  separate Codex reviewer before commit.
+- Representative request (summary): Implement recording with the recorder's
+  audio-relative slide-change timestamps; save the local recording for preview;
+  then pass a deck-backed recording to the existing transcription client while
+  keeping fixture/debug UI clearly labelled.
+- Generated work and incorporation: Updated `features/recording/service.ts`
+  and `RehearsalScreen.tsx` to request microphone permission, configure audio,
+  capture with `RecordingPresets.HIGH_QUALITY` in the document directory, drive
+  the timer from native recorder state, preserve the final duration and slide
+  events, and form `LocalRecording` when a real deck ID is available. Updated
+  `features/pdf/ViewerScreen.tsx` to forward that optional deck ID and
+  `features/transcription/ResultsScreen.tsx` to preview local audio/timeline,
+  submit through the existing client, and label fixture/debug-only portions.
+  No backend, API contract, dependencies, app configuration, generated Android
+  files, or navigation route definitions were changed.
+- Verification by Codex: `npm run check` passed (TypeScript, Expo lint, and 21
+  Node tests); `npm run bundle:android` passed; and `git diff --check` passed.
+  These are local automated checks. Earlier user testing confirmed recording and
+  slide-timeline capture; no new device capture/upload run was performed for the
+  final committed snapshot.
+- Human review/corrections: The requester iteratively tested and reported the
+  initial permission/timer/stop issues, then confirmed that recording and the
+  slide timeline work. An independent Codex reviewer found three staged
+  lifecycle defects: a stale duration poll could leak an earlier recording's
+  duration, Preview could navigate away during capture, and a failed stop could
+  leave a non-functional Stop control. Codex fixed them, reran the mobile checks,
+  and the reviewer rechecked the final staged diff with no new actionable finding.
+- Limitations: A sample deck has no persisted deck ID, so its recordings remain
+  local and make no HTTP request. The current backend attempt endpoints still
+  determine live upload/processing availability. Route-serialized recording and
+  timeline data and the raw timeline card are explicitly temporary debugging
+  handoffs; durable attempt storage and real transcript/feedback rendering are
+  follow-up work. Native Android permission, capture, upload, and result display
+  are not established by the static checks.
+- Related commit: local commit on `feature/recording-tracking`; PR pending.
