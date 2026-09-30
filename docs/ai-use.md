@@ -315,3 +315,29 @@ This file does not automatically publish or submit the course report.
 - Follow-up: after this revert merges, each owner starts a fresh branch from updated main and reapplies their original feature change. Review integration changes explicitly when updating the second feature PR after the first merges. PRs #6–#9 depend on the reverted integration; this task does not close or delete them.
 - Verification: clean dependency install from the restored lockfile succeeded. `npm run check` passed TypeScript and all 21 mobile tests; lint had zero errors and one existing `react-hooks/exhaustive-deps` warning in `ResultsScreen.tsx:33`. `npm run bundle:android` passed. Staged whitespace check passed; the entire staged tree matches `7af66ab` except this disclosure and the historical AI-use archive. Backend files are unchanged; backend tests were not rerun.
 - Independent Codex review of the exact staged diff found no actionable findings: correct merge parent and baseline, consistent removed dependencies/plugins/consumers, and verbatim preservation of both original AI-use additions. Working tree matched the staged snapshot. No new Android device verification or human teammate approval is claimed; native/device behavior remains unverified in this task.
+
+## 2026-10-07 — Recording feature reintroduction after PR #5 revert
+
+- Contributor: Jooyoung.
+- Tool: OpenAI Codex.
+- Task and scope: Reintroduce the recording feature on a fresh
+  `feature/recording` branch after the PR #5 revert merged. The feature code is
+  reapplied from original commit `04857fb` so recording can receive its own
+  review and verification.
+- Representative request: Reapply the recording owner’s original commit after
+  resetting the combined PDF/recording integration, then verify it separately.
+- Generated work and incorporation: Cherry-picked `04857fb`, restoring
+  microphone permission handling, Expo Audio recording, recorder-relative slide
+  timestamps, local recording preview, and the limited PDF-route deck-ID
+  handoff needed by the recording flow. This does not restore PDF import/viewing.
+- Verification: Pending. Run `npm run check`, `npm run bundle:android`, and
+  Android-device testing for permission, Start/Stop, timer, local preview, and
+  repeated/backward slide timestamps after this cherry-pick completes.
+- Human review/corrections: Pending. The original commit received independent
+  Codex review, but this reintroduced branch and its conflict resolution require
+  fresh review before push.
+- Limitations: Backend upload/processing and durable attempt storage remain
+  separate follow-up work. Sample-slide recordings remain local-only without a
+  persisted deck ID.
+- Related PR/commit: Cherry-pick of `04857fb` in progress; new recording-only
+  PR pending.
