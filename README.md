@@ -2,7 +2,7 @@
 
 An Android presentation practice app connecting PDF slides, recordings, slide-aligned transcripts, and feedback.
 
-**Current status: Iteration 1 team scaffold.** The four screen frames use labeled sample data. Real PDF import/rendering, recording, and Gemini feedback remain implementation tasks for the team; transcription/alignment progress is noted below. This scaffold provides navigation, an API connection check, shared types, database models, development infrastructure, and feature entry points.
+**Current status: Iteration 1 team scaffold.** On `feature/pdf-viewer`, the mobile app can pick a PDF, copy it into app-private device storage, retain a local library, and display pages one at a time. This first viewer step is local-only: it does not upload the file or prepare slide images/text on the backend. Real backend PDF preparation, recording, and Gemini feedback remain implementation tasks for the team; transcription/alignment progress is noted below. The scaffold also provides navigation, an API connection check, shared types, database models, development infrastructure, and feature entry points.
 
 On `feature/whisper-alignment`, the hosted Whisper adapter, standalone word-to-slide matcher, and mocked/synthetic tests are implemented. [Alignment notes](docs/word-alignment.md) describe its
 proposed internal output and a runnable example. It is not yet wired into the
@@ -68,6 +68,8 @@ export PATH="$ANDROID_HOME/platform-tools:$PATH"
 That Java command requires a macOS-registered JDK 17. If Gradle provisioned your JDK instead, point `JAVA_HOME` directly to its `Contents/Home` directory. The exact path used on the setup machine is recorded in [setup-explained.md](docs/setup-explained.md).
 
 The screen preview runs without backend services or provider keys: **Open sample slides → Preview rehearsal → Preview transcript and feedback**. Recording remains a preview; the result screen can play the matching local TTS audio with synchronized word highlighting.
+
+The local PDF viewer uses native Android PDF rendering. After installing dependencies, build/install a new development app with `npm run android`; Expo Go does not include this renderer. Imported PDFs are copied into the app's private documents directory and remain available in the in-app library after restart. Removing a library entry deletes its local PDF. The app does not upload imported PDFs in this first step.
 
 ## Run the backend
 

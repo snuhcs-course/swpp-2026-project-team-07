@@ -215,6 +215,57 @@ This file does not automatically publish or submit the course report.
 - Human review and integration verification remain pending. Changes are local;
   no staging, commit, push, or PR publication was requested for this step.
 
+## 2026-10-04 — On-device PDF import and slide viewer
+
+- Contributor: Teammate A (requester); OpenAI Codex assisted with implementation.
+- Tool: OpenAI Codex, using the Expo SDK 57 docs and project instructions.
+- Task and scope: Implement an offline-first Android PDF import flow that stores
+  selected PDFs on the device and displays their pages one at a time, on a local
+  feature branch based on `origin/main`.
+- Representative request (summarized): Keep the PDF on the device rather than
+  server-side; implement import and slide-by-slide viewing before uploading the
+  branch.
+- Generated work and incorporation: Updated the mobile PDF service, library and
+  viewer screens, Android app config and dependency lock for `react-native-pdf`,
+  `react-native-blob-util` and Expo config plugins. PDFs are copied into app-private
+  storage with a local catalog; they are not uploaded. Updated README scope notes.
+- Verification by Codex: TypeScript check and Expo lint passed; all 21 existing
+  mobile tests passed; Android JavaScript export passed; Expo Android prebuild
+  passed and the generated manifest removes the renderer plugin's unnecessary
+  legacy external-storage/download permissions. No Android Gradle build or device
+  test was possible because this machine has no Android SDK/ADB and is using Java
+  21 instead of the JDK 17 required by the project setup.
+- Human review/corrections: Pending. No independent code review, commit, push, or
+  PR is claimed.
+- Limitations: The viewer renders pages from the original local PDF; the API
+  contract's server-generated slide images and extracted text are not implemented
+  by this local-only step. Native Android rendering requires a rebuilt development
+  app; Expo Go cannot load the native module.
+- Related branch: `feature/pdf-viewer`, based on `origin/main`.
+
+### Physical Android and final-check follow-up — 2026-10-04
+
+- Codex subsequently ran `npm run check`: TypeScript passed, lint had zero errors
+  and one existing transcription-screen warning, and all 21 existing tests passed.
+  `git diff --check` passed.
+- Codex built and opened the Documents `feature/pdf-viewer` app on the connected
+  Samsung SM-S901N using `npx expo run:android --port 8082`; Gradle reported
+  `BUILD SUCCESSFUL`. The alternate port kept the Desktop integration clone's
+  Metro server from serving the wrong source tree.
+- Device check: reimported a 14-page PDF from the phone's Downloads folder, saw
+  its rendered first page and 1/14 counter, swiped to page 2, and used the PDF
+  viewer's Next control to advance. **Preview rehearsal** opened the same PDF at
+  page 1 and showed the practice page counter/navigation controls. The practice
+  Next control itself, recording, cancellation, invalid-file handling, backend
+  preparation, and AI flow were not verified on device.
+- During coordinate-based screen testing, Codex accidentally tapped Remove
+  instead of Open once. This removed only the app-private copy; the source PDF
+  remained in Downloads and was reimported successfully. No original file was
+  lost. This is recorded as an agent-operated mistake and recovery.
+- Human review remains pending. No commit or push had been made at the time of
+  this entry. Backend-generated slide images/text and real recording remain
+  outside this local-only PDF step.
+
 ### Independent review follow-up
 
 - A separate Codex reviewer found that coercing response status with String()
