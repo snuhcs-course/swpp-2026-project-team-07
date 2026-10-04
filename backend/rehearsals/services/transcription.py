@@ -59,6 +59,8 @@ def transcribe(audio_path: Path) -> dict:
     Caller owns raw-response persistence and reuse of successful transcriptions.
     Automatic retries are disabled; orchestration controls duplicate processing.
     """
+    if os.getenv("ALLOW_HOSTED_TRANSCRIPTION", "0") != "1":
+        raise TranscriptionError("hosted_disabled", "Hosted transcription is disabled. Use the local worker.")
     path = Path(audio_path)
     if path.suffix.lower() not in SUPPORTED_SUFFIXES:
         raise TranscriptionError("unsupported_audio", "Unsupported audio file extension.")

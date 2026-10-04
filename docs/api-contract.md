@@ -1,6 +1,6 @@
 # Initial API contract
 
-Base path `/api/`. JSON uses `snake_case`, UUID strings and integer milliseconds. Mobile types: `src/contracts/index.ts`. Deck and attempt uploads are durable and idempotent. Processing is connected in the next milestone.
+Base path `/api/`. JSON uses `snake_case`, UUID strings and integer milliseconds. Mobile types: `src/contracts/index.ts`. Deck and attempt uploads are durable and idempotent. The process route schedules local-only transcription, with recovery through Celery beat.
 
 | Route | Input | Intended success |
 | --- | --- | --- |
@@ -59,4 +59,8 @@ This is an implementation policy, not an evaluated accuracy claim. Pause/resume 
 
 These are schematic examples, not provider outputs. Statuses: `pending`, `processing`, `completed`, `failed`. Unavailable transcripts are `null`. Failed attempts retain audio and return a safe `{code, message}` error. Validate slide/audio evidence ranges; keep summaries separate from verbatim transcripts.
 
-`tasks.process_attempt` will coordinate stored audio → transcription → alignment → feedback → saved result. PDF preparation belongs to the deck workstream. Whisper uses hosted `whisper-1`, `verbose_json`, word timestamps normalized from seconds to milliseconds. Preserve raw output for evaluation and enforce the current provider upload limit. Gemini receives slide images/text, matching speech, bounded context and optional audience; choose its precise model during implementation. Credentials and provider calls remain server-side.
+`tasks.process_attempt` runs local faster-whisper `small`, CPU INT8, word timestamps, without VAD/silence removal or hosted fallback. One worker plus a PostgreSQL advisory lock serializes transcription. Model snapshot revision/engine version and raw transcription stay in backend storage; API exposes safe model metadata only. Celery beat recovers pending or abandoned work after the 1,900-second lease (task hard limit 1,800 seconds). Successful transcripts are retained independently of feedback.
+
+Results additionally include `visits`, `metrics`, `stages: {transcription, feedback}`, `transcription_model`, `audio_url`, `slide_events`, `duration_ms`, and `audience`. Transcription stages: pending/running/complete/failed. Feedback is `disabled` until milestone 3. `completed` describes the enabled pipeline; disabled feedback is never represented as generated. Speaking rates are language-labelled orthographic estimates over total duration including silence, with separate English/Korean counts for mixed speech. No overall score.
+
+A codec tail up to 1,000 ms may extend the last aligned visit/metric duration beyond the capture duration. Word timestamps are preserved rather than shifted or clipped. Larger timestamp excursions produce an alignment failure while retaining the successful transcript for inspection/retry.

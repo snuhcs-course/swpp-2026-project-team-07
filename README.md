@@ -152,3 +152,7 @@ Use `feature/recording-tracking` and `feature/whisper-alignment` for the other w
 - [React Native Java setup](https://reactnative.dev/docs/set-up-your-environment#java-development-kit)
 
 The submitted proposal defines the stack. Expo template assets/license remain under `mobile/`.
+
+## Local prototype worker
+
+Deck/attempt uploads persist original media and metadata before processing. Run all services with `docker compose up -d --build`; the worker runs one CPU INT8 multilingual Whisper `small` job at a time. First use downloads model weights into the persistent `whisper_models` volume. No transcription API key is needed. Celery beat repairs work left pending after broker/worker restarts (abandoned transcription lease: 1,900 seconds). Model and engine revisions are stored with each result. Back up PostgreSQL and `media_data` together. Migrations are additive; preserve backups before downgrading as reversing removes new cache/recovery columns.

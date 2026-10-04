@@ -15,13 +15,6 @@ class ScaffoldApiTests(SimpleTestCase):
         self.assertEqual(response.json()["service"], "outloud-api")
         self.assertTrue(response.json()["scaffold"])
 
-    def test_unfinished_features_do_not_report_success(self):
-        for route in [
-            "attempts/33333333-3333-4333-8333-333333333333/process/",
-        ]:
-            response = self.client.post(f"/api/{route}", {}, format="json")
-            self.assertEqual(response.status_code, 501)
-            self.assertEqual(response.json()["error"]["code"], "not_implemented")
 
 
 class MetadataContractTests(SimpleTestCase):

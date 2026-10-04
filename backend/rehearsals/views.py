@@ -1,5 +1,7 @@
 from django.conf import settings
-from django.db import connection
+from django.db import connection, transaction
+from django.utils import timezone
+from .tasks import process_attempt
 from django.shortcuts import get_object_or_404
 import json
 from redis import Redis
@@ -24,7 +26,10 @@ def attempt_data(attempt, request):
             "feedback": attempt.feedback, "error": attempt.error,
             "duration_ms": attempt.duration_ms, "slide_events": attempt.slide_events,
             "audience": attempt.audience, "created_at": attempt.created_at,
-            "audio_url": request.build_absolute_uri(attempt.audio.url)}
+            "audio_url": request.build_absolute_uri(attempt.audio.url),
+            "visits": attempt.visits, "metrics": attempt.metrics,
+            "stages": {"transcription": attempt.transcription_state, "feedback": attempt.feedback_state},
+            "transcription_model": {k: v for k, v in attempt.transcription_meta.items() if k != "raw_response"}}
 
 
 @api_view(["POST"])
@@ -116,3 +121,22 @@ def feature_pending(request, feature, attempt_id=None):
         },
         status=501,
     )
+
+
+@api_view(["POST"])
+def process(request, attempt_id):
+    with transaction.atomic():
+        attempt = get_object_or_404(Attempt.objects.select_for_update(), id=attempt_id)
+        if attempt.status == "failed" or (attempt.status == "pending" and attempt.queued_at is None):
+            attempt.status = "pending"
+            attempt.transcription_state = "complete" if attempt.transcript is not None else "pending"
+            attempt.queued_at = timezone.now()
+            attempt.error = None
+            attempt.save()
+            def enqueue():
+                try:
+                    process_attempt.delay(str(attempt_id))
+                except Exception:
+                    pass  # Persisted queue is recovered by beat when Redis returns.
+            transaction.on_commit(enqueue)
+    return Response({"attempt_id": str(attempt.id)}, status=202)

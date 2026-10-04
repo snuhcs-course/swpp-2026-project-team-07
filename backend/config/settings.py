@@ -47,5 +47,13 @@ REST_FRAMEWORK = {
 # Local team development only. Add authentication/authorization before remote deployment.
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://127.0.0.1:6379/0")
 CELERY_TASK_TRACK_STARTED = True
-CELERY_TASK_TIME_LIMIT = 300
+CELERY_TASK_TIME_LIMIT = 1800
+CELERY_WORKER_CONCURRENCY = 1
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_TASK_ACKS_LATE = True
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+CELERY_BEAT_SCHEDULE = {"recover-work": {"task": "rehearsals.tasks.recover_work", "schedule": 60.0}}
+WHISPER_MODEL = "small"
+WHISPER_CACHE_DIR = os.getenv("WHISPER_CACHE_DIR", str(BASE_DIR / ".models"))
+WHISPER_CPU_THREADS = int(os.getenv("WHISPER_CPU_THREADS", "4"))
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True

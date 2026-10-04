@@ -19,7 +19,7 @@ class TranscriptionTests(TestCase):
         self.raw = {"text": " Hello, world!", "language": "english", "duration": 2.0,
                     "words": [{"word": "Hello,", "start": 0.0005, "end": 0.9995},
                               {"word": "world!", "start": 1.0, "end": 2.0}]}
-        env = patch.dict("os.environ", {"OPENAI_API_KEY": "test-only-key"})
+        env = patch.dict("os.environ", {"OPENAI_API_KEY": "test-only-key", "ALLOW_HOSTED_TRANSCRIPTION": "1"})
         env.start()
         self.addCleanup(env.stop)
 

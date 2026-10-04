@@ -30,6 +30,7 @@ services:
     environment: &backend_environment
       POSTGRES_HOST: db
       CELERY_BROKER_URL: redis://redis:6379/0
+      WHISPER_CACHE_DIR: /models
     command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
     volumes:
       - ./backend:/app
@@ -45,15 +46,29 @@ services:
     build: ./backend
     env_file: backend/.env
     environment: *backend_environment
-    command: celery -A config worker --loglevel=info
+    command: celery -A config worker --loglevel=info --concurrency=1
     volumes:
       - ./backend:/app
       - media_data:/app/media
+      - whisper_models:/models
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  scheduler:
+    build: ./backend
+    env_file: backend/.env
+    environment: *backend_environment
+    command: celery -A config beat --loglevel=info --schedule=/tmp/celerybeat-schedule
+    volumes:
+      - ./backend:/app
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
 volumes:
+  whisper_models:
   postgres_data:
   media_data:

@@ -45,6 +45,13 @@ class Attempt(models.Model):
     slide_events = models.JSONField(default=list)
     audience = models.CharField(max_length=500, blank=True)
     upload_hash = models.CharField(max_length=64, blank=True)
+    transcription_state = models.CharField(max_length=24, default="pending")
+    feedback_state = models.CharField(max_length=24, default="disabled")
+    visits = models.JSONField(default=list)
+    metrics = models.JSONField(default=dict)
+    transcription_meta = models.JSONField(default=dict)
+    processing_started_at = models.DateTimeField(null=True, blank=True)
+    queued_at = models.DateTimeField(null=True, blank=True)
     status = models.CharField(
         max_length=20, choices=Status.choices, default=Status.PENDING
     )
