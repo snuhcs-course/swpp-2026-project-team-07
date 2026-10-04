@@ -3,9 +3,10 @@ import type { AudioRecorder } from "expo-audio";
 /** Freeze the audio clock before Android stop resets its native duration. */
 export async function stopCapture(
   recorder: Pick<AudioRecorder, "pause" | "stop" | "getStatus" | "uri" | "isRecording">,
+  fallbackDuration = 0,
 ): Promise<{ uri: string; durationMillis: number }> {
   if (recorder.isRecording) recorder.pause();
-  const durationMillis = Math.floor(recorder.getStatus().durationMillis);
+  const durationMillis = Math.max(fallbackDuration, Math.floor(recorder.getStatus().durationMillis));
   await recorder.stop();
   const uri = recorder.uri;
   if (!uri || durationMillis <= 0) {

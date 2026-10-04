@@ -22,7 +22,7 @@ export function transcriptSpans(transcript: Transcript): { text: string; wordInd
   const spans: { text: string; wordIndex: number | null }[] = [];
   let cursor = 0;
   for (let index = 0; index < transcript.words.length; index++) {
-    const token = transcript.words[index].text;
+    const token = transcript.words[index].text.trim();
     const start = token ? transcript.text.indexOf(token, cursor) : -1;
     if (start < 0) return [{ text: transcript.text, wordIndex: null }];
     if (start > cursor) spans.push({ text: transcript.text.slice(cursor, start), wordIndex: null });

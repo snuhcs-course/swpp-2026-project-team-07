@@ -2,18 +2,11 @@
 
 An Android presentation practice app connecting PDF slides, recordings, slide-aligned transcripts, and feedback.
 
-**Current status: merged feature prototype.** The mobile app imports and stores PDFs locally, displays their pages, records audio with slide-visit timestamps, and plays the saved recording. The backend Whisper/alignment components and mobile transcription client are implemented separately. Server upload/result endpoints, PDF preparation, worker orchestration, live result display, and Gemini feedback remain unfinished; this is not yet an end-to-end AI workflow.
+**Current status: integrated local prototype, pilot validation pending.** Import up to 10 PDF slides, record up to 10 minutes, then Stop automatically saves and uploads a durable attempt. The backend prepares slides locally, runs multilingual Whisper on CPU, and returns timestamped transcripts, repeat/backward slide visits and language-labelled timing metrics. The app provides playback/word seeking, saved attempts, upload recovery and editable slide descriptions.
 
-On `feature/whisper-alignment`, the hosted Whisper adapter, standalone word-to-slide matcher, and mocked/synthetic tests are implemented. [Alignment notes](docs/word-alignment.md) describe its
-proposed internal output and a runnable example. It is not yet wired into the
-worker, API, or app. [Whisper setup](docs/whisper-transcription.md) explains how to run a real-audio check; a live TTS transcription/alignment check passed; human-speech accuracy remains unverified.
+Gemini feedback is implemented but **disabled by default** until a dedicated free-tier project and its actual quotas are configured. Cached descriptions are reused across rehearsals; zero to three evidence-linked suggestions are returned. Polling and playback generate no model requests. A silent-recording gate prevents an all-silent capture from being sent into speech decoding; speech waveforms retain their original timeline.
 
-On `feature/transcription-client-and-playback`, the [mobile transcription client](docs/mobile-transcription.md)
-implements upload, processing requests, validated results, retries, and cancellable
-polling with mocked-network tests. Recorder, real feature endpoints, and live result-screen
-wiring remain pending. The result screen now displays the saved Whisper TTS transcript,
-synchronized local-audio word highlighting and tap-to-seek. Processing/failure/retry
-states remain explicitly simulated.
+Automated tests and synthetic English/Korean inference pass. Mixed-language decoding still omitted a short phrase near one language switch in a synthetic test. Physical Android speech quality, real chart/image descriptions and Gemini advice usefulness require human evaluation. There is no overall presentation score. This local, unauthenticated pilot must stay on controlled devices and use non-confidential material.
 
 ## Start here
 
@@ -43,7 +36,7 @@ compose.yaml                    Local PostgreSQL, Redis, API, worker
 
 Install Node.js 24 LTS (minimum 22.13), npm, Android Studio, **JDK 17**, Android SDK Platform 36, and an emulator or USB-debug-enabled phone. This project uses Expo SDK 57 / React Native 0.86. Set both the shell's `JAVA_HOME` and Android Studio's project Gradle JDK to JDK 17. The local build using Android Studio's bundled Java 25 failed during Worklets/CMake setup. Expect the first native build to download Gradle and Android dependencies.
 
-After the scaffold is merged into the repository:
+From your checkout:
 
 ```sh
 git clone https://github.com/snuhcs-course/swpp-2026-project-team-07.git
@@ -67,7 +60,7 @@ export PATH="$ANDROID_HOME/platform-tools:$PATH"
 
 That Java command requires a macOS-registered JDK 17. If Gradle provisioned your JDK instead, point `JAVA_HOME` directly to its `Contents/Home` directory. The exact path used on the setup machine is recorded in [setup-explained.md](docs/setup-explained.md).
 
-The local flow runs without backend services or provider keys: **Import a PDF → Start rehearsal → Start/stop recording → Listen to recording**. Sample slides and the saved synthetic-speech transcript remain separate previews. Rebuild the Android development client after merging to include the PDF native modules.
+Import, recording, durable saving and local playback work without backend services or provider keys. Stop attempts upload automatically; when offline, the saved rehearsal offers upload retry. Transcription needs the local backend/worker. Sample slides are labelled preview-only. Rebuild the Android development client after merging to include the PDF and SQLite native modules.
 
 The local PDF viewer uses native Android PDF rendering. After installing dependencies, build/install a new development app with `npm run android`; Expo Go does not include this renderer. Imported PDFs are copied into the app's private documents directory and remain available in the in-app library after restart. Removing a library entry deletes its local PDF. The app does not upload imported PDFs in this first step.
 
@@ -82,7 +75,7 @@ cp backend/.env.example backend/.env
 docker compose up --build
 ```
 
-This starts PostgreSQL, Redis, Django on port 8000, and a Celery worker, with persistent database/media volumes. The API container applies migrations. Ports bind to loopback. This is a local development configuration; authentication and production deployment are separate work.
+This starts PostgreSQL, Redis, Django on port 8000, a Celery worker and beat scheduler, with persistent database/media/model volumes. The API container applies migrations. Ports bind to loopback. This is a local development configuration; authentication and production deployment are separate work.
 
 `http://127.0.0.1:8000/api/health/` checks API liveness. `/api/ready/` checks database/broker connectivity, not AI implementation or worker readiness. Check the worker using `docker compose exec worker celery -A config inspect ping`.
 
@@ -96,9 +89,9 @@ python -m pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Run `docker compose up -d db redis` from the repository root. Then run `python manage.py migrate` and `python manage.py runserver 0.0.0.0:8000` from `backend/`. In another activated terminal, run `celery -A config worker --loglevel=info`.
+Run `docker compose up -d db redis` from the repository root. Then run `python manage.py migrate` and `python manage.py runserver 0.0.0.0:8000` from `backend/`. In another activated terminal, run `celery -A config worker --loglevel=info --concurrency=1`, and run `celery -A config beat --loglevel=info` in a third terminal for recovery/quota scheduling.
 
-The **health endpoint and unfinished routes only** can be smoke-tested without PostgreSQL/Redis using `python manage.py runserver --settings=config.test_settings 127.0.0.1:8000`. This uses an ephemeral test database and may warn about unapplied migrations; do not use it for feature development or saving attempts. Storage/processing need the real services; this limited smoke check is not infrastructure validation.
+The **health endpoint only** can be smoke-tested without PostgreSQL/Redis using `python manage.py runserver --settings=config.test_settings 127.0.0.1:8000`. This uses an ephemeral test database and may warn about unapplied migrations; do not use it for feature development or saving attempts. Storage/processing need the real services; this limited smoke check is not infrastructure validation.
 
 ## App connection
 
@@ -106,7 +99,7 @@ The **health endpoint and unfinished routes only** can be smoke-tested without P
 - USB phone: run `adb reverse tcp:8000 tcp:8000`, use `http://127.0.0.1:8000/api`, and restart Metro.
 - Tap **Check connection** in the Library screen.
 
-Provider keys belong only in ignored `backend/.env`. Never use `EXPO_PUBLIC_*` for secrets. No provider is called by this scaffold, and keys are not needed for its preview.
+Provider keys belong only in ignored `backend/.env`. Never use `EXPO_PUBLIC_*` for secrets. No paid transcription provider is used. Gemini is called only when explicitly enabled and configured; local transcription needs no API key.
 
 ## Checks
 
@@ -128,7 +121,7 @@ Unit tests use in-memory SQLite. GitHub CI also configures PostgreSQL and applie
 
 ## Team branches
 
-Once the reviewed scaffold reaches `main`:
+Start a feature branch from the current team base:
 
 ```sh
 git switch main
@@ -166,3 +159,12 @@ Use non-confidential pilot material: Google's free-tier data-use terms permit pr
 `docker compose exec api python manage.py ai_usage` reports request/token totals. Inspect uncertain requests privately in the database/provider console. Only after resolving the outcome, `python manage.py retry_uncertain_ai KEY --acknowledge-possible-duplicate` enables one explicit app retry. Keep one beat scheduler; all keys for this dedicated project share the DB limiter. Daily waits reset at midnight America/Los_Angeles, including daylight saving changes.
 
 Descriptions are generated lazily after the first transcript, and can be corrected through the description endpoint. Description edits invalidate old feedback without re-transcribing. Model output is untrusted: references and exact quotes are validated, but human evaluation of whether advice is useful is still required before a pilot.
+
+## Pilot acceptance checklist
+
+- Automated: PDF/audio limits, upload duplicates/conflicts, stored results, local adapter word timing, backward visits, failed-stage recovery, cache keys, evidence validation, shared quota waits and unknown-outcome guards.
+- Agent-operated emulator: native APK build/install, imported PDF catalog migration, full-length recording cap, restart survival and upload. Final lifecycle/navigation smoke checks are recorded in docs/ai-use.md.
+- Actual local inference: synthetic English and Korean, plus a mixed-language test with the omission noted above. This is not a human speech accuracy evaluation.
+- Still required before pilot sign-off: physical Android Korean/English/mixed and a full ten-minute spoken rehearsal; human word-timing/playback review; real image-only/chart-heavy deck descriptions and every displayed suggestion; confirmed free-tier project limits and a controlled live quota-exhaustion check. Public deployment and account access remain out of scope.
+
+Unexpected OS termination can leave an unfinished native audio container. The app keeps file references/timeline checkpoints and offers recovery when the file is playable; it cannot reconstruct audio the OS never finalized. Normal Back/Home interruptions stop and save. Deleting app storage or uninstalling still deletes local files; keep server backups.

@@ -25,7 +25,21 @@ export type Feedback = {
   slide_evidence: string;
   suggestion: string;
 };
+export type SlideDescription = { slide_index: number; summary: string; key_ideas: string[]; visual_facts: string[]; uncertainty: string };
+export type SlideVisit = { slide_index: number; start_ms: number; end_ms: number; words: TranscriptWord[] };
 export type AttemptResult = {
+  deck_id?: string;
+  audio_url?: string;
+  created_at?: string;
+  duration_ms?: number;
+  slide_events?: SlideEvent[];
+  audience?: string;
+  visits?: SlideVisit[];
+  metrics?: { duration_ms: number; time_per_slide: { slide_index: number; duration_ms: number }[]; speaking_rates: { language: string; unit: string; count: number; per_minute: number }[]; rate_note: string };
+  stages?: { transcription: string; feedback: string };
+  feedback_stale?: boolean;
+  feedback_available?: boolean;
+  next_retry_at?: string | null;
   attempt_id: string;
   status: "pending" | "processing" | "completed" | "failed";
   transcript: Transcript | null;

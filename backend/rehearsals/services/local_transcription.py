@@ -19,8 +19,17 @@ def load_model():
 
 
 def transcribe_local(audio_path: Path):
+    from faster_whisper.audio import decode_audio
+    from faster_whisper.vad import get_speech_timestamps
     model, metadata = load_model()
-    segments, info = model.transcribe(str(audio_path), word_timestamps=True, vad_filter=False,
+    audio = decode_audio(str(audio_path))
+    metadata = {**metadata, "silence_gate": "silero-vad"}
+    # Only gate recordings with no detected speech. Do not cut/concatenate audio;
+    # nonempty recordings retain the original waveform and timestamp origin.
+    if not get_speech_timestamps(audio):
+        return {"text": "", "words": [], "raw_response": {"text": "", "words": []},
+                "metadata": {**metadata, "language": "und", "language_probability": 0.0}}
+    segments, info = model.transcribe(audio, word_timestamps=True, vad_filter=False,
                                       language=None, multilingual=True, chunk_length=10, beam_size=5, condition_on_previous_text=False)
     segments = list(segments)
     raw = {"text": "".join(segment.text for segment in segments).strip(),

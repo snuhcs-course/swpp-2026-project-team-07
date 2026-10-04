@@ -41,6 +41,14 @@ function validResult(value: unknown, id: string): value is AttemptResult {
   const transcript = value.transcript;
   if (transcript !== null && (!object(transcript) || typeof transcript.text !== "string" ||
       !Array.isArray(transcript.words) || !transcript.words.every(word))) return false;
+  if (value.visits !== undefined && (!Array.isArray(value.visits) || !value.visits.every(v => object(v) && integer(v.slide_index) && integer(v.start_ms) && integer(v.end_ms) && v.start_ms <= v.end_ms && Array.isArray(v.words) && v.words.every(word)))) return false;
+  if (value.stages !== undefined && (!object(value.stages) || typeof value.stages.transcription !== "string" || typeof value.stages.feedback !== "string")) return false;
+  if (value.audio_url !== undefined && typeof value.audio_url !== "string") return false;
+  if (value.metrics !== undefined) {
+    if (!object(value.metrics)) return false;
+    const m = value.metrics;
+    if (m.time_per_slide !== undefined && (!Array.isArray(m.time_per_slide) || !m.time_per_slide.every(s => object(s) && integer(s.slide_index) && integer(s.duration_ms)) || !Array.isArray(m.speaking_rates) || !m.speaking_rates.every(r => object(r) && typeof r.language === "string" && typeof r.unit === "string" && typeof r.per_minute === "number" && Number.isFinite(r.per_minute)) || typeof m.rate_note !== "string")) return false;
+  }
   const error = value.error;
   if (error !== null && (!object(error) || typeof error.code !== "string" ||
       typeof error.message !== "string")) return false;
@@ -107,7 +115,7 @@ export function createTranscriptionClient(deps: Dependencies) {
     const { id, deck_id, duration_ms, audience, slide_events, audio_uri } = recording;
     checkId(id);
     if (options.signal?.aborted) throw cancelled(id);
-    if (!uuid.test(deck_id) || !integer(duration_ms) || duration_ms === 0 ||
+    if (!uuid.test(deck_id) || !integer(duration_ms) || duration_ms === 0 || duration_ms > 600_000 ||
         typeof audience !== "string" || audience.length > 500 ||
         typeof audio_uri !== "string" || !/^(file|content):\/\//.test(audio_uri) ||
         !Array.isArray(slide_events) || !slide_events.length ||
@@ -119,8 +127,8 @@ export function createTranscriptionClient(deps: Dependencies) {
     let file: Blob;
     try { file = deps.audioFile(audio_uri); }
     catch { throw error("audio_unavailable", id, "The local audio file could not be opened."); }
-    if (!file.size || file.size > 25_000_000) {
-      throw error("invalid_audio_size", id, "Audio must contain 1 to 25,000,000 bytes.");
+    if (!file.size || file.size > 25 * 1024 * 1024) {
+      throw error("invalid_audio_size", id, "Audio must contain 1 byte to 25 MB.");
     }
     // File.name from Expo preserves the container suffix; never invent an m4a extension.
     const name = (file as Blob & { name?: string }).name;

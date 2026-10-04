@@ -17,6 +17,7 @@ export default function Layout() {
         <Stack.Screen name="index" options={{ title: "OutLoud" }} />
         <Stack.Screen name="viewer" options={{ title: "Your slides" }} />
         <Stack.Screen name="rehearsal" options={{ title: "Practice" }} />
+        <Stack.Screen name="descriptions" options={{ title: "Slide understanding" }} />
         <Stack.Screen name="results" options={{ title: "Review" }} />
       </Stack>
     </>

@@ -45,7 +45,8 @@ export function createRecordingService(
     async start(initialSlideIndex: number, prepared?: (uri: string) => void): Promise<void> {
       // Android/iOS may show a system prompt here. Do not prepare or start the
       // recorder after denial: no UI state should claim capture has begun.
-      const permission = await AudioModule.requestRecordingPermissionsAsync();
+      let permission = await AudioModule.getRecordingPermissionsAsync();
+      if (!permission.granted) permission = await AudioModule.requestRecordingPermissionsAsync();
       if (!permission.granted) {
         throw new Error("Microphone permission was denied.");
       }
@@ -62,7 +63,7 @@ export function createRecordingService(
       await recorder.prepareToRecordAsync();
       if (!recorder.uri) throw new Error("The recorder did not allocate an audio file.");
       prepared?.(recorder.uri);
-      recorder.record();
+      recorder.record({ forDuration: 600 });
       slideEvents = [{ slide_index: initialSlideIndex, at_ms: 0 }];
     },
 

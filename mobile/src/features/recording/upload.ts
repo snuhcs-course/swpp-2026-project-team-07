@@ -17,7 +17,7 @@ export function uploadAttempt(id: string): Promise<void> {
 async function upload(id: string) {
   let attempt = getSavedAttempt(id);
   if (!attempt || attempt.state === "submitted") return;
-  if (attempt.state === "capturing" || !attempt.recording.duration_ms) throw new Error("Finish or recover this recording before uploading.");
+  if ((attempt.state === "capturing" || attempt.state === "interrupted") || !attempt.recording.duration_ms) throw new Error("Finish or recover this recording before uploading.");
   try {
     saveAttempt({ ...attempt, state: "uploading", error: undefined });
     const mappingKey = `server-deck:${API_URL}:${attempt.local_deck_id}`;
@@ -44,3 +44,6 @@ async function upload(id: string) {
     throw error;
   }
 }
+
+export function isUploading(id: string) { return inFlight.has(id); }
+export function serverDeckId(localId: string) { return readStored<string>(`server-deck:${API_URL}:${localId}`); }

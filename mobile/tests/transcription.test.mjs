@@ -106,7 +106,7 @@ test('unavailable, empty, oversize, or unsupported local audio is rejected', asy
   for (const [audioFile, code] of [
     [() => { throw new Error('private path'); }, 'audio_unavailable'],
     [() => new File([], 'empty.m4a'), 'invalid_audio_size'],
-    [() => ({ size: 25_000_001, name: 'big.m4a' }), 'invalid_audio_size'],
+    [() => ({ size: 25 * 1024 * 1024 + 1, name: 'big.m4a' }), 'invalid_audio_size'],
     [() => new File(['x'], 'unknown.bin'), 'unsupported_audio']]) {
     await rejects(setup([], { audioFile }).client.submit(recording), code);
   }
@@ -132,4 +132,19 @@ test('cancellation after upload response prevents processing and preserves ID', 
   await rejects(client.submit(recording, { signal: controller.signal }), 'cancelled');
   assert.equal(calls.length, 1);
   assert.equal(recording.id, id);
+});
+
+test('partial transcript and quota progress are read without processing calls', async () => {
+  const partial = { ...result(), status: 'processing', stages: { transcription: 'complete', feedback: 'waiting_quota' }, error: { code: 'waiting_quota', message: 'Waiting for AI quota.' }, visits: [{ slide_index: 0, start_ms: 0, end_ms: 5000, words: result().transcript.words }] };
+  const { client, calls } = setup([json(partial)]);
+  assert.deepEqual(await client.getResult(id), partial);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].init.method, 'GET');
+});
+
+test('malformed visit and metric arrays are rejected before rendering', async () => {
+  for (const extra of [{ visits: 'bad' }, { stages: { transcription: 3 } }, { metrics: { time_per_slide: [] } }]) {
+    const { client } = setup([json({ ...result(), ...extra })]);
+    await rejects(client.getResult(id), 'invalid_response');
+  }
 });

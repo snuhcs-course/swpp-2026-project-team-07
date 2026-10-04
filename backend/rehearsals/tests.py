@@ -9,11 +9,11 @@ class ScaffoldApiTests(SimpleTestCase):
     def setUp(self):
         self.client = APIClient()
 
-    def test_health_is_explicitly_scaffold_liveness(self):
+    def test_health_is_liveness(self):
         response = self.client.get("/api/health/")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["service"], "outloud-api")
-        self.assertTrue(response.json()["scaffold"])
+        self.assertFalse(response.json()["scaffold"])
 
 
 

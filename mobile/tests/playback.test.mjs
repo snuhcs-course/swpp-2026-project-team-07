@@ -39,3 +39,10 @@ test('replay starts only after successful seek; failed seek never plays', async 
   await assert.rejects(resumeAfterSeek(async () => { throw Error('seek failed'); }, () => true, () => events.push('bad play')));
   assert.deepEqual(events, ['seek', 'play']);
 });
+
+test('trimmed Whisper transcript still gives every timestamped word a seek target', () => {
+  const transcript = { text: 'Hello world.', words: [{ text: ' Hello', start_ms: 0, end_ms: 500 }, { text: ' world.', start_ms: 500, end_ms: 900 }] };
+  const result = transcriptSpans(transcript);
+  assert.equal(result.map(s => s.text).join(''), transcript.text);
+  assert.deepEqual(result.filter(s => s.wordIndex !== null).map(s => s.wordIndex), [0, 1]);
+});

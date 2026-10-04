@@ -6,7 +6,7 @@ export type SavedAttempt = {
   id: string;
   local_deck_id: string;
   created_at: string;
-  state: "capturing" | "saved" | "uploading" | "submitted" | "upload_failed";
+  state: "capturing" | "interrupted" | "saved" | "uploading" | "submitted" | "upload_failed";
   recording: LocalRecording;
   error?: string;
   result?: AttemptResult;

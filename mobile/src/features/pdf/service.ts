@@ -1,3 +1,4 @@
+import { File } from "expo-file-system";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { readStored, writeStored } from "../../services/storage";
@@ -63,11 +64,12 @@ export const pdfService = {
     }
     if (asset.size && asset.size > 20 * 1024 * 1024) throw new Error("PDFs must be at most 20 MB.");
     if (asset.size === 0) throw new Error("That PDF file is empty.");
-    const signature = await FileSystem.readAsStringAsync(asset.uri, {
-      encoding: FileSystem.EncodingType.UTF8,
-      position: 0,
-      length: 1024,
-    });
+    const input = new File(asset.uri);
+    if (input.size > 20 * 1024 * 1024) throw new Error("PDFs must be at most 20 MB.");
+    const handle = input.open();
+    let signature: string;
+    try { signature = new TextDecoder().decode(handle.readBytes(Math.min(input.size, 1024))); }
+    finally { handle.close(); }
     if (!signature.includes("%PDF-")) {
       throw new Error("This file does not contain a valid PDF document.");
     }
@@ -88,7 +90,8 @@ export const pdfService = {
 
     await FileSystem.copyAsync({ from: asset.uri, to: uri });
     try {
-      const previous = await getImportedPdfs();
+      await getImportedPdfs();
+      const previous = readStored<LocalPdf[]>("pdfs") ?? [];
       writeStored("pdfs", [pdf, ...previous]);
     } catch (error) {
       await FileSystem.deleteAsync(uri, { idempotent: true });
@@ -99,7 +102,8 @@ export const pdfService = {
 
   async removePdf(id: string): Promise<void> {
     if (savedAttempts(id).length) throw new Error("This PDF has saved rehearsals and is kept for recovery.");
-    const current = await getImportedPdfs();
+    await getImportedPdfs();
+    const current = readStored<LocalPdf[]>("pdfs") ?? [];
     const removed = current.find((pdf) => pdf.id === id);
     if (!removed) return;
     writeStored("pdfs", current.filter((pdf) => pdf.id !== id));

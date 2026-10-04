@@ -74,7 +74,7 @@ export function LibraryScreen() {
         <Text style={[styles.title, { marginTop: 8 }]}>A clearer presentation{"\n"}starts here.</Text>
       </View>
       <Text style={styles.body}>
-        Import a PDF stored on this device, then move through its pages one at a time.
+        Import a PDF, rehearse, and review your transcript and slide timing. Up to 10 slides and 10 minutes.
       </Text>
       <Action
         label={importing ? "Importing PDF…" : "Import a PDF"}
@@ -106,8 +106,8 @@ export function LibraryScreen() {
           {attempts.filter(a => a.local_deck_id === pdf.id).map(a => <View key={a.id} style={{ gap: 8 }}>
             <Text style={styles.body}>{new Date(a.created_at).toLocaleString()} · {a.state}</Text>
             {!!a.error && <Text style={styles.body}>{a.error}</Text>}
-            <Action label="Open saved rehearsal" secondary onPress={() => router.push({ pathname: "/results", params: { attemptId: a.id, audioUri: a.recording.audio_uri, slideEvents: JSON.stringify(a.recording.slide_events) } })} />
-            {a.state !== "capturing" && a.state !== "submitted" && <Action label="Retry upload" secondary onPress={() => { void uploadAttempt(a.id).catch(e => setNotice(String(e))).finally(() => void refreshLibrary()); }} />}
+            <Action label="Open saved rehearsal" secondary onPress={() => router.push({ pathname: "/results", params: { attemptId: a.id } })} />
+            {a.state !== "capturing" && a.state !== "interrupted" && a.state !== "submitted" && <Action label="Retry upload" secondary onPress={() => { void uploadAttempt(a.id).catch(e => setNotice(String(e))).finally(() => void refreshLibrary()); }} />}
           </View>)}
         </Card>
       ))}

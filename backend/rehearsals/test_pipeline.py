@@ -14,8 +14,10 @@ OUTPUT = {"text": "Hello 안녕하세요", "words": [{"text": "Hello", "start_ms
 
 
 class LocalAdapterTests(SimpleTestCase):
+    @patch("faster_whisper.vad.get_speech_timestamps", return_value=[{"start": 32000, "end": 48000}])
+    @patch("faster_whisper.audio.decode_audio", return_value="original waveform")
     @patch("rehearsals.services.local_transcription.load_model")
-    def test_word_times_and_silence_are_preserved(self, load):
+    def test_word_times_and_silence_are_preserved(self, load, decode, vad):
         model = Mock()
         model.transcribe.return_value = (iter([SimpleNamespace(text=" Hello", words=[SimpleNamespace(word=" Hello", start=2.1, end=2.8)])]), SimpleNamespace(language="en", language_probability=.9))
         load.return_value = (model, {"model": "small"})
@@ -25,6 +27,16 @@ class LocalAdapterTests(SimpleTestCase):
         self.assertTrue(model.transcribe.call_args.kwargs["word_timestamps"])
         self.assertTrue(model.transcribe.call_args.kwargs["multilingual"])
         self.assertEqual(model.transcribe.call_args.kwargs["chunk_length"], 10)
+
+    @patch("faster_whisper.vad.get_speech_timestamps", return_value=[])
+    @patch("faster_whisper.audio.decode_audio", return_value="silent waveform")
+    @patch("rehearsals.services.local_transcription.load_model")
+    def test_silence_does_not_produce_hallucinated_speech(self, load, decode, vad):
+        model = Mock()
+        load.return_value = (model, {"model": "small"})
+        result = transcribe_local(Path("silence.wav"))
+        self.assertEqual(result["words"], [])
+        model.transcribe.assert_not_called()
 
     def test_rates_are_labelled_and_visits_sum_without_llm(self):
         metrics = timing_metrics([{"slide_index": 1, "start_ms": 0, "end_ms": 1000}, {"slide_index": 0, "start_ms": 1000, "end_ms": 3000}, {"slide_index": 1, "start_ms": 3000, "end_ms": 4000}], 4000, "Hello 안녕하세요", "ko")

@@ -27,7 +27,7 @@ def attempt_data(attempt, request):
     return {"attempt_id": str(attempt.id), "deck_id": str(attempt.deck_id),
             "status": attempt.status, "transcript": attempt.transcript,
             "feedback": [] if stale else attempt.feedback, "error": attempt.error,
-            "feedback_stale": stale, "next_retry_at": attempt.next_retry_at,
+            "feedback_stale": stale, "feedback_available": bool(configured()), "next_retry_at": attempt.next_retry_at,
             "deck_description_revision": attempt.deck.description_revision,
             "duration_ms": attempt.duration_ms, "slide_events": attempt.slide_events,
             "audience": attempt.audience, "created_at": attempt.created_at,
@@ -86,7 +86,7 @@ def health(request):
             "service": "outloud-api",
             "status": "ok",
             "api_version": "v1",
-            "scaffold": True,
+            "scaffold": False,
         }
     )
 
