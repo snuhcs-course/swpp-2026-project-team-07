@@ -8,7 +8,9 @@ from redis import Redis
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
-from .models import Deck, Attempt
+from .models import Deck, Attempt, Generation
+from .services.feedback import validate_descriptions
+from .services.gemini import configured
 from .serializers import AttemptMetadataSerializer
 from .services.storage import store_deck, store_attempt
 
@@ -21,14 +23,17 @@ def deck_data(deck, request):
 
 
 def attempt_data(attempt, request):
+    stale = attempt.feedback_revision is not None and attempt.feedback_revision != attempt.deck.description_revision
     return {"attempt_id": str(attempt.id), "deck_id": str(attempt.deck_id),
             "status": attempt.status, "transcript": attempt.transcript,
-            "feedback": attempt.feedback, "error": attempt.error,
+            "feedback": [] if stale else attempt.feedback, "error": attempt.error,
+            "feedback_stale": stale, "next_retry_at": attempt.next_retry_at,
+            "deck_description_revision": attempt.deck.description_revision,
             "duration_ms": attempt.duration_ms, "slide_events": attempt.slide_events,
             "audience": attempt.audience, "created_at": attempt.created_at,
             "audio_url": request.build_absolute_uri(attempt.audio.url),
             "visits": attempt.visits, "metrics": attempt.metrics,
-            "stages": {"transcription": attempt.transcription_state, "feedback": attempt.feedback_state},
+            "stages": {"transcription": attempt.transcription_state, "feedback": "stale" if stale else attempt.feedback_state},
             "transcription_model": {k: v for k, v in attempt.transcription_meta.items() if k != "raw_response"}}
 
 
@@ -127,7 +132,14 @@ def feature_pending(request, feature, attempt_id=None):
 def process(request, attempt_id):
     with transaction.atomic():
         attempt = get_object_or_404(Attempt.objects.select_for_update(), id=attempt_id)
-        if attempt.status == "failed" or (attempt.status == "pending" and attempt.queued_at is None):
+        if attempt.feedback_state == "unknown_outcome":
+            return Response({"error": {"code": "unknown_outcome", "message": "Operator review is required before retrying this AI request."}}, status=409)
+        stale = attempt.feedback_revision is not None and attempt.feedback_revision != attempt.deck.description_revision
+        enable_feedback = attempt.status == "completed" and attempt.feedback_state == "disabled" and configured()
+        if attempt.status == "failed" or (attempt.status == "pending" and attempt.queued_at is None) or stale or enable_feedback:
+            # Only a deliberate retry clears known failures. Unknown/in-flight requests stay blocked.
+            Generation.objects.filter(key__in=[attempt.feedback_key, attempt.deck.analysis_key], state="failed").update(state="pending", error=None, not_before=None)
+            attempt.next_retry_at = None
             attempt.status = "pending"
             attempt.transcription_state = "complete" if attempt.transcript is not None else "pending"
             attempt.queued_at = timezone.now()
@@ -140,3 +152,20 @@ def process(request, attempt_id):
                     pass  # Persisted queue is recovered by beat when Redis returns.
             transaction.on_commit(enqueue)
     return Response({"attempt_id": str(attempt.id)}, status=202)
+
+
+@api_view(["GET", "PATCH"])
+def descriptions(request, deck_id):
+    with transaction.atomic():
+        deck = get_object_or_404(Deck.objects.select_for_update(), id=deck_id)
+        if request.method == "PATCH":
+            if request.data.get("revision") != deck.description_revision:
+                return Response({"error": {"code": "revision_conflict", "message": "Descriptions changed. Reload before saving."}}, status=409)
+            try:
+                deck.descriptions = validate_descriptions({"slides": request.data.get("slides")}, deck.page_count)
+            except ValueError as exc:
+                raise ValidationError("Provide one valid description per slide; keep descriptions and facts compact.") from exc
+            deck.description_revision += 1
+            deck.descriptions_edited = True
+            deck.save(update_fields=["descriptions", "description_revision", "descriptions_edited"])
+        return Response({"deck_id": str(deck.id), "revision": deck.description_revision, "slides": deck.descriptions})

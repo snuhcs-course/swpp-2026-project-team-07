@@ -8,6 +8,8 @@ from .models import Attempt
 from .services.local_transcription import transcribe_local
 from .services.alignment import align_words
 from .services.metrics import timing_metrics
+from .services.feedback import analyze_attempt
+from .services.gemini import AIStageError, configured
 
 
 @contextmanager
@@ -27,10 +29,30 @@ def single_transcription():
 
 
 def finish_feedback(attempt):
-    # Local results are durable before milestone 3's optional feedback stage.
-    attempt.feedback_state = "disabled"
-    attempt.status = Attempt.Status.COMPLETED
-    attempt.save(update_fields=["feedback_state", "status"])
+    if not configured():
+        attempt.feedback_state = "disabled"
+        attempt.status = Attempt.Status.COMPLETED
+        attempt.error = None
+        attempt.save(update_fields=["feedback_state", "status", "error"])
+        return
+    attempt.feedback_state = "running"
+    attempt.save(update_fields=["feedback_state"])
+    try:
+        attempt.feedback = analyze_attempt(attempt)
+        attempt.feedback_state = "complete"
+        attempt.status = Attempt.Status.COMPLETED
+        attempt.error, attempt.next_retry_at = None, None
+    except AIStageError as exc:
+        attempt.feedback_state = exc.code
+        attempt.next_retry_at = exc.retry_at
+        attempt.status = Attempt.Status.PROCESSING if exc.retry_at else Attempt.Status.FAILED
+        attempt.error = {"code": exc.code, "message": exc.message}
+    except Exception:
+        # Retain durable request states. A crashed generation is never blindly repeated.
+        attempt.feedback_state = "failed"
+        attempt.status = Attempt.Status.FAILED
+        attempt.error = {"code": "feedback_failed", "message": "Feedback failed; transcript and audio remain available."}
+    attempt.save(update_fields=["feedback", "feedback_revision", "feedback_state", "status", "error", "next_retry_at"])
 
 
 @shared_task
@@ -41,6 +63,8 @@ def process_attempt(attempt_id: str):
         with transaction.atomic():
             attempt = Attempt.objects.select_for_update().get(id=attempt_id)
             if attempt.status in [Attempt.Status.COMPLETED, Attempt.Status.FAILED]:
+                return
+            if attempt.next_retry_at and attempt.next_retry_at > timezone.now():
                 return
             if attempt.transcription_state == "running" and attempt.processing_started_at and attempt.processing_started_at > timezone.now() - timedelta(seconds=1900):
                 return
@@ -80,5 +104,7 @@ def recover_work():
     stale = timezone.now() - timedelta(seconds=1900)
     attempts = Attempt.objects.filter(queued_at__isnull=False, status__in=["pending", "processing"])
     for attempt in attempts:
+        if attempt.next_retry_at and attempt.next_retry_at > timezone.now():
+            continue
         if attempt.transcription_state != "running" or not attempt.processing_started_at or attempt.processing_started_at < stale:
             process_attempt.delay(str(attempt.id))

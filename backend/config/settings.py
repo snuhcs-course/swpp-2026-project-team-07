@@ -57,3 +57,14 @@ WHISPER_MODEL = "small"
 WHISPER_CACHE_DIR = os.getenv("WHISPER_CACHE_DIR", str(BASE_DIR / ".models"))
 WHISPER_CPU_THREADS = int(os.getenv("WHISPER_CPU_THREADS", "4"))
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+
+# A dedicated free-tier project must be confirmed by its operator. Never auto-enable.
+GEMINI_ENABLED = os.getenv("GEMINI_ENABLED", "0") == "1"
+GEMINI_FREE_TIER_CONFIRMED = os.getenv("GEMINI_FREE_TIER_CONFIRMED", "0") == "1"
+GEMINI_PROJECT_ID = os.getenv("GEMINI_PROJECT_ID", "")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_RPM = int(os.getenv("GEMINI_RPM", "0"))
+GEMINI_TPM = int(os.getenv("GEMINI_TPM", "0"))
+GEMINI_RPD = int(os.getenv("GEMINI_RPD", "0"))
+GEMINI_MODEL = "gemini-3.1-flash-lite"
+GEMINI_INPUT_LIMIT = 20_000

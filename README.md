@@ -156,3 +156,13 @@ The submitted proposal defines the stack. Expo template assets/license remain un
 ## Local prototype worker
 
 Deck/attempt uploads persist original media and metadata before processing. Run all services with `docker compose up -d --build`; the worker runs one CPU INT8 multilingual Whisper `small` job at a time. First use downloads model weights into the persistent `whisper_models` volume. No transcription API key is needed. Celery beat repairs work left pending after broker/worker restarts (abandoned transcription lease: 1,900 seconds). Model and engine revisions are stored with each result. Back up PostgreSQL and `media_data` together. Migrations are additive; preserve backups before downgrading as reversing removes new cache/recovery columns.
+
+## Free-tier feedback setup
+
+Local transcription works with Gemini disabled. To enable feedback, create a dedicated project, confirm **Free** billing in AI Studio, then set `GEMINI_ENABLED=1`, `GEMINI_FREE_TIER_CONFIRMED=1`, `GEMINI_PROJECT_ID`, the private `GEMINI_API_KEY`, and the actual `GEMINI_RPM`, `GEMINI_TPM`, `GEMINI_RPD` from that project's limits. Restart API/worker/scheduler. A config flag is an operator attestation; the app cannot verify Google billing. Do not attach billing or reuse this project's quota outside this backend during the pilot. There is no paid fallback.
+
+Use non-confidential pilot material: Google's free-tier data-use terms permit product improvement. See [model](https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-lite), [quotas](https://ai.google.dev/gemini-api/docs/rate-limits) and [pricing/data use](https://ai.google.dev/gemini-api/docs/pricing).
+
+`docker compose exec api python manage.py ai_usage` reports request/token totals. Inspect uncertain requests privately in the database/provider console. Only after resolving the outcome, `python manage.py retry_uncertain_ai KEY --acknowledge-possible-duplicate` enables one explicit app retry. Keep one beat scheduler; all keys for this dedicated project share the DB limiter. Daily waits reset at midnight America/Los_Angeles, including daylight saving changes.
+
+Descriptions are generated lazily after the first transcript, and can be corrected through the description endpoint. Description edits invalidate old feedback without re-transcribing. Model output is untrusted: references and exact quotes are validated, but human evaluation of whether advice is useful is still required before a pilot.

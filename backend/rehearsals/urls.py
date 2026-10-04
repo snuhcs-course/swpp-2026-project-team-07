@@ -19,6 +19,7 @@ urlpatterns = [
         "attempts/<uuid:attempt_id>/process/",
         views.process,
     ),
+    path("decks/<uuid:deck_id>/descriptions/", views.descriptions),
     path("decks/<uuid:deck_id>/", views.deck_detail),
     path("decks/<uuid:deck_id>/attempts/", views.deck_attempts),
 ]

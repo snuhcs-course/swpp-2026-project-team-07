@@ -9,6 +9,11 @@ class Deck(models.Model):
     page_count = models.PositiveIntegerField()
     content_hash = models.CharField(max_length=64, null=True, blank=True)
     preparation_version = models.CharField(max_length=40, default="pdfium-v1")
+    descriptions = models.JSONField(default=list)
+    description_revision = models.PositiveIntegerField(default=0)
+    analysis_key = models.CharField(max_length=64, blank=True)
+    description_source_key = models.CharField(max_length=64, blank=True)
+    descriptions_edited = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -47,6 +52,9 @@ class Attempt(models.Model):
     upload_hash = models.CharField(max_length=64, blank=True)
     transcription_state = models.CharField(max_length=24, default="pending")
     feedback_state = models.CharField(max_length=24, default="disabled")
+    feedback_key = models.CharField(max_length=64, blank=True)
+    feedback_revision = models.PositiveIntegerField(null=True, blank=True)
+    next_retry_at = models.DateTimeField(null=True, blank=True)
     visits = models.JSONField(default=list)
     metrics = models.JSONField(default=dict)
     transcription_meta = models.JSONField(default=dict)
@@ -58,4 +66,36 @@ class Attempt(models.Model):
     transcript = models.JSONField(null=True, blank=True)
     feedback = models.JSONField(default=list)
     error = models.JSONField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class Generation(models.Model):
+    key = models.CharField(primary_key=True, max_length=64)
+    kind = models.CharField(max_length=20)
+    model = models.CharField(max_length=80)
+    version = models.CharField(max_length=40)
+    state = models.CharField(max_length=24, default="pending")
+    result = models.JSONField(null=True, blank=True)
+    input_tokens = models.PositiveIntegerField(null=True, blank=True)
+    error = models.JSONField(null=True, blank=True)
+    not_before = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class ProviderProject(models.Model):
+    # One shared limiter for all API keys used by this project's backend.
+    id = models.CharField(primary_key=True, max_length=160)
+    not_before = models.DateTimeField(null=True, blank=True)
+
+
+class ProviderRequest(models.Model):
+    generation = models.ForeignKey(Generation, on_delete=models.PROTECT, related_name="requests")
+    project = models.ForeignKey(ProviderProject, on_delete=models.PROTECT, related_name="requests")
+    operation = models.CharField(max_length=24)
+    state = models.CharField(max_length=24, default="started")
+    reserved_tokens = models.PositiveIntegerField(default=0)
+    usage = models.JSONField(default=dict)
+    raw_response = models.JSONField(null=True, blank=True)
+    latency_ms = models.PositiveIntegerField(null=True, blank=True)
+    error_code = models.CharField(max_length=40, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
