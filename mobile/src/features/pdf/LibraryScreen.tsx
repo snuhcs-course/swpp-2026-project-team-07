@@ -3,17 +3,21 @@ import { router, useFocusEffect } from "expo-router";
 import { Text, View } from "react-native";
 import { Action, Card, Screen, styles } from "../../ui/components";
 import { API_URL, checkBackend } from "../../services/api";
+import { savedAttempts, type SavedAttempt } from "../recording/storage";
+import { uploadAttempt } from "../recording/upload";
 import { getImportedPdfs, pdfService, type LocalPdf } from "./service";
 
 export function LibraryScreen() {
   const [notice, setNotice] = useState("");
   const [checking, setChecking] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [attempts, setAttempts] = useState<SavedAttempt[]>([]);
   const [pdfs, setPdfs] = useState<LocalPdf[]>([]);
 
   const refreshLibrary = useCallback(async () => {
     try {
       setPdfs(await getImportedPdfs());
+      setAttempts(savedAttempts());
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Could not load PDFs.");
     }
@@ -32,7 +36,7 @@ export function LibraryScreen() {
       const pdf = await pdfService.importPdf();
       if (!pdf) return;
       await refreshLibrary();
-      router.push({ pathname: "/viewer", params: { uri: pdf.uri, title: pdf.title } });
+      router.push({ pathname: "/viewer", params: { uri: pdf.uri, title: pdf.title, localDeckId: pdf.id } });
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "PDF import failed.");
     } finally {
@@ -94,11 +98,17 @@ export function LibraryScreen() {
             <Action
               label="Open slides"
               onPress={() =>
-                router.push({ pathname: "/viewer", params: { uri: pdf.uri, title: pdf.title } })
+                router.push({ pathname: "/viewer", params: { uri: pdf.uri, title: pdf.title, localDeckId: pdf.id } })
               }
             />
             <Action label="Remove" onPress={() => void removePdf(pdf)} secondary />
           </View>
+          {attempts.filter(a => a.local_deck_id === pdf.id).map(a => <View key={a.id} style={{ gap: 8 }}>
+            <Text style={styles.body}>{new Date(a.created_at).toLocaleString()} · {a.state}</Text>
+            {!!a.error && <Text style={styles.body}>{a.error}</Text>}
+            <Action label="Open saved rehearsal" secondary onPress={() => router.push({ pathname: "/results", params: { attemptId: a.id, audioUri: a.recording.audio_uri, slideEvents: JSON.stringify(a.recording.slide_events) } })} />
+            {a.state !== "capturing" && a.state !== "submitted" && <Action label="Retry upload" secondary onPress={() => { void uploadAttempt(a.id).catch(e => setNotice(String(e))).finally(() => void refreshLibrary()); }} />}
+          </View>)}
         </Card>
       ))}
       {!pdfs.length && (

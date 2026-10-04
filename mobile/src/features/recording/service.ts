@@ -9,7 +9,7 @@ import type { LocalRecording, SlideEvent } from "../../contracts";
 // every slide visit. `stop`/`cancel` will create or discard a LocalRecording
 // once real deck/attempt persistence is connected.
 export interface RecordingService {
-  start(initialSlideIndex: number): Promise<void>;
+  start(initialSlideIndex: number, prepared?: (uri: string) => void): Promise<void>;
   onSlideChanged(slideIndex: number): void;
   // TODO(recording): implement stop/cancel here, create the complete
   // LocalRecording, and define interruption/background behavior together with
@@ -42,7 +42,7 @@ export function createRecordingService(
   let slideEvents: SlideEvent[] = [];
 
   return {
-    async start(initialSlideIndex: number): Promise<void> {
+    async start(initialSlideIndex: number, prepared?: (uri: string) => void): Promise<void> {
       // Android/iOS may show a system prompt here. Do not prepare or start the
       // recorder after denial: no UI state should claim capture has begun.
       const permission = await AudioModule.requestRecordingPermissionsAsync();
@@ -60,6 +60,8 @@ export function createRecordingService(
       // `record()` is synchronous in expo-audio; the first event is then the
       // visible slide at the agreed audio origin, exactly 0 ms.
       await recorder.prepareToRecordAsync();
+      if (!recorder.uri) throw new Error("The recorder did not allocate an audio file.");
+      prepared?.(recorder.uri);
       recorder.record();
       slideEvents = [{ slide_index: initialSlideIndex, at_ms: 0 }];
     },

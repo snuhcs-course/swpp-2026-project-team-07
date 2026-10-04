@@ -11,7 +11,7 @@ class AttemptMetadataSerializer(serializers.Serializer):
 
     id = serializers.UUIDField()
     deck_id = serializers.UUIDField()
-    duration_ms = serializers.IntegerField(min_value=1)
+    duration_ms = serializers.IntegerField(min_value=1, max_value=600_000)
     audience = serializers.CharField(max_length=500, allow_blank=True, default="")
     slide_events = SlideEventSerializer(many=True, allow_empty=False)
 

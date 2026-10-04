@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   RecordingPresets,
   useAudioRecorder,
@@ -12,6 +12,7 @@ import type { LocalRecording, SlideEvent } from "../../contracts";
 import { demoSlides } from "../../fixtures/demo";
 import { SlidePreview } from "../pdf/SlidePreview";
 import { createRecordingService } from "./service";
+import { beginAttempt, checkpointAttempt, discardEmptyAttempt } from "./storage";
 import { stopCapture } from "./stopCapture";
 import { Action, Card, Screen, colors, styles } from "../../ui/components";
 
@@ -27,6 +28,7 @@ export function RehearsalScreen() {
     slide?: string;
     audience?: string;
     deckId?: string;
+    localDeckId?: string;
     uri?: string;
     title?: string;
   }>();
@@ -95,6 +97,13 @@ export function RehearsalScreen() {
     [recorder],
   );
 
+  const stopRef = useRef<() => Promise<void>>(async () => {});
+  useEffect(() => {
+    if (recordingState !== "recording" || !attemptId || !recorder.uri) return;
+    checkpointAttempt(attemptId, recorder.uri, recorderState.durationMillis, recordingService.getSlideEvents());
+    if (recorderState.durationMillis >= 599_500) void stopRef.current();
+  }, [attemptId, recorder, recorderState.durationMillis, recordingService, recordingState]);
+
   async function startRecording() {
     // A new Start is a new local rehearsal: discard the prior preview URI and
     // event list before asking the operating system for microphone access.
@@ -109,14 +118,16 @@ export function RehearsalScreen() {
     // local-preview-only until PDF import supplies one.
     // TODO(recording): use the team's agreed UUID source/persistence strategy
     // if attempts must be recovered after an app restart.
-    setAttemptId(deckId ? crypto.randomUUID() : null);
+    const id = beginAttempt(params.localDeckId ?? "sample", params.audience ?? "", index);
+    setAttemptId(id);
     setRecordingState("starting");
     try {
       // start resolves only after native preparation and record() succeeded.
       // The service records `index` as the first event at 0 ms.
-      await recordingService.start(index);
+      await recordingService.start(index, uri => checkpointAttempt(id, uri, 0, [{ slide_index: index, at_ms: 0 }]));
       setRecordingState("recording");
     } catch (error) {
+      discardEmptyAttempt(id);
       setRecordingState("ready");
       setRecordingError(
         error instanceof Error ? error.message : "Could not start recording.",
@@ -130,6 +141,7 @@ export function RehearsalScreen() {
     try {
       const { uri, durationMillis: finalDurationMillis } = await stopCapture(recorder);
       if (captureFailed.current) throw new Error("The recording could not be saved. Please record again.");
+      if (attemptId) checkpointAttempt(attemptId, uri, finalDurationMillis, recordingService.getSlideEvents(finalDurationMillis), true);
       setRecordingUri(uri);
       setSavedDurationMillis(finalDurationMillis);
       const slideEvents = recordingService.getSlideEvents(finalDurationMillis);
@@ -156,11 +168,14 @@ export function RehearsalScreen() {
     }
   }
 
+  useEffect(() => { stopRef.current = stopRecording; });
+
   function acceptSlide(nextIndex: number) {
     if (nextIndex === visibleSlide.current) return;
     if (recordingState === "recording") {
       recordingService.onSlideChanged(nextIndex);
     }
+    if (attemptId && recordingState === "recording" && recorder.uri) checkpointAttempt(attemptId, recorder.uri, recorder.getStatus().durationMillis, recordingService.getSlideEvents());
     visibleSlide.current = nextIndex;
     setIndex(nextIndex);
   }
@@ -180,7 +195,7 @@ export function RehearsalScreen() {
       <View style={styles.banner}>
         <Text style={styles.bannerText}>
           {pdfUri ? "ON-DEVICE PDF" : "SAMPLE SLIDES"} · Recording and slide visits
-          stay on this device. Server upload and AI results are not connected yet.
+          are saved on this device for recovery. Analysis is being connected.
         </Text>
       </View>
       <View style={styles.between}>
@@ -284,6 +299,7 @@ export function RehearsalScreen() {
               ? {
                   pathname: "/results",
                   params: {
+                    attemptId: attemptId ?? "",
                     audioUri: recordingUri,
                     slideEvents: JSON.stringify(savedSlideEvents),
                     ...(localRecording

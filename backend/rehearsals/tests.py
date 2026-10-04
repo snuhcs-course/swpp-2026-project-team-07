@@ -17,8 +17,6 @@ class ScaffoldApiTests(SimpleTestCase):
 
     def test_unfinished_features_do_not_report_success(self):
         for route in [
-            "decks/",
-            "attempts/",
             "attempts/33333333-3333-4333-8333-333333333333/process/",
         ]:
             response = self.client.post(f"/api/{route}", {}, format="json")

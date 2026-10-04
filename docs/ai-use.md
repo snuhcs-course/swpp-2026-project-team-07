@@ -407,3 +407,12 @@ This file does not automatically publish or submit the course report.
 - Verification: `npm run check` passed (TypeScript, lint, 23 mobile tests); `npm run bundle:android` passed. Backend tests passed (23), system check passed, migration drift check found no changes. Provider calls were mocked. No connected Android device was available, so native PDF/microphone behavior and APK compatibility remain unverified in this integration session.
 - Independent review identified the overlapping PDF timeline and local playback handoff; final staged changes were reviewed again after resolution. Review also identified unfinished interruption/back-navigation handling and concurrent PDF catalog mutations. Those remain follow-ups under the user's explicit merge-existing-work scope.
 - Remaining implementation: backend deck/attempt endpoints and PDF preparation, worker orchestration, Gemini feedback, live result rendering, durable recording metadata, cancellation/interruption policy, and device validation. No end-to-end AI completion is claimed.
+
+## 2026-10-04 — Prototype milestone 1: durable storage
+
+- Tool/request: Codex implemented the approved durable deck/recording upload and recovery milestone, with a separate staged-diff reviewer before publication.
+- Changes: local PDFium/pypdf preparation; validated, idempotent uploads; additive content hashes; saved-attempt read APIs; Expo SQLite recording checkpoints and server deck mapping; retained imported PDF catalog migration.
+- Verification: mobile TypeScript/lint/23 tests and Android export passed. Backend storage regression tests, PostgreSQL migration, native development build and independent review are recorded below after completion. No provider was called.
+- Human review: pending. Sudden OS termination may leave an unfinished native audio container; metadata and file references are retained for recovery. Full interruption UX is milestone 4.
+- Completed checks: backend 26 tests and migration-drift/system checks pass; PostgreSQL storage tests (3), migration 0002 and Redis worker ping pass. Android arm64 debug APK builds/installs; existing PDF catalog migrates and viewer/rehearsal open on emulator. Mobile checks/export pass after fixes.
+- Independent review found and rechecked fixes for native timed-stop duration loss and empty permission-denied entries. Controlled duration cap freezes the recorder before Stop. Full boundary/interruption/device speech evaluation remains for the complete mobile milestone; no human speech quality claim.

@@ -1,6 +1,6 @@
 # Initial API contract
 
-Base path `/api/`. JSON uses `snake_case`, UUID strings and integer milliseconds. Mobile types: `src/contracts/index.ts`. Only health/readiness are implemented; feature routes currently return HTTP 501.
+Base path `/api/`. JSON uses `snake_case`, UUID strings and integer milliseconds. Mobile types: `src/contracts/index.ts`. Deck and attempt uploads are durable and idempotent. Processing is connected in the next milestone.
 
 | Route | Input | Intended success |
 | --- | --- | --- |
@@ -8,6 +8,8 @@ Base path `/api/`. JSON uses `snake_case`, UUID strings and integer milliseconds
 | `POST /attempts/` | Multipart `audio`, `metadata` JSON string | 201: `{attempt_id}` after durable storage |
 | `POST /attempts/{id}/process/` | Existing attempt | 202: `{attempt_id}` when queued |
 | `GET /attempts/{id}/` | None | 200: `AttemptResult` |
+
+Additional read routes: `GET /decks/{id}/` returns deck fields plus slides; `GET /decks/{id}/attempts/` lists saved attempts newest first. Upload limits: 10 slides, 20 MiB PDF, 25 MiB audio, 600,000 ms capture (up to 1 second of codec padding). Identical PDF bytes reuse a prepared deck. Conflicting attempt IDs return 409; identical uploads return 201 without changing existing results.
 
 Submit → request processing → poll status. Upload handlers must validate the known deck, slide bounds, UUID uniqueness, supported audio/container, duration/size limits and metadata. Reject conflicting uploads for an existing ID. New recording means new ID; retry processing keeps its ID. Duplicate processing requests must not repeat provider work.
 

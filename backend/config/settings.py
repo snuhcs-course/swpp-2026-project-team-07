@@ -37,6 +37,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 TIME_ZONE = "UTC"
 USE_TZ = True
 MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_URL = "/media/"
+DATA_UPLOAD_MAX_MEMORY_SIZE = 26 * 1024 * 1024
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_AUTHENTICATION_CLASSES": [],

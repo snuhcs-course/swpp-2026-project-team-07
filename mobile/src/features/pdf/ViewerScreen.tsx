@@ -8,9 +8,10 @@ import { Action, Card, DemoNotice, Screen, colors, styles } from "../../ui/compo
 import { SlidePreview } from "./SlidePreview";
 
 export function ViewerScreen() {
-  const { uri: routeUri, title: routeTitle } = useLocalSearchParams<{
+  const { uri: routeUri, title: routeTitle, localDeckId } = useLocalSearchParams<{
     uri?: string;
     title?: string;
+    localDeckId?: string;
   }>();
   const uri = typeof routeUri === "string" ? routeUri : "";
   const title = typeof routeTitle === "string" ? routeTitle : "Presentation";
@@ -78,7 +79,7 @@ export function ViewerScreen() {
   return (
     <Screen>
       <Text style={styles.title}>{title}</Text>
-      <Text style={styles.body}>Saved on this device. No PDF is sent to the server.</Text>
+      <Text style={styles.body}>Up to 10 slides. Your PDF is uploaded with your first rehearsal.</Text>
       <View style={styles.between}>
         <Text style={styles.label}>SLIDE PREVIEW</Text>
         <Text style={styles.body}>{pageCount ? `${index + 1} / ${pageCount}` : "Loading PDF…"}</Text>
@@ -104,6 +105,7 @@ export function ViewerScreen() {
           renderActivityIndicator={() => <ActivityIndicator color={colors.blue} />}
         />
       </View>
+      {pageCount > 10 && <Text style={styles.body}>This prototype supports up to 10 slides.</Text>}
       {!!error && <Text accessibilityLiveRegion="polite" style={styles.body}>{error}</Text>}
       <View style={styles.between}>
         <Action
@@ -133,11 +135,11 @@ export function ViewerScreen() {
       </Card>
       <Action
         label="Start rehearsal"
-        disabled={!pageCount || !!error}
+        disabled={!pageCount || pageCount > 10 || !!error}
         onPress={() =>
           router.push({
             pathname: "/rehearsal",
-            params: { slide: index, audience, uri, title },
+            params: { slide: index, audience, uri, title, localDeckId },
           })
         }
       />

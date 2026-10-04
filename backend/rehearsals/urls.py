@@ -5,21 +5,21 @@ urlpatterns = [
     path("health/", views.health),
     path("ready/", views.ready),
     path(
-        "decks/", views.feature_pending, {"feature": "PDF upload and slide preparation"}
+        "decks/", views.decks
     ),
     path(
         "attempts/",
-        views.feature_pending,
-        {"feature": "Audio upload and attempt creation"},
+        views.attempts,
     ),
     path(
         "attempts/<uuid:attempt_id>/",
-        views.feature_pending,
-        {"feature": "Attempt results"},
+        views.attempt_detail,
     ),
     path(
         "attempts/<uuid:attempt_id>/process/",
         views.feature_pending,
         {"feature": "Background processing and retry"},
     ),
+    path("decks/<uuid:deck_id>/", views.deck_detail),
+    path("decks/<uuid:deck_id>/attempts/", views.deck_attempts),
 ]

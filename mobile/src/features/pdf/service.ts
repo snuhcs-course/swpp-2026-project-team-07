@@ -1,5 +1,7 @@
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
+import { readStored, writeStored } from "../../services/storage";
+import { savedAttempts } from "../recording/storage";
 
 export type LocalPdf = {
   id: string;
@@ -19,6 +21,8 @@ function getPaths() {
 }
 
 export async function getImportedPdfs(): Promise<LocalPdf[]> {
+  const stored = readStored<LocalPdf[]>("pdfs");
+  if (stored) return stored;
   const { catalog } = getPaths();
   const info = await FileSystem.getInfoAsync(catalog);
   if (!info.exists) return [];
@@ -26,13 +30,15 @@ export async function getImportedPdfs(): Promise<LocalPdf[]> {
   try {
     const value: unknown = JSON.parse(await FileSystem.readAsStringAsync(catalog));
     if (!Array.isArray(value)) return [];
-    return value.filter(
+    const migrated = value.filter(
       (item): item is LocalPdf =>
         !!item &&
         typeof item.id === "string" &&
         typeof item.title === "string" &&
         typeof item.uri === "string",
     );
+    writeStored("pdfs", migrated);
+    return migrated;
   } catch {
     throw new Error("The saved PDF list could not be read. Try importing again.");
   }
@@ -55,6 +61,7 @@ export const pdfService = {
     ) {
       throw new Error("Choose a PDF file to import.");
     }
+    if (asset.size && asset.size > 20 * 1024 * 1024) throw new Error("PDFs must be at most 20 MB.");
     if (asset.size === 0) throw new Error("That PDF file is empty.");
     const signature = await FileSystem.readAsStringAsync(asset.uri, {
       encoding: FileSystem.EncodingType.UTF8,
@@ -65,7 +72,7 @@ export const pdfService = {
       throw new Error("This file does not contain a valid PDF document.");
     }
 
-    const { directory, catalog } = getPaths();
+    const { directory } = getPaths();
     const directoryInfo = await FileSystem.getInfoAsync(directory);
     if (!directoryInfo.exists) {
       await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
@@ -82,10 +89,7 @@ export const pdfService = {
     await FileSystem.copyAsync({ from: asset.uri, to: uri });
     try {
       const previous = await getImportedPdfs();
-      await FileSystem.writeAsStringAsync(
-        catalog,
-        JSON.stringify([pdf, ...previous]),
-      );
+      writeStored("pdfs", [pdf, ...previous]);
     } catch (error) {
       await FileSystem.deleteAsync(uri, { idempotent: true });
       throw error;
@@ -94,14 +98,11 @@ export const pdfService = {
   },
 
   async removePdf(id: string): Promise<void> {
-    const { catalog } = getPaths();
+    if (savedAttempts(id).length) throw new Error("This PDF has saved rehearsals and is kept for recovery.");
     const current = await getImportedPdfs();
     const removed = current.find((pdf) => pdf.id === id);
     if (!removed) return;
+    writeStored("pdfs", current.filter((pdf) => pdf.id !== id));
     await FileSystem.deleteAsync(removed.uri, { idempotent: true });
-    await FileSystem.writeAsStringAsync(
-      catalog,
-      JSON.stringify(current.filter((pdf) => pdf.id !== id)),
-    );
   },
 };
