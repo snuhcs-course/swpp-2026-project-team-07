@@ -2,7 +2,7 @@
 
 An Android presentation practice app connecting PDF slides, recordings, slide-aligned transcripts, and feedback.
 
-**Current status: Iteration 1 team scaffold.** The four screen frames use labeled sample data. Real PDF import/rendering, recording, and Gemini feedback remain implementation tasks for the team; transcription/alignment progress is noted below. This scaffold provides navigation, an API connection check, shared types, database models, development infrastructure, and feature entry points.
+**Current status on `feature/recording-tracking-v2`: recording and slide tracking restored for separate review.** Record microphone audio with the sample slides, preserve forward/backward visits on the native audio clock, and listen to the saved local recording. This branch starts at post-revert `main` (`f6f6e76`), restores recording commit `04857fb`, and includes PR #5's duration-before-stop fix, native-error guard, and navigation guards. A failed capture releases its recorder before the explicit retry creates a fresh attempt. PDF import/rendering is isolated on `feature/pdf-viewer-v2`; real-PDF recording must be integrated and reviewed with that branch before it is claimed here. Durable attempt metadata, interruption recovery, working upload endpoints, and live AI results remain unfinished. New Android verification and human feature review are pending.
 
 On `feature/whisper-alignment`, the hosted Whisper adapter, standalone word-to-slide matcher, and mocked/synthetic tests are implemented. [Alignment notes](docs/word-alignment.md) describe its
 proposed internal output and a runnable example. It is not yet wired into the
@@ -10,7 +10,7 @@ worker, API, or app. [Whisper setup](docs/whisper-transcription.md) explains how
 
 On `feature/transcription-client-and-playback`, the [mobile transcription client](docs/mobile-transcription.md)
 implements upload, processing requests, validated results, retries, and cancellable
-polling with mocked-network tests. Recorder, real feature endpoints, and live result-screen
+polling with mocked-network tests. A deck-backed recording is handed to this client; real feature endpoints and live result-screen
 wiring remain pending. The result screen now displays the saved Whisper TTS transcript,
 synchronized local-audio word highlighting and tap-to-seek. Processing/failure/retry
 states remain explicitly simulated.
@@ -67,7 +67,7 @@ export PATH="$ANDROID_HOME/platform-tools:$PATH"
 
 That Java command requires a macOS-registered JDK 17. If Gradle provisioned your JDK instead, point `JAVA_HOME` directly to its `Contents/Home` directory. The exact path used on the setup machine is recorded in [setup-explained.md](docs/setup-explained.md).
 
-The screen preview runs without backend services or provider keys: **Open sample slides → Preview rehearsal → Preview transcript and feedback**. Recording remains a preview; the result screen can play the matching local TTS audio with synchronized word highlighting.
+The local recording flow runs without backend services or provider keys: **Open sample slides → Start/stop recording → Listen to recording**. Slide visits use the captured audio clock. Sample decks have no backend ID and remain local; the known TTS transcript is a separate labelled preview, never a transcript of a new recording.
 
 ## Run the backend
 

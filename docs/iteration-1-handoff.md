@@ -26,9 +26,9 @@ The last row is an integration responsibility, not necessarily a fourth person. 
 
 - `pdfService.importPdf()` raises a not-implemented error. Implement picker cancellation as `null`; never substitute demo data for a real import.
 - `SlidePreview` renders designed sample slides. Replace it with real slide images, or agree on a native PDF renderer before adding a dependency.
-- Recording controls are disabled. Implement `RecordingService` before enabling them; a timer alone does not establish audio capture.
-- Results combine the saved Whisper transcript of synthetic speech with local audio playback, synchronized word highlighting and tap-to-seek; other states remain explicit previews. Live `AttemptResult` wiring remains pending; no app upload is claimed.
-- The [mobile transcription client](mobile-transcription.md) now implements requests and cancellable polling with mocked tests on `feature/transcription-client-and-playback`. Native upload and recorder/result-screen integration are not yet verified.
+- On `feature/recording-tracking-v2`, capture controls use `expo-audio`; native audio milliseconds drive the timer and initial/forward/backward slide events. Stop freezes duration before native finalization and a capture error clears the attempt by releasing its recorder; an explicit retry creates a fresh native instance. Local playback is restored; persistent attempt metadata, cancellation, and background/interruption policy remain unfinished.
+- Results play a newly captured local recording without substituting the TTS transcript. The synthetic transcript/player remains a separate labelled preview. Deck-backed metadata can be passed to the existing upload client, but the backend still returns 501 and live results remain unimplemented.
+- The [mobile transcription client](mobile-transcription.md) now implements requests and cancellable polling with mocked tests on `feature/transcription-client-and-playback`. The recorder/result-screen handoff is restored in this branch; native upload and live backend integration remain unverified.
 - Feature API routes return HTTP 501. Implement real storage/processing instead of fake success responses.
 - The Celery task, PDF, and feedback adapters still raise `NotImplementedError`. The [Whisper adapter](whisper-transcription.md) is implemented with mocked-provider tests; a live synthetic TTS check passed; human-recorded speech verification is pending. The standalone [word alignment function](word-alignment.md) is implemented and tested on `feature/whisper-alignment`; its proposed output needs integration review before worker wiring.
 
@@ -38,4 +38,8 @@ Follow `api-contract.md`: zero-based slide indexes, integer milliseconds relativ
 
 Coordinate shared model/migration changes. Keep provider credentials on the backend. Evaluate real recordings before claiming filler/repetition/false-start detection. Saved-attempt browsing, selected-slide retries, and comparisons belong to later iteration UI; this scaffold retains the data identities needed for them.
 
-Start branches from the reviewed scaffold commit. Follow the team's review/testing agreement before pushing. Include commands, device evidence and limitations in each PR. Integrate on an Android device; the submitted plan names Galaxy S22/S23.
+Start new work from updated, post-revert `main`; review feature branches separately before any merge. Follow the team's review/testing agreement before pushing. Include commands, device evidence and limitations in each PR. Integrate on an Android device; the submitted plan names Galaxy S22/S23.
+
+## PDF and recording integration after separate review
+
+Both recovery branches start independently at `f6f6e76`. This recording branch uses the sample viewer and has no native PDF dependency. When the separately reviewed PDF work is combined later, reconcile `ViewerScreen.tsx` and `RehearsalScreen.tsx` explicitly: preserve PDF URI/title/current-page handoff and actual page count; feed native `onPageChanged(page - 1)` into the recording screen's `acceptSlide`; capture when the page becomes visible rather than when a navigation button is pressed; disable native swipe/buttons while capture is starting or stopping. Retain the recording branch's stop/error guards and local-result handoff. PR #5 commit `c609514` contains the original joint implementation for comparison. Review and test repeated/backward PDF visits and transition boundaries together before claiming integrated behavior. This task does not merge these branches or change main.

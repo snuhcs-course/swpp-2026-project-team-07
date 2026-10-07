@@ -1,11 +1,15 @@
 import { useState } from "react";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Text, TextInput, View } from "react-native";
 import { demoSlides } from "../../fixtures/demo";
 import { Action, Card, DemoNotice, Screen, styles } from "../../ui/components";
 import { SlidePreview } from "./SlidePreview";
 
 export function ViewerScreen() {
+  // TODO(pdf): after real PDF import is wired, require the persisted backend
+  // deck ID here instead of accepting an optional route value. The sample deck
+  // intentionally has no deck ID and therefore cannot create an upload attempt.
+  const params = useLocalSearchParams<{ deckId?: string }>();
   const [index, setIndex] = useState(0);
   const [audience, setAudience] = useState("");
   return (
@@ -52,7 +56,11 @@ export function ViewerScreen() {
         onPress={() =>
           router.push({
             pathname: "/rehearsal",
-            params: { slide: index, audience },
+            params: {
+              slide: index,
+              audience,
+              ...(typeof params.deckId === "string" ? { deckId: params.deckId } : {}),
+            },
           })
         }
       />
