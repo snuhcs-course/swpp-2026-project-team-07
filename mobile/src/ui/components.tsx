@@ -79,9 +79,8 @@ export function DemoNotice() {
   return (
     <View style={styles.banner}>
       <Text style={styles.bannerText}>
-        SAMPLE PREVIEW · This deck is example content. Your imported PDF is
-        stored on this device; microphone recording and AI processing are not
-        connected yet.
+        SCREEN PREVIEW · Sample data only. PDF import, microphone recording and
+        AI processing are not connected.
       </Text>
     </View>
   );
