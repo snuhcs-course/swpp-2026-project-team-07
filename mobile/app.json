@@ -14,18 +14,11 @@
       "permissions": [
         "android.permission.RECORD_AUDIO"
       ],
-      "blockedPermissions": [
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.DOWNLOAD_WITHOUT_NOTIFICATION"
-      ],
       "predictiveBackGestureEnabled": true
     },
     "plugins": [
       "expo-router",
       "expo-dev-client",
-      "@config-plugins/react-native-blob-util",
-      "@config-plugins/react-native-pdf",
       [
         "expo-audio",
         {
