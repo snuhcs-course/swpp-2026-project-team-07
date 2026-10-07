@@ -24,8 +24,8 @@ The last row is an integration responsibility, not necessarily a fourth person. 
 
 ## Implementation entry points
 
-- `pdfService.importPdf()` raises a not-implemented error. Implement picker cancellation as `null`; never substitute demo data for a real import.
-- `SlidePreview` renders designed sample slides. Replace it with real slide images, or agree on a native PDF renderer before adding a dependency.
+- On `feature/pdf-viewer-v2`, `pdfService.importPdf()` uses the native picker, returns `null` on cancellation, validates PDF input, and copies it into an app-private catalog. Upload/server preparation remain unimplemented.
+- Imported files render through `react-native-pdf` in the viewer and rehearsal preview, including selected-page handoff. `SlidePreview` remains the explicitly labelled sample path. Rebuild the Android development client for the native dependencies.
 - Recording controls are disabled. Implement `RecordingService` before enabling them; a timer alone does not establish audio capture.
 - Results combine the saved Whisper transcript of synthetic speech with local audio playback, synchronized word highlighting and tap-to-seek; other states remain explicit previews. Live `AttemptResult` wiring remains pending; no app upload is claimed.
 - The [mobile transcription client](mobile-transcription.md) now implements requests and cancellable polling with mocked tests on `feature/transcription-client-and-playback`. Native upload and recorder/result-screen integration are not yet verified.
@@ -38,4 +38,4 @@ Follow `api-contract.md`: zero-based slide indexes, integer milliseconds relativ
 
 Coordinate shared model/migration changes. Keep provider credentials on the backend. Evaluate real recordings before claiming filler/repetition/false-start detection. Saved-attempt browsing, selected-slide retries, and comparisons belong to later iteration UI; this scaffold retains the data identities needed for them.
 
-Start branches from the reviewed scaffold commit. Follow the team's review/testing agreement before pushing. Include commands, device evidence and limitations in each PR. Integrate on an Android device; the submitted plan names Galaxy S22/S23.
+Start new work from updated, post-revert `main`; review feature branches separately before any merge. Follow the team's review/testing agreement before pushing. Include commands, device evidence and limitations in each PR. Integrate on an Android device; the submitted plan names Galaxy S22/S23.
