@@ -10,6 +10,7 @@ import type { LocalRecording, SlideEvent } from "../../contracts";
 import { demoSlides } from "../../fixtures/demo";
 import { SlidePreview } from "../pdf/SlidePreview";
 import { createRecordingService } from "./service";
+import { stopCapture } from "./stopCapture";
 import { Action, Card, Screen, styles } from "../../ui/components";
 
 function formatDuration(durationMillis: number) {
@@ -106,16 +107,10 @@ export function RehearsalScreen() {
     setRecordingError(null);
     setRecordingState("stopping");
     try {
-      await recorder.stop();
-      // After stop resolves, Expo exposes final duration and file information.
-      const stoppedState = recorder.getStatus();
-      const uri = recorder.uri ?? stoppedState.url;
-      // status URL is a fallback in case the native status exposes it first.
-      if (!uri) throw new Error("The recording file could not be saved.");
+      // Android resets recorder duration during stop. Pause first to freeze the
+      // native clock, then retain that value with the saved recording URI.
+      const { uri, durationMillis: finalDurationMillis } = await stopCapture(recorder);
       setRecordingUri(uri);
-      // Use the final native status, not the 250 ms UI poll: that poll can
-      // still hold a previous recording's duration after a quick re-record.
-      const finalDurationMillis = stoppedState.durationMillis;
       setSavedDurationMillis(finalDurationMillis);
       const slideEvents = recordingService.getSlideEvents(finalDurationMillis);
       setSavedSlideEvents(slideEvents);

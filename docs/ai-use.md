@@ -330,12 +330,21 @@ This file does not automatically publish or submit the course report.
   microphone permission handling, Expo Audio recording, recorder-relative slide
   timestamps, local recording preview, and the limited PDF-route deck-ID
   handoff needed by the recording flow. This does not restore PDF import/viewing.
-- Verification: Pending. Run `npm run check`, `npm run bundle:android`, and
-  Android-device testing for permission, Start/Stop, timer, local preview, and
-  repeated/backward slide timestamps after this cherry-pick completes.
-- Human review/corrections: Pending. The original commit received independent
-  Codex review, but this reintroduced branch and its conflict resolution require
-  fresh review before push.
+  During Android verification, a blank timeline exposed Expo Android resetting
+  recorder duration during Stop. Codex added `stopCapture.ts`, which pauses and
+  snapshots the native duration before stopping, then updated `RehearsalScreen`
+  to use that saved duration for slide-event filtering and display.
+- Verification: After the duration-preservation correction, `npm run check`
+  passed (TypeScript, Expo lint, and 21 tests), and `npm run bundle:android`
+  passed. After configuring the local Android SDK, `npm run android` built and
+  launched the development app; Jooyoung confirmed that a stopped recording
+  displays its slide timeline. Docker/backend testing was not performed for
+  this local-only sample-slide recording flow.
+- Human review/corrections: Jooyoung reported the empty Android timeline during
+  testing. Codex traced it to Android resetting recorder duration after Stop and
+  applied the focused correction. An independent Codex reviewer inspected the
+  exact staged fix and found no actionable code defect. Human teammate review
+  remains pending.
 - Limitations: Backend upload/processing and durable attempt storage remain
   separate follow-up work. Sample-slide recordings remain local-only without a
   persisted deck ID.
