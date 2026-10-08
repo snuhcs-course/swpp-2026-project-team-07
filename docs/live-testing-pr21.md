@@ -1,5 +1,7 @@
 # PR #21 physical-phone live test
 
+Historical session checklist from 2026-10-08, before automatic transcription was integrated. Manual Upload/Analyze steps below describe that session. New durable captures now open review and upload automatically, then transcribe after the first-use disclosure; older or cancelled captures retain manual controls.
+
 Target: PR [#21](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/21), feature/ai-feedback, a850424492843bf1ef19ddebd2643acefff2b9d6. Verified open and unmerged on 2026-10-08; includes its stacked prerequisites through PR #20. This is the functional restoration/review UI; the old After Hours theme and Feedback/Playback tabs are outside this PR.
 
 The current local session additionally includes the uncommitted image-admission repair on `codex/pr21-feedback-image-size`: feedback creates bounded copies of oversized slide renders and reports source failures clearly. See the latest entry in [AI-use](ai-use.md) for the completed live feedback check.

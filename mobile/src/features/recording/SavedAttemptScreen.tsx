@@ -38,7 +38,14 @@ function SavedAttemptContent({ id, apiUrl }: { id: string; apiUrl: string }) {
   // Local capture state and server-only review identity are distinct. A cache alone never authorizes a local upload's processing on another API.
   const serverKnown = !!submitted || !!loaded.review?.deck_id;
   const expectedDeck = loaded.review?.deck_id || (submitted ? saved?.recording.deck_id : undefined);
-  const analysis = useAttemptAnalysis(id, apiUrl, serverKnown, expectedDeck, saved?.recording.duration_ms || undefined);
+  const [autoAnalyze, setAutoAnalyze] = useState(false);
+  const autoConsumed = useRef(false);
+  const [foreground, setForeground] = useState(AppState.currentState === "active");
+  useEffect(() => {
+    const listener = AppState.addEventListener("change", state => setForeground(state === "active"));
+    return () => listener.remove();
+  }, []);
+  const analysis = useAttemptAnalysis(id, apiUrl, serverKnown, expectedDeck, saved?.recording.duration_ms || undefined, autoAnalyze);
   const rawReview = analysis.review || loaded.review;
   const deckId = rawReview?.deck_id || (submitted && isUuid(saved?.recording.deck_id) ? saved.recording.deck_id : null);
   const deckState = useReviewDeck(apiUrl, deckId, saved?.page_count);
@@ -94,19 +101,36 @@ function SavedAttemptContent({ id, apiUrl }: { id: string; apiUrl: string }) {
   const nextVisit = adjacentVisit(visits, visit, 1);
   const canAnalyze = serverKnown && (!!submitted || (!!deckState.deck && !!review?.processing_result));
   function reload() { setLoaded(readAttempt(id, apiUrl)); setNotice(""); }
-  async function upload() {
+  const upload = useCallback(async () => {
     if (uploadBusy.current) return;
     uploadBusy.current = true; setBusy(true); setNotice("");
     try { await uploadAttempt(id, apiUrl); }
     catch (cause) { if (active.current) setNotice(cause instanceof Error ? cause.message : "Upload failed. The audio is retained."); }
     finally {
       if (active.current) {
-        try { setLoaded({ ...loaded, saved: getSavedAttempt(id), error: "" }); }
+        try { const refreshed = getSavedAttempt(id); setLoaded(previous => ({ ...previous, saved: refreshed, error: "" })); }
         catch (cause) { setNotice(previous => [previous, cause instanceof Error ? cause.message : "Could not refresh saved status. Try again."].filter(Boolean).join(" ")); }
         finally { uploadBusy.current = false; setBusy(false); }
       }
     }
-  }
+  }, [apiUrl, id]);
+  useFocusEffect(useCallback(() => {
+    if (!foreground || autoConsumed.current || !saved?.auto_process_api ||
+        normalizeApi(saved.auto_process_api) !== normalizeApi(apiUrl) ||
+        !["saved", "submitted"].includes(saved.state)) return;
+    autoConsumed.current = true;
+    try {
+      // Consume before I/O: reopening, cancellation or a failed request must
+      // never silently submit the recording again. Manual retry stays available.
+      const next = { ...saved, auto_process_api: undefined };
+      saveAttempt(next);
+      setLoaded(previous => ({ ...previous, saved: next, error: "" }));
+      setAutoAnalyze(true);
+      if (!submitted) void upload();
+    } catch {
+      setNotice("Could not start automatic transcription. Your recording is saved; upload or analyze it when ready.");
+    }
+  }, [apiUrl, foreground, saved, submitted, upload]));
   function recover() {
     if (!saved || !canRecover || !audioUri) return;
     try {
@@ -139,7 +163,7 @@ function SavedAttemptContent({ id, apiUrl }: { id: string; apiUrl: string }) {
       {!media.audio.uri && media.audioSpec && <Action label={media.audio.busy ? "Checking audio…" : "Download audio for offline review"} disabled={media.audio.busy} onPress={() => void media.download('audio')} />}
       {interrupted ? <Action label="Recover playable audio" disabled={!canRecover} onPress={recover} /> :
         saved && !submitted && <Action label={busy ? "Uploading…" : "Upload recording"} disabled={busy} onPress={() => void upload()} />}
-      <Text style={styles.body}>Viewing, downloading and replaying do not analyze this recording. Analyze sends audio only when you choose it.</Text>
+      <Text style={styles.body}>New recordings upload the PDF and audio to the configured server automatically. Transcription starts after you accept the first-use OpenAI disclosure; cancelling leaves the server upload saved without transcription. Browsing older recordings never starts analysis.</Text>
       {!!(notice || saved?.error) && <Text accessibilityRole="alert" style={styles.body}>{notice || saved?.error}</Text>}
     </Card>
     <Card>
@@ -162,7 +186,7 @@ function SavedAttemptContent({ id, apiUrl }: { id: string; apiUrl: string }) {
       {!!analysis.notice && <Text accessibilityRole="alert" style={styles.body}>{analysis.notice}</Text>}
       {analysis.prompt && <>
         <Text style={styles.body}>{analysis.prompt.kind === "disclosure"
-          ? "Analyze sends your saved audio through this server to OpenAI for hosted Whisper transcription. Audio and results remain available locally. Continue to allow this for future analyses on this device, or Cancel."
+          ? "Transcription sends your saved audio through this server to OpenAI for hosted Whisper transcription. Audio and results remain available locally. Continue to allow automatic transcription after future recordings on this device, or Cancel."
           : "The previous OpenAI request may already have been charged. Retrying may send the audio again and incur another charge. There is no guarantee of exactly one provider request. Continue only if you accept this."}</Text>
         <Action label="Continue" onPress={analysis.continuePrompt} />
         <Action label="Cancel" onPress={analysis.cancelPrompt} />
