@@ -1106,3 +1106,91 @@ before this documentation-only evidence addition.
 - Physical-phone use, human listening/audible synchronization, TalkBack and extended keyboard/long-text usability remain pending. Emulator and renderer evidence do not establish those behaviors. Controlled real-provider quality evidence belongs to checkpoint 5.
 - Independent review reproduced two P2 recovery defects: valid descriptions hidden without deck metadata and polling canceled after draft Reload. Both were repaired with four regression tests that failed before the changes and passed after them. Final checks passed **270 mobile tests**, TypeScript/lint, Android export, **229 SQLite tests (18 PostgreSQL-only skips)** and Django system/migration checks. The earlier **229/229 PostgreSQL run** covers identical backend files; repairs changed only mobile and documentation. A post-repair emulator reopen showed the completed card and retained description controls.
 - Reviewed application/test snapshot: `64399166b696522607fc588d0cd1fcd7a524ca2196992da488cce12920043bf9` from pipeline `20261008T102840Z-f784e2`, based on `e31937b7df2120a39a3e8edc303b9e120f21a368`. The full reviewed patch was transferred byte-for-byte; this coordinator append is documentation-only. Final outgoing staged application/test bytes are checked against that snapshot before commit. Human review remains pending.
+
+## 2026-10-08 — checkpoint 5 Gemini schema compatibility repair
+
+- Tool/workflow: sole local Codex implementation writer, configured model without
+  override, using runner-supplied plan/investigator evidence and inspecting source
+  at checkpoint-4 commit `64ec5960013f1fd36be0d1142bed9c1574bd66bb`. Representative
+  request: repair only Gemini's unsupported wire-schema constraints, preserve local
+  validation and saved request contracts, add regressions and reconcile current
+  status; leave final live evaluation pending coordinator evidence. No agents were
+  spawned by the writer; the runner owns independent review and staging.
+- Incorporated material: Gemini-only schema projection in `feedback_provider.py`;
+  provider/stage/version-aware digests and selection in `feedback_config.py`;
+  captured description/coaching version plumbing in `descriptions.py` and
+  `coaching.py`. New Gemini schemas are `description-gemini-v2` /
+  `coaching-gemini-v2`; prompts, OpenAI schemas/payloads, local validators, model
+  defaults and transport bounds are unchanged. Legacy queued work/retries/receipts
+  reconstruct v1, including waiting coaching without an input hash. No rows are
+  rewritten, and no migration/dependency/mobile changes are incorporated.
+- Tests incorporated in `test_feedback_provider.py`, `test_descriptions.py` and
+  `test_coaching.py`: supported wire keywords and preserved names/refs/object/array/
+  integer bounds, unchanged checkpoint-4 legacy/OpenAI payload and digest anchors,
+  malformed/oversized output rejection, unknown-version local failure, schema-only
+  disclosure mismatch, separate cache scope, old queued/retried work and receipt-only
+  recovery after edit/retry supersession without duplicate calls. The existing
+  scope-isolation regression now targets Gemini's separate schema version constant.
+  The new compatibility assertion failed before repair on `pattern` in **both**
+  stages; it passes after repair. This is local red/green evidence, not a reproduced
+  provider-side explanation for the generic HTTP 400.
+- Actual checks from `backend/`, each with `PYTHON_DOTENV_DISABLED=1` and the
+  coordinator-supplied locked environment:
+  - `.venv/bin/python manage.py test rehearsals.test_feedback_provider rehearsals.test_descriptions.DescriptionSchemaVersionTests rehearsals.test_coaching.CoachingSchemaVersionTests --settings=config.test_settings`
+    passed **35 tests**, no skips.
+  - `.venv/bin/python manage.py check --settings=config.test_settings` passed.
+  - `.venv/bin/python manage.py test --settings=config.test_settings` ran **243
+    tests**, passed with **18 PostgreSQL-only skips** (225 executed).
+  - `.venv/bin/python manage.py makemigrations --check --dry-run --settings=config.test_settings`
+    reported no changes.
+  All provider calls in tests were mocked; existing synthetic failure-path notices
+  appeared as expected. Mobile check/export was not rerun because mobile code is
+  unchanged. Prior checkpoint-4 mobile/PostgreSQL/emulator evidence is attributed
+  to that snapshot, not this repair.
+- Documentation incorporated: reconciled all five checkpoint states in README,
+  feedback notes and handoff, corrected the three recovery paths, clarified schema
+  contracts and the legacy `expected_selection` limitation, added explicitly
+  hand-authored experience examples, and created an **interim** evaluation record.
+  The coordinator summary reports exact-model Gemini metadata success, complete
+  baseline description rejection and OpenAI baseline description/coaching success;
+  no sanitized per-run output/count/usage files were present. Final evaluation and
+  agent usefulness/injection assessment remain pending. Primary Gemini/Genkit
+  schema references were inspected; the repair is a compatibility hypothesis until
+  live generation. Existing prototype attribution/advisory assessment is preserved.
+- Pending: runner independent review of this exact patch; coordinator full
+  PostgreSQL and real Redis/Celery/Beat old/new snapshot recovery with synthetic
+  providers, followed by controlled Gemini generation in a new disposable scope
+  reusing saved transcription. Legacy retries intentionally retain old schemas.
+  Final sanitized evaluation/publication evidence follows in a bounded documentation
+  run. Human corrections/review, physical-phone listening/synchronization, TalkBack
+  and extended keyboard/long-text usability remain pending; no named approval is
+  inferred. The one eventual PR remains stacked on `feature/rehearsal-review`.
+- Documentation checks: `git diff --check` passed. A local path/heading check
+  resolved all 68 relative Markdown links in the six changed Markdown files;
+  targeted searches found no remaining obsolete current checkpoint-4 recovery/
+  evaluation-pending wording. Historical entries remain explicitly historical.
+- No credentials, env files, private media/provider bodies or pilot export were
+  read; no live provider call, retranscription, dependency installation, Git
+  index/history/config mutation, publication, runner/AGENTS change or other-worktree
+  edit was performed. The writer stops for coordinator inspection. Historical
+  AI-use entries remain intact.
+
+
+### Local agent pipeline 20261008T112158Z-a87e4d
+
+- Tool: separate local Codex CLI planner, investigators, implementer and reviewer sessions.
+- Requested scope and incorporated material: see the task-level entry above and staged diff.
+- Check: git diff --cached --check — exit 0.
+- Check: /Users/seoyeonpark/Documents/ChatGPT/OnLoud/tmp/agent-pipeline/20261008T112158Z-a87e4d/workspace/backend/.venv/bin/python manage.py check --settings=config.test_settings — exit 0.
+- Check: /Users/seoyeonpark/Documents/ChatGPT/OnLoud/tmp/agent-pipeline/20261008T112158Z-a87e4d/workspace/backend/.venv/bin/python manage.py test --settings=config.test_settings — exit 0.
+- Check: /Users/seoyeonpark/Documents/ChatGPT/OnLoud/tmp/agent-pipeline/20261008T112158Z-a87e4d/workspace/backend/.venv/bin/python manage.py makemigrations --check --dry-run --settings=config.test_settings — exit 0.
+- AI review: this staged snapshot is being sent to an independent reviewer; local evidence is round-0/reviewer/answer.json. This entry does not claim a pass.
+- Human corrections/review, changed Android flows, and any required real database/worker/provider validation remain pending. No commit or push is authorized by this run.
+
+
+### 2026-10-08 — checkpoint 5 compatibility repair coordinator verification
+
+- Independent pipeline review passed for `e33a0952bb7312bf73eaf4bbc7b6eb381de6686c7f129eeef411567863a73ebb`, based on `64ec5960013f1fd36be0d1142bed9c1574bd66bb`. The reviewed patch was transferred byte-for-byte to `feature/ai-feedback`; this append is documentation only. Application and test bytes match the reviewed snapshot.
+- Coordinator real PostgreSQL run passed **243/243 tests**, without skips, in 20.416 seconds. Its backend patch SHA-256 is `af3cf3f866587c74648cd536d22e95a0cf1635cb524b8d7ec5a1d3a152a61484`, exactly matching the reviewed backend. Runner SQLite run passed 243 tests (18 PostgreSQL-only skips); system and migration-drift checks passed. No mobile changes were made after the checkpoint-4 check/export and emulator verification.
+- OpenAI's separately controlled initial evaluation completed two description/coaching pairs (four calls). Gemini's initial complete HTTP 400 rejection is preserved; no automatic retry occurred. Corrected Gemini live evaluation follows only after this reviewed repair is committed, in a fresh disposable scope sharing a five-call total Gemini transport ceiling including the rejected request. No new transcription is authorized. These application evaluation bounds are not a monetary cap.
+- Saved Gemini legacy contracts intentionally keep v1 payloads and hashes on queue/retry/receipt recovery; new selections use provider-specific v2 schemas. Legacy/current recovery assertions passed with mocked providers on PostgreSQL. Real worker recovery and semantic results from the corrected live run will be recorded separately. Human review remains pending.

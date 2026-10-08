@@ -203,7 +203,7 @@ def admit_prepared(selection, prepared, snapshot, *, dependency=False, candidate
         selection.credentials()
         QuotaPolicy.current(selection)
         value = DescriptionSet.objects.create(**scope, source_snapshot=snapshot,
-            prompt_digest=prompt_digest(), input_hash=candidate.input_hash)
+            prompt_digest=prompt_digest(selection.provider, selection.schema_version), input_hash=candidate.input_hash)
         return _queue(value)
 
 

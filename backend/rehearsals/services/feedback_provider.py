@@ -33,6 +33,7 @@ never mentioned. Uncertain readings are not facts. Return only the requested JSO
 """
 DESCRIPTION_PROMPT_VERSION = "description-v2"
 DESCRIPTION_SCHEMA_VERSION = "description-v1"
+GEMINI_DESCRIPTION_SCHEMA_VERSION = "description-gemini-v2"
 DESCRIPTION_RULES = COMMON_RULES + """Describe every supplied slide exactly once, copying deck_id,
 slide_index and source_id. Use the source language for each slide; for und, infer
 the source language from the supplied text/image (preserve mixed languages). Each summary,
@@ -42,6 +43,7 @@ uncertain, including summaries depending on them. Never invent missing text.
 """
 COACHING_PROMPT_VERSION = "coaching-v1"
 COACHING_SCHEMA_VERSION = "coaching-v1"
+GEMINI_COACHING_SCHEMA_VERSION = "coaching-gemini-v2"
 COACHING_RULES = COMMON_RULES + """Give at most THREE actionable suggestions across the entire
 rehearsal, or an empty suggestions list if no supported improvement is available.
 Categories are consistency, clarity, audience; use audience only when supplied.
@@ -56,6 +58,51 @@ Never cite an uncertain fact. Do not reuse or overlap speech evidence between
 cards. Do not invent timestamps. Express possible inconsistency cautiously;
 references establish source existence, not factual truth. No action/tool fields.
 """
+
+def current_schema_version(provider, stage):
+    if provider not in {"gemini", "openai"} or stage not in OUTPUT_TOKENS:
+        raise FeedbackError("snapshot_unavailable")
+    if stage == "descriptions":
+        return GEMINI_DESCRIPTION_SCHEMA_VERSION if provider == "gemini" else DESCRIPTION_SCHEMA_VERSION
+    return GEMINI_COACHING_SCHEMA_VERSION if provider == "gemini" else COACHING_SCHEMA_VERSION
+
+
+def _gemini_schema(node):
+    """Project schema nodes only, never property/definition names or enum values.
+
+    String constraints remain enforced locally. Gemini supports inclusive numeric
+    and array bounds; translate our integer exclusive bounds without weakening them.
+    This is a wire compatibility hypothesis, not proof of live model acceptance.
+    """
+    result = {key: value for key, value in node.items() if key not in {"pattern", "minLength", "maxLength", "exclusiveMaximum"}}
+    if "exclusiveMaximum" in node:
+        if node.get("type") != "integer" or type(node["exclusiveMaximum"]) is not int:
+            raise FeedbackError("snapshot_unavailable")
+        bound = node["exclusiveMaximum"] - 1
+        result["maximum"] = min(result.get("maximum", bound), bound)
+    for key in ("properties", "$defs"):
+        if key in result:
+            result[key] = {name: _gemini_schema(child) for name, child in result[key].items()}
+    for key in ("items", "additionalProperties"):
+        if isinstance(result.get(key), dict):
+            result[key] = _gemini_schema(result[key])
+    for key in ("anyOf", "oneOf", "prefixItems"):
+        if key in result:
+            result[key] = [_gemini_schema(child) for child in result[key]]
+    return result
+
+
+def response_schema(provider, stage, version=None):
+    current = current_schema_version(provider, stage)
+    version = current if version is None else version
+    legacy = DESCRIPTION_SCHEMA_VERSION if stage == "descriptions" else COACHING_SCHEMA_VERSION
+    if version not in {current, legacy}:
+        raise FeedbackError("snapshot_unavailable")
+    schema = (Descriptions if stage == "descriptions" else Suggestions).model_json_schema()
+    # v1 reconstructs the exact historical wire contract, including for Gemini.
+    # Do not silently upgrade queued jobs, explicit retries or receipt recovery.
+    return _gemini_schema(schema) if provider == "gemini" and version == current else schema
+
 
 # Logger filters run at the producing logger, not just on parent handlers. The
 # context flag affects this synchronous call only, including SDK exception logs;
@@ -159,8 +206,10 @@ class FeedbackAdapter:
     Prepare analysis first (including no-speech preflight), then construct this
     adapter. Edits pass through validate_descriptions again and remain user data.
     """
-    def __init__(self, config=None, *, preparation_only=False):
+    def __init__(self, config=None, *, preparation_only=False,
+                 description_schema_version=None, coaching_schema_version=None):
         self._config = ProviderConfig.from_env() if config is None else config
+        self._schema_versions = {"descriptions": description_schema_version, "coaching": coaching_schema_version}
         if not preparation_only:
             self._config.validate()
 
@@ -182,7 +231,7 @@ class FeedbackAdapter:
             raise FeedbackError("invalid_input")
         config = self._config
         instructions = DESCRIPTION_RULES if stage == "descriptions" else COACHING_RULES
-        schema = (Descriptions if stage == "descriptions" else Suggestions).model_json_schema()
+        schema = response_schema(config.provider, stage, self._schema_versions[stage])
         images = []
         if stage == "descriptions":
             context = {"slides": [{**slide.model_dump(mode="json"), "source_id": source_id}

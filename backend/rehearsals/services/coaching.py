@@ -217,8 +217,8 @@ def _queue(analysis, value, snapshot, previous=None):
     job = FeedbackJob.objects.create(analysis=analysis, generation=analysis.feedback_revision,
         description_set=value, description_generation=value.processing_revision, source_snapshot=snapshot,
         prompt_version=previous.prompt_version if previous else provider.COACHING_PROMPT_VERSION,
-        schema_version=previous.schema_version if previous else provider.COACHING_SCHEMA_VERSION,
-        prompt_digest=previous.prompt_digest if previous else coaching_digest(), queued_at=timezone.now())
+        schema_version=previous.schema_version if previous else provider.current_schema_version(value.provider, 'coaching'),
+        prompt_digest=previous.prompt_digest if previous else coaching_digest(value.provider), queued_at=timezone.now())
     _attach(value, job)
     transaction.on_commit(lambda: publish(analysis.pk, job.generation))
     return analysis
@@ -233,8 +233,9 @@ def _prepared(value, job):
     if (analysis.input_id != job.source_snapshot['analysis_id'] or
             analysis.transcript_id != job.source_snapshot['transcript_id']):
         raise FeedbackError('snapshot_unavailable')
-    descriptions = selection.adapter().edited_descriptions(analysis, job.descriptions_snapshot)
-    prepared = selection.adapter().prepare_coaching(analysis, descriptions)
+    adapter = selection.adapter(coaching_schema_version=job.schema_version)
+    descriptions = adapter.edited_descriptions(analysis, job.descriptions_snapshot)
+    prepared = adapter.prepare_coaching(analysis, descriptions)
     if job.input_hash and prepared.input_hash != job.input_hash:
         raise FeedbackError('snapshot_unavailable')
     return prepared

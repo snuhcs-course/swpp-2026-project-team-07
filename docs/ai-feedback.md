@@ -1,4 +1,4 @@
-# AI feedback — checkpoints 1–4
+# AI feedback — checkpoints 1–5
 
 Standalone adapters describe slides and validate at most three suggestions for
 one rehearsal. Checkpoint 2 added durable saved-deck descriptions; checkpoint 3
@@ -16,12 +16,15 @@ Checkpoint 4 adds feedback review/disclosure and description editing within the 
 | 1 — provider adapters and evidence validation | Reviewed/tested local base `f07e55395d2e38eabec7c39ea766f643b2e5c7c1`; user authorized continuation to checkpoint 2. This does not claim human code review. |
 | 2 — durable slide descriptions | Implemented and independently reviewed. Scoped cache, revision-checked edits, durable request/recovery evidence and provider-specific quota reservations; 172 tests passed on PostgreSQL, plus synthetic worker and API/database restart checks. Human inspection remains pending; continuation is now authorized. |
 | 3 — durable rehearsal feedback | Committed base `e31937b`; coordinator evidence records 219 PostgreSQL tests, 233 mobile tests, worker/API restart and saved-pilot emulator review. These are checkpoint-3 results, not verification of the new UI. |
-| 4 — feedback review UI | Implemented in this bounded patch: scoped disclosure/consent, selection assertion, recovery, plain-Text cards/evidence, revision-checked editing and offline caching. After two review repairs: 270 mobile tests, Android export, Django checks and 229 SQLite tests (18 skips). Renewed independent review/coordinator/human checks pending. |
-| 5 — controlled provider evaluation | Not implemented: compare both providers separately on saved non-confidential pilot inputs and document quality/recovery evidence. |
+| 4 — feedback review UI | Independently reviewed and coordinator-verified at `64ec596`: 270 mobile tests, TypeScript/lint, Android export, Django checks, 229 SQLite tests (18 skips), 229/229 real PostgreSQL tests and synthetic emulator disclosure/edit/stale/regenerate/offline/evidence-seek flows. Human/physical-phone checks remain pending. |
+| 5 — controlled provider evaluation | In progress. Coordinator reports exact Gemini model metadata success followed by a complete baseline description HTTP 400 rejection; OpenAI baseline descriptions/coaching passed. This repair projects new Gemini wire schemas and preserves legacy contracts. 243 SQLite tests (18 skips) and system/migration checks passed; independent review, renewed PostgreSQL/worker checks, repaired Gemini live generation and final evaluation report remain pending. |
 
 The user now authorizes **all remaining checkpoints with checks between them**, on
-**one eventual PR**. This bounded writer run implements checkpoint 4 only and stops for coordinator
-inspection. Controlled evaluation (5) remains pending. No named
+**one eventual PR**, stacked on `feature/rehearsal-review` while unmerged. This
+bounded checkpoint-5 writer run starts at `64ec596` and repairs only Gemini schema
+compatibility, with regression tests and status documentation. Final controlled
+evaluation remains pending coordinator evidence; see the [evaluation record](feedback-evaluation.md).
+The writer stops for coordinator inspection before live calls or publication. No named
 owner approval is inferred. New detectors, local Whisper, authentication and public
 deployment remain excluded. The writer does not stage, commit, push or publish. No live
 calls are part of its tests. See [team boundaries](team-work-division.md) and the
@@ -264,11 +267,12 @@ speaking-habit detectors are implemented.
 Run the README's Django check, full suite and migration-drift check with
 `config.test_settings`. Exact local outcomes are in [AI-use evidence](ai-use.md).
 Independent review must include all new files and the final staged snapshot;
-the runner owns staging/review. PostgreSQL/Redis/Celery recovery, live-provider
-compatibility, Korean/mixed-language quality and human inspection remain pending.
-No changed Android flow exists in checkpoint 2; UI/device work belongs to checkpoint
-4. User authorization to continue after checkpoint 1 is recorded separately from
-human code review. **All remaining checkpoints are now authorized with checks between them; human review remains pending.**
+the runner owns staging/review. Checkpoints 2–4 have coordinator infrastructure
+evidence below and in AI-use; checkpoint 4 also has agent-operated emulator evidence.
+Those historical checks do not verify the checkpoint-5 schema repair. Renewed
+PostgreSQL/worker and live Gemini compatibility checks, Korean/mixed-language
+quality and human inspection remain pending. All five checkpoints are authorized
+with checks between them; this does not imply human code review.
 
 
 ## Checkpoint 2 persistence and quota policy
@@ -311,7 +315,7 @@ Deck/Slide/Attempt/Whisper rows, including all media/result fields.
 
 Admission commits intent before best-effort `transaction.on_commit` publication;
 the publication wrapper logs a fixed safe message on failure. Existing Beat runs
-both processing recovery functions every 30 seconds. Claims last 360 seconds,
+transcription, description and coaching recovery every 30 seconds. Claims last 360 seconds,
 longer than the existing 300-second task limit. Short transactions acquire locks
 in consistent order: deck where needed, set, job, quota bucket, request/reservation.
 No transaction spans media preparation or provider I/O. Last configuration/freshness
@@ -446,8 +450,8 @@ coordinator owns real infrastructure/process checks and the final staged review:
    or real infrastructure validation were performed by the writer.
 
 Independent review and coordinator infrastructure checks passed; see the [checkpoint-2 handoff evidence](ai-use.md#2026-10-08--ai-feedback-checkpoint-2-coordinator-handoff). Human inspection remains pending. The historical checkpoint-3 patch built on reviewed/tested base `ce16ae1`.
-The checkpoint ledger and checkpoint-4 section above/below give current status;
-checkpoint 5 remains pending, authorized with checks on the same PR. The runner stages
+The checkpoint ledger and checkpoint-5 section give current status;
+checkpoint 5 is in progress, authorized with checks on the same PR. The runner stages
 changes for checks and review; it does not commit, push, create PRs or merge.
 
 
@@ -575,10 +579,10 @@ pending. The runner owns staging/independent review and the coordinator owns:
    failure, independent retry revision conflicts and unchanged synthetic media hashes.
    Verify malicious metadata cannot expose private snapshots/raw/keys.
 
-Android device regression is separate from JavaScript export. The historical
-checkpoint-3 coordinator evidence is recorded in AI-use. Checkpoint-4 UI/disclosure/
-evidence is now implemented; its coordinator device/infrastructure validation and
-checkpoint-5 live-provider quality evaluation remain pending.
+Android device regression is separate from JavaScript export. Historical
+checkpoint-3 and checkpoint-4 coordinator infrastructure/emulator evidence is
+recorded in AI-use. Final checkpoint-5 live-provider quality evaluation remains
+pending; prior recovery checks do not establish the new schema's compatibility.
 
 
 ## Checkpoint 4 review and disclosure
@@ -626,11 +630,103 @@ focused/foreground session. Keystrokes and Cancel issue no PATCH. An open draft 
 Saving marks affected feedback stale immediately; explicit regeneration reuses the
 saved transcript. No provider call is needed for editing.
 
-Task-level checks and attribution are in
-[AI-use](ai-use.md#2026-10-08--ai-feedback-checkpoint-4-review-repair).
-All fixtures are synthetic. The coordinator must run PostgreSQL concurrency and
-real API/Redis/worker admission/restart checks with outbound calls blocked, then
-Android emulator disclosure/offline/edit/recovery/evidence flows. Human TalkBack,
-long text/keyboard, physical-phone listening/synchronization and code inspection
-remain pending. Checkpoint 5 live evaluation has not begun. Prior prototype
-attribution remains unchanged; no prototype or other-worktree source was modified.
+Checkpoint-4 independent review and coordinator checks passed: 270 mobile tests,
+TypeScript/lint, Android export, Django checks, 229 SQLite tests (18 skips) and
+229/229 real PostgreSQL tests. Agent-operated emulator checks covered disclosure,
+editing, staleness, regeneration, offline restart and evidence seeking with synthetic
+providers. See [AI-use](ai-use.md#2026-10-08--checkpoint-4-coordinator-verification).
+Human TalkBack, extended text/keyboard, physical-phone listening/synchronization and
+code inspection remain pending. Checkpoint 5 has begun but its final live evaluation
+is pending. Prior prototype attribution is unchanged; this repair does not touch
+prototype, mobile or other-worktree source.
+
+## Illustrative feedback experience
+
+These are small **hand-authored illustrations**, not measured provider outputs or
+playable fixtures. Each quoted description is an assumed certain captured fact,
+not necessarily verbatim PDF text. Transcript quotes represent the complete chosen
+word span; real cards must also match the saved source, transcript, visit and word
+indexes. No timestamps or alignment success are invented here.
+
+| Category / context | Exact description evidence | Exact transcript evidence | Observation | Suggested action |
+| --- | --- | --- | --- | --- |
+| Consistency | “Conversion increased from 10% to 12%” | “Conversion doubled” | The cited figures and the spoken change may be inconsistent. | Say conversion increased by two percentage points. |
+| Clarity | “Latency is the time from request to response” | “This is low, so it is better” | The cited sentence leaves the quantity unnamed. | Name latency and explain that lower latency means a shorter wait for the response. |
+| Audience, only with saved context “Students new to classification” | “Precision is the share of positive predictions that are correct” | “Our precision is 0.9” | The cited sentence gives a value without explaining the metric for this audience. | Explain that nine out of ten flagged positive predictions are correct. |
+
+The card separates observation from action and expands the exact captured
+**Slide description** and **Transcript excerpt**. Text is plaintext only; embedded
+markup/URLs supply no executable controls. The explicit evidence action revalidates
+source/quotes/indexes/times and seeks the existing player to `start_ms`, preserving
+playing/paused intent. It neither starts a paused player nor stops at `end_ms`.
+Unavailable audio, unknown actual pages, invalid evidence or stale feedback disables
+that action while retaining readable text.
+
+Partial output shows only supported cards with accepted/discarded counts. A valid
+empty list says **No supported suggestions.** It is not a grade or proof of a perfect
+rehearsal. All-invalid output is failed `unsupported_feedback`, not successful empty
+output. An edit or newer generation can leave earlier cards readable and explicitly
+stale alongside current failure/uncertainty. Disabled/unavailable generation is
+separate from saved results; it never substitutes examples for real output.
+Generate, Retry, description Save and evidence seeking remain explicit actions.
+
+## Checkpoint 5 Gemini schema compatibility
+
+Coordinator-supplied evidence: `gemini-3.1-flash-lite` metadata GET succeeded, then
+the first baseline description generation returned complete HTTP 400
+`INVALID_ARGUMENT` with a generic invalid-argument message. The durable outcome was
+`rejected`, with no coaching or automatic retry. The same saved baseline passed
+OpenAI descriptions/coaching using `gpt-6-luna`. No new Whisper call occurred. The
+writer has no per-run sanitized output/usage files; final results remain pending in
+[feedback-evaluation.md](feedback-evaluation.md).
+
+Inspection confirmed both Gemini stages sent unmodified Pydantic schemas. The
+[Gemini GenerationConfig reference](https://ai.google.dev/api/generate-content#GenerationConfig)
+and [structured-output guide](https://ai.google.dev/gemini-api/docs/structured-output)
+list inclusive numeric bounds and array cardinalities but omit `pattern`,
+`minLength`, `maxLength` and `exclusiveMaximum`. The
+[Google Genkit schema warning](https://genkit.dev/docs/js/integrations/google-genai/#schema-limitations)
+says unsupported validation keywords can cause HTTP 400 or be ignored. Its warning
+also lists array bounds; this implementation follows the direct Gemini reference
+and retains those supported bounds. This supports a **compatibility repair
+hypothesis**, not a proven diagnosis of the generic rejection or live acceptance.
+No Genkit/schema dependency or endpoint/model substitution is introduced.
+
+| Contract | Description prompt / schema | Coaching prompt / schema |
+| --- | --- | --- |
+| New Gemini selections | `description-v2` / `description-gemini-v2` | `coaching-v1` / `coaching-gemini-v2` |
+| Saved Gemini selections from checkpoints 1–4 | `description-v2` / `description-v1` | `coaching-v1` / `coaching-v1` |
+| OpenAI, unchanged | `description-v2` / `description-v1` | `coaching-v1` / `coaching-v1` |
+
+New Gemini wire schemas remove only the three unsupported string keywords and
+translate integer exclusive upper bounds to equivalent inclusive maxima:
+`visit_id ≤ 999`, `word_start/word_end ≤ 5999`. Schema traversal preserves property
+and definition names, references, strict object keys, required fields, types,
+enums and array bounds. Local Pydantic, source/evidence/string/image validation,
+fixed instructions and request/response bounds remain unchanged. OpenAI's strict
+schema and serialized payloads are unchanged.
+
+Effective schemas participate in prompt digests, request hashes, selection tokens
+and description cache scope. Saved v1 work, explicit retries and receipt recovery
+reconstruct the old unprojected payload; coaching uses its saved version even while
+waiting for descriptions with no request hash yet. Unknown versions fail locally.
+No stored rows/results/provenance are rewritten. Explicit retries of legacy Gemini
+rejections retain the unprojected historical contract; they do not adopt the
+repair. New description initial admission creates a separate v2 scope; an existing
+feedback analysis remains bound to its saved set and versions. Coordinator live
+verification must use a new disposable selection/analysis, reusing saved
+transcription, rather than silently converting an old failed generation.
+
+Defaults stay `gemini-3.1-flash-lite` / `gpt-6-luna`, configurable and disabled until
+configured. There is no fallback, tool/URL fetching or automatic provider retry.
+The optional `expected_selection` assertion covers the new schema identity;
+legacy callers omitting it do not get mobile's disclosure-race comparison guard.
+
+Local synthetic tests cover both projected schemas, unchanged OpenAI/legacy
+payload hashes, malformed/oversized output, schema-only selection mismatch,
+separate cache scopes, legacy queued/retried work and receipt recovery after
+edit/retry supersession without duplicate calls. The compatibility assertion failed
+on both stages before repair. Final local results: **243 SQLite tests, 18 skipped**,
+Django system check and migration-drift check passed. These checks do not establish
+PostgreSQL concurrency, worker restart or live provider compatibility. Independent
+review and coordinator checks on this exact patch are pending; see [AI-use](ai-use.md#2026-10-08--checkpoint-5-gemini-schema-compatibility-repair).

@@ -3,6 +3,7 @@
 These tests do not establish live model/account compatibility or prompt immunity.
 """
 from dataclasses import replace
+from copy import deepcopy
 from datetime import datetime, timezone
 import gzip
 import io
@@ -16,11 +17,12 @@ from unittest.mock import patch
 import httpx
 from PIL import Image, PngImagePlugin
 
-from .services.feedback import FeedbackError, json_bytes, prepare_analysis
+from .services.feedback import FeedbackError, Descriptions, Suggestions, json_bytes, prepare_analysis
+from .services.feedback_config import prompt_digest, coaching_digest
 from .services.feedback_provider import (
     FeedbackAdapter, ProviderConfig, DESCRIPTION_RULES, COACHING_RULES,
     MAX_REQUEST_BYTES, MAX_RESPONSE_BYTES, MAX_OUTPUT_BYTES,
-    request_raw, normalize, _retry_time,
+    request_raw, normalize, _retry_time, _gemini_schema, response_schema,
 )
 from .test_feedback import fixture, description_value, suggestion
 
@@ -53,6 +55,133 @@ class Chunks(httpx.SyncByteStream):
 
 
 class FeedbackProviderTests(TestCase):
+    def test_current_gemini_wire_schema_uses_documented_subset_for_both_stages(self):
+        supported = {'$defs', '$ref', 'type', 'title', 'properties', 'required',
+                     'additionalProperties', 'items', 'minItems', 'maxItems',
+                     'minimum', 'maximum', 'enum'}
+
+        def check(node):
+            self.assertFalse(set(node) - supported, set(node) - supported)
+            for key in ('properties', '$defs'):
+                for child in node.get(key, {}).values():
+                    check(child)
+            if 'items' in node:
+                check(node['items'])
+
+        for prepared in [self.adapter().prepare_descriptions(self.analysis), self.coaching()]:
+            with self.subTest(stage=prepared.stage):
+                check(json.loads(prepared.payload)['generationConfig']['responseJsonSchema'])
+
+    def test_projection_preserves_names_references_strict_objects_and_supported_bounds(self):
+        named = {'type': 'object', 'additionalProperties': False, 'required': ['pattern'],
+                 'properties': {'pattern': {'type': 'string', 'minLength': 1, 'maxLength': 4,
+                                            'pattern': '^x$', 'enum': ['pattern', 'minLength']}},
+                 '$defs': {'maxLength': {'type': 'integer', 'exclusiveMaximum': 4, 'minimum': 0}},
+                 'anyOf': [{'$ref': '#/$defs/maxLength'}]}
+        original = deepcopy(named)
+        projected = _gemini_schema(named)
+        self.assertEqual(named, original)
+        self.assertEqual(projected['properties']['pattern'], {'type': 'string', 'enum': ['pattern', 'minLength']})
+        self.assertEqual(projected['$defs']['maxLength'], {'type': 'integer', 'minimum': 0, 'maximum': 3})
+        self.assertEqual(projected['anyOf'], named['anyOf'])
+        self.assertEqual(projected['required'], ['pattern'])
+        self.assertIs(projected['additionalProperties'], False)
+        for stage, model in [('descriptions', Descriptions), ('coaching', Suggestions)]:
+            schema = response_schema('gemini', stage)
+            original = model.model_json_schema()
+            self.assertEqual(schema['properties'], original['properties'])  # Includes array cardinality/ref.
+            for name, definition in schema['$defs'].items():
+                self.assertEqual(definition['required'], original['$defs'][name]['required'])
+                self.assertIs(definition['additionalProperties'], False)
+            for name in ('key_ideas', 'visual_facts') if stage == 'descriptions' else ():
+                self.assertEqual(schema['$defs']['Description']['properties'][name],
+                                 original['$defs']['Description']['properties'][name])
+        props = response_schema('gemini', 'coaching')['$defs']['Suggestion']['properties']
+        for name, bound in [('visit_id', 999), ('word_start', 5999), ('word_end', 5999)]:
+            self.assertEqual(props[name]['maximum'], bound)
+            self.assertEqual(props[name]['minimum'], 0)
+            self.assertNotIn('exclusiveMaximum', props[name])
+        self.assertEqual(props['category']['enum'], ['consistency', 'clarity', 'audience'])
+
+    def test_legacy_wire_hashes_and_openai_contract_are_unchanged(self):
+        # Captured from checkpoint 4 using the shared synthetic fixture, before repair.
+        hashes = {
+            'gemini': ('def7610c864533c872299f001494ee4847e631d225447118e3c9274cf16f3cb6',
+                       'a2aeb54ffe8f9a33d06c0aa88ca9a77b3b6869e4febb53b3743ea1122f4296c3'),
+            'openai': ('90f210d0f5ea7d666df1662024bebd3f0550dcbf99b7a73b077aed9bbd6c60a6',
+                       '4dfb29b50d6903220aaf0eba8dff0fd1aaadf08cb3b6c8fa4682c812d236435c')}
+        for name in hashes:
+            adapter = FeedbackAdapter(self.adapter(name)._config, description_schema_version='description-v1',
+                                      coaching_schema_version='coaching-v1')
+            requests = [adapter.prepare_descriptions(self.analysis), adapter.prepare_coaching(
+                self.analysis, adapter.edited_descriptions(self.analysis, description_value(self.analysis)))]
+            self.assertEqual(tuple(p.input_hash for p in requests), hashes[name])
+            self.assertEqual(prompt_digest(name, 'description-v1'), '4346a9c6ac7444f5b9ad7ef9c49abf6b2ba0235debe3b76ad9448d849eea252d')
+            self.assertEqual(coaching_digest(name, 'coaching-v1'), 'bef1db43903057ca31f3909bb091d5186d957e433bdc70b4eba81ac2e51ae1e8')
+            current = [self.adapter(name).prepare_descriptions(self.analysis), self.coaching(name)]
+            if name == 'openai':
+                self.assertEqual([p.payload for p in current], [p.payload for p in requests])
+            else:
+                for old, new in zip(requests, current):
+                    self.assertNotEqual(old.input_hash, new.input_hash)
+                    old_body, new_body = json.loads(old.payload), json.loads(new.payload)
+                    old_body['generationConfig'].pop('responseJsonSchema')
+                    new_body['generationConfig'].pop('responseJsonSchema')
+                    self.assertEqual(old_body, new_body)  # Instructions, limits and context unchanged.
+                self.assertNotEqual(prompt_digest(), prompt_digest(name, 'description-v1'))
+                self.assertNotEqual(coaching_digest(), coaching_digest(name, 'coaching-v1'))
+
+    def test_unknown_and_other_provider_schema_versions_fail_before_transport(self):
+        for name in ['gemini', 'openai']:
+            for stage in ['descriptions', 'coaching']:
+                versions = ['future', 'coaching-v1' if stage == 'descriptions' else 'description-v1']
+                if name == 'openai':
+                    versions.append('description-gemini-v2' if stage == 'descriptions' else 'coaching-gemini-v2')
+                for version in versions:
+                    with self.assertRaises(FeedbackError) as caught:
+                        response_schema(name, stage, version)
+                    self.assertEqual(caught.exception.code, 'snapshot_unavailable')
+        self.network.assert_not_called()
+
+    def test_projected_gemini_output_still_fails_full_local_validation(self):
+        prepared = self.adapter().prepare_descriptions(self.analysis)
+        cases = []
+        for field, invalid in [('deck_id', 'bad-id'), ('source_id', 'z' * 64), ('slide_index', '0')]:
+            output = description_value(self.analysis)
+            output['slides'][0][field] = invalid
+            cases.append(output)
+        for field, invalid in [('text', ''), ('text', ' '), ('text', 'x' * 401),
+                               ('text', 'bad\x00text'), ('uncertain', 'false'), ('uncertainty', 'x' * 401)]:
+            output = description_value(self.analysis)
+            output['slides'][0]['summary'][field] = invalid
+            cases.append(output)
+        extra, missing, oversized = [description_value(self.analysis) for _ in range(3)]
+        extra['slides'][0]['summary']['extra'] = True
+        del missing['slides'][0]['summary']['text']
+        oversized['slides'] *= 6
+        for output in [*cases, extra, missing, oversized]:
+            with self.subTest(output_case=cases.index(output) if output in cases else 'shape'), self.assertRaises(FeedbackError) as caught:
+                normalize(prepared, self.raw(prepared, value=output))
+            self.assertEqual(caught.exception.code, 'invalid_descriptions')
+        prepared = self.coaching()
+        for field, invalid in [('description_ref', 'key_ideas/5'), ('segment_id', 'bad'),
+                ('transcript_id', 'z' * 64), ('observation', 'x' * 601), ('suggestion', 'x' * 701),
+                ('speech_quote', 'x' * 1001), ('slide_quote', 'x' * 401), ('observation', 'bad\x00text'),
+                ('word_start', 6000), ('word_end', 6000), ('visit_id', 1000), ('word_start', True)]:
+            card = {**suggestion(self.analysis), field: invalid}
+            with self.subTest(field=field, invalid_size=len(str(invalid))), self.assertRaises(FeedbackError):
+                normalize(prepared, self.raw(prepared, value={'suggestions': [card]}))
+        for output in [{'suggestions': [suggestion(self.analysis)] * 4}, {'suggestions': [], 'extra': True}, {}]:
+            with self.assertRaises(FeedbackError):
+                normalize(prepared, self.raw(prepared, value=output))
+        blank = {**suggestion(self.analysis), 'observation': ' '}
+        self.assertEqual(normalize(prepared, self.raw(prepared, value={'suggestions': [blank]})).state, 'all_invalid')
+        for request in [prepared, self.adapter().prepare_descriptions(self.analysis)]:
+            with self.assertRaises(FeedbackError):
+                normalize(request, self.raw(request, value={'padding': 'x' * (MAX_OUTPUT_BYTES + 1)}))
+            with self.assertRaises(FeedbackError):
+                normalize(request, self.raw(request, body=b'x' * (MAX_RESPONSE_BYTES + 1)))
+
     def setUp(self):
         # No ambient credentials, endpoint hints or actual network in any test.
         env = patch.dict('os.environ', {}, clear=True)

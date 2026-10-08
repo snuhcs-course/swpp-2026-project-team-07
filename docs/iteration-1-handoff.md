@@ -1,6 +1,6 @@
 # Iteration 1 team handoff
 
-The initial scaffold/branch, hosted-processing and rehearsal-review sections below are historical. The final AI feedback checkpoint-4 section describes the current patch and its verification boundary.
+The scaffold/branch, hosted-processing, rehearsal-review and checkpoint-2/3 sections below are historical. Checkpoint 4 records its completed coordinator verification; the final checkpoint-5 section describes the current bounded repair and pending evaluation.
 
 This is a shared starting scaffold based on the submitted Expo/React Native/TypeScript Android + Django REST architecture. Hours are outside this task. The schedule does not establish individual feature owners; assign names as a team.
 
@@ -66,7 +66,7 @@ Verification separates mocked/SQLite checks, real infrastructure, synthetic host
 
 Base-stage handoff: independent staged review passed. Mobile checks (115 tests), Android export, backend checks (74 tests; five skips on SQLite, all 74 passing on PostgreSQL), populated/interrupted upgrades, real worker crash recovery and Linux packaged VAD passed. A controlled hosted English TTS pilot produced 41 timestamped words and slide visits 3 → 4 → 3; completed retries reused its saved result. Android emulator checks covered consent, Analyze, silence metadata, restart/offline cache and local replay. Physical-phone/human-speech and Korean VAD evaluation, native API-switch/background stress checks and human code review remained pending. See [AI-use evidence](ai-use.md#2026-10-08--hosted-processing-coordinator-verification-and-publication). That stage was stacked on `feature/recording-storage-upload`. The later explicit rehearsal-review authorization supersedes its historical stop instruction.
 
-## Current rehearsal-review handoff (2026-10-08)
+## Historical rehearsal-review handoff (2026-10-08)
 
 The authorized `feature/rehearsal-review` patch builds on Whisper PR #19, `c7733d8288833b010948d2c5737929088547aa1e`. One writer continued the existing patch. The coordinator owns staging, independent review and eventual publication as one stacked PR; no writer commit/push/merge or named owner's approval is claimed.
 
@@ -87,7 +87,7 @@ Final verification: independent staged review passed after the documented repair
 Physical-phone/audible synchronization, native audio-focus fault injection, API-switch and exhaustive callback/download-cancellation stress remain pending; automated regressions cover their modeled cases. Human review remains pending. See [final evidence](ai-use.md#2026-10-08--rehearsal-review-final-verification-and-publication). Publish one PR against `feature/whisper-api-processing`; do not merge. The proposed next implementation is `feature/ai-feedback`, and it requires user confirmation after this handoff.
 
 
-## Current AI feedback checkpoint-2 handoff (2026-10-08)
+## Historical AI feedback checkpoint-2 handoff (2026-10-08)
 
 The user authorized continuation after checkpoint 1 at reviewed/tested local
 `f07e55395d2e38eabec7c39ea766f643b2e5c7c1`, on `feature/ai-feedback` stacked on open
@@ -198,7 +198,7 @@ cover live/expired claims and read-only feedback/attempt/history consistency;
 the runner/coordinator must verify this repaired snapshot before continuation.
 
 
-## AI feedback checkpoint 4 — current bounded handoff (2026-10-08)
+## AI feedback checkpoint 4 — verified handoff (2026-10-08)
 
 The writer started from committed checkpoint-3 base `e31937b7df2120a39a3e8edc303b9e120f21a368`
 and implemented only the approved feedback review/disclosure checkpoint. The runner
@@ -235,7 +235,50 @@ regressions failed before the two focused fixes and passed afterward.
 Writer checks after repair passed: 270 mobile tests, TypeScript/lint, Android JavaScript export;
 Django system/migration checks and 229 SQLite tests with 18 PostgreSQL-only skips.
 See [exact repair evidence](ai-use.md#2026-10-08--ai-feedback-checkpoint-4-review-repair).
-Coordinator PostgreSQL/API/Redis/worker and Android emulator checks remain required.
-TalkBack, long-text/keyboard layout, physical-phone audible synchronization and human
-inspection are pending. No live provider/model-quality check occurred. Checkpoint 5
-remains pending; this bounded checkpoint stops for coordinator inspection.
+Subsequent independent review and coordinator verification passed at `64ec596`:
+229/229 real PostgreSQL tests and agent-operated Android emulator disclosure,
+edit/stale/regenerate, offline restart and evidence-seek flows against the real
+API/PostgreSQL/Redis/Celery/Beat stack with synthetic providers. The reviewed patch
+was `64399166b696522607fc588d0cd1fcd7a524ca2196992da488cce12920043bf9`;
+backend bytes matched the PostgreSQL-tested snapshot. See the
+[coordinator record](ai-use.md#2026-10-08--checkpoint-4-coordinator-verification).
+TalkBack, extended text/keyboard layout, physical-phone audible synchronization and
+human inspection remain pending. No live generation occurred in those emulator
+checks. Their results do not verify the new checkpoint-5 backend repair below.
+
+## AI feedback checkpoint 5 — bounded compatibility repair (2026-10-08)
+
+Starting from `64ec5960013f1fd36be0d1142bed9c1574bd66bb`, the sole writer repaired
+Gemini schema preparation only. New Gemini description/coaching schemas remove
+unsupported string keywords and translate integer exclusive maxima; all local
+validation and OpenAI's strict schemas remain intact. Provider-specific versions
+enter cache/digest/request/selection identities. Legacy queued jobs, explicit
+retries and receipts retain their original contracts, including coaching waiting
+for descriptions before a request hash exists. No migrations/dependencies or mobile
+polish are included. The [schema notes](ai-feedback.md#checkpoint-5-gemini-schema-compatibility)
+describe the compatibility hypothesis and legacy retry limitation.
+
+Coordinator reports a complete Gemini baseline HTTP 400 rejection after successful
+exact-model metadata lookup, and OpenAI baseline description/coaching success on
+the same saved input. These do not prove repaired Gemini compatibility or semantic
+usefulness. Final sanitized outputs/counts/usage, shared fixture identities,
+description accuracy/uncertainty and injection/agent-rubric results remain pending
+in [the evaluation record](feedback-evaluation.md). No retranscription is authorized
+or conducted by this checkpoint. Defaults remain exactly `gemini-3.1-flash-lite` /
+`gpt-6-luna`, configurable, disabled until configured and without fallback.
+
+Local checks passed: 243 SQLite tests (18 PostgreSQL-only skips), Django system and
+migration-drift checks. Focused regressions cover unsupported schema detection,
+local rejection, unchanged OpenAI/legacy hashes, new scope/disclosure identities
+and legacy receipt recovery with no duplicate calls. The runner stages and runs
+mandatory checks/independent review; coordinator PostgreSQL/worker/recovery and
+controlled Gemini verification must follow review on the exact repaired snapshot.
+Final evaluation documentation follows the sanitized live evidence in a bounded
+documentation run. Human review, physical-phone listening, TalkBack and extended
+keyboard/long-text checks remain pending.
+
+All five checkpoints remain one eventual `feature/ai-feedback` PR stacked on
+`feature/rehearsal-review` while unmerged. Prototype attribution and dependency
+advisory assessment remain unchanged. The writer stops before live calls, commit
+or publication; the coordinator handles authorized publication and pending human
+inspection. No named owner's approval is inferred.

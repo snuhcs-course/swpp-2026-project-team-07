@@ -5,22 +5,22 @@ import os
 import re
 
 from . import feedback_provider as provider
-from .feedback import FeedbackError, Descriptions, Suggestions, json_bytes
+from .feedback import FeedbackError, json_bytes
 
 
-def prompt_digest():
-    return hashlib.sha256(json_bytes([provider.DESCRIPTION_RULES, Descriptions.model_json_schema(),
+def prompt_digest(name='gemini', schema_version=None):
+    return hashlib.sha256(json_bytes([provider.DESCRIPTION_RULES, provider.response_schema(name, 'descriptions', schema_version),
                                      provider.OUTPUT_TOKENS['descriptions']])).hexdigest()
 
 
-def coaching_digest():
-    return hashlib.sha256(json_bytes([provider.COACHING_RULES, Suggestions.model_json_schema(),
+def coaching_digest(name='gemini', schema_version=None):
+    return hashlib.sha256(json_bytes([provider.COACHING_RULES, provider.response_schema(name, 'coaching', schema_version),
                                      provider.OUTPUT_TOKENS['coaching']])).hexdigest()
 
 
 def check_coaching_versions(job):
     if (job.prompt_version != provider.COACHING_PROMPT_VERSION or
-            job.schema_version != provider.COACHING_SCHEMA_VERSION or job.prompt_digest != coaching_digest()):
+            job.prompt_digest != coaching_digest(job.description_set.provider, job.schema_version)):
         raise FeedbackError('snapshot_unavailable')
 
 
@@ -44,7 +44,8 @@ class Selection:
         if (not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9._-]{0,159}', project)
                 or not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9._-]{0,99}', model)):
             raise FeedbackError('invalid_configuration')
-        return cls(name, project, model, provider.DESCRIPTION_PROMPT_VERSION, provider.DESCRIPTION_SCHEMA_VERSION)
+        return cls(name, project, model, provider.DESCRIPTION_PROMPT_VERSION,
+                   provider.current_schema_version(name, 'descriptions'))
 
     @classmethod
     def saved(cls, value):
@@ -54,13 +55,14 @@ class Selection:
         return dict(provider=self.provider, project_id=self.project_id, model=self.model,
                     prompt_version=self.prompt_version, schema_version=self.schema_version)
 
-    def adapter(self):
+    def adapter(self, *, coaching_schema_version=None):
         # Preparation/validation is independent of key availability and enabled state.
-        return provider.FeedbackAdapter(provider.ProviderConfig(self.provider, self.model, ''), preparation_only=True)
+        return provider.FeedbackAdapter(provider.ProviderConfig(self.provider, self.model, ''), preparation_only=True,
+            description_schema_version=self.schema_version, coaching_schema_version=coaching_schema_version)
 
     def check_versions(self, digest):
         if (self.prompt_version != provider.DESCRIPTION_PROMPT_VERSION
-                or self.schema_version != provider.DESCRIPTION_SCHEMA_VERSION or digest != prompt_digest()):
+                or digest != prompt_digest(self.provider, self.schema_version)):
             raise FeedbackError('snapshot_unavailable')
 
     def credentials(self, env=None):
@@ -113,11 +115,11 @@ def selection_descriptor(selection=None, *, value=None, job=None, coaching=False
         return None
     descriptor = {**selection.scope(), 'stage': 'coaching' if coaching else 'descriptions',
         'disclosure_version': DISCLOSURE_VERSION,
-        'prompt_digest': value.prompt_digest if value else prompt_digest()}
+        'prompt_digest': value.prompt_digest if value else prompt_digest(selection.provider, selection.schema_version)}
     if coaching:
         descriptor.update(coaching_prompt_version=job.prompt_version if job else provider.COACHING_PROMPT_VERSION,
-            coaching_schema_version=job.schema_version if job else provider.COACHING_SCHEMA_VERSION,
-            coaching_prompt_digest=job.prompt_digest if job else coaching_digest())
+            coaching_schema_version=job.schema_version if job else provider.current_schema_version(selection.provider, 'coaching'),
+            coaching_prompt_digest=job.prompt_digest if job else coaching_digest(selection.provider))
     return {**descriptor, 'token': hashlib.sha256(json_bytes(descriptor)).hexdigest()}
 
 

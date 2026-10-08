@@ -1147,3 +1147,125 @@ class DisclosureSelectionTests(SyntheticCoaching, TestCase):
         with patch.dict('os.environ', {'FEEDBACK_PROVIDER': 'broken'}):
             self.assertIsNone(self.feedback_state()['selection'])
             self.assertEqual(self.client.get(f'/api/attempts/{self.attempt.pk}/').status_code, 200)
+
+
+class CoachingSchemaVersionTests(SyntheticCoaching, TestCase):
+    def legacy_analysis(self):
+        from .services.feedback_config import Selection, coaching_digest
+        with patch.object(Selection, 'current', return_value=self.legacy_selection()):
+            analysis = self.admit_feedback()
+        # Checkpoint-4 queued work saved this contract before descriptions existed.
+        analysis.jobs.update(schema_version='coaching-v1', prompt_digest=coaching_digest('gemini', 'coaching-v1'))
+        return analysis
+
+    def test_legacy_waiting_job_without_hash_keeps_captured_contract(self):
+        analysis = self.legacy_analysis()
+        job = self.job(analysis)
+        self.assertEqual(job.state, 'waiting_descriptions')
+        self.assertEqual(job.input_hash, '')
+        identity = (job.schema_version, job.prompt_digest)
+        token = self.feedback_state()['selection']['token']
+        with patch.object(provider, 'request_raw', side_effect=self.coaching_receipt) as call:
+            self.execute_feedback(analysis)
+            call.assert_not_called()
+            value = job.description_set
+            descriptions.run_description(value.pk, 1)
+            service.recover_coaching()
+            self.execute_feedback(analysis)
+            self.execute_feedback(analysis)
+            self.assertEqual([c.args[0].stage for c in call.call_args_list], ['descriptions', 'coaching'])
+        job = self.job(analysis)
+        self.assertEqual((job.schema_version, job.prompt_digest), identity)
+        self.assertEqual(job.description_set.schema_version, 'description-v1')
+        self.assertEqual(job.input_hash, call.call_args.args[0].input_hash)
+        self.assertEqual(self.feedback_state()['selection']['token'], token)
+        self.assertEqual(self.feedback_state()['state'], 'completed')
+        current = self.admit_feedback(self.new_attempt())
+        new = self.job(current)
+        self.assertEqual(new.schema_version, 'coaching-gemini-v2')
+        self.assertNotEqual(new.description_set_id, job.description_set_id)
+        self.assertNotEqual(new.prompt_digest, job.prompt_digest)
+        self.assertNotEqual(self.feedback_state(current.attempt)['selection']['token'], token)
+
+    def test_schema_only_disclosure_change_rejects_initial_admission(self):
+        from types import SimpleNamespace
+        from .services.feedback_config import coaching_digest, selection_descriptor
+        legacy = SimpleNamespace(prompt_version='coaching-v1', schema_version='coaching-v1',
+                                 prompt_digest=coaching_digest('gemini', 'coaching-v1'))
+        descriptor = selection_descriptor(self.legacy_selection(), job=legacy, coaching=True)
+        with patch.object(provider, 'request_raw') as call:
+            response = self.client.post(self.feedback_url + 'generate/', {'expected_selection': descriptor['token']}, format='json')
+            self.assertEqual(response.status_code, 409)
+            self.assertEqual(response.data['error']['code'], 'selection_mismatch')
+            self.assertFalse(FeedbackAnalysis.objects.exists())
+            self.assertFalse(DescriptionSet.objects.exists())
+            self.assertFalse(FeedbackRequest.objects.exists())
+            call.assert_not_called()
+
+    def test_legacy_retry_keeps_original_hash_and_schema_after_rejection(self):
+        self.complete(self.admit_legacy())
+        analysis = self.legacy_analysis()
+        with patch.object(provider, 'request_raw', side_effect=lambda p: self.coaching_receipt(p, status=400, body=b'{}')) as call:
+            self.execute_feedback(analysis)
+            service.recover_coaching()
+            self.execute_feedback(analysis)
+            self.assertEqual(call.call_count, 1)
+        old = self.job(analysis)
+        request = FeedbackRequest.objects.get(coaching_job=old)
+        self.assertEqual((request.outcome, request.error_code), ('rejected', 'provider_rejected'))
+        token = self.feedback_state()['selection']['token']
+        analysis = self.admit_feedback(payload={'feedback_revision': 1, 'expected_selection': token})
+        with patch.object(provider, 'request_raw', side_effect=self.coaching_receipt) as call:
+            self.execute_feedback(analysis)
+            self.execute_feedback(analysis)
+            self.assertEqual(call.call_count, 1)
+        new = self.job(analysis)
+        self.assertEqual((new.schema_version, new.prompt_digest, new.input_hash),
+                         (old.schema_version, old.prompt_digest, old.input_hash))
+        self.assertEqual(FeedbackRequest.objects.filter(stage='coaching').count(), 2)
+        self.assertEqual(self.feedback_state()['state'], 'completed')
+
+    def test_legacy_receipts_recover_without_call_even_after_edit_or_retry(self):
+        self.complete(self.admit_legacy())
+        for supersession in ['none', 'edit', 'retry']:
+            with self.subTest(supersession=supersession):
+                self.attempt = self.new_attempt()
+                analysis = self.legacy_analysis()
+                value, job, prepared, request = self.submit_only(analysis)
+                self.expire(analysis)
+                if supersession == 'edit':
+                    descriptions.edit(value.deck_id, self.edited(value))
+                elif supersession == 'retry':
+                    service.recover_coaching()
+                    analysis = self.admit_feedback(payload={'feedback_revision': 1, 'acknowledge_uncertain': True})
+                service.save_receipt(value, job, request, self.coaching_receipt(prepared))
+                before_set = DescriptionSet.objects.filter(pk=value.pk).values().get()
+                next_job = analysis.jobs.filter(generation=2).values().first()
+                with patch.dict('os.environ', {'FEEDBACK_ENABLED': 'false', 'GEMINI_API_KEY': ''}), \
+                        patch.object(descriptions, 'prepare_saved', side_effect=AssertionError('No media for receipt')), \
+                        patch.object(provider, 'request_raw') as call, \
+                        patch.object(provider, 'normalize', wraps=provider.normalize) as normalize:
+                    service.recover_coaching()
+                    service.run_coaching(analysis.pk, 1)
+                    service.run_coaching(analysis.pk, 1)
+                    call.assert_not_called()
+                    self.assertEqual(normalize.call_count, 1)
+                request.refresh_from_db()
+                self.assertEqual(request.outcome, 'completed')
+                self.assertEqual(request.input_hash, prepared.input_hash)
+                self.assertEqual(FeedbackRequest.objects.filter(coaching_job__analysis=analysis).count(), 1)
+                old = analysis.jobs.get(generation=1)
+                self.assertEqual((old.schema_version, old.prompt_digest, old.input_hash),
+                                 (job.schema_version, job.prompt_digest, prepared.input_hash))
+                self.assertEqual(DescriptionSet.objects.filter(pk=value.pk).values().get(), before_set)
+                self.assertEqual(analysis.jobs.filter(generation=2).values().first(), next_job)
+                self.assertEqual(old.result is not None, supersession == 'none')
+
+    def test_unknown_saved_coaching_schema_with_no_hash_cannot_submit(self):
+        analysis = self.ready()
+        analysis.jobs.update(schema_version='coaching-future')
+        with patch.object(provider, 'request_raw') as call:
+            self.execute_feedback(analysis)
+            call.assert_not_called()
+        self.assertFalse(FeedbackRequest.objects.filter(stage='coaching').exists())
+        self.assertEqual(self.feedback_state()['error']['code'], 'snapshot_unavailable')

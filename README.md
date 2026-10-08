@@ -6,7 +6,7 @@ An Android presentation practice app connecting PDF slides, recordings, slide-al
 
 The backend coordinates a durable PostgreSQL queue, packaged Silero speech-presence check, hosted `whisper-1`, private raw-response persistence, normalized transcript, chronological slide visits and timing/rate estimates. Rehearsal coaching has an explicit durable generation API and remains disabled by default; its API and deck-description APIs are described below. See the [API contract](docs/api-contract.md) for revision-aware retries and uncertain outbound requests. Historical standalone adapter/alignment work is now integrated; its older pilot evidence does not establish this pipeline's live accuracy.
 
-[AI feedback checkpoints 1–4](docs/ai-feedback.md) provide Gemini/OpenAI adapters, durable descriptions/coaching and feedback review in the existing saved-rehearsal screen. Generate/Retry is explicit, with provider/model disclosure, separate consent and charge acknowledgement, offline caches, at most three evidence-linked suggestions and revision-checked description editing. Description edits make affected feedback stale; regeneration reuses the saved transcript without Whisper. Provider selection remains backend configuration. The user authorized **all remaining checkpoints with checks between them, on one eventual PR**. This bounded patch implements checkpoint 4 on `e31937b`; checkpoint 5 live evaluation, runner independent review/coordinator checks and human inspection remain pending.
+[AI feedback checkpoints 1–4](docs/ai-feedback.md) provide Gemini/OpenAI adapters, durable descriptions/coaching and feedback review in the existing saved-rehearsal screen. Generate/Retry is explicit, with provider/model disclosure, separate consent and charge acknowledgement, offline caches, at most three evidence-linked suggestions and revision-checked description editing. Description edits make affected feedback stale; regeneration reuses the saved transcript without Whisper. Provider selection remains backend configuration. All five checkpoints are authorized with checks between them, on one eventual `feature/ai-feedback` PR stacked on `feature/rehearsal-review` while unmerged. Checkpoint 4 is independently reviewed and coordinator-verified at `64ec596`; checkpoint 5 is in progress with a bounded Gemini schema compatibility repair. Its independent review, coordinator verification and final [controlled evaluation](docs/feedback-evaluation.md) remain pending; human review is still pending.
 
 Detected no-speech saves an empty transcript, chronological visits with empty word lists, and timing metrics over the original recording duration, with zero provider requests. Repeated, backward and zero-duration visits remain visible in the result data.
 
@@ -124,8 +124,8 @@ Checkpoint 2 passed independent AI review, Django system/migration checks and
 172 tests on real PostgreSQL. Synthetic checks verified Redis/Celery/Beat
 recovery and API/database restart with unchanged saved media. See the
 [checkpoint evidence](docs/ai-use.md#2026-10-08--ai-feedback-checkpoint-2-coordinator-handoff).
-Human inspection remains pending; live-provider evaluation and coordinator
-validation of the new mobile feedback controls are separate checks.
+Human inspection remains pending. Checkpoint-4 coordinator evidence for the mobile
+feedback controls is linked below; live-provider quality is evaluated separately.
 
 In backend configuration, set `FEEDBACK_ENABLED=true`, select `FEEDBACK_PROVIDER`,
 and configure that provider's model, key and nonsecret `FEEDBACK_*_PROJECT_ID`.
@@ -138,7 +138,12 @@ application units, not provider-perfect token counts or a monetary cap.
 Gemini daily windows use America/Los_Angeles midnight; OpenAI's optional daily
 ceiling is an application policy using UTC midnight.
 
-Saved retries retain provider/project/model/prompt/schema/source selection.
+Defaults remain exactly `gemini-3.1-flash-lite` / `gpt-6-luna`, configurable, with
+feedback disabled until configured and no substitution or fallback. New Gemini
+requests use provider-specific wire schemas; local validation and OpenAI's strict
+schemas are unchanged. See [schema compatibility](docs/ai-feedback.md#checkpoint-5-gemini-schema-compatibility).
+Saved retries retain provider/project/model/prompt/schema/source selection,
+including the legacy wire schema; retrying an old rejected set does not upgrade it.
 Project configuration changes block old submissions; same-project key rotation is
 allowed. Unknown submitted outcomes retain reservations and require explicit
 acknowledgement before a new generation. Saved receipts recover without another
@@ -187,7 +192,8 @@ Run the full backend and mobile checks below. New PostgreSQL-only races are in
 preserves checkpoint-2 descriptions/requests/reservations plus attempts and Whisper.
 Actual writer outcomes are in [AI-use](docs/ai-use.md). Real PostgreSQL/Redis/Celery
 crash/restart validation belongs to the coordinator, using synthetic fake providers.
-No live-provider, Android device, quality or human-review pass is claimed here.
+Checkpoint-3/4 coordinator infrastructure and emulator outcomes are recorded in
+AI-use; they do not establish this new repair's live compatibility, quality or human review.
 
 ## Feedback review (checkpoint 4)
 
@@ -196,8 +202,10 @@ provider selection before any submission. First use names Gemini or OpenAI and t
 configured model, explains the slide images/text, descriptions, saved transcript
 and optional audience context sent, and explicitly excludes audio. Continue/Cancel
 are separate from Whisper consent. Consent is local to the normalized API address,
-provider and disclosure version. A changed selection returns 409 before admission;
-review the refreshed disclosure and choose generation again. Saved retries retain
+provider and disclosure version. Mobile supplies `expected_selection`; a changed
+selection returns 409 before admission. On a mismatch, review the refreshed disclosure
+and choose generation again. Legacy callers may omit that optional field and
+therefore do not get this disclosure-race comparison guard. Saved retries retain
 their original provider/model. There is no provider picker.
 
 Cached suggestions and descriptions open immediately. Failed refreshes retain them
@@ -213,7 +221,10 @@ failed/all-invalid outputs are distinct. Quotes expand as **Slide description**
 (with captured generated/edited-set origin, unavailable for legacy snapshots) and
 **Transcript excerpt**. Valid evidence seeks through the existing player and native
 PDF clock, preserving playing/paused intent; stale/invalid evidence or absent
-media/page metadata disables that action while leaving text readable.
+media/page metadata disables that action while leaving text readable. Seeking goes
+to the evidence start; it does not automatically play or stop at the excerpt end.
+See [small illustrative suggestions](docs/ai-feedback.md#illustrative-feedback-experience)
+for consistency, clarity and optional-audience examples, distinct from measured output.
 
 Validated saved descriptions remain readable and editable if presentation metadata
 cannot load; evidence playback still requires known actual pages. Expand a slide's
@@ -224,13 +235,16 @@ Reload/Cancel; Reload resumes active-job polling while focused and foregrounded.
 Generation is disabled while editing. Save does not generate feedback
 or retranscribe audio; choose **Regenerate feedback** explicitly afterward.
 
-Writer checks after review repair: **270 mobile tests**, TypeScript/lint and Android JS export passed;
-Django system/migration checks passed and **229 tests ran on SQLite (18 PostgreSQL
-checks skipped)**. Exact commands and boundaries are in
-[AI-use](docs/ai-use.md#2026-10-08--ai-feedback-checkpoint-4-review-repair).
-The coordinator still needs real PostgreSQL/API/worker and Android emulator checks;
-human accessibility, physical-phone listening/synchronization and model quality
-are not established by these tests.
+Checkpoint 4 passed independent review, **270 mobile tests**, TypeScript/lint,
+Android JS export, Django system/migration checks, **229 SQLite tests (18 skips)**
+and **229/229 real PostgreSQL tests**. Agent-operated emulator checks covered
+disclosure/cancellation, editing/staleness/regeneration, offline restart and evidence
+seek with synthetic providers. See [coordinator evidence](docs/ai-use.md#2026-10-08--checkpoint-4-coordinator-verification).
+Those results precede the checkpoint-5 backend repair. Its local checks passed
+**243 SQLite tests (18 skips)** and system/migration checks; renewed independent
+review, PostgreSQL/worker verification and live Gemini generation remain pending.
+Human accessibility, physical-phone listening/synchronization and model quality
+are separate from these automated/emulator checks.
 
 ## App connection
 
