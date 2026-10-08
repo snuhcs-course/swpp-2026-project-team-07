@@ -17,8 +17,7 @@ urlpatterns = [
     ),
     path(
         "attempts/<uuid:attempt_id>/process/",
-        views.feature_pending,
-        {"feature": "Background processing and retry"},
+        views.process_attempt,
     ),
     path("decks/<uuid:deck_id>/", views.deck_detail),
     path("decks/<uuid:deck_id>/attempts/", views.deck_attempts),

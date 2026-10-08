@@ -167,6 +167,80 @@ test('submitted on another server resolves a new mapping and uploads with the sa
   assert.equal(audioRequests().length, 1);
 });
 
+test('selected API reuses only its own deck mapping and normalizes completed upload deduplication', async () => {
+  const { id, localId, key } = setup();
+  const selectedApi = 'http://selected.invalid/api';
+  const selectedDeck = '22222222-2222-4222-8222-222222222222';
+  writeStored(key, DECK);
+  writeStored(`server-deck:${selectedApi}:${localId}`, selectedDeck);
+  network.respond = (url, init) => {
+    if (url === `${selectedApi}/decks/${selectedDeck}/`) return response(200, { id: selectedDeck, page_count: 2 });
+    if (url === `${selectedApi}/attempts/`) return response(201, { attempt_id: id });
+    throw new Error(`Wrong upload destination: ${url}`);
+  };
+  await uploadAttempt(id, `${selectedApi}/`);
+  await uploadAttempt(id, selectedApi);
+  assert.deepEqual(network.requests.map(r => r.url), [`${selectedApi}/decks/${selectedDeck}/`, `${selectedApi}/attempts/`]);
+  assert.equal(JSON.parse(audioRequests()[0].body.get('metadata')).deck_id, selectedDeck);
+  assert.equal(serverDeckId(localId), DECK);
+  assert.equal(serverDeckId(localId, `${selectedApi}/`), selectedDeck);
+  assert.equal(getSavedAttempt(id).server_url, selectedApi);
+});
+
+test('overlapping uploads deduplicate per API and late old-server completion cannot replace the selected-server checkpoint', async () => {
+  const { id, localId } = setup();
+  const selectedApi = 'http://selected.invalid/api';
+  const selectedDeck = '22222222-2222-4222-8222-222222222222';
+  let finishOld;
+  network.respond = (url, init) => {
+    if (url === `${API_URL}/attempts/`) return new Promise(resolve => { finishOld = () => resolve(response(201, { attempt_id: id })); });
+    if (url === `${selectedApi}/decks/`) return response(201, { deck: { id: selectedDeck, page_count: 2 } });
+    return success(url, init);
+  };
+  const old = uploadAttempt(id);
+  await new Promise(setImmediate);
+  try {
+    const selected = uploadAttempt(id, selectedApi);
+    const duplicate = uploadAttempt(id, `${selectedApi}/`);
+    assert.equal(selected, duplicate);
+    assert.notEqual(selected, old);
+    assert.equal(isUploading(id), true);
+    assert.equal(isUploading(id, selectedApi), true);
+    await selected;
+    assert.equal(isUploading(id, selectedApi), false);
+    assert.equal(isUploading(id), true);
+    finishOld(); await old;
+    assert.deepEqual(audioRequests().map(r => r.url), [`${API_URL}/attempts/`, `${selectedApi}/attempts/`]);
+    assert.equal(serverDeckId(localId), DECK);
+    assert.equal(serverDeckId(localId, selectedApi), selectedDeck);
+    assert.equal(getSavedAttempt(id).server_url, selectedApi);
+    assert.equal(getSavedAttempt(id).recording.deck_id, selectedDeck);
+    assert.equal(getSavedAttempt(id).state, 'submitted');
+  } finally { finishOld?.(); await old; }
+});
+
+test('selecting an already active destination again reuses its upload and restores its checkpoint ownership', async () => {
+  const { id } = setup();
+  const otherApi = 'http://other.invalid/api';
+  const completions = new Map();
+  network.respond = (url, init) => {
+    if (url.endsWith('/attempts/')) return new Promise(resolve => completions.set(url, () => resolve(response(201, { attempt_id: id }))));
+    return success(url, init);
+  };
+  const first = uploadAttempt(id);
+  await new Promise(setImmediate);
+  const other = uploadAttempt(id, otherApi);
+  await new Promise(setImmediate);
+  try {
+    assert.equal(uploadAttempt(id, `${API_URL}/`), first);
+    completions.get(`${API_URL}/attempts/`)(); await first;
+    completions.get(`${otherApi}/attempts/`)(); await other;
+    assert.equal(audioRequests().length, 2);
+    assert.equal(getSavedAttempt(id).server_url, API_URL);
+    assert.equal(getSavedAttempt(id).state, 'submitted');
+  } finally { for (const finish of completions.values()) finish(); await Promise.all([first, other]); }
+});
+
 test('failed status persistence cannot hide the original upload conflict', async () => {
   const { id } = setup();
   network.respond = (url, init) => {

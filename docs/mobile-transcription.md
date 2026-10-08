@@ -1,8 +1,6 @@
 # Mobile transcription client
 
-This increment implements mobile requests independently of microphone capture.
-The app's result screen displays the saved Whisper TTS transcript with explicit preview controls. The server feature
-routes still return HTTP 501, and no real mobile upload is claimed yet.
+Saved real recordings use `SavedAttemptScreen` and `useAttemptAnalysis`: upload alone, explicit Analyze with local consent, stage/Refresh/revision-aware Retry, uncertainty confirmation and a plain real transcript. Results are cached in SQLite by API address and attempt ID. Local replay and the separate sample preview remain available. See [api-contract.md](api-contract.md) for the current wire format and [ai-use.md](ai-use.md) for verification limits.
 
 ## Entry point
 
@@ -11,12 +9,14 @@ It uses the existing `EXPO_PUBLIC_API_URL` setting, Expo File, and Expo fetch.
 The provider key stays on the backend. No new library dependency is added.
 The pure request logic is in `client.ts`, tested with injected files and HTTP responses.
 
+No-speech results use the normal visits/metrics schema: an empty transcript, empty word lists within timeline-derived visits, and timing metrics over the recording duration. The validator accepts zero-duration, repeated and backward visits and rejects the earlier empty metrics object. No native API or playback behavior changes are required for this result shape.
+
 - `submit(recording, {signal?})`: accepts the existing `LocalRecording` contract;
   uploads multipart `audio` and a JSON `metadata` string, then requests processing.
-  It expects HTTP 201 and 202 with the same attempt ID. It does not return a transcript.
+  This legacy combined helper is not used by the saved-recording flow; that flow calls `upload` and `process` separately.
 - `getResult(attemptId, {signal?})`: fetches and validates one `AttemptResult`.
-- `retry(attemptId, {signal?})`: requests processing again for an already uploaded
-  attempt. It does not re-upload the file or allocate another ID.
+- `process(attemptId, payload?, {signal?})`: explicitly requests analysis and validates a full result from HTTP 200/202.
+- `retry(attemptId, {processing_revision, acknowledge_uncertain?}, {signal?})`: retries an already uploaded attempt with a current revision. It does not re-upload or allocate another ID.
 - `waitForResult(attemptId, {signal?, intervalMs?, maxAttempts?})`: polls sequentially
   until completed or failed. Defaults: 2-second interval, at most 60 requests.
   Each HTTP request has a 60-second timeout, including response-body parsing.
@@ -67,7 +67,7 @@ Expo integration references: [Expo SDK 57 fetch](https://docs.expo.dev/versions/
 and the installed SDK's `expo-file-system` File types. The versioned filesystem
 web page was unavailable during this task; local installed API/type checks passed.
 
-## Next integration steps
+## Historical integration checklist (superseded by the current contract)
 
 1. The recorder hands off `LocalRecording` when implemented; this service can be
    tested independently in the meantime.
@@ -94,8 +94,7 @@ and teammates need their own copy of this test audio. Nothing is uploaded.
 Processing/failure/retry previews remain under the collapsed Preview other states
 control. They simulate states locally and make no server/provider call. Leaving the
 screen pauses playback. Pending replay seeks cannot restart after navigation or a
-new source selection. Live recording, server-result wiring and slide-specific display
-remain pending. Automatic transcript scrolling is not implemented.
+new source selection. This paragraph describes the historical sample screen; the saved-recording screen now shows real results separately. Full synchronized real review remains outside the processing stage. Automatic transcript scrolling is not implemented.
 
 To inspect on Android, use Open sample slides → Preview rehearsal → Preview
 transcript and feedback:

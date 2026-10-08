@@ -278,7 +278,8 @@ function RehearsalAttempt({ retrySlide, onFailure, savedPreview, onSaved, onStar
       <View style={styles.banner}>
         <Text style={styles.bannerText}>
           {pdfUri ? "ON-DEVICE PDF" : "SAMPLE SLIDES"} · Recording and slide visits
-          are saved on this device for imported PDFs. Upload can be retried; analysis is not connected yet.
+          are saved on this device for imported PDFs. Upload the saved recording,
+          then choose Analyze recording to start analysis. Upload can be retried.
         </Text>
       </View>
       <View style={styles.between}>
