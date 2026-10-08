@@ -1,6 +1,6 @@
 # Mobile transcription client
 
-Saved real recordings use `SavedAttemptScreen` and `useAttemptAnalysis`: upload alone, explicit Analyze with local consent, stage/Refresh/revision-aware Retry, uncertainty confirmation and a plain real transcript. Results are cached in SQLite by API address and attempt ID. Local replay and the separate sample preview remain available. See [api-contract.md](api-contract.md) for the current wire format and [ai-use.md](ai-use.md) for verification limits.
+Saved real recordings use `SavedAttemptScreen` and `useAttemptAnalysis`: finishing capture opens the result, uploads and starts transcription automatically after first-use disclosure. A consumed, API-pinned local intent prevents reopening from repeating automatic work. Cancelled/older recordings retain Analyze; failed or uncertain requests retain explicit revision-aware Retry and charge acknowledgement. Stage/Refresh controls and the plain transcript remain available. Results are cached in SQLite by API address and attempt ID. Local replay and the separate sample preview remain available. See [api-contract.md](api-contract.md) for the current wire format and [ai-use.md](ai-use.md) for verification limits.
 
 ## Entry point
 
