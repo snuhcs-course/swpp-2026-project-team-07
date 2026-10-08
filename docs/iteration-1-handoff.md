@@ -1,6 +1,6 @@
 # Iteration 1 team handoff
 
-The scaffold/branch, hosted-processing, rehearsal-review and checkpoint-2/3 sections below are historical. Checkpoint 4 records its completed coordinator verification; the final checkpoint-5 section describes the current bounded repair and pending evaluation.
+The scaffold/branch, hosted-processing, rehearsal-review and checkpoint-2/3 sections below are historical. Checkpoint 4 records its completed coordinator verification; the final checkpoint-5 section records completed controlled evaluation and its remaining human/device limits.
 
 This is a shared starting scaffold based on the submitted Expo/React Native/TypeScript Android + Django REST architecture. Hours are outside this task. The schedule does not establish individual feature owners; assign names as a team.
 
@@ -246,39 +246,16 @@ TalkBack, extended text/keyboard layout, physical-phone audible synchronization 
 human inspection remain pending. No live generation occurred in those emulator
 checks. Their results do not verify the new checkpoint-5 backend repair below.
 
-## AI feedback checkpoint 5 — bounded compatibility repair (2026-10-08)
+## AI feedback checkpoint 5 — controlled evaluation and publication (2026-10-08)
 
-Starting from `64ec5960013f1fd36be0d1142bed9c1574bd66bb`, the sole writer repaired
-Gemini schema preparation only. New Gemini description/coaching schemas remove
-unsupported string keywords and translate integer exclusive maxima; all local
-validation and OpenAI's strict schemas remain intact. Provider-specific versions
-enter cache/digest/request/selection identities. Legacy queued jobs, explicit
-retries and receipts retain their original contracts, including coaching waiting
-for descriptions before a request hash exists. No migrations/dependencies or mobile
-polish are included. The [schema notes](ai-feedback.md#checkpoint-5-gemini-schema-compatibility)
-describe the compatibility hypothesis and legacy retry limitation.
+All five checkpoints are implemented on `feature/ai-feedback`, for one PR stacked on `feature/rehearsal-review` while unmerged. No merge is authorized. Feedback defaults to disabled; backend configuration selects exactly one provider/model for descriptions and coaching. Defaults remain `gemini-3.1-flash-lite` and `gpt-6-luna`, with no fallback or automatic retry.
 
-Coordinator reports a complete Gemini baseline HTTP 400 rejection after successful
-exact-model metadata lookup, and OpenAI baseline description/coaching success on
-the same saved input. These do not prove repaired Gemini compatibility or semantic
-usefulness. Final sanitized outputs/counts/usage, shared fixture identities,
-description accuracy/uncertainty and injection/agent-rubric results remain pending
-in [the evaluation record](feedback-evaluation.md). No retranscription is authorized
-or conducted by this checkpoint. Defaults remain exactly `gemini-3.1-flash-lite` /
-`gpt-6-luna`, configurable, disabled until configured and without fallback.
+Live Gemini testing exposed a schema-complexity rejection. New descriptions use `description-gemini-v3`, removing wire array bounds while local validation retains every slide/fact bound. Saved v1/v2 contracts and all coaching/OpenAI payload identities remain reconstructable. Both failed Gemini scopes and diagnostic history were preserved. See [schema details](ai-feedback.md#checkpoint-5-gemini-schema-compatibility).
 
-Local checks passed: 243 SQLite tests (18 PostgreSQL-only skips), Django system and
-migration-drift checks. Focused regressions cover unsupported schema detection,
-local rejection, unchanged OpenAI/legacy hashes, new scope/disclosure identities
-and legacy receipt recovery with no duplicate calls. The runner stages and runs
-mandatory checks/independent review; coordinator PostgreSQL/worker/recovery and
-controlled Gemini verification must follow review on the exact repaired snapshot.
-Final evaluation documentation follows the sanitized live evidence in a bounded
-documentation run. Human review, physical-phone listening, TalkBack and extended
-keyboard/long-text checks remain pending.
+Verification passed: 247 SQLite tests (18 PostgreSQL-only skips), 247/247 real PostgreSQL tests, Django system/migration checks and independent staged review. Real-worker v2/v3 tests killed the worker after a saved response, aged the claim, restarted with generation disabled, and recovered without a second synthetic provider call. Mobile remains the independently reviewed checkpoint-4 snapshot: 270 tests, TypeScript/lint, Android export and synthetic-provider emulator disclosure/edit/stale/regenerate/offline/evidence-seek checks.
 
-All five checkpoints remain one eventual `feature/ai-feedback` PR stacked on
-`feature/rehearsal-review` while unmerged. Prototype attribution and dependency
-advisory assessment remain unchanged. The writer stops before live calls, commit
-or publication; the coordinator handles authorized publication and pending human
-inspection. No named owner's approval is inferred.
+Controlled full runs used identical saved pilot/adversarial inputs. OpenAI returned 1 baseline and 3 adversarial accepted cards. Gemini returned 2 baseline cards and a partial adversarial result (1 accepted, 1 discarded for a speech-quote mismatch). Each successful scope made four description/coaching calls. Refreshes, duplicate tasks and API/worker/Beat restart reused results, preserving media/source hashes, processing revision 1 and one existing Whisper record; no new transcription occurred. All seven accepted cards passed the real mobile parser/seek gate. [The evaluation](feedback-evaluation.md) records versions, token usage, earlier failures and diagnostic call accounting.
+
+Agent assessment found useful 50%/20% discrepancy feedback, but also generic advice, a possible slide-number false positive, a weak OpenAI chart claim and a Gemini description overstatement. Human usefulness, Korean quality, physical-phone listening/synchronization, TalkBack and extended keyboard/long-text usability remain pending. This small English fixture does not prove prompt-injection immunity or a provider quality ranking. Existing dependency advisories and legacy callers' omitted-selection-assertion limitation remain documented.
+
+Reviewed/tested application bytes were transferred exactly; coordinator documentation records the separate live and emulator evidence. Prototype and unrelated worktrees remain preserved. Human review is pending. Publication uses only `feature/ai-feedback`; the proposed next implementation is UI polish (`feature/practice-ui`) and requires user confirmation. Feedback/Playback tabs, themes, comparison, deletion, authentication and public deployment remain outside this feature.
