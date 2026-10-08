@@ -454,6 +454,15 @@ This file does not automatically publish or submit the course report.
 - AI review: this staged snapshot is being sent to an independent reviewer; local evidence is round-2/reviewer/answer.json. This entry does not claim a pass.
 - Human corrections/review, changed Android flows, and any required real database/worker/provider validation remain pending. No commit or push is authorized by this run.
 
+### 2026-10-08 — rehearsal-review round-2 findings repair
+
+- Tool/request: sole local Codex implementation writer, configured model unchanged; repair the three confirmed round-2 review findings within the approved rehearsal-review scope, preserving staged work. No named owner approval is inferred.
+- Incorporated changes: `SavedAttemptScreen.tsx` routes EOF through `playback.ts` and reads fresh native position; newer queued/running seeks retain playing intent while natural EOF, an unsuperseded seek to the end and explicit Pause stop playback. `useReviewMedia.ts` binds error callbacks to source URI and focus session, rejecting detached/background callbacks without clearing good replacement files. `useReviewDeck.ts` exposes its cancellable refresh through the existing Refresh action, preserving cached metadata and rejecting superseded/lifecycle/API callbacks. README, contract and handoff describe the changes; existing prototype attribution is retained. No backend, provider, schema or dependency changes.
+- Regression evidence: three new synthetic screen tests failed before production edits, reproducing every finding, then passed after repair. Twelve added tests in `playback.test.mjs` and `review-screen.test.mjs` cover queued/running/delayed EOF, normal completion/replay/Pause, replacement PDF errors and retained sources across background/navigation, missing-metadata recovery, cached-deck failure, superseded refresh and cancellation on background/navigation/API change. In-memory files, mocked HTTP and native events only; review requests remain GETs.
+- References: fetched matching [Expo 57 audio](https://docs.expo.dev/versions/v57.0.0/sdk/audio/) and [Router](https://docs.expo.dev/versions/v57.0.0/sdk/router/) docs and inspected installed Android status emission. The repair reuses existing native APIs; no new dependencies were installed.
+- Fresh checks from `mobile/`: `EXPO_NO_DOTENV=1 node --test tests/playback.test.mjs tests/review-screen.test.mjs tests/saved-attempt.test.mjs` passed **68/68**; `EXPO_NO_DOTENV=1 npm run check` passed TypeScript, lint and **179/179** tests; `EXPO_NO_DOTENV=1 npm run bundle:android` exported **1,393 modules** successfully. `git diff --check` passed. Existing Node module-format, react-test-renderer deprecation and export color notices remain. No checks were disabled.
+- Pending: runner staging, mandatory checks and independent review of these fixes, followed by human inspection. Coordinator should repeat Android EOF/newer-seek/Pause ordering, PDF replacement/lifecycle errors, metadata recovery, offline reopening and API switching with the saved pilot and **zero additional provider requests**. Prior coordinator backend/PostgreSQL/media-restart/device evidence was not rerun by this writer; physical-phone/audible synchronization remains unverified. These repairs are unstaged on top of the runner's existing staged patch. No staging, commits, publication, delegation, credential/private-media reads or live provider calls were performed by this writer.
+
 ### 2026-10-08 — coordinator repair: silent timelines and Torch pins (Codex)
 
 - Representative request: correct only no-speech visits/metrics and upgrade the audited Torch/Torchaudio pair, preserving earlier review fixes. Incorporated changes: `processing.py` durably saves the empty transcript/outcome then uses existing alignment and timing metrics; mobile result validation/types require the normal metrics shape and empty words for silent visits; focused processing/client/model regressions and linked API/setup/handoff documentation. No other processing, replay, native API or admission behavior was redesigned. Existing prototype `33907d3` alignment/metrics attribution above remains unchanged; no further prototype code was copied.
@@ -500,6 +509,148 @@ This file does not automatically publish or submit the course report.
 - Remaining boundaries: physical-phone audible quality/hardware interruptions, human speech and Korean VAD evaluation, native API-switch/background/rapid-tap stress checks, and human code review remain pending. Automated tests cover API-switch/offline cache and lifecycle cases. No feedback adapters or synchronized review UI were added. No credentials, recordings, generated native projects, dependencies, test harnesses or pipeline logs are committed.
 - Publication is authorized as one `feature/whisper-api-processing` PR based on still-open `feature/recording-storage-upload` (storage PR #18). No merge is authorized. Next proposed implementation is `feature/rehearsal-review`; stop for user confirmation before starting it.
 
+## 2026-10-08 — rehearsal-review implementation and native status repair
+
+- Tool/request: local Codex implementation writer, configured model unchanged. Continue the approved rehearsal-review patch from Whisper PR #19 (`c7733d8288833b010948d2c5737929088547aa1e`), finish docs/tests and investigate coordinator-reported first-download/background playback status. This later authorization supersedes the preceding stage's stop instruction. No named owner approval is inferred.
+- Incorporated material: validated mobile deck/history/review models, API-scoped additive SQLite records, independent bounded audio/PDF recovery and native validators, Library history and saved-attempt synchronization/transport. Existing Analyze/disclosure/Refresh/revision retry/uncertain-charge safety and upload/recovery foundations are retained. Prototype `33907d3` was inspected read-only; native PDF rendering, chronological visit lookup and verbatim transcript span/highlight/seek concepts were adapted from `PlaybackSlide.tsx`, `PlaybackTranscript.tsx` and `playback.ts`. `ResultsScreen.tsx` and `transcriptLayout.ts` informed comparison; their theme, tabs, feedback, local transcription and follow-scroll behavior were not copied. No backend/provider/schema/dependency changes.
+- Native diagnosis/repair: installed `expo-audio` 57.0.5 creates a new player for a source change; its status hook uses Expo's `useEvent`, whose state is initialized only once. A synthetic event fixture reproduced disabled Play after a null→downloaded-URI change before repair. `useReviewPlayerStatus.ts` now binds snapshot/subscription to native player identity, rejects detached callbacks and refreshes across lifecycle changes. `useReviewMedia.ts` preserves an unchanged validated source during revalidation. Playback intent resets on blur/background, and foreground reasserts pause because Android's native host may resume before the JS callback. Regression tests cover first-download readiness, missed pause events, retained native position, focus return and host auto-resume. Strict result validation moved unchanged into `resultValidation.ts` to remove the confirmed client/review-validation import cycle; a local source import-graph check found no remaining transcription cycles.
+- API references: fetched matching [Expo 57 audio](https://docs.expo.dev/versions/v57.0.0/sdk/audio/) and [FileSystem](https://docs.expo.dev/versions/v57.0.0/sdk/filesystem/) docs; checked installed hook, `AudioPlayer.currentStatus`/event types and Android lifecycle implementation. No dependency installation or native configuration edit.
+- Fresh writer checks from `mobile/`: `EXPO_NO_DOTENV=1 npm run check` passed TypeScript, lint and **156/156 tests**; `EXPO_NO_DOTENV=1 npm run bundle:android` passed. `git diff --check` passed. New tests use synthetic files/responses/native events; no device or provider execution is implied. Existing Node module-format, react-test-renderer deprecation and export color notices remain. Initial regression failure and lint failures were repaired before these final passing checks; no checks were disabled.
+- Coordinator-supplied preliminary evidence, before this status repair: server-only saved-pilot audio/PDF recovery worked after reopening; offline force-stop/reopen retained media; paused 5→10-second seek rendered actual PDF page 4. Coordinator reported unchanged API/pilot metadata and one existing provider request. The writer did not inspect pilot media or run those native checks. First-download Play readiness and Play→HOME→return require stable final-code reruns; hot reload was not accepted as an established cause.
+- Pending handoff: runner stages the exact patch, runs mandatory checks and requests independent review; coordinator verifies real PostgreSQL/API/media/server restart and Android flows using the saved pilot with **zero additional provider requests**. Physical-phone/audible quality, teammate/human review and final native confirmation remain pending. This writer left all changes unstaged and made no commits, pushes, merges, external publication, delegation, credential/private-media reads or live provider calls.
+
+
+### Local agent pipeline 20261008T035437Z-aea489
+
+- Tool: separate local Codex CLI planner, investigators, implementer and reviewer sessions.
+- Requested scope and incorporated material: see the task-level entry above and staged diff.
+- Check: git diff --cached --check — exit 2.
+- Check: npm run check — exit 0.
+- Check: npm run bundle:android — exit 0.
+- AI review: this staged snapshot is being sent to an independent reviewer; local evidence is round-0/reviewer/answer.json. This entry does not claim a pass.
+- Human corrections/review, changed Android flows, and any required real database/worker/provider validation remain pending. No commit or push is authorized by this run.
+
+
+### 2026-10-08 — rehearsal review coordinator verification
+
+- Base: PR #19 head `c7733d8288833b010948d2c5737929088547aa1e`; publication targets `feature/rehearsal-review`, stacked on `feature/whisper-api-processing`. Neither PR is authorized for merge.
+- Local runner preflight and 16 runner tests passed using configured Codex model without override. Planner and parallel investigators completed; initial writer reached its 1,200-second timeout with work preserved. One bounded sequential continuation finished the implementation and native-status repair. Independent staged review is pending at this entry.
+- Coordinator baseline Django system check, 74 tests (five PostgreSQL skips on SQLite), migration-drift check and all 74 tests against isolated real PostgreSQL passed. Backend source and dependencies are unchanged by this stage. Mobile writer checks passed with 156 tests plus Android export; final pipeline checks/review supersede these provisional counts.
+- Isolated API restart preserved the saved synthetic pilot's original audio/PDF hashes, history, revision 1 and one existing ProviderRequest. No new provider call or credential was needed; review API ran without a key or worker. Existing prototype services were left unchanged.
+- Agent-operated Android emulator checks used the saved 16.168-second synthetic hosted Whisper pilot: server-only attempt-ID review; real PDF and transcript rendering; audio download; actual 3 → 4 → 3 visits; previous-visit seek to 6 seconds; paused +5-second seeks from 5 to 10 seconds; word-tap seek on “return” at 12.9 seconds selecting visit 3; missing-PDF download; API-offline force-stop/reopen with recovered audio/PDF, cached transcript and stale-metadata notice.
+- Native smoke exposed disabled Play immediately after audio download and stale Pause after foreground return. The writer reproduced the first-download case in an event-lifetime test and fixed status ownership per native player. Stable-build retests confirmed immediate Play readiness after a fresh download and Play → HOME → return remaining paused. Temporary holds affected only synthetic test media and were restored; original capture records were not manufactured for server-only attempts.
+- Limits: physical-phone behavior, perceptual/audible synchronization quality, native API-address switching and exhaustive rapid-action/download-cancellation stress remain pending; automated tests cover lifecycle, identity and cancellation cases. Preliminary native results are tied to the pre-review patch; affected flows must be repeated if review changes behavior. Human review remains pending. Full feedback, themes and navigation redesign are excluded.
+
+
+### Local agent pipeline 20261008T035437Z-aea489
+
+- Tool: separate local Codex CLI planner, investigators, implementer and reviewer sessions.
+- Requested scope and incorporated material: see the task-level entry above and staged diff.
+- Check: git diff --cached --check — exit 0.
+- Check: npm run check — exit 0.
+- Check: npm run bundle:android — exit 0.
+- AI review: this staged snapshot is being sent to an independent reviewer; local evidence is round-1/reviewer/answer.json. This entry does not claim a pass.
+- Human corrections/review, changed Android flows, and any required real database/worker/provider validation remain pending. No commit or push is authorized by this run.
+
+### 2026-10-08 — rehearsal-review round-1 findings repair
+
+- Tool/request: sole local Codex implementation writer, configured model unchanged; fix the three reproduced round-1 review findings while preserving the approved rehearsal-review scope and existing staged work. No named owner approval is inferred.
+- Incorporated changes: `SavedAttemptScreen.tsx` and `useReviewPlayerStatus.ts` distinguish initial native loading from later buffering so newer word/visit/transport seeks reach the existing controller. Initial-load readiness is scoped to the current player and clears on error. Recovery compares canonical original audio URIs and saves the normalized URI for the existing upload path; downloaded review media cannot become a capture. `reviewMedia.ts` tracks each consumer's validator and cancellation signal, transferring native validation of the same temporary file when its owner leaves, without another GET or premature cache publication. README, contract and handoff reflect these repairs; previous prototype attribution and coordinator evidence are retained.
+- Regression evidence: new synthetic screen tests reproduced all three findings before production edits (3 failures), then passed with the fixes. Expanded tests exercise initial loading/replacement/error, buffered word/visit/transport seeks, Pause while seeking, background/navigation/API cancellation, two real validator-hook consumers with first-consumer unmount, late callback rejection, shared validation before/during cancellation, replacement-validation failure preserving good media, canonical recovery followed by same-UUID upload, and rejection of downloaded audio as an interrupted original. Fixtures use in-memory files, mocked network/native events and no provider calls.
+- Native reference: fetched matching [Expo 57 audio documentation](https://docs.expo.dev/versions/v57.0.0/sdk/audio/) and inspected installed `expo-audio` 57.0.5 Android `AudioPlayer.currentStatus`: `isLoaded` is false in `STATE_BUFFERING`. No new native APIs, dependencies or configuration were introduced.
+- Fresh writer checks from `mobile/`: `EXPO_NO_DOTENV=1 node --test tests/review-screen.test.mjs tests/review-media.test.mjs tests/saved-attempt.test.mjs tests/playback.test.mjs` passed **73/73**; `EXPO_NO_DOTENV=1 npm run check` passed TypeScript, lint and **167/167** tests; `EXPO_NO_DOTENV=1 npm run bundle:android` exported **1,393 modules** successfully. `git diff --check` passed. Existing Node module-format, react-test-renderer deprecation and export color notices remain; checks were not bypassed.
+- Pending: runner stages the repair, repeats mandatory checks and obtains independent review of the final scope. Coordinator should repeat affected Android buffering/rapid-seek/Pause, lifecycle/API-switch, concurrent PDF download cancellation and canonical original-audio recovery/upload flows using the saved pilot or synthetic fixtures, with **zero additional provider requests**. Earlier coordinator backend/PostgreSQL/restart/emulator evidence above was not rerun by this writer. Physical-phone/audible synchronization and human inspection remain pending. Changes remain unstaged; this writer performed no staging, commits, publication, delegation, dependency installation, credential/private-media reads or live provider calls.
+
+
+### Local agent pipeline 20261008T035437Z-aea489
+
+- Tool: separate local Codex CLI planner, investigators, implementer and reviewer sessions.
+- Requested scope and incorporated material: see the task-level entry above and staged diff.
+- Check: git diff --cached --check — exit 0.
+- Check: npm run check — exit 0.
+- Check: npm run bundle:android — exit 0.
+- AI review: this staged snapshot is being sent to an independent reviewer; local evidence is round-2/reviewer/answer.json. This entry does not claim a pass.
+- Human corrections/review, changed Android flows, and any required real database/worker/provider validation remain pending. No commit or push is authorized by this run.
+
+
+### Local agent pipeline 20261008T035437Z-aea489
+
+- Tool: separate local Codex CLI planner, investigators, implementer and reviewer sessions.
+- Requested scope and incorporated material: see the task-level entry above and staged diff.
+- Check: git diff --cached --check — exit 0.
+- Check: npm run check — exit 0.
+- Check: npm run bundle:android — exit 0.
+- AI review: this staged snapshot is being sent to an independent reviewer; local evidence is round-3/reviewer/answer.json. This entry does not claim a pass.
+- Human corrections/review, changed Android flows, and any required real database/worker/provider validation remain pending. No commit or push is authorized by this run.
+
+### 2026-10-08 — rehearsal-review round-3 findings repair
+
+- Tool/request: sole local Codex writer, configured model unchanged; fix only the three round-3 reviewer findings and add regressions, preserving the existing staged patch. Incorporated changes are limited to `reviewStorage.ts` (analysis-only upgrade fallback), `useAttemptAnalysis.ts` (reconciled refresh and retained validated state on cache-write failure), `SavedAttemptScreen.tsx`/`playback.ts` (native pause intent outside seek/buffering/EOF transitions), two review test files and these scope/evidence docs. Earlier prototype attribution remains unchanged.
+- Regression proof: synthetic fixtures reproduced **nine failures before production edits**, then passed. Twelve added tests cover offline upgrade without `review:v1` or writes; API/attempt isolation; incomplete/legacy refreshes with successful/failed persistence; retention of a validated result held only in memory; delayed refresh rejection after background/navigation/API changes; native pause followed by paused word/visit seeks; buffering, controller-owned seek pauses and stale pause notifications. Existing rapid-seek/EOF/Pause, disclosure/retry/upload and no-review-process-POST tests still pass. SQLite, network and native boundaries are fixtures; no provider or private media was used.
+- Native reference: fetched matching [Expo 57 audio documentation](https://docs.expo.dev/versions/v57.0.0/sdk/audio/) and checked installed `expo-audio` 57.0.5 `AudioPlayer.currentStatus`/EOF status emission. The fix uses existing `playing`, `isLoaded`, `isBuffering`, `didJustFinish` and fresh native snapshot fields; no dependencies, native configuration or backend changes.
+- Fresh working-tree checks from `mobile/`: `EXPO_NO_DOTENV=1 node --test tests/review-screen.test.mjs tests/review-history.test.mjs tests/saved-attempt.test.mjs tests/playback.test.mjs` passed **86/86**; `EXPO_NO_DOTENV=1 npm run check` passed TypeScript, lint and **191/191** tests; `EXPO_NO_DOTENV=1 npm run bundle:android` exported **1,393 modules** successfully. `git diff --check` passed and the staged patch SHA-256 stayed unchanged. Existing Node module-format, react-test-renderer deprecation and export color notices remain. `EXPO_NO_DOTENV=1` prevents local env-file loading; checks were not bypassed.
+- Pending: runner restages these unstaged repairs, checks the final staged snapshot and obtains independent review; human inspection remains pending. Coordinator repeats affected Android audio-focus interruption/seek/Pause/EOF, offline upgrade/reopening, media recovery, lifecycle and API-switch flows using the saved pilot with **zero additional provider requests**. This writer ran no Android/device, backend, PostgreSQL/API/media/server-restart or live-provider checks. No named approval, staging, commit, publication, delegation, dependency installation or credential/private-media reads are claimed.
+
+
+### Local agent pipeline 20261008T035437Z-aea489
+
+- Tool: separate local Codex CLI planner, investigators, implementer and reviewer sessions.
+- Requested scope and incorporated material: see the task-level entry above and staged diff.
+- Check: git diff --cached --check — exit 0.
+- Check: npm run check — exit 0.
+- Check: npm run bundle:android — exit 0.
+- AI review: this staged snapshot is being sent to an independent reviewer; local evidence is round-4/reviewer/answer.json. This entry does not claim a pass.
+- Human corrections/review, changed Android flows, and any required real database/worker/provider validation remain pending. No commit or push is authorized by this run.
+
+### 2026-10-08 — rehearsal-review round-4 findings repair
+
+- Tool/request: sole local Codex writer, configured model unchanged; fix only the two reproduced round-4 findings while preserving the existing 191-test patch. `useAttemptAnalysis.ts` now reconciles cached and current in-memory revisions before publishing UI state or writing either cache, retaining the reconciled result on SQLite failure. `reviewValidation.ts` falls back to verbatim untimed text for malformed token lists, preventing repeated words from inheriting another occurrence's timing. No new native APIs, dependencies, contracts or provider behavior were added; previous prototype attribution remains unchanged.
+- Regression proof: five synthetic regressions in `review-screen.test.mjs` and `review-history.test.mjs` failed before production edits and passed afterward. They cover a stale valid awaiting-analysis response against cached completion or newer in-memory completion, failures at either cache write, preservation of transcript/metrics and processing controls, reconciled cache payloads, GET-only review, and `Echo Echo` with an invalid first timestamp. SQLite/network/native boundaries remain fixtures.
+- Fresh working-tree checks from `mobile/`: `EXPO_NO_DOTENV=1 node --test --test-name-pattern='stale awaiting response|malformed first timestamp' tests/review-screen.test.mjs tests/review-history.test.mjs` passed **5/5**; `EXPO_NO_DOTENV=1 npm run check` passed TypeScript, lint and **196/196** tests; `EXPO_NO_DOTENV=1 npm run bundle:android` successfully exported **1,393 modules**. `git diff --check` passed. Existing module-format, react-test-renderer deprecation and export color notices remain; no checks were bypassed.
+- Pending: runner stages the repairs and independently reviews the final snapshot; human inspection remains pending. Coordinator repeats affected Android playback/interruption/recovery/offline/API-switch flows using saved fixtures with **zero additional provider requests**. This writer ran no device, backend, PostgreSQL/API/server-restart or provider checks and performed no staging, commits, publication, delegation, dependency installation or credential/private-media reads. Repairs remain unstaged and the prior staged patch is preserved.
+
+
+### Local agent pipeline 20261008T035437Z-aea489
+
+- Tool: separate local Codex CLI planner, investigators, implementer and reviewer sessions.
+- Requested scope and incorporated material: see the task-level entry above and staged diff.
+- Check: git diff --cached --check — exit 0.
+- Check: npm run check — exit 0.
+- Check: npm run bundle:android — exit 0.
+- AI review: this staged snapshot is being sent to an independent reviewer; local evidence is round-5/reviewer/answer.json. This entry does not claim a pass.
+- Human corrections/review, changed Android flows, and any required real database/worker/provider validation remain pending. No commit or push is authorized by this run.
+
+### 2026-10-08 — rehearsal-review round-5 findings repair
+
+- Tool/request: sole local Codex writer, configured model unchanged; repair only the three round-5 findings. Incorporated changes: `useReviewPlayerStatus.ts` reads fresh native position/playback/buffering state for queued same-player events while retaining event-only error/EOF signals; `useReviewPdf.ts`/`useReviewMedia.ts` collect API-matched local PDF candidates and check distinct canonical files sequentially with native validation before display; `playback.ts` rejects substring and omitted-word mappings while preserving exact English/Korean text, punctuation and whitespace. Existing prototype attribution remains unchanged; no dependencies, contracts, backend or provider behavior changed.
+- Regression proof: 13 added synthetic tests in `playback.test.mjs` and `review-screen.test.mjs`, including 12 failing-before/passing-after regressions. They cover delayed EOF display/PDF/highlight/relative-seek targets, fresh buffering plus event-only errors/EOF, missing/corrupt originals followed by invalid-page and usable same-deck copies, API isolation, retained originals, and substring/omitted-token plain-text fallback. Existing lifecycle, rapid-seek/Pause, disclosure/retry/upload and GET-only review tests remain passing. Native/network/storage boundaries are mocks; no private media or provider calls were used.
+- Native reference: read matching [Expo 57 audio documentation](https://docs.expo.dev/versions/v57.0.0/sdk/audio/) and installed `expo-audio` 57.0.5 types/Android implementation. Its `currentStatus()` reports fresh buffering/position but returns null error and false EOF; event-only signals must be retained. No new native API was introduced.
+- Fresh working-tree checks from `mobile/`: `EXPO_NO_DOTENV=1 node --test tests/playback.test.mjs tests/review-screen.test.mjs` passed **74/74**; `EXPO_NO_DOTENV=1 npm run check` passed TypeScript, lint and **209/209** tests; `EXPO_NO_DOTENV=1 npm run bundle:android` exported **1,393 modules** successfully. `git diff --check` passed. Existing module-format, react-test-renderer and export color notices remain; no checks were bypassed and local env files were not loaded.
+- Pending: runner stages the unstaged repairs, reruns checks against that snapshot and obtains independent review; human inspection remains pending. Coordinator verifies affected Android delayed-EOF/seek/Pause, PDF fallback, lifecycle/offline and API-switch flows using saved fixtures with **zero additional provider requests**. This writer ran no device, backend, PostgreSQL/API/media/server-restart or provider checks; no staging, commits, publication, delegation or dependency installation occurred.
+
+
+### Local agent pipeline 20261008T035437Z-aea489
+
+- Tool: separate local Codex CLI planner, investigators, implementer and reviewer sessions.
+- Requested scope and incorporated material: see the task-level entry above and staged diff.
+- Check: git diff --cached --check — exit 0.
+- Check: npm run check — exit 0.
+- Check: npm run bundle:android — exit 0.
+- AI review: this staged snapshot is being sent to an independent reviewer; local evidence is round-6/reviewer/answer.json. This entry does not claim a pass.
+- Human corrections/review, changed Android flows, and any required real database/worker/provider validation remain pending. No commit or push is authorized by this run.
+
+
+### 2026-10-08 — rehearsal review final verification and publication
+
+- Final pipeline state: `ready_for_inspection`, round-6 independent reviewer `pass`, no findings. The final focused review verified the last repairs and reused prior independent review for unchanged content. Earlier pending/finding records above are historical and superseded by this entry; human review is still pending.
+- Reviewed patch SHA-256: `8a68f5f5b3f66fbe05d35be411bcae0ba241ae75e605be722e3efc95f827835e`. Applying that frozen patch with `git apply --index` on `feature/rehearsal-review` reproduced the exact hash. Only this coordinator evidence and README/handoff accuracy updates follow; application/test/config content must remain byte-identical before commit.
+- Final runner commands: `npm run check` passed TypeScript, lint and **209 tests**; `npm run bundle:android` passed; staged whitespace check passed. Real PostgreSQL **74/74 tests**, Django system/migration-drift checks and SQLite **74 tests with five PostgreSQL-specific skips** were independently run earlier this stage. Backend source/dependencies did not change afterward.
+- Review repairs include native source/status lifetime, buffering and EOF/seek ordering, native pause intent, stale PDF callbacks, shared validation ownership, canonical capture recovery, metadata retry, old-cache upgrade, revision-aware in-memory/cache reconciliation and safe verbatim token mapping. Regressions reproduced confirmed failures before fixes. No dependency changes or new advisories were introduced by this patch; inherited dependency limitations remain documented in the preceding stage.
+- Native evidence: final candidate reopened the saved synthetic pilot and paused seeks at 5 and 10 seconds selected actual PDF pages 3 and 4. Prior affected-flow reruns verified immediate Play after audio download, paused foreground return retaining position, rapid seeks followed by Pause, EOF at 16 seconds/final visit and replay. Word tap on the saved “return” timestamp selected visit 3 near 12.9 seconds. Independent audio/PDF recovery and API-offline process restart were checked; synthetic original files temporarily held for missing-media tests were restored. Test harness/screenshots remain private temporary artifacts, not repository files.
+- Final API/media comparison after testing retained original audio/PDF hashes, processing revision 1 and exactly one pre-existing ProviderRequest for the saved pilot. No fresh transcription was requested. The task's isolated API ran without a provider key or worker; unrelated prototype services and original worktrees were preserved.
+- Limits: emulator results establish the exercised visual/control/file behavior, not physical-phone or audible/perceptual synchronization quality. Native audio-focus loss, API-address switching, shared-consumer unmount and exhaustive malformed-media/callback stress remain modeled automated tests rather than native proofs. A rapid development-client deep-link launch produced an Expo Router `useLinking.native` pre-mount warning; settled review/seek behavior continued. No dependency change was made for that launcher warning.
+- Authorized publication: one `feature/rehearsal-review` PR stacked on open PR #19 at `c7733d8`, without merging. User requested implementation/publication; no human code approval is inferred. Stop after publication before implementing `feature/ai-feedback`.
+
 ## 2026-10-08 — automatic transcription after recording
 
 - Request/tool: the user asked Codex to change the corresponding PR so transcription starts automatically when recording finishes. Continued PR #19 from its verified published head `c7733d8288833b010948d2c5737929088547aa1e` in an isolated worktree. Existing feature/prototype worktrees and unrelated edits were preserved.
@@ -514,3 +665,8 @@ This file does not automatically publish or submit the course report.
 - Request: publish the pending automatic-transcription changes to PR #19 and synchronize its dependent PRs without visual redesign changes. Codex preserved the staged snapshot and verified the existing remote head.
 - Fresh verification: mobile `npm run check` passed TypeScript, lint and 125 tests; `npm run bundle:android` passed. Independent reviewer checked the complete staged snapshot against prior review evidence and found one disclosure-copy issue: upload precedes consent. Recording, saved-result and README wording now distinguish server upload from consent-gated provider processing; cancellation retains the server upload. No processing behavior changed in this correction.
 - Review: no other concrete findings; staged sensitive-file scan and whitespace checks passed. Final wording correction is submitted for independent recheck. Prior Android and provider evidence above is unchanged; this publication check adds no new physical-device or provider claim. User authorized publication of the presented feature work; no merge into main or human teammate approval is claimed.
+
+## 2026-10-09 — PR #20 dependency merge
+
+- Codex merged automatic-transcription commit a0ee475 into the rehearsal-review branch using a normal two-parent merge. Conflict resolution retains the newer review cache, media validation, playback/lifecycle controller and API/deck/duration checks. The analysis hook receives the automatic-start flag after the existing identity parameters; the saved screen consumes the durable API-pinned intent before upload and preserves newer review state during asynchronous upload completion. No visual redesign code is included. Documentation retains both histories and distinguishes ordinary browsing from the one authorized capture handoff.
+- Verification: `npm run check` passed TypeScript, lint and 219 tests; `npm run bundle:android` passed. Existing auto-capture/disclosure/cancellation and review playback/recovery suites ran together. No backend source changed. Independent staged merge-resolution review found no functional issues and passed 105 focused tests. Its eligibility-copy finding was corrected to include validated server history. The user approved this reviewed dependency resolution for publication and carry-forward into PR #21. This approval is not human teammate code review or new Android/provider evidence.

@@ -49,7 +49,8 @@ function parseSlideEvents(value: string | undefined): SlideEvent[] {
 
 export function ResultsScreen() {
   const { attemptId } = useLocalSearchParams<{ attemptId?: string }>();
-  return attemptId ? <SavedAttemptScreen key={attemptId} id={attemptId} /> : <PreviewResults />;
+  if (attemptId !== undefined) return typeof attemptId === 'string' ? <SavedAttemptScreen key={attemptId} id={attemptId} /> : <Text>Invalid rehearsal ID</Text>;
+  return <PreviewResults />;
 }
 
 function PreviewResults() {
