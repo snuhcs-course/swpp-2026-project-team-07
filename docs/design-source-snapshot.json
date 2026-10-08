@@ -1,0 +1,185 @@
+{
+  "captured_at": "2026-10-08T17:56:44.950279+00:00",
+  "repository": "https://github.com/snuhcs-course/swpp-2026-project-team-07",
+  "revisions": {
+    "main": "f6f6e76605632296a802aecef25ac10c6d0fd0cd",
+    "13": "040880f8a21b2f866228984e9fb3c438fa6ee4bf",
+    "17": "b60c3571a481cd60160ea79a3ab44bd5a86f2856",
+    "18": "06fe340a207639826143383364c13b4dd9636d31",
+    "19": "a0ee4755fb6f9a56c77fd967bdd83d1f7a37c400",
+    "20": "3abcf4b6c97bbd6ef2da6cfd6d40670b4dbfca88",
+    "21": "ce9f248256b1bbfc0d66f139886503261cc25953"
+  },
+  "integration_status": {
+    "main": "merged",
+    "13": "incorporated recording contribution in PR17",
+    "17-21": "open unmerged feature stack"
+  },
+  "local_redesign": {
+    "branch": "codex/refactor-design",
+    "head": "ce9f248256b1bbfc0d66f139886503261cc25953",
+    "staged_binary_diff_sha256": "542f11d3a3e08184370e0cf180f365f3ee52fb5ca0942c43c699f3dd6d3023a3",
+    "unstaged_binary_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "staged_paths": [
+      "README.md",
+      "docs/ai-use.md",
+      "docs/api-contract.md",
+      "docs/physical-device-test.md",
+      "docs/ui-layouts.md",
+      "mobile/.env.example",
+      "mobile/app.json",
+      "mobile/package-lock.json",
+      "mobile/package.json",
+      "mobile/scripts/check-layout-boundaries.mjs",
+      "mobile/src/app/(tabs)/_layout.tsx",
+      "mobile/src/app/(tabs)/index.tsx",
+      "mobile/src/app/(tabs)/practice.tsx",
+      "mobile/src/app/_layout.tsx",
+      "mobile/src/app/library.tsx",
+      "mobile/src/app/utilities.tsx",
+      "mobile/src/features/feedback/FeedbackPanel.tsx",
+      "mobile/src/features/home/UtilitiesScreen.tsx",
+      "mobile/src/features/home/historyPresentation.ts",
+      "mobile/src/features/home/usePracticeLibrary.ts",
+      "mobile/src/features/pdf/LibraryScreen.tsx",
+      "mobile/src/features/pdf/PdfThumbnail.tsx",
+      "mobile/src/features/pdf/SlidePreview.tsx",
+      "mobile/src/features/pdf/ViewerScreen.tsx",
+      "mobile/src/features/recording/RehearsalScreen.tsx",
+      "mobile/src/features/recording/SavedAttemptScreen.tsx",
+      "mobile/src/features/transcription/PlaybackTranscript.tsx",
+      "mobile/src/features/transcription/ResultsScreen.tsx",
+      "mobile/src/features/transcription/transcriptPresentation.ts",
+      "mobile/src/layouts/contract-test/MainNavigation.tsx",
+      "mobile/src/layouts/contract-test/index.tsx",
+      "mobile/src/layouts/contracts.ts",
+      "mobile/src/layouts/refactor/FeedbackView.tsx",
+      "mobile/src/layouts/refactor/LibraryView.tsx",
+      "mobile/src/layouts/refactor/MainNavigation.tsx",
+      "mobile/src/layouts/refactor/MessageView.tsx",
+      "mobile/src/layouts/refactor/PreviewView.tsx",
+      "mobile/src/layouts/refactor/RecordingView.tsx",
+      "mobile/src/layouts/refactor/ReviewView.tsx",
+      "mobile/src/layouts/refactor/RootNavigation.tsx",
+      "mobile/src/layouts/refactor/SampleSlideView.tsx",
+      "mobile/src/layouts/refactor/SetupView.tsx",
+      "mobile/src/layouts/refactor/ThumbnailView.tsx",
+      "mobile/src/layouts/refactor/TranscriptView.tsx",
+      "mobile/src/layouts/refactor/UtilitiesView.tsx",
+      "mobile/src/layouts/refactor/components.tsx",
+      "mobile/src/layouts/refactor/index.ts",
+      "mobile/src/layouts/registry.ts",
+      "mobile/src/layouts/selection.ts",
+      "mobile/src/ui/components.tsx",
+      "mobile/tests/helpers/recording-screen-loader.mjs",
+      "mobile/tests/helpers/recording-screen-ui.mjs",
+      "mobile/tests/layout-contract.test.mjs",
+      "mobile/tests/layout-navigation.test.mjs",
+      "mobile/tests/pdf-recording.test.mjs",
+      "mobile/tests/recording-retry.test.mjs",
+      "mobile/tests/review-library.test.mjs",
+      "mobile/tests/review-screen.test.mjs",
+      "mobile/tests/saved-attempt.test.mjs"
+    ]
+  },
+  "guidelines": {
+    "filename": "3 - Design Documentation Guidelines (1).pdf",
+    "sha256": "7facea3083c1424482c0f96ba93e5b360086edb02fc6eb7068df4350686636ab"
+  },
+  "wiki_sources": [
+    {
+      "label": "course-team16",
+      "url": "https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2025-project-team-16/Design-Documentation.md",
+      "sha256": "df1865ee0331fc32f6419bda030a2593bf73e8038643742fe53e0c29fd20d285",
+      "bytes": 26796
+    },
+    {
+      "label": "course-team07",
+      "url": "https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2025-project-team-07/Design-Documentation.md",
+      "sha256": "8e8d2f3048c6bb70fa338c980c5a983c0a71796a600beaa40783d8f37dffc747",
+      "bytes": 44473
+    },
+    {
+      "label": "course-team09",
+      "url": "https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2025-project-team-09/Design-Document.md",
+      "sha256": "087b512735da45b94838af0ad986943b74a4be39c9f7f4ebd066e1a2e645cf41",
+      "bytes": 49973
+    },
+    {
+      "label": "course-team04",
+      "url": "https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2025-project-team-04/Design-Documentation.md",
+      "sha256": "21cdafc32e69d0bfbd26825a5015a19b8ef1d46dd57bb8fc7b04c53db31829c3",
+      "bytes": 32985
+    },
+    {
+      "label": "outloud-existing-design",
+      "url": "https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2026-project-team-07/Design-Documentation.md",
+      "sha256": "b27d9be8c38e89f7f61b04913d272b3715fc3d4c2953fc9467209f55f851c331",
+      "bytes": 23632
+    },
+    {
+      "label": "outloud-requirements",
+      "url": "https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2026-project-team-07/Requirements-%26-Specifications.md",
+      "sha256": "fed5656aa431cde92c3bb0d968dbe363baade781ec0943ca1ff02d61b40d9830",
+      "bytes": 23241
+    }
+  ],
+  "excluded_revision_history_prs": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    14,
+    15,
+    16
+  ],
+  "phase2_review": {
+    "checked_at": "2026-10-08T21:48:23.365942+00:00",
+    "main": "f6f6e76605632296a802aecef25ac10c6d0fd0cd",
+    "prs": {
+      "17": {
+        "state": "OPEN",
+        "head": "b60c3571a481cd60160ea79a3ab44bd5a86f2856"
+      },
+      "18": {
+        "state": "OPEN",
+        "head": "06fe340a207639826143383364c13b4dd9636d31"
+      },
+      "19": {
+        "state": "OPEN",
+        "head": "a0ee4755fb6f9a56c77fd967bdd83d1f7a37c400"
+      },
+      "20": {
+        "state": "OPEN",
+        "head": "3abcf4b6c97bbd6ef2da6cfd6d40670b4dbfca88"
+      },
+      "21": {
+        "state": "OPEN",
+        "head": "ce9f248256b1bbfc0d66f139886503261cc25953"
+      }
+    },
+    "local_branch": "codex/refactor-design",
+    "local_staged_diff_sha256": "542f11d3a3e08184370e0cf180f365f3ee52fb5ca0942c43c699f3dd6d3023a3",
+    "primary_source": "Design-Documentation.md",
+    "markdown_sha256": "ef98acf08ba930e25f34787f39aeab390d9384070c2e3751a75ec6633623174c",
+    "phase1_svg_unchanged": true,
+    "guidelines": [
+      {
+        "name": "3 - Design Documentation Guidelines.pdf",
+        "sha256": "7facea3083c1424482c0f96ba93e5b360086edb02fc6eb7068df4350686636ab"
+      },
+      {
+        "name": "3 - Design Documentation Guidelines (1).pdf",
+        "sha256": "7facea3083c1424482c0f96ba93e5b360086edb02fc6eb7068df4350686636ab"
+      }
+    ],
+    "wiki_reads": {
+      "requirements.md": "fed5656aa431cde92c3bb0d968dbe363baade781ec0943ca1ff02d61b40d9830",
+      "wiki-design.md": "b27d9be8c38e89f7f61b04913d272b3715fc3d4c2953fc9467209f55f851c331"
+    }
+  }
+}

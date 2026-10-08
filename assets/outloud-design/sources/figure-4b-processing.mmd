@@ -1,0 +1,48 @@
+%%{init: {"theme": "base", "themeCSS": ".actor-line {stroke-dasharray: 5 5 !important;}", "themeVariables": {"fontFamily": "Arial", "fontSize": "16px", "actorBkg": "#eaf1f5", "actorBorder": "#547083", "actorTextColor": "#1e2e38", "signalColor": "#526777", "signalTextColor": "#1e2e38", "noteBkgColor": "#f6f3ed", "noteBorderColor": "#c6bcaa", "noteTextColor": "#263640", "labelBoxBkgColor": "#ffffff", "labelBoxBorderColor": "#547083"}, "sequence": {"useMaxWidth": false, "mirrorActors": false, "actorMargin": 28, "messageMargin": 16, "noteMargin": 8, "wrap": false, "width": 155}}}%%
+sequenceDiagram
+ autonumber
+ participant A as Android review
+ participant API as Django API
+ participant W as Celery worker
+ participant P as Hosted Whisper
+ Note over A,P: 4B. Consent, processing and review | Unmerged integration
+ Note over A,API: Precondition: server attempt known to this API.<br/>New-capture intent or explicit analysis action.
+ alt First-use consent declined
+  A->>A: Keep upload +<br/>local playback
+ else Consent accepted / previously stored
+  A->>API: POST /api/attempts/{id}/process/
+  API->>API: Commit queued revision
+  API-)W: Publish task via Redis after commit
+  API-->>A: HTTP 202 + saved state
+  par Admitted background job
+  W->>W: Claim revision/token,<br/>load saved audio and partial work
+  alt Saved transcript or receipt
+   W->>W: Reuse saved work
+  else Speech detected
+   W->>P: Send original audio
+   P-->>W: Timestamped words
+   W->>W: Persist receipt, then transcript
+  else No speech detected
+   W->>W: Save empty transcript, no AI call
+  end
+  W->>W: Align word starts to slide visits,<br/>calculate timing metrics
+  Note over A,W: Visits are [start, end) in audio-relative milliseconds.<br/>A word at a transition belongs to the new visit.<br/>Repeated/backward slide visits remain separate.
+  alt Success
+   W->>W: Persist completed results
+  else Processing failed
+   W->>W: Persist failure, retain partial results
+  end
+  and Foreground review
+ loop Poll while processing active
+  A->>API: GET /api/attempts/{id}/
+  API-->>A: Saved state + available results
+ end
+  end
+ end
+ A->>A: Cache valid results,<br/>sync player + slides
+ Note over A,W: Polling runs concurrently with background work.<br/>Read failure keeps cached results and offers Refresh.
+ opt Recovery / retry
+  Note over API,W: Beat schedules recovery through Redis.<br/>Workers requeue safe interrupted jobs.
+  A->>API: Explicit retry + current processing_revision<br/>(acknowledge_uncertain if required)
+  Note over A,W: Unknown submitted outcome requires confirmation.<br/>Retry preserves attempt/audio and reuses partial work.
+ end

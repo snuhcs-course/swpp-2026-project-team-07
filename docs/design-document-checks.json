@@ -1,0 +1,78 @@
+{
+  "markdown_primary_source": true,
+  "pdf_pages": 11,
+  "figures": 6,
+  "panels": 8,
+  "source_link_occurrences_verified": 24,
+  "unique_source_links": 22,
+  "json_examples": 2,
+  "pdf_text_parity": "pass",
+  "pdf_images_match_approved_browser_renders": 8,
+  "local_asset_paths": "checked",
+  "wiki_text_parity": "checked",
+  "svg_sha256": {
+    "assets/outloud-design/figure-1-system.svg": "55e1e593cd03be5d2e9c7b1a9a3e41182acc158069530054425c652615b35ab5",
+    "assets/outloud-design/figure-2-core.svg": "c2559d690e5718272f4114324432d285df2806a2a64d171f75ffed375fcd97b8",
+    "assets/outloud-design/figure-3-feedback.svg": "dfb3db4d61bdd456fd0098565fa1f53bd3e848957c8ff97bc2f444e9a2e887ca",
+    "assets/outloud-design/figure-4a-capture.svg": "c657be101140dacd74a13776e8d5c981e5131982e975eef1c7a3ea0434300567",
+    "assets/outloud-design/figure-4b-processing.svg": "3408f28ba7a113caf28335c5d6bb8d646b4f6e7d717e9ae94821084b30b80c7d",
+    "assets/outloud-design/figure-5a-generation.svg": "56b518fc7b7c263802c5063d39fec60d4c25a13a72140078fb4f410f0270d90b",
+    "assets/outloud-design/figure-5b-recovery.svg": "35a8a82bd87d1b4ac52b71f9d03552f3b687238aba1c29d80985879ec2ec3f6a",
+    "assets/outloud-design/figure-6-frontend.svg": "6dab1b8bcc3e375b896e0411cc7479235cb583920fa2b04b98d0f2046d26dd53"
+  },
+  "font": "Arial",
+  "page_sizes": [
+    {
+      "page": 1,
+      "paper": "A4"
+    },
+    {
+      "page": 2,
+      "paper": "A3"
+    },
+    {
+      "page": 3,
+      "paper": "A3"
+    },
+    {
+      "page": 4,
+      "paper": "A3"
+    },
+    {
+      "page": 5,
+      "paper": "A4"
+    },
+    {
+      "page": 6,
+      "paper": "A3"
+    },
+    {
+      "page": 7,
+      "paper": "A2"
+    },
+    {
+      "page": 8,
+      "paper": "A2"
+    },
+    {
+      "page": 9,
+      "paper": "A2"
+    },
+    {
+      "page": 10,
+      "paper": "A3"
+    },
+    {
+      "page": 11,
+      "paper": "A4"
+    }
+  ],
+  "errors": [],
+  "delivery": {
+    "type": "repository PR for proposed Wiki update",
+    "markdown_prose_matches_primary": true,
+    "wiki_current_state": "Restored byte-for-byte to prior tree at 411ce5d by revert commit 0856f77992e8783905bb62a57fe7eae9ed453ff1; no pending Wiki publication is authorized.",
+    "prior_publication": "449db72299d4e6595388aa7429d90c0aee708000; reverted at user request",
+    "visual_evidence": "Eight SVG panels loaded and architecture was inspected during the reverted publication. Earlier PDF visual review applies to the unchanged export."
+  }
+}

@@ -1,0 +1,47 @@
+%%{init: {"theme": "base", "themeCSS": ".actor-line {stroke-dasharray: 5 5 !important;}", "themeVariables": {"fontFamily": "Arial", "fontSize": "16px", "actorBkg": "#eaf1f5", "actorBorder": "#547083", "actorTextColor": "#1e2e38", "signalColor": "#526777", "signalTextColor": "#1e2e38", "noteBkgColor": "#f6f3ed", "noteBorderColor": "#c6bcaa", "noteTextColor": "#263640", "labelBoxBkgColor": "#ffffff", "labelBoxBorderColor": "#547083"}, "sequence": {"useMaxWidth": false, "mirrorActors": false, "actorMargin": 28, "messageMargin": 16, "noteMargin": 8, "wrap": false, "width": 155}}}%%
+sequenceDiagram
+ autonumber
+ actor U as Presenter
+ participant A as Feedback host
+ participant API as Django API
+ participant W as Celery worker
+ participant P as Selected AI provider
+ Note over U,P: 5A. Explicit feedback and description reuse | Unmerged PR21
+ U->>A: Generate feedback
+ A->>API: Read selection<br/>and revisions
+ API-->>A: Provider/model, availability<br/>and saved state
+ opt First use of this API/provider selection
+  A-->>U: Disclose slide +<br/>transcript transfer
+  alt Consent declined
+   U->>A: Cancel, no request
+  else Consent accepted
+   U->>A: Continue,<br/>save consent locally
+  end
+ end
+ opt Consent valid and generation eligible
+  A->>A: Save pending intent before POST
+  A->>API: POST /api/attempts/{id}/<br/>feedback/generate/
+  API->>API: Snapshot transcript, visits and audience,<br/>admit versioned feedback job
+  alt Descriptions cached
+   API->>API: Attach saved description revision
+  else Descriptions absent
+   API->>API: Queue description dependency<br/>or attach its active job
+
+  end
+  API-)W: Publish via Redis<br/>after DB commit
+  API-->>A: HTTP 202 + job state
+  opt Missing descriptions
+   W->>P: Prepared slide images/text
+   P-->>W: Structured descriptions
+   W->>W: Validate and persist descriptions
+  end
+  Note over API,W: Wait for descriptions.<br/>Reuse the existing transcript.
+  W->>W: Attach exact description revision,<br/>read frozen source snapshot
+  W->>P: Descriptions + transcript/visits<br/>and configured provider input
+  P-->>W: Coaching candidates
+  W->>W: Persist private receipt,<br/>validate evidence and bounded output
+  W->>W: Store supported cards + outcome<br/>under revision/token checks
+  A->>API: Poll saved job state
+  API-->>A: Validated result<br/>or failure state
+  A-->>U: Review suggestions,<br/>seek evidence
+ end

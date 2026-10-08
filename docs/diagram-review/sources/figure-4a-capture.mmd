@@ -1,0 +1,36 @@
+%%{init: {"theme": "base", "themeCSS": ".actor-line {stroke-dasharray: 5 5 !important;}", "themeVariables": {"fontFamily": "Arial", "fontSize": "16px", "actorBkg": "#eaf1f5", "actorBorder": "#547083", "actorTextColor": "#1e2e38", "signalColor": "#526777", "signalTextColor": "#1e2e38", "noteBkgColor": "#f6f3ed", "noteBorderColor": "#c6bcaa", "noteTextColor": "#263640", "labelBoxBkgColor": "#ffffff", "labelBoxBorderColor": "#547083"}, "sequence": {"useMaxWidth": false, "mirrorActors": false, "actorMargin": 28, "messageMargin": 16, "noteMargin": 8, "wrap": true, "width": 155}}}%%
+sequenceDiagram
+ autonumber
+ actor U as Presenter
+ participant A as Android host
+ participant L as Native / local store
+ participant API as Django API
+ Note over U,API: 4A. Capture and durable upload | Unmerged integration
+ U->>A: Start recording
+ A->>L: Request microphone permission
+ alt Permission denied
+  L-->>A: Denied
+  A-->>U: Explain denial, remain idle
+ else Permission granted
+  A->>L: Persist new attempt UUID,<br/>audio target and checkpoint
+  A->>L: Start audio capture
+  loop Confirmed slide changes
+   L-->>A: Native audio time + confirmed page
+   A->>L: Checkpoint slide event
+  end
+  Note over A,L: Initial event at 0 ms.<br/>Preserve backward/repeated visits.
+  U->>A: Stop
+  A->>L: Finalize audio and persist attempt
+  L-->>A: Durable saved recording
+  A-->>U: Local playback available
+  A->>API: POST /api/decks/ if needed<br/>then POST /api/attempts/
+  Note right of API: PDF preparation occurs<br/>during deck upload.<br/>Persist media + rows.
+  alt Upload fails / acknowledgment lost
+   API--xA: No confirmed server attempt
+   A-->>U: Playback stays available<br/>Retry upload explicitly
+   Note over A,API: Keep UUID and content for upload retry.<br/>No polling without a known server attempt.
+  else Upload acknowledged
+   API-->>A: attempt_id + pending state
+   Note over A,API: Continue at 4B.<br/>Restored known server attempts also enter 4B.
+  end
+ end
