@@ -1,13 +1,12 @@
 from celery import shared_task
+from .services.processing import run_attempt, recover_work as recover_processing
 
 
-@shared_task
-def process_attempt(attempt_id: str):
-    """Integration owner: load saved audio → transcribe → align → feedback → persist.
+@shared_task(time_limit=300, ignore_result=True)
+def process_attempt(attempt_id: str, revision: int):
+    run_attempt(attempt_id, revision)
 
-    Use the same attempt ID to retry processing, with duplicate-request protection.
-    Keep audio on errors; distinguish provider failures from completed results.
-    """
-    raise NotImplementedError(
-        "Connect transcription, alignment, feedback, and status persistence before queueing attempts."
-    )
+
+@shared_task(ignore_result=True)
+def recover_work():
+    recover_processing()

@@ -7,7 +7,9 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from .models import Deck, Attempt
-from .serializers import AttemptMetadataSerializer
+from .serializers import AttemptMetadataSerializer, ProcessSerializer
+from .services.processing import admit, ProcessConflict
+from django.utils import timezone
 from .services.storage import store_deck, store_attempt
 
 
@@ -20,13 +22,43 @@ def deck_data(deck, request):
 
 
 def attempt_data(attempt, request):
+    # Explicit public whitelist: never serialize private request bodies or hashes.
+    transcript = attempt.transcript
+    if isinstance(transcript, dict):
+        transcript = {"text": transcript.get("text", ""), "words": [
+            {key: word.get(key) for key in ("text", "start_ms", "end_ms")}
+            for word in transcript.get("words", []) if isinstance(word, dict)]}
+    received = attempt.provider_requests.filter(raw_received_at__isnull=False).order_by('-generation').first()
+    latest = attempt.provider_requests.order_by('-generation').first()
     return {"attempt_id": str(attempt.id), "deck_id": str(attempt.deck_id),
-            "status": attempt.status, "transcript": attempt.transcript,
-            "feedback": attempt.feedback, "error": attempt.error,
+            "status": attempt.status, "transcript": transcript,
+            "feedback": attempt.feedback, "feedback_state": attempt.feedback_state, "error": attempt.error,
             "duration_ms": attempt.duration_ms, "slide_events": attempt.slide_events,
             "audience": attempt.audience, "created_at": attempt.created_at,
             "audio_url": request.build_absolute_uri(attempt.audio.url),
-            "processing_state": "awaiting_analysis" if attempt.status == "pending" else attempt.status}
+            "processing_state": attempt.processing_state, "processing_revision": attempt.processing_revision,
+            "failed_stage": attempt.failed_stage or None,
+            "retry_available": attempt.status == 'failed' and (not attempt.retry_at or attempt.retry_at <= timezone.now()),
+            "retry_at": attempt.retry_at, "requires_confirmation": attempt.processing_state == 'needs_confirmation',
+            "partial_available": {"transcript": transcript is not None, "alignment": attempt.visits is not None},
+            "visits": attempt.visits, "metrics": attempt.metrics, "analysis_outcome": attempt.analysis_outcome or None,
+            "provenance": {"provider": received.provider if received else latest.provider if latest else None,
+                "model": received.model if received else latest.model if latest else None,
+                "generation": received.generation if received else latest.generation if latest else None,
+                "outcome": received.outcome if received else latest.outcome if latest else None,
+                "speech_gate": 'silero-vad' if attempt.analysis_outcome == 'no_speech' or received else None}}
+
+
+@api_view(["POST"])
+def process_attempt(request, attempt_id):
+    serializer = ProcessSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    get_object_or_404(Attempt, pk=attempt_id)
+    try:
+        attempt = admit(attempt_id, serializer.validated_data)
+    except ProcessConflict as error:
+        return Response({"error": {"code": error.code, "message": error.message}}, status=409)
+    return Response(attempt_data(attempt, request), status=200 if attempt.status == 'completed' else 202)
 
 
 @api_view(["POST"])

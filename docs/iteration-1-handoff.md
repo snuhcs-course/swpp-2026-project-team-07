@@ -1,5 +1,7 @@
 # Iteration 1 team handoff
 
+The initial scaffold/branch sections below are historical. The current restoration and hosted-processing sections at the end describe this branch.
+
 This is a shared starting scaffold based on the submitted Expo/React Native/TypeScript Android + Django REST architecture. Hours are outside this task. The schedule does not establish individual feature owners; assign names as a team.
 
 Use [team-work-division.md](team-work-division.md) for the recommended owner split, detailed completion checks, shared-file coordination, and branch commands.
@@ -13,7 +15,7 @@ Use [team-work-division.md](team-work-division.md) for the recommended owner spl
 
 The last row is an integration responsibility, not necessarily a fourth person. Initial Gemini feedback is included in the submitted Iteration 1 scope.
 
-## Already wired
+## Historical scaffold: already wired
 
 - Four screen frames with back navigation and explicit sample-data notices.
 - Sample slide navigation, audience input, and sample/processing/failure result previews.
@@ -22,7 +24,7 @@ The last row is an integration responsibility, not necessarily a fourth person. 
 - PostgreSQL, Redis, shared media and Celery development configuration.
 - Feature interfaces, backend adapter entry points, setup docs and CI checks.
 
-## Implementation entry points
+## Historical scaffold implementation entry points
 
 - `pdfService.importPdf()` raises a not-implemented error. Implement picker cancellation as `null`; never substitute demo data for a real import.
 - `SlidePreview` renders designed sample slides. Replace it with real slide images, or agree on a native PDF renderer before adding a dependency.
@@ -50,8 +52,16 @@ Stage 1 is being prepared on isolated `codex/recording-review-fixes`, `codex/pdf
 The local prototype and earlier worktrees are reference sources, not merge bases. Reused code/tests originate in local recording `b28de880`, PDF `260dcbae`, and the preserved unfinished integration worktree. The original worktrees remain unchanged.
 
 
-## Current restoration handoff (2026-10-08)
+## Current processing handoff (2026-10-08)
 
-Stage 1 is consolidated into PR #17 (`feature/pdf-recording`); PRs #14–#16 are closed as superseded. Stage 2 uses `feature/recording-storage-upload`, stacked on that integration branch while #17 remains unmerged. It saves local attempts/checkpoints and uploads durable PDF/audio with duplicate protection; uploaded attempts explicitly await analysis. The process endpoint remains 501.
+This stage builds on committed storage base `06fe340`. The current user explicitly authorized `feature/whisper-api-processing`, superseding the historical stop-after-storage instruction. No named owner approval is inferred. The local pipeline supplied implementation and independent staged review; the coordinator handles authorized publication. Human review and merging remain with the team.
 
-The local multi-agent pipeline implemented and independently reviewed storage repairs. Automated, PostgreSQL/Redis/Celery media-access and Android emulator evidence is recorded in [AI-use](ai-use.md). Physical-device audio quality and human review remain pending. The user authorized PR publication, not merging. Stop after this storage implementation and receive explicit confirmation before starting `feature/whisper-api-processing`; that next stage uses hosted `whisper-1`, never local Whisper inference.
+Implemented scope: automatic upload/transcription after new capture with first-use OpenAI disclosure, plus manual Analyze for cancelled/older recordings; PostgreSQL durable queue and 30-second Beat recovery; generation/token claims; packaged Silero CPU presence gate; hosted `whisper-1` only; private raw/usage records; persisted normalized transcript; authoritative-duration alignment and EN/KO timing/rate estimates; stage/Refresh/revision-aware Retry/uncertain-charge confirmation; API-scoped SQLite cache; plain real transcript and retained local replay. The upload endpoint remains storage-only; the mobile result screen coordinates initial processing. Feedback stays disabled regardless of configured credentials. Full synchronized review UI, themes, auth, deployment and new detectors are excluded.
+
+Read [api-contract.md](api-contract.md) before changing the pipeline. Additive migration preserves existing results/media and does not queue legacy rows. A request marked submitted without a durable outcome cannot be automatically called again. Raw/transcript resume avoids provider work. The prototype `33907d3` supplied only the no-speech presence policy and metrics approach; its local Whisper inference, automatic retries and duration extension were not incorporated.
+
+Coordinator repair: no-speech now follows shared alignment/metrics with a saved empty transcript, empty-word visits (including repeated/backward/zero-duration visits), unchanged recording duration and zero provider requests. Torch/Torchaudio are pinned to 2.10.0; the regenerated lock preserves all other pins. Two residual advisories and the packaged ONNX source-path assessment are recorded in [whisper-transcription.md](whisper-transcription.md#packaged-gate-dependency-assessment-2026-10-08). Final coordinator verification repeated affected checks against the repaired source; detailed evidence and remaining human/device boundaries are linked below.
+
+Verification separates mocked/SQLite checks, real infrastructure, synthetic hosted speech, emulator behavior and human review. The final outcomes and outstanding checks follow.
+
+Final handoff: independent staged review passed. Mobile checks (115 tests), Android export, backend checks (74 tests; five skips on SQLite, all 74 passing on PostgreSQL), populated/interrupted upgrades, real worker crash recovery and Linux packaged VAD passed. A controlled hosted English TTS pilot produced 41 timestamped words and slide visits 3 → 4 → 3; completed retries reused its saved result. Android emulator checks covered consent, Analyze, silence metadata, restart/offline cache and local replay. Physical-phone/human-speech and Korean VAD evaluation, native API-switch/background stress checks and human code review remain pending; automated tests cover those lifecycle/API-switch cases. See [AI-use evidence](ai-use.md#2026-10-08--hosted-processing-coordinator-verification-and-publication). Publish this branch stacked on `feature/recording-storage-upload`; do not merge. Stop for user confirmation before `feature/rehearsal-review`.

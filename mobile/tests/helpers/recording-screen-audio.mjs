@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 export const RecordingPresets = { HIGH_QUALITY: {} };
 export const AudioModule = { requestRecordingPermissionsAsync: async () => ({ granted: true }) };
 export async function setAudioModeAsync() {}
@@ -47,6 +47,19 @@ export const playback = { status: {}, seeks: [], played: 0, paused: 0, wait: nul
 export function resetPlayback() {
   Object.assign(playback, { status: { isLoaded: true, playing: false, currentTime: 2, duration: 2, didJustFinish: false, error: null }, seeks: [], played: 0, paused: 0, wait: null, source: null });
 }
-const player = { play() { playback.played++; }, pause() { playback.paused++; }, async seekTo(time) { playback.seeks.push(time); if (playback.wait) await playback.wait; } };
-export function useAudioPlayer(source) { playback.source = source; return player; }
+export const players = [];
+export function useAudioPlayer(source) {
+  playback.source = source;
+  const player = useMemo(() => {
+    const player = { released: false, source,
+      assertLive() { if (this.released) throw new Error('Native player was released'); },
+      play() { this.assertLive(); playback.played++; },
+      pause() { this.assertLive(); playback.paused++; },
+      async seekTo(time) { this.assertLive(); playback.seeks.push(time); if (playback.wait) await playback.wait; },
+    };
+    players.push(player); return player;
+  }, [source]);
+  useEffect(() => () => { player.released = true; }, [player]);
+  return player;
+}
 export function useAudioPlayerStatus() { return playback.status; }

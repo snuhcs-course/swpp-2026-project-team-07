@@ -2,17 +2,13 @@
 
 An Android presentation practice app connecting PDF slides, recordings, slide-aligned transcripts, and feedback.
 
-**Storage/upload scope: `feature/recording-storage-upload` (ready for teammate review).** Real local PDF identity, native page count (up to 10), confirmed selected starting page, and audio-timed page-change callbacks are connected to capture. Actual saved audio plays in Results without a sample transcript. Capture failures/navigation use the reviewed lifecycle behavior. Durable SQLite attempts/checkpoints, restart recovery and retryable PDF/audio upload are implemented on this branch. Uploaded attempts explicitly await analysis; processing still returns 501. Independent AI review, automated checks, and Android emulator storage/recovery/upload checks passed. Physical-phone microphone quality and human review remain pending; verification is recorded in [docs/ai-use.md](docs/ai-use.md).
+**Processing scope: `feature/whisper-api-processing`.** Finishing a real recording opens its saved result and uploads the PDF and audio to the configured server. Transcription starts automatically after the first-use OpenAI disclosure is accepted; cancelling the disclosure leaves the server upload saved without starting transcription. The saved-attempt screen retains **Analyze recording** for cancelled/older recordings, stage/Refresh/Retry controls and a plain real transcript. SQLite caches results by API address and attempt UUID. Local replay remains available through network/provider/analysis failures; sample previews stay separate.
 
-Historical standalone work on `feature/whisper-alignment`: the hosted Whisper adapter, standalone word-to-slide matcher, and mocked/synthetic tests are implemented. [Alignment notes](docs/word-alignment.md) describe its
-proposed internal output and a runnable example. It is not yet wired into the
-worker, API, or app. [Whisper setup](docs/whisper-transcription.md) explains how to run a real-audio check; a live TTS transcription/alignment check passed; human-speech accuracy remains unverified.
+The backend coordinates a durable PostgreSQL queue, packaged Silero speech-presence check, hosted `whisper-1`, private raw-response persistence, normalized transcript, chronological slide visits and timing/rate estimates. Feedback is disabled for this stage. See the [API contract](docs/api-contract.md) for revision-aware retries and uncertain outbound requests. Historical standalone adapter/alignment work is now integrated; its older pilot evidence does not establish this pipeline's live accuracy.
 
-The [mobile transcription client](docs/mobile-transcription.md), originally developed on
-`feature/transcription-client-and-playback`, also contains processing/polling helpers
-and an explicitly labeled TTS playback preview. The current real-recording flow
-uses only upload and saved local audio playback. It never requests processing or
-shows the fixture transcript for a real recording; live analysis/results remain pending.
+Detected no-speech saves an empty transcript, chronological visits with empty word lists, and timing metrics over the original recording duration, with zero provider requests. Repeated, backward and zero-duration visits remain visible in the result data.
+
+Independent AI review, 115 mobile tests, Android export, 74 PostgreSQL tests, worker recovery checks, Linux packaged-gate checks and a controlled hosted synthetic-speech pilot passed. Android emulator checks covered explicit Analyze, consent, cached offline results and local playback. Physical-phone/human-speech quality and human code review remain pending. Detailed evidence and dependency limitations are in [docs/ai-use.md](docs/ai-use.md#2026-10-08--hosted-processing-coordinator-verification-and-publication).
 
 ## Start here
 
@@ -35,7 +31,7 @@ backend/                        Django REST + Celery
   rehearsals/models.py          Deck, slide, and attempt storage
   rehearsals/services/          PDF, Whisper, alignment, Gemini entry points
   rehearsals/tasks.py           Background task entry point
-compose.yaml                    Local PostgreSQL, Redis, API, worker
+compose.yaml                    Local PostgreSQL, Redis, API, worker, scheduler
 ```
 
 ## Run Android
@@ -68,7 +64,7 @@ That Java command requires a macOS-registered JDK 17. If Gradle provisioned your
 
 Local PDF import, capture and saved-audio playback run without backend services or provider keys. SQLite stores one UUID, the prepared audio URI and audio-relative slide checkpoints per real recording. On restart, interrupted capture requires playable-audio recovery; an unfinalized/missing native file cannot be reconstructed. Upload retries retain the UUID, source audio and slide visits. Native PDF rendering and SQLite require a rebuilt Android development client, not Expo Go.
 
-Limits remain **10 slides, 20 MiB PDF, ten minutes (600,000 ms), and 25,000,000 audio bytes**. Legacy audio above the byte limit stays local and can still be played; make a shorter new recording to upload. The saved screen explicitly shows uploaded recordings as awaiting analysis. Deck mappings are scoped to the configured API address, and confirmed missing mappings are repaired before audio upload.
+Limits remain **10 slides, 20 MiB PDF, ten minutes (600,000 ms), and 25,000,000 audio bytes**. Legacy audio above the byte limit stays local and can still be played; make a shorter new recording to upload. New captures automatically continue from upload to analysis; first-use cancellation leaves them awaiting analysis. Deck mappings are scoped to the configured API address, and confirmed missing mappings are repaired before audio upload.
 
 ## Run the backend
 
@@ -81,7 +77,7 @@ cp backend/.env.example backend/.env
 docker compose up --build
 ```
 
-This starts PostgreSQL, Redis, Django on port 8000, and a Celery worker, with persistent database/media volumes. The API container applies migrations. Ports bind to loopback. This is a local development configuration; authentication and production deployment are separate work.
+This starts PostgreSQL, Redis, Django on port 8000, a Celery worker and periodic recovery scheduler, with persistent database/media volumes. The API container applies migrations. Ports bind to loopback. This is a local development configuration; authentication and production deployment are separate work.
 
 `http://127.0.0.1:8000/api/health/` checks API liveness. `/api/ready/` checks database/broker connectivity, not AI implementation or worker readiness. Check the worker using `docker compose exec worker celery -A config inspect ping`.
 
@@ -95,9 +91,15 @@ python -m pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Run `docker compose up -d db redis` from the repository root. Then run `python manage.py migrate` and `python manage.py runserver 0.0.0.0:8000` from `backend/`. In another activated terminal, run `celery -A config worker --loglevel=info`.
+Run `docker compose up -d db redis` from the repository root. Then run `python manage.py migrate` and `python manage.py runserver 0.0.0.0:8000` from `backend/`. In separate activated terminals, run `celery -A config worker --loglevel=info` and `celery -A config beat --loglevel=info --schedule=/tmp/outloud-celerybeat`. Keep one scheduler running. It republishes durable queued rows and recovers expired claims every 30 seconds.
 
-The **health endpoint and the unimplemented process route only** can be smoke-tested without PostgreSQL/Redis using `python manage.py runserver --settings=config.test_settings 127.0.0.1:8000`. This uses an ephemeral test database and may warn about unapplied migrations; do not use it for feature development or saving attempts. Persistent storage needs the real database/media setup. Processing remains unimplemented, and this limited smoke check is not infrastructure validation.
+The SQLite `config.test_settings` setup is for automated tests; persistent development and concurrency validation require PostgreSQL, Redis, the worker and scheduler. A successful SQLite test or Android JavaScript export does not establish worker recovery or device behavior.
+
+The dependency lock includes `silero-vad==6.2.0`, `torch==2.10.0`, `torchaudio==2.10.0`, `onnxruntime==1.23.2`, `numpy==2.2.6`, and `av==16.1.0`. Silero's packaged ONNX model runs on CPU; there are no local Whisper dependencies or model downloads. PyAV decodes only a temporary in-memory waveform for presence detection; hosted transcription receives the original audio bytes unchanged. Decode/model failures stop recoverably before provider submission.
+
+The coordinator's dependency audit reports two residual Torch advisories after this upgrade: PT2 loading (`PYSEC-2026-139`) and `torch.jit.script` (`PYSEC-2025-194`). The current gate uses neither affected operation on uploaded data; this is not an audit-clean dependency set. See the [dependency assessment](docs/whisper-transcription.md#packaged-gate-dependency-assessment-2026-10-08) for source paths, evidence and remaining risk.
+
+Regenerate the lock with `uv pip compile backend/requirements.in -o backend/requirements.txt --cache-dir /tmp/onloud-uv-cache` from the repository root (append `--offline` when the cache is populated). Install through the setup above; native CPU/runtime packaging must also be verified in the coordinator's Linux/Compose environment.
 
 ## App connection
 
@@ -105,7 +107,7 @@ The **health endpoint and the unimplemented process route only** can be smoke-te
 - USB phone: run `adb reverse tcp:8000 tcp:8000`, use `http://127.0.0.1:8000/api`, and restart Metro.
 - Tap **Check connection** in the Library screen.
 
-Provider keys belong only in ignored `backend/.env`. Never use `EXPO_PUBLIC_*` for secrets. The storage/upload flow calls no providers and requires no provider keys. Deck/attempt uploads and retrieval are implemented; `/attempts/{id}/process/` still returns HTTP 501 and queues no work.
+Provider keys belong only in ignored `backend/.env`. Never use `EXPO_PUBLIC_*` for secrets. Storage/upload endpoints call no providers. After a new capture uploads, the mobile flow calls `/attempts/{id}/process/` following first-use disclosure; older/cancelled recordings retain Analyze and failures retain explicit Retry. Missing keys and provider rejection fail safely while retaining source audio.
 
 ## Checks
 
@@ -123,7 +125,9 @@ cd backend
 .venv/bin/python manage.py makemigrations --check --dry-run --settings=config.test_settings
 ```
 
-Unit tests use in-memory SQLite. GitHub CI also configures PostgreSQL and applies migrations. JavaScript bundle validation is separate from APK/device testing. For this storage change, Android emulator restart/recovery/replay/offline retry, PostgreSQL concurrent submissions, server restart/media retrieval, and isolated Redis/Celery media access passed. Independent AI review passed; physical-device checks and human review remain pending. See [docs/ai-use.md](docs/ai-use.md) for commands, results and limitations.
+Unit tests use in-memory SQLite. PostgreSQL-specific processing/upload races are explicitly skipped there. Run them separately against the real test database with `.venv/bin/python manage.py test rehearsals.test_processing.ConcurrentProcessingTests rehearsals.test_storage.ConcurrentUploadTests --settings=config.settings` from `backend/` with test-database privileges. Never substitute SQLite for that evidence. Verify scheduler restart, missed broker publication, worker termination before/after submission and after raw persistence, Android lifecycle/cache/replay, and a consented hosted pilot separately.
+
+A submitted marker means a request may have reached the provider. SDK timeout is 120 seconds, task limit 300 seconds, and claim expiry 360 seconds. Automatic provider/SDK retries are disabled. Received raw output and successful transcripts are reused. Ambiguous outbound failures require explicit acknowledgement before a new generation; this does not promise provider exactly-once execution or a monetary cap.
 
 ## Team branches
 
