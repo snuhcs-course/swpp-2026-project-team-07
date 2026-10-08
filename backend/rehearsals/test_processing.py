@@ -35,6 +35,34 @@ class ProcessingTests(TransactionTestCase):
         self.assertEqual(self.attempt.processing_state, 'queued')
         self.assertIsNotNone(self.attempt.queued_at)
 
+    def test_standalone_feedback_settings_cannot_affect_speech_or_silence(self):
+        configs = [
+            {'FEEDBACK_ENABLED': 'true', 'FEEDBACK_PROVIDER': 'gemini', 'GEMINI_API_KEY': ''},
+            {'FEEDBACK_ENABLED': 'true', 'FEEDBACK_PROVIDER': 'invalid', 'GEMINI_API_KEY': 'synthetic'},
+            {'FEEDBACK_ENABLED': 'not-a-bool', 'FEEDBACK_OPENAI_MODEL': '../invalid'},
+        ]
+        for speech in [True, False]:
+            for env in configs:
+                with self.subTest(speech=speech, config=env):
+                    self.attempt = Attempt.objects.create(deck=self.attempt.deck, audio=audio_file(), duration_ms=2000,
+                        slide_events=[{'slide_index': 1, 'at_ms': 0}, {'slide_index': 0, 'at_ms': 1000}])
+                    self.route = f'/api/attempts/{self.attempt.id}/process/'
+                    with patch.dict('os.environ', env), \
+                         patch('rehearsals.services.feedback_provider.FeedbackAdapter', side_effect=AssertionError('feedback must remain disconnected')) as adapter, \
+                         patch('rehearsals.services.feedback_provider.request_raw', side_effect=AssertionError('no feedback requests')) as outbound:
+                        self.queue()
+                        self.assertEqual(self.run_worker(speech=speech), int(speech))
+                        public = self.client.get(self.route.removesuffix('process/')).data
+                        self.assertEqual(public['status'], 'completed')
+                        self.assertEqual(public['feedback'], [])
+                        self.assertEqual(public['feedback_state'], 'disabled')
+                        self.assertEqual(public['duration_ms'], 2000)
+                        self.assertEqual(len(public['visits']), 2)
+                        self.assertEqual(self.run_worker(speech=speech), 0)
+                        self.assertEqual(self.attempt.provider_requests.count(), int(speech))
+                    adapter.assert_not_called()
+                    outbound.assert_not_called()
+
     def queue(self, body=None):
         with patch('rehearsals.tasks.process_attempt.delay'):
             response = self.client.post(self.route, body or {}, format='json')

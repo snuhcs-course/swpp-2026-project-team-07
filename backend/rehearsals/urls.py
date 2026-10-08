@@ -1,8 +1,12 @@
 from django.urls import path
-from . import views
+from . import views, description_views, feedback_views
 
 urlpatterns = [
+    path("attempts/<uuid:attempt_id>/feedback/", feedback_views.feedback),
+    path("attempts/<uuid:attempt_id>/feedback/generate/", feedback_views.generate),
     path("health/", views.health),
+    path("decks/<uuid:deck_id>/descriptions/", description_views.descriptions),
+    path("decks/<uuid:deck_id>/descriptions/generate/", description_views.generate),
     path("ready/", views.ready),
     path(
         "decks/", views.decks

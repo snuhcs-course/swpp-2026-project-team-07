@@ -1,5 +1,6 @@
-import type { AttemptResult, DeckDetail, ReviewAttempt, SlideEvent, TimingMetrics, Visit } from '../../contracts';
-import { validResult } from './resultValidation';
+import type { AttemptResult, DeckDetail, ReviewAttempt, SlideEvent, TimingMetrics, Visit, FeedbackAnalysis } from '../../contracts';
+import { parseResult } from './resultValidation';
+import { optionalFeedback, isDigest } from '../feedback/validation';
 
 export const isUuid = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 const object = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -64,7 +65,7 @@ export function parseReview(value: unknown, id: string, api: string, deck?: Deck
       ? rawTranscript.words.map(w => ({ text: w.text as string, start_ms: w.start_ms as number, end_ms: w.end_ms as number })) : [],
   } : null;
   const candidate = value.processing_result ?? value;
-  const processing = validResult(candidate, id) ? candidate : null;
+  const processing = parseResult(candidate, id);
   const metrics = reviewMetrics(value.metrics, duration, pages);
   const processTimeline = processing && (!processing.slide_events || validEvents(processing.slide_events, processing.duration_ms, pages)) &&
     (!processing.visits || validVisits(processing.visits, processing.duration_ms, pages, processing.slide_events)) &&
@@ -74,16 +75,57 @@ export function parseReview(value: unknown, id: string, api: string, deck?: Deck
     duration_ms: duration, slide_events: events, visits, transcript, metrics,
     audio_url: mediaUrl(value.audio_url, api),
     status: typeof value.status === 'string' && ['pending', 'processing', 'completed', 'failed'].includes(value.status) ? value.status : 'unknown',
+    ...(isDigest(value.transcript_id) ? { transcript_id: value.transcript_id } : {}),
+    ...(value.feedback_analysis !== undefined ? { feedback_analysis: optionalFeedback(value.feedback_analysis, id,
+      { attempt_id: id, deck_id: typeof value.deck_id === 'string' ? value.deck_id : null, duration_ms: duration, transcript,
+        transcript_id: isDigest(value.transcript_id) ? value.transcript_id : null, slide_events: events, visits }, deck?.page_count) } : {}),
     processing_state: processing?.processing_state ?? 'unavailable',
     processing_result: processTimeline && processing && (!deck || (!processing.deck_id || processing.deck_id === deck.id)) ? processing : null,
   };
 }
 
+export function preferFeedback(previous?: FeedbackAnalysis, next?: FeedbackAnalysis): FeedbackAnalysis | undefined {
+  if (!previous) return next;
+  if (!next) return previous;
+  if (previous.feedback_revision !== next.feedback_revision) return previous.feedback_revision > next.feedback_revision ? previous : next;
+  const beforeDependency = previous.dependency, afterDependency = next.dependency;
+  const sameDependency = beforeDependency && afterDependency && beforeDependency.description_set_id === afterDependency.description_set_id;
+  if (sameDependency && beforeDependency.processing_revision !== afterDependency.processing_revision) {
+    return beforeDependency.processing_revision > afterDependency.processing_revision ? previous : next;
+  }
+  const stamp = (s: string | null) => Date.parse(s ?? '') * 1000 + Number((s?.match(/\.(\d+)/)?.[1] ?? '').padEnd(6, '0').slice(3, 6));
+  // The feedback job may stay waiting while its dependency fails or recovers.
+  // Preserve dependency timestamps in caches, including microsecond precision.
+  const freshness = (value: FeedbackAnalysis) => Math.max(...[value.updated_at, value.dependency?.updated_at ?? null]
+    .map(stamp).filter(Number.isFinite));
+  const before = freshness(previous), after = freshness(next);
+  if (Number.isFinite(before) && Number.isFinite(after) && before !== after) return before > after ? previous : next;
+  // Same millisecond can contain multiple database transitions. Never reverse an
+  // invalidation/completion within that generation based on an older response.
+  const rank = { absent: 0, disabled: 0, unavailable: 0, waiting_descriptions: 1, queued: 2, waiting_quota: 3,
+    preparing: 3, submitted: 4, normalizing: 5, failed: 6, needs_confirmation: 6, completed: 7, stale: 8 };
+  if (rank[previous.state] !== rank[next.state]) return rank[previous.state] > rank[next.state] ? previous : next;
+  if (sameDependency) {
+    // Older caches can lack dependency timestamps. Terminal states win ties,
+    // but the revision check above lets an explicit retry return to queued.
+    const dependencyRank = { absent: 0, disabled: 0, configuration_unavailable: 0, source_unavailable: 0,
+      queued: 1, preparing: 2, waiting_quota: 3, submitted: 4, normalizing: 5, failed: 6, needs_confirmation: 6, completed: 7 };
+    if (dependencyRank[beforeDependency.state] !== dependencyRank[afterDependency.state]) {
+      return dependencyRank[beforeDependency.state] > dependencyRank[afterDependency.state] ? previous : next;
+    }
+  }
+  return next;
+}
 export function preferResult(previous: AttemptResult | null, next: AttemptResult, source: 'detail' | 'history' = 'detail'): AttemptResult {
   if (!previous) return next;
-  if (previous.processing_revision !== next.processing_revision) return previous.processing_revision > next.processing_revision ? previous : next;
   const rank = { awaiting_analysis: 0, queued: 1, checking_audio: 2, transcribing: 3, aligning: 4, failed: 5, needs_confirmation: 5, completed: 6 };
-  if (rank[previous.processing_state] > rank[next.processing_state]) return previous;
-  if (source === 'history' && rank[previous.processing_state] === rank[next.processing_state]) return previous;
-  return next;
+  let recording = next;
+  if (previous.processing_revision !== next.processing_revision) recording = previous.processing_revision > next.processing_revision ? previous : next;
+  else if (rank[previous.processing_state] > rank[next.processing_state] ||
+      (source === 'history' && rank[previous.processing_state] === rank[next.processing_state])) recording = previous;
+  // Feedback has its own revision and timestamps. It cannot choose the Whisper
+  // winner, and is validated again against that winner before enabling evidence.
+  const feedback = preferFeedback(previous.feedback_analysis, next.feedback_analysis);
+  const parsed = optionalFeedback(feedback, recording.attempt_id, recording);
+  return parsed ? { ...recording, feedback_analysis: parsed } : recording;
 }

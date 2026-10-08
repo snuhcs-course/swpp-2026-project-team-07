@@ -1,3 +1,5 @@
+import type { FeedbackAnalysis } from './feedback';
+export * from './feedback';
 /** Wire-format names match docs/api-contract.md and the Django serializers. */
 export type SlideEvent = { slide_index: number; at_ms: number };
 export type TranscriptWord = { text: string; start_ms: number; end_ms: number };
@@ -58,6 +60,8 @@ export type AttemptResult = {
     outcome: "submitted" | "received" | "rejected" | "uncertain" | null; speech_gate: "silero-vad" | null };
   status: "pending" | "processing" | "completed" | "failed";
   transcript: Transcript | null;
+  transcript_id?: string | null;
+  feedback_analysis?: FeedbackAnalysis;
   feedback: Feedback[];
   error: { code: string; message: string } | null;
 };
@@ -70,4 +74,6 @@ export type ReviewAttempt = {
   transcript: Transcript | null; metrics: TimingMetrics | null; audio_url: string | null;
   status: string; processing_state: ProcessingState | 'unavailable';
   processing_result: AttemptResult | null;
+  transcript_id?: string | null;
+  feedback_analysis?: FeedbackAnalysis;
 };

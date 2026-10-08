@@ -10,6 +10,8 @@ Base path `/api/`. JSON uses `snake_case`, UUID strings and integer milliseconds
 | `POST /attempts/` | Multipart `audio`, `metadata` JSON string | 201: `{attempt_id}` after durable storage |
 | `POST /attempts/{id}/process/` | Strict JSON process request below | 202: accepted/active `AttemptResult`; 200: completed `AttemptResult`; 409: retry conflict |
 | `GET /attempts/{id}/` | None | 200: `AttemptResult` |
+| `GET /attempts/{id}/feedback/` | None | 200: independent feedback state; read-only |
+| `POST /attempts/{id}/feedback/generate/` | Strict JSON feedback request below | 202: active; 200: current completed; 409: selection/revision/confirmation/cooldown conflict |
 
 Current mobile flow: finish capture → save locally → open saved result → upload PDF if needed → upload audio with the same attempt UUID → request initial processing automatically after first-use OpenAI disclosure. The upload endpoint/helper still only stores audio; the saved screen coordinates the separate process request. Cancelled/older recordings retain manual Analyze. Upload handlers validate the known deck, slide bounds, UUID uniqueness, supported audio/container, duration/size limits and metadata. Reject conflicting uploads for an existing ID. New recording means new ID; upload retries retain the ID, audio and normalized metadata. Identical retries return the existing attempt; conflicting valid content returns 409. Processing retries retain the ID/audio and avoid duplicate provider work.
 
@@ -64,7 +66,8 @@ POST process, GET attempt and deck history use the same serializer. All response
 | `visits` | Null, or chronological `{slide_index, start_ms, end_ms, words}` visits, including empty/zero-duration visits |
 | `metrics` | Null, or timing metrics below; the same shape for speech and no speech |
 | `analysis_outcome` | Null, `speech`, `no_speech`, or `legacy` |
-| `feedback`, `feedback_state` | Newly completed analysis always `[]`, `disabled`, regardless of Gemini credentials |
+| `feedback`, `feedback_state` | Legacy shape retained. Whisper completion still saves `[]`, `disabled`; independent coaching is in `feedback_analysis` |
+| `transcript_id`, `feedback_analysis` | Additive transcript evidence digest (nullable) and the safe coaching state below. Older mobile caches may omit both |
 | `error` | Null, or safe `{code, message}` |
 | `provenance` | `{provider, model, generation, outcome, speech_gate}`; values nullable; provider/model `openai`/`whisper-1`, request outcome `submitted`/`received`/`rejected`/`uncertain`, gate `silero-vad` |
 
@@ -76,7 +79,405 @@ Hosted transcription uses exactly `whisper-1`, `verbose_json`, and `timestamp_gr
 
 The packaged Silero CPU gate checks a temporary PyAV-decoded waveform only. It never cuts, concatenates or rewrites provider input. Detection failure fails closed (`audio_check_failed`); no provider request occurs. Detected no-speech saves transcript `{text: "", words: []}` and `analysis_outcome=no_speech` before running `align_words([], slide_events, duration_ms)` and timing metrics. Completion retains every chronological visit with `words: []`, including simultaneous/zero-duration, repeated and backward visits. Metrics retain the authoritative recording duration and summed slide times, with `detected_language=und` and `speaking_rates=[]`. Original audio and slide events are unchanged and provider requests remain zero. Alignment failure retains the empty transcript and gate outcome as partial results; retry or stale-claim recovery reuses them without another gate/provider call.
 
-Mobile Analyze requires a recording known to the current API, established by its upload or validated server history. First-use disclosure has Continue/Cancel and locally persisted consent. Retry refreshes first and supplies the displayed current revision; uncertain requests require a separate charge acknowledgement. A client timeout is not server failure. Polling stops on navigation/background; stale callbacks and API-address changes cannot update another cache. SQLite result records are keyed by normalized API address and attempt UUID, separately from upload metadata. Offline refresh preserves cache and audio. Synchronized review is described below; feedback remains disabled.
+Mobile Analyze requires a recording known to the current API, established by its upload or validated server history. First-use disclosure has Continue/Cancel and locally persisted consent. Retry refreshes first and supplies the displayed current revision; uncertain requests require a separate charge acknowledgement. A client timeout is not server failure. Polling stops on navigation/background; stale callbacks and API-address changes cannot update another cache. SQLite result records are keyed by normalized API address and attempt UUID, separately from upload metadata. Offline refresh preserves cache and audio. Synchronized review is described below; coaching is independently generated through the explicit API below and remains disabled by default.
+
+## Durable slide descriptions (checkpoint 2)
+
+These separate routes preserve existing deck responses, Whisper requests, upload
+and transcription. Current attempt processing still saves legacy `feedback=[]`,
+`feedback_state=disabled`; checkpoint 3 adds independent `AttemptResult.feedback_analysis`
+metadata, explicit coaching and revision-aware dependency invalidation. Mobile
+types, parsers, clients, cache reconciliation and checkpoint-4 feedback
+UI/disclosure are implemented.
+Private preparation/evidence contracts are in [ai-feedback.md](ai-feedback.md).
+
+| Route | Input | Response |
+| --- | --- | --- |
+| `GET /decks/{deck_id}/descriptions/` | Optional `description_set_id` UUID query | 200 state below; 404 for a missing deck or set belonging to another deck |
+| `POST /decks/{deck_id}/descriptions/generate/` | Initial `{}`; retry shape below | 202 active state; 200 completed generated/edited cache; 409 revision/confirmation/cooldown conflict; safe 503 unavailable generation configuration |
+| `PATCH /decks/{deck_id}/descriptions/` | Complete edit shape below | 200 state; 409 stale revision/source; 404 deck/set mismatch |
+
+GET never mutates or publishes work. Without an explicit set, it resolves the
+current nonsecret provider/project/model/prompt/schema and current source scope.
+An explicit set remains readable with disabled feedback, missing keys or missing
+media; unavailable/changed source or different current configuration sets `stale`.
+Cached current-scope reads do not require a key. No implicit selection of another
+provider's or earlier source's generated/edited data occurs.
+
+Initial POST selects backend configuration only. Same-scope concurrent requests
+share one generation. Active repeats return 202, completed repeats return 200,
+without new work. A failed set requires:
+
+```json
+{"description_set_id":"11111111-1111-4111-8111-111111111111","processing_revision":1}
+```
+
+`needs_confirmation` additionally requires `"acknowledge_uncertain":true`.
+The supplied revision must be current, even on active/completed replay; a missing
+revision on failed work, stale revision, missing acknowledgement or future
+`retry_at` returns 409. An accepted failed retry consumes N → N+1 atomically, so
+concurrent replay wins once. It keeps the original saved scope, resolving the
+original provider's key only for its configured project; it cannot select a new
+model/provider via the request. A changed configuration/source creates a separate
+scope via initial POST. Completed/edited sets cannot be paid-regenerated by POST.
+
+Checkpoint 5 uses `description-gemini-v3` for new Gemini descriptions and retains
+`coaching-gemini-v2`; fixed prompts remain `description-v2` / `coaching-v1`.
+Description v3 removes only schema-node `minItems`/`maxItems` from the v2 wire
+projection. Local validation still requires 1–10 slides, complete unique source
+coverage and at most five facts in each fact array; invalid output never triggers
+an automatic repair request. Other schema constraints and input/output bounds are unchanged.
+OpenAI retains `description-v1` / `coaching-v1` schemas. Effective schemas enter
+prompt digests, request hashes, selection tokens and description cache scopes.
+Saved Gemini description v1/v2 jobs/retries/receipts reconstruct their exact
+historical schemas, request hashes and digests, including coaching waiting for
+descriptions before an input hash exists. Coaching v1/v2 stay unchanged. Unknown
+versions fail locally. Existing rows/results/provenance are not rewritten or
+automatically upgraded; retrying rejected legacy work retains its old wire schema.
+A new Gemini description scope requires explicit initial admission; an existing
+feedback analysis remains bound to its captured set/schema. No migration, fallback
+or retranscription is involved. See [compatibility details](ai-feedback.md#checkpoint-5-gemini-schema-compatibility).
+
+PATCH requires exactly:
+
+```json
+{
+  "description_set_id":"11111111-1111-4111-8111-111111111111",
+  "description_revision":1,
+  "descriptions":{"slides":[{
+    "deck_id":"22222222-2222-4222-8222-222222222222",
+    "slide_index":0,
+    "source_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "summary":{"text":"Synthetic example only","uncertain":false,"uncertainty":""},
+    "key_ideas":[],
+    "visual_facts":[]
+  }]}
+}
+```
+
+The example is a fixture, not a usable source identity. Include every actual slide
+exactly once; copy its current set's `provenance.sources` identity. Fact text must
+be nonblank and at most 400 characters, uncertainty at most 400 characters, and
+`uncertain` must exactly match whether its explanation is nonblank. At most five
+key ideas and five visual facts per slide; no extras/coercion. Both fact `text` and
+`uncertainty` reject U+0000 with `invalid_descriptions`; other Unicode is unchanged.
+The full descriptions envelope is bounded to 64 KiB UTF-8 JSON. Edits validate current deck/source and
+compare revision atomically; concurrent edits have one winner. An edit increments
+`description_revision` and `processing_revision`, marks origin `edited`, and
+fences a running generation. Its receipt/usage evidence is still retained privately.
+No key/provider call is needed for edits. Feedback referencing this set's previous
+revision becomes stale through revision-aware public derivation under the same
+set lock. Queued/running coaching cannot submit or publish current results from
+the superseded revision; late receipts/usage remain private evidence. Existing
+suggestions remain readable with `stale=true`. Explicit feedback reanalysis uses
+the newest descriptions without retranscribing. Other description scopes and
+their feedback are unaffected.
+
+POST/PATCH require `application/json`, an object, no duplicate/extra fields, and
+at most 70 KiB request bytes before parsing/preparation. UUIDs are canonical lower
+case. Revisions are integers 0..2147483647 (not booleans/strings). Optional
+acknowledgement is boolean. Retry fields without `description_set_id`, client
+provider/model/project/key/URL overrides and malformed JSON return safe 400.
+Errors use `{error:{code,message}}`; they never echo provider or source content.
+PATCH invalid descriptions/media return 400; generation's unavailable configuration
+(including quotas or unavailable historical prompt/schema) returns 503. Source
+reconstruction can also fail locally in the queued job before any submission.
+
+Every successful GET/POST/PATCH uses this **explicit allowlist**:
+
+| Field | Meaning |
+| --- | --- |
+| `deck_id`, `description_set_id` | Deck UUID; set UUID or null when absent |
+| `state` | `absent`, `disabled`, `configuration_unavailable`, `source_unavailable`, `queued`, `preparing`, `submitted`, `normalizing`, `waiting_quota`, `completed`, `failed`, `needs_confirmation` |
+| `stage` | `descriptions` for a set, otherwise null; coaching has its own state below |
+| `selection` | Null or the effective new/saved generation descriptor below, even before data exists |
+| `processing_revision`, `description_revision` | Independent nonnegative integers; 0 for an absent set. Processing revisions advance on admission/retry and edit fencing; description revisions advance only on complete generated/edited saves |
+| `descriptions`, `edited` | Null or complete `{slides:[...]}` as above; boolean user-edit origin |
+| `provenance` | Null or `{provider,project_id,model,prompt_version,schema_version,origin,sources:[{slide_index,source_id}]}`. `origin` is null before a result, then `generated` or `edited`; project ID is nonsecret |
+| `created_at`, `updated_at` | Nullable ISO times for scope creation and latest current-generation state/receipt or revision/result update. Superseded receipts do not advance current freshness |
+| `queued_at`, `claimed_at`, `submitted_at`, `received_at`, `completed_at` | Nullable ISO times from latest job/request; completion is the latest description save when data exists |
+| `error` | Null or fixed safe `{code,message}`; no errors manufactured into descriptions |
+| `retry_at`, `retry_available` | Nullable ISO time including shared 429 cooldown; boolean true only for failed/uncertain work whose time has passed. Configuration, revision and acknowledgement still apply |
+| `requires_confirmation` | True only for `needs_confirmation` |
+| `stale`, `available_data` | Changed/unavailable current source or configuration; whether a complete set remains available (including edited data) |
+
+Absent states have null data/provenance/timestamps/set ID/stage, zero revisions,
+false booleans, and a safe error except for plain `absent`. Internal `superseded`
+jobs are hidden behind completed edited data. Raw receipts, payloads, input hashes,
+source snapshots, claim tokens, credentials and internal quota records are never
+public. Source reference hashes in descriptions/provenance are the permitted
+slide evidence references, not private request input hashes.
+
+Database queue intent precedes best-effort broker publication. The existing
+30-second Beat recovery handles lost publication, eligible OpenAI local quota waits and
+expired unsubmitted claims (360-second lease, 300-second task limit). Duplicate
+workers are fenced. Submission commits the application quota reservation and
+submitted marker before the sole provider call, outside transactions. Disabled
+feedback/project mismatch/unreconstructible source or prompt prevents submission.
+HTTP receipts, including rejected, malformed, oversized or incomplete bodies, are
+saved privately before normalization. Crash recovery uses that receipt without a
+new call. Receipt-save acknowledgement loss defers to lease recovery: normalize
+the saved sanitized receipt if present, otherwise require uncertainty confirmation;
+never normalize unpersisted output. A failed completion write/commit leaves the
+same receipt eligible for recovery; it does not classify the output as invalid
+or permit paid regeneration.
+After retry or PATCH advances the revision, receipt-only recovery still discovers
+unfinished late receipts, including jobs already marked `needs_confirmation`.
+It finalizes only the original private request outcome without changing newer
+jobs, generated/edited descriptions or their revisions.
+Submitted-without-outcome work becomes `needs_confirmation`; it never
+automatically resubmits. Known provider failures/invalid output require explicit
+new-generation retry; only OpenAI local quota waiting resumes automatically.
+Gemini local RPM/TPM/daily exhaustion or shared cooldown ends the generation as
+`failed` with fixed safe `quota_stopped` guidance and the calculated `retry_at`.
+Current-generation legacy Gemini `waiting_quota` jobs (including queued jobs with
+a retained wait marker) stop on task claim or Beat recovery, even after expiry.
+Saved provider identity governs this policy, never the current environment.
+Saved receipts normalize first; submitted-without-outcome uncertainty, live claims,
+edits and revision fences retain precedence. GET never performs this transition.
+Explicit retry before the effective cooldown returns 409; after it expires, the
+current revision permits one new generation with the saved selection. Replayed
+revisions return 409. No provider switching or fallback occurs.
+
+Provider/project/model buckets share rolling RPM/TPM reservations across stages
+(including coaching). Required positive backend allowances
+have no tier defaults. Reservation units are serialized UTF-8 bytes plus maximum
+output tokens, separately recorded from actual reported usage. Unknown usage is
+null, not zero; submitted reservations count through their windows. Requests
+larger than the configured per-request allowance fail locally. Gemini daily
+ceilings reset at America/Los_Angeles midnight; OpenAI's optional daily ceiling
+is an application UTC policy. A 429 Retry-After blocks the shared model scope.
+Actual provider 429 responses remain terminal `provider_rate_limit` failures for
+both providers and require an explicit retry after cooldown.
+This is neither exact provider token accounting nor a money cap. See the
+[configuration and validation details](ai-feedback.md#checkpoint-2-persistence-and-quota-policy).
+
+## Durable rehearsal coaching (checkpoint 3)
+
+Explicit `POST /attempts/{id}/feedback/generate/` admits `{}` once for a validated
+saved transcript/alignment. The backend selects provider/project/model, description
+and coaching prompt/schema versions, deck/source identity, saved language (or
+`und`), audience (up to 500 characters), original transcript indexes and recording
+chronology. An omitted `FEEDBACK_PROVIDER` selects OpenAI for new work; explicit
+Gemini is supported, and saved selections/model defaults are unchanged. Feedback stays
+disabled until configured. Missing OpenAI credentials never fall back to Gemini.
+No client provider/model selection or fallback is accepted. Initial
+configuration and speech validation precede admission of either paid stage.
+No-speech, missing/inconsistent transcript, invalid alignment and U+0000 in sources
+fail locally; source text/audio/duration are never rewritten or clamped. Whisper's
+processing state/revision/retries remain independent. Upload, Analyze, GET/history,
+refresh and replay never generate feedback.
+
+An existing exact-scope description set, including its edited revision, is reused.
+Otherwise the same selected scope is queued/reused through checkpoint 2. The
+feedback job remains `waiting_descriptions`; Beat safely attaches a naturally
+completed dependency and continues coaching, even if broker publication is lost.
+Failed/uncertain description work is never automatically paid-retried. Its
+`dependency` identifies the exact set and independent revisions/action. Explicit
+retry of that description generation advances unfulfilled feedback dependencies;
+PATCH is an edit and instead fences them as stale.
+
+Actions and their independent revisions:
+
+| Situation | Explicit action |
+| --- | --- |
+| First feedback analysis | `POST /attempts/{id}/feedback/generate/` with `{}` |
+| Failed or stale coaching | Same route with `{"feedback_revision": N}` from a fresh feedback GET |
+| Uncertain coaching, including uncertainty alongside staleness | Same retry plus `"acknowledge_uncertain": true` |
+| Failed description dependency | `POST /decks/{deck_id}/descriptions/generate/` with `description_set_id` and **`processing_revision`** from `dependency` |
+| Uncertain description dependency | That description request plus its own `"acknowledge_uncertain": true`; acknowledging feedback cannot retry descriptions |
+| Correct descriptions | `PATCH /decks/{deck_id}/descriptions/` with its set ID, **`description_revision`** and complete descriptions; then explicit feedback reanalysis |
+
+Feedback requests are bounded to 1,024 bytes and exactly the optional keys
+`feedback_revision`, `acknowledge_uncertain`, `expected_selection`. Revisions are actual integers in
+0..2^31−1; booleans/strings/extras/duplicate JSON keys are rejected. An
+acknowledgement without the required retry revision returns 409; the mobile client
+rejects that incomplete action locally. Initial admission accepts `{}` or assertion-only `{"expected_selection":"<token>"}`. GET accepts
+no query parameters; neither route accepts client scope selection. Unsupported
+methods are rejected by the route. Missing attempts return 404; malformed bodies
+or invalid saved sources return 400; generation unavailable due to configuration
+returns safe 503. The endpoints are trusted-local development APIs, without an
+authentication claim.
+
+Active requests return 202 and current completed requests return 200 without new
+paid work. Supplied stale/replayed revisions return 409 even on active/completed
+work. Failed/stale retry requires the current feedback revision; missing revision,
+required uncertainty acknowledgement or an unexpired cooldown returns 409. Accepted
+retry consumes N → N+1 exactly once. Retries retain the original provider/project/
+model and source snapshot. Same-project key rotation is supported with late key
+resolution; project mismatch blocks a call. Current backend selection affects new
+analyses only. Cached results remain readable when generation is disabled or keys
+are absent. A changed saved recording/source identity is an explicit `source_changed`
+conflict; it cannot authorize retranscription or silent snapshot substitution.
+
+Staleness does not waive uncertainty acknowledgement while a saved receipt awaits
+normalization: HTTP 408/5xx and incomplete HTTP 200 bodies already require it from
+their durable transport metadata. Complete HTTP 200 and known HTTP rejections
+(including auth/rate/validation errors with incomplete bodies) do not become
+ambiguous merely because normalization is pending. Reads/admission do not normalize
+or alter the receipt; recovery finalizes that original request without another call,
+even if an acknowledged retry has already advanced the feedback revision.
+
+Every feedback GET, successful generation response and nested
+`AttemptResult.feedback_analysis` uses this allowlist:
+
+| Field | Meaning |
+| --- | --- |
+| `attempt_id`, `feedback_revision` | Recording UUID and independent coaching generation (0 before initial admission) |
+| `state` | `absent`, `disabled`, `unavailable`, `waiting_descriptions`, `queued`, `preparing`, `submitted`, `normalizing`, `waiting_quota`, `needs_confirmation`, `failed`, `completed`, `stale` |
+| `stage` | `descriptions` while dependency is unfulfilled, `coaching` afterward, null before admission |
+| `selection` | Null or the effective new/saved generation descriptor below; independent of result provenance |
+| `availability` | `{state: available\|disabled\|unavailable, error}`; independent of stored work/result state |
+| `provenance` | Null or `{provider, project_id, model, prompt_version, schema_version, coaching_prompt_version, coaching_schema_version}`. Description and coaching versions are explicit; project ID is nonsecret |
+| `description_set_id`, `description_revision` | Captured set; fulfilled revision or null while waiting |
+| `dependency` | Null or `{deck_id, description_set_id, state, processing_revision, description_revision, updated_at, error, retry_at, retry_available, requires_confirmation, retry_action}`; `retry_action` is `generate_descriptions` or null. `updated_at` tracks current dependency transitions, including failure, uncertainty and receipt recovery |
+| `created_at`, `updated_at`, `queued_at`, `claimed_at`, `submitted_at`, `received_at`, `completed_at` | Nullable ISO times. `updated_at` is the latest coaching-job update, description-set update, or current coaching request's receipt/finalization time, including dependency transitions and description-edit invalidation. Late current-generation receipts advance freshness even while stale; older feedback generations' receipts do not advance the current snapshot |
+| `retry_at`, `retry_available`, `requires_confirmation`, `error` | Coaching action metadata and fixed safe error. Confirmation can remain true while `state=stale`; dependency confirmation is separate |
+| `stale` | Current generation's description/recording snapshot no longer matches; never silently replaced |
+| `last_output` | Null or current generation's `{status, accepted_count, discarded_count}`; includes `all_invalid` while a previous result may still be available |
+| `result` | Null or latest usable result (including valid empty); when no earlier usable result exists, may expose the failed `all_invalid` output. Its stale flag is independent of current work/error |
+
+`result` contains `status` (`accepted`, `partial`, `empty`, `all_invalid`),
+`accepted_count`, `discarded_count` (total ≤3), `suggestions`, `message`,
+`feedback_revision`, `description_set_id`, `description_revision`, `provenance`,
+`completed_at`, `stale`, `description_origin`, and `evidence`. The captured origin is
+`generated`, `edited` (the complete set has edits), or `unavailable` for legacy
+snapshots; later edits never relabel an older result. Valid empty has zero counts/cards and
+`message="No supported suggestions."`; other statuses have null message.
+`all_invalid` is a **failed** generation (`unsupported_feedback`), never successful
+empty output. Malformed envelopes/refusal/truncation/NUL output fail explicitly
+and retain private raw evidence. Unsupported well-formed cards are discarded
+individually; partial results report both counts. A failed/new generation can
+coexist with earlier suggestions, labeled stale with their original provenance.
+
+Each suggestion has `category` (`consistency`, `clarity`, `audience`), `slide_index`,
+`source_id`, `transcript_id`, `visit_id`, `segment_id`, inclusive `word_start`/
+`word_end`, `speech_quote`, `description_ref`, `slide_quote`, `observation`,
+`suggestion`, and server-derived `start_ms`/`end_ms`. Observation/suggestion are
+bounded to 600/700 characters, speech quote to 1,000, slide quote to 400. All are
+plain strings. An audience card requires saved audience context. Evidence is one
+contiguous run of original transcript indexes in a ≤40-word segment of one visit.
+The entire cited description fact must match exactly and be certain. Repeated
+phrases do not establish word identity. Word starts select visits; last simultaneous
+event wins. Crossing word ends are valid within authoritative audio duration; ranges
+use min(start)/max(end) without clipping. Structural evidence validity does not
+establish semantic correctness or coaching usefulness.
+
+The safe `evidence` context is exactly `{attempt_id, deck_id, transcript_id,
+chronology_id, duration_ms, page_count, audience_supplied, visits, sources,
+descriptions}`. Visits contain `slide_index`, `start_ms`, `end_ms`, `word_indexes`;
+sources contain `slide_index`, `source_id`; descriptions are the result's captured
+revision, never substituted current edits. Actual transcript words come from the
+attempt result, bound by `transcript_id`. Raw receipts, payloads/source snapshots,
+input/recording/audience hashes, tokens, keys and request/quota internals stay private.
+Public slide/transcript/chronology digests are evidence identities, not provider
+request hashes. No code, HTML, markdown links or URLs from feedback are executed.
+
+Migration 0006 creates an analysis/generation queue, adds nullable coaching ownership
+to `FeedbackRequest`, makes description ownership nullable, and constrains exactly
+one owner with the correct stage. Existing rows, Whisper request uniqueness and
+media remain untouched. Submission commits its reservation and marker before one
+outbound call. Receipt persistence precedes normalization. Missing submitted
+outcomes after claim expiry require confirmation; saved receipts recover without
+keys/media or another call, even after retry/edit supersession or lost persistence
+acknowledgement. Completion-write failures leave received evidence recoverable,
+not invalid. Old receipts/usage finalize independently and cannot publish current
+results. Description PATCH and coaching submission/completion serialize on the same
+set lock; captured revisions fence both. Claims last 360 seconds, tasks 300, and
+Beat recovery uses the existing schedule. OpenAI local quota waiting and successful
+dependencies can resume; Gemini local quota waits stop as `failed` / `quota_stopped`
+under the same policy as descriptions. Provider failures/invalid output never
+trigger automatic paid repair calls.
+
+Checkpoint-4 mobile review uses the validated contracts/clients in the existing saved screen. Attempt parsing allowlists and
+quarantines optional feedback independently, preserving legacy caches and partial/
+no-speech replay. Reconciliation compares coaching revision and update time separately
+from Whisper revision; malformed or older feedback cannot erase newer valid cached
+feedback. The client derives `result.evidence_verified` on every parse; it is never
+trusted from wire/cache. Complete transcript, chronology, source/fact and derived-time
+validation (and page-count agreement at use) gates `feedbackSeekTarget`; missing
+context yields no seek target. Legacy top-level cards grant no evidence capability.
+API-address isolation/cancellation remains in place. The checkpoint-4 workflow below
+adds provider disclosure and revision-checked editing; model-quality evaluation is checkpoint 5.
+
+## Generation selection assertion and mobile feedback review (checkpoint 4)
+
+Feedback and description reads expose `selection` independently of stored
+`provenance`. It is null only when the configured selection cannot be described;
+legacy responses/caches may omit it. The descriptor includes `provider`, nonsecret
+`project_id`, `model`, description `prompt_version`, `schema_version`,
+`prompt_digest`, `stage` (`descriptions` or `coaching`), `disclosure_version`
+(currently `feedback-v1`) and a lowercase 64-hex `token`. Coaching adds
+`coaching_prompt_version`, `coaching_schema_version`, `coaching_prompt_digest`.
+The token is SHA-256 over canonical UTF-8 JSON of these fixed-order descriptor
+fields (before adding `token`); clients treat it as opaque. Prompt digests identify
+fixed rules/schema/output bounds. No key, input/source/audience hash, private
+receipt or claim data participates. Keys may rotate without changing it.
+
+New analyses describe current backend selection. Existing feedback and explicit
+saved-description reads describe their saved selection, even after the default
+changes. Both generation POST routes accept optional `expected_selection` (the
+64-hex token). Assertion-only initial requests are valid. Supplied malformed tokens
+return 400; a different effective selection returns safe **409
+`selection_mismatch` before queue intent/publication, reservation or provider work**.
+Admission rechecks a concurrent initial winner against its saved selection. The
+assertion compares; it cannot select a provider/model, authenticate or replace the
+existing revision/uncertainty checks. Explicit legacy callers omitting it remain
+compatible and do not receive disclosure-race protection. PATCH accepts no assertion
+and retains its exact existing complete-set/revision payload.
+
+Mobile always includes the assertion in feedback generation and description retry,
+using fresh read metadata. Legacy caches remain readable but cannot authorize a
+request without refreshed selection metadata. First-use consent is keyed by
+normalized API address, provider and disclosure version, separately from Whisper.
+Continue/Cancel callbacks capture a unique prompt; refreshing, navigation,
+backgrounding and API/attempt/source changes invalidate them. The disclosure names
+the provider/model and slide images/text, descriptions, saved transcript and optional
+audience context; feedback sends no audio. A mismatch refreshes without resubmitting
+and requires another explicit generation action.
+
+Feedback KV keys are `feedback:v1:<encoded normalized API>:attempt:<attempt UUID>`;
+description keys are `...:descriptions:<deck UUID>:<set UUID>` with a `...:deck:<deck
+UUID>` last-read pointer. Consent uses `...:consent:<provider>:<disclosure version>`.
+An unresolved submission marker (`...:pending:<attempt UUID>`) is durably written
+before POST and retained through timeout/navigation/restart until reconciliation or
+an acknowledged explicit retry. It stores only action kind, revision, set ID and
+selection token. Existing `analysis:v1` and `review:v1` records remain readable;
+feedback never manufactures a local capture. Revisions/timestamps reconcile
+independently of Whisper; operation/session fencing rejects late reads/mutations.
+Validated description responses also advance the matching dependency metadata, so
+an older feedback GET cannot restore its consumed confirmation/retry revision.
+Completed dependencies continue polling while waiting for coaching to attach them.
+
+Refresh occurs before every mutation. Unknown submitted requests require a separate
+charge acknowledgement if fresh reads cannot establish admission. Repeated taps are
+locked synchronously. Polling is focus/foreground-only; return does not generate or
+play. Cache/network/malformed feedback failures preserve valid feedback, descriptions,
+transcript and media with safe notices. Feedback errors use local fixed copy rather
+than arbitrary HTTP/provider messages. Active, quota, failed, confirmation, stale,
+partial, supported-empty and all-invalid states remain distinct.
+
+Descriptions expose collapsible slides from their validated slide/source identities
+and a local full-set draft, independently of deck metadata availability. Unknown
+actual page count still disables evidence seeking. Edits
+change only existing fact text/uncertainty, preserve all IDs/other slides, enforce
+400-code-point fields, NUL/uncertainty rules and 64 KiB UTF-8 JSON bounds. Save uses
+the draft's captured `description_revision`; preflight conflict, PATCH conflict or
+timeout retains that draft and offers explicit Reload/Cancel. Reload releases its
+lock and resumes lifecycle-fenced active-job polling on success or failure.
+Keystrokes/Cancel do
+not PATCH. Generation is disabled until Save/Cancel. Successful edits immediately
+mark matching feedback stale even when feedback refresh is unavailable. Regeneration
+is explicit and reuses the saved transcript with no Whisper call.
+
+At most three plain-Text suggestions preserve returned languages. Expandable quotes
+are labeled Slide description (captured set origin, not necessarily verbatim PDF)
+and Transcript excerpt. Source validity does not establish truth or transcription
+accuracy. No model URL/link/HTML/Markdown is executed or fetched. `feedbackSeekTarget`
+rejects both analysis/result staleness and revalidates actual source/word/visit/range
+context; UI additionally requires known actual pages and available audio. The existing
+playback controller preserves playing/paused intent, rapid seek/Pause ordering,
+backward/simultaneous visits and native-clock PDF synchronization.
 
 ## Mobile rehearsal review
 
@@ -102,7 +503,7 @@ Seeks serialize native operations and replace older queued targets with the newe
 
 Mobile analysis requires a recording known to the current API, established by its upload or validated server history. Finalizing a real capture saves a local `auto_process_api` intent alongside the audio checkpoint; it is pinned to the configured API address. The saved screen consumes that intent before I/O and, while focused/foreground, uploads and requests initial analysis once. Background capture stops open the result on foreground return. First-use disclosure has Continue/Cancel and locally persisted consent, explicitly covering automatic transcription after future recordings. Cancellation, reopening and Refresh do not create another automatic request. A failed upload remains manually retryable; retrying it within the same result screen continues the initial automatic flow. Returning to that still-mounted screen can continue initial work that has not yet been submitted. After screen unmount or app restart, manual Upload/Analyze can resume stopped work. Legacy, interrupted and sample captures do not acquire this intent.
 
-The initial request refreshes server state first and only starts `awaiting_analysis`; active/completed/failed/uncertain results are never automatically resubmitted. Retry refreshes first and supplies the displayed current revision; uncertain requests require a separate charge acknowledgement. A client timeout is not server failure. Polling stops on navigation/background; stale callbacks and API-address changes cannot update another cache. SQLite result records are keyed by normalized API address and attempt UUID, separately from upload metadata. Offline refresh preserves cache and audio. The synchronized review UI retains readable partial transcripts and existing playback; feedback remains outside this review stage.
+The initial request refreshes server state first and only starts `awaiting_analysis`; active/completed/failed/uncertain results are never automatically resubmitted. Retry refreshes first and supplies the displayed current revision; uncertain requests require a separate charge acknowledgement. A client timeout is not server failure. Polling stops on navigation/background; stale callbacks and API-address changes cannot update another cache. SQLite result records are keyed by normalized API address and attempt UUID, separately from upload metadata. Offline refresh preserves cache and audio. The synchronized review UI retains readable partial transcripts and existing playback; coaching remains a separately generated, explicit action.
 
 ## Historical Stage 1 local capture boundary
 
@@ -124,3 +525,14 @@ Attempt GET/history add `deck_id`, `duration_ms`, `slide_events`, `audience`, `c
 Deck mappings are keyed by API address and local deck ID. Before reuse, the client checks server UUID identity and page count via deck GET; only HTTP 404 or an invalid local mapping permits PDF replacement. Transient lookup failures retain the mapping. An uncertain audio response, 409, or failed local acknowledgement save never allocates a new attempt UUID. A submitted recording can be uploaded to another configured API address with that same attempt UUID.
 
 Verification boundary: automated SQLite/native mocks and Django tests are distinct from real Android restart/replay/offline retry, PostgreSQL races, and persistent server restart/media retrieval. Storage and hosted-processing coordinator evidence is recorded in [AI-use](ai-use.md#2026-10-08--hosted-processing-coordinator-verification-and-publication): real PostgreSQL/Redis/Celery, Android emulator and a controlled synthetic hosted pilot were checked. Physical-phone/human-speech quality and human code review remain pending.
+
+
+### Saved render preparation for feedback
+
+Feedback admission accepts stored PDF renders up to 8 MiB per image and creates
+bounded provider copies when needed (1 MiB per image, 8 MiB total, existing
+1600-pixel dimension checks). Uploaded PDF and slide media are unchanged.
+Compatible image bytes/source IDs remain unchanged; converted evidence identities
+use the bytes actually sent to the provider. Invalid or missing saved media still
+rejects admission without provider work. The mobile rejection message identifies
+the PDF/slide source issue instead of suggesting a revision refresh will repair it.
