@@ -209,7 +209,7 @@ public. Source reference hashes in descriptions/provenance are the permitted
 slide evidence references, not private request input hashes.
 
 Database queue intent precedes best-effort broker publication. The existing
-30-second Beat recovery handles lost publication, eligible local quota waits and
+30-second Beat recovery handles lost publication, eligible OpenAI local quota waits and
 expired unsubmitted claims (360-second lease, 300-second task limit). Duplicate
 workers are fenced. Submission commits the application quota reservation and
 submitted marker before the sole provider call, outside transactions. Disabled
@@ -227,7 +227,17 @@ It finalizes only the original private request outcome without changing newer
 jobs, generated/edited descriptions or their revisions.
 Submitted-without-outcome work becomes `needs_confirmation`; it never
 automatically resubmits. Known provider failures/invalid output require explicit
-new-generation retry; only local quota waiting resumes automatically.
+new-generation retry; only OpenAI local quota waiting resumes automatically.
+Gemini local RPM/TPM/daily exhaustion or shared cooldown ends the generation as
+`failed` with fixed safe `quota_stopped` guidance and the calculated `retry_at`.
+Current-generation legacy Gemini `waiting_quota` jobs (including queued jobs with
+a retained wait marker) stop on task claim or Beat recovery, even after expiry.
+Saved provider identity governs this policy, never the current environment.
+Saved receipts normalize first; submitted-without-outcome uncertainty, live claims,
+edits and revision fences retain precedence. GET never performs this transition.
+Explicit retry before the effective cooldown returns 409; after it expires, the
+current revision permits one new generation with the saved selection. Replayed
+revisions return 409. No provider switching or fallback occurs.
 
 Provider/project/model buckets share rolling RPM/TPM reservations across stages
 (including coaching). Required positive backend allowances
@@ -237,6 +247,8 @@ null, not zero; submitted reservations count through their windows. Requests
 larger than the configured per-request allowance fail locally. Gemini daily
 ceilings reset at America/Los_Angeles midnight; OpenAI's optional daily ceiling
 is an application UTC policy. A 429 Retry-After blocks the shared model scope.
+Actual provider 429 responses remain terminal `provider_rate_limit` failures for
+both providers and require an explicit retry after cooldown.
 This is neither exact provider token accounting nor a money cap. See the
 [configuration and validation details](ai-feedback.md#checkpoint-2-persistence-and-quota-policy).
 
@@ -246,7 +258,10 @@ Explicit `POST /attempts/{id}/feedback/generate/` admits `{}` once for a validat
 saved transcript/alignment. The backend selects provider/project/model, description
 and coaching prompt/schema versions, deck/source identity, saved language (or
 `und`), audience (up to 500 characters), original transcript indexes and recording
-chronology. No client provider/model selection or fallback is accepted. Initial
+chronology. An omitted `FEEDBACK_PROVIDER` selects OpenAI for new work; explicit
+Gemini is supported, and saved selections/model defaults are unchanged. Feedback stays
+disabled until configured. Missing OpenAI credentials never fall back to Gemini.
+No client provider/model selection or fallback is accepted. Initial
 configuration and speech validation precede admission of either paid stage.
 No-speech, missing/inconsistent transcript, invalid alignment and U+0000 in sources
 fail locally; source text/audio/duration are never rewritten or clamped. Whisper's
@@ -369,8 +384,10 @@ acknowledgement. Completion-write failures leave received evidence recoverable,
 not invalid. Old receipts/usage finalize independently and cannot publish current
 results. Description PATCH and coaching submission/completion serialize on the same
 set lock; captured revisions fence both. Claims last 360 seconds, tasks 300, and
-Beat recovery uses the existing schedule. Local quota/dependency waiting can resume;
-provider failures/invalid output never trigger automatic paid repair calls.
+Beat recovery uses the existing schedule. OpenAI local quota waiting and successful
+dependencies can resume; Gemini local quota waits stop as `failed` / `quota_stopped`
+under the same policy as descriptions. Provider failures/invalid output never
+trigger automatic paid repair calls.
 
 Checkpoint-4 mobile review uses the validated contracts/clients in the existing saved screen. Attempt parsing allowlists and
 quarantines optional feedback independently, preserving legacy caches and partial/

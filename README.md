@@ -127,8 +127,9 @@ recovery and API/database restart with unchanged saved media. See the
 Human inspection remains pending. Checkpoint-4 coordinator evidence for the mobile
 feedback controls is linked below; live-provider quality is evaluated separately.
 
-In backend configuration, set `FEEDBACK_ENABLED=true`, select `FEEDBACK_PROVIDER`,
-and configure that provider's model, key and nonsecret `FEEDBACK_*_PROJECT_ID`.
+In backend configuration, set `FEEDBACK_ENABLED=true`; an omitted `FEEDBACK_PROVIDER`
+selects `openai`, while explicit `gemini` remains supported. Configure that provider's
+model, key and nonsecret `FEEDBACK_*_PROJECT_ID`.
 Positive `FEEDBACK_*_RPM` and `FEEDBACK_*_TPM` values are required for outbound work;
 missing values fail generation safely without breaking startup or Whisper.
 `FEEDBACK_*_DAILY_REQUEST_LIMIT` is optional. Use verified account allowances,
@@ -137,6 +138,15 @@ use serialized UTF-8 request bytes plus maximum output tokens as conservative
 application units, not provider-perfect token counts or a monetary cap.
 Gemini daily windows use America/Los_Angeles midnight; OpenAI's optional daily
 ceiling is an application policy using UTC midnight.
+
+Gemini local RPM/TPM/daily exhaustion or shared cooldown stops that generation
+with `failed` / `quota_stopped` and preserves `retry_at`. After that time, refresh
+and explicitly retry with the current revision. Legacy Gemini quota waits also
+stop when claimed or recovered, even after expiry or a default-provider change.
+OpenAI local quota waits still resume automatically in the same generation.
+Actual provider 429 responses retain `provider_rate_limit`, Retry-After and explicit
+retry for both providers. Saved receipts recover without another call; uncertain
+submissions still require acknowledgement. Saved jobs/retries keep their provider.
 
 Defaults remain exactly `gemini-3.1-flash-lite` / `gpt-6-luna`, configurable, with
 feedback disabled until configured and no substitution or fallback. New Gemini
@@ -209,7 +219,7 @@ therefore do not get this disclosure-race comparison guard. Saved retries retain
 their original provider/model. There is no provider picker.
 
 Cached suggestions and descriptions open immediately. Failed refreshes retain them
-with a stale/offline notice. Active jobs, description dependencies and quota waits
+with a stale/offline notice. Active jobs, description dependencies and OpenAI quota waits
 poll only while focused and foregrounded. A timeout leaves the submission unknown:
 refresh precedes another action, and an unresolved paid request needs a separate
 charge acknowledgement. Failed description dependencies use their own set and

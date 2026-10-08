@@ -1283,3 +1283,83 @@ before this documentation-only evidence addition.
 - Final coordinator changes are documentation only: reconciled README, feedback checkpoint status, evaluation and handoff; added actual provider outcomes, review evidence and quality limits. Existing prototype attribution and dependency-advisory assessment are preserved. No dependency versions changed; no source/proposal-driven package was installed. The inherited Torch/mobile advisory set is not audit-clean.
 - Command-line Git publication authentication was unavailable. The coordinator will use the authorized connected GitHub service, verify each published Git tree matches its reviewed local checkpoint, preserve local checkpoint history, and attach the single PR. Human review remains pending; no merge or next-stage implementation is authorized by this completion. UI polish is proposed for a later confirmed stage.
 - Final documentation accuracy review passed after two narrow corrections: described the completed Gemini call count as observed, and omitted an audio hash not included in the reviewer's allowlisted metadata. All 71 relative link paths, referenced anchors and staged whitespace checks passed. The final outgoing 47-file scope contains no detected credential patterns, private/generated media, environment files or installed dependencies. This scan supplements the per-checkpoint independent reviews; it is not a comprehensive security audit.
+
+
+### 2026-10-08 — OpenAI default and Gemini quota-stop follow-up (writer handoff)
+
+- Tool: Codex sole implementation writer, using the runner's plan and source
+  investigations at exact base `9db4428442708d1f88a2e0a4b2b96dc856edc741`.
+  Representative request: prioritize OpenAI for omitted feedback selection; stop
+  Gemini on quota exhaustion and preserve explicit, revision-aware retry. Transfer
+  the reviewed patch to the existing `feature/ai-feedback` / PR #21.
+- Incorporated material: absent-provider defaults in `feedback_config.py` and
+  `feedback_provider.py`, example configuration, provider-specific local quota
+  policy and guarded legacy-wait termination in both description/coaching claim
+  and recovery paths. Terminal errors preserve retry times and saved selections;
+  receipts, uncertainty, live claims and revision/edit fences retain precedence.
+  No model default, migration, dependency, scheduler or fallback was added.
+- Mobile change: fixed `quota_stopped` copy in `FeedbackPanel.tsx`, including the
+  matching failed description dependency without masking stale/uncertain errors.
+  Existing bounded error validation, polling and manual retry controls are reused.
+  Current README, API contract and feedback configuration documentation were updated;
+  previous provider, infrastructure and device evidence above remains historical.
+- Tests incorporated: new `test_feedback_quota_policy.py` covers both stages'
+  Gemini RPM/TPM/daily/cooldown stops with zero attempted outbound calls, duplicate
+  tasks/recovery before and after expiry, present/absent legacy request rows,
+  queued markers, changed environment provider, explicit cooldown/revision retry,
+  actual 429, live claims, completed outcomes, uncertainty and late receipts after
+  edit/retry supersession. OpenAI waits resume in the same generation for all four
+  quota causes, even after an environment selection change. Existing automatic-wait
+  and concurrency assertions now explicitly select OpenAI before scope admission.
+  Parser and rendered-screen regressions cover safe quota messages, preserved
+  evidence, expiry/Refresh/background/reopen without POST, and one explicit saved
+  Gemini revision/selection retry. These are synthetic fixtures, not live results.
+- Writer verification (dotenv loading disabled; providers mocked and live HTTP
+  blocked by the backend fixtures): focused regressions reproduced the old default,
+  quota/legacy wait and mobile-message failures before the fixes. Focused backend
+  run: 171 tests, 13 PostgreSQL-only skips; after adding OpenAI and direct-receipt coverage, final
+  `.venv/bin/python manage.py test --settings=config.test_settings` from `backend/`
+  passed **272 tests, 18 PostgreSQL-only skips (254 executed)** in 6.944 seconds.
+  `.venv/bin/python manage.py check --settings=config.test_settings` passed;
+  `.venv/bin/python manage.py makemigrations --check --dry-run --settings=config.test_settings`
+  reported no changes. Commands used `PYTHONDONTWRITEBYTECODE=1 PYTHON_DOTENV_DISABLED=1`.
+- From `mobile/`, `EXPO_NO_DOTENV=1 ONLOUD_TEST_DB=:memory: npm run check`
+  passed TypeScript, lint and **275 tests**. `EXPO_NO_DOTENV=1 EXPO_OFFLINE=1 CI=1
+  npm run bundle:android` passed and exported one Android JS bundle. Expected
+  synthetic failure-path notices and the existing react-test-renderer deprecation
+  warning do not establish live/device behavior. `git diff --check` passed; all
+  47 local Markdown link paths in the four updated documents resolved.
+- Pending: runner staging, mandatory final checks and independent review; coordinator
+  integration into the same feature branch/PR, real PostgreSQL concurrency tests and
+  Redis/Celery/Beat recovery with synthetic providers and blocked outbound calls.
+  Android device verification of both messages, cooldown/manual retry, saved-provider
+  disclosure and lifecycle behavior remains pending. No new provider or device
+  check was performed. Human inspection/corrections remain pending; this writer's
+  source/diff review is self-review, not teammate or independent approval.
+  No credentials/private media were read, dependencies installed, other checkout
+  changed, agent spawned, Git mutation or publication performed.
+
+
+### Local agent pipeline 20261008T123356Z-b3ea45
+
+- Tool: separate local Codex CLI planner, investigators, implementer and reviewer sessions.
+- Requested scope and incorporated material: see the task-level entry above and staged diff.
+- Check: git diff --cached --check — exit 0.
+- Check: npm run check — exit 0.
+- Check: npm run bundle:android — exit 0.
+- Check: /Users/seoyeonpark/Documents/ChatGPT/OnLoud/tmp/agent-pipeline/20261008T123356Z-b3ea45/workspace/backend/.venv/bin/python manage.py check --settings=config.test_settings — exit 0.
+- Check: /Users/seoyeonpark/Documents/ChatGPT/OnLoud/tmp/agent-pipeline/20261008T123356Z-b3ea45/workspace/backend/.venv/bin/python manage.py test --settings=config.test_settings — exit 0.
+- Check: /Users/seoyeonpark/Documents/ChatGPT/OnLoud/tmp/agent-pipeline/20261008T123356Z-b3ea45/workspace/backend/.venv/bin/python manage.py makemigrations --check --dry-run --settings=config.test_settings — exit 0.
+- AI review: this staged snapshot is being sent to an independent reviewer; local evidence is round-0/reviewer/answer.json. This entry does not claim a pass.
+- Human corrections/review, changed Android flows, and any required real database/worker/provider validation remain pending. No commit or push is authorized by this run.
+
+
+### 2026-10-08 — OpenAI priority and Gemini quota-stop verification
+
+- User correction: prioritize OpenAI and stop Gemini when quota is unavailable. The existing PR #21 receives this focused follow-up. Omitted provider configuration and the example now choose OpenAI; feedback remains disabled until configured. Saved selections remain pinned, with no fallback. Gemini local RPM/TPM/daily/cooldown exhaustion now terminates with `failed/quota_stopped`; explicit revision-aware retry remains available only after its cooldown. Existing provider-429 handling remains terminal. OpenAI local quota waits retain their prior recovery behavior.
+- The unchanged configured-model local runner passed preflight and all 16 runner tests. Its planner completed read-only, but a coordinator-created dependency symlink triggered the generated-path guard. The coordinator replaced it with an ignored isolated dependency directory, verified a clean base/index/source and validated the saved plan, then resumed the unchanged investigator/writer/check/reviewer methods. No runner source or model setting changed. Parallel investigators, one writer, checks and independent review completed in run `20261008T123356Z-b3ea45`.
+- Independent staged review passed with no findings for patch `639c3f1f70aa584a4c09aaf5c4fb560b57baf80582424d210736a1b1a16069d4`, based on `9db4428442708d1f88a2e0a4b2b96dc856edc741`. Transfer to `feature/ai-feedback` matched that patch byte-for-byte before this coordinator-only evidence entry. The final snapshot passed `npm run check` (275 tests, TypeScript and lint), `npm run bundle:android`, Django system/migration-drift checks and 272 SQLite tests (18 PostgreSQL-only skips). A separate final frozen-source run passed all 272 tests on real PostgreSQL in 26.219 seconds. An earlier PostgreSQL run was superseded because tests were still being added; the final backend file hashes match the reviewed source.
+- A disposable PostgreSQL/Redis/real solo-Celery-worker harness passed eight synthetic cases: new Gemini description/coaching quota stops, worker restart and explicit retries, both legacy waiting and already-requeued states for both stages, OpenAI automatic local-wait recovery, and terminal Gemini HTTP 429. Cooldown expiry was advanced in the fixture; this is not a provider-quota timing measurement. Duplicate deliveries and recovery did not submit stopped Gemini work. Four explicitly permitted synthetic calls occurred; zero live HTTP attempts, task failures or new Whisper calls occurred. The saved pilot attempt, transcript, media hashes and existing Whisper request row remained identical. The recovered/stale/uncertain receipt boundaries are also covered by the automated regressions. This narrow harness invoked the actual recovery task through Celery; it did not rerun a periodic Beat scheduler or a prefork hard-timeout experiment.
+- Runtime code and existing tracked tests used by that harness match patch digest `3ed99f582344c9d3b31e78cd0bb86abe4395f0b18eb5842e7e23a70b266540d8`; the new policy test file was then covered by the final frozen PostgreSQL suite. Local evidence includes the runner report and the coordinator's `report.json`, `postgres-final.log` and source-hash records under the temporary quota-validation directory. No credentials, raw provider responses or private media are incorporated here.
+- Native emulator verification used the existing synthetic cached pilot and real API/worker path with fake provider credentials. It showed the terminal Gemini coaching message, retained transcript/PDF/audio and stale prior cards, and exposed manual Retry only after cooldown plus Refresh. Retrying displayed the saved Gemini disclosure despite the new OpenAI default; Cancel sent no generation request. Native description-dependency-message, physical-phone/listening, TalkBack and extended lifecycle checks remain pending; automated rendered-flow tests cover both messages and stale/uncertain precedence. No live provider check was needed for this policy-only change. Existing feedback-quality and dependency-advisory limitations remain unchanged.
+- Human code review remains pending. The original prototype/unrelated work and backend key file are preserved. Publish only a follow-up on the existing `feature/ai-feedback` PR, without merge or beginning UI polish.

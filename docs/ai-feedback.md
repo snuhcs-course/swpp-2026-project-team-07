@@ -134,7 +134,7 @@ successful empty result. No silent repairs or additional calls occur.
 | Setting | Default / accepted values |
 | --- | --- |
 | `FEEDBACK_ENABLED` | `false`; exact `true` permits explicit description/coaching generation |
-| `FEEDBACK_PROVIDER` | `gemini`; `gemini` or `openai` |
+| `FEEDBACK_PROVIDER` | `openai` when omitted; `gemini` or `openai` |
 | `FEEDBACK_GEMINI_MODEL` | `gemini-3.1-flash-lite` |
 | `FEEDBACK_OPENAI_MODEL` | `gpt-6-luna` |
 | `GEMINI_API_KEY` / `OPENAI_API_KEY` | Backend only; only the selected key is required |
@@ -352,9 +352,22 @@ is recorded separately and does not retroactively free reservations. Submitted
 and uncertain requests count for their windows; only fenced never-submitted
 reservations may be released. A per-request reservation larger than TPM fails
 locally, rather than waiting indefinitely. RPM/TPM use rolling 60-second windows;
-local waits resume only once safe. Shared 429 Retry-After cooldown applies to the
-provider/project/model scope and is included in public `retry_at`. Provider errors
-remain explicit retries, never automatic paid repair loops.
+OpenAI local waits resume only once safe in the same generation. Gemini local
+RPM/TPM/daily exhaustion and shared cooldown stop as terminal `quota_stopped`
+failures, preserving `retry_at`. Refresh after that time and explicitly retry
+with the current revision to start one new generation. Shared 429 Retry-After
+cooldown applies to the provider/project/model scope and is included in public
+`retry_at`. Actual 429 errors remain `provider_rate_limit` and require explicit
+retry for both providers, never automatic paid repair loops.
+
+Legacy Gemini quota waits, including queued jobs retaining a wait marker, stop
+under the existing claim/recovery locks before any submission, even if their
+retry time has expired or the environment now selects OpenAI. Saved receipts
+still normalize without a call; live claims, submitted uncertainty and newer
+revisions/edits retain precedence. No GET mutation, scheduler or migration is
+added. Saved jobs and explicit retries always retain their original provider/model.
+New work with no `FEEDBACK_PROVIDER` selects OpenAI; feedback stays disabled until
+configured, and a missing OpenAI key never falls back to an available Gemini key.
 
 Gemini's optional daily request ceiling resets at midnight America/Los_Angeles,
 including DST. OpenAI's optional ceiling is an **application UTC-midnight policy**,
@@ -505,7 +518,8 @@ completion never authorize an automatic second charge. Recovery normalizes durab
 sanitized receipts only; an expired submitted request without one requires explicit
 acknowledgement and retains its reservation. Late receipts finalize old private
 outcome/usage without changing newer results/edits. Known failures require explicit
-retry; waiting quota and successful dependencies can resume. Auth/rate rejection,
+retry; OpenAI quota waits and successful dependencies can resume. Gemini local
+quota waits stop terminally and require explicit revision-aware retry. Auth/rate rejection,
 uncertain timeout/5xx and invalid/refused/truncated output remain distinct. Retry-After
 cooldown spans both stages. No live provider or additional token-count call is made
 by tests or quota estimation.

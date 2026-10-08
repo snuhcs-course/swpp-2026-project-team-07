@@ -151,7 +151,7 @@ class ProviderConfig:
             raise FeedbackError("disabled")
         if enabled != "true":
             raise FeedbackError("invalid_configuration")
-        provider = env.get("FEEDBACK_PROVIDER", "gemini")
+        provider = env.get("FEEDBACK_PROVIDER", "openai")
         if provider not in {"gemini", "openai"}:
             raise FeedbackError("invalid_configuration")
         model = env.get("FEEDBACK_GEMINI_MODEL", "gemini-3.1-flash-lite") if provider == "gemini" else env.get("FEEDBACK_OPENAI_MODEL", "gpt-6-luna")

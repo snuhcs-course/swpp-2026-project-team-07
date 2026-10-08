@@ -520,6 +520,7 @@ class CoachingTests(SyntheticCoaching, TestCase):
         self.assertEqual(FeedbackRequest.objects.filter(stage='coaching').count(), 2)
         self.assertEqual(FeedbackReservation.objects.filter(request__stage='coaching', released_at__isnull=True).count(), 2)
 
+    @patch.dict('os.environ', {'FEEDBACK_PROVIDER': 'openai'})
     def test_shared_quota_and_429_cooldown_apply_across_stages(self):
         analysis = self.ready()
         until = timezone.now() + timedelta(minutes=2)
@@ -534,9 +535,10 @@ class CoachingTests(SyntheticCoaching, TestCase):
         with self.assertRaises(service.Conflict):
             self.admit_feedback(payload={'feedback_revision': 1})
 
+    @patch.dict('os.environ', {'FEEDBACK_PROVIDER': 'openai'})
     def test_description_reservation_causes_coaching_local_wait_then_safe_resume(self):
         analysis = self.ready()
-        with patch.dict('os.environ', {'FEEDBACK_GEMINI_RPM': '1'}), patch.object(provider, 'request_raw', side_effect=self.coaching_receipt) as call:
+        with patch.dict('os.environ', {'FEEDBACK_OPENAI_RPM': '1'}), patch.object(provider, 'request_raw', side_effect=self.coaching_receipt) as call:
             self.execute_feedback(analysis)
             self.assertEqual(call.call_count, 0)
             self.assertEqual(self.feedback_state()['state'], 'waiting_quota')
@@ -973,11 +975,12 @@ class ConcurrentCoachingTests(SyntheticCoaching, TransactionTestCase):
         self.assertCountEqual(self.race([retry, retry]), [2, 'conflict'])
         self.assertEqual(FeedbackJob.objects.count(), 2)
 
+    @patch.dict('os.environ', {'FEEDBACK_PROVIDER': 'openai'})
     def test_shared_description_coaching_bucket_has_one_winner(self):
         analysis = self.ready()
         other = descriptions.generate(self.new_deck('concurrent-quota').pk, {})
         FeedbackReservation.objects.update(reserved_at=timezone.now() - timedelta(seconds=61))
-        with patch.dict('os.environ', {'FEEDBACK_GEMINI_RPM': '1'}), patch.object(provider, 'request_raw', side_effect=self.coaching_receipt) as call:
+        with patch.dict('os.environ', {'FEEDBACK_OPENAI_RPM': '1'}), patch.object(provider, 'request_raw', side_effect=self.coaching_receipt) as call:
             self.race([lambda: self.execute_feedback(analysis), lambda: descriptions.run_description(other.pk, 1)])
             self.assertEqual(call.call_count, 1)
         self.assertCountEqual([self.feedback_state()['state'], descriptions.read(other.deck_id, other.pk)['state']], ['completed', 'waiting_quota'])

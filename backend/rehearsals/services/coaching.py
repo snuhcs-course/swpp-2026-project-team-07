@@ -23,13 +23,15 @@ from .descriptions import (Conflict, StaleClaim, LEASE_SECONDS, _private_databas
                            effective_retry_at, saved_receipt)
 from .feedback import (FeedbackError, Transcript, validated, analysis_source, restore_analysis, json_bytes)
 from .feedback_config import Selection, QuotaPolicy, coaching_digest, check_coaching_versions, enabled, selection_descriptor, assert_selection
-from .feedback_quota import locked_bucket, reserve, cooldown
+from .feedback_quota import locked_bucket, reserve, cooldown, stop_legacy_gemini_wait, QUOTA_STOPPED_MESSAGE
 
 logger = logging.getLogger(__name__)
 ACTIVE = {'waiting_descriptions', 'queued', 'preparing', 'submitted', 'normalizing', 'waiting_quota'}
 
 
 def safe_error(code):
+    if code == 'quota_stopped':
+        return {'code': code, 'message': QUOTA_STOPPED_MESSAGE}
     return {'code': code, 'message': f'Rehearsal feedback unavailable ({code}).'} if code else None
 
 
@@ -245,7 +247,7 @@ def _prepared(value, job):
 def claim(analysis_id, revision):
     with transaction.atomic():
         value, analysis, job = _locked(analysis_id, revision)
-        request = FeedbackRequest.objects.filter(coaching_job=job).first()
+        request = FeedbackRequest.objects.select_for_update().filter(coaching_job=job).first()
         if _superseded(value, analysis, job):
             if (not request or not request.received_at or request.completed_at or
                     (job.claim_token and job.claimed_at and job.claimed_at > timezone.now() - timedelta(seconds=LEASE_SECONDS))):
@@ -255,7 +257,11 @@ def claim(analysis_id, revision):
             return value, job, request
         if job.state == 'waiting_descriptions':
             _attach(value, job)
-        if job.state != 'queued' or job.claim_token:
+        if job.claim_token:
+            return None
+        if stop_legacy_gemini_wait(value.provider, job, request):
+            return None
+        if job.state != 'queued' and not (job.state == 'waiting_quota' and request and request.received_at):
             return None
         if request and (request.completed_at or (request.submitted_at and not request.received_at)):
             return None
@@ -457,6 +463,10 @@ def recover_coaching():
             elif request and request.completed_at:
                 job.state = 'needs_confirmation' if request.outcome == 'uncertain' else 'failed'
                 job.error_code, job.completed_at = request.error_code or 'processing_failed', now
+            elif request and request.received_at:
+                job.state = 'queued'  # Normalize saved evidence regardless of an old wait marker.
+            elif stop_legacy_gemini_wait(value.provider, job, request):
+                continue
             elif job.state == 'waiting_quota' and job.retry_at and job.retry_at > now:
                 continue
             else:

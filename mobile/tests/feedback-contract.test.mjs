@@ -432,3 +432,20 @@ test('description cache reconciliation preserves its own revision and terminal u
   const edited = descriptionState({ description_revision: 2, processing_revision: 2, edited: true });
   assert.equal(preferDescriptions(edited, descriptionState()).description_revision, 2);
 });
+
+test('quota_stopped parses for coaching and its failed description dependency without dropping saved evidence', () => {
+  const error = { code: 'quota_stopped', message: 'Untrusted server detail' };
+  const retry_at = '2026-10-08T02:00:00Z';
+  const stopped = parse(feedbackState({ state: 'failed', error, retry_at }));
+  assert.equal(stopped.error.code, 'quota_stopped');
+  assert.equal(stopped.result.suggestions.length, 1);
+  const description = descriptionState({ state: 'failed', error, retry_at, descriptions: null, available_data: false, description_revision: 0 });
+  assert.equal(parseDescriptionState(description, deckId).error.code, 'quota_stopped');
+  const dependency = { ...description, retry_action: 'generate_descriptions' };
+  const pending = parse(feedbackState({ state: 'waiting_descriptions', stage: 'descriptions', description_revision: null,
+    result: null, last_output: null, dependency, error: { code: 'description_dependency_failed', message: 'Dependency failed' } }));
+  assert.equal(pending.dependency.error.code, 'quota_stopped');
+  assert.equal(pending.dependency.retry_at, retry_at);
+  const waiting = parse(feedbackState({ state: 'waiting_quota', error: { code: 'waiting_quota', message: 'Wait' }, retry_at }));
+  assert.equal(waiting.state, 'waiting_quota');
+});

@@ -49,7 +49,7 @@ def reserve(bucket, request, units, policy):
         if rows.filter(reserved_at__gte=start).count() >= policy.daily:
             waits.append(end)
     if waits:
-        raise FeedbackError('waiting_quota', retry_at=max(waits))
+        raise FeedbackError('quota_stopped' if bucket.provider == 'gemini' else 'waiting_quota', retry_at=max(waits))
     return FeedbackReservation.objects.create(request=request, bucket=bucket, units=units,
                                              reserved_at=now, submitted_at=now)
 
@@ -58,3 +58,29 @@ def cooldown(bucket, retry_at):
     if retry_at and (bucket.blocked_until is None or retry_at > bucket.blocked_until):
         bucket.blocked_until = retry_at
         bucket.save(update_fields=['blocked_until'])
+
+
+QUOTA_STOPPED_MESSAGE = ('Generation stopped because the Gemini quota is unavailable. '
+                         'After the retry time, refresh and choose Retry to try again.')
+
+
+def stop_legacy_gemini_wait(provider, job, request):
+    """Caller holds current scope/job locks and has fenced live/superseded claims.
+
+    Saved receipts and submitted or completed outcomes always take precedence.
+    A queued marker can survive a Beat publication from before the policy change.
+    """
+    if (provider != 'gemini' or
+            not (job.state == 'waiting_quota' or (job.state == 'queued' and job.error_code == 'waiting_quota')) or
+            (request and (request.submitted_at or request.received_at or request.completed_at))):
+        return False
+    now = timezone.now()
+    if request:
+        request.outcome, request.error_code, request.completed_at = 'local', 'quota_stopped', now
+        request.save(update_fields=['outcome', 'error_code', 'completed_at'])
+        FeedbackReservation.objects.filter(request=request, submitted_at__isnull=True,
+            released_at__isnull=True).update(released_at=now)
+    job.state, job.error_code, job.completed_at, job.claim_token = 'failed', 'quota_stopped', now, None
+    # Both job types share these fields; full save also advances coaching.updated_at.
+    job.save()
+    return True

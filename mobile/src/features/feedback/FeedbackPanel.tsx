@@ -12,6 +12,7 @@ const states: Record<string, string> = { absent: 'Ready to generate', disabled: 
   normalizing: 'Preparing coaching', waiting_quota: 'Waiting for quota', failed: 'Failed', needs_confirmation: 'Needs confirmation', stale: 'Stale', completed: 'Completed' };
 const errors: Record<string, string> = { no_speech: 'No speech is available for suggestions.', missing_transcript: 'Analyze the saved recording before generating feedback.',
   unsupported_feedback: 'The latest output contained no supported cards. It failed validation.',
+  quota_stopped: 'Generation stopped because the Gemini quota is unavailable. After the retry time, refresh and choose Retry to try again.',
   description_dependency_failed: 'Slide descriptions need attention before coaching can continue.',
   descriptions_changed: 'Descriptions changed. Regenerate explicitly to use the saved transcript with the edited facts.',
   disabled: 'Feedback generation is disabled on this server.', source_changed: 'The saved source changed. Refresh to review the available evidence.' };
@@ -24,6 +25,9 @@ export function FeedbackPanel({ id, apiUrl, review, pages, canSeek, onSeek }: {
   const [expanded, setExpanded] = useState<number | null>(null), [quotes, setQuotes] = useState<number | null>(null);
   const selected = feedback.prompt?.intent.selection || f?.selection || f?.provenance;
   const dependency = f?.dependency;
+  const displayedError = dependency?.description_set_id === f?.description_set_id && dependency?.state === 'failed' &&
+    dependency.error?.code === 'quota_stopped' && !f?.stale && !f?.requires_confirmation && f?.state !== 'needs_confirmation' &&
+    (!f?.error || f.error.code === 'description_dependency_failed') ? dependency.error : f?.error;
   const stoppedDependency = dependency?.retry_action === 'generate_descriptions' && !f?.stale;
   const canGenerate = !!f && f.availability.state === 'available' && !feedback.busy && !feedback.prompt && !feedback.draft && !stoppedDependency &&
     (f.feedback_revision === 0 || f.retry_available);
@@ -58,7 +62,7 @@ export function FeedbackPanel({ id, apiUrl, review, pages, canSeek, onSeek }: {
     {!!feedback.draft && <Text style={styles.body}>Save or Cancel your description draft before generating feedback.</Text>}
     {feedback.busy && <Text style={styles.body}>Checking current revisions…</Text>}
     {!!(f?.retry_at || dependency?.retry_at) && <Text style={styles.body}>Retry after {new Date(dependency?.retry_at || f!.retry_at!).toLocaleString()}. Refresh to check.</Text>}
-    {!!f?.error && <Text accessibilityRole="alert" style={styles.body}>{Object.prototype.hasOwnProperty.call(errors, f.error.code) ? errors[f.error.code] : 'Feedback could not be completed. Refresh for safe recovery options.'}</Text>}
+    {!!displayedError && <Text accessibilityRole="alert" style={styles.body}>{Object.prototype.hasOwnProperty.call(errors, displayedError.code) ? errors[displayedError.code] : 'Feedback could not be completed. Refresh for safe recovery options.'}</Text>}
     {!!feedback.notice && <Text accessibilityRole="alert" style={styles.body}>{feedback.notice}</Text>}
     {feedback.prompt && <View style={{ gap: 12 }}>
       <Text style={styles.body}>{feedback.prompt.kind === 'disclosure'

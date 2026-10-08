@@ -505,6 +505,7 @@ class DescriptionTests(SyntheticDecks, TestCase):
             self.assertNotIn(secret, output)
         self.assertIn('unrelated SQL logging still works', output)
 
+    @patch.dict('os.environ', {'FEEDBACK_PROVIDER': 'openai'})
     def test_429_shared_cooldown_is_public_and_wait_prevents_explicit_retry(self):
         value = self.admit()
         until = timezone.now() + timedelta(seconds=90)
@@ -518,8 +519,9 @@ class DescriptionTests(SyntheticDecks, TestCase):
         self.assertFalse(self.state(value)['retry_available'])
         self.assertEqual(self.client.post(self.post, {'description_set_id': str(value.pk), 'processing_revision': 1}, format='json').status_code, 409)
 
+    @patch.dict('os.environ', {'FEEDBACK_PROVIDER': 'openai'})
     def test_quota_wait_resumes_automatically_without_changing_generation(self):
-        with patch.dict('os.environ', {'FEEDBACK_GEMINI_RPM': '1'}):
+        with patch.dict('os.environ', {'FEEDBACK_OPENAI_RPM': '1'}):
             first = self.complete()
             second = self.admit(self.new_deck('second'))
             with patch.object(provider, 'request_raw', side_effect=self.receipt) as call:
@@ -535,6 +537,7 @@ class DescriptionTests(SyntheticDecks, TestCase):
             self.assertEqual(second.description_revision, 1)
             self.assertEqual(FeedbackRequest.objects.count(), 2)
 
+    @patch.dict('os.environ', {'FEEDBACK_PROVIDER': 'openai'})
     def test_reservation_units_are_separate_from_usage_and_count_unknown_calls(self):
         value = self.admit()
         with patch.object(provider, 'request_raw', side_effect=FeedbackError('provider_timeout', uncertain=True)) as call:
@@ -544,18 +547,19 @@ class DescriptionTests(SyntheticDecks, TestCase):
         self.assertEqual(reservation.units, len(prepared.payload) + 6000)
         self.assertIsNone(reservation.released_at)
         self.assertIsNone(FeedbackRequest.objects.get().usage)
-        with patch.dict('os.environ', {'FEEDBACK_GEMINI_RPM': '1'}):
+        with patch.dict('os.environ', {'FEEDBACK_OPENAI_RPM': '1'}):
             second = self.admit(self.new_deck('waiting-for-unknown'))
             with patch.object(provider, 'request_raw') as call:
                 self.execute(second)
             call.assert_not_called()
             self.assertEqual(self.state(second)['state'], 'waiting_quota')
 
+    @patch.dict('os.environ', {'FEEDBACK_PROVIDER': 'openai'})
     def test_rolling_window_exact_expiry_and_tpm_contention(self):
         first = self.complete()
         reservation = FeedbackReservation.objects.get()
         second = self.admit(self.new_deck('tpm'))
-        with patch.dict('os.environ', {'FEEDBACK_GEMINI_TPM': str(reservation.units + 100)}):
+        with patch.dict('os.environ', {'FEEDBACK_OPENAI_TPM': str(reservation.units + 100)}):
             with patch.object(provider, 'request_raw', side_effect=self.receipt) as call:
                 self.execute(second)
                 self.assertEqual(call.call_count, 0)
@@ -1233,15 +1237,16 @@ class ConcurrentDescriptionTests(SyntheticDecks, TransactionTestCase):
         self.assertCountEqual(self.race([retry, retry]), [2, 'conflict'])
         self.assertEqual(self.broker.call_count, 1)
 
+    @patch.dict('os.environ', {'FEEDBACK_PROVIDER': 'openai'})
     def test_competing_decks_quota_reservations_have_one_winner(self):
         for mode in ['rpm', 'tpm', 'daily']:
-            with self.subTest(mode=mode), patch.dict('os.environ', {'FEEDBACK_GEMINI_PROJECT_ID': 'race-' + mode}):
+            with self.subTest(mode=mode), patch.dict('os.environ', {'FEEDBACK_OPENAI_PROJECT_ID': 'race-' + mode}):
                 first, second = self.admit(), self.admit(self.new_deck(mode))
                 deck, _ = service.prepare_saved(self.deck.pk)
                 units = len(Selection.current().adapter().prepare_descriptions(deck).payload) + 6000
-                policy = {'FEEDBACK_GEMINI_RPM': '1'} if mode == 'rpm' else \
-                    {'FEEDBACK_GEMINI_TPM': str(units + 100)} if mode == 'tpm' else \
-                    {'FEEDBACK_GEMINI_DAILY_REQUEST_LIMIT': '1'}
+                policy = {'FEEDBACK_OPENAI_RPM': '1'} if mode == 'rpm' else \
+                    {'FEEDBACK_OPENAI_TPM': str(units + 100)} if mode == 'tpm' else \
+                    {'FEEDBACK_OPENAI_DAILY_REQUEST_LIMIT': '1'}
                 with patch.dict('os.environ', policy), patch.object(provider, 'request_raw', side_effect=self.receipt) as call:
                     self.race([lambda: self.execute(first), lambda: self.execute(second)])
                 self.assertEqual(call.call_count, 1)

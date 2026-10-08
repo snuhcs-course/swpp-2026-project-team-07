@@ -1436,3 +1436,76 @@ test('known feedback rejection uses safe copy without claiming an unknown charge
     assert.match(text(tree), /Hello, 안녕!/);
   } finally { await tick(() => tree.unmount()); }
 });
+
+for (const stage of ['coaching', 'descriptions']) {
+  test(`${stage} quota stop uses safe copy and saved Gemini selection; expiry/lifecycle never retry automatically`, async t => {
+    const start = new Date('2026-10-08T00:00:10Z');
+    t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: start });
+    const error = { code: 'quota_stopped', message: 'Hostile private provider detail' };
+    const retry_at = '2026-10-08T00:01:00Z';
+    let description = feedbackFixtures.descriptionState({ selection: feedbackFixtures.descriptionSelection,
+      ...(stage === 'descriptions' ? { state: 'failed', descriptions: null, available_data: false, description_revision: 0,
+        processing_revision: 4, retry_available: false, retry_at, error } : {}) });
+    let current = feedbackFixtures.feedbackState({ selection: feedbackFixtures.selection, state: stage === 'coaching' ? 'failed' : 'waiting_descriptions',
+      stage, retry_available: false, retry_at: stage === 'coaching' ? retry_at : null,
+      error: stage === 'coaching' ? error : { code: 'description_dependency_failed', message: 'Private dependency detail' },
+      ...(stage === 'descriptions' ? { description_revision: null, result: null, last_output: null,
+        dependency: { ...description, retry_action: 'generate_descriptions' } } : {}) });
+    seed(feedbackFixtures.withFeedback({ feedback_analysis: current }));
+    network.respond = (url, init) => {
+      if (url.includes('/descriptions/')) return response(200, description);
+      if (url.includes('/feedback/')) return response(200, current);
+      if (url.includes('/attempts/')) return response(200, feedbackFixtures.withFeedback({ feedback_analysis: current }));
+      return respond(url, init);
+    };
+    let tree = await mount();
+    const label = stage === 'coaching' ? 'Retry feedback' : 'Retry slide descriptions';
+    try {
+      assert.match(text(tree), /Generation stopped because the Gemini quota is unavailable/);
+      assert.match(text(tree), /Retry after/); assert.match(text(tree), /Gemini · gemini-3.1-flash-lite/);
+      assert.doesNotMatch(text(tree), /Hostile private|Private dependency/);
+      if (stage === 'descriptions') assert.equal(action(tree, label).props.disabled, true);
+      else assert.equal(action(tree, label), undefined);
+      await tick(() => t.mock.timers.tick(60_000));
+      await tick(() => action(tree, 'Refresh feedback').props.onPress());
+      await tick(() => backgroundApp('background')); await tick(() => backgroundApp('active'));
+      await tick(() => tree.unmount()); tree = await mount();
+      assert.equal(paidRequests().length, 0);
+      assert.match(text(tree), /Hello, 안녕!/); assert.equal(playback.played, 0);
+      if (stage === 'coaching') assert.match(text(tree), /Synthetic suggestion/);
+      // Only fresh metadata enables the explicit retry; it still carries Gemini.
+      description = { ...description, retry_available: stage === 'descriptions', updated_at: '2026-10-08T00:01:11Z' };
+      current = { ...current, retry_available: stage === 'coaching', updated_at: '2026-10-08T00:01:11Z',
+        dependency: stage === 'descriptions' ? { ...description, retry_action: 'generate_descriptions' } : null };
+      await tick(() => action(tree, 'Refresh feedback').props.onPress());
+      const retry = action(tree, label).props.onPress;
+      await tick(() => { retry(); retry(); });
+      assert.equal(paidRequests().length, 0); assert.match(text(tree), /to Gemini/);
+      const proceed = action(tree, 'Continue feedback').props.onPress;
+      await tick(() => { proceed(); proceed(); });
+      assert.equal(paidRequests().length, 1);
+      assert.deepEqual(JSON.parse(paidRequests()[0].body), stage === 'coaching'
+        ? { feedback_revision: 1, expected_selection: feedbackFixtures.selection.token }
+        : { description_set_id: feedbackFixtures.setId, processing_revision: 4, expected_selection: feedbackFixtures.descriptionSelection.token });
+    } finally { await tick(() => tree.unmount()); }
+  });
+}
+
+for (const guard of ['stale', 'uncertain']) {
+  test(`dependency quota copy does not mask ${guard} coaching`, async () => {
+    const dependency = { ...feedbackFixtures.descriptionState({ state: 'failed', descriptions: null, available_data: false,
+      description_revision: 0, error: { code: 'quota_stopped', message: 'Private quota detail' } }), retry_action: 'generate_descriptions' };
+    const current = feedbackFixtures.feedbackState({ selection: feedbackFixtures.selection, state: guard === 'stale' ? 'stale' : 'needs_confirmation',
+      stage: 'descriptions', stale: guard === 'stale', requires_confirmation: guard === 'uncertain', result: null, last_output: null,
+      description_revision: null, dependency, error: { code: guard === 'stale' ? 'descriptions_changed' : 'uncertain_submission', message: 'Private failure detail' } });
+    seed(feedbackFixtures.withFeedback({ feedback_analysis: current })); feedbackNetwork(current);
+    const previous = network.respond;
+    network.respond = (url, init) => url.includes('/descriptions/') ? response(200, feedbackFixtures.descriptionState({ ...dependency, selection: feedbackFixtures.descriptionSelection })) : previous(url, init);
+    const tree = await mount();
+    try {
+      assert.doesNotMatch(text(tree), /Generation stopped because the Gemini quota|Private quota|Private failure/);
+      if (guard === 'stale') assert.match(text(tree), /Descriptions changed/);
+      assert.equal(paidRequests().length, 0);
+    } finally { await tick(() => tree.unmount()); }
+  });
+}

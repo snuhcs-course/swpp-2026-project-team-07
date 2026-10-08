@@ -35,7 +35,7 @@ class Selection:
     @classmethod
     def current(cls, env=None):
         env = os.environ if env is None else env
-        name = env.get('FEEDBACK_PROVIDER', 'gemini')
+        name = env.get('FEEDBACK_PROVIDER', 'openai')
         if name not in {'gemini', 'openai'}:
             raise FeedbackError('invalid_configuration')
         prefix = 'FEEDBACK_' + name.upper() + '_'

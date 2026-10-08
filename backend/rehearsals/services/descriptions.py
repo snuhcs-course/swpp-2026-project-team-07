@@ -22,7 +22,7 @@ from . import feedback_provider as provider
 from .feedback import (DeckInput, PreparedDeck, FeedbackError, MAX_IMAGE_BYTES, deck_identity,
                        prepare_deck, validated, validate_descriptions)
 from .feedback_config import selection_descriptor, assert_selection, Selection, QuotaPolicy, prompt_digest, enabled
-from .feedback_quota import locked_bucket, reserve, cooldown
+from .feedback_quota import locked_bucket, reserve, cooldown, stop_legacy_gemini_wait, QUOTA_STOPPED_MESSAGE
 
 logger = logging.getLogger(__name__)
 LEASE_SECONDS = 360
@@ -61,6 +61,8 @@ class StaleClaim(Exception):
 
 
 def safe_error(code):
+    if code == 'quota_stopped':
+        return {'code': code, 'message': QUOTA_STOPPED_MESSAGE}
     return {'code': code, 'message': f'Slide descriptions unavailable ({code}).'} if code else None
 
 
@@ -340,9 +342,14 @@ def claim(set_id, revision):
             job.claim_token, job.claimed_at = uuid.uuid4(), timezone.now()
             job.save(update_fields=['claim_token', 'claimed_at'])
             return value, job, request
-        if value.processing_revision != revision or value.descriptions is not None or job.state != 'queued' or job.claim_token:
+        if job.claim_token:
             return None
-        request = FeedbackRequest.objects.filter(job=job).first()
+        request = FeedbackRequest.objects.select_for_update().filter(job=job).first()
+        if stop_legacy_gemini_wait(value.provider, job, request):
+            value.save(update_fields=['updated_at'])
+            return None
+        if job.state != 'queued' and not (job.state == 'waiting_quota' and request and request.received_at):
+            return None
         if request and request.submitted_at and not request.received_at:
             return None  # Recovery is the only authority for uncertain submission.
         if request and request.completed_at:
@@ -559,7 +566,7 @@ def recover_descriptions():
         with transaction.atomic():
             value, job = _locked(set_id, revision)
             now = timezone.now()
-            if job.claimed_at and job.claimed_at > now - timedelta(seconds=LEASE_SECONDS) and job.state not in {'queued', 'waiting_quota'}:
+            if job.claimed_at and job.claimed_at > now - timedelta(seconds=LEASE_SECONDS) and (job.claim_token or job.state not in {'queued', 'waiting_quota'}):
                 continue
             request = FeedbackRequest.objects.select_for_update().filter(job=job).first()
             unfinished_receipt = request and request.received_at and not request.completed_at
@@ -584,6 +591,11 @@ def recover_descriptions():
                 # A terminal known/uncertain outcome cannot accidentally be recalled.
                 job.state = 'needs_confirmation' if request.outcome == 'uncertain' else 'failed'
                 job.error_code, job.completed_at = request.error_code or 'processing_failed', now
+            elif request and request.received_at:
+                job.state = 'queued'  # Normalize saved evidence regardless of an old wait marker.
+            elif stop_legacy_gemini_wait(value.provider, job, request):
+                value.save(update_fields=['updated_at'])
+                continue
             elif job.state == 'waiting_quota' and job.retry_at and job.retry_at > now:
                 continue
             else:
