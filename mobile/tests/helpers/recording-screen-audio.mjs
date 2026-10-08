@@ -45,21 +45,48 @@ export function useAudioRecorderState(recorder) { return recorder.getStatus(); }
 
 export const playback = { status: {}, seeks: [], played: 0, paused: 0, wait: null, source: null };
 export function resetPlayback() {
-  Object.assign(playback, { status: { isLoaded: true, playing: false, currentTime: 2, duration: 2, didJustFinish: false, error: null }, seeks: [], played: 0, paused: 0, wait: null, source: null });
+  Object.assign(playback, { status: { isLoaded: true, playing: false, currentTime: 2, duration: 2, didJustFinish: false, error: null }, seeks: [], played: 0, paused: 0, wait: null, source: null, eventMode: false, initiallyLoaded: true });
 }
 export const players = [];
 export function useAudioPlayer(source) {
   playback.source = source;
   const player = useMemo(() => {
-    const player = { released: false, source,
+    const listeners = new Set();
+    const player = { id: `player-${players.length}`, released: false, source, listeners,
+      snapshot: { ...playback.status, isLoaded: !!source && playback.initiallyLoaded, currentTime: 0 },
+      get currentStatus() { return { ...(playback.eventMode ? this.snapshot : playback.status), id: this.id }; },
+      addListener(_event, listener) { listeners.add(listener); return { remove() { listeners.delete(listener); } }; },
+      emit(status) { this.snapshot = { ...this.snapshot, ...status }; for (const listener of listeners) listener(this.currentStatus); },
       assertLive() { if (this.released) throw new Error('Native player was released'); },
-      play() { this.assertLive(); playback.played++; },
-      pause() { this.assertLive(); playback.paused++; },
-      async seekTo(time) { this.assertLive(); playback.seeks.push(time); if (playback.wait) await playback.wait; },
+      play() { this.assertLive(); playback.played++; if (playback.eventMode) this.emit({ playing: true }); },
+      // A background pause can update native state while its JS event is missed.
+      pause() { this.assertLive(); playback.paused++; this.snapshot.playing = false; },
+      async seekTo(time) { this.assertLive(); playback.seeks.push(time); if (playback.wait) await playback.wait; this.snapshot.currentTime = time; },
     };
     players.push(player); return player;
   }, [source]);
   useEffect(() => () => { player.released = true; }, [player]);
   return player;
 }
-export function useAudioPlayerStatus() { return playback.status; }
+export function useAudioPlayerStatus(player) {
+  // Expo 57 useEvent initializes once; an emitter/source swap does not reset state.
+  const [status, setStatus] = useState(() => player.currentStatus);
+  useEffect(() => {
+    const subscription = player.addListener('playbackStatusUpdate', setStatus);
+    return () => subscription.remove();
+  }, [player]);
+  return playback.eventMode ? status : playback.status;
+}
+
+// Silent native decode fixture; distinct from the audible screen player.
+export const validationAudio = { status: null, players: [] };
+export function createAudioPlayer(uri) {
+  const listeners = new Set();
+  const player = { uri, released: false,
+    currentStatus: validationAudio.status ?? { isLoaded: true, duration: 2, error: null },
+    addListener(_name, listener) { listeners.add(listener); return { remove() { listeners.delete(listener); } }; },
+    emit(status) { this.currentStatus = status; for (const listener of listeners) listener(status); },
+    release() { this.released = true; },
+  };
+  validationAudio.players.push(player); return player;
+}

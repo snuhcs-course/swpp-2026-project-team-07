@@ -61,3 +61,13 @@ export type AttemptResult = {
   feedback: Feedback[];
   error: { code: string; message: string } | null;
 };
+
+/** Validated read-only capabilities; null means unavailable, never a fabricated capture. */
+export type DeckDetail = Deck & { pdf_url: string | null };
+export type ReviewAttempt = {
+  attempt_id: string; deck_id: string | null; created_at: string | null;
+  duration_ms: number | null; slide_events: SlideEvent[]; visits: Visit[] | null;
+  transcript: Transcript | null; metrics: TimingMetrics | null; audio_url: string | null;
+  status: string; processing_state: ProcessingState | 'unavailable';
+  processing_result: AttemptResult | null;
+};

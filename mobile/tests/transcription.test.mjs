@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createTranscriptionClient, TranscriptionClientError } from '../src/features/transcription/client.ts';
+import { registerHooks } from 'node:module';
+import { resolve } from './helpers/storage-native-loader.mjs';
+registerHooks({ resolve });
+const { createTranscriptionClient, TranscriptionClientError } = await import('../src/features/transcription/client.ts');
 
 const id = '33333333-3333-4333-8333-333333333333';
 const recording = { id, deck_id: '11111111-1111-4111-8111-111111111111',

@@ -14,10 +14,13 @@ const { SavedAttemptScreen } = await import('../src/features/recording/SavedAtte
 const { beginAttempt, checkpointAttempt, getSavedAttempt, saveAttempt } = await import('../src/features/recording/storage.ts');
 const { API_URL } = await import('../src/services/api.ts');
 const action = (tree, label) => tree.root.findAllByType('action').find(n => n.props.label === label);
-const text = tree => JSON.stringify(tree.toJSON());
+// Nested Text spans render contiguously; serialize their visible characters, not JSON boundaries.
+const visibleText = node => typeof node === 'string' ? node : Array.isArray(node) ? node.map(visibleText).join('') : node?.children ? visibleText(node.children) : '';
+const text = tree => visibleText(tree.toJSON()) + JSON.stringify(tree.toJSON());
 async function tick(fn) { await act(async () => { fn(); await new Promise(setImmediate); }); }
 async function mount(id) { let tree; await tick(() => { tree = create(React.createElement(SavedAttemptScreen, { id })); }); return tree; }
 function saved() {
+  files.set('file:///synthetic.pdf', {}); files.set('file:///synthetic.wav', {});
   const id = beginAttempt({ id: 'local', uri: 'file:///synthetic.pdf', title: 'Synthetic', pageCount: 2 }, '', 1, 'file:///synthetic.wav');
   checkpointAttempt(id, 'file:///synthetic.wav', 2000, [{ slide_index: 1, at_ms: 0 }], true);
   return id;
