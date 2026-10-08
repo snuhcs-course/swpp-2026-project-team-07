@@ -2,7 +2,7 @@
 
 An Android presentation practice app connecting PDF slides, recordings, slide-aligned transcripts, and feedback.
 
-**Current status: Iteration 1 team scaffold.** The four screen frames use labeled sample data. Real PDF import/rendering, recording, and Gemini feedback remain implementation tasks for the team; transcription/alignment progress is noted below. This scaffold provides navigation, an API connection check, shared types, database models, development infrastructure, and feature entry points.
+**Current branch: PDF and recording integration restoration.** Real local PDF identity, native page count (up to 10), confirmed selected starting page, and audio-timed page-change callbacks are connected to capture. Actual saved audio plays in Results without a sample transcript. Capture failures/navigation use the reviewed lifecycle behavior. Server uploads, durable attempt recovery, processing and AI feedback are subsequent restoration stages; feature routes still return 501.
 
 On `feature/whisper-alignment`, the hosted Whisper adapter, standalone word-to-slide matcher, and mocked/synthetic tests are implemented. [Alignment notes](docs/word-alignment.md) describe its
 proposed internal output and a runnable example. It is not yet wired into the
@@ -67,7 +67,7 @@ export PATH="$ANDROID_HOME/platform-tools:$PATH"
 
 That Java command requires a macOS-registered JDK 17. If Gradle provisioned your JDK instead, point `JAVA_HOME` directly to its `Contents/Home` directory. The exact path used on the setup machine is recorded in [setup-explained.md](docs/setup-explained.md).
 
-The screen preview runs without backend services or provider keys: **Open sample slides → Preview rehearsal → Preview transcript and feedback**. Recording remains a preview; the result screen can play the matching local TTS audio with synchronized word highlighting.
+The local flow runs without backend services or provider keys. Sample transcripts remain explicitly labeled. Recording metadata currently lasts only for the mounted rehearsal/review flow; restart recovery is stage 2. Native PDF rendering requires a rebuilt Android development client, not Expo Go.
 
 ## Run the backend
 

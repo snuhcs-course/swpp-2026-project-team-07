@@ -39,3 +39,12 @@ Follow `api-contract.md`: zero-based slide indexes, integer milliseconds relativ
 Coordinate shared model/migration changes. Keep provider credentials on the backend. Evaluate real recordings before claiming filler/repetition/false-start detection. Saved-attempt browsing, selected-slide retries, and comparisons belong to later iteration UI; this scaffold retains the data identities needed for them.
 
 Start branches from the reviewed scaffold commit. Follow the team's review/testing agreement before pushing. Include commands, device evidence and limitations in each PR. Integrate on an Android device; the submitted plan names Galaxy S22/S23.
+
+
+## Stage 1 restoration branch (2026-10-08)
+
+Real local PDF identity, native page count (up to 10), confirmed selected starting page, and audio-timed page-change callbacks are connected to capture. Actual saved audio plays in Results without a sample transcript. Capture failures/navigation use the reviewed lifecycle behavior.
+
+Stage 1 is being prepared on isolated `codex/recording-review-fixes`, `codex/pdf-import`, and `codex/pdf-recording-restore` branches. Recording fixes are based on PR #13 head `040880f8`; PDF/integration snapshots start from main `f6f6e766`. Integration currently includes its prerequisites so it can be tested before commits. After human review, merge the recording/PDF prerequisites first and refresh the integration PR base. Updated user direction (2026-10-08): publish the review branches and continue all remaining stages while teammate review is pending. Later stages stack on the preceding implementation branch; maintainers merge in dependency order. No agent merge is authorized.
+
+The local prototype and earlier worktrees are reference sources, not merge bases. Reused code/tests originate in local recording `b28de880`, PDF `260dcbae`, and the preserved unfinished integration worktree. The original worktrees remain unchanged.
