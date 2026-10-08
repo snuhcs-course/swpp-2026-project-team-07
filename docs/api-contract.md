@@ -58,3 +58,10 @@ This is an implementation policy, not an evaluated accuracy claim. Pause/resume 
 These are schematic examples, not provider outputs. Statuses: `pending`, `processing`, `completed`, `failed`. Unavailable transcripts are `null`. Failed attempts retain audio and return a safe `{code, message}` error. Validate slide/audio evidence ranges; keep summaries separate from verbatim transcripts.
 
 `tasks.process_attempt` will coordinate stored audio → transcription → alignment → feedback → saved result. PDF preparation belongs to the deck workstream. Whisper uses hosted `whisper-1`, `verbose_json`, word timestamps normalized from seconds to milliseconds. Preserve raw output for evaluation and enforce the current provider upload limit. Gemini receives slide images/text, matching speech, bounded context and optional audience; choose its precise model during implementation. Credentials and provider calls remain server-side.
+
+
+## Stage 1 local capture boundary
+
+The imported PDF's `localDeckId` is a catalog key, not a server UUID. Native viewer callbacks supply the actual `pageCount` and zero-based selected page. Rehearsal timestamps page changes when the native page callback confirms the visible page, not when a navigation button is pressed. Capture starts only after PDF load/page confirmation; repeated callbacks of the same page add no new visit.
+
+Until stage 2, the Results route carries session-only `audioUri`, `slideEvents`, `durationMs`, `localDeckId`, `pageCount`, `title` and `pdfUri`. This is a local preview handoff, not upload metadata or a durable attempt. Do not put a local catalog key in `LocalRecording.deck_id`; stage 2 must resolve a server deck UUID and create one attempt UUID per recording before upload. No wire contract or backend endpoint changes in stage 1.
