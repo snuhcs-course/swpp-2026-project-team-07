@@ -350,3 +350,23 @@ This file does not automatically publish or submit the course report.
   persisted deck ID.
 - Related PR/commit: Cherry-pick of `04857fb` in progress; new recording-only
   PR pending.
+
+
+## 2026-10-08 — Recording lifecycle review fixes for PR #13 (Codex, pending human inspection)
+
+- Request: implement the approved six-stage restoration in order; review PR #13 separately, preserve local references, and complete PDF/capture integration before durable attempts or hosted processing.
+- Incorporated: Audio capture against sample slides; failed native sessions are released before retry. Back stops capture and keeps the screen open for listening. Backgrounding during preparation cancels capture. Native audio duration and repeated slide visits are preserved.
+- Reuse: PR #13 (`040880f8`), local PDF restoration (`260dcbae`), local recording regression/retry work (`b28de880`) and copied integration reference code/tests. The source worktrees and teammate branch were preserved.
+- AI-generated changes: lifecycle regression tests/guards, integration wiring, catalog concurrency/size validation, documentation. Expo SDK 57 docs and installed native source were inspected; no provider calls or credentials were used.
+- Verification so far: clean baseline 21/21; restored regression tests reproduced missing behavior, followed by passing automated checks. Final commands/counts and independent review evidence are recorded below when completed.
+- At initial staging, independent review and human inspection were pending. The user subsequently authorized publication as PRs and continued implementation of all stages; teammate review and merges remain pending. SQLite attempt recovery, uploads, Whisper jobs and selectable feedback are later stages.
+
+### Final stage 1 review and checks
+
+- `npm run check`: passed (typecheck, lint and 42/42 tests). `npm run bundle:android`: passed on the final product code. `git diff --cached --check`: passed. Backend unchanged; backend/worker/provider checks do not establish any new capability in this mobile-only stage.
+- Independent AI reviewer: separate Codex agent reviewed staged source/contracts/tests, then reviewed the changed failure paths. Initial Android event-order coverage exposed a stale completion event affecting the next capture; captures now await native completion and use separate recorder lifetimes. The reviewer reproduced stale parent preview after a later failed capture; the new Start now clears that preview. Added bounded-stop and consecutive-PDF regression tests. Final disposition: no remaining actionable findings. This is AI review, not teammate approval.
+- Reviewed staged diff before this documentation-only evidence update: SHA-256 `0200e5bcac891a2fb3f6d4fb347cdfc41826d9420423247ae978cf11b3edd39c`. Documentation evidence was self-reviewed against command outputs afterward.
+- Native integration verification: JDK 17 `./android/gradlew -p android assembleDebug -PreactNativeArchitectures=arm64-v8a -x lint -x test` passed. An isolated read-only Android emulator imported the synthetic six-page PDF, rendered page 3, captured visits 3 → 4 → 3, finalized 1:03 of audio and loaded/advanced its native player. A second recording finalized after Android Back. App restart retained the PDF catalog. Revoked microphone permission produced an explicit denial and fresh retry succeeded after regrant. A malformed synthetic PDF displayed a renderer error. These checks exercised the integration branch; they are not independent device checks of every prerequisite branch.
+- Android investigation found that the permission activity briefly backgrounds the app. Capture now checks foreground state after permission/preparation; an already-running capture stops on background. Temporary diagnostic traces were removed.
+- Still pending: physical-phone microphone/audible quality, hardware interruptions and sub-second Stop on a physical device. Automated tests cover zero/invalid durations, delayed native stop errors, missing completion, and hung stop promises; these do not replace device evidence. No API/provider calls were made.
+- Human instruction: “just post it as a pr so another person can check the code but continue implementing other features,” followed by “implement everything and then wait for others to merge.” Commits/push/PR publication are authorized; human review/merge approval is not claimed.
