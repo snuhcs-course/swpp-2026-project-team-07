@@ -1,4 +1,4 @@
-"""Checkpoint 1: private, immutable feedback evidence; no processing/DB callers.
+"""Private, immutable deck and rehearsal evidence; no network or database I/O.
 
 Small schema/prompt ideas from prototype 33907d3; indexed evidence replaces its
 substring matching. See docs/ai-feedback.md for boundaries and canonicalization.
@@ -106,6 +106,13 @@ class SlideText(PrivateModel):
     source_language: Language
 
 
+class DeckInput(PrivateModel):
+    deck_id: UUIDText
+    content_hash: Digest
+    preparation_version: Annotated[str, Field(min_length=1, max_length=40)]
+    slides: Annotated[tuple[SlideText, ...], Field(min_length=1, max_length=10)]
+
+
 class Word(PrivateModel):
     text: Annotated[str, Field(min_length=1, max_length=200)]
     start_ms: Time
@@ -150,6 +157,14 @@ class Segment:
 
 
 @dataclass(frozen=True)
+class PreparedDeck:
+    source: DeckInput = field(repr=False)
+    images: tuple[PreparedImage, ...] = field(repr=False)
+    source_ids: tuple[str, ...] = field(repr=False)
+    input_id: str
+
+
+@dataclass(frozen=True)
 class PreparedAnalysis:
     source: AnalysisInput = field(repr=False)
     images: tuple[PreparedImage, ...] = field(repr=False)
@@ -157,6 +172,7 @@ class PreparedAnalysis:
     transcript_id: str
     input_id: str
     segments: tuple[Segment, ...] = field(repr=False)
+    deck: PreparedDeck = field(repr=False)
 
 
 _private_image_call = ContextVar("private_feedback_image", default=False)
@@ -205,7 +221,27 @@ def _image(data):
     return PreparedImage(data, mime)
 
 
-def prepare_analysis(value: dict, images: tuple[bytes, ...]) -> PreparedAnalysis:
+def deck_identity(source, source_ids):
+    return hashlib.sha256(json_bytes([source.model_dump(mode="json"), source_ids])).hexdigest()
+
+
+def prepare_deck(value: dict, images: tuple[bytes, ...]) -> PreparedDeck:
+    """Prepare a saved deck independently of recordings, audience or speech."""
+    source = validated(DeckInput, value)
+    if (tuple(s.slide_index for s in source.slides) != tuple(range(len(source.slides)))
+            or any(s.deck_id != source.deck_id or not s.source_language.strip() for s in source.slides)):
+        raise FeedbackError("invalid_slides")
+    if type(images) is not tuple or len(images) != len(source.slides):
+        raise FeedbackError("invalid_image")
+    if any(type(image) is not bytes for image in images) or sum(len(image) for image in images) > MAX_TOTAL_IMAGE_BYTES:
+        raise FeedbackError("invalid_image")
+    prepared = tuple(_image(image) for image in images)
+    ids = tuple(hashlib.sha256(json_bytes(slide.model_dump(mode="json")) + image.data).hexdigest()
+                for slide, image in zip(source.slides, prepared))
+    return PreparedDeck(source, prepared, ids, deck_identity(source, ids))
+
+
+def prepare_analysis(value: dict, images: tuple[bytes, ...], *, prepared_deck: PreparedDeck | None = None) -> PreparedAnalysis:
     """No I/O. Visits use original transcript indexes, never matched word copies.
 
     Missing/no speech is an explicit preflight error, before either paid stage.
@@ -241,13 +277,20 @@ def prepare_analysis(value: dict, images: tuple[bytes, ...]) -> PreparedAnalysis
         raise FeedbackError("no_speech")
     if not words or not source.transcript.text.strip():
         raise FeedbackError("invalid_transcript")
-    if type(images) is not tuple or len(images) != len(source.slides):
-        raise FeedbackError("invalid_image")
-    if any(type(image) is not bytes for image in images) or sum(len(image) for image in images) > MAX_TOTAL_IMAGE_BYTES:
-        raise FeedbackError("invalid_image")
-    prepared_images = tuple(_image(image) for image in images)
-    source_ids = tuple(hashlib.sha256(json_bytes(slide.model_dump(mode="json")) + image.data).hexdigest()
-                       for slide, image in zip(source.slides, prepared_images))
+    # Compatibility for existing analysis callers; saved-deck callers supply the
+    # actual content hash/preparation version via prepare_deck. No attempt data
+    # enters this deck identity.
+    deck = prepare_deck({"deck_id": source.deck_id,
+                         "content_hash": hashlib.sha256(json_bytes([s.model_dump(mode="json") for s in source.slides])).hexdigest(),
+                         "preparation_version": "analysis-slides-v1",
+                         "slides": [s.model_dump(mode="json") for s in source.slides]}, images)
+    if prepared_deck is not None:
+        if (not isinstance(prepared_deck, PreparedDeck) or prepared_deck.source.deck_id != source.deck_id
+                or prepared_deck.source.slides != source.slides or prepared_deck.source_ids != deck.source_ids
+                or prepared_deck.images != deck.images):
+            raise FeedbackError("description_source_mismatch")
+        deck = prepared_deck
+    prepared_images, source_ids = deck.images, deck.source_ids
     transcript_id = hashlib.sha256(json_bytes([source.attempt_id, source.transcript.model_dump(mode="json")])).hexdigest()
     input_id = hashlib.sha256(json_bytes([source.model_dump(mode="json"), source_ids])).hexdigest()
     segments = []
@@ -261,7 +304,7 @@ def prepare_analysis(value: dict, images: tuple[bytes, ...]) -> PreparedAnalysis
             chunks[-1].append(index)
         for ordinal, indexes in enumerate(chunks):
             segments.append(Segment(f"v{visit_id}s{ordinal}", visit_id, visit.slide_index, tuple(indexes)))
-    return PreparedAnalysis(source, prepared_images, source_ids, transcript_id, input_id, tuple(segments))
+    return PreparedAnalysis(source, prepared_images, source_ids, transcript_id, input_id, tuple(segments), deck)
 
 
 class Fact(PrivateModel):
@@ -297,7 +340,10 @@ def validate_descriptions(value, analysis):
         if slide.deck_id != analysis.source.deck_id or slide.source_id != analysis.source_ids[slide.slide_index]:
             raise FeedbackError("invalid_descriptions")
         for fact in description_facts(slide).values():
-            if not fact.text.strip() or fact.uncertain != bool(fact.uncertainty.strip()):
+            # PostgreSQL JSONB cannot represent U+0000. Reject it in generated
+            # and edited facts before persistence; preserve all other Unicode.
+            if ("\x00" in fact.text or "\x00" in fact.uncertainty
+                    or not fact.text.strip() or fact.uncertain != bool(fact.uncertainty.strip())):
                 raise FeedbackError("invalid_descriptions")
     return descriptions
 

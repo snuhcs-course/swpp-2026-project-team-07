@@ -1,6 +1,6 @@
 # Iteration 1 team handoff
 
-The initial scaffold/branch and hosted-processing sections below are historical. The rehearsal-review section at the end describes the current patch and its verification boundary.
+The initial scaffold/branch, hosted-processing and rehearsal-review sections below are historical. The final AI feedback checkpoint-2 section describes the current patch and its verification boundary.
 
 This is a shared starting scaffold based on the submitted Expo/React Native/TypeScript Android + Django REST architecture. Hours are outside this task. The schedule does not establish individual feature owners; assign names as a team.
 
@@ -85,3 +85,58 @@ Round-3 review reproduced three issues, now repaired: offline upgrades without a
 Final verification: independent staged review passed after the documented repair rounds. Mobile TypeScript/lint, **209 tests** and Android export passed. Final application/test bytes match the reviewed snapshot; coordinator-only documentation records publication evidence. Backend source/dependencies are unchanged, with system/migration checks, 74 PostgreSQL tests and API restart/media retrieval verified separately. Android emulator checks covered real PDF/transcript/audio review, server-only audio/PDF recovery, offline restart, word/visit seeks, pause/foreground behavior and EOF/replay. No new provider request occurred.
 
 Physical-phone/audible synchronization, native audio-focus fault injection, API-switch and exhaustive callback/download-cancellation stress remain pending; automated regressions cover their modeled cases. Human review remains pending. See [final evidence](ai-use.md#2026-10-08--rehearsal-review-final-verification-and-publication). Publish one PR against `feature/whisper-api-processing`; do not merge. The proposed next implementation is `feature/ai-feedback`, and it requires user confirmation after this handoff.
+
+
+## Current AI feedback checkpoint-2 handoff (2026-10-08)
+
+The user authorized continuation after checkpoint 1 at reviewed/tested local
+`f07e55395d2e38eabec7c39ea766f643b2e5c7c1`, on `feature/ai-feedback` stacked on open
+PR #20 (`1305917`). That authorization is not a claim of human code review or a
+named owner's approval. One eventual PR covers the five-checkpoint plan.
+
+This patch adds durable saved-deck descriptions only: deck-only immutable source
+preparation; provider/project/model/prompt/schema-scoped cache; explicit GET,
+generate and revision-checked PATCH; additive description/job/request/quota models;
+claim/revision fencing; private receipt-first persistence and recovery; required
+provider-specific application reservation settings. Existing Beat recovers both
+queues. No upload/transcription-triggered description calls, rehearsal coaching,
+new AttemptResult state, mobile code/UI/disclosure, auth or provider evaluation.
+Whisper request uniqueness and original PDF/audio/transcript/results are retained;
+existing app processing still uses `feedback_state=disabled`.
+
+Checkpoint-2 review repairs preserve same-receipt recovery when completion writes
+or commits fail, and finalize private receipt evidence after retry or PATCH
+supersedes a job and the worker stops, including late receipts for jobs already
+marked `needs_confirmation`. Receipt-only claims fence duplicate/expired workers;
+newer jobs and generated/edited descriptions and revisions remain intact.
+Synthetic regression results are in AI-use; real PostgreSQL and worker-restart
+validation remains pending.
+
+Read [AI feedback](ai-feedback.md) for source/prototype attribution, quota policy,
+checkpoint ledger and the precise fake-worker validation recipe; read the separate
+[description API contract](api-contract.md#durable-slide-descriptions-checkpoint-2)
+before implementing part-4 consumers. Prototype `33907d3` was read-only evidence
+for deck cache/revision, private usage and Pacific reset ideas. Its countTokens,
+free-tier assumptions, automatic orchestration and cross-scope edit reuse were
+not imported.
+
+Writer checks and limitations are in [AI-use](ai-use.md). The runner owns staging,
+mandatory checks and independent review; the coordinator owns real PostgreSQL/
+Redis/Celery/process-restart validation using synthetic media and an external
+temporary fake-provider seam, without live API calls. Human inspection remains
+pending. Transfer reviewed work only; stop for user confirmation before checkpoint
+3. The writer performs no Git mutations, dependency installation, service changes,
+commit/push/PR/merge or edits to the original prototype/pipeline worktree.
+
+
+Checkpoint-2 coordinator verification completed: independent staged review passed,
+Django system/migration checks passed, and all 172 tests passed on real
+PostgreSQL (12 database-specific tests skip under SQLite). Real Redis/Celery/Beat
+checks used only synthetic responses and confirmed duplicate prevention, three
+worker termination points, late-receipt recovery, edit fencing, disabled/project
+change rejection, and broker-outage redispatch. API/database restart retained
+description/history results and all five synthetic PDF/audio/image hashes.
+Provider-request counts were unchanged by reads. See the
+[coordinator record](ai-use.md#2026-10-08--ai-feedback-checkpoint-2-coordinator-handoff).
+Checkpoint 2 is staged on `feature/ai-feedback` for human inspection; no checkpoint-2
+commit, push, PR or merge has been performed. Stop for confirmation before part 3.

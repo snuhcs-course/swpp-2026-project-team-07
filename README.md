@@ -2,11 +2,11 @@
 
 An Android presentation practice app connecting PDF slides, recordings, slide-aligned transcripts, and feedback.
 
-**Current scope: `feature/rehearsal-review`, stacked on Whisper PR #19 (`c7733d8`).** The Library merges local captures and server history for known presentations. Saved rehearsals open by attempt UUID with actual PDF pages, audio, synchronized transcript and chronological slide visits. Missing audio/PDF can be downloaded explicitly for offline review. Viewing, refreshing, downloading and replaying never start analysis. Existing **Analyze recording**, OpenAI disclosure, stage/Refresh/Retry and uncertain-charge confirmation remain in place; sample previews stay separate.
+**Current branch: `feature/ai-feedback`, building on rehearsal-review PR #20 (`1305917`).** The Library merges local captures and server history for known presentations. Saved rehearsals open by attempt UUID with actual PDF pages, audio, synchronized transcript and chronological slide visits. Missing audio/PDF can be downloaded explicitly for offline review. Viewing, refreshing, downloading and replaying never start analysis. Existing **Analyze recording**, OpenAI disclosure, stage/Refresh/Retry and uncertain-charge confirmation remain in place; sample previews stay separate.
 
-The backend coordinates a durable PostgreSQL queue, packaged Silero speech-presence check, hosted `whisper-1`, private raw-response persistence, normalized transcript, chronological slide visits and timing/rate estimates. Feedback is disabled for this stage. See the [API contract](docs/api-contract.md) for revision-aware retries and uncertain outbound requests. Historical standalone adapter/alignment work is now integrated; its older pilot evidence does not establish this pipeline's live accuracy.
+The backend coordinates a durable PostgreSQL queue, packaged Silero speech-presence check, hosted `whisper-1`, private raw-response persistence, normalized transcript, chronological slide visits and timing/rate estimates. Rehearsal coaching remains disabled; explicit deck-description APIs are described below. See the [API contract](docs/api-contract.md) for revision-aware retries and uncertain outbound requests. Historical standalone adapter/alignment work is now integrated; its older pilot evidence does not establish this pipeline's live accuracy.
 
-Standalone [AI feedback checkpoint 1](docs/ai-feedback.md) adds Gemini/OpenAI slide-description and evidence-validation adapters with mocked transport tests. They are disconnected from app processing and disabled by default. Enabling their standalone configuration cannot enable public feedback; no mobile or processing integration is included. Human inspection and explicit confirmation are required before checkpoint 2.
+[AI feedback checkpoints 1–2](docs/ai-feedback.md) provide Gemini/OpenAI adapters and explicit saved-deck description generation/read/revision-checked editing. Description jobs, receipts and application quota reservations have separate durable database records. They are disabled by default and are never triggered by upload or transcription. Attempt feedback remains disabled, with no mobile consumer yet. Checkpoint-2 continuation was authorized by the user; human code inspection remains pending. Stop for confirmation before checkpoint 3; all five checkpoints target one eventual PR.
 
 Detected no-speech saves an empty transcript, chronological visits with empty word lists, and timing metrics over the original recording duration, with zero provider requests. Repeated, backward and zero-duration visits remain visible in the result data.
 
@@ -111,6 +111,46 @@ The coordinator's dependency audit reports two residual Torch advisories after t
 
 Regenerate the lock with `uv pip compile backend/requirements.in -o backend/requirements.txt --cache-dir /tmp/onloud-uv-cache` from the repository root (append `--offline` when the cache is populated). Install through the setup above; native CPU/runtime packaging must also be verified in the coordinator's Linux/Compose environment.
 
+## Saved-deck descriptions (checkpoint 2)
+
+Apply additive migrations with `python manage.py migrate`. Use the same worker and
+Beat setup above; `rehearsals.tasks.recover_work` now also recovers description jobs.
+Only explicit `POST /api/decks/{id}/descriptions/generate/` can queue description
+work. GET is read-only; PATCH saves a complete set with its current description
+revision. See the [wire contract](docs/api-contract.md#durable-slide-descriptions-checkpoint-2).
+There is no app button/disclosure or rehearsal coaching orchestration yet.
+
+Checkpoint 2 passed independent AI review, Django system/migration checks and
+172 tests on real PostgreSQL. Synthetic checks verified Redis/Celery/Beat
+recovery and API/database restart with unchanged saved media. See the
+[checkpoint evidence](docs/ai-use.md#2026-10-08--ai-feedback-checkpoint-2-coordinator-handoff).
+Human inspection remains pending; live-provider and mobile feedback validation
+belong to later checkpoints.
+
+In backend configuration, set `FEEDBACK_ENABLED=true`, select `FEEDBACK_PROVIDER`,
+and configure that provider's model, key and nonsecret `FEEDBACK_*_PROJECT_ID`.
+Positive `FEEDBACK_*_RPM` and `FEEDBACK_*_TPM` values are required for outbound work;
+missing values fail generation safely without breaking startup or Whisper.
+`FEEDBACK_*_DAILY_REQUEST_LIMIT` is optional. Use verified account allowances,
+with headroom for other callers; no free-tier values are assumed. Reservations
+use serialized UTF-8 request bytes plus maximum output tokens as conservative
+application units, not provider-perfect token counts or a monetary cap.
+Gemini daily windows use America/Los_Angeles midnight; OpenAI's optional daily
+ceiling is an application policy using UTC midnight.
+
+Saved retries retain provider/project/model/prompt/schema/source selection.
+Project configuration changes block old submissions; same-project key rotation is
+allowed. Unknown submitted outcomes retain reservations and require explicit
+acknowledgement before a new generation. Saved receipts recover without another
+call, including after completion-write failure. After retry or editing supersedes
+a job (even one already awaiting confirmation), recovery finalizes its late saved
+receipt as private request evidence and preserves newer work and descriptions.
+Known invalid responses require explicit retry. Correct completed content
+with PATCH, not paid regeneration. Read the
+[recovery validation recipe](docs/ai-feedback.md#checkpoint-2-coordinator-validation)
+before claiming real PostgreSQL/Redis/Celery recovery. Local tests use synthetic
+sources and mocked providers; no live provider or device validation is claimed.
+
 ## App connection
 
 - Emulator: `EXPO_PUBLIC_API_URL=http://10.0.2.2:8000/api` in `mobile/.env`.
@@ -135,7 +175,7 @@ cd backend
 .venv/bin/python manage.py makemigrations --check --dry-run --settings=config.test_settings
 ```
 
-Unit tests use in-memory SQLite. PostgreSQL-specific processing/upload races are explicitly skipped there. Run them separately against the real test database with `.venv/bin/python manage.py test rehearsals.test_processing.ConcurrentProcessingTests rehearsals.test_storage.ConcurrentUploadTests --settings=config.settings` from `backend/` with test-database privileges. Never substitute SQLite for that evidence. Verify scheduler restart, missed broker publication, worker termination before/after submission and after raw persistence, Android lifecycle/cache/replay, and a consented hosted pilot separately.
+Unit tests use in-memory SQLite. PostgreSQL-specific processing/upload/description races are explicitly skipped there. Run them separately against the real test database with `.venv/bin/python manage.py test rehearsals.test_processing.ConcurrentProcessingTests rehearsals.test_storage.ConcurrentUploadTests rehearsals.test_descriptions.ConcurrentDescriptionTests --settings=config.settings` from `backend/` with test-database privileges. Never substitute SQLite for that evidence. Verify scheduler restart, missed broker publication, worker termination before/after submission and after raw persistence, Android lifecycle/cache/replay, and a consented hosted pilot separately.
 
 A submitted marker means a request may have reached the provider. SDK timeout is 120 seconds, task limit 300 seconds, and claim expiry 360 seconds. Automatic provider/SDK retries are disabled. Received raw output and successful transcripts are reused. Ambiguous outbound failures require explicit acknowledgement before a new generation; this does not promise provider exactly-once execution or a monetary cap.
 

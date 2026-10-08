@@ -15,7 +15,7 @@ import httpx
 from openai import APIConnectionError, APIError, APIStatusError, APITimeoutError, OpenAI
 
 from .feedback import (
-    Descriptions, Suggestions, FeedbackError, MAX_OUTPUT_BYTES, PreparedAnalysis,
+    Descriptions, Suggestions, FeedbackError, MAX_OUTPUT_BYTES, PreparedAnalysis, PreparedDeck,
     json_bytes, strict_json, validate_descriptions, validate_suggestions,
 )
 
@@ -31,8 +31,11 @@ request files/audio. No external fact checking, grades, emotion, pronunciation,
 personality judgments, new speaking-habit detection, or claims that a topic was
 never mentioned. Uncertain readings are not facts. Return only the requested JSON.
 """
+DESCRIPTION_PROMPT_VERSION = "description-v2"
+DESCRIPTION_SCHEMA_VERSION = "description-v1"
 DESCRIPTION_RULES = COMMON_RULES + """Describe every supplied slide exactly once, copying deck_id,
-slide_index and source_id. Use the source language for each slide. Each summary,
+slide_index and source_id. Use the source language for each slide; for und, infer
+the source language from the supplied text/image (preserve mixed languages). Each summary,
 key idea and visual fact has text, uncertain and uncertainty. If uncertain, explain
 why; otherwise uncertainty is empty. Mark unreadable/ambiguous visual readings
 uncertain, including summaries depending on them. Never invent missing text.
@@ -117,7 +120,7 @@ class ProviderConfig:
 @dataclass(frozen=True)
 class PreparedRequest:
     config: ProviderConfig = field(repr=False)
-    analysis: PreparedAnalysis = field(repr=False)
+    analysis: PreparedAnalysis | PreparedDeck = field(repr=False)
     stage: str
     payload: bytes = field(repr=False)
     input_hash: str
@@ -153,24 +156,26 @@ class FeedbackAdapter:
     Prepare analysis first (including no-speech preflight), then construct this
     adapter. Edits pass through validate_descriptions again and remain user data.
     """
-    def __init__(self, config=None):
+    def __init__(self, config=None, *, preparation_only=False):
         self._config = ProviderConfig.from_env() if config is None else config
-        self._config.validate()
+        if not preparation_only:
+            self._config.validate()
 
     def prepare_descriptions(self, analysis):
-        return self._prepare(analysis, "descriptions")
+        return self._prepare(analysis.deck if isinstance(analysis, PreparedAnalysis) else analysis, "descriptions")
 
     def prepare_coaching(self, analysis, descriptions: DescriptionResult):
-        if (descriptions.provider, descriptions.model, descriptions.input_id) != (self._config.provider, self._config.model, analysis.input_id):
+        if (descriptions.provider, descriptions.model, descriptions.input_id) != (self._config.provider, self._config.model, analysis.deck.input_id):
             raise FeedbackError("description_source_mismatch")
         return self._prepare(analysis, "coaching", descriptions.descriptions)
 
     def edited_descriptions(self, analysis, value):
-        return DescriptionResult(self._config.provider, self._config.model, analysis.input_id,
+        deck = analysis.deck if isinstance(analysis, PreparedAnalysis) else analysis
+        return DescriptionResult(self._config.provider, self._config.model, deck.input_id,
                                  validate_descriptions(value, analysis))
 
     def _prepare(self, analysis, stage, descriptions=None):
-        if not isinstance(analysis, PreparedAnalysis):
+        if not isinstance(analysis, PreparedAnalysis if stage == "coaching" else PreparedDeck):
             raise FeedbackError("invalid_input")
         config = self._config
         instructions = DESCRIPTION_RULES if stage == "descriptions" else COACHING_RULES
@@ -299,7 +304,7 @@ def request_raw(prepared: PreparedRequest, *, _transport=None) -> RawReceipt:
     """One POST, zero retries; `_transport` is a private fake-test seam.
 
     HTTP responses (including rejections/malformed/partial bodies) return a private
-    receipt for future persistence before normalize(). Connection failures have
+    receipt for persistence before normalize(). Connection failures have
     no complete receipt and raise safe uncertain errors. No automatic repair.
     """
     prepared.config.validate()
@@ -405,7 +410,7 @@ def _output(receipt):
 
 
 def normalize(prepared: PreparedRequest, receipt: RawReceipt):
-    """Only after future caller persists receipt; no outbound work here."""
+    """Only after the caller persists receipt; no outbound work here."""
     if (receipt.provider, receipt.model, receipt.stage, receipt.input_hash) != (
             prepared.config.provider, prepared.config.model, prepared.stage, prepared.input_hash):
         raise FeedbackError("receipt_mismatch")
