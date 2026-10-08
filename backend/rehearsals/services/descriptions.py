@@ -19,8 +19,9 @@ from django.utils import timezone
 
 from ..models import Deck, DescriptionSet, DescriptionJob, FeedbackRequest, FeedbackReservation, FeedbackQuotaBucket, FeedbackJob
 from . import feedback_provider as provider
-from .feedback import (DeckInput, PreparedDeck, FeedbackError, MAX_IMAGE_BYTES, deck_identity,
+from .feedback import (DeckInput, PreparedDeck, FeedbackError, deck_identity,
                        prepare_deck, validated, validate_descriptions)
+from .feedback_images import MAX_STORED_IMAGE_BYTES, saved_feedback_images
 from .feedback_config import selection_descriptor, assert_selection, Selection, QuotaPolicy, prompt_digest, enabled
 from .feedback_quota import locked_bucket, reserve, cooldown, stop_legacy_gemini_wait, QUOTA_STOPPED_MESSAGE
 
@@ -95,7 +96,7 @@ def prepare_saved(deck_id):
     value = {'deck_id': str(deck.pk), 'content_hash': digest, 'preparation_version': deck.preparation_version,
              'slides': [{'deck_id': str(deck.pk), 'slide_index': s.slide_index,
                          'extracted_text': s.extracted_text, 'source_language': 'und'} for s in slides]}
-    images = tuple(_read(s.image, MAX_IMAGE_BYTES) for s in slides)
+    images = saved_feedback_images(tuple(_read(s.image, MAX_STORED_IMAGE_BYTES) for s in slides))
     prepared = prepare_deck(value, images)
     snapshot = {'source': prepared.source.model_dump(mode='json'), 'source_ids': list(prepared.source_ids),
                 'storage': storage_identity(deck, slides)}

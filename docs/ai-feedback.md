@@ -61,6 +61,14 @@ Each ordered slide has `deck_id`, zero-based `slide_index`, `extracted_text`, an
 fully verifies/decodes each image and checks dimensions before pixel decoding.
 A slide `source_id` hashes its identity/text/language and image bytes.
 
+Saved PDF renders are read with an 8 MiB per-file bound before the provider limits
+are applied. A valid render exceeding the 1 MiB image or 8 MiB aggregate budget
+gets a deterministic JPEG copy for feedback, with bounded downscaling only when
+needed. Original PDF/slide files are never rewritten. Already-compatible decks
+retain their exact image bytes and source IDs; converted source IDs describe the
+actual image sent to the provider. Dimensions, frame count and full decoding stay
+validated. This is local preparation and never starts provider work.
+
 The transcript is null or `{text, words: [{text, start_ms, end_ms}]}`. Words retain
 original order, including overlapping/unsorted timings and zero-duration words.
 Their stable IDs are **original zero-based indexes scoped to `transcript_id`**,

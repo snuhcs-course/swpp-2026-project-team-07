@@ -1509,3 +1509,21 @@ for (const guard of ['stale', 'uncertain']) {
     } finally { await tick(() => tree.unmount()); }
   });
 }
+
+for (const code of ['invalid_source', 'invalid_image', 'source_unavailable']) {
+  test(`feedback source rejection explains the deck problem without a refresh loop: ${code}`, async () => {
+    startFeedback(); feedbackStorage.saveFeedbackConsent(api, feedbackFixtures.selection);
+    const previous = network.respond;
+    network.respond = (url, init) => init.method === 'POST'
+      ? response(400, { error: { code, message: 'private provider body' } }) : previous(url, init);
+    const tree = await mount();
+    try {
+      await tick(() => action(tree, 'Generate feedback').props.onPress());
+      assert.match(text(tree), /slide images|saved PDF/i);
+      assert.doesNotMatch(text(tree), /Generation was not admitted|outcome is unconfirmed|private provider body/);
+      assert.equal(feedbackStorage.readPending(api, attemptId), null);
+      assert.equal(paidRequests().length, 1);
+      assert.match(text(tree), /Hello, 안녕!/);
+    } finally { await tick(() => tree.unmount()); }
+  });
+}

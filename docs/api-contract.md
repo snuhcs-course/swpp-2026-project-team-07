@@ -521,3 +521,14 @@ Attempt GET/history add `deck_id`, `duration_ms`, `slide_events`, `audience`, `c
 Deck mappings are keyed by API address and local deck ID. Before reuse, the client checks server UUID identity and page count via deck GET; only HTTP 404 or an invalid local mapping permits PDF replacement. Transient lookup failures retain the mapping. An uncertain audio response, 409, or failed local acknowledgement save never allocates a new attempt UUID. A submitted recording can be uploaded to another configured API address with that same attempt UUID.
 
 Verification boundary: automated SQLite/native mocks and Django tests are distinct from real Android restart/replay/offline retry, PostgreSQL races, and persistent server restart/media retrieval. Storage and hosted-processing coordinator evidence is recorded in [AI-use](ai-use.md#2026-10-08--hosted-processing-coordinator-verification-and-publication): real PostgreSQL/Redis/Celery, Android emulator and a controlled synthetic hosted pilot were checked. Physical-phone/human-speech quality and human code review remain pending.
+
+
+### Saved render preparation for feedback
+
+Feedback admission accepts stored PDF renders up to 8 MiB per image and creates
+bounded provider copies when needed (1 MiB per image, 8 MiB total, existing
+1600-pixel dimension checks). Uploaded PDF and slide media are unchanged.
+Compatible image bytes/source IDs remain unchanged; converted evidence identities
+use the bytes actually sent to the provider. Invalid or missing saved media still
+rejects admission without provider work. The mobile rejection message identifies
+the PDF/slide source issue instead of suggesting a revision refresh will repair it.

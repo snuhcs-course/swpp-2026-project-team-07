@@ -175,6 +175,8 @@ export function useFeedbackReview(id: string, address: string, review: ReviewAtt
       const mismatch = error instanceof TranscriptionClientError && error.code === 'selection_mismatch';
       const rejection = error instanceof TranscriptionClientError && error.code === 'no_speech' ? 'No speech is available for suggestions.' :
         error instanceof TranscriptionClientError && error.code === 'missing_transcript' ? 'Analyze the saved recording before generating feedback.' :
+        error instanceof TranscriptionClientError && ['invalid_source', 'invalid_image', 'invalid_slides', 'source_unavailable'].includes(error.code) ?
+          'The saved PDF or slide images could not be prepared for feedback. Your recording and transcript are kept. The presentation on the server needs attention before trying again.' :
           'Generation was not admitted. Refresh and review the current revision and recovery options before trying again.';
       setNotice(mismatch ? 'Provider selection changed. Refreshed disclosure is required; choose generation again. No work was admitted.' :
         definite ? rejection : submitted ? 'Request outcome is unconfirmed. Refresh before another submission; another request may incur another charge.' : offline);
