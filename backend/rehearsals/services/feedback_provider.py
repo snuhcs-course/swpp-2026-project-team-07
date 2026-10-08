@@ -33,7 +33,7 @@ never mentioned. Uncertain readings are not facts. Return only the requested JSO
 """
 DESCRIPTION_PROMPT_VERSION = "description-v2"
 DESCRIPTION_SCHEMA_VERSION = "description-v1"
-GEMINI_DESCRIPTION_SCHEMA_VERSION = "description-gemini-v2"
+GEMINI_DESCRIPTION_SCHEMA_VERSION = "description-gemini-v3"
 DESCRIPTION_RULES = COMMON_RULES + """Describe every supplied slide exactly once, copying deck_id,
 slide_index and source_id. Use the source language for each slide; for und, infer
 the source language from the supplied text/image (preserve mixed languages). Each summary,
@@ -67,14 +67,17 @@ def current_schema_version(provider, stage):
     return GEMINI_COACHING_SCHEMA_VERSION if provider == "gemini" else COACHING_SCHEMA_VERSION
 
 
-def _gemini_schema(node):
+def _gemini_schema(node, version):
     """Project schema nodes only, never property/definition names or enum values.
 
-    String constraints remain enforced locally. Gemini supports inclusive numeric
-    and array bounds; translate our integer exclusive bounds without weakening them.
-    This is a wire compatibility hypothesis, not proof of live model acceptance.
+    String constraints remain enforced locally; integer exclusive bounds become
+    equivalent inclusive bounds. Only description v3 omits array bounds to reduce
+    this schema's complexity. Local cardinality validation remains unchanged.
     """
     result = {key: value for key, value in node.items() if key not in {"pattern", "minLength", "maxLength", "exclusiveMaximum"}}
+    if version == "description-gemini-v3":
+        result.pop("minItems", None)
+        result.pop("maxItems", None)
     if "exclusiveMaximum" in node:
         if node.get("type") != "integer" or type(node["exclusiveMaximum"]) is not int:
             raise FeedbackError("snapshot_unavailable")
@@ -82,13 +85,13 @@ def _gemini_schema(node):
         result["maximum"] = min(result.get("maximum", bound), bound)
     for key in ("properties", "$defs"):
         if key in result:
-            result[key] = {name: _gemini_schema(child) for name, child in result[key].items()}
+            result[key] = {name: _gemini_schema(child, version) for name, child in result[key].items()}
     for key in ("items", "additionalProperties"):
         if isinstance(result.get(key), dict):
-            result[key] = _gemini_schema(result[key])
+            result[key] = _gemini_schema(result[key], version)
     for key in ("anyOf", "oneOf", "prefixItems"):
         if key in result:
-            result[key] = [_gemini_schema(child) for child in result[key]]
+            result[key] = [_gemini_schema(child, version) for child in result[key]]
     return result
 
 
@@ -96,12 +99,15 @@ def response_schema(provider, stage, version=None):
     current = current_schema_version(provider, stage)
     version = current if version is None else version
     legacy = DESCRIPTION_SCHEMA_VERSION if stage == "descriptions" else COACHING_SCHEMA_VERSION
-    if version not in {current, legacy}:
+    supported = {current, legacy}
+    if provider == "gemini" and stage == "descriptions":
+        supported.add("description-gemini-v2")
+    if version not in supported:
         raise FeedbackError("snapshot_unavailable")
     schema = (Descriptions if stage == "descriptions" else Suggestions).model_json_schema()
     # v1 reconstructs the exact historical wire contract, including for Gemini.
     # Do not silently upgrade queued jobs, explicit retries or receipt recovery.
-    return _gemini_schema(schema) if provider == "gemini" and version == current else schema
+    return _gemini_schema(schema, version) if provider == "gemini" and version != legacy else schema
 
 
 # Logger filters run at the producing logger, not just on parent handlers. The

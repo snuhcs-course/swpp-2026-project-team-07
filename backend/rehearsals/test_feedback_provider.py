@@ -6,6 +6,7 @@ from dataclasses import replace
 from copy import deepcopy
 from datetime import datetime, timezone
 import gzip
+import hashlib
 import io
 import json
 import logging
@@ -55,6 +56,20 @@ class Chunks(httpx.SyncByteStream):
 
 
 class FeedbackProviderTests(TestCase):
+    def test_current_gemini_description_removes_only_wire_array_bounds(self):
+        previous = response_schema('gemini', 'descriptions', 'description-gemini-v2')
+        expected = deepcopy(previous)
+        expected['properties']['slides'].pop('minItems')
+        expected['properties']['slides'].pop('maxItems')
+        for name in ('key_ideas', 'visual_facts'):
+            expected['$defs']['Description']['properties'][name].pop('maxItems')
+        current = json.loads(self.adapter().prepare_descriptions(self.analysis).payload)
+        schema = current['generationConfig']['responseJsonSchema']
+        self.assertNotIn('minItems', schema['properties']['slides'])
+        self.assertEqual(json_bytes(schema), json_bytes(expected))
+        # Projecting v3 must not contaminate later reconstruction of v2.
+        self.assertEqual(response_schema('gemini', 'descriptions', 'description-gemini-v2'), previous)
+
     def test_current_gemini_wire_schema_uses_documented_subset_for_both_stages(self):
         supported = {'$defs', '$ref', 'type', 'title', 'properties', 'required',
                      'additionalProperties', 'items', 'minItems', 'maxItems',
@@ -79,15 +94,16 @@ class FeedbackProviderTests(TestCase):
                  '$defs': {'maxLength': {'type': 'integer', 'exclusiveMaximum': 4, 'minimum': 0}},
                  'anyOf': [{'$ref': '#/$defs/maxLength'}]}
         original = deepcopy(named)
-        projected = _gemini_schema(named)
+        projected = _gemini_schema(named, 'description-gemini-v2')
         self.assertEqual(named, original)
         self.assertEqual(projected['properties']['pattern'], {'type': 'string', 'enum': ['pattern', 'minLength']})
         self.assertEqual(projected['$defs']['maxLength'], {'type': 'integer', 'minimum': 0, 'maximum': 3})
         self.assertEqual(projected['anyOf'], named['anyOf'])
         self.assertEqual(projected['required'], ['pattern'])
         self.assertIs(projected['additionalProperties'], False)
-        for stage, model in [('descriptions', Descriptions), ('coaching', Suggestions)]:
-            schema = response_schema('gemini', stage)
+        for stage, model, version in [('descriptions', Descriptions, 'description-gemini-v2'),
+                                      ('coaching', Suggestions, 'coaching-gemini-v2')]:
+            schema = response_schema('gemini', stage, version)
             original = model.model_json_schema()
             self.assertEqual(schema['properties'], original['properties'])  # Includes array cardinality/ref.
             for name, definition in schema['$defs'].items():
@@ -102,6 +118,54 @@ class FeedbackProviderTests(TestCase):
             self.assertEqual(props[name]['minimum'], 0)
             self.assertNotIn('exclusiveMaximum', props[name])
         self.assertEqual(props['category']['enum'], ['consistency', 'clarity', 'audience'])
+
+    def test_v3_projection_removes_bounds_only_on_schema_nodes(self):
+        bounded = {'type': 'array', 'minItems': 1, 'maxItems': 5,
+                   'items': {'type': 'string', 'enum': ['minItems', 'maxItems']}}
+        unbounded = {'type': 'array', 'items': bounded['items']}
+        named = {'type': 'object', 'required': ['minItems', 'maxItems'],
+                 'properties': {'minItems': deepcopy(bounded), 'maxItems': deepcopy(bounded)},
+                 '$defs': {'minItems': deepcopy(bounded), 'maxItems': deepcopy(bounded)},
+                 'additionalProperties': deepcopy(bounded),
+                 'anyOf': [{'$ref': '#/$defs/minItems'}, deepcopy(bounded)],
+                 'oneOf': [deepcopy(bounded)], 'prefixItems': [deepcopy(bounded)]}
+        expected = {'type': 'object', 'required': ['minItems', 'maxItems'],
+                    'properties': {'minItems': unbounded, 'maxItems': unbounded},
+                    '$defs': {'minItems': unbounded, 'maxItems': unbounded},
+                    'additionalProperties': unbounded,
+                    'anyOf': [{'$ref': '#/$defs/minItems'}, unbounded],
+                    'oneOf': [unbounded], 'prefixItems': [unbounded]}
+        original = deepcopy(named)
+        self.assertEqual(_gemini_schema(named, 'description-gemini-v3'), expected)
+        self.assertEqual(named, original)
+        self.assertEqual(_gemini_schema(named, 'description-gemini-v2'), original)
+        self.assertEqual(_gemini_schema(named, 'coaching-gemini-v2'), original)
+
+    def test_saved_gemini_v2_schemas_payload_hashes_and_digests_are_unchanged(self):
+        # Captured at f116564 before the v3 edit, using the shared synthetic fixture.
+        adapter = FeedbackAdapter(self.adapter()._config, description_schema_version='description-gemini-v2',
+                                  coaching_schema_version='coaching-gemini-v2')
+        requests = [adapter.prepare_descriptions(self.analysis), adapter.prepare_coaching(
+            self.analysis, adapter.edited_descriptions(self.analysis, description_value(self.analysis)))]
+        anchors = [
+            ('description-gemini-v2', '6eadc505af51844df434ebff0bb0c7fa8e8a2eb66f203fe0f14a9bb2229f6fc9',
+             '59017bca5b9809ee9d4a957efac6564dd22962d492e05ea403305f0969723843',
+             '1f9cd280a34a3a6953d287e58604eb70dbcdf9a165c75f7ff73237bf5f6a8097'),
+            ('coaching-gemini-v2', '714b638286faebeb46be900930c7dbeebe5dd28f51820fd4e7eb16dedb7c8349',
+             '646a83768c8676d960ff4b4cb1afe6c4ccbf46d980f4dd1e69dfaec18fc3f38b',
+             'c45eed8c2972c5a22fe724226d70763bebaf078ecf09f9d3ff74d7e801169482')]
+        for prepared, (version, schema_hash, payload_hash, digest), digest_fn in zip(
+                requests, anchors, [prompt_digest, coaching_digest]):
+            self.assertEqual(hashlib.sha256(json_bytes(response_schema('gemini', prepared.stage, version))).hexdigest(), schema_hash)
+            self.assertEqual(hashlib.sha256(prepared.payload).hexdigest(), payload_hash)
+            self.assertEqual(prepared.input_hash, payload_hash)
+            self.assertEqual(digest_fn('gemini', version), digest)
+        self.assertEqual(self.coaching().payload, requests[1].payload)
+        old_body, new_body = json.loads(requests[0].payload), json.loads(self.adapter().prepare_descriptions(self.analysis).payload)
+        old_body['generationConfig'].pop('responseJsonSchema')
+        new_body['generationConfig'].pop('responseJsonSchema')
+        self.assertEqual(json_bytes(old_body), json_bytes(new_body))
+        self.assertNotEqual(prompt_digest(), anchors[0][3])
 
     def test_legacy_wire_hashes_and_openai_contract_are_unchanged(self):
         # Captured from checkpoint 4 using the shared synthetic fixture, before repair.
@@ -118,6 +182,10 @@ class FeedbackProviderTests(TestCase):
             self.assertEqual(tuple(p.input_hash for p in requests), hashes[name])
             self.assertEqual(prompt_digest(name, 'description-v1'), '4346a9c6ac7444f5b9ad7ef9c49abf6b2ba0235debe3b76ad9448d849eea252d')
             self.assertEqual(coaching_digest(name, 'coaching-v1'), 'bef1db43903057ca31f3909bb091d5186d957e433bdc70b4eba81ac2e51ae1e8')
+            for stage, version, expected in [
+                    ('descriptions', 'description-v1', '297116d8e2741e47fa5dadf35193d7bfcbc758a74d2d3b4f565108a0a9b0e150'),
+                    ('coaching', 'coaching-v1', 'f6ef610d9f3f24ccf38e7b25b766c6f3c23bb4e61515050ad143d5b129068f4e')]:
+                self.assertEqual(hashlib.sha256(json_bytes(response_schema(name, stage, version))).hexdigest(), expected)
             current = [self.adapter(name).prepare_descriptions(self.analysis), self.coaching(name)]
             if name == 'openai':
                 self.assertEqual([p.payload for p in current], [p.payload for p in requests])
@@ -134,13 +202,20 @@ class FeedbackProviderTests(TestCase):
     def test_unknown_and_other_provider_schema_versions_fail_before_transport(self):
         for name in ['gemini', 'openai']:
             for stage in ['descriptions', 'coaching']:
-                versions = ['future', 'coaching-v1' if stage == 'descriptions' else 'description-v1']
+                versions = ['future', 'coaching-v1' if stage == 'descriptions' else 'description-v1',
+                            'coaching-gemini-v2' if stage == 'descriptions' else 'description-gemini-v2']
+                if stage == 'coaching' or name == 'openai':
+                    versions.append('description-gemini-v3')
                 if name == 'openai':
                     versions.append('description-gemini-v2' if stage == 'descriptions' else 'coaching-gemini-v2')
                 for version in versions:
                     with self.assertRaises(FeedbackError) as caught:
                         response_schema(name, stage, version)
                     self.assertEqual(caught.exception.code, 'snapshot_unavailable')
+        for name, stage in [('unknown', 'descriptions'), ('gemini', 'unknown')]:
+            with self.assertRaises(FeedbackError) as caught:
+                response_schema(name, stage)
+            self.assertEqual(caught.exception.code, 'snapshot_unavailable')
         self.network.assert_not_called()
 
     def test_projected_gemini_output_still_fails_full_local_validation(self):
@@ -159,10 +234,19 @@ class FeedbackProviderTests(TestCase):
         extra['slides'][0]['summary']['extra'] = True
         del missing['slides'][0]['summary']['text']
         oversized['slides'] *= 6
+        for slides in [[], description_value(self.analysis)['slides'][:1],
+                       [description_value(self.analysis)['slides'][0]] * 2]:
+            cases.append({'slides': slides})
+        for field in ('key_ideas', 'visual_facts'):
+            output = description_value(self.analysis)
+            output['slides'][0][field] *= 6
+            cases.append(output)
         for output in [*cases, extra, missing, oversized]:
+            before = len(self.calls)
             with self.subTest(output_case=cases.index(output) if output in cases else 'shape'), self.assertRaises(FeedbackError) as caught:
                 normalize(prepared, self.raw(prepared, value=output))
             self.assertEqual(caught.exception.code, 'invalid_descriptions')
+            self.assertEqual(len(self.calls), before + 1)  # No automatic repair request.
         prepared = self.coaching()
         for field, invalid in [('description_ref', 'key_ideas/5'), ('segment_id', 'bad'),
                 ('transcript_id', 'z' * 64), ('observation', 'x' * 601), ('suggestion', 'x' * 701),
@@ -181,6 +265,21 @@ class FeedbackProviderTests(TestCase):
                 normalize(request, self.raw(request, value={'padding': 'x' * (MAX_OUTPUT_BYTES + 1)}))
             with self.assertRaises(FeedbackError):
                 normalize(request, self.raw(request, body=b'x' * (MAX_RESPONSE_BYTES + 1)))
+
+    def test_v3_local_slide_and_fact_limits_accept_valid_boundaries(self):
+        for count in (1, 10):
+            analysis = prepare_analysis(*fixture(slides=count, events=[{'slide_index': 0, 'at_ms': 0}]))
+            prepared = self.adapter().prepare_descriptions(analysis)
+            for facts in (0, 5):
+                with self.subTest(slides=count, facts=facts):
+                    output = description_value(analysis)
+                    for slide in output['slides']:
+                        for field in ('key_ideas', 'visual_facts'):
+                            slide[field] *= facts
+                    before = len(self.calls)
+                    result = normalize(prepared, self.raw(prepared, value=output))
+                    self.assertEqual(result.descriptions.model_dump(mode='json'), output)
+                    self.assertEqual(len(self.calls), before + 1)
 
     def setUp(self):
         # No ambient credentials, endpoint hints or actual network in any test.

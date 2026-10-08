@@ -1194,3 +1194,78 @@ before this documentation-only evidence addition.
 - Coordinator real PostgreSQL run passed **243/243 tests**, without skips, in 20.416 seconds. Its backend patch SHA-256 is `af3cf3f866587c74648cd536d22e95a0cf1635cb524b8d7ec5a1d3a152a61484`, exactly matching the reviewed backend. Runner SQLite run passed 243 tests (18 PostgreSQL-only skips); system and migration-drift checks passed. No mobile changes were made after the checkpoint-4 check/export and emulator verification.
 - OpenAI's separately controlled initial evaluation completed two description/coaching pairs (four calls). Gemini's initial complete HTTP 400 rejection is preserved; no automatic retry occurred. Corrected Gemini live evaluation follows only after this reviewed repair is committed, in a fresh disposable scope sharing a five-call total Gemini transport ceiling including the rejected request. No new transcription is authorized. These application evaluation bounds are not a monetary cap.
 - Saved Gemini legacy contracts intentionally keep v1 payloads and hashes on queue/retry/receipt recovery; new selections use provider-specific v2 schemas. Legacy/current recovery assertions passed with mocked providers on PostgreSQL. Real worker recovery and semantic results from the corrected live run will be recorded separately. Human review remains pending.
+
+### 2026-10-08 — checkpoint 5 description v3 schema repair
+
+- Tool: configured Codex local pipeline, sole implementation writer; no model override
+  or delegated agent. Base: `f1165645535429e4c3f14014c123b4f15dc2d2ea`.
+  Representative request: remove array bounds only from new Gemini description
+  wire schemas while preserving local validation and exact saved v1/v2 contracts.
+- Incorporated: a version-aware projection in `feedback_provider.py`, four new
+  provider tests and extensions to existing provider/description/coaching recovery
+  matrices. Frozen synthetic v1/v2 schema, payload and digest anchors were captured
+  before production edits. New selections use `description-gemini-v3`; coaching v2,
+  OpenAI v1, prompts, transport, media/request/response bounds and local 1–10-slide/
+  five-fact limits are unchanged. Documentation changes are limited to the schema
+  compatibility section, API paragraph and this disclosure.
+- Red/green evidence: before the production fix, from `backend/`,
+  `.venv/bin/python manage.py test rehearsals.test_feedback_provider.FeedbackProviderTests.test_current_gemini_description_removes_only_wire_array_bounds --settings=config.test_settings`
+  failed once because `minItems: 1` remained in `slides`. After the fix, the same
+  test passed within the focused and full runs below. Synthetic recovery cases
+  cover saved v1/v2 queue/retry, waiting coaching without an input hash, and receipts
+  after no supersession/edit/retry; no duplicate provider calls are permitted.
+- Actual checks used the supplied `backend/.venv` with cleared ambient environment
+  (`env -i PATH=/usr/bin:/bin PYTHON_DOTENV_DISABLED=1`), no dependency installation:
+  - `.venv/bin/python manage.py test rehearsals.test_feedback_provider rehearsals.test_descriptions.DescriptionSchemaVersionTests rehearsals.test_coaching.CoachingSchemaVersionTests --settings=config.test_settings`
+    passed **39 tests**, no skips.
+  - `.venv/bin/python manage.py check --settings=config.test_settings` passed.
+  - `.venv/bin/python manage.py test --settings=config.test_settings` passed:
+    **247 tests, 18 PostgreSQL-only skips (229 executed)** in 9.869 seconds.
+  - `.venv/bin/python manage.py makemigrations --check --dry-run --settings=config.test_settings`
+    reported no changes. Existing synthetic failure-path notices were expected.
+  All provider calls were mocked. Tested backend diff SHA-256:
+  `63c98d95e9ca3093cd29f013fb40cad5cb51eaf9238f16a86baa6a1ca5fb61e2`.
+  `git diff --check` passed; all 21 relative Markdown path/heading links in the
+  three changed documents resolved. The writer left the index untouched.
+- Coordinator-supplied evidence, not writer-run live verification: **7 Gemini
+  transport attempts** (two full description HTTP 400 rejections and five tiny
+  probes). Text-only, minimal-object, description-v2-without-array-bounds and
+  unchanged coaching-v2 probes passed 200; the exact description-v2 schema probe
+  failed 400. Each probe ran once with maximum 16/64 output tokens. There was no
+  automatic retry or new Whisper call. The [Gemini limitations](https://ai.google.dev/gemini-api/docs/structured-output#limitations)
+  and [GenerationConfig reference](https://ai.google.dev/api/generate-content#GenerationConfig)
+  were inspected: array bounds are documented as supported, while complex schemas
+  may be rejected. Small-probe acceptance is not full application live success.
+- Pending: runner staging and independent review of the exact final snapshot;
+  coordinator PostgreSQL/Redis/Celery/Beat recovery with synthetic providers and
+  the separately authorized full configured-model Gemini run in a fresh disposable
+  scope reusing saved transcription. Final evaluation reconciliation belongs to
+  the coordinator. Human inspection/corrections remain pending; no named approval,
+  semantic accuracy/safety, spending-cap or completed live-run claim is made.
+  No mobile build was repeated because mobile is unchanged; existing device,
+  audible synchronization, TalkBack and long-text/keyboard checks remain pending.
+- Writer self-review checked the focused diff and historical reconstruction;
+  it is not independent review. No credentials, private media or saved provider
+  bodies were read, and no provider call, Git mutation, dependency/runner/AGENTS
+  edit, other-worktree change or publication was performed. Stop: ready for inspection.
+
+
+### Local agent pipeline 20261008T115050Z-32c7c9
+
+- Tool: separate local Codex CLI planner, investigators, implementer and reviewer sessions.
+- Requested scope and incorporated material: see the task-level entry above and staged diff.
+- Check: git diff --cached --check — exit 0.
+- Check: /Users/seoyeonpark/Documents/ChatGPT/OnLoud/tmp/agent-pipeline/20261008T115050Z-32c7c9/workspace/backend/.venv/bin/python manage.py check --settings=config.test_settings — exit 0.
+- Check: /Users/seoyeonpark/Documents/ChatGPT/OnLoud/tmp/agent-pipeline/20261008T115050Z-32c7c9/workspace/backend/.venv/bin/python manage.py test --settings=config.test_settings — exit 0.
+- Check: /Users/seoyeonpark/Documents/ChatGPT/OnLoud/tmp/agent-pipeline/20261008T115050Z-32c7c9/workspace/backend/.venv/bin/python manage.py makemigrations --check --dry-run --settings=config.test_settings — exit 0.
+- AI review: this staged snapshot is being sent to an independent reviewer; local evidence is round-0/reviewer/answer.json. This entry does not claim a pass.
+- Human corrections/review, changed Android flows, and any required real database/worker/provider validation remain pending. No commit or push is authorized by this run.
+
+
+### 2026-10-08 — checkpoint 5 array-bound repair coordinator verification
+
+- Independent configured-model pipeline review passed for `a5a0a2b1c0a903649d7ce03af7de5b9c36f736b67910618b6da413c6e795ed41`, based on `f1165645535429e4c3f14014c123b4f15dc2d2ea`. The full patch was transferred byte-for-byte; this append changes evidence only. Application and test bytes match the reviewed snapshot.
+- Coordinator PostgreSQL suite passed **247/247 tests**, without skips, in 28.340 seconds. Tested backend patch SHA-256: `63c98d95e9ca3093cd29f013fb40cad5cb51eaf9238f16a86baa6a1ca5fb61e2`. Runner SQLite suite, system and migration checks are recorded above; mobile code remains the checkpoint-4 verified snapshot.
+- Real PostgreSQL/Redis/Celery checks passed for both saved `description-gemini-v2` and current `description-gemini-v3`: one synthetic description request, worker termination after private receipt persistence, claim aged 361 seconds, restart with generation disabled, saved-receipt recovery and duplicate delivery. Each retained its exact request hash/digest/revision and made one stub call total. The pre-existing Whisper record stayed at one. This was a solo worker/manual kill test, not production prefork timeout or real-provider fault injection. All real outbound HTTP and Whisper entry points were blocked.
+- The recovery harness received independent read-only review. Coordinator repaired two harness-only issues before execution: matching saved project identity and counting every provider-stub entry before disabled-generation rejection. Six runtime file fingerprints were retained and verified against the final reviewed patch.
+- Controlled diagnostics recorded two full Gemini description rejections and five small text/schema probes (200/400/200/200/200). Removing only description array bounds isolated this schema's compatibility issue; unchanged coaching v2 passed its probe. The final application run follows this committed repair and permits four additional requests in a fresh scope, eleven total Gemini transport attempts including all diagnostic history. No automatic retry or new Whisper call is authorized. A full success/usefulness claim awaits that run. Human review remains pending.

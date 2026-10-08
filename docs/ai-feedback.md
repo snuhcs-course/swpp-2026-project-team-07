@@ -672,47 +672,52 @@ Generate, Retry, description Save and evidence seeking remain explicit actions.
 
 ## Checkpoint 5 Gemini schema compatibility
 
-Coordinator-supplied evidence: `gemini-3.1-flash-lite` metadata GET succeeded, then
-the first baseline description generation returned complete HTTP 400
-`INVALID_ARGUMENT` with a generic invalid-argument message. The durable outcome was
-`rejected`, with no coaching or automatic retry. The same saved baseline passed
-OpenAI descriptions/coaching using `gpt-6-luna`. No new Whisper call occurred. The
-writer has no per-run sanitized output/usage files; final results remain pending in
-[feedback-evaluation.md](feedback-evaluation.md).
+Coordinator-supplied evidence: both the baseline and corrected
+`description-gemini-v2` full description requests returned HTTP 400
+`INVALID_ARGUMENT`. Five small probes used the same configured model/transport,
+each once with 16/64 maximum output tokens: text-only passed 200; text plus the
+exact `description-gemini-v2` schema failed 400; a minimal object schema passed 200;
+description v2 with only recursively removed `minItems`/`maxItems` passed 200;
+unchanged `coaching-gemini-v2` passed 200. Total Gemini transport attempts: **7**
+(two full rejections plus five probes), without automatic retries, new transcript/
+audio input or new Whisper calls. This reproduces a schema-specific rejection;
+small-probe acceptance does not establish full application description/coaching
+success. Earlier OpenAI baseline success is separate evidence. Final sanitized
+evaluation remains coordinator-owned in [feedback-evaluation.md](feedback-evaluation.md).
 
-Inspection confirmed both Gemini stages sent unmodified Pydantic schemas. The
+The prior v2 projection removed string keywords and translated integer bounds. The
 [Gemini GenerationConfig reference](https://ai.google.dev/api/generate-content#GenerationConfig)
-and [structured-output guide](https://ai.google.dev/gemini-api/docs/structured-output)
-list inclusive numeric bounds and array cardinalities but omit `pattern`,
-`minLength`, `maxLength` and `exclusiveMaximum`. The
-[Google Genkit schema warning](https://genkit.dev/docs/js/integrations/google-genai/#schema-limitations)
-says unsupported validation keywords can cause HTTP 400 or be ignored. Its warning
-also lists array bounds; this implementation follows the direct Gemini reference
-and retains those supported bounds. This supports a **compatibility repair
-hypothesis**, not a proven diagnosis of the generic rejection or live acceptance.
-No Genkit/schema dependency or endpoint/model substitution is introduced.
+documents array bounds as supported; the [structured-output limitations](https://ai.google.dev/gemini-api/docs/structured-output#limitations)
+warn that large or deeply nested schemas may be rejected. Description v3 reduces
+this schema's complexity according to the supplied reproduction; it does not
+treat array keywords as universally unsupported. No dependency, endpoint or model
+substitution is introduced.
 
 | Contract | Description prompt / schema | Coaching prompt / schema |
 | --- | --- | --- |
-| New Gemini selections | `description-v2` / `description-gemini-v2` | `coaching-v1` / `coaching-gemini-v2` |
+| New Gemini selections | `description-v2` / `description-gemini-v3` | `coaching-v1` / `coaching-gemini-v2` |
+| Saved Gemini v2 selections | `description-v2` / `description-gemini-v2` | `coaching-v1` / `coaching-gemini-v2` |
 | Saved Gemini selections from checkpoints 1–4 | `description-v2` / `description-v1` | `coaching-v1` / `coaching-v1` |
 | OpenAI, unchanged | `description-v2` / `description-v1` | `coaching-v1` / `coaching-v1` |
 
-New Gemini wire schemas remove only the three unsupported string keywords and
-translate integer exclusive upper bounds to equivalent inclusive maxima:
-`visit_id ≤ 999`, `word_start/word_end ≤ 5999`. Schema traversal preserves property
-and definition names, references, strict object keys, required fields, types,
-enums and array bounds. Local Pydantic, source/evidence/string/image validation,
-fixed instructions and request/response bounds remain unchanged. OpenAI's strict
-schema and serialized payloads are unchanged.
+Description v3 equals the v2 wire schema with only schema-node `minItems` and
+`maxItems` removed. Schema traversal preserves property/definition names (even
+names literally `minItems`/`maxItems`), references, required fields, strict objects,
+types, enums and all other v2 constraints. Coaching v2 retains array bounds and
+equivalent inclusive maxima (`visit_id ≤ 999`, `word_start/word_end ≤ 5999`).
+Local Pydantic/source validation still enforces 1–10 slides, complete unique source
+coverage and at most five key ideas and five visual facts per slide. Invalid
+outputs fail without repair calls. Fixed prompts, image/request/response bounds,
+OpenAI's strict schemas and coaching-v2/OpenAI serialized payloads are unchanged.
 
 Effective schemas participate in prompt digests, request hashes, selection tokens
-and description cache scope. Saved v1 work, explicit retries and receipt recovery
-reconstruct the old unprojected payload; coaching uses its saved version even while
+and description cache scope. Saved description-v1 and description-gemini-v2 work,
+explicit retries and receipts reconstruct their exact old schemas, payloads, hashes
+and digests; coaching uses its saved version even while
 waiting for descriptions with no request hash yet. Unknown versions fail locally.
 No stored rows/results/provenance are rewritten. Explicit retries of legacy Gemini
-rejections retain the unprojected historical contract; they do not adopt the
-repair. New description initial admission creates a separate v2 scope; an existing
+rejections retain their historical contract; they do not adopt the
+repair. New description initial admission creates a separate v3 scope; an existing
 feedback analysis remains bound to its saved set and versions. Coordinator live
 verification must use a new disposable selection/analysis, reusing saved
 transcription, rather than silently converting an old failed generation.
@@ -722,11 +727,11 @@ configured. There is no fallback, tool/URL fetching or automatic provider retry.
 The optional `expected_selection` assertion covers the new schema identity;
 legacy callers omitting it do not get mobile's disclosure-race comparison guard.
 
-Local synthetic tests cover both projected schemas, unchanged OpenAI/legacy
-payload hashes, malformed/oversized output, schema-only selection mismatch,
-separate cache scopes, legacy queued/retried work and receipt recovery after
-edit/retry supersession without duplicate calls. The compatibility assertion failed
-on both stages before repair. Final local results: **243 SQLite tests, 18 skipped**,
-Django system check and migration-drift check passed. These checks do not establish
-PostgreSQL concurrency, worker restart or live provider compatibility. Independent
-review and coordinator checks on this exact patch are pending; see [AI-use](ai-use.md#2026-10-08--checkpoint-5-gemini-schema-compatibility-repair).
+Local synthetic regressions cover v3 projection, frozen v1/v2 schema/payload/digest
+anchors, local cardinality boundaries, selection/cache identity and saved v1/v2
+queue/retry/waiting/receipt recovery after edit/retry supersession without duplicate
+calls. The new description array-bound regression failed before this fix. Actual
+check results and pending independent review are recorded in
+[AI-use](ai-use.md#2026-10-08--checkpoint-5-description-v3-schema-repair).
+PostgreSQL/worker verification and full live Gemini evaluation remain separate
+coordinator checks; no semantic accuracy, safety or human-review claim follows.

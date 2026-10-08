@@ -78,12 +78,12 @@ class SyntheticDecks:
     def admit(self, deck=None):
         return service.generate((deck or self.deck).pk, {})
 
-    def legacy_selection(self):
-        return replace(Selection.current(), schema_version='description-v1')
+    def legacy_selection(self, version='description-v1'):
+        return replace(Selection.current(), schema_version=version)
 
-    def admit_legacy(self):
-        # Simulate a saved checkpoint-4 selection, not a production upgrade path.
-        with patch.object(Selection, 'current', return_value=self.legacy_selection()):
+    def admit_legacy(self, version='description-v1'):
+        # Simulate a historical saved selection, not a production upgrade path.
+        with patch.object(Selection, 'current', return_value=self.legacy_selection(version)):
             return self.admit()
 
     def execute(self, value):
@@ -1397,86 +1397,99 @@ class DescriptionSelectionTests(SyntheticDecks, TestCase):
 
 class DescriptionSchemaVersionTests(SyntheticDecks, TestCase):
     def test_new_schema_has_separate_cache_and_rejects_old_initial_disclosure(self):
-        legacy = self.legacy_selection()
-        old_token = selection_descriptor(legacy)['token']
         current = selection_descriptor()
-        self.assertNotEqual(old_token, current['token'])
-        self.assertEqual(current['schema_version'], 'description-gemini-v2')
-        with patch.object(provider, 'request_raw') as call:
-            response = self.client.post(self.post, {'expected_selection': old_token}, format='json')
-            self.assertEqual(response.status_code, 409)
-            self.assertEqual(response.data['error']['code'], 'selection_mismatch')
-            self.assertFalse(DescriptionSet.objects.exists())
-            call.assert_not_called()
-        old = self.complete(self.admit_legacy())
-        old_data = old.descriptions
+        self.assertEqual(current['schema_version'], 'description-gemini-v3')
+        versions = ['description-v1', 'description-gemini-v2']
+        for version in versions:
+            old_token = selection_descriptor(self.legacy_selection(version))['token']
+            self.assertNotEqual(old_token, current['token'])
+            with self.subTest(version=version), patch.object(provider, 'request_raw') as call:
+                response = self.client.post(self.post, {'expected_selection': old_token}, format='json')
+                self.assertEqual(response.status_code, 409)
+                self.assertEqual(response.data['error']['code'], 'selection_mismatch')
+                for model in (DescriptionSet, DescriptionJob, FeedbackRequest, FeedbackReservation):
+                    self.assertFalse(model.objects.exists())
+                self.broker.assert_not_called()
+                call.assert_not_called()
+        old_sets = [self.complete(self.admit_legacy(version)) for version in versions]
         current = self.admit()
-        self.assertNotEqual(current.pk, old.pk)
-        self.assertNotEqual(current.input_hash, old.input_hash)
-        self.assertNotEqual(current.prompt_digest, old.prompt_digest)
-        self.assertEqual(Selection.saved(old), legacy)
-        self.assertEqual(self.state(old)['descriptions'], old_data)
-        self.assertTrue(self.state(old)['stale'])
-        self.assertEqual(self.state(old)['selection']['token'], old_token)
-        self.assertEqual(DescriptionSet.objects.count(), 2)
+        for old in old_sets:
+            self.assertNotEqual(current.pk, old.pk)
+            self.assertNotEqual(current.input_hash, old.input_hash)
+            self.assertNotEqual(current.prompt_digest, old.prompt_digest)
+            self.assertEqual(Selection.saved(old), self.legacy_selection(old.schema_version))
+            self.assertEqual(self.state(old)['descriptions'], old.descriptions)
+            self.assertTrue(self.state(old)['stale'])
+            self.assertEqual(self.state(old)['selection']['token'], selection_descriptor(Selection.saved(old))['token'])
+        self.assertEqual(DescriptionSet.objects.count(), 3)
 
     def test_legacy_queued_rejection_and_explicit_retry_keep_wire_hash(self):
-        value = self.admit_legacy()
-        identity = (value.schema_version, value.prompt_digest, value.input_hash)
-        with patch.object(provider, 'request_raw', side_effect=lambda p: self.receipt(p, status=400, body=b'{}')) as call:
-            self.execute(value)
-            service.recover_descriptions()
-            self.execute(value)
-            self.assertEqual(call.call_count, 1)
-            wire = json.loads(call.call_args.args[0].payload)
-            self.assertIn('pattern', wire['generationConfig']['responseJsonSchema']['$defs']['Description']['properties']['deck_id'])
-        request = FeedbackRequest.objects.get(job__description_set=value)
-        self.assertEqual((request.outcome, request.error_code), ('rejected', 'provider_rejected'))
-        value = service.generate(self.deck.pk, {'description_set_id': str(value.pk), 'processing_revision': 1,
-            'expected_selection': self.state(value)['selection']['token']})
-        self.complete(value)
-        self.assertEqual((value.schema_version, value.prompt_digest, value.input_hash), identity)
-        self.assertEqual(set(FeedbackRequest.objects.values_list('input_hash', flat=True)), {identity[2]})
-        self.assertEqual(FeedbackRequest.objects.count(), 2)
+        for version in ['description-v1', 'description-gemini-v2']:
+            with self.subTest(version=version):
+                self.deck = self.new_deck(version)
+                value = self.admit_legacy(version)
+                identity = (value.schema_version, value.prompt_digest, value.input_hash)
+                with patch.object(provider, 'request_raw', side_effect=lambda p: self.receipt(p, status=400, body=b'{}')) as call:
+                    self.execute(value)
+                    service.recover_descriptions()
+                    self.execute(value)
+                    self.assertEqual(call.call_count, 1)
+                    wire = json.loads(call.call_args.args[0].payload)
+                    self.assertEqual(wire['generationConfig']['responseJsonSchema'], provider.response_schema('gemini', 'descriptions', version))
+                request = FeedbackRequest.objects.get(job__description_set=value)
+                self.assertEqual((request.outcome, request.error_code), ('rejected', 'provider_rejected'))
+                value = service.generate(self.deck.pk, {'description_set_id': str(value.pk), 'processing_revision': 1,
+                    'expected_selection': self.state(value)['selection']['token']})
+                with patch.object(provider, 'request_raw', side_effect=self.receipt) as retry:
+                    self.execute(value)
+                self.assertEqual(retry.call_count, 1)
+                self.assertEqual(retry.call_args.args[0].payload, call.call_args.args[0].payload)
+                self.assertEqual((value.schema_version, value.prompt_digest, value.input_hash), identity)
+                self.assertEqual(set(FeedbackRequest.objects.filter(job__description_set=value).values_list('input_hash', flat=True)), {identity[2]})
+                self.assertEqual(FeedbackRequest.objects.filter(job__description_set=value).count(), 2)
 
     def test_legacy_receipt_recovers_once_even_after_edit_or_retry(self):
-        for supersession in ['none', 'edit', 'retry']:
-            with self.subTest(supersession=supersession):
-                self.deck = self.new_deck(supersession)
-                value = self.admit_legacy()
-                saved, job, request = service.claim(value.pk, 1)
-                deck, _ = service.prepare_saved(self.deck.pk)
-                prepared = service.submit(saved, job, Selection.saved(saved).adapter().prepare_descriptions(deck))
-                value.jobs.update(claimed_at=timezone.now() - timedelta(seconds=361))
-                if supersession == 'edit':
-                    service.edit(self.deck.pk, self.edited(value))
-                elif supersession == 'retry':
-                    service.recover_descriptions()
-                    service.generate(self.deck.pk, {'description_set_id': str(value.pk), 'processing_revision': 1,
-                                                   'acknowledge_uncertain': True})
-                service.save_receipt(saved, job, request, self.receipt(prepared))
-                before = DescriptionSet.objects.filter(pk=value.pk).values().get()
-                next_job = value.jobs.filter(generation=2).values().first()
-                with patch.dict('os.environ', {'FEEDBACK_ENABLED': 'false', 'GEMINI_API_KEY': ''}), \
-                        patch.object(service, 'prepare_saved', side_effect=AssertionError('No media for receipt')), \
-                        patch.object(provider, 'request_raw') as call, \
-                        patch.object(provider, 'normalize', wraps=provider.normalize) as normalize:
-                    service.recover_descriptions()
-                    service.run_description(value.pk, 1)
-                    service.run_description(value.pk, 1)
-                    call.assert_not_called()
-                    self.assertEqual(normalize.call_count, 1)
-                request.refresh_from_db()
-                self.assertEqual(request.outcome, 'completed')
-                self.assertEqual(request.input_hash, prepared.input_hash)
-                self.assertEqual(FeedbackRequest.objects.filter(job__description_set=value).count(), 1)
-                value.refresh_from_db()
-                self.assertEqual(value.schema_version, 'description-v1')
-                if supersession == 'none':
-                    self.assertIsNotNone(value.descriptions)
-                else:
-                    self.assertEqual(DescriptionSet.objects.filter(pk=value.pk).values().get(), before)
-                    self.assertEqual(value.jobs.filter(generation=2).values().first(), next_job)
+        for version in ['description-v1', 'description-gemini-v2']:
+            for supersession in ['none', 'edit', 'retry']:
+                with self.subTest(version=version, supersession=supersession):
+                    self.deck = self.new_deck(version + supersession)
+                    value = self.admit_legacy(version)
+                    token = self.state(value)['selection']['token']
+                    saved, job, request = service.claim(value.pk, 1)
+                    deck, _ = service.prepare_saved(self.deck.pk)
+                    prepared = service.submit(saved, job, Selection.saved(saved).adapter().prepare_descriptions(deck))
+                    value.jobs.update(claimed_at=timezone.now() - timedelta(seconds=361))
+                    if supersession == 'edit':
+                        service.edit(self.deck.pk, self.edited(value))
+                    elif supersession == 'retry':
+                        service.recover_descriptions()
+                        service.generate(self.deck.pk, {'description_set_id': str(value.pk), 'processing_revision': 1,
+                                                       'acknowledge_uncertain': True})
+                    service.save_receipt(saved, job, request, self.receipt(prepared))
+                    before = DescriptionSet.objects.filter(pk=value.pk).values().get()
+                    next_job = value.jobs.filter(generation=2).values().first()
+                    with patch.dict('os.environ', {'FEEDBACK_ENABLED': 'false', 'GEMINI_API_KEY': ''}), \
+                            patch.object(service, 'prepare_saved', side_effect=AssertionError('No media for receipt')), \
+                            patch.object(provider, 'request_raw') as call, \
+                            patch.object(provider, 'normalize', wraps=provider.normalize) as normalize:
+                        service.recover_descriptions()
+                        service.run_description(value.pk, 1)
+                        service.run_description(value.pk, 1)
+                        call.assert_not_called()
+                        self.assertEqual(normalize.call_count, 1)
+                    request.refresh_from_db()
+                    self.assertEqual(request.outcome, 'completed')
+                    self.assertEqual(request.input_hash, prepared.input_hash)
+                    self.assertEqual(FeedbackRequest.objects.filter(job__description_set=value).count(), 1)
+                    value.refresh_from_db()
+                    self.assertEqual(value.schema_version, version)
+                    self.assertEqual((value.prompt_digest, value.input_hash), (saved.prompt_digest, prepared.input_hash))
+                    self.assertEqual(self.state(value)['selection']['token'], token)
+                    if supersession == 'none':
+                        self.assertIsNotNone(value.descriptions)
+                    else:
+                        self.assertEqual(DescriptionSet.objects.filter(pk=value.pk).values().get(), before)
+                        self.assertEqual(value.jobs.filter(generation=2).values().first(), next_job)
 
     def test_unknown_saved_schema_fails_locally_without_submission(self):
         value = self.admit()
