@@ -1,6 +1,6 @@
 # Iteration 1 team handoff
 
-The initial scaffold/branch, hosted-processing and rehearsal-review sections below are historical. The final AI feedback checkpoint-2 section describes the current patch and its verification boundary.
+The initial scaffold/branch, hosted-processing and rehearsal-review sections below are historical. The final AI feedback checkpoint-3 section describes the current patch and its verification boundary.
 
 This is a shared starting scaffold based on the submitted Expo/React Native/TypeScript Android + Django REST architecture. Hours are outside this task. The schedule does not establish individual feature owners; assign names as a team.
 
@@ -124,8 +124,7 @@ Writer checks and limitations are in [AI-use](ai-use.md). The runner owns stagin
 mandatory checks and independent review; the coordinator owns real PostgreSQL/
 Redis/Celery/process-restart validation using synthetic media and an external
 temporary fake-provider seam, without live API calls. Human inspection remains
-pending. Transfer reviewed work only; stop for user confirmation before checkpoint
-3. The writer performs no Git mutations, dependency installation, service changes,
+pending. Transfer reviewed work only. The later checkpoint-3 authorization below supersedes this section’s original confirmation gate. The writer performs no Git mutations, dependency installation, service changes,
 commit/push/PR/merge or edits to the original prototype/pipeline worktree.
 
 
@@ -139,4 +138,61 @@ description/history results and all five synthetic PDF/audio/image hashes.
 Provider-request counts were unchanged by reads. See the
 [coordinator record](ai-use.md#2026-10-08--ai-feedback-checkpoint-2-coordinator-handoff).
 Checkpoint 2 is staged on `feature/ai-feedback` for human inspection; no checkpoint-2
-commit, push, PR or merge has been performed. Stop for confirmation before part 3.
+commit, push, PR or merge had been performed at that checkpoint-2 handoff. Its original stop-before-part-3 gate is superseded by the current authorization below.
+
+
+## AI feedback checkpoint 3 — current bounded handoff (2026-10-08)
+
+The user authorized all remaining checkpoints with checks between them, on one
+`feature/ai-feedback` PR. This writer starts from supplied base `ce16ae1` and
+implements checkpoint 3 only. Coordinator continuation to checkpoint-4 UI and
+checkpoint-5 controlled evaluation is authorized; another checkpoint-3 permission
+stop is unnecessary. No named owner approval or human review is inferred. The
+historical automatic-feedback task in the original division document is superseded
+by explicit generation: upload, Analyze, GET/history and replay never generate it.
+
+New `FeedbackAnalysis`/revisioned `FeedbackJob` records are independent of Whisper.
+The additive request-owner constraint permits exactly one description or coaching
+owner with the corresponding stage. No old attempt/media/description/request is
+rewritten or auto-enqueued. Both stages share the original quota bucket. Captured
+selection and original-index transcript evidence persist across retries; description
+edits fence submission/completion and leave prior suggestions visibly stale.
+
+Read the [coaching contract](api-contract.md#durable-rehearsal-coaching-checkpoint-3)
+for explicit admission, dependency retry versus coaching retry, uncertainty,
+retained results and safe evidence context. Mobile additions are types, parsers,
+API clients and cache validation/reconciliation only. Malformed feedback cannot
+hide an otherwise valid recording. No feedback UI/disclosure/editing flow is added.
+Prototype `33907d3` supplied bounded-card/cache/usage-ledger ideas read-only;
+substring word matching, automatic orchestration and cross-scope reuse were not
+incorporated. Sources and generated advice remain untrusted data.
+
+Actual commands/outcomes and limitations are in [AI-use](ai-use.md). The runner
+stages and independently reviews; the coordinator runs PostgreSQL/Redis/Celery
+and API restart/crash checks with synthetic inputs/fake providers. Human inspection,
+Android device regression, checkpoint-4 interaction and checkpoint-5 live quality
+remain pending. The writer makes no Git mutations/publication, dependency install,
+real provider call, credential/private-media read or other-worktree edit.
+
+Checkpoint-3 review repair: description state/receipt transitions now advance
+dependency freshness without changing the feedback generation. Mobile caches
+retain the newest retry/confirmation action across delayed responses, including
+late-receipt recovery and explicit dependency retry. NUL-source regressions inject
+malformed inputs at the read/preflight boundary because PostgreSQL rejects NUL
+fixtures before validation. Current description documentation now covers dependent
+coaching staleness and existing mobile clients. Repair checks and remaining
+coordinator/human verification are recorded in [AI-use](ai-use.md).
+
+The subsequent bounded receipt/admission repair preserves uncertainty acknowledgement
+after an edit between receipt persistence and normalization. Saved 408/5xx and
+incomplete 200 receipts use the adapter's transport classification; complete 200
+and known rejections keep their existing handling. Raw/usage recovery remains tied
+to the original generation, with no automatic call. The runner must independently
+review the final repaired snapshot; see the new red/green evidence in [AI-use](ai-use.md).
+
+Current coaching receipt/finalization timestamps now contribute to feedback
+freshness even after a description edit leaves the job stale. Reversed refresh
+delivery cannot restore obsolete confirmation in either mobile cache. Older
+generations' receipts leave the newer public snapshot unchanged. Backend tests
+cover live/expired claims and read-only feedback/attempt/history consistency;
+the runner/coordinator must verify this repaired snapshot before continuation.

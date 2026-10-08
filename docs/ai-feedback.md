@@ -1,28 +1,29 @@
-# AI feedback — checkpoints 1–2
+# AI feedback — checkpoints 1–3
 
 Standalone adapters describe slides and validate at most three suggestions for
-one rehearsal. Checkpoint 2 adds durable **saved-deck descriptions only**, with
-separate read/generate/edit endpoints, database jobs/requests and application
-quota reservations. Upload and transcription never call them. Current app
-analysis still saves `feedback=[]`, `feedback_state=disabled`, even when description
-configuration is enabled or misconfigured. Whisper credentials, request uniqueness,
-attempt identity, retries, saved transcripts and playback are unchanged. There is
-no rehearsal coaching orchestration or mobile consumer yet.
+one rehearsal. Checkpoint 2 added durable saved-deck descriptions; checkpoint 3
+adds explicit durable saved-rehearsal coaching and compatible mobile contracts,
+parsers, clients and cache reconciliation. Upload and transcription never generate
+feedback. Whisper still saves legacy `feedback=[]`, `feedback_state=disabled`;
+independent coaching is exposed as `feedback_analysis`. Default configuration is
+disabled. Attempt identity, transcription retries and local replay are preserved.
+There are no new feedback screens in this checkpoint.
 
 ## Five-checkpoint ledger
 
 | Checkpoint | State |
 | --- | --- |
 | 1 — provider adapters and evidence validation | Reviewed/tested local base `f07e55395d2e38eabec7c39ea766f643b2e5c7c1`; user authorized continuation to checkpoint 2. This does not claim human code review. |
-| 2 — durable slide descriptions | Implemented and independently reviewed. Scoped cache, revision-checked edits, durable request/recovery evidence and provider-specific quota reservations; 172 tests passed on PostgreSQL, plus synthetic worker and API/database restart checks. Human inspection and confirmation remain pending. |
-| 3 — durable rehearsal feedback | Not implemented: explicit generation endpoint, feedback revision/retry/staleness and shared response contracts. |
+| 2 — durable slide descriptions | Implemented and independently reviewed. Scoped cache, revision-checked edits, durable request/recovery evidence and provider-specific quota reservations; 172 tests passed on PostgreSQL, plus synthetic worker and API/database restart checks. Human inspection remains pending; continuation is now authorized. |
+| 3 — durable rehearsal feedback | Implemented in this bounded writer patch: explicit generation, captured scope, durable dependency/coaching recovery, independent revision/retry/staleness, safe metadata and mobile parsers/clients/cache. Writer checks below/AI-use; runner review and coordinator infrastructure validation pending. |
 | 4 — feedback review UI | Not implemented: disclosure, suggestion cards, editable descriptions, evidence playback and offline caching. |
 | 5 — controlled provider evaluation | Not implemented: compare both providers separately on saved non-confidential pilot inputs and document quality/recovery evidence. |
 
-The pending checkpoints summarize the approved plan; no named owner assignments are inferred.
-The five checkpoints are intended for **one eventual PR**. Checkpoint 2 stops before
-rehearsal coaching, UI/disclosure, new detectors, local Whisper, authentication or
-public deployment. The writer does not stage, commit, push or publish. No live
+The user now authorizes **all remaining checkpoints with checks between them**, on
+**one eventual PR**. This bounded writer run implements checkpoint 3 only; the
+coordinator continues to UI/disclosure (4) and controlled evaluation (5). No named
+owner approval is inferred. New detectors, local Whisper, authentication and public
+deployment remain excluded. The writer does not stage, commit, push or publish. No live
 calls are part of its tests. See [team boundaries](team-work-division.md) and the
 [existing public API](api-contract.md).
 
@@ -48,12 +49,12 @@ No configuration is validated at Django startup or on the Whisper path.
 3. `request_raw(prepared)` makes exactly one POST. It returns a private bounded
    `RawReceipt`, including HTTP status, raw bytes, completeness/issue, parsed
    Retry-After and available allowlisted integer usage counts. The durable
-   description caller marks submission before this call and saves the receipt
-   **before** `normalize(prepared, receipt)`. Coaching remains standalone.
+   description and coaching callers mark submission before this call and save the receipt
+   **before** `normalize(prepared, receipt)`.
 4. Normalization returns a `DescriptionResult`. Optional edited descriptions use
    `adapter.edited_descriptions(analysis, value)` and pass the same validation.
    `prepare_coaching(analysis, descriptions)` requires matching provider/model and
-   deck snapshot identity. Future orchestration must also select the exact persisted
+   deck snapshot identity. Coaching orchestration also selects the exact persisted
    provider/project/prompt/schema scope and description revision. Both generated and edited descriptions stay untrusted data.
 5. Persist the second raw receipt, then normalize into `FeedbackResult`. There is
    no convenience loop, provider fallback, repair request, token-count request,
@@ -184,7 +185,7 @@ guarantee. Checkpoint-2 application reservation units are documented below. The 
 checks is not a hard wall-clock cancellation guarantee. A call interrupted after
 submission may have incurred charges. Checkpoint 2 adds durable description
 deduplication, reservations, recovery and editing revisions. User-facing disclosure,
-consent and rehearsal-feedback retry flows remain checkpoints 3–4.
+consent remain in checkpoint 4; backend rehearsal-feedback retry flows are implemented in checkpoint 3.
 
 Raw-wire response reading is capped **before** the SDK can eagerly read an HTTP
 error body. It checks actual bytes even with a missing/misleading Content-Length,
@@ -267,7 +268,7 @@ the runner owns staging/review. PostgreSQL/Redis/Celery recovery, live-provider
 compatibility, Korean/mixed-language quality and human inspection remain pending.
 No changed Android flow exists in checkpoint 2; UI/device work belongs to checkpoint
 4. User authorization to continue after checkpoint 1 is recorded separately from
-human code review. **Stop before checkpoint 3 for inspection and confirmation.**
+human code review. **All remaining checkpoints are now authorized with checks between them; human review remains pending.**
 
 
 ## Checkpoint 2 persistence and quota policy
@@ -301,7 +302,7 @@ and does not silence unrelated threads/requests. This does not promise protectio
 from caller logging or external instrumentation.
 Previous valid descriptions are never erased by a failed/new scope.
 
-Only descriptions dispatch. Coaching's future model quota bucket will share the
+Checkpoint 2 originally dispatched only descriptions. Checkpoint 3 coaching shares the
 same provider/project/model identity (stage is recorded but not part of the bucket).
 No `Attempt`, existing Whisper constraint, audio, transcript, result or media path
 is migrated/replaced. Migration 0005 only creates five tables and their constraints;
@@ -444,7 +445,137 @@ coordinator owns real infrastructure/process checks and the final staged review:
    allowlist. Record this separately from SQLite mocks; no process/service changes
    or real infrastructure validation were performed by the writer.
 
-Independent review and coordinator infrastructure checks passed; see the [checkpoint-2 handoff evidence](ai-use.md#2026-10-08--ai-feedback-checkpoint-2-coordinator-handoff). Human inspection remains pending. Checkpoints 3–5 are not
-implemented. The coordinator transfers only reviewed checkpoint-2 work back to
-`feature/ai-feedback`, then stops for confirmation before part 3. The runner stages
+Independent review and coordinator infrastructure checks passed; see the [checkpoint-2 handoff evidence](ai-use.md#2026-10-08--ai-feedback-checkpoint-2-coordinator-handoff). Human inspection remains pending. The current checkpoint-3 patch builds on supplied
+reviewed/tested base `ce16ae1`; checkpoints 4–5 remain pending and are authorized
+with checks between them on the same PR. The runner stages
 changes for checks and review; it does not commit, push, create PRs or merge.
+
+
+## Checkpoint 3 persistence, evidence and recovery
+
+`services/coaching.py` owns explicit admission, captured-description dependencies,
+coaching claims/submissions/receipts/completion, Beat recovery and safe reads.
+`FeedbackAnalysis` is unique per attempt; `FeedbackJob` is unique per analysis and
+feedback generation. Generations retain frozen source/description/prompt context
+independently of request evidence. Migration 0006 extends `FeedbackRequest` with
+an optional coaching owner and a database constraint for exactly one owner and the
+matching stage. No fabricated description job represents coaching; Whisper's
+`ProviderRequest` remains separate. Description/coaching quotas share the existing
+provider/project/model bucket, with stage-specific output reservations.
+
+Admission enumerates the original saved transcript words before `align_words` and
+uses the copied original indexes. The derived plain alignment must equal the saved
+alignment, then the adapter verifies the complete partition, contiguous segments,
+boundaries/backward/simultaneous visits and original authoritative duration. Saved
+language or `und` controls coaching language, with explicit `und` inference in
+`coaching-v1`; optional audience remains bounded to 500. Source strings and generated
+observation/suggestion text reject U+0000 before JSONB persistence. No text rewriting,
+word matching, duration repair or transcription retry occurs.
+
+Initial admission prepares the saved deck and description payload outside locks.
+The narrow internal description helper accepts that captured selection/preparation,
+then both intents commit atomically. Cache reuse includes exact provider/project/
+model/source/description prompt/schema and edited revision. Description failure or
+uncertainty exposes the dependency's own retry identifiers; no recovery pass calls
+public generation to retry it. Explicit description retry advances unfulfilled
+coaching dependencies. Editing instead changes the captured revision and requires
+explicit coaching reanalysis. Public APIs preserve prior result provenance/suggestions
+as stale alongside current work/error/uncertainty. `last_output` describes the latest
+output separately, including failed `all_invalid`; valid zero-card output says
+“No supported suggestions.”
+
+Current description transitions and receipt saves advance the set's public
+`updated_at` under its existing lock; superseded receipt recovery preserves current
+freshness. Feedback includes this time both in `dependency.updated_at` and aggregate
+`updated_at`. Mobile reconciliation preserves microseconds and independent dependency
+revisions, so delayed submitted snapshots cannot hide confirmation/retry actions.
+Older cached metadata without a dependency timestamp still parses, with revision
+and terminal-state tie breaks. Feedback aggregate freshness also includes receipt
+and finalization times from its current generation's request. A complete late
+receipt can clear confirmation while the job remains stale after a description
+edit; a delayed pre-receipt response cannot restore that obsolete confirmation.
+Older feedback generations' receipts never advance the current snapshot. This
+derivation preserves edited descriptions and requires no new timestamp writes.
+Reads do not update timestamps or queue work.
+
+Lock order is deck/attempt for admission, description set, feedback analysis/job,
+quota bucket, request/reservation. Description edits lock that same set; freshness
+checks before submission and completion fence outdated descriptions. The service
+never acquires a description set after an analysis lock. Provider I/O, media reads,
+preparation and normalization run outside transactions. Captured source/description
+snapshots reconstruct coaching requests and normalize old receipts without media or
+credentials; changed prompt digests fail explicitly. Submission rechecks enabled
+configuration, original project, key, quotas, source and live generation/token.
+Reservation and submitted marker must commit before outbound work. Same-project
+key rotation is supported; current selection cannot swap an existing analysis.
+
+300-second coaching tasks and 360-second claims use the existing 30-second Beat
+recovery. An unfinished receipt is discoverable even after its generation was
+superseded by retry or edit. Persistence failures at submission, receipt save or
+completion never authorize an automatic second charge. Recovery normalizes durable
+sanitized receipts only; an expired submitted request without one requires explicit
+acknowledgement and retains its reservation. Late receipts finalize old private
+outcome/usage without changing newer results/edits. Known failures require explicit
+retry; waiting quota and successful dependencies can resume. Auth/rate rejection,
+uncertain timeout/5xx and invalid/refused/truncated output remain distinct. Retry-After
+cooldown spans both stages. No live provider or additional token-count call is made
+by tests or quota estimation.
+
+The receipt/admission race repair shares a pure transport-uncertainty classifier
+with adapter normalization. A saved 408/5xx or incomplete 200 receipt still requires
+acknowledgement if an edit makes coaching stale before normalization. Complete 200
+and known rejected statuses retain their existing handling, including incomplete
+rejection bodies and rate cooldowns. This classification reads only persisted
+status/completeness; it neither normalizes under locks nor changes private evidence.
+Original-generation recovery and single-use revision/acknowledgement remain intact.
+
+See the [wire contract](api-contract.md#durable-rehearsal-coaching-checkpoint-3) for
+allowlisted fields and separate retry actions. Mobile parsing quarantines feedback
+without invalidating transcript/audio; strict clients perform explicit actions only.
+Cache reconciliation orders feedback separately from Whisper. Safe evidence context
+contains captured facts/source references/visit indexes, not private request/source
+payloads. A derived seek capability requires the saved transcript ID, exact quotes,
+original index partition, actual pages and derived times. Strings remain inert;
+no link/HTML/code execution or package resolution is introduced. Source validity
+still does not prove semantic correctness, language fidelity or useful coaching.
+
+Attribution: read-only prototype `33907d3` (`services/feedback.py`, `gemini.py`,
+`models.py`, `test_feedback.py`) informed bounded suggestions, cache/revision and
+private usage-ledger concepts. Existing checkpoint-1 validation/transport and
+checkpoint-2 durable description/quota seams were reused. The durable coaching
+state machine, indexed snapshot reconstruction and compatible public/mobile
+contracts are new work. Prototype substring matching, countTokens, automatic
+orchestration and cross-provider/source edited reuse were not incorporated.
+
+## Checkpoint 3 coordinator verification handoff
+
+Writer automated results are recorded in [AI-use](ai-use.md); human review remains
+pending. The runner owns staging/independent review and the coordinator owns:
+
+1. Full PostgreSQL suite, especially `ConcurrentCoachingTests` and populated
+   `test_coaching_migration`, plus all checkpoint-2 preservation/recovery tests.
+   New races cover initial/dependency dedup, duplicate workers, single-use retry,
+   cross-stage quota, edit versus response, and duplicate old-receipt normalization.
+2. Temporary external fake-provider worker with synthetic sources only, prohibiting
+   actual outbound transport. Assert zero Whisper calls throughout. Cached descriptions
+   need exactly one coaching call; absent descriptions need one description plus one
+   coaching call, including lost dependency publication and Beat redispatch.
+3. Worker termination before submission, after committed submission, after receipt,
+   and after a receipt commit with lost acknowledgement. Inject completion-write/
+   commit failure. Verify receipt-only recovery has zero additional calls; missing
+   submitted outcomes require acknowledgement and retain reservations.
+4. Description edit while coaching is in flight, plus uncertainty followed by retry
+   or edit before an old receipt arrives. Recover old successful/invalid/rejected/
+   incomplete receipts after restart; verify raw/usage finalization, unchanged newer
+   jobs/results/edits and no duplicate calls. Repeat disabled/project-changed queued
+   work (zero calls), same-project synthetic key rotation, shared 429 cooldown and
+   real-time local quota waiting across stages.
+5. API/database restart and repeated feedback/attempt/history GET, including cached
+   results with generation disabled/keys absent, retained stale result plus current
+   failure, independent retry revision conflicts and unchanged synthetic media hashes.
+   Verify malicious metadata cannot expose private snapshots/raw/keys.
+
+Android device regression for saved review/offline cache/API switching/replay is
+separate from JavaScript export. Checkpoint-4 UI/disclosure/evidence interactions
+and checkpoint-5 controlled live-provider quality evaluation are pending. This
+writer run does not claim PostgreSQL, worker/process, live-provider or device checks.

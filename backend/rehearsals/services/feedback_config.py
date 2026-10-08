@@ -5,12 +5,23 @@ import os
 import re
 
 from . import feedback_provider as provider
-from .feedback import FeedbackError, Descriptions, json_bytes
+from .feedback import FeedbackError, Descriptions, Suggestions, json_bytes
 
 
 def prompt_digest():
     return hashlib.sha256(json_bytes([provider.DESCRIPTION_RULES, Descriptions.model_json_schema(),
                                      provider.OUTPUT_TOKENS['descriptions']])).hexdigest()
+
+
+def coaching_digest():
+    return hashlib.sha256(json_bytes([provider.COACHING_RULES, Suggestions.model_json_schema(),
+                                     provider.OUTPUT_TOKENS['coaching']])).hexdigest()
+
+
+def check_coaching_versions(job):
+    if (job.prompt_version != provider.COACHING_PROMPT_VERSION or
+            job.schema_version != provider.COACHING_SCHEMA_VERSION or job.prompt_digest != coaching_digest()):
+        raise FeedbackError('snapshot_unavailable')
 
 
 @dataclass(frozen=True)

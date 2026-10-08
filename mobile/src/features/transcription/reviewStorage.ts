@@ -1,7 +1,7 @@
 import type { DeckDetail, ReviewAttempt } from '../../contracts';
 import { readStored, writeStored } from '../../services/storage';
 import { normalizeApi, readAnalysis, saveAnalysis } from './analysisStorage';
-import { parseDeck, parseReview } from './reviewValidation';
+import { parseDeck, parseReview, preferFeedback } from './reviewValidation';
 
 export const reviewKey = (api: string, kind: string, id: string) => `review:v1:${encodeURIComponent(normalizeApi(api))}:${kind}:${id}`;
 export function readDeck(api: string, id: string): DeckDetail | null {
@@ -17,7 +17,8 @@ export function readReview(api: string, id: string): ReviewAttempt | null {
     // not depend on a successful network refresh or additive cache write.
     if (!value) return analysis ? parseReview(analysis, id, api) : null;
     const review = parseReview(value, id, api);
-    return analysis ? parseReview({ ...review, ...analysis, processing_result: analysis }, id, api) : review;
+    return analysis ? parseReview({ ...review, ...analysis,
+      feedback_analysis: preferFeedback(analysis.feedback_analysis, review.feedback_analysis), processing_result: analysis }, id, api) : review;
   } catch { return null; }
 }
 export function saveReview(api: string, review: ReviewAttempt, source: 'detail' | 'history' = 'detail'): ReviewAttempt {
@@ -30,6 +31,8 @@ export function saveReview(api: string, review: ReviewAttempt, source: 'detail' 
     // A legacy or malformed snapshot cannot erase a validated result.
     next = previous;
   }
+  const feedback = preferFeedback(previous?.feedback_analysis, review.feedback_analysis);
+  if (feedback) next = parseReview({ ...next, feedback_analysis: feedback }, next.attempt_id, api);
   writeStored(reviewKey(api, 'attempt', review.attempt_id), next);
   return next;
 }

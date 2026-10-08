@@ -17,7 +17,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from ..models import Deck, DescriptionSet, DescriptionJob, FeedbackRequest, FeedbackReservation, FeedbackQuotaBucket
+from ..models import Deck, DescriptionSet, DescriptionJob, FeedbackRequest, FeedbackReservation, FeedbackQuotaBucket, FeedbackJob
 from . import feedback_provider as provider
 from .feedback import (DeckInput, PreparedDeck, FeedbackError, MAX_IMAGE_BYTES, deck_identity,
                        prepare_deck, validated, validate_descriptions)
@@ -128,10 +128,16 @@ def publish(set_id, revision):
 
 
 def _queue(value):
+    previous_revision = value.processing_revision
     value.processing_revision += 1
     value.save(update_fields=['processing_revision', 'updated_at'])
     DescriptionJob.objects.create(description_set=value, generation=value.processing_revision,
         description_revision=value.description_revision, queued_at=timezone.now())
+    # Only explicit description retry advances an unfulfilled dependency. PATCH
+    # does not take this path, so an edit requires explicit coaching reanalysis.
+    FeedbackJob.objects.filter(description_set=value, description_generation=previous_revision,
+        descriptions_snapshot__isnull=True, state='waiting_descriptions', claim_token__isnull=True).update(
+            description_generation=value.processing_revision, updated_at=timezone.now())
     transaction.on_commit(lambda id=value.pk, rev=value.processing_revision: publish(id, rev))
     return value
 
@@ -168,15 +174,26 @@ def generate(deck_id, payload):
             return _queue(value)
     selection = Selection.current()
     prepared, snapshot = prepare_saved(deck_id)
+    return admit_prepared(selection, prepared, snapshot)
+
+
+def admit_prepared(selection, prepared, snapshot, *, dependency=False, candidate=None):
+    """Internal captured-selection seam; caller has validated speech first.
+
+    A dependency can reuse failed work but NEVER retries it. Its explicit route
+    requires the independent processing revision and uncertainty acknowledgement.
+    Preparation happens before locks; the enclosing coaching admission is atomic.
+    """
+    deck_id = prepared.source.deck_id
     scope = dict(deck_id=deck_id, source_fingerprint=prepared.input_id, **selection.scope())
-    # GET and completed cache hits can work without keys. Initial paid work cannot.
-    candidate = selection.adapter().prepare_descriptions(prepared)
+    candidate = candidate or selection.adapter().prepare_descriptions(prepared)
     with transaction.atomic():
         deck = Deck.objects.select_for_update().get(pk=deck_id)
         check_storage(deck, snapshot)
         existing = DescriptionSet.objects.select_for_update().filter(**scope).first()
         if existing:
-            if existing.descriptions is not None or existing.jobs.get(generation=existing.processing_revision).state in ACTIVE:
+            if (dependency or existing.descriptions is not None or
+                    existing.jobs.get(generation=existing.processing_revision).state in ACTIVE):
                 return existing
             raise Conflict('revision_required')
         selection.credentials()
@@ -335,6 +352,9 @@ def claim(set_id, revision):
         elif not request.submitted_at:
             request.claim_token, request.claimed_at = job.claim_token, job.claimed_at
             request.save(update_fields=['claim_token', 'claimed_at'])
+        # The set's public freshness also covers its current dependency state,
+        # not just generated/edited content. The set lock serializes these writes.
+        value.save(update_fields=['updated_at'])
         return value, job, request
 
 
@@ -363,6 +383,7 @@ def submit(value, job, prepared):
         request.save(update_fields=['submitted_at', 'outcome'])
         locked_job.state = 'submitted'
         locked_job.save(update_fields=['state'])
+        current.save(update_fields=['updated_at'])
     return replace(prepared, config=config)
 
 
@@ -401,6 +422,8 @@ def save_receipt(value, job, request, receipt, *, credential=None):
             old_job.state, old_job.claim_token, old_job.completed_at = 'queued', None, None
             old_job.save(update_fields=['state', 'claim_token', 'completed_at'])
             transaction.on_commit(lambda: publish(current.pk, old_job.generation))
+        if current.processing_revision == old_job.generation and current.descriptions is None:
+            current.save(update_fields=['updated_at'])
     return receipt
 
 
@@ -462,6 +485,8 @@ def finish(value, job, result=None, error=None):
         locked_job.completed_at = None if waiting else timezone.now()
         locked_job.claim_token = None
         locked_job.save(update_fields=['state', 'error_code', 'retry_at', 'completed_at', 'claim_token'])
+        if result is None:
+            current.save(update_fields=['updated_at'])
 
 
 @_private_database_logging()
@@ -545,6 +570,7 @@ def recover_descriptions():
                 continue
             if job.state not in ACTIVE and not unfinished_receipt:
                 continue
+            previous_state = (job.state, job.claim_token, job.error_code, job.completed_at)
             if request and request.submitted_at and not request.received_at:
                 request.outcome, request.completed_at = 'uncertain', now
                 request.save(update_fields=['outcome', 'completed_at'])
@@ -564,5 +590,7 @@ def recover_descriptions():
                 job.state = 'queued'
             job.claim_token = None
             job.save(update_fields=['state', 'claim_token', 'error_code', 'completed_at'])
+            if previous_state != (job.state, job.claim_token, job.error_code, job.completed_at):
+                value.save(update_fields=['updated_at'])
             if job.state == 'queued':
                 transaction.on_commit(lambda id=set_id, rev=revision: publish(id, rev))

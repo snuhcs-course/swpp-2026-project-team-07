@@ -4,9 +4,9 @@ An Android presentation practice app connecting PDF slides, recordings, slide-al
 
 **Current branch: `feature/ai-feedback`, building on rehearsal-review PR #20 (`1305917`).** The Library merges local captures and server history for known presentations. Saved rehearsals open by attempt UUID with actual PDF pages, audio, synchronized transcript and chronological slide visits. Missing audio/PDF can be downloaded explicitly for offline review. Viewing, refreshing, downloading and replaying never start analysis. Existing **Analyze recording**, OpenAI disclosure, stage/Refresh/Retry and uncertain-charge confirmation remain in place; sample previews stay separate.
 
-The backend coordinates a durable PostgreSQL queue, packaged Silero speech-presence check, hosted `whisper-1`, private raw-response persistence, normalized transcript, chronological slide visits and timing/rate estimates. Rehearsal coaching remains disabled; explicit deck-description APIs are described below. See the [API contract](docs/api-contract.md) for revision-aware retries and uncertain outbound requests. Historical standalone adapter/alignment work is now integrated; its older pilot evidence does not establish this pipeline's live accuracy.
+The backend coordinates a durable PostgreSQL queue, packaged Silero speech-presence check, hosted `whisper-1`, private raw-response persistence, normalized transcript, chronological slide visits and timing/rate estimates. Rehearsal coaching has an explicit durable generation API and remains disabled by default; its API and deck-description APIs are described below. See the [API contract](docs/api-contract.md) for revision-aware retries and uncertain outbound requests. Historical standalone adapter/alignment work is now integrated; its older pilot evidence does not establish this pipeline's live accuracy.
 
-[AI feedback checkpoints 1–2](docs/ai-feedback.md) provide Gemini/OpenAI adapters and explicit saved-deck description generation/read/revision-checked editing. Description jobs, receipts and application quota reservations have separate durable database records. They are disabled by default and are never triggered by upload or transcription. Attempt feedback remains disabled, with no mobile consumer yet. Checkpoint-2 continuation was authorized by the user; human code inspection remains pending. Stop for confirmation before checkpoint 3; all five checkpoints target one eventual PR.
+[AI feedback checkpoints 1–3](docs/ai-feedback.md) provide Gemini/OpenAI adapters, durable deck descriptions and explicit saved-rehearsal coaching with at most three evidence-linked suggestions. Coaching snapshots one provider/project/model and the original transcript/chronology, reuses matching descriptions, and shares the description quota bucket. Description edits mark prior suggestions stale and require explicit revision-aware reanalysis. Attempt reads/history include compatible feedback metadata; mobile contracts, parsers and clients are implemented without new screens. The user authorized **all remaining checkpoints with checks between them, on one eventual PR**. This bounded writer run implements checkpoint 3 only; UI/disclosure is checkpoint 4 and controlled quality evaluation is checkpoint 5. Independent review/coordinator validation of this patch and human inspection remain pending.
 
 Detected no-speech saves an empty transcript, chronological visits with empty word lists, and timing metrics over the original recording duration, with zero provider requests. Repeated, backward and zero-duration visits remain visible in the result data.
 
@@ -115,10 +115,10 @@ Regenerate the lock with `uv pip compile backend/requirements.in -o backend/requ
 
 Apply additive migrations with `python manage.py migrate`. Use the same worker and
 Beat setup above; `rehearsals.tasks.recover_work` now also recovers description jobs.
-Only explicit `POST /api/decks/{id}/descriptions/generate/` can queue description
+Explicit `POST /api/decks/{id}/descriptions/generate/` or the coaching admission below can queue description
 work. GET is read-only; PATCH saves a complete set with its current description
 revision. See the [wire contract](docs/api-contract.md#durable-slide-descriptions-checkpoint-2).
-There is no app button/disclosure or rehearsal coaching orchestration yet.
+There is no app feedback button/disclosure yet; checkpoint 3 adds the backend coaching orchestration below.
 
 Checkpoint 2 passed independent AI review, Django system/migration checks and
 172 tests on real PostgreSQL. Synthetic checks verified Redis/Celery/Beat
@@ -151,6 +151,44 @@ with PATCH, not paid regeneration. Read the
 before claiming real PostgreSQL/Redis/Celery recovery. Local tests use synthetic
 sources and mocked providers; no live provider or device validation is claimed.
 
+## Saved-rehearsal coaching (checkpoint 3)
+
+Apply migration `0006_durable_coaching` with the ordinary migration command; use
+that same worker/Beat setup. Explicit `POST /api/attempts/{id}/feedback/generate/`
+with `{}` admits one saved analysis. `GET /api/attempts/{id}/feedback/`, attempt
+GET/history and replay are read-only. Upload and Analyze never generate coaching.
+No-speech, missing/invalid transcript or alignment is rejected before either paid
+stage; no recording is retranscribed. Configuration failure leaves Whisper and
+cached results available.
+
+A cache hit submits coaching only; missing descriptions use the existing durable
+description job, then Beat continues coaching. A failed/uncertain dependency is
+never automatically paid-retried. Use its exposed `description_set_id` and
+`processing_revision` with the **description generate route** (and its own
+uncertainty acknowledgement); refresh feedback afterward. Coaching's failed or
+stale retry uses `feedback_revision` with the **feedback generate route**. An
+unknown coaching outcome additionally requires `acknowledge_uncertain: true`.
+This includes saved 408/5xx or incomplete 200 receipts awaiting normalization when
+a description edit makes the analysis stale.
+Description PATCH uses `description_revision`, a third independent revision.
+Feedback freshness includes description-dependency and current coaching-receipt
+transitions, so delayed refresh responses cannot overwrite newer failure actions
+or restore confirmation already resolved by a late receipt after an edit.
+See the [complete wire contract](docs/api-contract.md#durable-rehearsal-coaching-checkpoint-3).
+
+Results retain exact original word indexes, captured description facts and derived
+integer audio ranges. `accepted`, `partial`, valid `empty` and `all_invalid` remain
+distinct; valid empty says “No supported suggestions.” Prior suggestions can remain
+visible as stale alongside a current failure or uncertain outcome. Evidence
+validation proves references, not semantic correctness or advice quality.
+
+Run the full backend and mobile checks below. New PostgreSQL-only races are in
+`rehearsals.test_coaching.ConcurrentCoachingTests`; the populated migration test
+preserves checkpoint-2 descriptions/requests/reservations plus attempts and Whisper.
+Actual writer outcomes are in [AI-use](docs/ai-use.md). Real PostgreSQL/Redis/Celery
+crash/restart validation belongs to the coordinator, using synthetic fake providers.
+No live-provider, Android device, quality or human-review pass is claimed here.
+
 ## App connection
 
 - Emulator: `EXPO_PUBLIC_API_URL=http://10.0.2.2:8000/api` in `mobile/.env`.
@@ -175,7 +213,7 @@ cd backend
 .venv/bin/python manage.py makemigrations --check --dry-run --settings=config.test_settings
 ```
 
-Unit tests use in-memory SQLite. PostgreSQL-specific processing/upload/description races are explicitly skipped there. Run them separately against the real test database with `.venv/bin/python manage.py test rehearsals.test_processing.ConcurrentProcessingTests rehearsals.test_storage.ConcurrentUploadTests rehearsals.test_descriptions.ConcurrentDescriptionTests --settings=config.settings` from `backend/` with test-database privileges. Never substitute SQLite for that evidence. Verify scheduler restart, missed broker publication, worker termination before/after submission and after raw persistence, Android lifecycle/cache/replay, and a consented hosted pilot separately.
+Unit tests use in-memory SQLite. PostgreSQL-specific processing/upload/description/coaching races are explicitly skipped there. Run them separately against the real test database with `.venv/bin/python manage.py test rehearsals.test_processing.ConcurrentProcessingTests rehearsals.test_storage.ConcurrentUploadTests rehearsals.test_descriptions.ConcurrentDescriptionTests rehearsals.test_coaching.ConcurrentCoachingTests --settings=config.settings` from `backend/` with test-database privileges. Never substitute SQLite for that evidence. Verify scheduler restart, missed broker publication, worker termination before/after submission and after raw persistence, Android lifecycle/cache/replay, and a consented hosted pilot separately.
 
 A submitted marker means a request may have reached the provider. SDK timeout is 120 seconds, task limit 300 seconds, and claim expiry 360 seconds. Automatic provider/SDK retries are disabled. Received raw output and successful transcripts are reused. Ambiguous outbound failures require explicit acknowledgement before a new generation; this does not promise provider exactly-once execution or a monetary cap.
 

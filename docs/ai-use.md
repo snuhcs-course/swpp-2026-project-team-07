@@ -433,6 +433,16 @@ This file does not automatically publish or submit the course report.
 - AI review: this staged snapshot is being sent to an independent reviewer; local evidence is round-1/reviewer/answer.json. This entry does not claim a pass.
 - Human corrections/review, changed Android flows, and any required real database/worker/provider validation remain pending. No commit or push is authorized by this run.
 
+### 2026-10-08 — Checkpoint 3 bounded repair: uncertainty before receipt normalization
+
+- Tool/request: sole Codex implementation writer, configured model without override. Representative request: reproduce and repair the confirmed uncertainty-acknowledgement race between saved coaching receipt and normalization, preserving the existing checkpoint-3 implementation and review repairs. All remaining checkpoints remain authorized with checks between them on one eventual PR; this run adds only this repair, regression tests and documentation. Human review is pending; no named owner approval is inferred.
+- Confirmed issue: the coordinator's two `uncertain_probe` tests failed on the supplied snapshot. After saving HTTP 500 or incomplete HTTP 200 and editing descriptions before normalization, public feedback incorrectly exposed `requires_confirmation=false`; POST with revision 1 and no acknowledgement returned 202 and admitted revision 2. The reported round-1 independent-review pass did not resolve this reproduced defect. Existing dependency-freshness and PostgreSQL-compatible NUL-source repairs were preserved.
+- Incorporated material: `services/feedback_provider.py` adds one pure transport-uncertainty helper shared by adapter normalization and `services/coaching.py` admission/public state. Pending 408/5xx and incomplete 200 receipts require acknowledgement when stale; complete 200 and known auth/rate/other rejections retain existing handling even with incomplete rejection bodies. This uses only saved status/completeness, without normalizing under locks, rewriting raw/usage or changing recovery. No schema, mobile implementation, source recording/transcript, quota or lifecycle redesign. README, API contract, checkpoint ledger and handoff describe this boundary. No additional prototype code was incorporated; existing attribution is unchanged.
+- Red/green proof: before repair, `PYTHONPATH=/private/tmp/onloud-feedback-part3 PYTHON_DOTENV_DISABLED=1 .venv/bin/python manage.py test uncertain_probe --settings=config.test_settings --noinput` failed both probes. The new `rehearsals.test_coaching.PendingCoachingReceiptTests` also reproduced the gap; complete-success/known-rejection controls passed. After repair, running `uncertain_probe rehearsals.test_coaching.PendingCoachingReceiptTests rehearsals.test_feedback_provider` together with the same settings/environment passed **29 tests**. Both probes now expose confirmation and return **409** for the unacknowledged POST. Six permanent tests cover status/completeness combinations, exact revision/ack replay, source-staleness fixture, shared 429 cooldown, retained raw/usage/reservations, unchanged sources/newer edits/jobs and receipt-only old/same-generation recovery with zero outbound calls. The test fixture prohibits live transport and asserts no Whisper calls.
+- Full backend checks from `backend/`, with `PYTHON_DOTENV_DISABLED=1`: `.venv/bin/python manage.py check --settings=config.test_settings` passed; `.venv/bin/python manage.py test --settings=config.test_settings --noinput` passed **218 tests with 17 PostgreSQL-only skips (201 executed)**; `.venv/bin/python manage.py makemigrations --check --dry-run --settings=config.test_settings` reported no changes. Existing description/coaching completion-write, receipt-acknowledgement, late-receipt, NUL and quota regressions remain passing.
+- Full mobile checks from `mobile/`, with `EXPO_NO_DOTENV=1 EXPO_NO_TELEMETRY=1 EXPO_OFFLINE=1`: `npm run check` passed TypeScript/lint and **231 tests**; `npm run bundle:android` exported successfully. Existing Node module-type and react-test-renderer deprecation warnings remain. No mobile code/package was changed. `git diff --check` passed. Full-suite/mobile/export logs are in this workspace's ignored `tmp/checkpoint3-uncertainty-repair/`; supplied dependencies were used without installation.
+- Evidence boundary/handoff: inspected coordinator logs under `/private/tmp/onloud-feedback-part3` report the **pre-repair** 212/212 PostgreSQL pass, ten synthetic worker fault cases, 60.649-second shared quota spacing, broker/Beat recovery, API/database restart with five retained media hashes and unchanged Whisper/read-only counts. Those are prior-snapshot evidence, not final-patch execution in this run. The runner must stage this unstaged delta and independently review the repaired snapshot; coordinator PostgreSQL/concurrency and affected worker checks must be rerun. Human inspection and Android device checks remain pending, as do checkpoint-4 UI and checkpoint-5 live quality evaluation. No agents spawned, Git mutations/publication, credential/private-media reads, live API calls, dependency installs or other-worktree edits occurred.
+
 ### 2026-10-08 — processing review repair: cached results after API switching (Codex)
 
 - Representative request: fix the confirmed review finding that API A's cached analysis disappears after uploading the recording to API B and reopening A offline. Incorporated changes are limited to `SavedAttemptScreen.tsx`, `useAttemptAnalysis.ts`, `saved-attempt.test.mjs`, and this disclosure. The screen displays current-API cached results independently of the latest upload destination; cached results permit read-only Refresh, while Analyze/Retry retain current-server upload gating. Recording identity, audio, upload metadata and API contracts are unchanged.
@@ -453,6 +463,15 @@ This file does not automatically publish or submit the course report.
 - Check: /Users/seoyeonpark/.codex/worktrees/attempt-storage/OnLoud/tmp/agent-pipeline/20261008T020210Z-143ece/workspace/backend/.venv/bin/python manage.py makemigrations --check --dry-run --settings=config.test_settings — exit 0.
 - AI review: this staged snapshot is being sent to an independent reviewer; local evidence is round-2/reviewer/answer.json. This entry does not claim a pass.
 - Human corrections/review, changed Android flows, and any required real database/worker/provider validation remain pending. No commit or push is authorized by this run.
+
+### 2026-10-08 — Checkpoint 3 review repair: coaching receipt freshness
+
+- Tool/request: sole Codex implementation writer, no model override. Representative request: repair the confirmed stale-coaching cache-ordering defect with backend and both-cache regressions, preserving checkpoint-3 scope. All remaining checkpoints remain authorized with checks between them on one eventual PR; UI and quality evaluation remain checkpoints 4–5.
+- Incorporated material: `services/coaching.py` derives public `updated_at` from the current job, description set and current-generation request receipt/finalization timestamps. Late receipts can resolve confirmation while an edited analysis stays stale; older generations' evidence does not change a newer public snapshot. No schema, state-machine, mobile production-code or provider-call change was needed. Added tests in `test_coaching.py` and `mobile/tests/feedback-contract.test.mjs`; updated README, API contract, handoff and AI-feedback ledger. Prototype `33907d3` feedback/Gemini/models/tests were inspected read-only; no new prototype code was incorporated, and earlier attribution remains applicable.
+- Regression evidence: the new backend test failed on equal pre/post-receipt freshness for both live and expired claims before the fix, then passed. Coverage includes receipt-only finalization without job writes, duplicate receipts, feedback/attempt/history read consistency, unchanged edited descriptions and newer generations, retained private raw/usage, and zero outbound/Whisper calls during receipt handling. Mobile synthetic fixtures exercise microsecond freshness with forward/reversed delivery through both analysis and review caches, plus newer-generation precedence over a later old receipt.
+- Backend checks from `backend/`, with `PYTHON_DOTENV_DISABLED=1`: `.venv/bin/python manage.py check --settings=config.test_settings` passed; `.venv/bin/python manage.py test --settings=config.test_settings --noinput` passed **219 tests with 17 PostgreSQL-only skips (202 executed)**; `.venv/bin/python manage.py makemigrations --check --dry-run --settings=config.test_settings` reported no changes. Existing persistence-failure, receipt-acknowledgement, superseded-receipt and NUL regressions remain in the passing suite.
+- Mobile checks from `mobile/`, with `EXPO_NO_DOTENV=1 EXPO_NO_TELEMETRY=1 EXPO_OFFLINE=1`: `npm run check` passed TypeScript/lint and **233 tests**; `npm run bundle:android` exported successfully. Existing Node module-type/react-test-renderer warnings remain. `git diff --check` passed. Supplied dependencies were used without installation, and dotenv loading was disabled.
+- Handoff/limits: this repair remains an unstaged delta over the runner's staged checkpoint-3 work. Runner staging and independent review of the final snapshot, coordinator PostgreSQL/Redis/Celery recovery verification with synthetic providers, human inspection and Android review/offline/API-switch/replay checks remain pending. No device, live-provider or model-quality check is claimed. No agents were spawned, Git state mutated, credentials/private media read, live network/provider calls made, dependencies installed or other worktrees/pipeline controls edited. The supplied review identified this defect; no additional human correction or named-owner approval is inferred.
 
 ### 2026-10-08 — rehearsal-review round-2 findings repair
 
@@ -815,3 +834,145 @@ This file does not automatically publish or submit the course report.
 - Real-time quota/key-rotation check: two synthetic decks shared one provider/project/model bucket configured to one request per minute. The second worker job entered `waiting_quota`, then resumed after **60.11 real seconds**, with two calls total and both original generation numbers retained. Worker assertions confirmed use of a rotated synthetic key for the same saved project. No clock or reservation timestamp was altered for this check. The original pre-fix NUL receipt also reached a terminal `invalid_descriptions` outcome with its one existing request retained and zero new calls.
 - Coverage distinction: actual worker kill tests used successful receipts; rejected/malformed/partial receipt restart and classification variants were exercised by automated database tests. The worker additionally exercised malformed NUL output without a kill. These are separate from live-provider behavior, which remains untested.
 - Boundaries: no real Gemini/OpenAI/Whisper call or private recording/key was used. Mocked outputs establish transport/state-machine behavior, not model accuracy, injection immunity or coaching usefulness. This checkpoint has no mobile change, so no new Android check is claimed. Mobile feedback/disclosure/editing validation belongs to checkpoint 4; controlled provider evaluation belongs to checkpoint 5. Human inspection is pending. Checkpoint 2 is staged, not committed/pushed/published/merged; stop for confirmation before checkpoint 3.
+
+### 2026-10-08 — AI feedback checkpoint 3 writer handoff
+
+- Tool/request: sole Codex implementation writer, configured model without override. Representative request: implement checkpoint 3 durable coaching from saved rehearsal evidence, with explicit generation, captured provider scope, independent retries, safe mobile contracts and meaningful mocked tests. The user authorized all remaining checkpoints with checks between them on one eventual PR; this bounded run implements only checkpoint 3. Supplied planning/investigation reports helped locate seams; current source was inspected. No named owner approval or human review is inferred.
+- Incorporated material: additive `0006_durable_coaching`, `FeedbackAnalysis`/revisioned `FeedbackJob`, exact-stage request ownership, `services/coaching.py`, feedback routes and shared attempt/history metadata. Existing descriptions expose a captured-selection admission seam and advance only explicitly retried unfulfilled dependencies. Both stages share quota reservations; receipt-first recovery, independent revisions and description-edit fencing preserve prior results and late request evidence. The evidence validator adds source/output NUL rejection and snapshot reconstruction; public transcript IDs use typed field order so PostgreSQL JSONB key reordering cannot change evidence identity. No Whisper processing/media/request constraint is changed. Mobile additions are `contracts/feedback.ts`, feedback validation, explicit clients, recording/feedback parsing and cache reconciliation, with no screen changes. README, API contract, handoff and checkpoint ledger document the current authorization and pending checkpoints.
+- Attribution: read-only prototype `33907d3` (`services/feedback.py`, `gemini.py`, `models.py`, `test_feedback.py`) informed bounded-card, cache/revision and private-ledger concepts. Reused current checkpoint-1 adapters/evidence validation and checkpoint-2 description/quota/recovery seams. Prototype substring matching, automatic orchestration, countTokens and cross-scope edited reuse were not incorporated. New durable coaching, contract/parser and regression material was AI-authored in this workspace.
+- Verification: from `backend/`, with `PYTHON_DOTENV_DISABLED=1`, `.venv/bin/python manage.py check --settings=config.test_settings` passed; `.venv/bin/python manage.py test --settings=config.test_settings --noinput` passed **211 tests with 17 PostgreSQL-only skips (194 executed)**; `.venv/bin/python manage.py makemigrations --check --dry-run --settings=config.test_settings` reported no changes. Tests use synthetic sources/mocked providers and assert call counts/zero Whisper calls. New coverage includes cache-hit versus dependent descriptions, selected scope/config changes, local preflight, original-index chronology, output distinctions/NUL, stale retained suggestions, revision/ack conflicts, shared quota/cooldown, submission/receipt/completion persistence failures, late superseded receipts, populated migration preservation and five PostgreSQL-only races. All checkpoint-2 regressions remain in the passing suite. A recovery test caught an unnecessary timestamp write to newer queued work; it was removed. Self-review also identified and repaired typed-versus-JSONB transcript identity ordering, with a regression.
+- Mobile verification: from `mobile/`, with `EXPO_NO_DOTENV=1 EXPO_NO_TELEMETRY=1 EXPO_OFFLINE=1`, `npm run check` passed TypeScript, lint (no lint warnings) and **228 tests**; `npm run bundle:android` exported the Android JavaScript bundle successfully. Parser/client/cache tests cover quarantined malformed feedback, source/word/fact/time bounds, repeated/backward/simultaneous visits, partial/no-speech/legacy caches, independent freshness and failed reanalysis retaining stale prior suggestions. Inherited Node module-type test warnings remain; no package changes were made. `git diff --check` passed. The supplied `.venv`/`node_modules` were used without installation or upgrades.
+- Handoff/limits: all changes remain unstaged on the supplied runner branch, base `ce16ae1`. Runner staging and independent review, coordinator real PostgreSQL/Redis/Celery/API restart/crash checks with synthetic fake providers, and human inspection remain pending. SQLite/mocks and JavaScript export are not database concurrency, process recovery, Android device or model-quality evidence. Android saved-review/offline/API-switch/replay regression remains a manual check; feedback interaction/disclosure is checkpoint 4 and controlled live quality evaluation is checkpoint 5. No human corrections were supplied during this writer run. No agents were spawned, Git mutations/publication performed, live provider/network calls made, credentials/private media read, dependencies installed, or original worktrees/pipeline controls edited.
+
+
+### Local agent pipeline 20261008T090238Z-27b318
+
+- Tool: separate local Codex CLI planner, investigators, implementer and reviewer sessions.
+- Requested scope and incorporated material: see the task-level entry above and staged diff.
+- Check: git diff --cached --check — exit 0.
+- Check: npm run check — exit 0.
+- Check: npm run bundle:android — exit 0.
+- Check: /Users/seoyeonpark/Documents/ChatGPT/OnLoud/tmp/agent-pipeline/20261008T090238Z-27b318/workspace/backend/.venv/bin/python manage.py check --settings=config.test_settings — exit 0.
+- Check: /Users/seoyeonpark/Documents/ChatGPT/OnLoud/tmp/agent-pipeline/20261008T090238Z-27b318/workspace/backend/.venv/bin/python manage.py test --settings=config.test_settings — exit 0.
+- Check: /Users/seoyeonpark/Documents/ChatGPT/OnLoud/tmp/agent-pipeline/20261008T090238Z-27b318/workspace/backend/.venv/bin/python manage.py makemigrations --check --dry-run --settings=config.test_settings — exit 0.
+- AI review: this staged snapshot is being sent to an independent reviewer; local evidence is round-0/reviewer/answer.json. This entry does not claim a pass.
+- Human corrections/review, changed Android flows, and any required real database/worker/provider validation remain pending. No commit or push is authorized by this run.
+
+### 2026-10-08 — Checkpoint 3 review repair: dependency freshness and portable NUL fixtures
+
+- Tool/request: sole Codex implementation writer, configured model without override. Representative request: fix the confirmed dependency-response ordering issue, PostgreSQL-incompatible NUL-source fixtures and current description-documentation mismatch; retain checkpoint-3 scope. The existing authorization covers all remaining checkpoints with checks between them on one eventual PR. This repair adds no UI or evaluation work, and infers no named owner approval.
+- Incorporated material: `services/descriptions.py` advances existing set freshness under its existing lock for current job transitions/receipts, preserving newer data/timestamps during superseded receipt recovery. `services/coaching.py` includes dependency freshness in the public allowlist and aggregate timestamp. Mobile feedback types/parser and review reconciliation retain microseconds, dependency revisions and terminal-state tie breaks while accepting older cached metadata. `test_coaching.py` injects malformed source data at the real read/preflight boundary, never persisting NUL fixtures, and checks unchanged source rows, no admissions and zero calls. Added backend lifecycle/API and mobile out-of-order/cache regressions; README, API contract, handoff and AI-feedback ledger now describe current invalidation and clients. No new schema/package or prototype code was introduced; prototype `33907d3` was re-read without edits, and the earlier checkpoint attribution remains applicable.
+- Reproduction: the new backend freshness test and all three new mobile dependency-ordering tests failed against the pre-repair implementation. After repair, focused source/freshness tests and all 21 feedback-contract tests passed. Coverage includes preparing/submitted/expired uncertainty, a late persisted receipt returning to queued and completing with zero outbound calls, known failure and explicit dependency retry, microsecond ordering, delayed history/detail responses in both caches, legacy metadata and invalid timestamp quarantine. The portable NUL tests execute the actual validator and assert no description preparation, feedback/description admission, request or provider call.
+- Backend checks, from `backend/` with `PYTHON_DOTENV_DISABLED=1`: `.venv/bin/python manage.py check --settings=config.test_settings` passed; `.venv/bin/python manage.py test --settings=config.test_settings --noinput` passed **212 tests with 17 PostgreSQL-only skips (195 executed)**; `.venv/bin/python manage.py makemigrations --check --dry-run --settings=config.test_settings` reported no changes. Existing completion-write/receipt-acknowledgement/late-superseded-receipt regressions remain in that suite.
+- Mobile checks, from `mobile/` with `EXPO_NO_DOTENV=1 EXPO_NO_TELEMETRY=1 EXPO_OFFLINE=1`: `npm run check` passed TypeScript/lint and **231 tests**; `npm run bundle:android` exported successfully. Existing Node module-type and react-test-renderer deprecation warnings remain. `git diff --check` passed; current documentation was checked against the implementation. Supplied dependencies were used without installation.
+- Handoff/limits: this repair is an unstaged working-tree delta over the runner's existing staged checkpoint-3 patch. The runner must stage the repaired files and independently re-review the final content. Human inspection, the full PostgreSQL suite (including migration/concurrency coverage), real Redis/Celery/Beat/API crash/restart checks and Android saved-review/offline/API-switch/replay checks remain pending with the coordinator. PostgreSQL fixture portability was repaired by inspection and boundary injection; no PostgreSQL execution is claimed in this run. Checkpoint-4 UI and checkpoint-5 quality evaluation remain pending and authorized. No agents were spawned, Git mutations/publication performed, credentials/private media read, live provider calls made, dependencies installed or original worktrees/pipeline controls edited.
+
+
+### Local agent pipeline 20261008T090238Z-27b318
+
+- Tool: separate local Codex CLI planner, investigators, implementer and reviewer sessions.
+- Requested scope and incorporated material: see the task-level entry above and staged diff.
+- Check: git diff --cached --check — exit 0.
+- Check: npm run check — exit 0.
+- Check: npm run bundle:android — exit 0.
+- Check: /Users/seoyeonpark/Documents/ChatGPT/OnLoud/tmp/agent-pipeline/20261008T090238Z-27b318/workspace/backend/.venv/bin/python manage.py check --settings=config.test_settings — exit 0.
+- Check: /Users/seoyeonpark/Documents/ChatGPT/OnLoud/tmp/agent-pipeline/20261008T090238Z-27b318/workspace/backend/.venv/bin/python manage.py test --settings=config.test_settings — exit 0.
+- Check: /Users/seoyeonpark/Documents/ChatGPT/OnLoud/tmp/agent-pipeline/20261008T090238Z-27b318/workspace/backend/.venv/bin/python manage.py makemigrations --check --dry-run --settings=config.test_settings — exit 0.
+- AI review: this staged snapshot is being sent to an independent reviewer; local evidence is round-1/reviewer/answer.json. This entry does not claim a pass.
+- Human corrections/review, changed Android flows, and any required real database/worker/provider validation remain pending. No commit or push is authorized by this run.
+
+
+### Local agent pipeline 20261008T090238Z-27b318
+
+- Tool: separate local Codex CLI planner, investigators, implementer and reviewer sessions.
+- Requested scope and incorporated material: see the task-level entry above and staged diff.
+- Check: git diff --cached --check — exit 0.
+- Check: npm run check — exit 0.
+- Check: npm run bundle:android — exit 0.
+- Check: /Users/seoyeonpark/Documents/ChatGPT/OnLoud/tmp/agent-pipeline/20261008T090238Z-27b318/workspace/backend/.venv/bin/python manage.py check --settings=config.test_settings — exit 0.
+- Check: /Users/seoyeonpark/Documents/ChatGPT/OnLoud/tmp/agent-pipeline/20261008T090238Z-27b318/workspace/backend/.venv/bin/python manage.py test --settings=config.test_settings — exit 0.
+- Check: /Users/seoyeonpark/Documents/ChatGPT/OnLoud/tmp/agent-pipeline/20261008T090238Z-27b318/workspace/backend/.venv/bin/python manage.py makemigrations --check --dry-run --settings=config.test_settings — exit 0.
+- AI review: this staged snapshot is being sent to an independent reviewer; local evidence is round-2/reviewer/answer.json. This entry does not claim a pass.
+- Human corrections/review, changed Android flows, and any required real database/worker/provider validation remain pending. No commit or push is authorized by this run.
+
+
+### Local agent pipeline 20261008T090238Z-27b318
+
+- Tool: separate local Codex CLI planner, investigators, implementer and reviewer sessions.
+- Requested scope and incorporated material: see the task-level entry above and staged diff.
+- Check: git diff --cached --check — exit 0.
+- Check: npm run check — exit 0.
+- Check: npm run bundle:android — exit 0.
+- Check: /Users/seoyeonpark/Documents/ChatGPT/OnLoud/tmp/agent-pipeline/20261008T090238Z-27b318/workspace/backend/.venv/bin/python manage.py check --settings=config.test_settings — exit 0.
+- Check: /Users/seoyeonpark/Documents/ChatGPT/OnLoud/tmp/agent-pipeline/20261008T090238Z-27b318/workspace/backend/.venv/bin/python manage.py test --settings=config.test_settings — exit 0.
+- Check: /Users/seoyeonpark/Documents/ChatGPT/OnLoud/tmp/agent-pipeline/20261008T090238Z-27b318/workspace/backend/.venv/bin/python manage.py makemigrations --check --dry-run --settings=config.test_settings — exit 0.
+- AI review: this staged snapshot is being sent to an independent reviewer; local evidence is round-3/reviewer/answer.json. This entry does not claim a pass.
+- Human corrections/review, changed Android flows, and any required real database/worker/provider validation remain pending. No commit or push is authorized by this run.
+
+## 2026-10-08 — AI feedback checkpoint 3 coordinator verification
+
+The user authorized all five checkpoints with checks between them and one final
+`feature/ai-feedback` PR. This supersedes earlier per-checkpoint confirmation text;
+human code inspection remains pending and no merge is authorized.
+
+The configured local runner executed planner, parallel investigators, one writer,
+checks, independent review and bounded repairs against `ce16ae1`. Confirmed repairs
+covered dependency freshness, PostgreSQL-safe NUL test setup, uncertainty for saved
+HTTP 408/5xx or incomplete successful receipts after a description edit, and current
+receipt timestamps in public cache freshness. Regression probes reproduced the
+uncertainty and reversed-response defects before repair. Final review evidence and
+patch identity are recorded in the checkpoint transfer record below.
+
+Coordinator verification used isolated PostgreSQL 16, Redis 7 and actual Celery
+worker processes with synthetic provider responses; no live provider was called:
+
+- Full Django suite: **219 tests passed on PostgreSQL, no skips**. The runner also
+  passed `check`, `test` and migration-drift checks with `config.test_settings`
+  (17 PostgreSQL-specific skips), plus **233 mobile tests**, TypeScript/lint and
+  `npm run bundle:android` on the final snapshot.
+- Migration 0006 preserved all preexisting rows in nine tables and five baseline
+  media hashes before additional fixtures were inserted. No legacy work was queued.
+- Ten worker fault/recovery scenarios covered termination before submission,
+  termination after submission, saved-receipt recovery, receipt commit acknowledgement
+  loss/rollback, completion-write failure, NUL response rejection, description-edit
+  fencing, late old receipts after retry and recovery with generation disabled.
+  Provider counters asserted one call or exactly one explicitly acknowledged extra
+  call as appropriate. Claim expiry was simulated by aging timestamps 361 seconds;
+  the worker processes were actually terminated.
+- Two additional worker cases (saved HTTP 500 and incomplete HTTP 200 after an edit)
+  returned 409 without uncertainty acknowledgement, then made exactly one additional
+  coaching call after explicit acknowledgement. Old receipts finalized without
+  replacing the new generation. These affected cases were rerun after the freshness
+  repair. Existing Whisper request counts were unchanged.
+- Shared quota verification measured 60.649 seconds between a description and
+  coaching request with a one-request/minute application policy. A real broker outage
+  preserved queue intent; restarting owned Redis and Beat redispatched both stages
+  with one synthetic call each. Same-project synthetic key rotation was checked.
+- API/PostgreSQL restart preserved saved descriptions, coaching, history and five
+  HTTP media hashes. Read operations left provider request counts unchanged.
+
+Android emulator `emulator-5580` used the existing matching native development
+client and final checkpoint mobile code. The previously saved non-confidential
+Whisper pilot (41 words, 16,168 ms, visits 2 → 3 → 2) was copied to the isolated
+backend without calling transcription. Before adding two API-scoped review caches,
+the device database was backed up and all 54 existing records preserved. The app
+loaded server-only review metadata, independently downloaded playable audio and the
+actual six-page PDF, and native playback reached the final repeated visit. Paused
+backward seeks selected slide 3 at 11 seconds and slide 4 at 6 seconds. Force-stop
+and reopen with the validation API offline retained media and metadata, displayed a
+stale notice and left playback paused. Cached audio advanced while offline; backgrounding
+paused it at three seconds and foregrounding retained that paused position. UIAutomator
+could not report idle during moving playback, so a screenshot established native clock
+progress and a fresh foreground dump established the pause. These are agent-operated emulator checks,
+not human listening, physical-phone coverage or a claim of complete lifecycle stress
+testing. New feedback controls and live Gemini/OpenAI quality are checkpoints 4–5.
+
+The exact-lock Python and npm environments were installed from populated local
+caches without changing dependency files. No generated native project, credentials,
+private receipt/body, local environment, pilot audio or validation harness is included.
+Prototype attribution remains in the existing feature documentation. Human review
+and physical-device/audible checks remain pending.
+
+Reviewed application patch SHA-256: `82f3f3fedc8144b9239b7ff915b799ec6254153f3fc949164cd1d36d71a567f3`. The coordinator
+verified all 30 transferred files matched the reviewed/tested snapshot byte for byte
+before this documentation-only evidence addition.

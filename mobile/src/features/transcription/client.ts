@@ -1,6 +1,8 @@
-import { validResult } from "./resultValidation";
+import { parseResult } from "./resultValidation";
+import { canonicalUuid, parseFeedback, parseDescriptionState, validateFeedbackRequest, validateDescriptionRequest } from "../feedback/validation";
+import type { FeedbackContext } from "../feedback/validation";
 import { parseDeck, parseReview } from './reviewValidation';
-import type { DeckDetail, ReviewAttempt, AttemptResult, LocalRecording, ProcessRequest } from "../../contracts";
+import type { DeckDetail, ReviewAttempt, AttemptResult, LocalRecording, ProcessRequest, DescriptionGenerateRequest, DescriptionEditRequest, FeedbackGenerateRequest } from "../../contracts";
 export { validResult } from "./resultValidation";
 
 export class TranscriptionClientError extends Error {
@@ -93,8 +95,9 @@ export function createTranscriptionClient(deps: Dependencies) {
     try {
       const data = await request(id, `/attempts/${encodeURIComponent(id)}/process/`, [200, 202],
         { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }, options);
-      if (!validResult(data, id)) throw error("invalid_response", id, "The processing response did not match the recording.");
-      return data;
+      const parsed = parseResult(data, id);
+      if (!parsed) throw error("invalid_response", id, "The processing response did not match the recording.");
+      return parsed;
     } finally { processing.delete(id); }
   }
   async function retry(id: string, payload: ProcessRequest, options: Options = {}) {
@@ -140,8 +143,9 @@ export function createTranscriptionClient(deps: Dependencies) {
   async function getResult(id: string, options: Options = {}): Promise<AttemptResult> {
     const data = await request(id, `/attempts/${encodeURIComponent(id)}/`, 200,
       { method: "GET" }, options);
-    if (!validResult(data, id)) throw error("invalid_response", id, "The result did not match the expected recording format.");
-    return data;
+    const parsed = parseResult(data, id);
+    if (!parsed) throw error("invalid_response", id, "The result did not match the expected recording format.");
+    return parsed;
   }
 
   async function waitForResult(id: string, options: PollOptions = {}): Promise<AttemptResult> {
@@ -187,5 +191,54 @@ export function createTranscriptionClient(deps: Dependencies) {
       return parseReview(item, item.attempt_id, base, deck);
     });
   }
-  return { upload, submit, getResult, getReview, getDeck, getHistory, process, retry, waitForResult };
+  function feedbackInput(id: string, check: () => void) {
+    try { if (!canonicalUuid(id)) throw Error(); check(); }
+    catch { throw error('invalid_request', id, 'Invalid feedback request. Refresh its current revision before retrying.'); }
+  }
+  function feedbackOutput<T>(id: string, parse: () => T): T {
+    try { return parse(); } catch { throw error('invalid_response', id, 'The feedback response was invalid. The recording is unchanged.'); }
+  }
+  async function getDescriptions(deckId: string, setId?: string, options: Options = {}) {
+    feedbackInput(deckId, () => { if (setId !== undefined && !canonicalUuid(setId)) throw Error(); });
+    const data = await request(deckId, `/decks/${deckId}/descriptions/${setId ? `?description_set_id=${setId}` : ''}`, 200, { method: 'GET' }, options);
+    return feedbackOutput(deckId, () => {
+      const parsed = parseDescriptionState(data, deckId);
+      if (setId && parsed.description_set_id !== setId) throw Error();
+      return parsed;
+    });
+  }
+  async function generateDescriptions(deckId: string, payload: DescriptionGenerateRequest = {}, options: Options = {}) {
+    feedbackInput(deckId, () => validateDescriptionRequest(payload, deckId));
+    const data = await request(deckId, `/decks/${deckId}/descriptions/generate/`, [200, 202],
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }, options);
+    return feedbackOutput(deckId, () => {
+      const parsed = parseDescriptionState(data, deckId);
+      if (payload.description_set_id && parsed.description_set_id !== payload.description_set_id) throw Error();
+      return parsed;
+    });
+  }
+  async function editDescriptions(deckId: string, payload: DescriptionEditRequest, options: Options = {}) {
+    feedbackInput(deckId, () => validateDescriptionRequest(payload, deckId, true));
+    const data = await request(deckId, `/decks/${deckId}/descriptions/`, 200,
+      { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }, options);
+    return feedbackOutput(deckId, () => {
+      const parsed = parseDescriptionState(data, deckId);
+      if (payload.description_set_id && parsed.description_set_id !== payload.description_set_id) throw Error();
+      return parsed;
+    });
+  }
+  async function getFeedback(id: string, options: Options = {}, context?: FeedbackContext) {
+    feedbackInput(id, () => {});
+    const data = await request(id, `/attempts/${id}/feedback/`, 200, { method: 'GET' }, options);
+    return feedbackOutput(id, () => parseFeedback(data, id, context));
+  }
+  async function generateFeedback(id: string, payload: FeedbackGenerateRequest = {}, options: Options = {}, context?: FeedbackContext) {
+    feedbackInput(id, () => validateFeedbackRequest(payload));
+    const data = await request(id, `/attempts/${id}/feedback/generate/`, [200, 202],
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }, options);
+    return feedbackOutput(id, () => parseFeedback(data, id, context));
+  }
+  return { upload, submit, getResult, getReview, getDeck, getHistory, process, retry, waitForResult,
+    getDescriptions, generateDescriptions, editDescriptions, getFeedback, generateFeedback };
+
 }

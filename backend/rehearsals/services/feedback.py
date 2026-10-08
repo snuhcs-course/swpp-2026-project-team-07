@@ -83,10 +83,21 @@ def strict_json(raw, limit=MAX_OUTPUT_BYTES):
         raise FeedbackError("invalid_response") from None
 
 
+def has_nul(value):
+    """JSONB cannot store U+0000. Reject, never strip/rewrite source or output."""
+    if isinstance(value, str):
+        return "\x00" in value
+    if isinstance(value, dict):
+        return any(has_nul(k) or has_nul(v) for k, v in value.items())
+    if isinstance(value, (list, tuple)):
+        return any(has_nul(v) for v in value)
+    return False
+
+
 def validated(model, value, code="invalid_input", limit=MAX_CONTEXT_BYTES):
     try:
         raw = json_bytes(value)
-        if len(raw) > limit:
+        if len(raw) > limit or has_nul(value):
             raise FeedbackError(code)
         # Strict JSON allows arrays for immutable tuples, without scalar coercion.
         return model.model_validate_json(raw, strict=True)
@@ -241,12 +252,8 @@ def prepare_deck(value: dict, images: tuple[bytes, ...]) -> PreparedDeck:
     return PreparedDeck(source, prepared, ids, deck_identity(source, ids))
 
 
-def prepare_analysis(value: dict, images: tuple[bytes, ...], *, prepared_deck: PreparedDeck | None = None) -> PreparedAnalysis:
-    """No I/O. Visits use original transcript indexes, never matched word copies.
-
-    Missing/no speech is an explicit preflight error, before either paid stage.
-    Every source word must occur exactly once in its assignment-by-start visit.
-    """
+def analysis_source(value):
+    """Validate chronology and the original-index partition before either stage."""
     source = validated(AnalysisInput, value)
     if tuple(s.slide_index for s in source.slides) != tuple(range(len(source.slides))):
         raise FeedbackError("invalid_slides")
@@ -277,6 +284,12 @@ def prepare_analysis(value: dict, images: tuple[bytes, ...], *, prepared_deck: P
         raise FeedbackError("no_speech")
     if not words or not source.transcript.text.strip():
         raise FeedbackError("invalid_transcript")
+    return source
+
+
+def prepare_analysis(value: dict, images: tuple[bytes, ...], *, prepared_deck: PreparedDeck | None = None) -> PreparedAnalysis:
+    """No I/O; indexed words are supplied by the caller, never text matched."""
+    source = analysis_source(value)
     # Compatibility for existing analysis callers; saved-deck callers supply the
     # actual content hash/preparation version via prepare_deck. No attempt data
     # enters this deck identity.
@@ -290,6 +303,20 @@ def prepare_analysis(value: dict, images: tuple[bytes, ...], *, prepared_deck: P
                 or prepared_deck.images != deck.images):
             raise FeedbackError("description_source_mismatch")
         deck = prepared_deck
+    return restore_analysis(value, deck)
+
+
+def restore_analysis(value, deck):
+    """Reconstruct evidence from a validated saved deck, without media/keys.
+
+    Durable callers verify the deck/source digests before this seam. It never
+    prepares image requests; coaching only consumes descriptions and speech.
+    """
+    source = analysis_source(value)
+    if (not isinstance(deck, PreparedDeck) or deck.source.deck_id != source.deck_id
+            or deck.source.slides != source.slides or len(deck.source_ids) != len(source.slides)
+            or deck_identity(deck.source, deck.source_ids) != deck.input_id):
+        raise FeedbackError('snapshot_unavailable')
     prepared_images, source_ids = deck.images, deck.source_ids
     transcript_id = hashlib.sha256(json_bytes([source.attempt_id, source.transcript.model_dump(mode="json")])).hexdigest()
     input_id = hashlib.sha256(json_bytes([source.model_dump(mode="json"), source_ids])).hexdigest()

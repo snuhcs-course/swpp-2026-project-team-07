@@ -79,7 +79,7 @@ test('malformed JSON and invalid results fail safely', async () => {
   const invalid = [null, [], { ...result(), attempt_id: 'wrong' }, { ...result(), status: 'unknown' },
     { ...result(), status: ['completed'], transcript: null },
     { ...result(), transcript: null }, { ...result(), transcript: { text: 'bad', words: [{ text: 'bad', start_ms: -1, end_ms: 2 }] } },
-    { ...result('failed'), error: null }, { ...result(), feedback: [{}] }];
+    { ...result('failed'), error: null }];
   for (const payload of invalid) await rejects(setup([json(payload)]).client.getResult(id), 'invalid_response');
   await rejects(setup([new Response('not json')]).client.getResult(id), 'invalid_response');
 });
@@ -198,5 +198,15 @@ test('no-speech completion accepts empty-word visits and timing metrics without 
     { visits: [{ slide_index: 0, start_ms: 0, end_ms: 5000, words: result().transcript.words }] },
   ]) {
     await rejects(setup([json({ ...silent, ...update })]).client.getResult(id), 'invalid_response');
+  }
+});
+
+
+test('malformed optional feedback is quarantined without hiding a usable recording', async () => {
+  for (const extra of [{ feedback: [{}] }, { feedback: 'malicious' }, { feedback_analysis: { raw_body: 'private', result: [] } }]) {
+    const parsed = await setup([json({ ...result(), ...extra })]).client.getResult(id);
+    assert.deepEqual(parsed.transcript, result().transcript);
+    assert.deepEqual(parsed.feedback, []);
+    assert.equal(parsed.feedback_analysis, undefined);
   }
 });

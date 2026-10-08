@@ -1,7 +1,7 @@
 """Application reservations: UTF-8 payload bytes + maximum output tokens.
 
 Deliberately loose units, not provider token accounting or a money cap. All
-callers lock set -> job -> bucket -> request/reservation; no network under locks.
+callers lock set -> analysis (coaching only) -> job -> bucket -> request/reservation; no network under locks.
 """
 from datetime import datetime, timedelta, timezone as dt_timezone
 from zoneinfo import ZoneInfo

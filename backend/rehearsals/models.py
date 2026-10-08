@@ -128,8 +128,43 @@ class DescriptionJob(models.Model):
         constraints = [models.UniqueConstraint(fields=['description_set', 'generation'], name='unique_description_generation')]
 
 
+class FeedbackAnalysis(models.Model):
+    """One current coaching analysis per recording; Whisper remains independent."""
+    attempt = models.OneToOneField(Attempt, on_delete=models.PROTECT, related_name='coaching')
+    feedback_revision = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class FeedbackJob(models.Model):
+    analysis = models.ForeignKey(FeedbackAnalysis, on_delete=models.PROTECT, related_name='jobs')
+    generation = models.PositiveIntegerField()
+    description_set = models.ForeignKey(DescriptionSet, on_delete=models.PROTECT, related_name='feedback_jobs')
+    description_generation = models.PositiveIntegerField()
+    description_revision = models.PositiveIntegerField(null=True)
+    # Frozen source and fulfilled dependency per generation, never credentials.
+    source_snapshot = models.JSONField()
+    descriptions_snapshot = models.JSONField(null=True)
+    prompt_version = models.CharField(max_length=40)
+    schema_version = models.CharField(max_length=40)
+    prompt_digest = models.CharField(max_length=64)
+    input_hash = models.CharField(max_length=64, blank=True)
+    result = models.JSONField(null=True)
+    state = models.CharField(max_length=32, default='waiting_descriptions', db_index=True)
+    claim_token = models.UUIDField(null=True)
+    queued_at = models.DateTimeField()
+    claimed_at = models.DateTimeField(null=True)
+    completed_at = models.DateTimeField(null=True)
+    retry_at = models.DateTimeField(null=True)
+    error_code = models.CharField(max_length=40, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['analysis', 'generation'], name='unique_coaching_generation')]
+
+
 class FeedbackQuotaBucket(models.Model):
-    # Model bucket deliberately excludes stage, to share future coaching limits.
+    # Model bucket deliberately excludes stage, to share description and coaching limits.
     provider = models.CharField(max_length=16)
     project_id = models.CharField(max_length=160)
     model = models.CharField(max_length=100)
@@ -141,7 +176,8 @@ class FeedbackQuotaBucket(models.Model):
 
 class FeedbackRequest(models.Model):
     """Private durable evidence, entirely separate from Whisper ProviderRequest."""
-    job = models.OneToOneField(DescriptionJob, on_delete=models.PROTECT, related_name='request')
+    job = models.OneToOneField(DescriptionJob, on_delete=models.PROTECT, related_name='request', null=True)
+    coaching_job = models.OneToOneField(FeedbackJob, on_delete=models.PROTECT, related_name='request', null=True)
     generation = models.PositiveIntegerField()
     claim_token = models.UUIDField()
     provider = models.CharField(max_length=16)
@@ -162,6 +198,13 @@ class FeedbackRequest(models.Model):
     body_issue = models.CharField(max_length=40, null=True)
     retry_at = models.DateTimeField(null=True)
     usage = models.JSONField(null=True)  # null means unknown, never zero consumption
+
+
+    class Meta:
+        constraints = [models.CheckConstraint(
+            condition=(models.Q(job__isnull=False, coaching_job__isnull=True, stage='descriptions') |
+                       models.Q(job__isnull=True, coaching_job__isnull=False, stage='coaching')),
+            name='feedback_request_exact_stage_owner')]
 
 
 class FeedbackReservation(models.Model):

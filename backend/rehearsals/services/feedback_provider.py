@@ -40,10 +40,13 @@ key idea and visual fact has text, uncertain and uncertainty. If uncertain, expl
 why; otherwise uncertainty is empty. Mark unreadable/ambiguous visual readings
 uncertain, including summaries depending on them. Never invent missing text.
 """
+COACHING_PROMPT_VERSION = "coaching-v1"
+COACHING_SCHEMA_VERSION = "coaching-v1"
 COACHING_RULES = COMMON_RULES + """Give at most THREE actionable suggestions across the entire
 rehearsal, or an empty suggestions list if no supported improvement is available.
 Categories are consistency, clarity, audience; use audience only when supplied.
-Use speaker_language for observation and suggestion; preserve original quotes.
+Use speaker_language for observation and suggestion; for und infer the speaker language
+from the transcript (preserve mixed languages). Preserve original quotes.
 Refer to one supplied segment and its slide, visit, source_id and transcript_id.
 Choose inclusive word_start/word_end indexes in that segment; speech_quote must
 contain ALL contiguous chosen words, joined with spaces (whitespace may vary;
@@ -351,13 +354,23 @@ def request_raw(prepared: PreparedRequest, *, _transport=None) -> RawReceipt:
     return transport.receipt
 
 
+def receipt_is_uncertain(status_code, body_complete):
+    """Classify transport evidence without parsing or changing the saved receipt.
+
+    Known HTTP rejections stay certain even if their response body was cut short.
+    Admission and normalization must agree before an unfinished receipt recovers.
+    """
+    return status_code == 408 or status_code >= 500 or (status_code == 200 and not body_complete)
+
+
 def _output(receipt):
+    uncertain = receipt_is_uncertain(receipt.status_code, receipt.body_complete)
     if receipt.status_code != 200:
         code = {401: "provider_auth", 403: "provider_auth", 429: "provider_rate_limit"}.get(
             receipt.status_code, "provider_error" if receipt.status_code >= 500 else "provider_rejected")
-        raise FeedbackError(code, uncertain=receipt.status_code == 408 or receipt.status_code >= 500, retry_at=receipt.retry_at)
+        raise FeedbackError(code, uncertain=uncertain, retry_at=receipt.retry_at)
     if not receipt.body_complete:
-        raise FeedbackError(receipt.body_issue, uncertain=True)
+        raise FeedbackError(receipt.body_issue, uncertain=uncertain)
     value = strict_json(receipt.body, MAX_RESPONSE_BYTES)
     try:
         if receipt.provider == "openai":
