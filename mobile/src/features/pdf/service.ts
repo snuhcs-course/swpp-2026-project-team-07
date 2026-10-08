@@ -1,4 +1,5 @@
 import * as DocumentPicker from "expo-document-picker";
+import { savedAttempts } from "../recording/storage";
 import * as FileSystem from "expo-file-system/legacy";
 
 export type LocalPdf = {
@@ -109,6 +110,7 @@ export const pdfService = {
   },
 
   async removePdf(id: string): Promise<void> {
+    if (savedAttempts(id).length) throw new Error("This PDF belongs to saved rehearsals and must stay available for replay and upload.");
     return mutate(async () => {
       const { catalog } = getPaths();
       const current = await getImportedPdfs();

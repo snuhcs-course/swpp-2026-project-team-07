@@ -13,6 +13,8 @@ import type { SlideEvent } from "../../contracts";
 import { Action, Card, colors, styles } from "../../ui/components";
 import { activeWordIndex, resumeAfterSeek, transcriptSpans } from "./playback";
 
+import { SavedAttemptScreen } from "../recording/SavedAttemptScreen";
+
 type Preview = "completed" | "processing" | "failed";
 const spans = transcriptSpans(savedWhisperTranscript);
 const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`;
@@ -46,6 +48,11 @@ function parseSlideEvents(value: string | undefined): SlideEvent[] {
 }
 
 export function ResultsScreen() {
+  const { attemptId } = useLocalSearchParams<{ attemptId?: string }>();
+  return attemptId ? <SavedAttemptScreen key={attemptId} id={attemptId} /> : <PreviewResults />;
+}
+
+function PreviewResults() {
   const params = useLocalSearchParams<{
     audioUri?: string;
     slideEvents?: string;

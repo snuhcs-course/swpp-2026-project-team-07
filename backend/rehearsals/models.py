@@ -7,7 +7,12 @@ class Deck(models.Model):
     title = models.CharField(max_length=255)
     pdf = models.FileField(upload_to="decks/%Y/%m/")
     page_count = models.PositiveIntegerField()
+    content_hash = models.CharField(max_length=64, null=True, blank=True)
+    preparation_version = models.CharField(max_length=40, default="pdfium-v1")
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["content_hash", "preparation_version"], name="unique_prepared_pdf")]
 
 
 class Slide(models.Model):
@@ -39,6 +44,7 @@ class Attempt(models.Model):
     duration_ms = models.PositiveIntegerField()
     slide_events = models.JSONField(default=list)
     audience = models.CharField(max_length=500, blank=True)
+    upload_hash = models.CharField(max_length=64, blank=True)
     status = models.CharField(
         max_length=20, choices=Status.choices, default=Status.PENDING
     )

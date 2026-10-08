@@ -1,3 +1,4 @@
+import { resolve as storageResolve } from "./storage-native-loader.mjs";
 import { readFileSync, existsSync } from 'node:fs';
 import ts from 'typescript';
 export function resolve(specifier, context, nextResolve) {
@@ -12,7 +13,7 @@ export function resolve(specifier, context, nextResolve) {
       if (/\.tsx?$/.test(url.pathname) && existsSync(url)) return { url: url.href, shortCircuit: true };
     }
   }
-  return nextResolve(specifier, context);
+  return storageResolve(specifier, context, nextResolve);
 }
 export function load(url, context, nextLoad) {
   if (url.startsWith('file:') && /\.tsx?$/.test(url) && !url.includes('/node_modules/')) {
