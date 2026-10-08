@@ -1023,3 +1023,127 @@ class ConcurrentCoachingTests(SyntheticCoaching, TransactionTestCase):
         self.assertEqual(FeedbackJob.objects.filter(pk=before.pk).values().get(), expected)
         request.refresh_from_db()
         self.assertEqual(request.outcome, 'completed')
+
+
+    def test_concurrent_initial_assertions_admit_only_the_matching_selection(self):
+        selected = self.feedback_state()['selection']['token']
+        def admit(token):
+            try:
+                return service.generate(self.attempt.pk, {'expected_selection': token}).feedback_revision
+            except service.Conflict as error:
+                return error.code
+        self.assertCountEqual(self.race([lambda: admit(selected), lambda: admit('0' * 64)]), [1, 'selection_mismatch'])
+        self.assertEqual(FeedbackJob.objects.count(), 1)
+        self.assertEqual(DescriptionJob.objects.count(), 1)
+        self.assertFalse(FeedbackRequest.objects.exists())
+        self.assertFalse(FeedbackReservation.objects.exists())
+
+
+class DisclosureSelectionTests(SyntheticCoaching, TestCase):
+    def test_changed_selection_rejects_before_either_queue_or_publication(self):
+        selected = self.client.get(self.feedback_url).json().get('selection')
+        self.assertIsNotNone(selected)
+        self.assertEqual(selected['provider'], 'gemini')
+        with patch.dict('os.environ', {'FEEDBACK_PROVIDER': 'openai'}), self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(self.feedback_url + 'generate/', {'expected_selection': selected['token']}, format='json')
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()['error']['code'], 'selection_mismatch')
+        for model in (FeedbackAnalysis, FeedbackJob, DescriptionSet, DescriptionJob, FeedbackRequest, FeedbackReservation):
+            self.assertEqual(model.objects.count(), 0)
+        self.broker.assert_not_called()
+        self.coaching_broker.assert_not_called()
+        self.network.assert_not_called()
+
+    def test_assertion_only_initial_and_saved_retry_ignore_new_default_and_key_rotation(self):
+        selected = self.client.get(self.feedback_url).json().get('selection')
+        self.assertIsNotNone(selected)
+        with patch.dict('os.environ', {'GEMINI_API_KEY': 'rotated-synthetic-key'}):
+            self.assertEqual(self.client.get(self.feedback_url).json()['selection'], selected)
+            response = self.client.post(self.feedback_url + 'generate/', {'expected_selection': selected['token']}, format='json')
+        self.assertEqual(response.status_code, 202)
+        analysis = FeedbackAnalysis.objects.get(attempt=self.attempt)
+        value = self.job(analysis).description_set
+        with patch.object(provider, 'request_raw', side_effect=self.coaching_receipt):
+            descriptions.run_description(value.pk, value.processing_revision)
+        service.recover_coaching()
+        with patch.object(provider, 'request_raw', side_effect=lambda p: self.coaching_receipt(p, status=400, body=b'{}')):
+            self.execute_feedback(analysis)
+        with patch.dict('os.environ', {'FEEDBACK_PROVIDER': 'openai'}):
+            self.assertEqual(self.client.get(self.feedback_url).json()['selection'], selected)
+            response = self.client.post(self.feedback_url + 'generate/', {'expected_selection': selected['token'], 'feedback_revision': 1}, format='json')
+        self.assertEqual(response.status_code, 202, response.json())
+        self.assertEqual(response.json()['feedback_revision'], 2)
+        self.assertEqual(response.json()['selection']['provider'], 'gemini')
+
+    def test_assertion_cannot_choose_provider_and_rejects_malformed_tokens(self):
+        for token in (None, True, 123, '', 'A' * 64, 'a' * 63, {'provider': 'openai'}):
+            response = self.client.post(self.feedback_url + 'generate/', {'expected_selection': token}, format='json')
+            self.assertEqual(response.status_code, 400)
+        response = self.client.post(self.feedback_url + 'generate/', {'expected_selection': '0' * 64}, format='json')
+        self.assertEqual(response.status_code, 409)
+        self.assertFalse(FeedbackAnalysis.objects.exists())
+        self.assertEqual(self.client.post(self.feedback_url + 'generate/', {}, format='json').status_code, 202)
+
+    def test_captured_origin_survives_later_edits_and_legacy_origin_is_unavailable(self):
+        analysis = self.ready()
+        with patch.object(provider, 'request_raw', side_effect=self.coaching_receipt):
+            self.execute_feedback(analysis)
+        self.assertEqual(self.feedback_state()['result'].get('description_origin'), 'generated')
+        job = self.job(analysis)
+        value = job.description_set
+        descriptions.edit(value.deck_id, {'description_set_id': str(value.pk), 'description_revision': value.description_revision,
+            'descriptions': value.descriptions})
+        self.assertEqual(self.feedback_state()['result']['description_origin'], 'generated')
+        snapshot = dict(job.source_snapshot)
+        snapshot.pop('description_origin', None)
+        FeedbackJob.objects.filter(pk=job.pk).update(source_snapshot=snapshot)
+        self.assertEqual(self.feedback_state()['result']['description_origin'], 'unavailable')
+        analysis = service.generate(self.attempt.pk, {'feedback_revision': 1})
+        with patch.object(provider, 'request_raw', side_effect=self.coaching_receipt):
+            self.execute_feedback(analysis)
+        self.assertEqual(self.feedback_state()['result']['description_origin'], 'edited')
+
+    def test_changed_selection_during_preparation_and_concurrent_winner_are_rechecked(self):
+        selected = self.feedback_state()['selection']
+        prepare = descriptions.prepare_saved
+        def changed(deck_id):
+            result = prepare(deck_id)
+            import os
+            os.environ['FEEDBACK_GEMINI_MODEL'] = 'changed-during-preparation'
+            return result
+        with patch.object(descriptions, 'prepare_saved', side_effect=changed), patch.dict('os.environ', {}):
+            response = self.client.post(self.feedback_url + 'generate/', {'expected_selection': selected['token']}, format='json')
+        self.assertEqual(response.status_code, 409)
+        self.assertFalse(FeedbackAnalysis.objects.exists())
+        self.assertFalse(DescriptionSet.objects.exists())
+        admitted = False
+        def concurrent_winner(deck_id):
+            nonlocal admitted
+            result = prepare(deck_id)
+            if not admitted:
+                admitted = True
+                with patch.dict('os.environ', {'FEEDBACK_PROVIDER': 'openai'}):
+                    service.generate(self.attempt.pk, {})
+            return result
+        with patch.object(descriptions, 'prepare_saved', side_effect=concurrent_winner):
+            response = self.client.post(self.feedback_url + 'generate/', {'expected_selection': selected['token']}, format='json')
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()['error']['code'], 'selection_mismatch')
+        self.assertEqual(FeedbackJob.objects.count(), 1)
+        self.assertEqual(DescriptionJob.objects.count(), 1)
+        self.assertEqual(DescriptionSet.objects.get().provider, 'openai')
+
+    def test_descriptor_covers_nonsecret_selection_and_prompt_identity_only(self):
+        original = self.feedback_state()['selection']
+        for name, value in [('FEEDBACK_GEMINI_PROJECT_ID', 'other-project'), ('FEEDBACK_GEMINI_MODEL', 'other-model'), ('FEEDBACK_PROVIDER', 'openai')]:
+            with patch.dict('os.environ', {name: value}):
+                self.assertNotEqual(self.feedback_state()['selection']['token'], original['token'])
+        with patch('rehearsals.services.feedback_config.coaching_digest', return_value='e' * 64):
+            self.assertNotEqual(self.feedback_state()['selection']['token'], original['token'])
+        self.assertEqual(set(original), {'provider', 'project_id', 'model', 'stage', 'disclosure_version', 'prompt_version',
+            'schema_version', 'prompt_digest', 'coaching_prompt_version', 'coaching_schema_version', 'coaching_prompt_digest', 'token'})
+        with patch.dict('os.environ', {'GEMINI_API_KEY': 'different-key', 'FEEDBACK_ENABLED': 'false'}):
+            self.assertEqual(self.feedback_state()['selection'], original)
+        with patch.dict('os.environ', {'FEEDBACK_PROVIDER': 'broken'}):
+            self.assertIsNone(self.feedback_state()['selection'])
+            self.assertEqual(self.client.get(f'/api/attempts/{self.attempt.pk}/').status_code, 200)

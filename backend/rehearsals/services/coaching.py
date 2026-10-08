@@ -22,7 +22,7 @@ from .alignment import align_words
 from .descriptions import (Conflict, StaleClaim, LEASE_SECONDS, _private_database_logging,
                            effective_retry_at, saved_receipt)
 from .feedback import (FeedbackError, Transcript, validated, analysis_source, restore_analysis, json_bytes)
-from .feedback_config import Selection, QuotaPolicy, coaching_digest, check_coaching_versions, enabled
+from .feedback_config import Selection, QuotaPolicy, coaching_digest, check_coaching_versions, enabled, selection_descriptor, assert_selection
 from .feedback_quota import locked_bucket, reserve, cooldown
 
 logger = logging.getLogger(__name__)
@@ -139,7 +139,8 @@ def _attach(value, job):
         job.descriptions_snapshot = value.descriptions
         job.description_revision = value.description_revision
         job.state = 'queued'
-        job.save(update_fields=['descriptions_snapshot', 'description_revision', 'state', 'updated_at'])
+        job.source_snapshot = {**job.source_snapshot, 'description_origin': 'edited' if value.edited else 'generated'}
+        job.save(update_fields=['descriptions_snapshot', 'description_revision', 'source_snapshot', 'state', 'updated_at'])
 
 
 @_private_database_logging()
@@ -153,6 +154,7 @@ def generate(attempt_id, payload):
             value, analysis, old = _locked(existing.pk, existing.feedback_revision)
             if old.generation != analysis.feedback_revision:
                 raise Conflict('stale_revision')
+            assert_selection(payload, selection_descriptor(value=value, job=old, coaching=True))
             revision = payload.get('feedback_revision')
             if revision is not None and revision != analysis.feedback_revision:
                 raise Conflict('stale_revision')
@@ -175,10 +177,12 @@ def generate(attempt_id, payload):
             selection.credentials()
             QuotaPolicy.current(selection)
             return _queue(analysis, value, old.source_snapshot, old)
-    if payload:  # A retry can never create an initial analysis.
+    if set(payload) - {'expected_selection'}:  # A retry can never create an initial analysis.
         raise Conflict('stale_revision')
     source = prepare_attempt(attempt)
+    assert_selection(payload, selection_descriptor(coaching=True))
     selection = Selection.current()
+    assert_selection(payload, selection_descriptor(selection, coaching=True))
     selection.credentials()
     QuotaPolicy.current(selection)
     deck, snapshot = descriptions_service.prepare_saved(attempt.deck_id)
@@ -201,6 +205,7 @@ def generate(attempt_id, payload):
             # Recheck active/completed vs failed/stale and retry requirements if
             # another caller admitted while this caller prepared its snapshots.
             return generate(attempt_id, payload)
+        assert_selection(payload, selection_descriptor(coaching=True))
         value = descriptions_service.admit_prepared(selection, deck, snapshot, dependency=True, candidate=description_request)
         analysis = FeedbackAnalysis.objects.create(attempt=current_attempt)
         return _queue(analysis, value, captured)
@@ -489,6 +494,7 @@ def _result(value, job, current_job):
         'message': 'No supported suggestions.' if job.result['status'] == 'empty' else None,
         'feedback_revision': job.generation, 'description_set_id': str(value.pk),
         'description_revision': job.description_revision, 'provenance': _provenance(value, job),
+        'description_origin': job.source_snapshot.get('description_origin') if job.source_snapshot.get('description_origin') in {'generated', 'edited'} else 'unavailable',
         'completed_at': job.completed_at, 'stale': job.pk != current_job.pk or _stale(value, job) or not _source_current(job),
         'evidence': {'attempt_id': source['attempt_id'], 'deck_id': source['deck_id'],
             'transcript_id': job.source_snapshot['transcript_id'], 'chronology_id': job.source_snapshot['chronology_id'],
@@ -507,6 +513,7 @@ def read(attempt_id):
         availability = _availability()
         return {'attempt_id': str(attempt_id), 'feedback_revision': 0,
             'state': 'absent' if availability['state'] == 'available' else availability['state'],
+            'selection': selection_descriptor(coaching=True),
             'stage': None, 'availability': availability, 'provenance': None, 'description_set_id': None,
             'description_revision': None, 'dependency': None, 'created_at': None, 'updated_at': None,
             'queued_at': None, 'claimed_at': None, 'submitted_at': None, 'received_at': None, 'completed_at': None,
@@ -544,6 +551,7 @@ def read(attempt_id):
             updates.extend(t for t in (request.received_at, request.completed_at) if t is not None)
         return {'attempt_id': str(attempt_id), 'feedback_revision': analysis.feedback_revision,
             'state': state, 'stage': 'descriptions' if job.descriptions_snapshot is None else 'coaching',
+            'selection': selection_descriptor(value=value, job=job, coaching=True),
             'availability': _availability(Selection.saved(value)), 'provenance': _provenance(value, job),
             'description_set_id': str(value.pk), 'description_revision': job.description_revision,
             'dependency': dependency, 'created_at': analysis.created_at,

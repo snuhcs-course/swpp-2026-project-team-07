@@ -1338,3 +1338,49 @@ class ConcurrentDescriptionTests(SyntheticDecks, TransactionTestCase):
                 self.assertIsNone(value.jobs.get(generation=1).claim_token)
                 self.assertEqual(FeedbackRequest.objects.filter(job__description_set=value).count(), 1)
                 self.assertEqual(FeedbackReservation.objects.filter(request=request, released_at__isnull=True).count(), 1)
+
+
+class DescriptionSelectionTests(SyntheticDecks, TestCase):
+    def test_changed_selection_rejects_without_queue_and_matching_initial_is_allowed(self):
+        selected = self.client.get(self.url).json().get('selection')
+        self.assertIsNotNone(selected)
+        with patch.dict('os.environ', {'FEEDBACK_GEMINI_MODEL': 'synthetic-other'}), self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(self.post, {'expected_selection': selected['token']}, format='json')
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()['error']['code'], 'selection_mismatch')
+        for model in (DescriptionSet, DescriptionJob, FeedbackRequest, FeedbackReservation):
+            self.assertEqual(model.objects.count(), 0)
+        self.broker.assert_not_called()
+        self.network.assert_not_called()
+        response = self.client.post(self.post, {'expected_selection': selected['token']}, format='json')
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(response.json()['selection'], selected)
+
+    def test_saved_set_assertion_and_malformed_assertions(self):
+        value = self.admit()
+        selected = self.client.get(self.url, {'description_set_id': str(value.pk)}).json().get('selection')
+        self.assertIsNotNone(selected)
+        for token in (None, True, '', 'x' * 64):
+            self.assertEqual(self.client.post(self.post, {'expected_selection': token}, format='json').status_code, 400)
+        with patch.dict('os.environ', {'FEEDBACK_PROVIDER': 'openai'}):
+            response = self.client.post(self.post, {'description_set_id': str(value.pk), 'processing_revision': 1,
+                'expected_selection': selected['token']}, format='json')
+            self.assertEqual(response.status_code, 202)
+            self.assertEqual(response.json()['selection'], selected)
+        self.assertEqual(DescriptionJob.objects.count(), 1)
+
+    def test_selection_change_during_preparation_admits_nothing(self):
+        selected = self.client.get(self.url).json()['selection']
+        prepare = service.prepare_saved
+        def changed(deck_id):
+            result = prepare(deck_id)
+            import os
+            os.environ['FEEDBACK_GEMINI_PROJECT_ID'] = 'changed-before-admission'
+            return result
+        with patch.object(service, 'prepare_saved', side_effect=changed), patch.dict('os.environ', {}):
+            response = self.client.post(self.post, {'expected_selection': selected['token']}, format='json')
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(DescriptionSet.objects.count(), 0)
+        self.assertEqual(DescriptionJob.objects.count(), 0)
+        self.assertEqual(FeedbackRequest.objects.count(), 0)
+        self.assertEqual(FeedbackReservation.objects.count(), 0)

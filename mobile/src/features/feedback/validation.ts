@@ -1,7 +1,7 @@
 /** Untrusted feedback is parsed separately from transcript/audio capabilities. */
 import type { CoachingProvenance, CoachingResult, CoachingSuggestion, DescriptionFact, DescriptionProvenance,
   Descriptions, DescriptionState, FeedbackAnalysis, FeedbackDependency, FeedbackEvidence, FeedbackOutput,
-  FeedbackRetry, FeedbackTimes, SafeFeedbackError, SlideSource, Transcript, SlideEvent, Visit } from '../../contracts';
+  FeedbackRetry, FeedbackTimes, FeedbackSelection, SafeFeedbackError, SlideSource, Transcript, SlideEvent, Visit } from '../../contracts';
 
 type ObjectValue = Record<string, unknown>;
 export type FeedbackContext = { attempt_id: string; deck_id?: string | null; duration_ms: number | null;
@@ -39,6 +39,15 @@ function provenance(v: unknown): DescriptionProvenance { const r = object(v);
 }
 function coachingProvenance(v: unknown): CoachingProvenance { const r = object(v); return { ...provenance(r),
   coaching_prompt_version: nonblank(r.coaching_prompt_version, 40), coaching_schema_version: nonblank(r.coaching_schema_version, 40) }; }
+function selection(v: unknown, stage: 'descriptions' | 'coaching'): FeedbackSelection | null {
+  if (v == null) return null; // Old caches are readable, never generation authority.
+  const r = object(v);
+  if (r.stage !== stage) fail();
+  return { ...provenance(r), stage, disclosure_version: nonblank(r.disclosure_version, 40),
+    prompt_digest: digest(r.prompt_digest), token: digest(r.token),
+    ...(stage === 'coaching' ? { coaching_prompt_version: nonblank(r.coaching_prompt_version, 40),
+      coaching_schema_version: nonblank(r.coaching_schema_version, 40), coaching_prompt_digest: digest(r.coaching_prompt_digest) } : {}) };
+}
 function fact(v: unknown): DescriptionFact { const r = object(v);
   const result = { text: nonblank(r.text, 400), uncertain: bool(r.uncertain), uncertainty: text(r.uncertainty, 400) };
   if (result.uncertain !== !!result.uncertainty.trim()) fail();
@@ -67,6 +76,7 @@ export function parseDescriptionState(v: unknown, deckId: string): DescriptionSt
   const p = r.provenance === null ? null : object(r.provenance);
   const scope = p ? { ...provenance(p), origin: p.origin === null ? null : choice(p.origin, ['generated', 'edited']), sources: sources(p.sources) } : null;
   const result: DescriptionState = { deck_id: deckId, description_set_id: nullableUuid(r.description_set_id),
+    ...(r.selection !== undefined ? { selection: selection(r.selection, 'descriptions') } : {}),
     state: choice(r.state, descriptionStates), stage: r.stage === null ? null : choice(r.stage, ['descriptions']),
     processing_revision: integer(r.processing_revision), description_revision: integer(r.description_revision),
     descriptions: r.descriptions === null ? null : parseDescriptions(r.descriptions, deckId, scope?.sources),
@@ -164,6 +174,7 @@ function result(v: unknown, id: string, context?: FeedbackContext, pages?: numbe
   if (cards.length !== summary.accepted_count || !date(r.completed_at)) fail();
   const parsed: CoachingResult = { ...summary, message: r.message === null ? null : nonblank(r.message, 100), suggestions: cards, feedback_revision: integer(r.feedback_revision, 2 ** 31 - 1, 1),
     description_set_id: uuid(r.description_set_id), description_revision: integer(r.description_revision, 2 ** 31 - 1, 1),
+    description_origin: r.description_origin === undefined ? 'unavailable' : choice(r.description_origin, ['generated', 'edited', 'unavailable']),
     provenance: coachingProvenance(r.provenance), completed_at: date(r.completed_at)!, stale: bool(r.stale), evidence: scope, evidence_verified: false };
   if ((parsed.status === 'empty' && parsed.message !== 'No supported suggestions.') ||
       (parsed.status !== 'empty' && parsed.message !== null)) fail();
@@ -185,6 +196,7 @@ export function parseFeedback(v: unknown, id: string, context?: FeedbackContext,
   bounded(v); const r = object(v), available = object(r.availability);
   if (uuid(r.attempt_id) !== id) fail();
   const parsed: FeedbackAnalysis = { attempt_id: id, feedback_revision: integer(r.feedback_revision),
+    ...(r.selection !== undefined ? { selection: selection(r.selection, 'coaching') } : {}),
     state: choice(r.state, ['absent', 'disabled', 'unavailable', 'waiting_descriptions', 'queued', 'preparing', 'submitted', 'normalizing',
       'waiting_quota', 'needs_confirmation', 'failed', 'completed', 'stale']),
     stage: r.stage === null ? null : choice(r.stage, ['descriptions', 'coaching']),
@@ -221,7 +233,7 @@ export function feedbackSeekTarget(value: FeedbackAnalysis, cardIndex: number, c
   try {
     const parsed = parseFeedback(value, context.attempt_id, context, pages);
     const result = parsed.result;
-    if (!result?.evidence_verified || !Number.isSafeInteger(cardIndex) || cardIndex < 0) return null;
+    if (parsed.stale || result?.stale || !result?.evidence_verified || !Number.isSafeInteger(cardIndex) || cardIndex < 0) return null;
     const card = result.suggestions[cardIndex];
     return card && card.end_ms > card.start_ms ? { slide_index: card.slide_index, start_ms: card.start_ms, end_ms: card.end_ms } : null;
   } catch { return null; }
@@ -230,18 +242,24 @@ export function feedbackSeekTarget(value: FeedbackAnalysis, cardIndex: number, c
 /** Runtime request guards reject extra/client-selected provider fields before fetch. */
 export function validateFeedbackRequest(value: unknown) {
   const r = object(value);
-  if (Object.keys(r).some(k => !['feedback_revision', 'acknowledge_uncertain'].includes(k))) fail();
+  if (Object.keys(r).some(k => !['feedback_revision', 'acknowledge_uncertain', 'expected_selection'].includes(k))) fail();
+  if ('expected_selection' in r) digest(r.expected_selection);
   if ('feedback_revision' in r) integer(r.feedback_revision);
   if ('acknowledge_uncertain' in r) { bool(r.acknowledge_uncertain); if (!('feedback_revision' in r)) fail(); }
 }
 export function validateDescriptionRequest(value: unknown, deckId: string, edit = false) {
   const r = object(value), allowed = edit ? ['description_set_id', 'description_revision', 'descriptions'] :
-    ['description_set_id', 'processing_revision', 'acknowledge_uncertain'];
+    ['description_set_id', 'processing_revision', 'acknowledge_uncertain', 'expected_selection'];
   if (Object.keys(r).some(k => !allowed.includes(k)) || (edit && Object.keys(r).length !== 3)) fail();
+  if ('expected_selection' in r) digest(r.expected_selection);
   if ('description_set_id' in r) uuid(r.description_set_id);
   if ('processing_revision' in r) integer(r.processing_revision);
   if ('description_revision' in r) integer(r.description_revision);
   if ('acknowledge_uncertain' in r) bool(r.acknowledge_uncertain);
-  if (Object.keys(r).length && !('description_set_id' in r)) fail();
-  if (edit) { bounded(r.descriptions); parseDescriptions(r.descriptions, deckId); }
+  if (Object.keys(r).some(k => k !== 'expected_selection') && !('description_set_id' in r)) fail();
+  if (edit) { bounded(r.descriptions); parseDescriptions(r.descriptions, deckId);
+    // JSON uses UTF-8 on the wire; count code points without a native TextEncoder dependency.
+    const bytes = [...JSON.stringify(r.descriptions)].reduce((n, c) => n + (c.codePointAt(0)! <= 0x7f ? 1 : c.codePointAt(0)! <= 0x7ff ? 2 : c.codePointAt(0)! <= 0xffff ? 3 : 4), 0);
+    if (bytes > 64 * 1024) fail();
+  }
 }

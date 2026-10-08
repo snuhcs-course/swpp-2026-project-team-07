@@ -19,6 +19,7 @@ import { useReviewPlayerStatus } from "../transcription/useReviewPlayerStatus";
 import { localUri } from "../transcription/reviewMedia";
 import { PlaybackSlide } from "../transcription/PlaybackSlide";
 import { PlaybackTranscript } from "../transcription/PlaybackTranscript";
+import { FeedbackPanel } from "../feedback/FeedbackPanel";
 import type { ReviewAttempt } from "../../contracts";
 
 function readAttempt(id: string, api: string): { saved: SavedAttempt | null; review: ReviewAttempt | null; error: string } {
@@ -172,6 +173,8 @@ function SavedAttemptContent({ id, apiUrl }: { id: string; apiUrl: string }) {
         <PlaybackTranscript transcript={review.transcript} positionMs={position} durationMs={duration} ready={canSeek} onSeek={seek} />
       </>}
     </Card>}
+    {review?.deck_id && <FeedbackPanel key={`${normalizeApi(apiUrl)}:${id}:${review.deck_id}:${review.transcript_id || ''}:${review.duration_ms}:${JSON.stringify(review.slide_events)}`}
+      id={id} apiUrl={apiUrl} review={review} pages={deckState.deck?.page_count || (submitted ? saved?.page_count : undefined)} canSeek={canSeek} onSeek={seek} />}
     <Card><Text style={styles.heading}>Saved slide visits</Text>
       <Text style={styles.body}>{aligned ? 'Aligned chronological visits' : 'Recorded navigation'}</Text>
       <Action label="Previous visit" disabled={!canSeek || previousVisit < 0} onPress={() => seek(visits[previousVisit].start_ms)} secondary />

@@ -29,3 +29,11 @@ export function feedbackState(extra = {}) {
     last_output: { status: 'accepted', accepted_count: 1, discarded_count: 0 }, ...extra });
 }
 export const withFeedback = (extra = {}) => wireResult({ transcript_id: transcriptId, feedback_analysis: feedbackState(), ...extra });
+export const selection = { ...provenance, stage: 'coaching', disclosure_version: 'feedback-v1',
+  prompt_digest: 'e'.repeat(64), coaching_prompt_digest: 'f'.repeat(64), token: '1'.repeat(64) };
+export const descriptionSelection = { provider: provenance.provider, project_id: provenance.project_id, model: provenance.model,
+  prompt_version: provenance.prompt_version, schema_version: provenance.schema_version, stage: 'descriptions',
+  disclosure_version: 'feedback-v1', prompt_digest: 'e'.repeat(64), token: '2'.repeat(64) };
+export function absentFeedback(extra = {}) { return feedbackState({ feedback_revision: 0, state: 'absent', stage: null,
+  provenance: null, description_set_id: null, description_revision: null, result: null, last_output: null,
+  created_at: null, updated_at: null, selection, ...extra }); }

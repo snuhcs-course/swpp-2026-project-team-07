@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from .models import Deck, DescriptionSet
 from .services import descriptions as service
 from .services.feedback import FeedbackError, strict_json
+from .services.feedback_config import validate_assertion
 
 BODY_LIMIT = 70 * 1024
 
@@ -34,7 +35,7 @@ def _body(request, edit=False):
     except (FeedbackError, RequestDataTooBig, OSError):
         raise FeedbackError('invalid_request') from None
     allowed = {'description_set_id', 'description_revision', 'descriptions'} if edit else {
-        'description_set_id', 'processing_revision', 'acknowledge_uncertain'}
+        'description_set_id', 'processing_revision', 'acknowledge_uncertain', 'expected_selection'}
     if type(value) is not dict or set(value) - allowed or (edit and set(value) != allowed):
         raise FeedbackError('invalid_request')
     if 'description_set_id' in value:
@@ -44,8 +45,9 @@ def _body(request, edit=False):
         raise FeedbackError('invalid_request')
     if 'acknowledge_uncertain' in value and type(value['acknowledge_uncertain']) is not bool:
         raise FeedbackError('invalid_request')
-    if not edit and set(value) - {'description_set_id'} and 'description_set_id' not in value:
+    if not edit and set(value) - {'description_set_id', 'expected_selection'} and 'description_set_id' not in value:
         raise FeedbackError('invalid_request')
+    validate_assertion(value)
     return value
 
 

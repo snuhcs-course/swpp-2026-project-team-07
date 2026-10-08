@@ -21,7 +21,7 @@ from ..models import Deck, DescriptionSet, DescriptionJob, FeedbackRequest, Feed
 from . import feedback_provider as provider
 from .feedback import (DeckInput, PreparedDeck, FeedbackError, MAX_IMAGE_BYTES, deck_identity,
                        prepare_deck, validated, validate_descriptions)
-from .feedback_config import Selection, QuotaPolicy, prompt_digest, enabled
+from .feedback_config import selection_descriptor, assert_selection, Selection, QuotaPolicy, prompt_digest, enabled
 from .feedback_quota import locked_bucket, reserve, cooldown
 
 logger = logging.getLogger(__name__)
@@ -152,6 +152,7 @@ def generate(deck_id, payload):
         existing = DescriptionSet.objects.get(pk=set_id, deck_id=deck_id)
         with transaction.atomic():
             value = DescriptionSet.objects.select_for_update().get(pk=existing.pk)
+            assert_selection(payload, selection_descriptor(value=value))
             revision = payload.get('processing_revision')
             if revision is not None and revision != value.processing_revision:
                 raise Conflict('stale_revision')
@@ -172,8 +173,11 @@ def generate(deck_id, payload):
             selection.credentials()
             QuotaPolicy.current(selection)
             return _queue(value)
+    assert_selection(payload, selection_descriptor())
     selection = Selection.current()
+    assert_selection(payload, selection_descriptor(selection))
     prepared, snapshot = prepare_saved(deck_id)
+    assert_selection(payload, selection_descriptor())
     return admit_prepared(selection, prepared, snapshot)
 
 
@@ -246,7 +250,7 @@ def public_state(deck_id, value=None, *, absent='absent', source=None):
     if value is None:
         return {'deck_id': str(deck_id), 'description_set_id': None, 'state': absent, 'stage': None,
             'processing_revision': 0, 'description_revision': 0, 'descriptions': None, 'edited': False,
-            'provenance': None, 'created_at': None, 'updated_at': None, 'queued_at': None,
+            'selection': selection_descriptor(), 'provenance': None, 'created_at': None, 'updated_at': None, 'queued_at': None,
             'claimed_at': None, 'submitted_at': None, 'received_at': None, 'completed_at': None,
             'error': safe_error(absent) if absent != 'absent' else None, 'retry_at': None,
             'retry_available': False, 'requires_confirmation': False, 'stale': False, 'available_data': False}
@@ -263,6 +267,7 @@ def public_state(deck_id, value=None, *, absent='absent', source=None):
     except FeedbackError:
         current_scope = False
     return {'deck_id': str(deck_id), 'description_set_id': str(value.pk), 'state': state,
+        'selection': selection_descriptor(value=value),
         'stage': 'descriptions', 'processing_revision': value.processing_revision,
         'description_revision': value.description_revision, 'descriptions': value.descriptions, 'edited': value.edited,
         'provenance': {**Selection.saved(value).scope(), 'origin': 'edited' if value.edited else 'generated' if value.descriptions is not None else None,

@@ -1,4 +1,4 @@
-# AI feedback — checkpoints 1–3
+# AI feedback — checkpoints 1–4
 
 Standalone adapters describe slides and validate at most three suggestions for
 one rehearsal. Checkpoint 2 added durable saved-deck descriptions; checkpoint 3
@@ -7,7 +7,7 @@ parsers, clients and cache reconciliation. Upload and transcription never genera
 feedback. Whisper still saves legacy `feedback=[]`, `feedback_state=disabled`;
 independent coaching is exposed as `feedback_analysis`. Default configuration is
 disabled. Attempt identity, transcription retries and local replay are preserved.
-There are no new feedback screens in this checkpoint.
+Checkpoint 4 adds feedback review/disclosure and description editing within the existing saved-rehearsal screen. No tabs, theme, navigation redesign or provider picker is added.
 
 ## Five-checkpoint ledger
 
@@ -15,13 +15,13 @@ There are no new feedback screens in this checkpoint.
 | --- | --- |
 | 1 — provider adapters and evidence validation | Reviewed/tested local base `f07e55395d2e38eabec7c39ea766f643b2e5c7c1`; user authorized continuation to checkpoint 2. This does not claim human code review. |
 | 2 — durable slide descriptions | Implemented and independently reviewed. Scoped cache, revision-checked edits, durable request/recovery evidence and provider-specific quota reservations; 172 tests passed on PostgreSQL, plus synthetic worker and API/database restart checks. Human inspection remains pending; continuation is now authorized. |
-| 3 — durable rehearsal feedback | Implemented in this bounded writer patch: explicit generation, captured scope, durable dependency/coaching recovery, independent revision/retry/staleness, safe metadata and mobile parsers/clients/cache. Writer checks below/AI-use; runner review and coordinator infrastructure validation pending. |
-| 4 — feedback review UI | Not implemented: disclosure, suggestion cards, editable descriptions, evidence playback and offline caching. |
+| 3 — durable rehearsal feedback | Committed base `e31937b`; coordinator evidence records 219 PostgreSQL tests, 233 mobile tests, worker/API restart and saved-pilot emulator review. These are checkpoint-3 results, not verification of the new UI. |
+| 4 — feedback review UI | Implemented in this bounded patch: scoped disclosure/consent, selection assertion, recovery, plain-Text cards/evidence, revision-checked editing and offline caching. After two review repairs: 270 mobile tests, Android export, Django checks and 229 SQLite tests (18 skips). Renewed independent review/coordinator/human checks pending. |
 | 5 — controlled provider evaluation | Not implemented: compare both providers separately on saved non-confidential pilot inputs and document quality/recovery evidence. |
 
 The user now authorizes **all remaining checkpoints with checks between them**, on
-**one eventual PR**. This bounded writer run implements checkpoint 3 only; the
-coordinator continues to UI/disclosure (4) and controlled evaluation (5). No named
+**one eventual PR**. This bounded writer run implements checkpoint 4 only and stops for coordinator
+inspection. Controlled evaluation (5) remains pending. No named
 owner approval is inferred. New detectors, local Whisper, authentication and public
 deployment remain excluded. The writer does not stage, commit, push or publish. No live
 calls are part of its tests. See [team boundaries](team-work-division.md) and the
@@ -139,7 +139,7 @@ successful empty result. No silent repairs or additional calls occur.
 
 | Setting | Default / accepted values |
 | --- | --- |
-| `FEEDBACK_ENABLED` | `false`; exact `true` permits explicit description generation |
+| `FEEDBACK_ENABLED` | `false`; exact `true` permits explicit description/coaching generation |
 | `FEEDBACK_PROVIDER` | `gemini`; `gemini` or `openai` |
 | `FEEDBACK_GEMINI_MODEL` | `gemini-3.1-flash-lite` |
 | `FEEDBACK_OPENAI_MODEL` | `gpt-6-luna` |
@@ -184,8 +184,8 @@ These are operational input/output bounds, **not** a spending cap or exactly-onc
 guarantee. Checkpoint-2 application reservation units are documented below. The per-I/O timeout plus between-chunk elapsed
 checks is not a hard wall-clock cancellation guarantee. A call interrupted after
 submission may have incurred charges. Checkpoint 2 adds durable description
-deduplication, reservations, recovery and editing revisions. User-facing disclosure,
-consent remain in checkpoint 4; backend rehearsal-feedback retry flows are implemented in checkpoint 3.
+deduplication, reservations, recovery and editing revisions. User-facing disclosure and consent are implemented in checkpoint 4; backend
+rehearsal-feedback retry flows are implemented in checkpoint 3.
 
 Raw-wire response reading is capped **before** the SDK can eagerly read an HTTP
 error body. It checks actual bytes even with a missing/misleading Content-Length,
@@ -445,9 +445,9 @@ coordinator owns real infrastructure/process checks and the final staged review:
    allowlist. Record this separately from SQLite mocks; no process/service changes
    or real infrastructure validation were performed by the writer.
 
-Independent review and coordinator infrastructure checks passed; see the [checkpoint-2 handoff evidence](ai-use.md#2026-10-08--ai-feedback-checkpoint-2-coordinator-handoff). Human inspection remains pending. The current checkpoint-3 patch builds on supplied
-reviewed/tested base `ce16ae1`; checkpoints 4–5 remain pending and are authorized
-with checks between them on the same PR. The runner stages
+Independent review and coordinator infrastructure checks passed; see the [checkpoint-2 handoff evidence](ai-use.md#2026-10-08--ai-feedback-checkpoint-2-coordinator-handoff). Human inspection remains pending. The historical checkpoint-3 patch built on reviewed/tested base `ce16ae1`.
+The checkpoint ledger and checkpoint-4 section above/below give current status;
+checkpoint 5 remains pending, authorized with checks on the same PR. The runner stages
 changes for checks and review; it does not commit, push, create PRs or merge.
 
 
@@ -575,7 +575,62 @@ pending. The runner owns staging/independent review and the coordinator owns:
    failure, independent retry revision conflicts and unchanged synthetic media hashes.
    Verify malicious metadata cannot expose private snapshots/raw/keys.
 
-Android device regression for saved review/offline cache/API switching/replay is
-separate from JavaScript export. Checkpoint-4 UI/disclosure/evidence interactions
-and checkpoint-5 controlled live-provider quality evaluation are pending. This
-writer run does not claim PostgreSQL, worker/process, live-provider or device checks.
+Android device regression is separate from JavaScript export. The historical
+checkpoint-3 coordinator evidence is recorded in AI-use. Checkpoint-4 UI/disclosure/
+evidence is now implemented; its coordinator device/infrastructure validation and
+checkpoint-5 live-provider quality evaluation remain pending.
+
+
+## Checkpoint 4 review and disclosure
+
+The existing SavedAttemptScreen embeds `features/feedback/FeedbackPanel.tsx` and
+`useFeedbackReview.ts`. Validated explicit clients, original-index evidence and the
+existing saved-player controller remain the boundaries. `storage.ts` adds API/attempt
+feedback, API/deck/set descriptions, API/provider/version consent and unresolved
+submission markers in SQLite KV; Whisper revisions/caches and local capture catalogs
+are unchanged. Cache is available immediately; read failures preserve it with a
+notice. Focus/foreground/session identities cancel reads, polling and obsolete
+prompts. Synchronous locks prevent repeated Generate/Retry/Save taps. Every mutation
+refreshes first; timeout and 409 never automatically resubmit. A missing submitted
+outcome requires separate charge acknowledgement. Failed description dependencies
+use their exact set/processing revision, independently of coaching.
+
+The provider/model is visible before generation. First use explains slide images/
+text, descriptions, saved transcript and optional audience context, explicitly
+excluding audio. Continue/Cancel is separate from Whisper consent. A backend
+comparison token covers nonsecret provider/project/model, fixed prompt/schema
+identity and disclosure version; it contains no private input or credentials. Reads
+expose new/saved selection even without results. Mobile includes it on generation;
+configuration mismatch returns 409 before either queue can admit work. Legacy
+explicit callers may omit the optional assertion, without race protection. Saved
+retries retain the original provider/project/model/prompt/schema. See the
+[wire contract](api-contract.md#generation-selection-assertion-and-mobile-feedback-review-checkpoint-4).
+
+Cards retain source/speaker languages, category, cautious observation, action,
+slide/visit/time and expandable quotes. All returned text is inert React Native Text.
+Slide description labels carry captured generated/edited-set origin; historical
+snapshots honestly say unavailable. Origin is stored alongside the captured coaching
+source snapshot, without a schema migration or new provider field. Current set edits
+cannot relabel old quotes. Stale/invalid evidence, absent audio or unknown actual
+pages cannot seek. Valid actions reuse native-clock playback, preserving paused/
+playing intent, backward/simultaneous visits and rapid seek/Pause behavior.
+
+Description controls use validated slide/source identities even when deck metadata
+is unavailable, for both fresh and cached sets. Unknown-page evidence stays disabled.
+The editor preserves the complete set, all IDs and untouched slides; it edits only
+existing fact text and uncertainty. Validation enforces 400-character facts, NUL
+rejection, explained uncertainty and the 64 KiB UTF-8 set bound. Save uses the
+captured revision after refresh. Conflict/timeout retains the draft with Reload/
+Cancel; Reload resumes active-job polling after success or failure only in the current
+focused/foreground session. Keystrokes and Cancel issue no PATCH. An open draft disables generation.
+Saving marks affected feedback stale immediately; explicit regeneration reuses the
+saved transcript. No provider call is needed for editing.
+
+Task-level checks and attribution are in
+[AI-use](ai-use.md#2026-10-08--ai-feedback-checkpoint-4-review-repair).
+All fixtures are synthetic. The coordinator must run PostgreSQL concurrency and
+real API/Redis/worker admission/restart checks with outbound calls blocked, then
+Android emulator disclosure/offline/edit/recovery/evidence flows. Human TalkBack,
+long text/keyboard, physical-phone listening/synchronization and code inspection
+remain pending. Checkpoint 5 live evaluation has not begun. Prior prototype
+attribution remains unchanged; no prototype or other-worktree source was modified.

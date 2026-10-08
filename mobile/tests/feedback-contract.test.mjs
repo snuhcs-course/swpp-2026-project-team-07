@@ -377,3 +377,58 @@ test('a failed new generation keeps old description facts and stale suggestions 
   assert.equal(state.last_output.status, 'all_invalid');
   assert.equal(state.result.evidence_verified, true);
 });
+
+test('stale analysis or retained stale result remains readable but cannot seek', () => {
+  const raw = feedbackState({ state: 'stale', stale: true }); raw.result.stale = true;
+  assert.equal(parse(raw).result.suggestions.length, 1);
+  assert.equal(feedbackSeekTarget(raw, 0, withFeedback(), 2), null);
+  raw.state = 'failed'; raw.stale = false;
+  assert.equal(feedbackSeekTarget(raw, 0, withFeedback(), 2), null);
+});
+
+test('selection assertions permit initial requests but never provider selection or malformed tokens', async () => {
+  const token = 'f'.repeat(64);
+  const { value, calls } = client([json(feedbackState(), 202), json(descriptionState(), 202)]);
+  await value.generateFeedback(attemptId, { expected_selection: token });
+  await value.generateDescriptions(deckId, { expected_selection: token });
+  assert.deepEqual(calls.map(c => JSON.parse(c.init.body)), [{ expected_selection: token }, { expected_selection: token }]);
+  for (const invalid of [null, true, 'F'.repeat(64), 'f'.repeat(63)]) {
+    await assert.rejects(value.generateFeedback(attemptId, { expected_selection: invalid }));
+    await assert.rejects(value.generateDescriptions(deckId, { expected_selection: invalid }));
+  }
+  assert.equal(calls.length, 2);
+});
+
+test('complete description edits enforce UTF-8 64 KiB bound before fetch', async () => {
+  const large = descriptionState().descriptions;
+  large.slides = Array.from({ length: 10 }, (_, i) => ({ ...structuredClone(large.slides[0]), slide_index: i,
+    summary: { text: '語'.repeat(400), uncertain: true, uncertainty: '語'.repeat(400) },
+    key_ideas: Array.from({ length: 5 }, () => ({ text: '語'.repeat(400), uncertain: true, uncertainty: '語'.repeat(400) })),
+    visual_facts: Array.from({ length: 5 }, () => ({ text: '語'.repeat(400), uncertain: true, uncertainty: '語'.repeat(400) })) }));
+  const { value, calls } = client([json(descriptionState())]);
+  await assert.rejects(value.editDescriptions(deckId, { description_set_id: setId, description_revision: 1, descriptions: large }));
+  assert.equal(calls.length, 0);
+});
+
+test('selection and captured origin metadata are bounded, allowlisted, and legacy caches remain readable', async () => {
+  const { selection, descriptionSelection } = await import('./helpers/feedback-fixtures.mjs');
+  const f = feedbackState({ selection: { ...selection, api_key: 'never publish' } });
+  f.result.description_origin = 'generated';
+  assert.equal(parse(f).selection.api_key, undefined); assert.equal(parse(f).result.description_origin, 'generated');
+  assert.equal(parse(feedbackState()).result.description_origin, 'unavailable');
+  assert.equal(parseDescriptionState(descriptionState({ selection: descriptionSelection }), deckId).selection.token, descriptionSelection.token);
+  for (const field of ['token', 'prompt_digest', 'coaching_prompt_digest']) {
+    const invalid = structuredClone(f); invalid.selection[field] = 'bad'; assert.throws(() => parse(invalid));
+  }
+  const invalid = structuredClone(f); invalid.result.description_origin = 'guessed'; assert.throws(() => parse(invalid));
+});
+
+test('description cache reconciliation preserves its own revision and terminal uncertainty', async () => {
+  const { preferDescriptions } = await import('../src/features/feedback/storage.ts');
+  const before = descriptionState({ state: 'submitted', descriptions: null, available_data: false, description_revision: 0 });
+  const uncertain = { ...before, state: 'needs_confirmation', requires_confirmation: true, retry_available: true };
+  assert.equal(preferDescriptions(uncertain, before).state, 'needs_confirmation');
+  assert.equal(preferDescriptions(uncertain, { ...before, processing_revision: 2, state: 'queued' }).state, 'queued');
+  const edited = descriptionState({ description_revision: 2, processing_revision: 2, edited: true });
+  assert.equal(preferDescriptions(edited, descriptionState()).description_revision, 2);
+});

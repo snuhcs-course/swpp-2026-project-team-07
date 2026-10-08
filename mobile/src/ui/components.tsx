@@ -94,17 +94,19 @@ export function Action({
   onPress,
   secondary = false,
   disabled = false,
+  expanded,
 }: {
   label: string;
   onPress: () => void;
   secondary?: boolean;
   disabled?: boolean;
+  expanded?: boolean;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityState={{ disabled }}
+      accessibilityState={{ disabled, ...(expanded !== undefined ? { expanded } : {}) }}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => ({

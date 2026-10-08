@@ -43,6 +43,7 @@ beforeEach(() => {
   files.clear(); network.requests.length = 0; network.respond = respond;
   for (const kind of ['attempt', 'media-audio']) removeStored(reviewKey(api, kind, attemptId));
   for (const kind of ['deck', 'history', 'media-pdf']) removeStored(reviewKey(api, kind, deckId));
+  for (const key of ['attempt:' + attemptId, 'pending:' + attemptId, 'deck:' + deckId, 'descriptions:' + deckId + ':33333333-3333-4333-8333-333333333333', 'consent:gemini:feedback-v1', 'consent:openai:feedback-v1']) removeStored(`feedback:v1:${encodeURIComponent(api)}:${key}`);
   removeStored(`analysis:v1:${encodeURIComponent(api)}:${attemptId}`); removeStored(`attempt:${attemptId}`);
 });
 
@@ -827,3 +828,611 @@ for (const leave of ['background', 'navigation', 'API change']) {
     } finally { await tick(() => tree.unmount()); }
   });
 }
+
+// Checkpoint 4: synthetic feedback, real saved screen and client; no paid transport.
+const feedbackFixtures = await import('./helpers/feedback-fixtures.mjs');
+function feedbackNetwork(initial = feedbackFixtures.absentFeedback()) {
+  let current = initial;
+  network.respond = (url, init) => {
+    if (url.includes('/feedback/')) {
+      if (init.method === 'POST') current = feedbackFixtures.feedbackState({ selection: feedbackFixtures.selection });
+      return response(200, current);
+    }
+    if (url.includes('/descriptions/')) return response(200, feedbackFixtures.descriptionState({ selection: feedbackFixtures.descriptionSelection }));
+    if (url.includes('/attempts/')) return response(200, feedbackFixtures.withFeedback({ feedback_analysis: current }));
+    return respond(url);
+  };
+}
+const paidRequests = () => network.requests.filter(r => r.method === 'POST');
+
+test('feedback disclosure Cancel and obsolete Continue make no request; same-tick Generate/Continue submit once', async () => {
+  seed(feedbackFixtures.withFeedback({ feedback_analysis: feedbackFixtures.absentFeedback() })); feedbackNetwork();
+  const tree = await mount();
+  try {
+    const generate = action(tree, 'Generate feedback'); assert.ok(generate);
+    await tick(() => { generate.props.onPress(); generate.props.onPress(); });
+    assert.match(text(tree), /slide images\/text, descriptions, the saved transcript and optional audience context/);
+    assert.match(text(tree), /does not send audio/);
+    const obsolete = action(tree, 'Continue feedback').props.onPress;
+    await tick(() => action(tree, 'Cancel feedback').props.onPress());
+    assert.equal(paidRequests().length, 0);
+    await tick(() => action(tree, 'Generate feedback').props.onPress());
+    await tick(obsolete);
+    assert.equal(paidRequests().length, 0); assert.ok(action(tree, 'Continue feedback'));
+    const proceed = action(tree, 'Continue feedback').props.onPress;
+    await tick(() => { proceed(); proceed(); });
+    assert.equal(paidRequests().length, 1);
+    assert.deepEqual(JSON.parse(paidRequests()[0].body), { expected_selection: feedbackFixtures.selection.token });
+    assert.match(text(tree), /Synthetic suggestion/); assert.match(text(tree), /Hello, 안녕!/);
+    assert.equal(playback.played, 0);
+  } finally { await tick(() => tree.unmount()); }
+});
+
+test('feedback description Cancel is local and a conflicted save retains its draft and disables generation', async () => {
+  seed(feedbackFixtures.withFeedback()); feedbackNetwork(feedbackFixtures.feedbackState({ selection: feedbackFixtures.selection }));
+  const tree = await mount();
+  try {
+    await tick(() => action(tree, 'Show slide 1 description').props.onPress());
+    await tick(() => action(tree, 'Edit slide 1 description').props.onPress());
+    const input = () => tree.root.findAllByType('input').find(n => n.props.accessibilityLabel === 'Summary text');
+    await tick(() => input().props.onChangeText('My unsaved correction'));
+    assert.equal(network.requests.filter(r => r.method === 'PATCH').length, 0);
+    await tick(() => action(tree, 'Cancel description edit').props.onPress());
+    assert.equal(network.requests.filter(r => r.method === 'PATCH').length, 0);
+    await tick(() => action(tree, 'Edit slide 1 description').props.onPress());
+    await tick(() => input().props.onChangeText('Keep this draft'));
+    const previous = network.respond;
+    network.respond = (url, init) => init.method === 'PATCH' ? response(409, { error: { code: 'stale_description_revision', message: 'private must not display' } }) : previous(url, init);
+    const save = action(tree, 'Save description').props.onPress;
+    await tick(() => { save(); save(); });
+    assert.equal(network.requests.filter(r => r.method === 'PATCH').length, 1);
+    assert.equal(input().props.value, 'Keep this draft');
+    assert.match(text(tree), /draft is retained/); assert.doesNotMatch(text(tree), /private must not display/);
+    assert.ok(action(tree, 'Reload descriptions')); assert.equal(paidRequests().length, 0);
+  } finally { await tick(() => tree.unmount()); }
+});
+
+const feedbackStorage = await import('../src/features/feedback/storage.ts');
+const initialFeedback = () => feedbackFixtures.absentFeedback();
+function startFeedback() { const f = initialFeedback(); seed(feedbackFixtures.withFeedback({ feedback_analysis: f })); feedbackNetwork(f); }
+
+for (const leave of ['background', 'navigation', 'API change', 'attempt change']) {
+  test(`feedback disclosure callback is invalid after ${leave}; return never generates or plays`, async () => {
+    startFeedback(); const tree = await mount();
+    try {
+      await tick(() => action(tree, 'Generate feedback').props.onPress());
+      const oldContinue = action(tree, 'Continue feedback').props.onPress;
+      await tick(() => {
+        if (leave === 'background') backgroundApp('background');
+        else if (leave === 'navigation') setFocused(false);
+        else tree.update(React.createElement(SavedAttemptScreen, { id: leave === 'attempt change' ? '99999999-9999-4999-8999-999999999999' : attemptId,
+          apiUrl: leave === 'API change' ? 'http://other-feedback.invalid/api' : api }));
+      });
+      await tick(oldContinue);
+      if (leave === 'background') await tick(() => backgroundApp('active'));
+      if (leave === 'navigation') await tick(() => setFocused(true));
+      await tick(oldContinue);
+      assert.equal(paidRequests().length, 0); assert.equal(playback.played, 0);
+      assert.equal(feedbackStorage.hasFeedbackConsent(api, feedbackFixtures.selection), false);
+    } finally { await tick(() => tree.unmount()); }
+  });
+}
+
+test('feedback consent persists by normalized API/provider/version independently of Whisper', async () => {
+  const whisperConsentBefore = readStored('analysis-consent:openai:v1');
+  startFeedback(); let tree = await mount();
+  await tick(() => action(tree, 'Generate feedback').props.onPress());
+  await tick(() => action(tree, 'Continue feedback').props.onPress());
+  await tick(() => tree.unmount());
+  assert.equal(feedbackStorage.hasFeedbackConsent(api + '/', feedbackFixtures.selection), true);
+  assert.equal(feedbackStorage.hasFeedbackConsent('http://other.invalid/api', feedbackFixtures.selection), false);
+  assert.equal(feedbackStorage.hasFeedbackConsent(api, { ...feedbackFixtures.selection, provider: 'openai' }), false);
+  assert.equal(feedbackStorage.hasFeedbackConsent(api, { ...feedbackFixtures.selection, disclosure_version: 'feedback-v2' }), false);
+  assert.equal(readStored('analysis-consent:openai:v1'), whisperConsentBefore);
+  // A fresh attempt at the same API reuses provider consent without a new prompt.
+  const id = '99999999-9999-4999-8999-999999999999';
+  const f = initialFeedback(); f.attempt_id = id;
+  saveHistory(api, deck, [parseReview(feedbackFixtures.withFeedback({ attempt_id: id, feedback_analysis: f }), id, api, deck)]);
+  network.respond = (url, init) => url.includes('/feedback/') ? response(init.method === 'POST' ? 202 : 200, f) : url.includes('/descriptions/') ?
+    response(200, feedbackFixtures.descriptionState({ selection: feedbackFixtures.descriptionSelection })) :
+    url.includes('/attempts/') ? response(200, feedbackFixtures.withFeedback({ attempt_id: id, feedback_analysis: f })) : respond(url);
+  await tick(() => { tree = create(React.createElement(SavedAttemptScreen, { id, apiUrl: api + '/' })); });
+  try {
+    await tick(() => action(tree, 'Generate feedback').props.onPress());
+    assert.equal(action(tree, 'Continue feedback'), undefined); assert.equal(paidRequests().length, 2);
+  } finally { await tick(() => tree.unmount()); removeStored(feedbackStorage.feedbackKey(api, 'attempt', id)); removeStored(reviewKey(api, 'attempt', id)); }
+});
+
+test('provider change while disclosure is open requires another explicit generation action', async () => {
+  startFeedback(); const tree = await mount();
+  try {
+    await tick(() => action(tree, 'Generate feedback').props.onPress());
+    const oldContinue = action(tree, 'Continue feedback').props.onPress;
+    const selection = { ...feedbackFixtures.selection, provider: 'openai', project_id: 'other-project', model: 'synthetic-model', token: '3'.repeat(64) };
+    feedbackNetwork(initialFeedback());
+    const prior = network.respond;
+    network.respond = (url, init) => url.includes('/feedback/') ? response(200, initialFeedbackWithSelection(selection)) : prior(url, init);
+    await tick(oldContinue);
+    assert.equal(paidRequests().length, 0); assert.match(text(tree), /Selection or status changed/);
+    assert.equal(feedbackStorage.hasFeedbackConsent(api, feedbackFixtures.selection), false);
+    await tick(() => action(tree, 'Generate feedback').props.onPress());
+    assert.match(text(tree), /OpenAI \(synthetic-model\)/); assert.ok(action(tree, 'Cancel feedback'));
+  } finally { await tick(() => tree.unmount()); }
+});
+function initialFeedbackWithSelection(selection) { return feedbackFixtures.absentFeedback({ selection }); }
+
+test('selection mismatch refreshes after 409 but never automatically resubmits or shows private error', async () => {
+  startFeedback(); feedbackStorage.saveFeedbackConsent(api, feedbackFixtures.selection);
+  const tree = await mount();
+  try {
+    const previous = network.respond; let mismatch = false;
+    const changed = { ...feedbackFixtures.selection, token: '4'.repeat(64), model: 'changed-model' };
+    network.respond = (url, init) => {
+      if (url.includes('/feedback/') && init.method === 'POST') { mismatch = true; return response(409, { error: { code: 'selection_mismatch', message: 'secret provider body' } }); }
+      if (url.includes('/feedback/') && mismatch) return response(200, initialFeedbackWithSelection(changed));
+      return previous(url, init);
+    };
+    await tick(() => action(tree, 'Generate feedback').props.onPress());
+    assert.equal(paidRequests().length, 1); assert.match(text(tree), /choose generation again/);
+    assert.match(text(tree), /changed-model/); assert.doesNotMatch(text(tree), /secret provider body/);
+    assert.equal(feedbackStorage.readPending(api, attemptId), null);
+  } finally { await tick(() => tree.unmount()); }
+});
+
+test('timed-out feedback requires refresh and a separate charge acknowledgement before another POST', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  startFeedback(); feedbackStorage.saveFeedbackConsent(api, feedbackFixtures.selection);
+  const previous = network.respond;
+  network.respond = (url, init) => init.method === 'POST' ? new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(Error('timeout')))) : previous(url, init);
+  let tree = await mount();
+  try {
+    await tick(() => action(tree, 'Generate feedback').props.onPress());
+    assert.equal(paidRequests().length, 1);
+    await tick(() => t.mock.timers.tick(60_001));
+    assert.match(text(tree), /outcome is unconfirmed/); assert.equal(paidRequests().length, 1);
+    assert.equal(feedbackStorage.readPending(api, attemptId).kind, 'feedback');
+    await tick(() => tree.unmount()); tree = await mount();
+    await tick(() => action(tree, 'Generate feedback').props.onPress());
+    assert.match(text(tree), /Another request may incur another charge/);
+    await tick(() => action(tree, 'Cancel feedback').props.onPress()); assert.equal(paidRequests().length, 1);
+    feedbackNetwork();
+    await tick(() => action(tree, 'Generate feedback').props.onPress());
+    const next = action(tree, 'Continue feedback').props.onPress;
+    await tick(() => { next(); next(); });
+    assert.equal(paidRequests().length, 2); assert.equal(feedbackStorage.readPending(api, attemptId), null);
+    assert.ok(network.requests.every(r => !r.url.endsWith('/process/')));
+  } finally { await tick(() => tree.unmount()); }
+});
+
+test('failed description dependency retries its exact set/revision with its own acknowledgement', async () => {
+  const dependency = { ...feedbackFixtures.descriptionState({ state: 'needs_confirmation', descriptions: null, available_data: false,
+    description_revision: 0, processing_revision: 4, requires_confirmation: true, retry_available: true }), retry_action: 'generate_descriptions' };
+  const f = feedbackFixtures.feedbackState({ selection: feedbackFixtures.selection, state: 'waiting_descriptions', stage: 'descriptions',
+    description_revision: null, result: null, last_output: null, dependency });
+  const d = feedbackFixtures.descriptionState({ ...dependency, selection: feedbackFixtures.descriptionSelection });
+  seed(feedbackFixtures.withFeedback({ feedback_analysis: f })); feedbackNetwork(f);
+  const previous = network.respond;
+  network.respond = (url, init) => url.includes('/descriptions/') ? response(200, d) : previous(url, init);
+  feedbackStorage.saveFeedbackConsent(api, feedbackFixtures.selection);
+  const tree = await mount();
+  try {
+    await tick(() => action(tree, 'Retry slide descriptions').props.onPress());
+    assert.match(text(tree), /Another request may incur another charge/); assert.equal(paidRequests().length, 0);
+    const next = action(tree, 'Continue feedback').props.onPress;
+    await tick(() => { next(); next(); });
+    assert.equal(paidRequests().length, 1); assert.match(paidRequests()[0].url, /descriptions\/generate\/$/);
+    assert.deepEqual(JSON.parse(paidRequests()[0].body), { description_set_id: feedbackFixtures.setId, processing_revision: 4,
+      acknowledge_uncertain: true, expected_selection: feedbackFixtures.descriptionSelection.token });
+    assert.equal(playback.played, 0);
+  } finally { await tick(() => tree.unmount()); }
+});
+
+test('cached partial feedback and descriptions survive offline restart and malformed feedback', async () => {
+  const f = feedbackFixtures.feedbackState({ selection: feedbackFixtures.selection });
+  f.result.status = 'partial'; f.result.discarded_count = 1; f.last_output = { status: 'partial', accepted_count: 1, discarded_count: 1 };
+  seed(feedbackFixtures.withFeedback({ feedback_analysis: f })); feedbackNetwork(f);
+  let tree = await mount(); await tick(() => tree.unmount());
+  network.respond = () => { throw Error('offline'); }; tree = await mount();
+  try {
+    assert.match(text(tree), /Partial feedback/); assert.match(text(tree), /Synthetic suggestion/); assert.match(text(tree), /may be stale/);
+    await tick(() => action(tree, 'Show slide 1 description').props.onPress()); assert.match(text(tree), /Synthetic slide 0/);
+    assert.equal(action(tree, 'Review evidence 1').props.disabled, true); // no media
+    network.respond = () => response(200, { bad: '<script>private malformed</script>' });
+    await tick(() => action(tree, 'Refresh feedback').props.onPress());
+    assert.match(text(tree), /Synthetic suggestion/); assert.match(text(tree), /Hello, 안녕!/);
+    assert.doesNotMatch(text(tree), /private malformed/); assert.equal(getSavedAttempt(attemptId), null);
+    assert.equal(paidRequests().length, 0);
+  } finally { await tick(() => tree.unmount()); }
+});
+
+for (const source of ['fresh', 'cached']) {
+  test(`${source} descriptions remain readable and editable when deck metadata fails; evidence stays disabled`, async () => {
+    seed(feedbackFixtures.withFeedback()); feedbackNetwork(feedbackFixtures.feedbackState({ selection: feedbackFixtures.selection }));
+    removeStored(reviewKey(api, 'deck', deckId));
+    if (source === 'cached') feedbackStorage.saveDescriptions(api, feedbackFixtures.descriptionState({ selection: feedbackFixtures.descriptionSelection }));
+    const previous = network.respond;
+    network.respond = (url, init) => {
+      if (url.endsWith(`/decks/${deckId}/`)) return response(503, {});
+      if (source === 'cached' && url.includes('/descriptions/')) throw Error('offline');
+      return previous(url, init);
+    };
+    const tree = await mount();
+    try {
+      assert.equal(readStored(reviewKey(api, 'deck', deckId)), null);
+      assert.equal(feedbackStorage.readDescriptions(api, deckId, feedbackFixtures.setId).descriptions.slides.length, 2);
+      assert.ok(action(tree, 'Show slide 1 description'));
+      assert.ok(action(tree, 'Show slide 2 description'));
+      await tick(() => action(tree, 'Show slide 1 description').props.onPress());
+      assert.match(text(tree), /Synthetic slide 0/); assert.match(text(tree), /Generated · revision 1/);
+      await tick(() => action(tree, 'Edit slide 1 description').props.onPress());
+      const input = tree.root.findAllByType('input').find(n => n.props.accessibilityLabel === 'Summary text');
+      const beforeEdit = network.requests.length;
+      await tick(() => input.props.onChangeText('Unsaved synthetic correction'));
+      await tick(() => action(tree, 'Cancel description edit').props.onPress());
+      assert.equal(network.requests.length, beforeEdit);
+      assert.match(text(tree), /Synthetic slide 0/); assert.doesNotMatch(text(tree), /Unsaved synthetic correction/);
+      await tick(() => action(tree, 'Show slide 2 description').props.onPress());
+      assert.match(text(tree), /Synthetic slide 1/);
+      await tick(() => action(tree, 'Download audio for offline review').props.onPress());
+      assert.equal(action(tree, 'Play').props.disabled, false);
+      assert.equal(action(tree, 'Review evidence 1').props.disabled, true);
+      await tick(() => action(tree, 'Review evidence 1').props.onPress());
+      assert.deepEqual(playback.seeks, []); assert.equal(playback.played, 0);
+      assert.match(text(tree), /Hello, 안녕!/); assert.equal(getSavedAttempt(attemptId), null);
+      assert.ok(network.requests.every(r => r.method === 'GET'));
+    } finally { await tick(() => tree.unmount()); }
+  });
+}
+
+test('description edit validates uncertainty locally, preserves other slides and marks feedback stale without Whisper', async () => {
+  let f = feedbackFixtures.feedbackState({ selection: feedbackFixtures.selection }), d = feedbackFixtures.descriptionState({ selection: feedbackFixtures.descriptionSelection });
+  seed(feedbackFixtures.withFeedback({ feedback_analysis: f })); feedbackStorage.saveFeedbackConsent(api, feedbackFixtures.selection);
+  network.respond = (url, init) => {
+    if (url.includes('/descriptions/')) {
+      if (init.method === 'PATCH') {
+        d = { ...d, description_revision: 2, processing_revision: 2, descriptions: JSON.parse(init.body).descriptions, edited: true,
+          updated_at: '2026-10-08T00:00:04Z', provenance: { ...d.provenance, origin: 'edited' } };
+        f = { ...f, state: 'stale', stale: true, retry_available: true, updated_at: d.updated_at, result: { ...f.result, stale: true } };
+      }
+      return response(200, d);
+    }
+    if (url.includes('/feedback/')) return response(200, f);
+    if (url.includes('/attempts/')) return response(200, feedbackFixtures.withFeedback({ feedback_analysis: f }));
+    return respond(url);
+  };
+  const tree = await mount();
+  try {
+    await tick(() => action(tree, 'Show slide 1 description').props.onPress());
+    await tick(() => action(tree, 'Edit slide 1 description').props.onPress());
+    const input = label => tree.root.findAllByType('input').find(n => n.props.accessibilityLabel === label);
+    for (const invalid of ['', 'x'.repeat(401), 'bad\u0000text']) {
+      await tick(() => input('Summary text').props.onChangeText(invalid));
+      await tick(() => action(tree, 'Save description').props.onPress());
+      assert.equal(network.requests.filter(r => r.method === 'PATCH').length, 0);
+    }
+    await tick(() => input('Summary text').props.onChangeText('수정한 설명'));
+    await tick(() => action(tree, 'Summary: certain — toggle').props.onPress());
+    await tick(() => action(tree, 'Save description').props.onPress());
+    assert.equal(network.requests.filter(r => r.method === 'PATCH').length, 0);
+    await tick(() => input('Summary uncertainty explanation').props.onChangeText('글자가 흐립니다'));
+    await tick(() => action(tree, 'Save description').props.onPress());
+    const patches = network.requests.filter(r => r.method === 'PATCH'); assert.equal(patches.length, 1);
+    const payload = JSON.parse(patches[0].body);
+    assert.equal(payload.description_revision, 1); assert.equal(payload.description_set_id, feedbackFixtures.setId);
+    assert.deepEqual(payload.descriptions.slides[1], feedbackFixtures.descriptions.slides[1]);
+    assert.equal(payload.descriptions.slides[0].source_id, feedbackFixtures.sources[0].source_id);
+    assert.match(text(tree), /Stale suggestions/); assert.equal(action(tree, 'Review evidence 1').props.disabled, true);
+    assert.equal(paidRequests().length, 0); assert.match(text(tree), /수정한 설명/);
+    await tick(() => action(tree, 'Regenerate feedback').props.onPress());
+    assert.equal(paidRequests().length, 1); assert.match(paidRequests()[0].url, /feedback\/generate\/$/);
+    assert.ok(network.requests.every(r => !r.url.endsWith('/process/')));
+  } finally { await tick(() => tree.unmount()); }
+});
+
+for (const playing of [false, true]) {
+  test(`evidence uses existing player, preserves ${playing ? 'playing' : 'paused'} intent and rapid seek/Pause wins`, async () => {
+    playback.eventMode = true; seed(feedbackFixtures.withFeedback()); feedbackNetwork(feedbackFixtures.feedbackState({ selection: feedbackFixtures.selection }));
+    const tree = await mount(); let finish;
+    try {
+      assert.equal(action(tree, 'Review evidence 1').props.disabled, true);
+      await tick(() => action(tree, 'Download audio for offline review').props.onPress());
+      assert.equal(action(tree, 'Review evidence 1').props.disabled, false);
+      if (playing) await tick(() => action(tree, 'Play').props.onPress());
+      await tick(() => action(tree, 'Review evidence 1').props.onPress());
+      assert.equal(players.at(-1).currentStatus.playing, playing);
+      assert.deepEqual(playback.seeks, [0]);
+      if (playing) {
+        playback.wait = new Promise(resolve => { finish = resolve; });
+        await tick(() => { action(tree, 'Review evidence 1').props.onPress(); action(tree, 'Review evidence 1').props.onPress(); });
+        await tick(() => action(tree, 'Pause').props.onPress());
+        const played = playback.played;
+        await tick(() => finish()); assert.equal(playback.played, played); assert.equal(players.at(-1).currentStatus.playing, false);
+      }
+      assert.equal(paidRequests().length, 0);
+    } finally { finish?.(); await tick(() => tree.unmount()); }
+  });
+}
+
+test('feedback polling only runs focused/foregrounded and ignores a cancelled GET', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const f = feedbackFixtures.feedbackState({ selection: feedbackFixtures.selection, state: 'queued', result: null, last_output: null });
+  seed(feedbackFixtures.withFeedback({ feedback_analysis: f })); feedbackNetwork(f);
+  const tree = await mount(); let finish;
+  try {
+    const previous = network.respond;
+    network.respond = (url, init) => url.includes('/feedback/') ? new Promise(resolve => { finish = resolve; }) : previous(url, init);
+    await tick(() => t.mock.timers.tick(2000));
+    const request = network.requests.findLast(r => r.url.includes('/feedback/'));
+    await tick(() => backgroundApp('background')); assert.equal(request.signal.aborted, true);
+    const count = network.requests.length;
+    await tick(() => t.mock.timers.tick(10_000)); assert.equal(network.requests.length, count);
+    await tick(() => finish(response(200, feedbackFixtures.feedbackState({ selection: feedbackFixtures.selection }))));
+    assert.doesNotMatch(text(tree), /Synthetic suggestion/);
+    feedbackNetwork(f); await tick(() => backgroundApp('active'));
+    assert.equal(paidRequests().length, 0); assert.equal(playback.played, 0);
+    await tick(() => setFocused(false));
+    const afterBlur = network.requests.length;
+    await tick(() => t.mock.timers.tick(10_000)); assert.equal(network.requests.length, afterBlur);
+  } finally { await tick(() => tree.unmount()); }
+});
+
+for (const reload of ['success', 'failure']) {
+  test(`feedback polling resumes after failed Save preflight, Reload ${reload} and Cancel`, async t => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const queued = feedbackFixtures.feedbackState({ selection: feedbackFixtures.selection, state: 'queued', result: null, last_output: null });
+    seed(feedbackFixtures.withFeedback({ feedback_analysis: queued })); feedbackNetwork(queued);
+    const tree = await mount();
+    try {
+      await tick(() => action(tree, 'Show slide 1 description').props.onPress());
+      await tick(() => action(tree, 'Edit slide 1 description').props.onPress());
+      const input = () => tree.root.findAllByType('input').find(n => n.props.accessibilityLabel === 'Summary text');
+      await tick(() => input().props.onChangeText('Retained synthetic draft'));
+      const previous = network.respond;
+      network.respond = (url, init) => { if (url.includes('/descriptions/')) throw Error('offline'); return previous(url, init); };
+      await tick(() => action(tree, 'Save description').props.onPress());
+      assert.ok(action(tree, 'Reload descriptions')); assert.equal(input().props.value, 'Retained synthetic draft');
+      assert.equal(action(tree, 'Save description').props.disabled, true);
+      if (reload === 'success') network.respond = previous;
+      const reloadAction = action(tree, 'Reload descriptions').props.onPress;
+      const beforeReload = network.requests.length;
+      await tick(() => { reloadAction(); reloadAction(); });
+      assert.equal(network.requests.length, beforeReload + 1);
+      assert.equal(input().props.value, reload === 'success' ? 'Synthetic slide 0' : 'Retained synthetic draft');
+      const beforeCancel = network.requests.length;
+      await tick(() => action(tree, 'Cancel description edit').props.onPress());
+      assert.equal(network.requests.length, beforeCancel);
+      network.respond = previous;
+      const feedbackReads = () => network.requests.filter(r => r.url.endsWith('/feedback/') && r.method === 'GET').length;
+      const beforePoll = feedbackReads();
+      await tick(() => t.mock.timers.tick(2000));
+      assert.equal(feedbackReads(), beforePoll + 1);
+      assert.match(text(tree), /Queued/);
+
+      await tick(() => backgroundApp('background'));
+      const afterBackground = network.requests.length;
+      await tick(() => t.mock.timers.tick(10_000)); assert.equal(network.requests.length, afterBackground);
+      await tick(() => backgroundApp('active'));
+      await tick(() => setFocused(false));
+      const afterBlur = network.requests.length;
+      await tick(() => t.mock.timers.tick(10_000)); assert.equal(network.requests.length, afterBlur);
+      await tick(() => setFocused(true));
+      feedbackNetwork(feedbackFixtures.feedbackState({ selection: feedbackFixtures.selection, updated_at: '2026-10-08T00:00:05Z' }));
+      await tick(() => t.mock.timers.tick(2000));
+      assert.match(text(tree), /Completed/); assert.match(text(tree), /Synthetic suggestion/);
+      const afterComplete = network.requests.length;
+      await tick(() => t.mock.timers.tick(10_000)); assert.equal(network.requests.length, afterComplete);
+      assert.equal(playback.played, 0); assert.ok(network.requests.every(r => r.method === 'GET'));
+    } finally { await tick(() => tree.unmount()); }
+  });
+}
+
+test('older feedback GET cannot overwrite newer POST state at the same Whisper revision', async () => {
+  startFeedback(); feedbackStorage.saveFeedbackConsent(api, feedbackFixtures.selection);
+  const tree = await mount(); let finish;
+  try {
+    const previous = network.respond;
+    network.respond = (url, init) => url.includes('/feedback/') && init.method === 'GET' ? new Promise(resolve => { finish = resolve; }) : previous(url, init);
+    await tick(() => action(tree, 'Refresh feedback').props.onPress());
+    const read = network.requests.findLast(r => r.url.includes('/feedback/'));
+    feedbackNetwork(); await tick(() => action(tree, 'Generate feedback').props.onPress());
+    assert.equal(read.signal.aborted, true); assert.match(text(tree), /Synthetic suggestion/);
+    await tick(() => finish(response(200, initialFeedback())));
+    assert.match(text(tree), /Synthetic suggestion/); assert.equal(paidRequests().length, 1);
+    assert.equal(feedbackStorage.readFeedback(api, attemptId).feedback_revision, 1);
+  } finally { await tick(() => tree.unmount()); }
+});
+
+test('late generation after leaving cannot publish; a returning read reconciles before another action', async () => {
+  startFeedback(); feedbackStorage.saveFeedbackConsent(api, feedbackFixtures.selection);
+  const previous = network.respond; let finish;
+  network.respond = (url, init) => init.method === 'POST' ? new Promise(resolve => { finish = resolve; }) : previous(url, init);
+  const tree = await mount();
+  try {
+    await tick(() => action(tree, 'Generate feedback').props.onPress());
+    await tick(() => setFocused(false));
+    assert.equal(paidRequests()[0].signal.aborted, true);
+    await tick(() => finish(response(200, feedbackFixtures.feedbackState({ selection: feedbackFixtures.selection }))));
+    assert.doesNotMatch(text(tree), /Synthetic suggestion/); assert.ok(feedbackStorage.readPending(api, attemptId));
+    feedbackNetwork(feedbackFixtures.feedbackState({ selection: feedbackFixtures.selection }));
+    await tick(() => setFocused(true));
+    assert.match(text(tree), /Synthetic suggestion/); assert.equal(feedbackStorage.readPending(api, attemptId), null);
+    assert.equal(paidRequests().length, 1); assert.equal(playback.played, 0);
+  } finally { await tick(() => tree.unmount()); }
+});
+
+test('description preflight conflict and timed-out PATCH keep drafts until explicit Reload or Cancel', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  seed(feedbackFixtures.withFeedback()); feedbackNetwork(feedbackFixtures.feedbackState({ selection: feedbackFixtures.selection }));
+  const tree = await mount();
+  try {
+    await tick(() => action(tree, 'Show slide 1 description').props.onPress());
+    await tick(() => action(tree, 'Edit slide 1 description').props.onPress());
+    const input = () => tree.root.findAllByType('input').find(n => n.props.accessibilityLabel === 'Summary text');
+    await tick(() => input().props.onChangeText('Keep on preflight conflict'));
+    const previous = network.respond;
+    const changed = feedbackFixtures.descriptionState({ description_revision: 2, processing_revision: 2, edited: true,
+      selection: feedbackFixtures.descriptionSelection, updated_at: '2026-10-08T00:00:05Z' });
+    network.respond = (url, init) => url.includes('/descriptions/') ? response(200, changed) : previous(url, init);
+    await tick(() => action(tree, 'Save description').props.onPress());
+    assert.equal(network.requests.filter(r => r.method === 'PATCH').length, 0); assert.equal(input().props.value, 'Keep on preflight conflict');
+    await tick(() => action(tree, 'Reload descriptions').props.onPress());
+    assert.equal(input().props.value, 'Synthetic slide 0');
+    await tick(() => input().props.onChangeText('Keep after timeout'));
+    const get = network.respond;
+    network.respond = (url, init) => init.method === 'PATCH' ? new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(Error('timeout')))) : get(url, init);
+    await tick(() => action(tree, 'Save description').props.onPress());
+    await tick(() => t.mock.timers.tick(60_001));
+    assert.equal(input().props.value, 'Keep after timeout'); assert.match(text(tree), /draft is retained/);
+    assert.equal(action(tree, 'Save description').props.disabled, true);
+    await tick(() => action(tree, 'Cancel description edit').props.onPress());
+    assert.equal(network.requests.filter(r => r.method === 'PATCH').length, 1); assert.equal(paidRequests().length, 0);
+  } finally { await tick(() => tree.unmount()); }
+});
+
+for (const kind of ['empty', 'all_invalid', 'retained']) {
+  test(`feedback ${kind} status is truthful and cannot hide transcript or audio controls`, async () => {
+    const f = feedbackFixtures.feedbackState({ selection: feedbackFixtures.selection });
+    if (kind === 'retained') { f.feedback_revision = 2; f.result.stale = true; }
+    else { f.result.suggestions = []; f.result.accepted_count = 0; f.result.status = kind;
+      f.result.message = kind === 'empty' ? 'No supported suggestions.' : null; f.result.discarded_count = kind === 'empty' ? 0 : 1; }
+    f.last_output = { status: kind === 'empty' ? 'empty' : 'all_invalid', accepted_count: 0, discarded_count: kind === 'empty' ? 0 : 1 };
+    if (kind !== 'empty') { f.state = 'failed'; f.retry_available = true; f.error = { code: 'unsupported_feedback', message: 'private unsupported body' }; }
+    seed(feedbackFixtures.withFeedback({ feedback_analysis: f })); feedbackNetwork(f); const tree = await mount();
+    try {
+      assert.match(text(tree), /Hello, 안녕!/); assert.ok(action(tree, 'Download audio for offline review'));
+      if (kind === 'empty') assert.match(text(tree), /No supported suggestions/);
+      else { assert.doesNotMatch(text(tree), /No supported suggestions|private unsupported body/); assert.match(text(tree), /Latest generation failed/); }
+      if (kind === 'retained') { assert.match(text(tree), /Stale suggestions/); assert.match(text(tree), /Synthetic suggestion/); }
+      assert.equal(paidRequests().length, 0);
+    } finally { await tick(() => tree.unmount()); }
+  });
+}
+
+test('unknown page count or stale/invalid evidence cannot seek even with loaded audio', async () => {
+  seed(feedbackFixtures.withFeedback()); feedbackNetwork(feedbackFixtures.feedbackState({ selection: feedbackFixtures.selection }));
+  removeStored(reviewKey(api, 'deck', deckId));
+  const previous = network.respond;
+  network.respond = (url, init) => url.endsWith(`/decks/${deckId}/`) ? response(503, {}) : previous(url, init);
+  const tree = await mount();
+  try {
+    await tick(() => action(tree, 'Download audio for offline review').props.onPress());
+    assert.equal(action(tree, 'Play').props.disabled, false); assert.equal(action(tree, 'Review evidence 1').props.disabled, true);
+    const stale = feedbackFixtures.feedbackState({ selection: feedbackFixtures.selection, state: 'stale', stale: true, retry_available: true }); stale.result.stale = true;
+    feedbackNetwork(stale); await tick(() => action(tree, 'Refresh').props.onPress());
+    await tick(() => action(tree, 'Refresh feedback').props.onPress());
+    assert.equal(action(tree, 'Review evidence 1').props.disabled, true); assert.deepEqual(playback.seeks, []);
+    const invalid = feedbackFixtures.feedbackState(); invalid.result.suggestions[0].word_start = 90;
+    feedbackNetwork(invalid); await tick(() => action(tree, 'Refresh feedback').props.onPress());
+    assert.equal(action(tree, 'Review evidence 1').props.disabled, true); assert.match(text(tree), /Hello, 안녕!/);
+  } finally { await tick(() => tree.unmount()); }
+});
+
+test('feedback cache write failure keeps received suggestions in memory and never creates a local capture', async () => {
+  startFeedback(); const tree = await mount();
+  try {
+    sqliteFaults.before = (op, sql, args) => { if (op === 'run' && String(args[0]).includes('feedback:v1:')) throw Error('disk full'); };
+    feedbackNetwork(feedbackFixtures.feedbackState({ selection: feedbackFixtures.selection }));
+    await tick(() => action(tree, 'Refresh feedback').props.onPress());
+    assert.match(text(tree), /Synthetic suggestion/); assert.match(text(tree), /offline cache could not be saved/);
+    network.respond = () => { throw Error('offline'); }; await tick(() => action(tree, 'Refresh feedback').props.onPress());
+    assert.match(text(tree), /Synthetic suggestion/); assert.equal(getSavedAttempt(attemptId), null);
+    assert.equal(paidRequests().length, 0);
+  } finally { sqliteFaults.before = null; await tick(() => tree.unmount()); }
+});
+
+test('backward/simultaneous feedback evidence selects the native-clock visit and never drives PDF independently', async () => {
+  playback.eventMode = true;
+  const recording = feedbackFixtures.withFeedback({ metrics: null });
+  recording.transcript = { text: 'Echo Echo Echo', words: [
+    { text: 'Echo', start_ms: 100, end_ms: 700 }, { text: 'Echo', start_ms: 1000, end_ms: 1300 }, { text: 'Echo', start_ms: 1600, end_ms: 1900 }] };
+  recording.slide_events = [{ slide_index: 1, at_ms: 0 }, { slide_index: 0, at_ms: 1000 }, { slide_index: 1, at_ms: 1000 }, { slide_index: 0, at_ms: 1500 }];
+  recording.visits = recording.slide_events.map((event, i) => ({ slide_index: event.slide_index, start_ms: event.at_ms,
+    end_ms: recording.slide_events[i + 1]?.at_ms ?? 2000, words: i === 1 ? [] : [recording.transcript.words[i === 0 ? 0 : i - 1]] }));
+  const f = feedbackFixtures.feedbackState({ selection: feedbackFixtures.selection });
+  f.result.evidence.visits = recording.visits.map((v, i) => ({ ...v, words: undefined, word_indexes: i === 1 ? [] : [i === 0 ? 0 : i - 1] }));
+  Object.assign(f.result.suggestions[0], { visit_id: 3, segment_id: 'v3s0', word_start: 2, word_end: 2, speech_quote: 'Echo', start_ms: 1600, end_ms: 1900 });
+  recording.feedback_analysis = f;
+  seed(recording); feedbackNetwork(f); const previous = network.respond;
+  network.respond = (url, init) => url.endsWith(`/attempts/${attemptId}/`) ? response(200, recording) : previous(url, init);
+  const tree = await mount();
+  try {
+    await tick(() => action(tree, 'Download audio for offline review').props.onPress());
+    await tick(() => action(tree, 'Download PDF for offline review').props.onPress());
+    await tick(() => tree.root.findAllByType('pdf').find(n => n.props.style.width === 1).props.onLoadComplete(2));
+    const visible = () => tree.root.findAllByType('pdf').find(n => n.props.style.width === '100%');
+    const player = players.at(-1);
+    await tick(() => player.emit({ currentTime: 1, duration: 2, isLoaded: true, playing: false, didJustFinish: false }));
+    assert.equal(visible().props.page, 2); assert.match(text(tree), /Slide 2 · Visit 3/);
+    await tick(() => action(tree, 'Review evidence 1').props.onPress());
+    assert.deepEqual(playback.seeks, [1.6]); assert.equal(playback.played, 0);
+    assert.equal(visible().props.page, 2); // Seek completion alone is not a fabricated playback clock.
+    await tick(() => player.emit({ currentTime: 1.6 }));
+    assert.equal(visible().props.page, 1); assert.match(text(tree), /Slide 1 · Visit 4/);
+  } finally { await tick(() => tree.unmount()); }
+});
+
+test('a delayed description GET cannot replace a saved edit or re-enable stale evidence', async () => {
+  seed(feedbackFixtures.withFeedback()); feedbackNetwork(feedbackFixtures.feedbackState({ selection: feedbackFixtures.selection }));
+  const tree = await mount(); let finish;
+  try {
+    await tick(() => action(tree, 'Show slide 1 description').props.onPress());
+    await tick(() => action(tree, 'Edit slide 1 description').props.onPress());
+    const previous = network.respond;
+    network.respond = (url, init) => url.includes('/descriptions/') ? new Promise(resolve => { finish = resolve; }) : previous(url, init);
+    await tick(() => action(tree, 'Refresh feedback').props.onPress());
+    const delayed = network.requests.findLast(r => r.url.includes('/descriptions/'));
+    const input = tree.root.findAllByType('input').find(n => n.props.accessibilityLabel === 'Summary text');
+    await tick(() => input.props.onChangeText('Saved new fact'));
+    const edited = feedbackFixtures.descriptionState({ selection: feedbackFixtures.descriptionSelection, description_revision: 2,
+      processing_revision: 2, edited: true, updated_at: '2026-10-08T00:00:06Z' });
+    edited.descriptions.slides[0].summary.text = 'Saved new fact';
+    network.respond = (url, init) => init.method === 'PATCH' ? response(200, edited) : previous(url, init);
+    await tick(() => action(tree, 'Save description').props.onPress());
+    assert.equal(delayed.signal.aborted, true); assert.match(text(tree), /Saved new fact/);
+    await tick(() => finish(response(200, feedbackFixtures.descriptionState({ selection: feedbackFixtures.descriptionSelection }))));
+    assert.match(text(tree), /Saved new fact/); assert.match(text(tree), /Stale suggestions/);
+    assert.equal(feedbackStorage.readDescriptions(api, deckId, feedbackFixtures.setId).description_revision, 2);
+    assert.equal(network.requests.filter(r => r.method === 'PATCH').length, 1); assert.equal(paidRequests().length, 0);
+  } finally { await tick(() => tree.unmount()); }
+});
+
+test('a stale dependency GET cannot restore confirmation after description retry; completed dependencies keep polling for coaching', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const dependency = { ...feedbackFixtures.descriptionState({ state: 'needs_confirmation', descriptions: null, available_data: false,
+    description_revision: 0, processing_revision: 4, requires_confirmation: true, retry_available: true }), retry_action: 'generate_descriptions' };
+  const f = feedbackFixtures.feedbackState({ selection: feedbackFixtures.selection, state: 'waiting_descriptions', stage: 'descriptions',
+    description_revision: null, result: null, last_output: null, dependency });
+  const before = feedbackFixtures.descriptionState({ ...dependency, selection: feedbackFixtures.descriptionSelection });
+  const queued = { ...before, processing_revision: 5, state: 'queued', retry_available: false, requires_confirmation: false, updated_at: '2026-10-08T00:00:07Z' };
+  let currentDescription = before;
+  seed(feedbackFixtures.withFeedback({ feedback_analysis: f })); feedbackNetwork(f); feedbackStorage.saveFeedbackConsent(api, feedbackFixtures.selection);
+  const previous = network.respond;
+  network.respond = (url, init) => url.includes('/descriptions/') ? response(200, init.method === 'POST' ? queued : currentDescription) : previous(url, init);
+  const tree = await mount();
+  try {
+    await tick(() => action(tree, 'Retry slide descriptions').props.onPress());
+    await tick(() => action(tree, 'Continue feedback').props.onPress());
+    assert.match(text(tree), /Describing slides · Queued/); assert.doesNotMatch(text(tree), /Needs confirmation/);
+    assert.equal(action(tree, 'Retry slide descriptions'), undefined);
+    currentDescription = feedbackFixtures.descriptionState({ selection: feedbackFixtures.descriptionSelection, processing_revision: 5,
+      updated_at: '2026-10-08T00:00:08Z' });
+    await tick(() => t.mock.timers.tick(2000));
+    const beforePoll = network.requests.length;
+    await tick(() => t.mock.timers.tick(2000));
+    assert.ok(network.requests.length > beforePoll); assert.equal(paidRequests().length, 1);
+  } finally { await tick(() => tree.unmount()); }
+});
+
+test('known feedback rejection uses safe copy without claiming an unknown charged request', async () => {
+  startFeedback(); feedbackStorage.saveFeedbackConsent(api, feedbackFixtures.selection);
+  const previous = network.respond;
+  network.respond = (url, init) => init.method === 'POST' ? response(400, { error: { code: 'no_speech', message: 'private provider body' } }) : previous(url, init);
+  const tree = await mount();
+  try {
+    await tick(() => action(tree, 'Generate feedback').props.onPress());
+    assert.match(text(tree), /No speech is available for suggestions/);
+    assert.doesNotMatch(text(tree), /outcome is unconfirmed|private provider body/);
+    assert.equal(feedbackStorage.readPending(api, attemptId), null); assert.equal(paidRequests().length, 1);
+    assert.match(text(tree), /Hello, 안녕!/);
+  } finally { await tick(() => tree.unmount()); }
+});

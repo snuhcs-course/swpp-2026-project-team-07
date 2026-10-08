@@ -11,7 +11,7 @@ Base path `/api/`. JSON uses `snake_case`, UUID strings and integer milliseconds
 | `POST /attempts/{id}/process/` | Strict JSON process request below | 202: accepted/active `AttemptResult`; 200: completed `AttemptResult`; 409: retry conflict |
 | `GET /attempts/{id}/` | None | 200: `AttemptResult` |
 | `GET /attempts/{id}/feedback/` | None | 200: independent feedback state; read-only |
-| `POST /attempts/{id}/feedback/generate/` | Strict JSON feedback request below | 202: active; 200: current completed; 409: revision/confirmation/cooldown conflict |
+| `POST /attempts/{id}/feedback/generate/` | Strict JSON feedback request below | 202: active; 200: current completed; 409: selection/revision/confirmation/cooldown conflict |
 
 Current flow: save locally → upload PDF if needed → upload audio with the same attempt UUID → awaiting analysis. The user then chooses Analyze; upload itself never calls processing. Upload handlers validate the known deck, slide bounds, UUID uniqueness, supported audio/container, duration/size limits and metadata. Reject conflicting uploads for an existing ID. New recording means new ID; upload retries retain the ID, audio and normalized metadata. Identical retries return the existing attempt; conflicting valid content returns 409. Processing retries retain the ID/audio and avoid duplicate provider work.
 
@@ -87,8 +87,8 @@ These separate routes preserve existing deck responses, Whisper requests, upload
 and transcription. Current attempt processing still saves legacy `feedback=[]`,
 `feedback_state=disabled`; checkpoint 3 adds independent `AttemptResult.feedback_analysis`
 metadata, explicit coaching and revision-aware dependency invalidation. Mobile
-types, parsers, clients and cache reconciliation are implemented; feedback
-UI/disclosure remains checkpoint 4.
+types, parsers, clients, cache reconciliation and checkpoint-4 feedback
+UI/disclosure are implemented.
 Private preparation/evidence contracts are in [ai-feedback.md](ai-feedback.md).
 
 | Route | Input | Response |
@@ -173,6 +173,7 @@ Every successful GET/POST/PATCH uses this **explicit allowlist**:
 | `deck_id`, `description_set_id` | Deck UUID; set UUID or null when absent |
 | `state` | `absent`, `disabled`, `configuration_unavailable`, `source_unavailable`, `queued`, `preparing`, `submitted`, `normalizing`, `waiting_quota`, `completed`, `failed`, `needs_confirmation` |
 | `stage` | `descriptions` for a set, otherwise null; coaching has its own state below |
+| `selection` | Null or the effective new/saved generation descriptor below, even before data exists |
 | `processing_revision`, `description_revision` | Independent nonnegative integers; 0 for an absent set. Processing revisions advance on admission/retry and edit fencing; description revisions advance only on complete generated/edited saves |
 | `descriptions`, `edited` | Null or complete `{slides:[...]}` as above; boolean user-edit origin |
 | `provenance` | Null or `{provider,project_id,model,prompt_version,schema_version,origin,sources:[{slide_index,source_id}]}`. `origin` is null before a result, then `generated` or `edited`; project ID is nonsecret |
@@ -256,10 +257,10 @@ Actions and their independent revisions:
 | Correct descriptions | `PATCH /decks/{deck_id}/descriptions/` with its set ID, **`description_revision`** and complete descriptions; then explicit feedback reanalysis |
 
 Feedback requests are bounded to 1,024 bytes and exactly the optional keys
-`feedback_revision`, `acknowledge_uncertain`. Revisions are actual integers in
+`feedback_revision`, `acknowledge_uncertain`, `expected_selection`. Revisions are actual integers in
 0..2^31−1; booleans/strings/extras/duplicate JSON keys are rejected. An
 acknowledgement without the required retry revision returns 409; the mobile client
-rejects that incomplete action locally. Initial admission requires `{}`. GET accepts
+rejects that incomplete action locally. Initial admission accepts `{}` or assertion-only `{"expected_selection":"<token>"}`. GET accepts
 no query parameters; neither route accepts client scope selection. Unsupported
 methods are rejected by the route. Missing attempts return 404; malformed bodies
 or invalid saved sources return 400; generation unavailable due to configuration
@@ -293,6 +294,7 @@ Every feedback GET, successful generation response and nested
 | `attempt_id`, `feedback_revision` | Recording UUID and independent coaching generation (0 before initial admission) |
 | `state` | `absent`, `disabled`, `unavailable`, `waiting_descriptions`, `queued`, `preparing`, `submitted`, `normalizing`, `waiting_quota`, `needs_confirmation`, `failed`, `completed`, `stale` |
 | `stage` | `descriptions` while dependency is unfulfilled, `coaching` afterward, null before admission |
+| `selection` | Null or the effective new/saved generation descriptor below; independent of result provenance |
 | `availability` | `{state: available\|disabled\|unavailable, error}`; independent of stored work/result state |
 | `provenance` | Null or `{provider, project_id, model, prompt_version, schema_version, coaching_prompt_version, coaching_schema_version}`. Description and coaching versions are explicit; project ID is nonsecret |
 | `description_set_id`, `description_revision` | Captured set; fulfilled revision or null while waiting |
@@ -306,7 +308,9 @@ Every feedback GET, successful generation response and nested
 `result` contains `status` (`accepted`, `partial`, `empty`, `all_invalid`),
 `accepted_count`, `discarded_count` (total ≤3), `suggestions`, `message`,
 `feedback_revision`, `description_set_id`, `description_revision`, `provenance`,
-`completed_at`, `stale`, and `evidence`. Valid empty has zero counts/cards and
+`completed_at`, `stale`, `description_origin`, and `evidence`. The captured origin is
+`generated`, `edited` (the complete set has edits), or `unavailable` for legacy
+snapshots; later edits never relabel an older result. Valid empty has zero counts/cards and
 `message="No supported suggestions."`; other statuses have null message.
 `all_invalid` is a **failed** generation (`unsupported_feedback`), never successful
 empty output. Malformed envelopes/refusal/truncation/NUL output fail explicitly
@@ -351,7 +355,7 @@ set lock; captured revisions fence both. Claims last 360 seconds, tasks 300, and
 Beat recovery uses the existing schedule. Local quota/dependency waiting can resume;
 provider failures/invalid output never trigger automatic paid repair calls.
 
-Mobile contracts/clients exist without new screens. Attempt parsing allowlists and
+Checkpoint-4 mobile review uses the validated contracts/clients in the existing saved screen. Attempt parsing allowlists and
 quarantines optional feedback independently, preserving legacy caches and partial/
 no-speech replay. Reconciliation compares coaching revision and update time separately
 from Whisper revision; malformed or older feedback cannot erase newer valid cached
@@ -359,8 +363,87 @@ feedback. The client derives `result.evidence_verified` on every parse; it is ne
 trusted from wire/cache. Complete transcript, chronology, source/fact and derived-time
 validation (and page-count agreement at use) gates `feedbackSeekTarget`; missing
 context yields no seek target. Legacy top-level cards grant no evidence capability.
-API-address isolation/cancellation remain unchanged. UI/disclosure is checkpoint 4;
-controlled model-quality evaluation is checkpoint 5.
+API-address isolation/cancellation remains in place. The checkpoint-4 workflow below
+adds provider disclosure and revision-checked editing; model-quality evaluation is checkpoint 5.
+
+## Generation selection assertion and mobile feedback review (checkpoint 4)
+
+Feedback and description reads expose `selection` independently of stored
+`provenance`. It is null only when the configured selection cannot be described;
+legacy responses/caches may omit it. The descriptor includes `provider`, nonsecret
+`project_id`, `model`, description `prompt_version`, `schema_version`,
+`prompt_digest`, `stage` (`descriptions` or `coaching`), `disclosure_version`
+(currently `feedback-v1`) and a lowercase 64-hex `token`. Coaching adds
+`coaching_prompt_version`, `coaching_schema_version`, `coaching_prompt_digest`.
+The token is SHA-256 over canonical UTF-8 JSON of these fixed-order descriptor
+fields (before adding `token`); clients treat it as opaque. Prompt digests identify
+fixed rules/schema/output bounds. No key, input/source/audience hash, private
+receipt or claim data participates. Keys may rotate without changing it.
+
+New analyses describe current backend selection. Existing feedback and explicit
+saved-description reads describe their saved selection, even after the default
+changes. Both generation POST routes accept optional `expected_selection` (the
+64-hex token). Assertion-only initial requests are valid. Supplied malformed tokens
+return 400; a different effective selection returns safe **409
+`selection_mismatch` before queue intent/publication, reservation or provider work**.
+Admission rechecks a concurrent initial winner against its saved selection. The
+assertion compares; it cannot select a provider/model, authenticate or replace the
+existing revision/uncertainty checks. Explicit legacy callers omitting it remain
+compatible and do not receive disclosure-race protection. PATCH accepts no assertion
+and retains its exact existing complete-set/revision payload.
+
+Mobile always includes the assertion in feedback generation and description retry,
+using fresh read metadata. Legacy caches remain readable but cannot authorize a
+request without refreshed selection metadata. First-use consent is keyed by
+normalized API address, provider and disclosure version, separately from Whisper.
+Continue/Cancel callbacks capture a unique prompt; refreshing, navigation,
+backgrounding and API/attempt/source changes invalidate them. The disclosure names
+the provider/model and slide images/text, descriptions, saved transcript and optional
+audience context; feedback sends no audio. A mismatch refreshes without resubmitting
+and requires another explicit generation action.
+
+Feedback KV keys are `feedback:v1:<encoded normalized API>:attempt:<attempt UUID>`;
+description keys are `...:descriptions:<deck UUID>:<set UUID>` with a `...:deck:<deck
+UUID>` last-read pointer. Consent uses `...:consent:<provider>:<disclosure version>`.
+An unresolved submission marker (`...:pending:<attempt UUID>`) is durably written
+before POST and retained through timeout/navigation/restart until reconciliation or
+an acknowledged explicit retry. It stores only action kind, revision, set ID and
+selection token. Existing `analysis:v1` and `review:v1` records remain readable;
+feedback never manufactures a local capture. Revisions/timestamps reconcile
+independently of Whisper; operation/session fencing rejects late reads/mutations.
+Validated description responses also advance the matching dependency metadata, so
+an older feedback GET cannot restore its consumed confirmation/retry revision.
+Completed dependencies continue polling while waiting for coaching to attach them.
+
+Refresh occurs before every mutation. Unknown submitted requests require a separate
+charge acknowledgement if fresh reads cannot establish admission. Repeated taps are
+locked synchronously. Polling is focus/foreground-only; return does not generate or
+play. Cache/network/malformed feedback failures preserve valid feedback, descriptions,
+transcript and media with safe notices. Feedback errors use local fixed copy rather
+than arbitrary HTTP/provider messages. Active, quota, failed, confirmation, stale,
+partial, supported-empty and all-invalid states remain distinct.
+
+Descriptions expose collapsible slides from their validated slide/source identities
+and a local full-set draft, independently of deck metadata availability. Unknown
+actual page count still disables evidence seeking. Edits
+change only existing fact text/uncertainty, preserve all IDs/other slides, enforce
+400-code-point fields, NUL/uncertainty rules and 64 KiB UTF-8 JSON bounds. Save uses
+the draft's captured `description_revision`; preflight conflict, PATCH conflict or
+timeout retains that draft and offers explicit Reload/Cancel. Reload releases its
+lock and resumes lifecycle-fenced active-job polling on success or failure.
+Keystrokes/Cancel do
+not PATCH. Generation is disabled until Save/Cancel. Successful edits immediately
+mark matching feedback stale even when feedback refresh is unavailable. Regeneration
+is explicit and reuses the saved transcript with no Whisper call.
+
+At most three plain-Text suggestions preserve returned languages. Expandable quotes
+are labeled Slide description (captured set origin, not necessarily verbatim PDF)
+and Transcript excerpt. Source validity does not establish truth or transcription
+accuracy. No model URL/link/HTML/Markdown is executed or fetched. `feedbackSeekTarget`
+rejects both analysis/result staleness and revalidates actual source/word/visit/range
+context; UI additionally requires known actual pages and available audio. The existing
+playback controller preserves playing/paused intent, rapid seek/Pause ordering,
+backward/simultaneous visits and native-clock PDF synchronization.
 
 ## Mobile rehearsal review
 

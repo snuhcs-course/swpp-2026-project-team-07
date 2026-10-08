@@ -6,7 +6,7 @@ An Android presentation practice app connecting PDF slides, recordings, slide-al
 
 The backend coordinates a durable PostgreSQL queue, packaged Silero speech-presence check, hosted `whisper-1`, private raw-response persistence, normalized transcript, chronological slide visits and timing/rate estimates. Rehearsal coaching has an explicit durable generation API and remains disabled by default; its API and deck-description APIs are described below. See the [API contract](docs/api-contract.md) for revision-aware retries and uncertain outbound requests. Historical standalone adapter/alignment work is now integrated; its older pilot evidence does not establish this pipeline's live accuracy.
 
-[AI feedback checkpoints 1–3](docs/ai-feedback.md) provide Gemini/OpenAI adapters, durable deck descriptions and explicit saved-rehearsal coaching with at most three evidence-linked suggestions. Coaching snapshots one provider/project/model and the original transcript/chronology, reuses matching descriptions, and shares the description quota bucket. Description edits mark prior suggestions stale and require explicit revision-aware reanalysis. Attempt reads/history include compatible feedback metadata; mobile contracts, parsers and clients are implemented without new screens. The user authorized **all remaining checkpoints with checks between them, on one eventual PR**. This bounded writer run implements checkpoint 3 only; UI/disclosure is checkpoint 4 and controlled quality evaluation is checkpoint 5. Independent review/coordinator validation of this patch and human inspection remain pending.
+[AI feedback checkpoints 1–4](docs/ai-feedback.md) provide Gemini/OpenAI adapters, durable descriptions/coaching and feedback review in the existing saved-rehearsal screen. Generate/Retry is explicit, with provider/model disclosure, separate consent and charge acknowledgement, offline caches, at most three evidence-linked suggestions and revision-checked description editing. Description edits make affected feedback stale; regeneration reuses the saved transcript without Whisper. Provider selection remains backend configuration. The user authorized **all remaining checkpoints with checks between them, on one eventual PR**. This bounded patch implements checkpoint 4 on `e31937b`; checkpoint 5 live evaluation, runner independent review/coordinator checks and human inspection remain pending.
 
 Detected no-speech saves an empty transcript, chronological visits with empty word lists, and timing metrics over the original recording duration, with zero provider requests. Repeated, backward and zero-duration visits remain visible in the result data.
 
@@ -118,14 +118,14 @@ Beat setup above; `rehearsals.tasks.recover_work` now also recovers description 
 Explicit `POST /api/decks/{id}/descriptions/generate/` or the coaching admission below can queue description
 work. GET is read-only; PATCH saves a complete set with its current description
 revision. See the [wire contract](docs/api-contract.md#durable-slide-descriptions-checkpoint-2).
-There is no app feedback button/disclosure yet; checkpoint 3 adds the backend coaching orchestration below.
+The saved-rehearsal feedback panel now exposes explicit generation, disclosure and description editing; checkpoint 3 supplies its coaching orchestration below.
 
 Checkpoint 2 passed independent AI review, Django system/migration checks and
 172 tests on real PostgreSQL. Synthetic checks verified Redis/Celery/Beat
 recovery and API/database restart with unchanged saved media. See the
 [checkpoint evidence](docs/ai-use.md#2026-10-08--ai-feedback-checkpoint-2-coordinator-handoff).
-Human inspection remains pending; live-provider and mobile feedback validation
-belong to later checkpoints.
+Human inspection remains pending; live-provider evaluation and coordinator
+validation of the new mobile feedback controls are separate checks.
 
 In backend configuration, set `FEEDBACK_ENABLED=true`, select `FEEDBACK_PROVIDER`,
 and configure that provider's model, key and nonsecret `FEEDBACK_*_PROJECT_ID`.
@@ -188,6 +188,49 @@ preserves checkpoint-2 descriptions/requests/reservations plus attempts and Whis
 Actual writer outcomes are in [AI-use](docs/ai-use.md). Real PostgreSQL/Redis/Celery
 crash/restart validation belongs to the coordinator, using synthetic fake providers.
 No live-provider, Android device, quality or human-review pass is claimed here.
+
+## Feedback review (checkpoint 4)
+
+In a saved rehearsal, **Generate feedback** refreshes the current revisions and
+provider selection before any submission. First use names Gemini or OpenAI and the
+configured model, explains the slide images/text, descriptions, saved transcript
+and optional audience context sent, and explicitly excludes audio. Continue/Cancel
+are separate from Whisper consent. Consent is local to the normalized API address,
+provider and disclosure version. A changed selection returns 409 before admission;
+review the refreshed disclosure and choose generation again. Saved retries retain
+their original provider/model. There is no provider picker.
+
+Cached suggestions and descriptions open immediately. Failed refreshes retain them
+with a stale/offline notice. Active jobs, description dependencies and quota waits
+poll only while focused and foregrounded. A timeout leaves the submission unknown:
+refresh precedes another action, and an unresolved paid request needs a separate
+charge acknowledgement. Failed description dependencies use their own set and
+processing revision. Reading, editing, downloading, refreshing and returning to
+the screen start neither provider work nor playback.
+
+Cards say **AI suggestions — check the evidence**. Partial, supported empty and
+failed/all-invalid outputs are distinct. Quotes expand as **Slide description**
+(with captured generated/edited-set origin, unavailable for legacy snapshots) and
+**Transcript excerpt**. Valid evidence seeks through the existing player and native
+PDF clock, preserving playing/paused intent; stale/invalid evidence or absent
+media/page metadata disables that action while leaving text readable.
+
+Validated saved descriptions remain readable and editable if presentation metadata
+cannot load; evidence playback still requires known actual pages. Expand a slide's
+description to edit existing summary, key-idea and visual
+fact text/uncertainty. Save submits the entire set with its captured revision;
+other slides/source IDs stay intact. Conflict/timeout keeps the draft and offers
+Reload/Cancel; Reload resumes active-job polling while focused and foregrounded.
+Generation is disabled while editing. Save does not generate feedback
+or retranscribe audio; choose **Regenerate feedback** explicitly afterward.
+
+Writer checks after review repair: **270 mobile tests**, TypeScript/lint and Android JS export passed;
+Django system/migration checks passed and **229 tests ran on SQLite (18 PostgreSQL
+checks skipped)**. Exact commands and boundaries are in
+[AI-use](docs/ai-use.md#2026-10-08--ai-feedback-checkpoint-4-review-repair).
+The coordinator still needs real PostgreSQL/API/worker and Android emulator checks;
+human accessibility, physical-phone listening/synchronization and model quality
+are not established by these tests.
 
 ## App connection
 

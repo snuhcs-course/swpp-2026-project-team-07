@@ -100,3 +100,36 @@ class QuotaPolicy:
                 raise FeedbackError('quota_configuration')
             return int(value)
         return cls(positive('RPM'), positive('TPM'), positive('DAILY_REQUEST_LIMIT', True))
+
+
+DISCLOSURE_VERSION = 'feedback-v1'
+
+
+def selection_descriptor(selection=None, *, value=None, job=None, coaching=False):
+    """Public comparison identity only: no key, source, audience or input hash."""
+    try:
+        selection = selection or (Selection.saved(value) if value else Selection.current())
+    except FeedbackError:
+        return None
+    descriptor = {**selection.scope(), 'stage': 'coaching' if coaching else 'descriptions',
+        'disclosure_version': DISCLOSURE_VERSION,
+        'prompt_digest': value.prompt_digest if value else prompt_digest()}
+    if coaching:
+        descriptor.update(coaching_prompt_version=job.prompt_version if job else provider.COACHING_PROMPT_VERSION,
+            coaching_schema_version=job.schema_version if job else provider.COACHING_SCHEMA_VERSION,
+            coaching_prompt_digest=job.prompt_digest if job else coaching_digest())
+    return {**descriptor, 'token': hashlib.sha256(json_bytes(descriptor)).hexdigest()}
+
+
+def validate_assertion(payload):
+    if 'expected_selection' in payload and (type(payload['expected_selection']) is not str or
+            not re.fullmatch(r'[0-9a-f]{64}', payload['expected_selection'])):
+        raise FeedbackError('invalid_request')
+
+
+def assert_selection(payload, descriptor):
+    validate_assertion(payload)
+    if 'expected_selection' in payload and (descriptor is None or payload['expected_selection'] != descriptor['token']):
+        # Local import keeps the existing service conflict response semantics.
+        from .descriptions import Conflict
+        raise Conflict('selection_mismatch')

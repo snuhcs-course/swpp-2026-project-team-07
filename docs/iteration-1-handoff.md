@@ -1,6 +1,6 @@
 # Iteration 1 team handoff
 
-The initial scaffold/branch, hosted-processing and rehearsal-review sections below are historical. The final AI feedback checkpoint-3 section describes the current patch and its verification boundary.
+The initial scaffold/branch, hosted-processing and rehearsal-review sections below are historical. The final AI feedback checkpoint-4 section describes the current patch and its verification boundary.
 
 This is a shared starting scaffold based on the submitted Expo/React Native/TypeScript Android + Django REST architecture. Hours are outside this task. The schedule does not establish individual feature owners; assign names as a team.
 
@@ -141,7 +141,7 @@ Checkpoint 2 is staged on `feature/ai-feedback` for human inspection; no checkpo
 commit, push, PR or merge had been performed at that checkpoint-2 handoff. Its original stop-before-part-3 gate is superseded by the current authorization below.
 
 
-## AI feedback checkpoint 3 — current bounded handoff (2026-10-08)
+## AI feedback checkpoint 3 — historical bounded handoff (2026-10-08)
 
 The user authorized all remaining checkpoints with checks between them, on one
 `feature/ai-feedback` PR. This writer starts from supplied base `ce16ae1` and
@@ -196,3 +196,46 @@ delivery cannot restore obsolete confirmation in either mobile cache. Older
 generations' receipts leave the newer public snapshot unchanged. Backend tests
 cover live/expired claims and read-only feedback/attempt/history consistency;
 the runner/coordinator must verify this repaired snapshot before continuation.
+
+
+## AI feedback checkpoint 4 — current bounded handoff (2026-10-08)
+
+The writer started from committed checkpoint-3 base `e31937b7df2120a39a3e8edc303b9e120f21a368`
+and implemented only the approved feedback review/disclosure checkpoint. The runner
+owns staging/checks/independent review; coordinator transfer, commits and eventual
+single-PR publication remain outside this writer. No named owner approval is inferred.
+
+The existing saved screen now has explicit feedback generation/retry, scoped
+provider consent, separate uncertainty acknowledgement, progress/recovery, cached
+partial results, up to three evidence-linked cards and complete-set description
+editing. The existing player/transcript/PDF/Analyze/Whisper/upload controls remain.
+Evidence uses the original player controller; stale/unsupported actions are disabled.
+Edits retain source identities and captured revisions, preserve conflicted drafts,
+and visibly invalidate feedback without generating or retranscribing. Backend
+`expected_selection` compares nonsecret effective provider/project/model/prompt/schema
+identity before admission, returning 409 on disclosure races. Saved retries keep
+their original selection. Captured set-origin metadata uses the existing snapshot;
+there is no migration, dependency or native configuration change.
+
+Cross-component files: backend feedback configuration/admission/views, mobile
+feedback contracts/validation/storage/hook/panel, the saved-screen integration and
+an optional accessibility expansion state on the shared Action button. See the
+[contract](api-contract.md#generation-selection-assertion-and-mobile-feedback-review-checkpoint-4)
+and [checkpoint-4 notes](ai-feedback.md#checkpoint-4-review-and-disclosure).
+Checkpoint-3 prototype attribution is retained; this writer did not read or change
+the prototype or any other worktree. New UI/admission-guard material is generated
+against the current source, reusing its validated clients and player harness.
+
+Review repairs: failed deck metadata no longer hides validated fresh/cached
+descriptions or their editor; unknown-page evidence playback remains disabled.
+Reload descriptions resumes active-job polling after releasing its lock on success
+or failure, retaining focus/foreground cancellation. Four synthetic renderer
+regressions failed before the two focused fixes and passed afterward.
+
+Writer checks after repair passed: 270 mobile tests, TypeScript/lint, Android JavaScript export;
+Django system/migration checks and 229 SQLite tests with 18 PostgreSQL-only skips.
+See [exact repair evidence](ai-use.md#2026-10-08--ai-feedback-checkpoint-4-review-repair).
+Coordinator PostgreSQL/API/Redis/worker and Android emulator checks remain required.
+TalkBack, long-text/keyboard layout, physical-phone audible synchronization and human
+inspection are pending. No live provider/model-quality check occurred. Checkpoint 5
+remains pending; this bounded checkpoint stops for coordinator inspection.
