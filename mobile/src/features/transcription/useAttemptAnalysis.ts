@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import type { AttemptResult } from '../../contracts';
@@ -9,7 +9,7 @@ type ActionIntent = { kind: 'initial' | 'retry'; revision?: number };
 type Prompt = { kind: 'disclosure' | 'uncertain'; action: ActionIntent } | null;
 const activeResult = (r: AttemptResult) => r.status === 'processing';
 
-export function useAttemptAnalysis(id: string, address: string, uploaded: boolean) {
+export function useAttemptAnalysis(id: string, address: string, uploaded: boolean, autoStart = false) {
   const api = normalizeApi(address);
   const client = useMemo(() => transcriptionClientFor(api), [api]);
   const identity = `${api}:${id}:${uploaded}`;
@@ -25,6 +25,7 @@ export function useAttemptAnalysis(id: string, address: string, uploaded: boolea
   const inFlight = useRef(false);
   const controller = useRef<AbortController | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoRequested = useRef(false);
   const result = state.identity === identity ? state.result : null;
 
   const cancel = useCallback(() => {
@@ -148,10 +149,17 @@ export function useAttemptAnalysis(id: string, address: string, uploaded: boolea
     }
     void perform(pending.action, pending.kind === 'uncertain');
   }
+  useEffect(() => {
+    if (!autoStart || autoRequested.current || !enabled.current || !uploaded || !result) return;
+    autoRequested.current = true;
+    // Only initial pending work is automatic. Failed/uncertain work keeps the
+    // existing explicit, revision-aware retry and acknowledgement flow.
+    if (result.processing_state === 'awaiting_analysis') request({ kind: 'initial' });
+  });
   return { result, notice, busy, prompt, refresh,
     analyze: () => request({ kind: 'initial' }),
     retry: () => result && request({ kind: 'retry', revision: result.processing_revision }),
     continuePrompt,
-    cancelPrompt: () => { promptRef.current = null; setPrompt(null); },
+    cancelPrompt: () => { autoRequested.current = true; promptRef.current = null; setPrompt(null); },
   };
 }

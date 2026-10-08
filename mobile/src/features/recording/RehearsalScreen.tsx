@@ -16,6 +16,7 @@ import { createRecordingService } from "./service";
 import { stopCapture } from "./stopCapture";
 import { beginAttempt, checkpointAttempt, interruptAttempt, recoverPendingAttempts } from "./storage";
 import { Action, Card, Screen, colors, styles } from "../../ui/components";
+import { API_URL } from "../../services/api";
 
 function formatDuration(durationMillis: number) {
   // Hours are out of scope
@@ -31,6 +32,19 @@ export function RehearsalScreen() {
   const [generation, setGeneration] = useState(0);
   const [failure, setFailure] = useState<string | null>(null);
   const [retrySlide, setRetrySlide] = useState<number | undefined>(undefined);
+  const openedAttempt = useRef("");
+  useEffect(() => {
+    const openSaved = () => {
+      if (!savedPreview?.attemptId || AppState.currentState !== "active" || openedAttempt.current === savedPreview.attemptId) return;
+      openedAttempt.current = savedPreview.attemptId;
+      router.push({ pathname: "/results", params: { attemptId: savedPreview.attemptId } });
+    };
+    // The capture component has remounted, releasing its navigation guard.
+    // Background stops wait for foreground before opening the saved result.
+    openSaved();
+    const listener = AppState.addEventListener("change", openSaved);
+    return () => listener.remove();
+  }, [savedPreview]);
 
   // Removing the attempt component releases its native recorder through
   // useAudioRecorder. A failed/prepared recorder must never be reused on retry.
@@ -221,7 +235,7 @@ function RehearsalAttempt({ retrySlide, onFailure, savedPreview, onSaved, onStar
       const slideEvents = recordingService.getSlideEvents(finalDurationMillis);
       // Remount after each finalized capture. A late event from this native
       // recorder must never affect a later rehearsal using another recorder.
-      if (attemptId.current) checkpointAttempt(attemptId.current, uri, finalDurationMillis, slideEvents, true);
+      if (attemptId.current) checkpointAttempt(attemptId.current, uri, finalDurationMillis, slideEvents, true, API_URL);
       onSaved({ attemptId: attemptId.current || undefined, uri, durationMillis: finalDurationMillis, slideEvents, pageCount }, visibleSlide.current);
     } catch (error) {
       if (!mounted.current) return;
@@ -278,8 +292,10 @@ function RehearsalAttempt({ retrySlide, onFailure, savedPreview, onSaved, onStar
       <View style={styles.banner}>
         <Text style={styles.bannerText}>
           {pdfUri ? "ON-DEVICE PDF" : "SAMPLE SLIDES"} · Recording and slide visits
-          are saved on this device for imported PDFs. Upload the saved recording,
-          then choose Analyze recording to start analysis. Upload can be retried.
+          are saved on this device for imported PDFs. Finishing a recording
+          automatically uploads the PDF and audio to the configured server.
+          Transcription starts after you accept the first-use OpenAI disclosure.
+          Cancelling leaves the server upload saved without transcription. Failed uploads can be retried.
         </Text>
       </View>
       <View style={styles.between}>

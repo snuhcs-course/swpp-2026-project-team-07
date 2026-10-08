@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { useFocusEffect, useIsFocused } from "expo-router";
-import { Text } from "react-native";
+import { AppState, Text } from "react-native";
 import { Action, Card, Screen, styles } from "../../ui/components";
 import { getSavedAttempt, saveAttempt, type SavedAttempt } from "./storage";
 import { API_URL } from "../../services/api";
@@ -24,7 +24,10 @@ function SavedAttemptContent({ id, apiUrl }: { id: string; apiUrl: string }) {
   const [loaded, setLoaded] = useState(() => readAttempt(id));
   const saved = loaded.saved;
   const submitted = saved?.state === "submitted" && normalizeApi(saved.server_url || "") === normalizeApi(apiUrl);
-  const analysis = useAttemptAnalysis(id, apiUrl, submitted);
+  const [autoAnalyze, setAutoAnalyze] = useState(false);
+  const analysis = useAttemptAnalysis(id, apiUrl, submitted, autoAnalyze);
+  const autoConsumed = useRef(false);
+  const [foreground, setForeground] = useState(AppState.currentState === "active");
   const uploadBusy = useRef(false);
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
@@ -35,6 +38,10 @@ function SavedAttemptContent({ id, apiUrl }: { id: string; apiUrl: string }) {
   const active = useRef(true);
   const intent = useRef(0);
   const seeking = useRef(false);
+  useEffect(() => {
+    const listener = AppState.addEventListener("change", state => setForeground(state === "active"));
+    return () => listener.remove();
+  }, []);
   function reload() { setLoaded(readAttempt(id)); setNotice(""); }
   useEffect(() => { const currentIntent = intent; active.current = true; return () => { active.current = false; currentIntent.current++; }; }, []);
   useFocusEffect(useCallback(() => {
@@ -42,7 +49,7 @@ function SavedAttemptContent({ id, apiUrl }: { id: string; apiUrl: string }) {
     return () => { focused.current = false; intent.current++; };
   }, []));
   useEffect(() => { if (!isFocused) player.pause(); }, [isFocused, player]);
-  async function upload() {
+  const upload = useCallback(async () => {
     if (uploadBusy.current) return;
     uploadBusy.current = true; setBusy(true); setNotice("");
     try { await uploadAttempt(id, apiUrl); }
@@ -54,7 +61,24 @@ function SavedAttemptContent({ id, apiUrl }: { id: string; apiUrl: string }) {
         finally { uploadBusy.current = false; setBusy(false); }
       }
     }
-  }
+  }, [apiUrl, id]);
+  useFocusEffect(useCallback(() => {
+    if (!foreground || autoConsumed.current || !saved?.auto_process_api ||
+        normalizeApi(saved.auto_process_api) !== normalizeApi(apiUrl) ||
+        !["saved", "submitted"].includes(saved.state)) return;
+    autoConsumed.current = true;
+    try {
+      // Consume before I/O: reopening, cancellation or a failed request must
+      // never silently submit the recording again. Manual retry stays available.
+      const next = { ...saved, auto_process_api: undefined };
+      saveAttempt(next);
+      setLoaded({ saved: next, error: "" });
+      setAutoAnalyze(true);
+      if (!submitted) void upload();
+    } catch {
+      setNotice("Could not start automatic transcription. Your recording is saved; upload or analyze it when ready.");
+    }
+  }, [apiUrl, foreground, saved, submitted, upload]));
   function recover() {
     if (!saved || !status.isLoaded) return;
     try {
@@ -92,7 +116,7 @@ function SavedAttemptContent({ id, apiUrl }: { id: string; apiUrl: string }) {
       <Action label={status.playing ? "Pause" : "Play"} disabled={!status.isLoaded || !!status.error} onPress={() => void toggle()} />
       {interrupted ? <Action label="Recover playable audio" disabled={!status.isLoaded || !!status.error} onPress={recover} /> :
         !submitted && <Action label={busy ? "Uploading…" : "Upload recording"} disabled={busy} onPress={() => void upload()} />}
-      <Text style={styles.body}>Audio and slide visits stay on this device. Analyze sends the saved recording for transcription only when you choose it.</Text>
+      <Text style={styles.body}>Audio and slide visits remain available on this device. New recordings upload the PDF and audio to the configured server automatically. Transcription starts after you accept the first-use OpenAI disclosure; cancelling leaves the server upload saved without transcription. You can retry a stopped upload or analysis here.</Text>
       {!!(notice || saved.error || status.error) && <Text accessibilityRole="alert" style={styles.body}>{notice || saved.error || "Audio could not be opened. The original file is retained."}</Text>}
     </Card>
     {(submitted || analysis.result) && <Card>
@@ -108,7 +132,7 @@ function SavedAttemptContent({ id, apiUrl }: { id: string; apiUrl: string }) {
       {!!analysis.notice && <Text accessibilityRole="alert" style={styles.body}>{analysis.notice}</Text>}
       {analysis.prompt && <>
         <Text style={styles.body}>{analysis.prompt.kind === "disclosure"
-          ? "Analyze sends your saved audio through this server to OpenAI for hosted Whisper transcription. Audio and results remain available locally. Continue to allow this for future analyses on this device, or Cancel."
+          ? "Transcription sends your saved audio through this server to OpenAI for hosted Whisper transcription. Audio and results remain available locally. Continue to allow automatic transcription after future recordings on this device, or Cancel."
           : "The previous OpenAI request may already have been charged. Retrying may send the audio again and incur another charge. There is no guarantee of exactly one provider request. Continue only if you accept this."}</Text>
         <Action label="Continue" onPress={analysis.continuePrompt} />
         <Action label="Cancel" onPress={analysis.cancelPrompt} />

@@ -217,6 +217,121 @@ function uploaded() {
   const id = saved(); saveAttempt({ ...getSavedAttempt(id), state: 'submitted', server_url: API_URL }); return id;
 }
 
+function automaticRecording() {
+  const id = saved();
+  saveAttempt({ ...getSavedAttempt(id), local_deck_id: `automatic-${id}`, auto_process_api: API_URL });
+  files.set('file:///synthetic.pdf', {}); files.set('file:///synthetic.wav', {});
+  let latest = analysisResult(id);
+  network.respond = (url, init) => {
+    if (url.endsWith('/decks/')) return response(201, { deck: { id: '11111111-1111-4111-8111-111111111111', page_count: 2 } });
+    if (url.includes('/decks/')) return response(200, { id: '11111111-1111-4111-8111-111111111111', page_count: 2 });
+    if (url.endsWith('/attempts/')) return response(201, { attempt_id: id });
+    if (url.endsWith('/process/')) { latest = analysisResult(id, 'queued'); return response(202, latest); }
+    return response(200, latest);
+  };
+  return id;
+}
+
+test('a newly finished recording uploads then starts transcription once without an Analyze tap', async () => {
+  const id = automaticRecording(); saveAnalysisConsent();
+  const original = getSavedAttempt(id).recording;
+  let tree = await mount(id);
+  try {
+    await tick(() => {});
+    const posts = network.requests.filter(r => r.method === 'POST');
+    assert.deepEqual(posts.map(r => r.url.split('/api')[1]), ['/decks/', '/attempts/', `/attempts/${id}/process/`]);
+    assert.equal(getSavedAttempt(id).auto_process_api, undefined);
+    assert.equal(getSavedAttempt(id).recording.audio_uri, original.audio_uri);
+    assert.deepEqual(getSavedAttempt(id).recording.slide_events, original.slide_events);
+    await tick(() => tree.unmount()); tree = await mount(id);
+    await tick(() => action(tree, 'Refresh').props.onPress());
+    assert.equal(network.requests.filter(r => r.url.endsWith('/process/')).length, 1);
+  } finally { await tick(() => tree.unmount()); }
+});
+
+test('automatic transcription shows first-use disclosure; cancellation survives reopening', async () => {
+  const id = automaticRecording();
+  let tree = await mount(id);
+  try {
+    await tick(() => {});
+    assert.ok(action(tree, 'Continue'));
+    assert.equal(network.requests.filter(r => r.url.endsWith('/process/')).length, 0);
+    await tick(() => action(tree, 'Cancel').props.onPress());
+    await tick(() => tree.unmount()); tree = await mount(id);
+    assert.equal(action(tree, 'Continue'), undefined);
+    assert.equal(network.requests.filter(r => r.url.endsWith('/process/')).length, 0);
+    await tick(() => action(tree, 'Analyze recording').props.onPress());
+    await tick(() => action(tree, 'Continue').props.onPress());
+    assert.equal(network.requests.filter(r => r.url.endsWith('/process/')).length, 1);
+  } finally { await tick(() => tree.unmount()); }
+});
+
+test('cancelling disclosure while the first status read is pending cancels the automatic prompt too', async () => {
+  const id = automaticRecording();
+  const respond = network.respond;
+  let finishRead;
+  network.respond = (url, init) => url.endsWith(`/attempts/${id}/`) && init.method !== 'POST'
+    ? new Promise(resolve => { finishRead = resolve; }) : respond(url, init);
+  const tree = await mount(id);
+  try {
+    await tick(() => {});
+    assert.ok(finishRead);
+    await tick(() => action(tree, 'Analyze recording').props.onPress());
+    await tick(() => action(tree, 'Cancel').props.onPress());
+    await tick(() => finishRead(response(200, analysisResult(id))));
+    assert.equal(!!action(tree, 'Continue'), false);
+    assert.equal(network.requests.filter(r => r.url.endsWith('/process/')).length, 0);
+  } finally { await tick(() => tree.unmount()); }
+});
+
+test('failed automatic upload stays playable and a manual upload retry starts transcription', async () => {
+  const id = automaticRecording(); saveAnalysisConsent();
+  const respond = network.respond;
+  network.respond = () => { throw new Error('offline'); };
+  const tree = await mount(id);
+  try {
+    await tick(() => {});
+    assert.equal(getSavedAttempt(id).state, 'upload_failed');
+    assert.equal(network.requests.filter(r => r.url.endsWith('/process/')).length, 0);
+    await tick(() => action(tree, 'Play').props.onPress()); assert.equal(playback.played, 1);
+    network.respond = respond;
+    await tick(() => action(tree, 'Upload recording').props.onPress());
+    await tick(() => {});
+    assert.equal(network.requests.filter(r => r.url.endsWith('/process/')).length, 1);
+  } finally { await tick(() => tree.unmount()); }
+});
+
+test('automatic handoff waits for foreground and never follows a different API destination', async () => {
+  const id = automaticRecording(); saveAnalysisConsent();
+  backgroundApp('background');
+  let tree = await mount(id);
+  try {
+    assert.equal(network.requests.length, 0);
+    await tick(() => tree.update(React.createElement(SavedAttemptScreen, { id, apiUrl: 'http://other.invalid/api' })));
+    await tick(() => backgroundApp('active'));
+    assert.equal(network.requests.length, 0);
+    assert.equal(getSavedAttempt(id).auto_process_api, API_URL);
+    await tick(() => tree.update(React.createElement(SavedAttemptScreen, { id })));
+    await tick(() => {});
+    assert.equal(network.requests.filter(r => r.url.endsWith('/process/')).length, 1);
+    assert.ok(network.requests.every(r => r.url.startsWith(API_URL)));
+  } finally { await tick(() => tree.unmount()); }
+});
+
+for (const stage of ['queued', 'completed', 'failed', 'needs_confirmation']) {
+  test(`automatic handoff never resubmits a server result in ${stage}`, async () => {
+    const id = automaticRecording(); saveAnalysisConsent();
+    saveAttempt({ ...getSavedAttempt(id), state: 'submitted', server_url: API_URL });
+    network.respond = () => response(200, analysisResult(id, stage));
+    const tree = await mount(id);
+    try {
+      await tick(() => {});
+      assert.equal(network.requests.filter(r => r.method === 'POST').length, 0);
+      if (stage === 'needs_confirmation') assert.ok(action(tree, 'Retry analysis'));
+    } finally { await tick(() => tree.unmount()); }
+  });
+}
+
 test('consent save failure does not send audio and leaves replay available', async () => {
   const id = uploaded();
   network.respond = () => response(200, analysisResult(id));
