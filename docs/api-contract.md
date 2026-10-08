@@ -78,6 +78,10 @@ The packaged Silero CPU gate checks a temporary PyAV-decoded waveform only. It n
 
 Mobile Analyze requires a recording known to the current API, established by its upload or validated server history. First-use disclosure has Continue/Cancel and locally persisted consent. Retry refreshes first and supplies the displayed current revision; uncertain requests require a separate charge acknowledgement. A client timeout is not server failure. Polling stops on navigation/background; stale callbacks and API-address changes cannot update another cache. SQLite result records are keyed by normalized API address and attempt UUID, separately from upload metadata. Offline refresh preserves cache and audio. Synchronized review is described below; feedback remains disabled.
 
+## Standalone AI feedback checkpoint 1
+
+Private description/coaching contracts and indexed evidence validation are documented in [ai-feedback.md](ai-feedback.md). They are not wire schemas or endpoints. Current processing still saves `feedback=[]` and `feedback_state=disabled` regardless of standalone feedback configuration or missing keys; Whisper, retries, saved results and playback are unchanged. No provider provenance or new feedback state is added to the public result. Integration and durable orchestration remain future checkpoints.
+
 ## Mobile rehearsal review
 
 This stage reuses the GET deck/history/attempt and explicit process endpoints above, without backend schema or provider changes. `/results?attemptId=<UUID>` opens a real rehearsal; a malformed ID cannot open the sample preview. `DeckDetail` and `ReviewAttempt` are validated mobile read models, not new wire response schemas. Deck/attempt identities, page bounds and authoritative recording duration gate usable capabilities. Missing legacy fields can leave text available while timing, downloads or processing are unavailable. Review parsing cannot authorize a process request without the existing strict `AttemptResult` validation and fresh revision check.
