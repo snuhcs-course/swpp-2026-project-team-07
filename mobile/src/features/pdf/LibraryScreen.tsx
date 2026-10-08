@@ -3,9 +3,11 @@ import { router, useFocusEffect } from "expo-router";
 import { Text, View } from "react-native";
 import { Action, Card, Screen, styles } from "../../ui/components";
 import { API_URL, checkBackend } from "../../services/api";
+import { recoverPendingAttempts, savedAttempts, type SavedAttempt } from "../recording/storage";
 import { getImportedPdfs, pdfService, type LocalPdf } from "./service";
 
 export function LibraryScreen() {
+  const [attempts, setAttempts] = useState<SavedAttempt[]>([]);
   const [notice, setNotice] = useState("");
   const [checking, setChecking] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -13,6 +15,8 @@ export function LibraryScreen() {
 
   const refreshLibrary = useCallback(async () => {
     try {
+      recoverPendingAttempts();
+      setAttempts(savedAttempts());
       setPdfs(await getImportedPdfs());
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Could not load PDFs.");
@@ -106,6 +110,12 @@ export function LibraryScreen() {
           <Text style={styles.body}>Your imported PDFs will appear here.</Text>
         </Card>
       )}
+      <Text style={styles.heading}>Saved rehearsals</Text>
+      {attempts.map(attempt => <Card key={attempt.id}>
+        <Text style={styles.heading}>{attempt.title}</Text>
+        <Text style={styles.body}>{new Date(attempt.created_at).toLocaleString()} · {attempt.state}</Text>
+        <Action label="Open saved rehearsal" onPress={() => router.push({ pathname: "/results", params: { attemptId: attempt.id } })} />
+      </Card>)}
       <Card>
         <Text style={styles.heading}>Sample presentation</Text>
         <Text style={styles.body}>Explore the rehearsal preview with sample slides.</Text>

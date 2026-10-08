@@ -1,3 +1,4 @@
+import { resolve as storageResolve } from "./storage-native-loader.mjs";
 export function resolve(specifier, context, nextResolve) {
   const files = {
     'expo-document-picker': './pdf-picker-stub.mjs',
@@ -6,5 +7,5 @@ export function resolve(specifier, context, nextResolve) {
   if (files[specifier]) return {
     url: new URL(files[specifier], import.meta.url).href, shortCircuit: true,
   };
-  return nextResolve(specifier, context);
+  return storageResolve(specifier, context, nextResolve);
 }

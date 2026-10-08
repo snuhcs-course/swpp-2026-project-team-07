@@ -12,6 +12,8 @@ if (Module.registerHooks) Module.registerHooks({ resolve, load });
 else Module.register('./helpers/recording-screen-loader.mjs', import.meta.url);
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const { RehearsalScreen } = await import('../src/features/recording/RehearsalScreen.tsx');
+const { getSavedAttempt } = await import('../src/features/recording/storage.ts');
+const savedRoute = () => getSavedAttempt(routes.at(-1).params.attemptId);
 const { ViewerScreen } = await import('../src/features/pdf/ViewerScreen.tsx');
 const pdf = tree => tree.root.findByType('pdf');
 const action = (tree, label) => tree.root.findAllByType('action').find(node => node.props.label === label);
@@ -40,8 +42,8 @@ async function savedEvents(tree, duration = 2000) {
   captures.at(-1).durationMillis = duration;
   await press(tree, 'Stop recording');
   await press(tree, 'Listen to recording');
-  assert.equal(routes.at(-1).params.audioUri, 'file:///test.m4a');
-  return JSON.parse(routes.at(-1).params.slideEvents);
+  assert.equal(savedRoute().recording.audio_uri, 'file:///test.m4a');
+  return savedRoute().recording.slide_events;
 }
 
 test('viewer hands off the confirmed PDF page and metadata, never an unrendered navigation target', async () => {
@@ -127,7 +129,7 @@ test('stop freezes capture and blocks PDF navigation while native finalization i
     await tick(() => pdf(tree).props.onPageChanged(2, 6));
     await tick(() => finish());
     await press(tree, 'Listen to recording');
-    assert.deepEqual(JSON.parse(routes.at(-1).params.slideEvents), [{ slide_index: 0, at_ms: 0 }]);
+    assert.deepEqual(savedRoute().recording.slide_events, [{ slide_index: 0, at_ms: 0 }]);
   } finally { finish?.(); await close(tree); }
 });
 
@@ -192,10 +194,11 @@ test('local deck identity and native page count travel with the saved audio with
     await loaded(tree, 3, 6);
     await press(tree, 'Start recording');
     await savedEvents(tree);
-    assert.equal(routes.at(-1).params.localDeckId, 'local-pdf-123');
-    assert.equal(routes.at(-1).params.pageCount, 6);
-    assert.equal(routes.at(-1).params.durationMs, 2000);
-    assert.equal(routes.at(-1).params.recording, undefined);
+    assert.equal(savedRoute().local_deck_id, 'local-pdf-123');
+    assert.equal(savedRoute().page_count, 6);
+    assert.equal(savedRoute().recording.duration_ms, 2000);
+    assert.deepEqual(Object.keys(routes.at(-1).params), ["attemptId"]);
+    assert.equal(savedRoute().recording.deck_id, undefined);
   } finally { await close(tree); }
 });
 
@@ -208,7 +211,7 @@ test('two real-PDF recordings preserve distinct audio, selected page and native 
     await press(tree, 'Start recording');
     await press(tree, 'Stop recording');
     await press(tree, 'Listen to recording');
-    assert.equal(routes.at(-1).params.audioUri, 'file:///first.m4a');
+    assert.equal(savedRoute().recording.audio_uri, 'file:///first.m4a');
     assert.equal(action(tree, 'Start recording').props.disabled, true);
     await loaded(tree, 3, 6);
     captures.at(-1).uri = 'file:///second.m4a';
@@ -216,9 +219,69 @@ test('two real-PDF recordings preserve distinct audio, selected page and native 
     captures.at(-1).durationMillis = 1800;
     await press(tree, 'Stop recording');
     await press(tree, 'Listen to recording');
-    assert.equal(routes.at(-1).params.audioUri, 'file:///second.m4a');
-    assert.equal(routes.at(-1).params.pageCount, 6);
-    assert.equal(routes.at(-1).params.durationMs, 1800);
-    assert.deepEqual(JSON.parse(routes.at(-1).params.slideEvents), [{ slide_index: 2, at_ms: 0 }]);
+    assert.equal(savedRoute().recording.audio_uri, 'file:///second.m4a');
+    assert.equal(savedRoute().page_count, 6);
+    assert.equal(savedRoute().recording.duration_ms, 1800);
+    assert.deepEqual(savedRoute().recording.slide_events, [{ slide_index: 2, at_ms: 0 }]);
   } finally { await close(tree); }
+});
+
+const { sqliteFaults } = await import('./helpers/sqlite-node.mjs');
+const { savedAttempts } = await import('../src/features/recording/storage.ts');
+
+test('prepared URI is durable; failed checkpoint and interruption still release recorder', async () => {
+  const tree = await mount();
+  try {
+    await loaded(tree, 2);
+    await press(tree, 'Start recording');
+    const saved = savedAttempts().find(a => a.state === 'capturing');
+    assert.equal(saved.recording.audio_uri, 'file:///test.m4a');
+    assert.deepEqual(saved.recording.slide_events, [{ slide_index: 1, at_ms: 0 }]);
+    sqliteFaults.before = op => { if (op === 'run') throw new Error('disk full'); };
+    await tick(() => pdf(tree).props.onPageChanged(1, 6));
+    assert.equal(captures[0].released, true);
+    assert.ok(action(tree, 'Try recording again'));
+    assert.equal(action(tree, 'Listen to recording'), undefined);
+  } finally { sqliteFaults.before = null; await close(tree); }
+});
+
+test('native error with unavailable SQLite still releases microphone and presents retry', async () => {
+  const tree = await mount();
+  try {
+    await loaded(tree);
+    await press(tree, 'Start recording');
+    sqliteFaults.before = op => { if (op === 'run') throw new Error('disk full'); };
+    await tick(() => captures[0].emitError());
+    assert.equal(captures[0].released, true);
+    assert.ok(action(tree, 'Try recording again'));
+  } finally { sqliteFaults.before = null; await close(tree); }
+});
+
+test('failed initial write cannot start native capture or strand its prepared recorder', async () => {
+  const tree = await mount();
+  try {
+    await loaded(tree);
+    sqliteFaults.before = op => { if (op === 'run') throw new Error('disk full'); };
+    await press(tree, 'Start recording');
+    assert.equal(captures[0].isRecording, false);
+    assert.equal(captures[0].released, true);
+    assert.ok(action(tree, 'Try recording again'));
+  } finally { sqliteFaults.before = null; await close(tree); }
+});
+
+test('native start failure needs only one durable write to retain prepared audio and initial slide', async () => {
+  const tree = await mount();
+  try {
+    await loaded(tree, 2);
+    const before = new Set(savedAttempts().map(a => a.id));
+    let writes = 0;
+    captures[0].record = () => { throw new Error('synthetic native start failed'); };
+    sqliteFaults.before = op => { if (op === 'run' && ++writes > 1) throw new Error('disk unavailable after creation'); };
+    await press(tree, 'Start recording');
+    const saved = savedAttempts().find(a => !before.has(a.id));
+    assert.equal(saved.recording.audio_uri, 'file:///test.m4a');
+    assert.deepEqual(saved.recording.slide_events, [{ slide_index: 1, at_ms: 0 }]);
+    assert.equal(captures[0].released, true);
+    assert.match(JSON.stringify(tree.toJSON()), /native start failed/);
+  } finally { sqliteFaults.before = null; await close(tree); }
 });

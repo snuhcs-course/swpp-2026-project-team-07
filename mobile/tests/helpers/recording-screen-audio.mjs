@@ -42,3 +42,11 @@ export function useAudioRecorder(options, listener) {
   return recorder;
 }
 export function useAudioRecorderState(recorder) { return recorder.getStatus(); }
+
+export const playback = { status: {}, seeks: [], played: 0, paused: 0, wait: null, source: null };
+export function resetPlayback() {
+  Object.assign(playback, { status: { isLoaded: true, playing: false, currentTime: 2, duration: 2, didJustFinish: false, error: null }, seeks: [], played: 0, paused: 0, wait: null, source: null });
+}
+const player = { play() { playback.played++; }, pause() { playback.paused++; }, async seekTo(time) { playback.seeks.push(time); if (playback.wait) await playback.wait; } };
+export function useAudioPlayer(source) { playback.source = source; return player; }
+export function useAudioPlayerStatus() { return playback.status; }

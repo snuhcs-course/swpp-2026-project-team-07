@@ -103,7 +103,7 @@ export function createTranscriptionClient(deps: Dependencies) {
     }
   }
 
-  async function submit(recording: LocalRecording, options: Options = {}) {
+  async function upload(recording: LocalRecording, options: Options = {}) {
     const { id, deck_id, duration_ms, audience, slide_events, audio_uri } = recording;
     checkId(id);
     if (options.signal?.aborted) throw cancelled(id);
@@ -135,8 +135,6 @@ export function createTranscriptionClient(deps: Dependencies) {
     if (!object(uploaded) || uploaded.attempt_id !== id) {
       throw error("invalid_response", id, "The upload response did not match the recording.");
     }
-    // On failure, the caller retains id and can retry processing without re-uploading.
-    await retry(id, options);
     return { attempt_id: id };
   }
 
@@ -170,5 +168,10 @@ export function createTranscriptionClient(deps: Dependencies) {
     throw error("poll_limit", id, "Processing is still pending. Check this attempt again later.");
   }
 
-  return { submit, getResult, retry, waitForResult };
+  async function submit(recording: LocalRecording, options: Options = {}) {
+    const result = await upload(recording, options);
+    await retry(recording.id, options);
+    return result;
+  }
+  return { upload, submit, getResult, retry, waitForResult };
 }

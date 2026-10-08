@@ -73,3 +73,12 @@ test('permission denial prevents capture preparation and does not create a timel
     AudioModule.requestRecordingPermissionsAsync = original;
   }
 });
+
+
+test('checkpoint is written after preparation but before microphone capture starts', async () => {
+  const { recorder, service } = capture(); recorder.uri = 'file:///allocated.m4a';
+  let checkpoint;
+  await service.start(2, (uri, slide) => { assert.equal(recorder.prepared, true); assert.equal(recorder.isRecording, false); checkpoint = { uri, slide }; });
+  assert.deepEqual(checkpoint, { uri: 'file:///allocated.m4a', slide: 2 });
+  assert.equal(recorder.isRecording, true);
+});
