@@ -23,6 +23,7 @@ states remain explicitly simulated.
 - [API and timestamp contract](docs/api-contract.md)
 - [Submitted requirements mapped to code](docs/source-alignment.md)
 - [Verification and code review](docs/review.md)
+- [AI collaboration reporting](docs/ai-collaboration-guidelines.md): the shared collaboration log, iteration report and human review checklist.
 
 ```text
 mobile/                         Expo + React Native + TypeScript

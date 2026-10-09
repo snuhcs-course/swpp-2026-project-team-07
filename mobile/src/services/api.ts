@@ -1,3 +1,5 @@
+// AI-generated/modified with OpenAI Codex, Iteration 1 (2026-09-26 to 2026-10-09).
+// Attribution/review scope: docs/ai-collaboration-validation-iteration-1.md#ai-code-markers
 export const API_URL = (
   process.env.EXPO_PUBLIC_API_URL ?? "http://10.0.2.2:8000/api"
 ).replace(/\/$/, "");
