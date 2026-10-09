@@ -1,6 +1,6 @@
 # OutLoud Design Documentation
 
-Team 07 | Rev.4.0 | 9 October 2026
+Team 07 | Rev.4.1 | 9 October 2026
 
 OutLoud is an Android presentation-rehearsal app. Presenters import PDF slides, record a rehearsal, and review their speech alongside the slides they visited. The design combines local recording and playback with server-side transcription and optional, user-requested AI coaching.
 
@@ -12,6 +12,7 @@ OutLoud is an Android presentation-rehearsal app. Presenters import PDF slides, 
 | Rev.2.0 | 2026-10-09 | Expanded recording, persistence, transcription, review and feedback design. |
 | Rev.3.0 | 2026-10-09 | Added architecture and workflow diagrams; clarified component responsibilities and design rationale. |
 | Rev.4.0 | 2026-10-09 | Reorganized around seven design sections; simplified API and recovery explanations; removed implementation tracking and references. |
+| Rev.4.1 | 2026-10-09 | Added Iteration 1 features and technologies, observed outcomes, and real-voice transcription limitations. |
 
 ### Contents
 
@@ -21,6 +22,7 @@ OutLoud is an Android presentation-rehearsal app. Presenters import PDF slides, 
 - [5. Recording, Transcription, and Slide Alignment](#5-recording-transcription-and-slide-alignment)
 - [6. AI Feedback Design](#6-ai-feedback-design)
 - [7. Frontend Architecture](#7-frontend-architecture)
+- [8. Features and Technologies Attempted in Iteration 1](#8-features-and-technologies-attempted-in-iteration-1)
 
 ## 2. System Architecture
 
@@ -161,3 +163,37 @@ Home emphasizes importing and opening presentations; Practice groups saved attem
 Typed layout contracts expose display models, available actions and native PDF/audio surfaces. Layouts do not own recorder, player, storage or network clients. A layout selection at startup connects views to the same feature hosts; keeping native surfaces mounted preserves active capture and playback during view updates.
 
 Shared services handle local persistence and backend communication beneath the controllers. Native libraries provide PDF and audio capabilities through these boundaries. The design requires maintaining contracts as features change, but confines visual changes to views and keeps lifecycle and recovery behavior in one place.
+
+## 8. Features and Technologies Attempted in Iteration 1
+
+This snapshot covers work available on 9 October 2026. The merged baseline contains the scaffold, standalone hosted Whisper/alignment, and transcript/playback foundations. The integrated features below remain unmerged; the replaceable-layout redesign is local work. Local Whisper belongs to the earlier prototype, while the current integrated pipeline uses hosted Whisper.
+
+### Capture, storage and review
+
+| Feature | Implementation at Iteration 1 | What worked | What did not work or remains limited |
+| --- | --- | --- | --- |
+| PDF import and slide display | Expo Document Picker copies PDFs into private storage; `react-native-pdf` renders pages. Django uses PDFium and pypdf to prepare slide images and text. | Emulator checks demonstrated import, page navigation, a selected starting page and catalog persistence after restart. | Encrypted, malformed or oversized PDFs are rejected. The supported scope is at most 10 slides and 20 MiB; there is no PowerPoint import or OCR for image-only text. |
+| Recording and slide tracking | `expo-audio` captures microphone audio. Recorder-relative milliseconds identify the initial slide and each forward/backward transition. | Native checks demonstrated capture, stop/save, repeated visits and permission-denial recovery. A physical-phone run of the local redesign saved the recorded slide sequence. | Interrupted capture can recover only if the native audio file remains playable. A full spoken ten-minute rehearsal and hardware-interruption coverage remain incomplete. |
+| Durable storage and upload | Private files retain media; SQLite stores catalog/checkpoints. Django stores uploaded files and PostgreSQL records, reusing the attempt UUID on retry. | Offline save/reopen and failed-upload retry retained the same audio and identity. Server restart checks retained uploaded media. | Recovery cannot reconstruct missing or unfinalized audio. History covers known presentation mappings for the selected server; account-wide synchronization is absent. |
+| Synchronized review | One `expo-audio` player supplies the position for PDF display, word highlighting and visit navigation; validated downloads support offline review. | Emulator checks demonstrated word/visit seeking, backward visits, offline restart and recovery of server-only media. Local redesign checks preserved playback across review panels. | Highlighting depends on provider timestamps. These checks do not establish perceptually accurate synchronization for real speech; missing or untimed transcripts have reduced navigation. |
+
+### Speech processing
+
+| Feature / technology | Implementation at Iteration 1 | What worked | What did not work or remains limited |
+| --- | --- | --- | --- |
+| Local Whisper attempt | Earlier backend prototype: `faster-whisper`, multilingual `small` model, CPU INT8 inference and word timestamps. This ran on the server, not the Android device. | Local inference produced timestamped synthetic English/Korean output. Shorter multilingual decoding windows retained both languages in a mixed-language sample. | A phrase near a language switch was still omitted. Human use found poor real-voice transcription, including non-words. Local inference is absent from the current integrated pipeline. |
+| Hosted Whisper | Backend OpenAI SDK calls `whisper-1` for word timestamps. A Silero ONNX speech-presence gate precedes submission; durable jobs retain the response and normalized transcript. New captures start processing after upload and consent. | Synthetic-speech checks completed transcription and alignment. No-speech handling retained empty-word visits without a provider call; saved results supported reuse. | Human use also found poor real-voice transcription and non-words with the API. Hosted inference did not resolve that quality problem. Network, provider limits and consent still gate processing. |
+| Slide alignment and timing estimates | `align_words` assigns words by start time to chronological slide visits. Metrics sum visit durations and estimate English/Korean rates over total rehearsal time. | Boundary checks covered exact transitions, repeated/backward visits and simultaneous events. A hosted synthetic pilot preserved the intended visit order. | Alignment cannot correct misrecognized words or inaccurate word timestamps. Rate estimates inherit transcript errors and include silence; Korean counts are Hangul runs, not linguistic words. |
+| Background processing and recovery | Django persists jobs in PostgreSQL; Redis/Celery deliver work and Beat schedules recovery. Saved responses allow later stages to resume. | Controlled worker/API/broker restart checks recovered durable work and reused completed responses without duplicate submissions. | An uncertain provider outcome still needs user confirmation before retry. Recovery preserves work but does not improve recognition quality; production timeout behavior has not been fully verified. |
+
+**Real-voice transcription remains an unresolved quality problem.** The user's Iteration 1 experience with both local and API Whisper included incorrect recognition and non-words. This is a qualitative human observation; no measured error rate or provider ranking is claimed. Earlier passing checks covered mocked responses, timestamp conversion, recovery and limited synthetic speech. They did not demonstrate reliable recognition of the user's voice.
+
+The speech-presence gate detects whether speech is present; it does not correct words. Alignment checks timing, and feedback validation checks references to saved text. Neither establishes that the transcript matches the audio. Consequently, coaching can quote a misrecognized phrase and still pass evidence validation. Keeping the original recording and shared evidence playback is essential for checking both transcript and advice. Detailed evaluation procedures and results belong in the separate testing documentation.
+
+### AI feedback and frontend design
+
+| Feature | Implementation at Iteration 1 | What worked | What did not work or remains limited |
+| --- | --- | --- | --- |
+| Slide descriptions | OpenAI/Gemini adapters generate structured descriptions from slide images/text. Versioned caching reuses compatible descriptions; edits invalidate dependent feedback. | Controlled live runs generated descriptions with both providers. Editing/cache flows worked in emulator checks. Bounded image conversion repaired a real phone failure caused by oversized PNG input. | Gemini initially rejected the description schema; a simpler wire schema resolved that compatibility issue. Descriptions still sometimes overstated slide content and need human correction. |
+| Rehearsal coaching | Explicit generation combines saved transcript/visits, audience and descriptions. Validation checks quoted evidence and ranges before exposing up to three suggestions. | Live examples identified a spoken 50% claim that conflicted with 20% on a slide. Invalid quotation evidence was rejected; regeneration reused the transcript. A repaired phone flow reached completed feedback. | Some advice was generic or weakly supported, with a possible slide-number false positive. Valid evidence does not prove useful advice, and transcription errors can mislead coaching. Feedback defaults to disabled until configured. |
+| Replaceable frontend layouts | Local redesign: Expo Router hosts controller-owned state; typed layout contracts expose display models and guarded actions to interchangeable views. | Both layouts passed the existing automated scenarios. Physical-phone and emulator checks demonstrated the shared capture/review flow and retained player state across panels. | The redesign remains local. Broader accessibility, keyboard/long-text usability and audible synchronization need further verification. Layout selection occurs at startup; there is no runtime theme/layout picker. |
