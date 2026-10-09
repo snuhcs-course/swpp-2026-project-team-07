@@ -7,6 +7,7 @@ This is the development evidence behind the [main report](ai-collaboration-repor
 Evidence labels used below:
 
 - **Original:** recovered from a `response_item` whose role is `user`, not a task title, generated summary or PR description. Fenced quotations retain spelling, capitalization and Markdown; terminal whitespace is omitted.
+- **Contributor-supplied original:** verbatim prompt text in a supplied contribution file, identified by the requester as that member's work. These quotations were checked against the supplied file; the underlying raw chat was not independently retrieved.
 - **Approved AI plan:** text first drafted by the assistant and then submitted in a user-role “PLEASE IMPLEMENT THIS PLAN” message. This proves approval/instruction, not independent human authorship of the plan.
 - **Secondary quotation:** exact wording in a dated AI-use log; the original conversation was not recovered.
 - **Summary / missing:** source describes the work but supplies no authentic prompt. Summary prose is never placed in a prompt quotation.
@@ -43,15 +44,40 @@ Evidence: [PR #4](https://github.com/snuhcs-course/swpp-2026-project-team-07/pul
 
 ## 3. Jaewon: PDF import and rendering
 
+**Evidence: contributor-supplied original prompts, F1.** The requester supplied [Jaewon's contribution file](history/jaewon-ai-collaboration-prompts-iteration-1.md) on October 9 and explicitly identified it as his work. Its first prompt identifies the sender as **“Team mate A.”** Together with the requester's `justaoj` → Jaewon mapping, this resolves the earlier sender ambiguity. The file attributes these quotations to original Codex user messages; this revision checks them against the supplied file, without independently retrieving the raw chat. October 4 is the feature-record date, not a verified timestamp for each message. Source-message IDs, exact timestamps and coding model/version were not supplied.
+
 ### J1. Local PDF import, persistent catalog and page viewer, October 4
 
-**Evidence: summary; original prompt missing.** The requester maps `justaoj` to Jaewon, and the feature commit records Jaewon's Git authorship. Its AI-use entry names the prompt sender only as **“Teammate A.”** It summarizes a request for on-device storage and slide-by-slide viewing before upload. We cannot yet identify that prompt sender as Jaewon.
+**Contributor-supplied original request, F1 J1** (full text):
+
+```text
+I am Team mate A and I have to implement the pdf import tool for the project.
+instructions are - we have the main code - do not push to main but branch it off from the github ([https://github.com/snuhcs-course/swpp-2026-project-team-07](https://github.com/snuhcs-course/swpp-2026-project-team-07))
+i want to work on it off line on my mac and test it out before i uplaod the branch like the others did- but I also want to test out the main code on the android device.
+I want to first implement it so that you can upload the pdf (store it in your device, not server side) and be able to see it slide by slide like described.
+```
 
 Codex implemented the PDF service, Library/Viewer screens, app-private copies and catalog, and native renderer configuration. This was local PDF rendering; server slide-image/text preparation was still absent. The work was incorporated into PR #5, removed from the baseline by #10, and reused during the rebuild. Seoyeon's restoration prompts below do not substitute for Jaewon's original contribution.
 
 Evidence: [`9547f1d`](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/9547f1dd397436f7fb1d74b9c4e94d7ca8d20d1b), [PDF task and phone follow-up](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/9547f1dd397436f7fb1d74b9c4e94d7ca8d20d1b/docs/ai-use.md#L218-L267). Codex reported 21 existing mobile tests, typecheck/lint, export and prebuild. A later agent-operated Samsung SM-S901N check rendered a 14-page PDF, swiped to page 2, used Next and opened rehearsal. It did not verify every rehearsal control, cancellation or malformed files. During coordinate-based testing Codex tapped **Remove** instead of **Open**; the app-private copy was deleted, the original remained in Downloads, and Codex reimported it. This is a verified **tool-operation mistake**, not a hallucination or human code repair; time cost was not recorded.
 
-**Needed from Jaewon:** the import/rendering prompts and revisions; confirmation whether he was “Teammate A”; acceptance/edit decisions; his own phone-test and review notes; coding model/version if recorded. Native-build and device activity in the existing entry belongs to Codex, not automatically to Jaewon.
+### J2. Imported PDF in Practice and first-page entry, October 4 feature record
+
+**Contributor-supplied original follow-up, F1 J2** (full text):
+
+```text
+now implement after "preview rehearsal" - it leads to the practice tab. under rehearsal, currently there are sample slides. change them to the uplaoded pdf file and maintain the next slide feature in the same tab.
+```
+
+**Contributor-supplied original follow-up, F1 J2** (full text):
+
+```text
+also, when the app enters rehearsal/practice, make sure even if the slide was moved to a different slide in the your slides slide preview tab, when you press preview rehearsal and move to the practice slide, it always goes back to the first slide
+```
+
+**Human decision and incorporated output:** Jaewon extended the import/viewer request to the Practice flow: replace its sample slides with the imported PDF, retain Next, and open at the first page regardless of the page selected in the viewer. At `9547f1d`, [Preview rehearsal passes the PDF URI and `slide: 0`](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/9547f1dd397436f7fb1d74b9c4e94d7ca8d20d1b/mobile/src/features/pdf/ViewerScreen.tsx#L134-L142), and [Practice renders that PDF with page-navigation controls](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/9547f1dd397436f7fb1d74b9c4e94d7ca8d20d1b/mobile/src/features/recording/RehearsalScreen.tsx#L62-L115). The [October 4 agent-operated phone check](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/9547f1dd397436f7fb1d74b9c4e94d7ca8d20d1b/docs/ai-use.md#L246-L267) observed the same PDF opening in Practice at page one; Practice's Next control itself was not tested on the device. These are historical requirements and results at that commit, not a claim about the current app's entry-page behavior.
+
+**Still needed from Jaewon:** acceptance/edit decisions, any additional failed attempts or revisions, personally performed phone-test/review notes, and coding model/version if recorded. The three supplied prompts and “Teammate A” identity are no longer missing. Native-build and device activity in the existing log belongs to Codex, not automatically to Jaewon.
 
 ## 4. Jooyoung: recording and timeline
 
@@ -434,6 +460,7 @@ Use the original quotations above once; this table explains the comparison witho
 
 | Sequence | Why the initial result/instruction was inadequate | Human decision and observable outcome |
 | --- | --- | --- |
+| [J1](#j1-local-pdf-import-persistent-catalog-and-page-viewer-october-4) → [J2](#j2-imported-pdf-in-practice-and-first-page-entry-october-4-feature-record) | The initial request covered import/viewing; the follow-up reported sample slides in Practice and specified its entry page. | Jaewon requested the imported PDF, Next and a reset to page one. `9547f1d` contains the changes; the agent phone check observed first-page entry but did not test Practice Next. |
 | [S0](#s0-shared-scaffold-and-explainable-handoff-september-28) | Planning context included placeholder hours. | Redirected to scaffold/handoff and requested an explanation document. |
 | [S2](#s2-playback-transcript-and-navigation-revision-october-6) | The user described the implemented three-tab UI as cluttered. | Approved the assistant's two-tab plan; `54078a3` contains the changed navigation. No usability gain inferred from tests. |
 | [S3](#s3-rebuilding-the-current-feature-flow-october-8) | Roadmap carried forward local Whisper. | Specified hosted Whisper plus provider-selectable feedback; #19/#21 implement that choice. |
@@ -467,7 +494,7 @@ This original consolidation instruction led to [PR #17](https://github.com/snuhc
 | Person | What must be supplied or confirmed |
 | --- | --- |
 | Injoon | Export exact September 29 alignment, Whisper, transcript/playback and review prompts, including failed attempts and follow-ups. Confirm personal inspection, any hand edits, model/version and real-audio/device tests. Resolve Y1's requester label with Jooyoung. |
-| Jaewon | Export PDF import/rendering prompts and revisions; resolve “Teammate A”; supply acceptance/edit decisions and personally performed test steps. Keep the agent-operated phone mistake separate from human testing. |
+| Jaewon | Three original prompt quotations supplied in F1; “Teammate A” identity resolved by the requester and supplied text. Supply acceptance/edit decisions, any additional failed attempts/revisions, personally performed test/review steps and model/version if known. Keep the agent-operated phone mistake separate from human testing. |
 | Jooyoung | Export initial recording/permission/timer/Stop and empty-timeline conversations. Confirm who prompted Y1, the Y2 report/retest, tool/model, direct edits (if any) and device test notes. |
 | Seoyeon | Confirm S0–S8 messages and integration decisions, the human phone-test report, requester statements about all-code-by-AI/no hand edits, and the difference between reviewed plans and verified app behavior. Identify the report's human writer and obtain all four members' sign-off. |
 
