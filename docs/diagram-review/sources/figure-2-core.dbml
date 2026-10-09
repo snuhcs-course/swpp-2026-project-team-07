@@ -1,0 +1,48 @@
+// Figure 2 - Core rehearsal data | Unmerged PRs #17-21
+// Logical Django model names. Omitted fields remain in models.py.
+Table Deck [headercolor: #31576D] {
+  id uuid [pk, not null]
+  title varchar(255) [not null]
+  pdf varchar(100) [not null, note: 'File reference; bytes in shared media']
+  page_count integer [not null]
+  content_hash varchar(64) [note: 'Nullable for legacy decks']
+  preparation_version varchar(40) [not null]
+  indexes { (content_hash, preparation_version) [unique, name: 'unique_prepared_pdf'] }
+}
+Table Slide [headercolor: #31576D] {
+  id bigint [pk, not null]
+  deck_id uuid [not null]
+  slide_index integer [not null, note: 'Zero-based within the deck']
+  image varchar(100) [not null, note: 'Prepared image file reference']
+  extracted_text text [not null]
+  indexes { (deck_id, slide_index) [unique, name: 'unique_deck_slide'] }
+}
+Table Attempt [headercolor: #31576D] {
+  id uuid [pk, not null, note: 'New recording = new UUID; retries retain it']
+  deck_id uuid [not null]
+  audio varchar(100) [not null]
+  duration_ms integer [not null]
+  slide_events jsonb [not null]
+  transcript jsonb
+  visits jsonb
+  metrics jsonb
+  processing_state varchar(32) [not null]
+  processing_revision integer [not null]
+  Note: 'JSON preserves chronological visits, including backward/repeated slides. Times are audio-relative integer milliseconds.'
+}
+Table ProviderRequest [headercolor: #31576D] {
+  id bigint [pk, not null]
+  attempt_id uuid [not null]
+  generation integer [not null]
+  provider varchar(32) [not null]
+  model varchar(32) [not null]
+  outcome varchar(32) [not null]
+  raw_response jsonb [note: 'Private receipt, never serialized to clients']
+  indexes { (attempt_id, generation) [unique, name: 'one_provider_request_per_generation'] }
+}
+Ref: Deck.id < Slide.deck_id
+Ref: Deck.id < Attempt.deck_id
+Ref: Attempt.id < ProviderRequest.attempt_id
+Note deletion_policy {
+  'Django on_delete: Deck -> Slide CASCADE; Deck -> Attempt PROTECT; Attempt -> ProviderRequest CASCADE. Each child has exactly one parent; each parent has 0..many children. These are ORM policies, not SQL ON DELETE clauses.'
+}

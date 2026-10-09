@@ -1,0 +1,295 @@
+{
+  "captured_at": "2026-10-08T17:56:44.950279+00:00",
+  "repository": "https://github.com/snuhcs-course/swpp-2026-project-team-07",
+  "revisions": {
+    "main": "f6f6e76605632296a802aecef25ac10c6d0fd0cd",
+    "13": "040880f8a21b2f866228984e9fb3c438fa6ee4bf",
+    "17": "b60c3571a481cd60160ea79a3ab44bd5a86f2856",
+    "18": "06fe340a207639826143383364c13b4dd9636d31",
+    "19": "a0ee4755fb6f9a56c77fd967bdd83d1f7a37c400",
+    "20": "3abcf4b6c97bbd6ef2da6cfd6d40670b4dbfca88",
+    "21": "ce9f248256b1bbfc0d66f139886503261cc25953"
+  },
+  "integration_status": {
+    "main": "merged",
+    "13": "incorporated recording contribution in PR17",
+    "17-21": "open unmerged feature stack"
+  },
+  "local_redesign": {
+    "branch": "codex/refactor-design",
+    "head": "ce9f248256b1bbfc0d66f139886503261cc25953",
+    "staged_binary_diff_sha256": "542f11d3a3e08184370e0cf180f365f3ee52fb5ca0942c43c699f3dd6d3023a3",
+    "unstaged_binary_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "staged_paths": [
+      "README.md",
+      "docs/ai-use.md",
+      "docs/api-contract.md",
+      "docs/physical-device-test.md",
+      "docs/ui-layouts.md",
+      "mobile/.env.example",
+      "mobile/app.json",
+      "mobile/package-lock.json",
+      "mobile/package.json",
+      "mobile/scripts/check-layout-boundaries.mjs",
+      "mobile/src/app/(tabs)/_layout.tsx",
+      "mobile/src/app/(tabs)/index.tsx",
+      "mobile/src/app/(tabs)/practice.tsx",
+      "mobile/src/app/_layout.tsx",
+      "mobile/src/app/library.tsx",
+      "mobile/src/app/utilities.tsx",
+      "mobile/src/features/feedback/FeedbackPanel.tsx",
+      "mobile/src/features/home/UtilitiesScreen.tsx",
+      "mobile/src/features/home/historyPresentation.ts",
+      "mobile/src/features/home/usePracticeLibrary.ts",
+      "mobile/src/features/pdf/LibraryScreen.tsx",
+      "mobile/src/features/pdf/PdfThumbnail.tsx",
+      "mobile/src/features/pdf/SlidePreview.tsx",
+      "mobile/src/features/pdf/ViewerScreen.tsx",
+      "mobile/src/features/recording/RehearsalScreen.tsx",
+      "mobile/src/features/recording/SavedAttemptScreen.tsx",
+      "mobile/src/features/transcription/PlaybackTranscript.tsx",
+      "mobile/src/features/transcription/ResultsScreen.tsx",
+      "mobile/src/features/transcription/transcriptPresentation.ts",
+      "mobile/src/layouts/contract-test/MainNavigation.tsx",
+      "mobile/src/layouts/contract-test/index.tsx",
+      "mobile/src/layouts/contracts.ts",
+      "mobile/src/layouts/refactor/FeedbackView.tsx",
+      "mobile/src/layouts/refactor/LibraryView.tsx",
+      "mobile/src/layouts/refactor/MainNavigation.tsx",
+      "mobile/src/layouts/refactor/MessageView.tsx",
+      "mobile/src/layouts/refactor/PreviewView.tsx",
+      "mobile/src/layouts/refactor/RecordingView.tsx",
+      "mobile/src/layouts/refactor/ReviewView.tsx",
+      "mobile/src/layouts/refactor/RootNavigation.tsx",
+      "mobile/src/layouts/refactor/SampleSlideView.tsx",
+      "mobile/src/layouts/refactor/SetupView.tsx",
+      "mobile/src/layouts/refactor/ThumbnailView.tsx",
+      "mobile/src/layouts/refactor/TranscriptView.tsx",
+      "mobile/src/layouts/refactor/UtilitiesView.tsx",
+      "mobile/src/layouts/refactor/components.tsx",
+      "mobile/src/layouts/refactor/index.ts",
+      "mobile/src/layouts/registry.ts",
+      "mobile/src/layouts/selection.ts",
+      "mobile/src/ui/components.tsx",
+      "mobile/tests/helpers/recording-screen-loader.mjs",
+      "mobile/tests/helpers/recording-screen-ui.mjs",
+      "mobile/tests/layout-contract.test.mjs",
+      "mobile/tests/layout-navigation.test.mjs",
+      "mobile/tests/pdf-recording.test.mjs",
+      "mobile/tests/recording-retry.test.mjs",
+      "mobile/tests/review-library.test.mjs",
+      "mobile/tests/review-screen.test.mjs",
+      "mobile/tests/saved-attempt.test.mjs"
+    ]
+  },
+  "guidelines": {
+    "filename": "3 - Design Documentation Guidelines (1).pdf",
+    "sha256": "7facea3083c1424482c0f96ba93e5b360086edb02fc6eb7068df4350686636ab"
+  },
+  "wiki_sources": [
+    {
+      "label": "course-team16",
+      "url": "https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2025-project-team-16/Design-Documentation.md",
+      "sha256": "df1865ee0331fc32f6419bda030a2593bf73e8038643742fe53e0c29fd20d285",
+      "bytes": 26796
+    },
+    {
+      "label": "course-team07",
+      "url": "https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2025-project-team-07/Design-Documentation.md",
+      "sha256": "8e8d2f3048c6bb70fa338c980c5a983c0a71796a600beaa40783d8f37dffc747",
+      "bytes": 44473
+    },
+    {
+      "label": "course-team09",
+      "url": "https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2025-project-team-09/Design-Document.md",
+      "sha256": "087b512735da45b94838af0ad986943b74a4be39c9f7f4ebd066e1a2e645cf41",
+      "bytes": 49973
+    },
+    {
+      "label": "course-team04",
+      "url": "https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2025-project-team-04/Design-Documentation.md",
+      "sha256": "21cdafc32e69d0bfbd26825a5015a19b8ef1d46dd57bb8fc7b04c53db31829c3",
+      "bytes": 32985
+    },
+    {
+      "label": "outloud-existing-design",
+      "url": "https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2026-project-team-07/Design-Documentation.md",
+      "sha256": "b27d9be8c38e89f7f61b04913d272b3715fc3d4c2953fc9467209f55f851c331",
+      "bytes": 23632
+    },
+    {
+      "label": "outloud-requirements",
+      "url": "https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2026-project-team-07/Requirements-%26-Specifications.md",
+      "sha256": "fed5656aa431cde92c3bb0d968dbe363baade781ec0943ca1ff02d61b40d9830",
+      "bytes": 23241
+    }
+  ],
+  "excluded_revision_history_prs": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    14,
+    15,
+    16
+  ],
+  "phase2_review": {
+    "checked_at": "2026-10-08T21:48:23.365942+00:00",
+    "main": "f6f6e76605632296a802aecef25ac10c6d0fd0cd",
+    "prs": {
+      "17": {
+        "state": "OPEN",
+        "head": "b60c3571a481cd60160ea79a3ab44bd5a86f2856"
+      },
+      "18": {
+        "state": "OPEN",
+        "head": "06fe340a207639826143383364c13b4dd9636d31"
+      },
+      "19": {
+        "state": "OPEN",
+        "head": "a0ee4755fb6f9a56c77fd967bdd83d1f7a37c400"
+      },
+      "20": {
+        "state": "OPEN",
+        "head": "3abcf4b6c97bbd6ef2da6cfd6d40670b4dbfca88"
+      },
+      "21": {
+        "state": "OPEN",
+        "head": "ce9f248256b1bbfc0d66f139886503261cc25953"
+      }
+    },
+    "local_branch": "codex/refactor-design",
+    "local_staged_diff_sha256": "542f11d3a3e08184370e0cf180f365f3ee52fb5ca0942c43c699f3dd6d3023a3",
+    "primary_source": "Design-Documentation.md",
+    "markdown_sha256": "ef98acf08ba930e25f34787f39aeab390d9384070c2e3751a75ec6633623174c",
+    "phase1_svg_unchanged": true,
+    "guidelines": [
+      {
+        "name": "3 - Design Documentation Guidelines.pdf",
+        "sha256": "7facea3083c1424482c0f96ba93e5b360086edb02fc6eb7068df4350686636ab"
+      },
+      {
+        "name": "3 - Design Documentation Guidelines (1).pdf",
+        "sha256": "7facea3083c1424482c0f96ba93e5b360086edb02fc6eb7068df4350686636ab"
+      }
+    ],
+    "wiki_reads": {
+      "requirements.md": "fed5656aa431cde92c3bb0d968dbe363baade781ec0943ca1ff02d61b40d9830",
+      "wiki-design.md": "b27d9be8c38e89f7f61b04913d272b3715fc3d4c2953fc9467209f55f851c331"
+    }
+  },
+  "revision_4_3": {
+    "requirements_url": "https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2026-project-team-07/Requirements-%26-Specifications.md",
+    "requirements_sha256": "24a84f96b08212d289ba269affe78f2644257c029fda36078e772cffe589202b",
+    "open_prs": [
+      {
+        "headRefName": "codex/design-documentation",
+        "headRefOid": "fdebc34ab02028380ce8fece04a758cbd603aa30",
+        "number": 23
+      },
+      {
+        "headRefName": "codex/ai-collaboration-report",
+        "headRefOid": "97060a207f1e441a0ebe9aadb72d18f7328e1c31",
+        "number": 22
+      },
+      {
+        "headRefName": "feature/ai-feedback",
+        "headRefOid": "ce9f248256b1bbfc0d66f139886503261cc25953",
+        "number": 21
+      },
+      {
+        "headRefName": "feature/rehearsal-review",
+        "headRefOid": "3abcf4b6c97bbd6ef2da6cfd6d40670b4dbfca88",
+        "number": 20
+      },
+      {
+        "headRefName": "feature/whisper-api-processing",
+        "headRefOid": "a0ee4755fb6f9a56c77fd967bdd83d1f7a37c400",
+        "number": 19
+      },
+      {
+        "headRefName": "feature/recording-storage-upload",
+        "headRefOid": "06fe340a207639826143383364c13b4dd9636d31",
+        "number": 18
+      },
+      {
+        "headRefName": "feature/pdf-recording",
+        "headRefOid": "b60c3571a481cd60160ea79a3ab44bd5a86f2856",
+        "number": 17
+      },
+      {
+        "headRefName": "feature/recording",
+        "headRefOid": "040880f8a21b2f866228984e9fb3c438fa6ee4bf",
+        "number": 13
+      }
+    ],
+    "other_worktrees": [
+      {
+        "path": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud",
+        "head": "33907d35fd7a52ef3b3fcbd56990af41b50d7cfd",
+        "status": " M docs/ai-use.md\n?? OnLoud-schedule-to-copy.md\n?? outputs/01a11c76-4ecb-7723-93b6-49f6fac45af0/Schedule_Iteration_1_Review_Fixed.png\n?? outputs/01a11c76-4ecb-7723-93b6-49f6fac45af0/Team_07_Project_Schedule_Revised.xlsx\n?? outputs/01a11c76-4ecb-7723-93b6-49f6fac45af0/Team_07_Project_Schedule_Revised_v2.xlsx\n?? outputs/OutLoud_All_Figma_Exports.zip\n?? outputs/figma-export-browser-proof.jpg\n?? \"outputs/figma-exports-all-pages/01-Rehearsal-flow/01-Rehearsal-flow - Board.png\"\n?? \"outputs/figma-exports-all-pages/01-Rehearsal-flow/S01 - Home.png\"\n?? \"outputs/figma-exports-all-pages/01-Rehearsal-flow/S02 - Presentation library.png\"\n?? \"outputs/figma-exports-all-pages/01-Rehearsal-flow/S03 - Practice history.png\"\n?? \"outputs/figma-exports-all-pages/01-Rehearsal-flow/S04 - Practice setup.png\"\n?? \"outputs/figma-exports-all-pages/01-Rehearsal-flow/S05 - Recording in progress.png\"\n?? \"outputs/figma-exports-all-pages/01-Rehearsal-flow/S06 - Session saved.png\"\n?? \"outputs/figma-exports-all-pages/01-Rehearsal-flow/S07 - Review overview.png\"\n?? \"outputs/figma-exports-all-pages/01-Rehearsal-flow/S08 - Review slides.png\"\n?? \"outputs/figma-exports-all-pages/01-Rehearsal-flow/S09 - Review transcript.png\"\n?? \"outputs/figma-exports-all-pages/02-States-and-recovery/02-States-and-recovery - Board.png\"\n?? \"outputs/figma-exports-all-pages/02-States-and-recovery/S01E - Empty library - import error.png\"\n?? \"outputs/figma-exports-all-pages/02-States-and-recovery/S04X - Unsupported slide count.png\"\n?? \"outputs/figma-exports-all-pages/02-States-and-recovery/S05P - Microphone denied.png\"\n?? \"outputs/figma-exports-all-pages/02-States-and-recovery/S05R - Ready to record.png\"\n?? \"outputs/figma-exports-all-pages/02-States-and-recovery/S07N - No speech detected.png\"\n?? \"outputs/figma-exports-all-pages/02-States-and-recovery/S07P - Processing - partial result.png\"\n?? \"outputs/figma-exports-all-pages/02-States-and-recovery/S10 - Transcription disclosure.png\"\n?? \"outputs/figma-exports-all-pages/02-States-and-recovery/S10F - Feedback disclosure.png\"\n?? \"outputs/figma-exports-all-pages/02-States-and-recovery/S11 - Slide description editor.png\"\n?? \"outputs/figma-exports-all-pages/02-States-and-recovery/S11C - Description conflict.png\"\n?? \"outputs/figma-exports-all-pages/02-States-and-recovery/S12 - Recovery in review.png\"\n?? \"outputs/figma-exports-all-pages/02-States-and-recovery/S13 - Help and connection checks.png\"\n?? \"outputs/figma-exports-all-pages/03-Planned-scope/03-Planned-scope - Board.png\"\n?? \"outputs/figma-exports-all-pages/03-Planned-scope/P01 - Spoken summary - delivery events.png\"\n?? \"outputs/figma-exports-all-pages/03-Planned-scope/P02 - Selected-slide retry.png\"\n?? \"outputs/figma-exports-all-pages/03-Planned-scope/P03 - Compare the same slide.png\"\n?? \"outputs/figma-exports-all-pages/03-Planned-scope/P04 - Delete app-owned data.png\"\n?? \"outputs/figma-exports-all-pages/03-Planned-scope/P05 - Audience questions.png\"\n?? \"outputs/figma-exports-all-pages/03-Planned-scope/P06 - Attach a script.png\"\n?? \"outputs/figma-exports-all-pages/03-Planned-scope/P07 - Team sharing.png\"\n?? \"outputs/figma-exports-all-pages/03-Planned-scope/P08 - Korean support evaluation.png\"\n?? outputs/figma-exports-all-pages/README.txt\n?? outputs/figma-exports-all-pages/manifest.csv\n?? outputs/figma-s07f/README.md\n?? outputs/figma-s07f/S07F-browser-proof.jpg\n?? outputs/figma-s07f/S07F-evidence-linked-coaching.png\n?? outputs/figma-s07f/S07F-evidence-linked-coaching.svg\n?? outputs/figma-s07f/manifest.json\n?? outputs/figma-wireframes/Figma-Wireframes.md\n?? outputs/figma-wireframes/figma-state.json\n?? outputs/figma-wireframes/validation.json\n?? outputs/github-current-reqspec/Requirements-and-Specifications.md\n?? outputs/reqspec-revised-draft/Change-Summary.md\n?? outputs/reqspec-revised-draft/OutLoud_Requirements_and_Specifications_Revised_Draft.pdf\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft.zip\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/Change-Summary.md\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/Implementation-Status.md\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/OutLoud_Requirements_and_Specifications_v2.0.pdf\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/README.md\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/Requirements-and-Specifications.md\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/Story-Consolidation-Proposal.md\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/Team-Notes-Open-Decisions.md\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/Validation-Summary.md\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/assets/requirements/flow-1-record.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/assets/requirements/flow-2-review.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/assets/requirements/flow-3-history.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/assets/requirements/p02-selected-slide-retry.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/assets/requirements/p03-compare-slide.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/assets/requirements/p04-delete-data.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/assets/requirements/s01-home.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/assets/requirements/s03-practice-history.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/assets/requirements/s04-practice-setup.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/assets/requirements/s05-recording.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/assets/requirements/s05p-microphone-denied.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/assets/requirements/s07-review-overview.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/assets/requirements/s07f-slide-feedback.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/assets/requirements/s07n-no-speech.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/assets/requirements/s07p-processing.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/assets/requirements/s08-slide-review.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/assets/requirements/s09-transcript.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/assets/requirements/s12-recovery.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/qa/pages/page-01.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/qa/pages/page-02.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/qa/pages/page-03.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/qa/pages/page-04.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/qa/pages/page-05.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/qa/pages/page-06.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/qa/pages/page-07.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/qa/pages/page-08.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/qa/pages/page-09.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/qa/pages/page-10.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/qa/pages/page-11.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/qa/pages/page-12.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/qa/pages/page-13.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/qa/pages/page-14.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/qa/pages/page-15.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/qa/pages/page-16.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/qa/pages/page-17.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/qa/pages/page-18.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/qa/pages/page-19.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/qa/pages/page-20.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/qa/pages/page-21.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/qa/pages/page-22.png\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/qa/validation.json\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/source/build.mjs\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/source/check.mjs\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/source/diagrams/flow-1-record.svg\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/source/diagrams/flow-2-review.svg\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/source/diagrams/flow-3-history.svg\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/source/diagrams/flows.mjs\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/source/diagrams/render.sh\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/source/diagrams/shot.sh\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/source/imgtool.swift\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/source/inputs/S07F-screenshot-supplied.webp\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/source/pdftext.swift\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/source/render-pages.swift\n?? outputs/reqspec-revised-draft/OutLoud_Revised_Draft/source/revisions/v3.0-draft-before-restructure-2026-10-09.zip\n?? outputs/reqspec-revised-draft/README.md\n?? outputs/reqspec-revised-draft/Requirements-and-Specifications.md\n?? outputs/reqspec-revised-draft/Validation-Summary.md\n?? outputs/reqspec-revised-draft/assets/EXPORT-REQUIRED.md\n?? outputs/reqspec-revised-draft/assets/figma/S01-home.png\n?? outputs/reqspec-revised-draft/assets/figma/S02-library.png\n?? outputs/reqspec-revised-draft/assets/figma/S03-history.png\n?? outputs/reqspec-revised-draft/assets/figma/S04-setup.png\n?? outputs/reqspec-revised-draft/assets/figma/S05-recording.png\n?? outputs/reqspec-revised-draft/assets/figma/S06-saved.png\n?? outputs/reqspec-revised-draft/assets/figma/S07-overview.png\n?? outputs/reqspec-revised-draft/assets/figma/S08-slides.png\n?? outputs/reqspec-revised-draft/assets/figma/S09-transcript.png\n?? outputs/reqspec-revised-draft/assets/figma/core-board.png\n?? outputs/reqspec-revised-draft/assets/figma/manifest.json\n?? outputs/reqspec-revised-draft/qa/content-validation.json\n?? outputs/reqspec-revised-draft/qa/page-01.png\n?? outputs/reqspec-revised-draft/qa/page-02.png\n?? outputs/reqspec-revised-draft/qa/page-03.png\n?? outputs/reqspec-revised-draft/qa/page-04.png\n?? outputs/reqspec-revised-draft/qa/page-05.png\n?? outputs/reqspec-revised-draft/qa/page-06.png\n?? outputs/reqspec-revised-draft/qa/page-07.png\n?? outputs/reqspec-revised-draft/qa/page-08.png\n?? outputs/reqspec-revised-draft/qa/page-09.png\n?? outputs/reqspec-revised-draft/qa/page-10.png\n?? outputs/reqspec-revised-draft/qa/page-11.png\n?? outputs/reqspec-revised-draft/qa/page-12.png\n?? outputs/reqspec-revised-draft/qa/page-13.png\n?? outputs/reqspec-revised-draft/qa/page-14.png\n?? outputs/reqspec-revised-draft/qa/page-15.png\n?? outputs/reqspec-revised-draft/source/before.json\n?? outputs/reqspec-revised-draft/source/build.py\n?? outputs/reqspec-revised-draft/source/content-blocks.json\n?? outputs/reqspec-revised-draft/source/revisions/Before-Figma-Exports.zip\n?? outputs/reqspec-revised-draft/source/validate.py\n?? outputs/reqspec/AI-Use-Record.md\n?? outputs/reqspec/Evidence-and-Discrepancy-Ledger.md\n?? outputs/reqspec/OutLoud_ReqSpec_Package.zip\n?? outputs/reqspec/OutLoud_Requirements_and_Specifications.docx\n?? outputs/reqspec/OutLoud_Requirements_and_Specifications.pdf\n?? outputs/reqspec/README.md\n?? outputs/reqspec/Reference-Analysis.md\n?? outputs/reqspec/Requirements-and-Specifications.md\n?? outputs/reqspec/SHA256SUMS.txt\n?? outputs/reqspec/Source-Manifest.md\n?? outputs/reqspec/Story-and-Acceptance-Coverage.csv\n?? outputs/reqspec/Validation-Summary.md\n?? outputs/reqspec/Wiki-Consistency-Report.md\n?? outputs/reqspec/evidence/G1.txt\n?? outputs/reqspec/evidence/G2.txt\n?? outputs/reqspec/evidence/P1.txt\n?? outputs/reqspec/evidence/REF07.md\n?? outputs/reqspec/evidence/REF09.md\n?? outputs/reqspec/evidence/REF16.md\n?? outputs/reqspec/evidence/U1.txt\n?? outputs/reqspec/evidence/W1.md\n?? outputs/reqspec/evidence/W2.md\n?? outputs/reqspec/evidence/W3.md\n?? outputs/reqspec/evidence/W4.md\n?? outputs/reqspec/evidence/W5.md\n?? outputs/reqspec/evidence/pr-metadata.json\n?? outputs/reqspec/evidence/reference-images.json\n?? outputs/reqspec/evidence/repository-after.json\n?? outputs/reqspec/evidence/repository-before.json\n?? outputs/reqspec/evidence/source-files.json\n?? outputs/reqspec/evidence/staged-source-blobs.json\n?? outputs/reqspec/figures/F01.pdf\n?? outputs/reqspec/figures/F01.png\n?? outputs/reqspec/figures/F02.pdf\n?? outputs/reqspec/figures/F02.png\n?? outputs/reqspec/figures/F03.pdf\n?? outputs/reqspec/figures/F03.png\n?? outputs/reqspec/figures/F04.pdf\n?? outputs/reqspec/figures/F04.png\n?? outputs/reqspec/figures/F05.pdf\n?? outputs/reqspec/figures/F05.png\n?? outputs/reqspec/figures/F06.pdf\n?? outputs/reqspec/figures/F06.png\n?? outputs/reqspec/figures/F07.pdf\n?? outputs/reqspec/figures/F07.png\n?? outputs/reqspec/figures/F08.pdf\n?? outputs/reqspec/figures/F08.png\n?? outputs/reqspec/qa/bookmarks.json\n?? outputs/reqspec/qa/canonical-display-text.json\n?? outputs/reqspec/qa/compiled-blocks.json\n?? outputs/reqspec/qa/final-render/OutLoud_Requirements_and_Specifications.pdf\n?? outputs/reqspec/qa/final-render/page-1.png\n?? outputs/reqspec/qa/final-render/page-10.png\n?? outputs/reqspec/qa/final-render/page-11.png\n?? outputs/reqspec/qa/final-render/page-12.png\n?? outputs/reqspec/qa/final-render/page-13.png\n?? outputs/reqspec/qa/final-render/page-14.png\n?? outputs/reqspec/qa/final-render/page-15.png\n?? outputs/reqspec/qa/final-render/page-16.png\n?? outputs/reqspec/qa/final-render/page-17.png\n?? outputs/reqspec/qa/final-render/page-18.png\n?? outputs/reqspec/qa/final-render/page-19.png\n?? outputs/reqspec/qa/final-render/page-2.png\n?? outputs/reqspec/qa/final-render/page-20.png\n?? outputs/reqspec/qa/final-render/page-21.png\n?? outputs/reqspec/qa/final-render/page-22.png\n?? outputs/reqspec/qa/final-render/page-23.png\n?? outputs/reqspec/qa/final-render/page-24.png\n?? outputs/reqspec/qa/final-render/page-25.png\n?? outputs/reqspec/qa/final-render/page-26.png\n?? outputs/reqspec/qa/final-render/page-27.png\n?? outputs/reqspec/qa/final-render/page-28.png\n?? outputs/reqspec/qa/final-render/page-29.png\n?? outputs/reqspec/qa/final-render/page-3.png\n?? outputs/reqspec/qa/final-render/page-30.png\n?? outputs/reqspec/qa/final-render/page-31.png\n?? outputs/reqspec/qa/final-render/page-32.png\n?? outputs/reqspec/qa/final-render/page-33.png\n?? outputs/reqspec/qa/final-render/page-34.png\n?? outputs/reqspec/qa/final-render/page-35.png\n?? outputs/reqspec/qa/final-render/page-36.png\n?? outputs/reqspec/qa/final-render/page-37.png\n?? outputs/reqspec/qa/final-render/page-38.png\n?? outputs/reqspec/qa/final-render/page-39.png\n?? outputs/reqspec/qa/final-render/page-4.png\n?? outputs/reqspec/qa/final-render/page-40.png\n?? outputs/reqspec/qa/final-render/page-41.png\n?? outputs/reqspec/qa/final-render/page-5.png\n?? outputs/reqspec/qa/final-render/page-6.png\n?? outputs/reqspec/qa/final-render/page-7.png\n?? outputs/reqspec/qa/final-render/page-8.png\n?? outputs/reqspec/qa/final-render/page-9.png\n?? outputs/reqspec/qa/final-render2/OutLoud_Requirements_and_Specifications.pdf\n?? outputs/reqspec/qa/final-render2/page-1.png\n?? outputs/reqspec/qa/final-render2/page-10.png\n?? outputs/reqspec/qa/final-render2/page-11.png\n?? outputs/reqspec/qa/final-render2/page-12.png\n?? outputs/reqspec/qa/final-render2/page-13.png\n?? outputs/reqspec/qa/final-render2/page-14.png\n?? outputs/reqspec/qa/final-render2/page-15.png\n?? outputs/reqspec/qa/final-render2/page-16.png\n?? outputs/reqspec/qa/final-render2/page-17.png\n?? outputs/reqspec/qa/final-render2/page-18.png\n?? outputs/reqspec/qa/final-render2/page-19.png\n?? outputs/reqspec/qa/final-render2/page-2.png\n?? outputs/reqspec/qa/final-render2/page-20.png\n?? outputs/reqspec/qa/final-render2/page-21.png\n?? outputs/reqspec/qa/final-render2/page-22.png\n?? outputs/reqspec/qa/final-render2/page-23.png\n?? outputs/reqspec/qa/final-render2/page-24.png\n?? outputs/reqspec/qa/final-render2/page-25.png\n?? outputs/reqspec/qa/final-render2/page-26.png\n?? outputs/reqspec/qa/final-render2/page-27.png\n?? outputs/reqspec/qa/final-render2/page-28.png\n?? outputs/reqspec/qa/final-render2/page-29.png\n?? outputs/reqspec/qa/final-render2/page-3.png\n?? outputs/reqspec/qa/final-render2/page-30.png\n?? outputs/reqspec/qa/final-render2/page-31.png\n?? outputs/reqspec/qa/final-render2/page-32.png\n?? outputs/reqspec/qa/final-render2/page-33.png\n?? outputs/reqspec/qa/final-render2/page-34.png\n?? outputs/reqspec/qa/final-render2/page-35.png\n?? outputs/reqspec/qa/final-render2/page-36.png\n?? outputs/reqspec/qa/final-render2/page-37.png\n?? outputs/reqspec/qa/final-render2/page-38.png\n?? outputs/reqspec/qa/final-render2/page-4.png\n?? outputs/reqspec/qa/final-render2/page-5.png\n?? outputs/reqspec/qa/final-render2/page-6.png\n?? outputs/reqspec/qa/final-render2/page-7.png\n?? outputs/reqspec/qa/final-render2/page-8.png\n?? outputs/reqspec/qa/final-render2/page-9.png\n?? outputs/reqspec/qa/font-cache/84c0f976e30e948e99073af70f4ae876-le64.cache-9\n?? outputs/reqspec/qa/font-cache/b0a71e6bf6a8a1a908413a823d76e21f-le64.cache-9\n?? outputs/reqspec/qa/font-cache/c048ec2ef692f539fddcde3dbece7d90-le64.cache-9\n?? outputs/reqspec/qa/font-cache/c4f31eff28587927f04d084ce604429c-le64.cache-9\n?? outputs/reqspec/qa/font-cache/c6cafe6b1a56ed8b739253d6df90ca6a-le64.cache-9\n?? outputs/reqspec/qa/font-smoke-render/font-smoke.pdf\n?? outputs/reqspec/qa/font-smoke-render/page-1.png\n?? outputs/reqspec/qa/font-smoke-render2/font-smoke.pdf\n?? outputs/reqspec/qa/font-smoke-render2/page-1.png\n?? outputs/reqspec/qa/font-smoke.docx\n?? outputs/reqspec/qa/fonts.conf\n?? outputs/reqspec/qa/release-render/OutLoud_Requirements_and_Specifications.pdf\n?? outputs/reqspec/qa/release-render/page-1.png\n?? outputs/reqspec/qa/release-render/page-10.png\n?? outputs/reqspec/qa/release-render/page-11.png\n?? outputs/reqspec/qa/release-render/page-12.png\n?? outputs/reqspec/qa/release-render/page-13.png\n?? outputs/reqspec/qa/release-render/page-14.png\n?? outputs/reqspec/qa/release-render/page-15.png\n?? outputs/reqspec/qa/release-render/page-16.png\n?? outputs/reqspec/qa/release-render/page-17.png\n?? outputs/reqspec/qa/release-render/page-18.png\n?? outputs/reqspec/qa/release-render/page-19.png\n?? outputs/reqspec/qa/release-render/page-2.png\n?? outputs/reqspec/qa/release-render/page-20.png\n?? outputs/reqspec/qa/release-render/page-21.png\n?? outputs/reqspec/qa/release-render/page-22.png\n?? outputs/reqspec/qa/release-render/page-23.png\n?? outputs/reqspec/qa/release-render/page-24.png\n?? outputs/reqspec/qa/release-render/page-25.png\n?? outputs/reqspec/qa/release-render/page-26.png\n?? outputs/reqspec/qa/release-render/page-27.png\n?? outputs/reqspec/qa/release-render/page-28.png\n?? outputs/reqspec/qa/release-render/page-29.png\n?? outputs/reqspec/qa/release-render/page-3.png\n?? outputs/reqspec/qa/release-render/page-30.png\n?? outputs/reqspec/qa/release-render/page-31.png\n?? outputs/reqspec/qa/release-render/page-32.png\n?? outputs/reqspec/qa/release-render/page-33.png\n?? outputs/reqspec/qa/release-render/page-34.png\n?? outputs/reqspec/qa/release-render/page-35.png\n?? outputs/reqspec/qa/release-render/page-36.png\n?? outputs/reqspec/qa/release-render/page-37.png\n?? outputs/reqspec/qa/release-render/page-38.png\n?? outputs/reqspec/qa/release-render/page-4.png\n?? outputs/reqspec/qa/release-render/page-5.png\n?? outputs/reqspec/qa/release-render/page-6.png\n?? outputs/reqspec/qa/release-render/page-7.png\n?? outputs/reqspec/qa/release-render/page-8.png\n?? outputs/reqspec/qa/release-render/page-9.png\n?? outputs/reqspec/qa/render/OutLoud_Requirements_and_Specifications.pdf\n?? outputs/reqspec/qa/render/page-1.png\n?? outputs/reqspec/qa/render/page-10.png\n?? outputs/reqspec/qa/render/page-11.png\n?? outputs/reqspec/qa/render/page-12.png\n?? outputs/reqspec/qa/render/page-13.png\n?? outputs/reqspec/qa/render/page-14.png\n?? outputs/reqspec/qa/render/page-15.png\n?? outputs/reqspec/qa/render/page-16.png\n?? outputs/reqspec/qa/render/page-17.png\n?? outputs/reqspec/qa/render/page-18.png\n?? outputs/reqspec/qa/render/page-19.png\n?? outputs/reqspec/qa/render/page-2.png\n?? outputs/reqspec/qa/render/page-20.png\n?? outputs/reqspec/qa/render/page-21.png\n?? outputs/reqspec/qa/render/page-22.png\n?? outputs/reqspec/qa/render/page-23.png\n?? outputs/reqspec/qa/render/page-24.png\n?? outputs/reqspec/qa/render/page-25.png\n?? outputs/reqspec/qa/render/page-26.png\n?? outputs/reqspec/qa/render/page-27.png\n?? outputs/reqspec/qa/render/page-28.png\n?? outputs/reqspec/qa/render/page-29.png\n?? outputs/reqspec/qa/render/page-3.png\n?? outputs/reqspec/qa/render/page-30.png\n?? outputs/reqspec/qa/render/page-31.png\n?? outputs/reqspec/qa/render/page-32.png\n?? outputs/reqspec/qa/render/page-33.png\n?? outputs/reqspec/qa/render/page-34.png\n?? outputs/reqspec/qa/render/page-35.png\n?? outputs/reqspec/qa/render/page-36.png\n?? outputs/reqspec/qa/render/page-37.png\n?? outputs/reqspec/qa/render/page-38.png\n?? outputs/reqspec/qa/render/page-39.png\n?? outputs/reqspec/qa/render/page-4.png\n?? outputs/reqspec/qa/render/page-40.png\n?? outputs/reqspec/qa/render/page-41.png\n?? outputs/reqspec/qa/render/page-42.png\n?? outputs/reqspec/qa/render/page-43.png\n?? outputs/reqspec/qa/render/page-44.png\n?? outputs/reqspec/qa/render/page-5.png\n?? outputs/reqspec/qa/render/page-6.png\n?? outputs/reqspec/qa/render/page-7.png\n?? outputs/reqspec/qa/render/page-8.png\n?? outputs/reqspec/qa/render/page-9.png\n?? outputs/reqspec/qa/reviewed-render/OutLoud_Requirements_and_Specifications.pdf\n?? outputs/reqspec/qa/reviewed-render/page-1.png\n?? outputs/reqspec/qa/reviewed-render/page-10.png\n?? outputs/reqspec/qa/reviewed-render/page-11.png\n?? outputs/reqspec/qa/reviewed-render/page-12.png\n?? outputs/reqspec/qa/reviewed-render/page-13.png\n?? outputs/reqspec/qa/reviewed-render/page-14.png\n?? outputs/reqspec/qa/reviewed-render/page-15.png\n?? outputs/reqspec/qa/reviewed-render/page-16.png\n?? outputs/reqspec/qa/reviewed-render/page-17.png\n?? outputs/reqspec/qa/reviewed-render/page-18.png\n?? outputs/reqspec/qa/reviewed-render/page-19.png\n?? outputs/reqspec/qa/reviewed-render/page-2.png\n?? outputs/reqspec/qa/reviewed-render/page-20.png\n?? outputs/reqspec/qa/reviewed-render/page-21.png\n?? outputs/reqspec/qa/reviewed-render/page-22.png\n?? outputs/reqspec/qa/reviewed-render/page-23.png\n?? outputs/reqspec/qa/reviewed-render/page-24.png\n?? outputs/reqspec/qa/reviewed-render/page-25.png\n?? outputs/reqspec/qa/reviewed-render/page-26.png\n?? outputs/reqspec/qa/reviewed-render/page-27.png\n?? outputs/reqspec/qa/reviewed-render/page-28.png\n?? outputs/reqspec/qa/reviewed-render/page-29.png\n?? outputs/reqspec/qa/reviewed-render/page-3.png\n?? outputs/reqspec/qa/reviewed-render/page-30.png\n?? outputs/reqspec/qa/reviewed-render/page-31.png\n?? outputs/reqspec/qa/reviewed-render/page-32.png\n?? outputs/reqspec/qa/reviewed-render/page-33.png\n?? outputs/reqspec/qa/reviewed-render/page-34.png\n?? outputs/reqspec/qa/reviewed-render/page-35.png\n?? outputs/reqspec/qa/reviewed-render/page-36.png\n?? outputs/reqspec/qa/reviewed-render/page-37.png\n?? outputs/reqspec/qa/reviewed-render/page-38.png\n?? outputs/reqspec/qa/reviewed-render/page-4.png\n?? outputs/reqspec/qa/reviewed-render/page-5.png\n?? outputs/reqspec/qa/reviewed-render/page-6.png\n?? outputs/reqspec/qa/reviewed-render/page-7.png\n?? outputs/reqspec/qa/reviewed-render/page-8.png\n?? outputs/reqspec/qa/reviewed-render/page-9.png\n?? outputs/reqspec/qa/validation-console.json\n?? outputs/reqspec/qa/validation-results.json\n?? outputs/reqspec/qa/visual-review.json\n?? outputs/reqspec/source/build.py\n?? outputs/reqspec/source/finalize.py\n?? outputs/reqspec/source/render_pdf.py\n?? outputs/reqspec/source/reqspec.json\n?? outputs/reqspec/source/validate.py\n",
+        "staged": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "unstaged": "fc7223a1f24f1bee9f071feaef566d18428ac9b485a33257c285f05c211fb968"
+      },
+      {
+        "path": "/Users/seoyeonpark/.codex/worktrees/frontend-prototype/OnLoud",
+        "head": "ce9f248256b1bbfc0d66f139886503261cc25953",
+        "status": "M  README.md\nM  docs/ai-use.md\nM  docs/api-contract.md\nA  docs/physical-device-test.md\nA  docs/ui-layouts.md\nM  mobile/.env.example\nM  mobile/app.json\nM  mobile/package-lock.json\nM  mobile/package.json\nA  mobile/scripts/check-layout-boundaries.mjs\nA  mobile/src/app/(tabs)/_layout.tsx\nA  mobile/src/app/(tabs)/index.tsx\nA  mobile/src/app/(tabs)/practice.tsx\nM  mobile/src/app/_layout.tsx\nR  mobile/src/app/index.tsx -> mobile/src/app/library.tsx\nA  mobile/src/app/utilities.tsx\nM  mobile/src/features/feedback/FeedbackPanel.tsx\nA  mobile/src/features/home/UtilitiesScreen.tsx\nA  mobile/src/features/home/historyPresentation.ts\nA  mobile/src/features/home/usePracticeLibrary.ts\nM  mobile/src/features/pdf/LibraryScreen.tsx\nA  mobile/src/features/pdf/PdfThumbnail.tsx\nM  mobile/src/features/pdf/SlidePreview.tsx\nM  mobile/src/features/pdf/ViewerScreen.tsx\nM  mobile/src/features/recording/RehearsalScreen.tsx\nM  mobile/src/features/recording/SavedAttemptScreen.tsx\nM  mobile/src/features/transcription/PlaybackTranscript.tsx\nM  mobile/src/features/transcription/ResultsScreen.tsx\nA  mobile/src/features/transcription/transcriptPresentation.ts\nA  mobile/src/layouts/contract-test/MainNavigation.tsx\nA  mobile/src/layouts/contract-test/index.tsx\nA  mobile/src/layouts/contracts.ts\nA  mobile/src/layouts/refactor/FeedbackView.tsx\nA  mobile/src/layouts/refactor/LibraryView.tsx\nA  mobile/src/layouts/refactor/MainNavigation.tsx\nA  mobile/src/layouts/refactor/MessageView.tsx\nA  mobile/src/layouts/refactor/PreviewView.tsx\nA  mobile/src/layouts/refactor/RecordingView.tsx\nA  mobile/src/layouts/refactor/ReviewView.tsx\nA  mobile/src/layouts/refactor/RootNavigation.tsx\nA  mobile/src/layouts/refactor/SampleSlideView.tsx\nA  mobile/src/layouts/refactor/SetupView.tsx\nA  mobile/src/layouts/refactor/ThumbnailView.tsx\nA  mobile/src/layouts/refactor/TranscriptView.tsx\nA  mobile/src/layouts/refactor/UtilitiesView.tsx\nA  mobile/src/layouts/refactor/components.tsx\nA  mobile/src/layouts/refactor/index.ts\nA  mobile/src/layouts/registry.ts\nA  mobile/src/layouts/selection.ts\nM  mobile/src/ui/components.tsx\nM  mobile/tests/helpers/recording-screen-loader.mjs\nM  mobile/tests/helpers/recording-screen-ui.mjs\nA  mobile/tests/layout-contract.test.mjs\nA  mobile/tests/layout-navigation.test.mjs\nM  mobile/tests/pdf-recording.test.mjs\nM  mobile/tests/recording-retry.test.mjs\nM  mobile/tests/review-library.test.mjs\nM  mobile/tests/review-screen.test.mjs\nM  mobile/tests/saved-attempt.test.mjs\n",
+        "staged": "542f11d3a3e08184370e0cf180f365f3ee52fb5ca0942c43c699f3dd6d3023a3",
+        "unstaged": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "/Users/seoyeonpark/.codex/worktrees/ai-feedback/OnLoud",
+        "head": "ce9f248256b1bbfc0d66f139886503261cc25953",
+        "status": "",
+        "staged": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "unstaged": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    ],
+    "captured_at": "2026-10-09T11:51:37.173556+00:00",
+    "guidelines_sha256": "7facea3083c1424482c0f96ba93e5b360086edb02fc6eb7068df4350686636ab",
+    "main": "f6f6e76605632296a802aecef25ac10c6d0fd0cd",
+    "scope": "Rev.4.3 local documentation; application implementation unchanged",
+    "decisions": "All Section 8 model names, routes and policies are provisional; no team approval claimed"
+  },
+  "merged_iteration_1": {
+    "date": "2026-10-09",
+    "major_revision": "2.0",
+    "inputs": {
+      "short_pdf": "short.pdf (user-supplied; archived locally)",
+      "short_pdf_sha256": "e5aad1b8b695c1e5f3f4d6ff97c57a45873b48d89c8f783120f223928df3e3c8",
+      "short_diagram_pages": [
+        2,
+        4,
+        6,
+        8,
+        10
+      ],
+      "method": "PDF vector paths and positioned Arial text transcribed to SVG; no architecture changes.",
+      "long_revision": "23725b476ac83bf67098c815f8643eb208d291a6",
+      "latest_pr_commit": "aa2195f12b60bf71b44a29f3d175ddf71a9ec743",
+      "frontend_status": "Local prototype; no PR as of 2026-10-09; document labels Planned."
+    },
+    "feature_prs_17_to_21": "Rechecked open, head SHAs unchanged from revision_4_3",
+    "frontend_redesign": "Local staged prototype; no PR found; Section 7 labeled Planned",
+    "documents_only": true,
+    "wiki_published": false,
+    "previous_draft_archive": "output/archive/before-merged-iteration1",
+    "guidelines_rechecked": true
+  },
+  "uniform_a4_export": {
+    "date": "2026-10-09",
+    "markdown_unchanged_sha256": "9569b203779a5f4ba57bca1ef91b75b24c72c04c4aff34187f618ee270361240",
+    "pdf_sha256": "a41de7c89d76124391230b99a0c3168761577cb90451ed88c7e69f1d0d64b3ff",
+    "pages": 24,
+    "paper": "A4 portrait",
+    "body_font": "Arial 11 pt",
+    "archive": "output/archive/before-uniform-a4",
+    "formatting_only": true,
+    "published": false
+  }
+}

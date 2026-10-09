@@ -1,0 +1,40 @@
+%%{init: {"theme": "base", "themeCSS": ".actor-line {stroke-dasharray: 5 5 !important;}", "themeVariables": {"fontFamily": "Arial", "fontSize": "16px", "actorBkg": "#eaf1f5", "actorBorder": "#547083", "actorTextColor": "#1e2e38", "signalColor": "#526777", "signalTextColor": "#1e2e38", "noteBkgColor": "#f6f3ed", "noteBorderColor": "#c6bcaa", "noteTextColor": "#263640", "labelBoxBkgColor": "#ffffff", "labelBoxBorderColor": "#547083"}, "sequence": {"useMaxWidth": false, "mirrorActors": false, "actorMargin": 28, "messageMargin": 16, "noteMargin": 8, "wrap": false, "width": 155}}}%%
+sequenceDiagram
+ autonumber
+actor U as Presenter
+ participant A as Setup / review controller
+ participant L as Local capture / player
+ participant S as API / workers
+ Note over U,S: 7. Selected-slide practice and comparison | Planned
+ U->>A: Select slides from deck D
+ A->>A: Require nonempty original indexes, freeze<br/>selection
+ A->>L: Create new attempt B + audio target +<br/>selection
+ Note over A,L: Earlier attempt A stays unchanged.<br/>Only selected slides may be visited, repeats/backward visits remain.
+ U->>L: Record and stop
+ L-->>A: Durably saved audio + events
+ A-->>U: Confirm valid upload/transcription<br/>disclosure (Figure 4A)
+ alt Denied or upload fails
+  A-->>U: Local playback, retry upload later, no<br/>server polling
+ else Upload succeeds
+  A->>S: Upload B + selected_slide_indexes +<br/>optional source_attempt_id
+  S->>S: Validate original indexes/events, process<br/>same recording
+  Note right of S: Summary, delivery and coaching<br/>use actual visits within selection.<br/>Unvisited selected slides are not scored.
+  S-->>A: Independent results/states for B
+ end
+ U->>A: Compare A and B
+ A->>A: Load local/cached attempt records
+ opt Known server attempt IDs
+  A->>S: Read authorized attempts and saved results
+  S-->>A: Deck IDs, slide identities, visits and<br/>available results
+  Note over A,S: Read failure keeps cached comparison.<br/>No server request for a local-only attempt.
+ end
+ A->>A: Match (deck_id, slide_index), retain each<br/>visit and time axis
+ alt No common practiced slide
+  A-->>U: Explain no shared slide, choose another<br/>attempt
+ else Shared slide
+  A-->>U: Show A/B transcripts, rates and available<br/>feedback
+  Note over U,A: Missing feedback is unavailable, not zero.<br/>Repeated visits remain individually selectable.
+  U->>A: Play evidence from A or B
+  A->>L: Switch single player source, seek on that<br/>attempt timeline
+  L-->>A: Playback position, synchronize its slide<br/>and visit
+ end

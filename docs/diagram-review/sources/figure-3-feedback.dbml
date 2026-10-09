@@ -1,0 +1,69 @@
+// Figure 3 - AI feedback data | Unmerged PR #21
+// Logical Django names; all shown FKs use Django PROTECT.
+Table Deck [headercolor: #6B7881] {
+ id uuid [pk, not null]
+}
+Table Attempt [headercolor: #6B7881] {
+ id uuid [pk, not null]
+ deck_id uuid [not null]
+}
+Table DescriptionSet [headercolor: #31576D] {
+ id uuid [pk, not null]
+ deck_id uuid [not null]
+ source_fingerprint varchar(64) [not null]
+ provider varchar(16) [not null]
+ project_id varchar(160) [not null]
+ model varchar(100) [not null]
+ prompt_version varchar(40) [not null]
+ schema_version varchar(40) [not null]
+ processing_revision integer [not null]
+ description_revision integer [not null]
+ descriptions jsonb
+ indexes { (deck_id, source_fingerprint, provider, project_id, model, prompt_version, schema_version) [unique, name: 'unique_description_scope'] }
+}
+Table DescriptionJob [headercolor: #31576D] {
+ id bigint [pk, not null]
+ description_set_id uuid [not null]
+ generation integer [not null]
+ description_revision integer [not null]
+ state varchar(32) [not null]
+ indexes { (description_set_id, generation) [unique] }
+}
+Table FeedbackAnalysis [headercolor: #31576D] {
+ id bigint [pk, not null]
+ attempt_id uuid [not null, unique]
+ feedback_revision integer [not null]
+}
+Table FeedbackJob [headercolor: #31576D] {
+ id bigint [pk, not null]
+ analysis_id bigint [not null]
+ description_set_id uuid [not null]
+ generation integer [not null]
+ description_generation integer [not null]
+ description_revision integer
+ source_snapshot jsonb [not null]
+ descriptions_snapshot jsonb
+ result jsonb
+ state varchar(32) [not null]
+ indexes { (analysis_id, generation) [unique] }
+}
+Table FeedbackRequest [headercolor: #31576D] {
+ id bigint [pk, not null]
+ job_id bigint [unique]
+ coaching_job_id bigint [unique]
+ generation integer [not null]
+ stage varchar(24) [not null]
+ outcome varchar(32) [not null]
+ raw_body bytea
+ checks {
+  `(job_id IS NOT NULL AND coaching_job_id IS NULL AND stage = 'descriptions') OR (job_id IS NULL AND coaching_job_id IS NOT NULL AND stage = 'coaching')` [name: 'feedback_request_exact_stage_owner']
+ }
+}
+Ref: Deck.id < Attempt.deck_id
+Ref: Deck.id < DescriptionSet.deck_id
+Ref: DescriptionSet.id < DescriptionJob.description_set_id
+Ref: Attempt.id - FeedbackAnalysis.attempt_id
+Ref: FeedbackAnalysis.id < FeedbackJob.analysis_id
+Ref: DescriptionSet.id < FeedbackJob.description_set_id
+Ref: DescriptionJob.id ?- FeedbackRequest.job_id
+Ref: FeedbackJob.id ?- FeedbackRequest.coaching_job_id

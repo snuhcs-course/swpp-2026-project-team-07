@@ -17,6 +17,7 @@ states remain explicitly simulated.
 
 ## Start here
 
+- [Design Documentation: proposed Wiki revision](Design-Documentation.md) ([PDF](output/pdf/OutLoud_Design_Documentation.pdf), [submission copy](output/pdf/team7-iter1-design.pdf), [reference comparison](Design-Comparison.md))
 - [Understand everything in this setup](docs/setup-explained.md)
 - [Divide the work and start teammate branches](docs/team-work-division.md)
 - [Team handoff and feature ownership](docs/iteration-1-handoff.md)
