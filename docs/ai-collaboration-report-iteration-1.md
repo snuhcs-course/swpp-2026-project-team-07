@@ -1,55 +1,36 @@
 # AI Collaboration Report – Iteration 1
 
-Period: September 26 – October 9, 2026.
+September 26–October 9, 2026. **Draft for team review.**
+Draft assembled by Codex for Seoyeon Park; human writer/sign-off pending.
+Contributors documented: Injoon, Jaewon, Jooyoung and Seoyeon.
+Full [prompt appendix](ai-collaboration-prompts-iteration-1.md) and [validation](ai-collaboration-validation-iteration-1.md).
 
-## 1. Where AI was used, and where it was not
+## 1. Where AI was used and deliberately not used
 
-AI wrote all of OutLoud's application code this iteration. OpenAI Codex wrote PDF import, recording, Whisper transcription, slide alignment, playback, the mobile interface, tests and bug fixes. It also drafted plans and installed builds on test devices.
+AI wrote all application code and Codex was our preferred coding agent. Injoon's records cover alignment, Whisper and transcript playback; Jaewon's commit covers PDF import/viewing; Jooyoung's covers recording; Seoyeon's covers integration and interface revisions. Individual prompts are included in the appendix.
 
-Each member directed Codex on their own feature: Injoon on transcription and alignment, Jaewon on PDF import, Jooyoung on recording, Seoyeon on integration.
+AI was not used when handling API keys and sensitive data to keep secrets out of prompts, physically tested phones, and reviewed AI plans. Codex also prepared environments and ran automated/emulator checks. These roles are different; individual confirmations remain pending.
 
-We kept three kinds of work for ourselves:
+## 2. Actual prompt history
 
-- **API keys and sensitive data.** We created and entered API keys and other private data ourselves, and made sure no key was submitted in a prompt, because a leaked key could cause a security breach.
-- **Physical phone testing.** We tested each feature locally on a real phone before creating its branch, and pushed it only after the tests passed. We did these checks by hand: recording real speech, moving through slides and judging whether the app felt right.
-- **Plan review.** Codex drafted a plan before each larger change. We read every plan and sent it back with feedback until it matched what we wanted (see Section 5).
-
-## 2. Prompt history
-
-Two examples; more are in the [prompt appendix](ai-collaboration-prompts-iteration-1.md).
-
-October 6, interface request: “I want to make it so transcript goes along with playback highlighting the current word it is t. Also place transcript inside the playback area.”
-
-One concrete behavior gave Codex a clear target and gave us a clear check.
-
-October 8, review workflow: “just post it as a pr so another person can check the code but continue implementing other features,”
-
-This kept a human reviewer between AI-written code and the main branch.
+The [appendix](ai-collaboration-prompts-iteration-1.md) preserves development requests, typos and approved AI plans, alongside explicit gaps for teammates' unavailable conversations. Seoyeon's rebuild request began “I would like to implement the remaining work in this order:” and specified PDF/recording integration, storage, processing, review and feedback. Her follow-up was “I would like to implement whisper api and i would like to give gemini or openai feedback” ([S3](ai-collaboration-prompts-iteration-1.md#s3-rebuilding-the-current-feature-flow-october-8)). That changed the roadmap's local-Whisper choice before implementation.
 
 ## 3. What AI did well
 
-Injoon had Codex build slide alignment before adding Whisper and the transcript screen. Codex wrote `align_words` and nine tests, preserved in [e71c3e0](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/e71c3e06945517219b9a343e80f9680829c0bd58). The tests covered returning to earlier slides, silence, invalid input and exact boundaries. For example, a word starting at 4,000 milliseconds belongs to the slide that begins then; a word starting at 3,999 stays with the previous slide.
+Injoon asked for incremental alignment work. Codex generated `align_words` and nine tests for exact boundaries, repeated/backward visits, silence and invalid timestamps. The [PR #3 evidence](ai-collaboration-prompts-iteration-1.md#i1-standalone-word-to-slide-alignment-september-29) records passing synthetic checks and his later staged-code inspection. Explicit rules made the output reviewable: a boundary word belongs to the new slide, while revisiting a slide creates another visit. These checks did not establish human-speech accuracy.
 
-All nine tests and the 14-test backend suite passed, and Injoon reviewed the final changes. Takeaway: define the timing rules first, then check that generated tests cover the edge cases.
+For [storage, PR #18](ai-collaboration-prompts-iteration-1.md#s4-durable-recording-storage-and-retry-acceptance-october-8), Codex implemented restart recovery and retry protection. Its historical checks included 94 mobile tests, 19 PostgreSQL storage tests and agent-operated failure/retry checks retaining UUID, media hashes and timeline. Asking for preservation through failure gave us stronger acceptance evidence than checking a successful upload alone. No time-saving estimate was measured.
 
 ## 4. Hallucinations and errors
 
-Codex's Whisper adapter crashed when the API returned a successful response whose body was not a JSON object. It raised `AttributeError` instead of `TranscriptionError`. A separate AI review caught the problem. Codex added a type check and tests for array, null, string and integer responses; afterward, nine transcription tests and 23 backend tests passed ([repair record](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/e71c3e06945517219b9a343e80f9680829c0bd58/docs/ai-use.md#L152-L176)). Takeaway: ask for tests on unexpected inputs, not only normal ones.
+We recovered implementation errors, but no complete verified coding-assistant hallucination. The [Whisper adapter](ai-collaboration-prompts-iteration-1.md#i2-hosted-whisper-adapter-and-response-shape-repair-september-29) assumed a successful response supported `model_dump()`. An independent Codex reviewer found non-object responses escaped as `AttributeError`. Codex added a type guard and regression cases; the final historical backend suite passed 23 tests.
 
-We also had workflow problems. PR #5 combined several features, so we [reverted it in #10](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/10) to review them separately. PRs #14–#16 overlapped, so we closed them and [combined their code in #17](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/17). Takeaway: AI produces code faster than we can review it, so each PR needs a small scope and one owner.
+[Jooyoung reported an empty Android timeline](ai-collaboration-prompts-iteration-1.md#y2-empty-android-timeline-after-stop-october-78): Stop reset native duration before the code read it. Codex preserved duration before stopping; Jooyoung confirmed the timeline appeared. Rework included a helper, caller change and retesting; elapsed cost was not recorded. PR #10's revert restored separate feature review, while #14–#16 were consolidated into #17 with code retained. Those were workflow decisions, not evidence of hallucination.
 
 ## 5. Prompt revisions
 
-Before (October 6): “Also I would like the main screen to be divided into sdifferent tabas of presentations, librabry, home screen”
-
-Codex planned three tabs. On review, we wrote: “I feel like the ui is too cluttered right now how could we change it”. We approved Codex's revised plan:
-
-After: “Use **Home + Presentations** as the two main tabs.”
-
-The revised plan told Codex what mattered: merge Library into Presentations, make practice easy to reach, and open saved rehearsals on Feedback. [54078a3](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/54078a33a2409aae8d671aaabca6d26476f0ea02/docs/ai-use.md#L467-L480) records the change, 52 passing mobile tests and emulator checks. Takeaway: say what to remove and what users should reach first.
+The [October 6 sequence](ai-collaboration-prompts-iteration-1.md#s2-playback-transcript-and-navigation-revision-october-6) began with a request for presentations, library and home tabs. After implementation, the user wrote: “I feel like the ui is too cluttered right now how could we change it”. Codex proposed Home plus Presentations and Feedback/Playback review; the user approved that agent-written plan. Commit `54078a3` implements the revision. Naming the primary actions constrained the redesign; passing tests established behavior, not improved usability.
 
 ## 6. Manual fixes and why
 
-No one edited application code by hand this iteration. When something broke, we described the problem and Codex wrote the fix. For example, Jooyoung found that the Android recording timeline was blank, reported it, and confirmed on the device that [Codex's fix](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/040880f8a21b2f866228984e9fb3c438fa6ee4bf/docs/ai-use.md#L319-L352) worked.
-
-Codex was our preferred coding agent, so every fix went through it. Our effort went into the Section 1 work and into judging whether each fix solved the real problem.
+No manual application-code edits were reported; the requester says fixes generally returned to Codex because it was preferred. Humans diagnosed symptoms, challenged scope and accepted or rejected plans. We did not invent a hand-written repair. Authorship comments in [alignment.py](../backend/rehearsals/services/alignment.py#L1) and [33 other baseline modules](ai-collaboration-validation-iteration-1.md#ai-code-markers) record verified scope; coverage remains incomplete. Next iteration, each member should retain exact prompts, decisions and verification together so accountability survives integration.

@@ -1,3 +1,6 @@
+# AI-generated/modified with OpenAI Codex, Iteration 1 (2026-09-26 to 2026-10-09).
+# Attribution/review scope: docs/ai-collaboration-validation-iteration-1.md#ai-code-markers
+# Human review: Injoon; final staged inspection recorded in PR #3's AI-use log.
 """Hosted Whisper adapter; raw_response is backend-only evidence."""
 import os
 from decimal import Decimal, ROUND_HALF_UP

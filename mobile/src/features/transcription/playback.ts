@@ -1,3 +1,5 @@
+// AI-generated/modified with OpenAI Codex, Iteration 1 (2026-09-26 to 2026-10-09).
+// Attribution/review scope: docs/ai-collaboration-validation-iteration-1.md#ai-code-markers
 import type { Transcript, TranscriptWord } from "../../contracts";
 
 /** A late seek must not undo a newer pause, source change, or navigation. */

@@ -1,3 +1,5 @@
+// AI-generated/modified with OpenAI Codex, Iteration 1 (2026-09-26 to 2026-10-09).
+// Attribution/review scope: docs/ai-collaboration-validation-iteration-1.md#ai-code-markers
 /** Wire-format names match docs/api-contract.md and the Django serializers. */
 export type SlideEvent = { slide_index: number; at_ms: number };
 export type TranscriptWord = { text: string; start_ms: number; end_ms: number };

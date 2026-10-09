@@ -1,394 +1,89 @@
 # Iteration 1 reporting validation
 
-**Status: draft package; not ready for submission.** The main report contains all
-six required sections. Structural coverage does not mean that every evidence
-requirement has been satisfied.
+**Draft for team review; not ready for submission.** Audited October 9, 2026 (Asia/Seoul), against all three pages of *5 - AI Collaboration Report Guidelines.pdf*. Reporting period: September 26–October 9. This is a documentation/comment revision on `codex/ai-collaboration-report`, existing [PR #22](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/22), based on `6ac097f`. It does not update remote PR content, merge, publish to the Wiki or submit to eTL.
 
-The requester-confirmed revision contains **699 words** in the main report. It
-states that AI wrote all application code and names three areas of work the team
-kept for itself, based on the report requester's October 9 statements (see
-[Requester-confirmed revision](#requester-confirmed-revision)). A verified
-development-assistant hallucination, confirmation from the other members and
-source-code marker compliance remain unresolved.
+## Compliance checklist
 
-Prepared October 9, 2026, Asia/Seoul. GitHub metadata was refreshed during this
-implementation; the retrieval checkpoint was 02:39 KST (17:39 UTC on October 8).
-The reporting window ends October 9, but this snapshot cannot cover later work
-or establish an exact submission hour. Subsequent publication must refresh
-statuses and the retrieval cutoff.
-
-Additional historical-source retrieval for the reflective revision reached
-03:15 KST on October 9 (18:15 UTC, October 8). Newly recovered prompt examples
-date from October 6–7, inside the verified reporting window. This does not claim
-coverage of work after retrieval or refresh all PR statuses in the table below.
+| Requirement | Finding |
+| --- | --- |
+| Six subjects; 500–700 words | **Met structurally:** six sections; **572 visible words**, including title, metadata, headings and link labels. One-page target is approximate; final Wiki/export pagination has not been checked. |
+| AI use/non-use and tools | **Covered with attribution:** requester confirms all application code by AI, preferred Codex, human key/sensitive-data handling, phone testing and plan review. Recovered sessions record `gpt-6-astra`; other members' models/client versions are unknown. Four individual confirmations remain pending. |
+| Verbatim development prompts | **Substantially improved, incomplete team coverage:** 28 recovered user-role messages (25 complete, three labelled opening excerpts). Feature requests/feedback dominate; one original consolidation prompt plus one secondary revert quotation remain administrative. Original Injoon/Jaewon/Jooyoung feature conversations were not recovered. |
+| Success, evidence and reflection | **Covered:** alignment boundaries and storage failure/recovery, linked to immutable code/logs and PRs. Historical agent checks are identified; no fresh runtime or measured productivity claim. |
+| Hallucinations/errors | **Honest bounded coverage:** verified SDK/native-duration defects, PDF tool-operation mistake, planning mismatch and cancellation race; no complete verified coding-assistant hallucination. Detector, correction and limits documented. Elapsed costs unknown. Members still need to supply their incidents or confirm none. |
+| Genuine prompt revisions | **Covered:** three-tab→two-tab UI; local→hosted Whisper choice; five implementation parts/five PRs→one PR; explicit→automatic transcription. AI-drafted approved plans are identified. No usability benefit inferred from tests. |
+| Manual fixes and reasons | **Covered as requester testimony:** no manual application-code edits reported; repairs went back to Codex, the preferred agent. Humans supplied observations and decisions. Individual confirmation remains pending; no hand-written repair invented. |
+| Every member's prompts/edit notes; writer | **Incomplete:** original feature evidence missing for three members; sender conflicts unresolved; Seoyeon's recovered selection and all members' edit/test notes need sign-off. Human report writer is not assigned by the agent. |
+| AI source comments | **Partial:** 34 non-test baseline implementation modules receive verified Codex comments. Later source revisions, tests, migration and fixture attribution remain below. Human review named only for the two exact PR #3 modules whose final inspection is logged. |
+| Wiki main page, linked subpage and sidebar | **Not performed, as requested.** After team review and separate publication authorization, publish “AI Collaboration Report – Iteration 1,” a linked prompt-log subpage and sidebar entry. This revision does not claim to inspect or update any existing live Wiki. |
 
 ## Source register
 
-| ID | Inspected source | What it establishes / limit |
+Primary retrieval read original Codex `response_item` user messages and assistant antecedents in project-scoped local/archived sessions; applicable Git history; named source logs; and live GitHub metadata/discussions. Available project Claude records concern documentation, not missing teammate development chats. A bounded app history listing did not supply those chats. Failure to recover them here does not establish they do not exist elsewhere.
+
+The appendix contains the selected exact text. The source IDs below identify local original records for follow-up; they are not public conversation links. No raw private logs, recordings, credentials or unrelated conversations are included. Team-accessible original exports still need a privacy check and contributor handoff.
+
+| ID | Original record | Locations used |
 | --- | --- | --- |
-| C1 | Course handout “5 - AI Collaboration Report Guidelines.pdf”, pp. 1–3; SHA-256 `6fb2c958679cd309487c53a654924158989a8678129577eb8d79177cdf9664bd` | Six subjects, approximately 500–700-word main report, verbatim prompts, team inputs, Wiki/sidebar, code markers. Example names/code are illustrative, not team history. |
-| C2 | Course handout “Week 2-2. Project Overview.pdf”, p. 14 timeline; pp. 16–19 pre-iteration/deliverables; SHA-256 `154c1472dee291792bd0c47277a294b8ed410e9534cfb4e0522bc0d4a80d3c1d` | Iteration 1 follows September 25 and ends October 9; AI report is a deliverable. No exact Iteration 1 submission hour identified. |
-| C3 | Course handout “Week 4-1. Team Exercises.pdf”, p. 11; SHA-256 `ff038d15b68fb4d45641490ec2778b89b9f73053dc65042d561dcec26da86477` | Later course timeline corroborates C2's boundaries. |
-| S1 | [“Free edits of Team 07” schedule](https://docs.google.com/spreadsheets/d/1xpFF6HDp7Yg71O_VKgKQD7yxM8ptniUNu0Siw_2QCRI/edit#gid=1533464390), bounded Schedule A1:G22 and Overview/Config reads during this conversation | Team planning record, not an official period authority or proof of actual work. Sep 21 kickoff deadline / Sep 25 recorded end; requirements/design and schedule rows have Sep 25 recorded ends; Iteration 1 review deadline Oct 9; Iteration 2 kickoff Oct 10. Earlier rows remain outside this report pending clarification. |
-| G1 | [main at f6f6e76](https://github.com/snuhcs-course/swpp-2026-project-team-07/tree/f6f6e76605632296a802aecef25ac10c6d0fd0cd), [baseline log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f6f6e76605632296a802aecef25ac10c6d0fd0cd/docs/ai-use.md), [PR #5 archive](history/pr-5-ai-use.md) | Main baseline, original disclosures and revert preservation. Earlier “pending” statements are historical, not current PR status. |
-| G2 | [e71c3e0 log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/e71c3e06945517219b9a343e80f9680829c0bd58/docs/ai-use.md), alignment implementation and nine test methods | Named Injoon requester, recorded Codex implementation and historical nine-test pass. Static inspection confirms test cases exist; it is not a fresh test run. |
-| G3 | [9547f1d](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/9547f1dd397436f7fb1d74b9c4e94d7ca8d20d1b), [04857fb](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/04857fb93d0a64784feb8bfb1d4b61f4b47bf251), [040880f](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/040880f8a21b2f866228984e9fb3c438fa6ee4bf/docs/ai-use.md) | Original Jaewon/Jooyoung contributions, ambiguous original requester labels, and explicitly named Jooyoung testing in the later recording entry. |
-| G4 | [prototype log at 33907d3](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/33907d35fd7a52ef3b3fcbd56990af41b50d7cfd/docs/ai-use.md) | Historical integrated prototype records; not evidence that current main includes these features. |
-| G5 | [rebuild log at ce9f248](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/ce9f248256b1bbfc0d66f139886503261cc25953/docs/ai-use.md), plus per-stage heads below | Rebuild, consolidation, reviews, verification and reused prototype sources. Inherited entries are deduplicated by task, not counted as new contributions. Development-model versions remain unspecified where source says “configured model.” |
-| L1 | Initial local prototype AI-use snapshot: 74,074 bytes; SHA-256 `ff284aacfea5f8719f4d71249efebb5df9ee13b2814ccd16f912e83f03fdb677`; 95 added lines beyond 33907d3 | Read-only local unpublished evidence. Unique events now have template-based task entries in the master log. The entire snapshot remains an exact prefix of the source after a concurrent schedule entry was appended. Underlying chats, artifacts and historical runtime claims were not independently revalidated here. |
-| U1 | Current report-preparation conversation, original request, safeguards, alias mapping, Jooyoung correction and implementation authorization | Direct user evidence for this documentation scope/correction. Does not prove every historical prompt sender, manual editor or reviewer. No public conversation link was supplied. |
+| C1 | Course PDF, pp. 1–3; SHA-256 `6fb2c958679cd309487c53a654924158989a8678129577eb8d79177cdf9664bd` | Official six items, length, every-member inputs, source markers and Wiki/sidebar requirements. Template examples are not team facts. |
+| S0 | Codex `01a0e661-f54a-7580-b004-7d7714418c30` | Sep 28 scaffold: user lines 9, 180, 212, 664, 890. |
+| S1 | Codex `01a10ec2-c58c-79d1-8f6c-a7149bcc8d29` | Oct 6 initial UI request 12; assistant plan 90; approved copy 100. |
+| S2 | Codex `01a10ef9-b667-7f50-aa24-cca3aaed889f` | Oct 6 clutter feedback 12; assistant plan 84; approved copy 94. |
+| S3 | Codex `01a105e1-68ef-70a0-beb6-d23438e8c64d` | Oct 4 integration requests 12, 95; later playback context. |
+| S4 | Codex `01a118b2-dd5e-7c03-b7fa-e0540257d5b1` | Oct 8 roadmap 163, provider choice 234; assistant/approved plan 296/306; checkpoint requests 1235, 1306; storage plan 1347/1357; Whisper request/plan 2198, 2261/2271; review request/plan 3739, 3790/3800; feedback request 5652, feedback 5717/5728, revised plan 5731, approval 5740; quota instruction 12339. |
+| S5 | Codex `01a1165f-71dd-70a0-94ac-9ac5914d4cd5`, first segment | Oct 7 self-identification at 237: “My name is Seoyeon Park.” Identity is not inferred from the filesystem or Git alone. |
+| S6 | Codex `01a111b4-3f83-7dd3-a376-6c543e8ba540` | Phone-test request 12; human result 199 (Oct 7 00:38 KST). |
+| S7 | Codex `01a11be6-7fe4-7023-974e-b11306f9f9d2` | Oct 8 automatic-transcription request 118; Android test request 514. |
+| S8 | Codex `01a11c82-e6c5-7e70-85eb-c57fb8e69c50` | Oct 9 contributor alias mapping 12. Previous post-revert-only scope at 1102/1129 is superseded by this task's whole-iteration instructions. |
 
-The course PDFs were inspected locally; no stable course download URLs were supplied.
-Use their exact course titles/pages and fingerprints to locate them through eTL.
-They were not copied into the repository. Obtain accessible course/source references
-before final handoff when readers cannot reach them. No local host paths are needed
-in the Wiki text.
+Legacy source labels C2/C3 (course period handouts), L1 (the preserved local AI-use snapshot), U1 (the prior report request) and the earlier S1 schedule evidence remain in the [historical source register](history/ai-collaboration-validation-iteration-1-before-feature-audit.md#source-register). The new S0–S8 table above names session sources; historical log labels retain their original meaning.
 
-## Revision and PR snapshot
+Requester statements in the current task establish the all-code-by-AI, preferred-agent, key/privacy, phone-testing, plan-review and no-reported-hand-edit claims. Earlier Claude Code report-preparation messages corroborate the reasons; they are not evidence that Claude generated the application. Historical exact source citations are embedded beside each appendix claim. Original quotations are distinguished from secondary quotations and summaries.
 
-| PR | Retrieved status | Inspected head |
-| --- | --- | --- |
-| #1 | merged | `e80e81313d3c5faa775795fa97797b5507b17360` |
-| #2 | merged | `bcb285966cd4f2362a48863ec3dc3b9d0ac94d32` |
-| #3 | merged | `e71c3e06945517219b9a343e80f9680829c0bd58` |
-| #4 | merged | `92e542e6f4cfe558bda39fa090826f539b3ae728` |
-| #5 | merged, later reverted by #10 | `0d7fdb241403cab824d387d4b1e172f6a90ad6c8` |
-| #10 | merged | `d54960cc314a362baacf362439ae21224292a905` |
-| #13 | open, unmerged | `040880f8a21b2f866228984e9fb3c438fa6ee4bf` |
-| #14 | closed, unmerged; superseded by #17 | `56e4bf638bd7fb0ed8af14ca331d6cfd64e22d29` |
-| #15 | closed, unmerged; superseded by #17 | `b60c3571a481cd60160ea79a3ab44bd5a86f2856` |
-| #16 | closed, unmerged; superseded by #17 | `d3ef0b9fa79b5eec32ce95e170dc8cf96e7036a5` |
-| #17 | open, unmerged | `b60c3571a481cd60160ea79a3ab44bd5a86f2856` |
-| #18 | open, unmerged | `06fe340a207639826143383364c13b4dd9636d31` |
-| #19 | open, unmerged | `a0ee4755fb6f9a56c77fd967bdd83d1f7a37c400` |
-| #20 | open, unmerged | `3abcf4b6c97bbd6ef2da6cfd6d40670b4dbfca88` |
-| #21 | open, unmerged | `ce9f248256b1bbfc0d66f139886503261cc25953` |
+## Git and PR boundaries
 
-These are source snapshots, not new code-review approvals. A PR author's identity
-does not prove all prompting/editing roles. #15 and #17 share the exact head, which
-supports preservation during consolidation; the source log records related reuse
-and the backup before redundant branch removal.
+Live metadata checked on October 9: #1/#3/#4/#5/#10 merged; #13 and #17–#22 open; #14–#16 closed without merge. #5 was reverted through #10 for separate feature-owner review. #15 and #17 share head `b60c3571a481cd60160ea79a3ab44bd5a86f2856`; consolidation retained the code. Relevant discussion fetches contained no additional comments, so they do not establish unnamed approvals or motives.
 
-## Submission blockers
+The draft uses immutable checkpoints: alignment `e71c3e0`, client/playback `92e542e`, original PDF `9547f1d`, recording `04857fb` and `040880f`, UI `54078a3`, rebuild `b60c357`, storage `06fe340`, processing `c7733d8`/`a0ee475`, review `1305917`/`3abcf4b`, feedback `ce9f248`. Earlier prototype behavior is not claimed to exist on current `main`. Open PR implementation is not merged functionality or human approval.
 
-| Requirement | Current state | Exact information needed / person to confirm |
-| --- | --- | --- |
-| Individual attribution | Original contribution and several roles supported; some prompt senders unresolved | Each member confirms which prompts they sent, edits they made, reviews they performed and checks they personally ran. Resolve PDF “Teammate A” separately from Jaewon's Git authorship. |
-| Original prompts | P5/P6 checked against original user-role records; P1–P3 retain their stated log-level provenance. Report section 2 now also quotes the first P2 log quotation. | Each member confirms their messages and roles; provide team-accessible source excerpts for local-only records and missing task prompts. Confirm the P2 sender and original wording. |
-| Deliberate non-use | Requester confirmed on October 9 that API keys and sensitive data, physical phone testing before branching, and plan review were done without AI. Report section 1 states this. Logs show Codex installing and launching builds on phones, so the report limits the phone claim to hands-on testing. Requester supplied the key-handling reason: preventing keys from entering prompts, where they could cause a security breach. | Other members confirm this for their own features. |
-| Development-assistant hallucination | No complete verified example established | Exact incorrect model assertion, contradictory source, detector, correction, consequence and documented cost. Alternatively, members may explicitly confirm none for their work after review; do not infer this. |
-| Prompt revisions | P5 verifies original request, clutter feedback, approved revised plan and the resulting navigation change | Confirm requester identity and the team's interpretation. The revised plan was agent-drafted and user-approved; emulator/tests do not establish measured usability improvement. |
-| Manual fixes | Requester confirmed on October 9 that AI wrote all application code; report section 6 states that no one edited code by hand. Consistent with the earlier bounded search, which found no human-written code patch. Requester supplied the reason: Codex was the team's preferred coding agent. | Other members confirm no hand edits in their features. |
-| Useful contribution / reflection | Alignment output and historical verification supported | Team confirms any claim about its personal learning. The technical takeaway can remain identified as an inference from tests. No time-saving estimate. |
-| Source-code markers | Awaiting compliance work | Audit final AI-assisted scope, add accurate tool/date/scope/reviewer comments through a separately authorized change, and link them. Do not fabricate human review. |
-| Period discrepancy | Course boundaries verified; early team-sheet labels conflict | Team/TA clarification if September 21–25 work is proposed for inclusion; until then keep it outside report. |
-| Team report approval | Pending | Confirm human writer; all members supply/approve their own evidence; writer checks final report. |
-| Wiki/eTL delivery | Not performed | After separate authorization, publish report/prompt page/sidebar; confirm assignment destination/deadline, export and verify actual submission receipt. |
+## AI code markers
 
-Missing evidence must remain visible. A six-section document can be a complete draft
-while failing submission readiness.
+**Applied scope:** 34 nonempty, non-test Python/TypeScript implementation modules present in this documentation baseline. The scaffold request/session, scaffold commit `e80e813`, PR #3/#4 disclosures and exact post-revert file contents establish Codex generation/modification. Comments name the iteration date interval, not an invented per-file generation day or model. Examples: [alignment](../backend/rehearsals/services/alignment.py#L1), [Whisper adapter](../backend/rehearsals/services/transcription.py#L1), [client](../mobile/src/features/transcription/client.ts#L1), [results screen](../mobile/src/features/transcription/ResultsScreen.tsx#L1), [PDF scaffold](../mobile/src/features/pdf/service.ts#L1).
 
-## Documentation verification
+`alignment.py` and `transcription.py` match the PR #3 source byte-for-byte before these comments. Its dated log records Injoon's final restaged inspection; only those two comments name him. This is logged human inspection, not a new teammate review or approval of later branches. Other comments make no named-review assertion. The PDF/recording modules here are restored scaffold placeholders; their comments do not attribute Jaewon's/Jooyoung's later implementations to Seoyeon.
 
-The initial draft received the checks below. The later task-format revision is
-recorded separately at the end of this section. The independent review covered
-the initial draft and was an AI documentation review; human approval remains pending.
+| Marked group | Files |
+| --- | --- |
+| Backend configuration (6) | `backend/config/__init__.py`, `backend/config/celery.py`, `backend/config/settings.py`, `backend/config/urls.py`, `backend/config/wsgi.py`, `backend/manage.py` |
+| Backend rehearsal implementation (9) | `backend/rehearsals/models.py`, `backend/rehearsals/serializers.py`, `backend/rehearsals/services/alignment.py`, `backend/rehearsals/services/feedback.py`, `backend/rehearsals/services/pdf.py`, `backend/rehearsals/services/transcription.py`, `backend/rehearsals/tasks.py`, `backend/rehearsals/urls.py`, `backend/rehearsals/views.py` |
+| Mobile routes/contracts (6) | `mobile/src/app/_layout.tsx`, `mobile/src/app/index.tsx`, `mobile/src/app/rehearsal.tsx`, `mobile/src/app/results.tsx`, `mobile/src/app/viewer.tsx`, `mobile/src/contracts/index.ts` |
+| Mobile feature/UI/services (13) | `mobile/src/features/pdf/LibraryScreen.tsx`, `mobile/src/features/pdf/SlidePreview.tsx`, `mobile/src/features/pdf/ViewerScreen.tsx`, `mobile/src/features/pdf/service.ts`, `mobile/src/features/recording/RehearsalScreen.tsx`, `mobile/src/features/recording/service.ts`, `mobile/src/features/transcription/ResultsScreen.tsx`, `mobile/src/features/transcription/client.ts`, `mobile/src/features/transcription/playback.ts`, `mobile/src/features/transcription/service.ts`, `mobile/src/services/api.ts`, `mobile/src/services/notImplemented.ts`, `mobile/src/ui/components.tsx` |
 
-- Scope: one updated master log and four supporting Markdown files; no application,
-  dependency, migration, source-comment or public-interface change.
-- Historical-record preservation at initial review: baseline dated entries and
-  PR #5 archive matched the exact base. The later user-requested formatting revision
-  restructures task entries; the original checkout, stable source revisions and
-  PR #5 archive preserve the original wording.
-- Initial main report: **609 words**, counting visible whitespace-delimited text after
-  removing Markdown link destinations and formatting markers, including title,
-  headings and metadata. Supporting documents are excluded.
-- Temporary read-only Python documentation checks passed: six required sections,
-  local link/heading resolution, immutable Git object/file existence and line
-  ranges, balanced fences, trailing whitespace and reference portability.
-  That initial package contained 31 checked local links and 18 distinct Git targets.
-- Authenticated GitHub readback also resolved all 18 stable commit/file targets:
-  13 bounded file reads and five commit-object reads. This verifies source
-  availability at checking time, not public access or permanent retention.
-- Three P1/P2 log quotations match their source exactly, including punctuation.
-  P3 was compared with the retained initial local log; P4 with the current message.
-  This does not authenticate underlying historical chats; provenance limitations
-  remain visible.
-- Newly authored text has no host-absolute filesystem paths, temporary citation
-  syntax or mutable branch-based code links. Original historical sources remain
-  accessible even where the working log now uses the common entry template.
-- `git diff --check` passed. The Python check also covered all four new files,
-  which ordinary unstaged Git diff does not include.
-- Original checkout branch/HEAD/index and schedule draft match the initial
-  snapshot. The initial AI-use contents, including all 95 added lines, match an
-  exact **74,074-byte prefix** after concurrent work appended an Excel-schedule entry.
-  Initial whole-file/diff equality therefore correctly failed and was investigated,
-  not suppressed or restored. Later AI-use SHA-256:
-  `692ea94234bdcb1274df0d68f09462a50f4530f2e4238a50df99c9c7b6319e51`.
-- Concurrent output drift: the revised workbook changed to SHA-256
-  `bec23900b6d8da9cc1005d36ced8c7cf853f3ad65c0a3dc391ff647b5b851202`;
-  its inspection sidecar was no longer present. This task did not modify either.
-  Final readback matched those observed states. No stash/reset/clean or restoration
-  of another task's work was performed.
-- `git grep -n -i` for `AI-generated`, `AI-assisted`, `generated with` and
-  `reviewed by` under `mobile/src` and `backend/rehearsals` returned no matches
-  at both `f6f6e76` and `ce9f248` (exit 1, no matches). This bounded phrase
-  search does not prove an exhaustive provenance audit or marker compliance.
-- Independent Codex documentation review checked attribution, quotations,
-  alignment source/tests, task-specific counts and incident classifications.
-  It found three incorrect source-line ranges; all were corrected and the final
-  link checks passed. It found no other actionable factual/attribution issue.
-  The reviewer did not rerun app tests, authenticate original chats, refresh
-  GitHub status or independently inspect the course PDFs. Parent source inspection
-  and automated documentation checks cover the latter source/link work separately.
-- Application builds/tests, native/device checks and provider calls: not rerun for
-  this documentation-only task.
-- Commit, push, Wiki publication and submission: not performed.
+**Remaining scope:** comparing the implementation at PR #21 head `ce9f248` against this documentation baseline identifies **72 non-test implementation modules, 60 absent or different**. Those 60 need their final tool/scope/review attribution assessed on the active feature branches; the 12 unchanged modules can carry their verified comments forward through normal integration. Do not overwrite active feature worktrees merely to add this draft's comments. This audit uses the combined #21 snapshot, not an assertion that every open branch has identical contents. Earlier UI-only prototype modules at `54078a3` also require markers if reused.
 
-Task-format follow-up, October 9: at the user's request, the master log now
-contains its unchanged entry template and 54 dated task entries, with no
-standalone contributor index, task table or report-guidance section. Former
-table-only tasks and free-form follow-ups now use the template. Roles, period
-classification, source provenance and corrections sit within each entry. The
-three early planning entries explicitly record missing AI-use evidence and remain
-outside the report. The separate historical archive is unchanged.
+Key outstanding groups: real PDF/catalog/rendering and recording helpers in #13/#17; local persistence/upload and backend storage in #18; queue/provider orchestration and automatic-transcription hooks in #19; player/PDF/recovery review modules in #20; provider/description/coaching services and feedback UI in #21. Each owning member must confirm source reuse and review scope before publication.
 
-The follow-up also updates supporting links and replaces this guide's competing
-task-field list with a link to the master template. It does not expand the main
-report's retrieval snapshot or resolve any submission blocker. Documentation
-validation covers all 54 entries' fields, duplicate headings, relative links and
-anchors, immutable source references, Markdown formatting, the then-609-word report
-and preservation of the original checkout. These checks passed: 54 entries match
-the unchanged 13-field template, 105 local links resolve, 17 distinct Git targets
-exist, source line ranges are valid, three logged quotations match their sources,
-and `git diff --check` reports no whitespace errors. This follow-up receives agent
-self-review; it does not claim a new independent review, application test run,
-commit or publication.
+Tests and migrations are unchanged under this task's scope: `backend/config/test_settings.py`, `backend/rehearsals/test_alignment.py`, `test_transcription.py`, `tests.py`, `migrations/0001_initial.py`, and `mobile/tests/` still need any required authorship annotations in an authorized follow-up. Empty Python package files need no generated-code attribution. `mobile/src/fixtures/whisperTranscript.ts` is disclosed saved Whisper output, not coding-model-authored transcript; retain that distinction. `mobile/src/fixtures/demo.ts` says “Hand-authored UI examples,” which needs clarification against the requester's all-code-by-AI statement before assigning an individual author. Non-code JSON/manifests/locks cannot receive ordinary comments safely; use adjacent supported source comments and an attribution record rather than alter their formats.
 
-During this follow-up, another task appended “Feature-focused Excel schedule
-revision v2” to the original checkout. The 76,926-byte file read at the start of
-formatting remains an exact prefix of the observed 79,479-byte file (SHA-256
-`5d0d4aad6a74af8599550c8e39d191df5da941ac085fff8a225ab0ee5d7e7d46`). This
-later task record remains in the original source and is outside the task snapshot
-normalized here. The original branch, HEAD, index and schedule draft remain
-unchanged; this formatting task neither wrote nor restored the concurrent files.
+## Verification of this revision
 
-## Reflective revision evidence search
+Fresh draft checks passed: **28 original messages**, **138 local links** (including anchors), **89 Git reference occurrences**, **34 comment-only source reconstructions**, **15 unchanged Python ASTs** and **19 unchanged TypeScript token streams**.
 
-The course handout was reread in full; its SHA-256 still matches C1. It requires
-six subjects, actual prompts, concrete benefits/errors, prompt revisions and
-manual-edit explanations, with honesty and verifiability taking priority over
-polish. The revised report uses inferred developer lessons rather than inventing
-the team's personal reflections. It gives the adapter defect its own account
-and reduces the PR histories to one workflow paragraph. No realistic-but-fictional
-project event, prompt, human edit, cost or approval was added.
+Validation checks: exact quotation matching against original user messages (full text or explicitly labelled prefix); assistant antecedents for both UI plans; six headings and visible word count; local Markdown target/anchor resolution; immutable Git objects, paths and referenced line bounds; code-marker allowlist and reconstruction of every original byte after removing only inserted comments; Python AST/TypeScript token comparisons; changed-scope credential/private-path scan; `git diff --check`.
 
-The search covered the master log, historical log revisions, prompt appendix and
-16 available project agent records containing 68 substantive user-role messages.
-Relevant messages and neighboring task outcomes were inspected after searching
-for manual editing, non-use, errors, revisions and UI/transcript feedback. This
-was a bounded search of locally available project records, not access to every
-member's private conversations. No verified human-written code patch or its
-reason for ending prompting emerged. Existing examples still attribute repairs
-to Codex and human detection/confirmation to the named contributor.
+These are documentation/comment checks, not reruns of the historical test suites. No runtime behavior, tests, dependencies, migrations, architecture or API contracts changed. No new Android/device, backend, provider or usability check was performed. Documentation self-review is not an independent reviewer or teammate approval. Existing uncommitted documentation was snapshotted before revision; the previous validation content is retained in the linked historical snapshot (only relative links rebased); `docs/ai-use.md` keeps its exact pre-task contents and receives one appended entry. Unrelated main-worktree edits remain untouched.
 
-Live GitHub discussion reads returned empty timelines for PRs #3, #4, #5, #10,
-#13, #14, #15, #16 and #17; #4 succeeded on retry after a connection timeout.
-Commit-comment endpoints for e71c3e0 and 54078a3 also returned no comments. PR #3
-and #13 descriptions corroborate the adapter review and Jooyoung's timeline
-verification. Empty discussions do not prove that no human review happened;
-Injoon's reported staged-code inspection comes from the source log and PR #3
-description. No additional human-authored fix was inferred from Git authorship.
+## Before submission
 
-Original-message sources for the new appendix excerpts:
+Obtain the four members' inputs and resolve the named gaps in [the contributor checklist](ai-collaboration-prompts-iteration-1.md#8-missing-contributor-evidence-and-confirmation-checklist). Choose the human writer, secure final team review, finish source-marker coverage on the integrated revision, and provide accessible prompt sources. Then, only after authorization, publish and verify the Wiki report, prompt subpage and sidebar, and check the course submission requirement. Word count and six headings alone do not make this draft submission-ready.
 
-| ID | Local record identity and location within it | Evidence / fingerprint |
-| --- | --- | --- |
-| R1 | Session `01a10ec2-c58c-79d1-8f6c-a7149bcc8d29`, user message at record line 12, October 6 01:13:44.757 UTC | P5 original transcript/three-tab request. Record SHA-256 `8d77e6b7ae8a3f7aa52648ef855be96710ee06e40b08b3914044dfef6980e194`. |
-| R2 | Session `01a10ef9-b667-7f50-aa24-cca3aaed889f`, user messages at lines 12 and 94, October 6 02:10:26.696 and 02:12:33.070 UTC | P5 clutter feedback and approved two-tab plan. The matching agent-authored plan is at line 84. Record SHA-256 `165b4f2f9e1f47ee6312f16b173a7cf5349a9518a4596baaaadd580062708187`. |
-| R3 | Session `01a11571-a9e5-71b2-b902-6aa2aa137094`, user question reply at line 181, October 7 10:27:03.685 UTC | P6 exact answer “I’ll import it manually,” with the tool-access question as context. Record SHA-256 `7f425c9e17080f836b412f994da3cc6d2c89f5bd1b287dd67554442cd311c532`. |
+## Earlier audit records
 
-These IDs/fingerprints locate local evidence without publishing host paths or
-whole conversations. The appendix reproduces only task-relevant excerpts. The
-identities of the human senders remain unconfirmed; no account-name or Git-author
-inference was used. Contributor review and a team-accessible evidence copy remain
-needed for submission. Terminal whitespace lies outside the quoted excerpts;
-spelling, wording and Markdown inside them are unchanged.
+The prior validation document is preserved as a [historical snapshot](history/ai-collaboration-validation-iteration-1-before-feature-audit.md). These compatibility anchors keep the append-only AI-use history navigable; they do not reassert its superseded counts, scope or statuses.
 
-Claim checks:
+<a id="initial-roadmap-prompt-recovery"></a>
+<a id="documentation-verification"></a>
+<a id="reflective-revision-evidence-search"></a>
+<a id="focused-editorial-review"></a>
 
-- **Alignment:** [historical implementation](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/e71c3e06945517219b9a343e80f9680829c0bd58/backend/rehearsals/services/alignment.py)
-  and [nine tests](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/e71c3e06945517219b9a343e80f9680829c0bd58/backend/rehearsals/test_alignment.py)
-  support the 3,999/4,000-millisecond example, repeated/backward visits, silence
-  and invalid-input checks. The [source log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/e71c3e06945517219b9a343e80f9680829c0bd58/docs/ai-use.md#L69-L90)
-  records the initial nine/14 passes; [later human inspection](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/e71c3e06945517219b9a343e80f9680829c0bd58/docs/ai-use.md#L189-L200)
-  concerns the final staged feature. The report does not assign agent-run tests
-  to Injoon or treat the 14-test initial suite as the later 23-test suite.
-- **Adapter defect:** live readback of [the repair entry](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/e71c3e06945517219b9a343e80f9680829c0bd58/docs/ai-use.md#L152-L176)
-  confirms AI detection/repair and nine transcription/23 backend passes. It
-  provides no specific false model assertion, human-authored fix or measured cost.
-- **UI revision:** R1/R2 supply actual before/after instructions and the reported
-  problem. [54078a3](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/54078a33a2409aae8d671aaabca6d26476f0ea02/docs/ai-use.md#L467-L480)
-  preserves implementation, 52-test/export and emulator evidence. Static inspection
-  checked the tab definitions, Library redirect and Feedback default at this
-  revision. Attribution is user-approved revision, not unaided human authorship
-  of the implementation plan or proof of a measured usability gain.
-- **Manual-code boundary:** live readback of [Jooyoung's entry](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/040880f8a21b2f866228984e9fb3c438fa6ee4bf/docs/ai-use.md#L319-L352)
-  keeps human bug reporting and confirmation separate from the Codex-written
-  repair. The manual import is a UI operation, not an alternative manual-code case.
-
-Documentation validation checks the six report sections, the 500–700-word limit,
-all relative links/anchors and immutable source targets, source-line bounds,
-P5/P6 quote substrings against the original messages, and Markdown whitespace.
-No application, device or provider test was rerun for this prose revision. The
-master log retains its entry template; this task adds one dated entry. No commit,
-push, Wiki publication or submission is authorized or claimed.
-
-Reflective-revision result before the focused edit: **593 words**, six sections, 111 checked local links, 21 valid immutable
-Git targets, eight new original-message excerpt checks and three existing
-log-quotation checks; no validation errors. All 55 master-log tasks follow the
-unchanged entry template. The reusable guide and historical archive are unchanged
-by this revision. The word count includes the title, headings and metadata after
-removing link destinations and formatting markers; supporting files are excluded.
-
-Preservation check: the original checkout's branch/HEAD/index and schedule draft
-remain unchanged. Its starting AI-use content remains an exact prefix after a
-concurrent requirements-document entry was appended. During this work, 21 existing
-files under `outputs/reqspec/` also changed; 209 other sampled original-checkout
-files remained byte-identical. This task wrote only the four report-related
-Markdown files in the isolated documentation worktree and did not overwrite,
-restore or validate the concurrent requirements artifacts. No stash, reset, clean,
-rebase or switch of the original checkout occurred.
-
-## Focused editorial review
-
-On October 9, the user requested a focused edit of the current draft, which had
-added blanket claims of no AI use for physical-device testing and environment/API-key
-setup, and no human code implementation or repair during the iteration. Neither
-claim was treated as contributor confirmation merely because it appeared in the
-draft. The course handout's checksum still matches C1; its six subjects and
-500–700-word target remain the editorial criteria.
-
-- **Physical-device work:** the [phone preparation](ai-use.md#2026-10-06--physical-phone-test-preparation)
-  and [demo-launch](ai-use.md#2026-10-07--physical-phone-demo-launch) records describe
-  Codex starting Metro, configuring USB forwarding, installing/launching the app
-  and checking phone rendering. The original demo-request message in session
-  `01a1156d-300e-7072-8121-dd2db02113f1`, line 12, asks the agent to run the app
-  on a physical device. Human testing also occurred, but that does not establish
-  an explicit decision to exclude AI from all physical-device work.
-- **Environment/API-key setup:** [the PR #21 setup record at ce9f248](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/ce9f248256b1bbfc0d66f139886503261cc25953/docs/ai-use.md#L1368-L1376)
-  identifies Codex and describes runtime setup, migrations, provider configuration
-  and private loading of existing credentials. No credential values were inspected
-  for this editorial check. The records do not identify who originally created
-  or entered each key, or a deliberate AI-free setup step and reason. No named
-  contributor confirms the broader claim. P6's manual-import choice remains a
-  narrower example; its sender's identity is still pending.
-- **Manual correction search:** the prior bounded project-record search remains
-  applicable; two targeted phone/demo records were checked in this follow-up.
-  Session `01a111b4-3f83-7dd3-a376-6c543e8ba540`, line 1013, records a requester
-  saying they rebuilt the presentation themselves after disliking the AI-generated
-  deck. Line 971 concerns completed schedule rows P8/P9. These are human artifact
-  edits, not evidence of an application-code correction. The record's SHA-256 is
-  `511b6f2cadce5a9339741b47f61d48621c205492f18b1481e20ee1096802c12b`.
-  No verified human-authored code patch and reason for stopping prompting was
-  found. The report states that bounded finding rather than declaring that no
-  team member ever edited code manually.
-
-The edit preserves `align_words`, the adapter defect, navigation revision and
-all three original prompt excerpts. It shortens the PR discussion and repeated
-qualifications, with detailed role/evidence limits retained here. Test counts
-remain historical claims tied to e71c3e0 and 54078a3; no runtime checks were rerun.
-Submission still requires the contributor evidence and review listed above.
-
-Before the light follow-up, focused-edit checks passed: **585 words**, six sections, all three report prompt
-quotations unchanged, 115 resolved local links and 21 valid immutable Git targets
-with valid source-line ranges. Seven original-message excerpts and three existing
-log quotations matched their sources; `git diff --check` passed. The prompt
-appendix, reusable guide and historical archive are unchanged. All 56 task-log
-entries use the unchanged template, and pre-existing task entries remain intact.
-The original checkout's branch/HEAD/index/status and schedule draft match the
-starting snapshot; its starting AI-use contents remain preserved. Application
-code, commits, pushes and publication were outside this edit.
-
-The October 9 light follow-up simplifies sentences and makes the practical lessons
-clearer while retaining the examples, six sections and draft status. It restores
-the navigation prompt's original spelling from P5 after the latest draft had
-spell-corrected it, and repairs two Markdown section headings. The evidence gaps
-and historical-test limits above remain unchanged.
-
-Light-edit checks passed: **576 words**, six sections, all three report quotations
-matched to their original messages, 115 resolved local links and 21 valid immutable
-Git targets. The template and 56 task entries remain intact; only the current
-editorial entry received a follow-up note. The prompt appendix, guide, historical
-archive and original checkout were preserved. No application tests were rerun.
-
-## Requester-confirmed revision
-
-On October 9, the report requester said they disliked the previous report
-wording and supplied these statements in a Claude Code conversation (model:
-Claude Opus 5.5):
-
-> As a team all our code was written by ai. Non ai portions were handling api keys and sensitive data, physical phone testing, and making good plans by reading plans and giving feedback on it
-
-> After every feature was implemented before making branch it was tested locally on phone and after tests passed it was pushed into branch
-
-These statements are the requester's confirmation of team practice. They replace
-the earlier treatment of the blanket non-use and no-manual-edit claims as
-unsupported. They are not yet confirmation from the other three members.
-
-Report changes:
-
-- **Section 1** states that AI wrote all application code. It lists API keys and
-  sensitive data, physical phone testing and plan review as work the team kept
-  for itself, and adds the test-on-phone-before-branching practice.
-- **Section 2** adds the first P2 quotation. The P6 manual-import example was
-  removed from the report and remains in the appendix.
-- **Sections 3–5** keep the same examples, counts and links in shorter wording.
-  Section 4 now gives the reasons for the #10 revert (separate feature review)
-  and the #14–#16 consolidation (overlapping PRs), from P1 and the PR snapshot.
-- **Section 6** states that no one edited application code by hand.
-- The "Draft" status line was removed from the report body; status is tracked here.
-
-Evidence consistency:
-
-- The [phone preparation](ai-use.md#2026-10-06--physical-phone-test-preparation)
-  and [demo-launch](ai-use.md#2026-10-07--physical-phone-demo-launch) records show
-  Codex starting Metro, configuring USB forwarding and installing the app.
-  Section 1 therefore says Codex installed builds and claims only hands-on
-  testing as human work. The [human phone-test record](ai-use.md#2026-10-07--human-phone-test-result-and-clearer-iteration-1-presentation)
-  supports a human test: the user reported the phone flow worked overall, with
-  transcription accuracy as the exception. The per-feature test-before-branch
-  practice rests on the requester's statement; no per-feature test log exists.
-- The PR #21 setup record shows Codex loading existing credentials privately.
-  This is consistent with team members creating and entering keys. The report
-  states the intent to keep secrets out of prompts, not a verified outcome.
-- Three statements were initially agent-drafted: the key-handling reason, the
-  section 6 reason, and the section 4 lesson that AI produces code faster than
-  the team can review it. The requester resolved all three in the follow-up below.
-
-Checks passed: **696 words** (same counting method as above), six sections, five
-report quotations matched to the prompt appendix, one local link resolved and
-`git diff --check` reported no whitespace errors. No application test was rerun.
-Commit, push, Wiki publication and submission were not performed.
-
-Reason follow-up, October 9: the requester replied to the three agent-drafted
-statements. For key handling:
-
-> had to make sure that keys werent submitted to the prompt which caould lead to securtiy breaches.
-
-For routing every fix through Codex:
-
-> preferred coding agent
-
-The requester listed the section 4 lesson without changes; it remains as written.
-Section 1 now gives the security-breach reason and section 6 states that Codex
-was the preferred coding agent; the agent-drafted reasons were removed. Checks
-passed: **699 words**, six sections, five report quotations matched and
-`git diff --check` reported no whitespace errors.
-
-## Handoff
-
-Review the [main report](ai-collaboration-report-iteration-1.md), collect missing
-member evidence through the [prompt form](ai-collaboration-prompts-iteration-1.md#contributor-submission-form),
-then apply the [guide](ai-collaboration-guidelines.md). Refresh mutable statuses
-before publication. Leave unknowns explicit instead of inventing complete answers.
+Historical details: [roadmap recovery](history/ai-collaboration-validation-iteration-1-before-feature-audit.md#initial-roadmap-prompt-recovery), [earlier documentation verification](history/ai-collaboration-validation-iteration-1-before-feature-audit.md#documentation-verification), [earlier prompt retrieval](history/ai-collaboration-validation-iteration-1-before-feature-audit.md#reflective-revision-evidence-search), and [editorial review](history/ai-collaboration-validation-iteration-1-before-feature-audit.md#focused-editorial-review). Current findings are in the checklist above.

@@ -1,3 +1,5 @@
+// AI-generated/modified with OpenAI Codex, Iteration 1 (2026-09-26 to 2026-10-09).
+// Attribution/review scope: docs/ai-collaboration-validation-iteration-1.md#ai-code-markers
 import type { LocalRecording } from "../../contracts";
 
 // Recording owner: implement using expo-audio and persistent expo-file-system storage.
