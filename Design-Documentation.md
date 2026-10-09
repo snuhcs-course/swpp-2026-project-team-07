@@ -286,19 +286,3 @@ PDFs, images and audio would remain in private server storage. The API would str
 As shown in Figures 4A–4B, the target app presents the transcription disclosure before any recording-related PDF/audio transfer, records the accepted disclosure version/provider and allows cancellation with local playback intact. Processing admission checks that consent. A different analysis provider or changed data use requires a new disclosure. Feedback keeps its own explicit request and disclosure; speech summaries likewise disclose transcript transfer before generation. On-device rendering and server-side delivery measurement create no implied permission for external AI processing.
 
 Ownership and authenticated media checks place access control at the shared API boundary rather than relying on screen visibility. **Open:** identity provider, token lifetime/revocation, handling local caches after sign-out, pilot-data migration and provider-retention policy. These choices remain proposals, while owner privacy, pre-upload consent and user-requested deletion remain mandatory.
-
-## 9. References and Maintenance
-
-The [course requirements](https://github.com/snuhcs-course/swpp-2026-project-team-07/wiki/Requirements-&-Specifications) define product scope. The current Design Documentation Guidelines take precedence over previous-year examples, including separate Testing Documentation and the Iteration 5 requirement for at least two detailed, code-backed design-pattern analyses.
-
-| Design boundary | Supporting source |
-| --- | --- |
-| Data exchanged by recording, analysis and review | [API contract](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/ce9f248256b1bbfc0d66f139886503261cc25953/docs/api-contract.md) |
-| Current database entities and constraints | [Django models](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/ce9f248256b1bbfc0d66f139886503261cc25953/backend/rehearsals/models.py) |
-| Transcription, alignment, metrics and coaching | [Backend domain services](https://github.com/snuhcs-course/swpp-2026-project-team-07/tree/ce9f248256b1bbfc0d66f139886503261cc25953/backend/rehearsals/services) |
-| Recording and saved review foundations | [Mobile recording](https://github.com/snuhcs-course/swpp-2026-project-team-07/tree/ce9f248256b1bbfc0d66f139886503261cc25953/mobile/src/features/recording), [transcription/review](https://github.com/snuhcs-course/swpp-2026-project-team-07/tree/ce9f248256b1bbfc0d66f139886503261cc25953/mobile/src/features/transcription) |
-| Local frontend redesign | `mobile/src/layouts/contracts.ts`, feature hosts and controllers on `codex/refactor-design`; not published source. |
-
-The linked integration source belongs to unmerged PRs #17–21, not the main-branch baseline. Exact inspected revisions and local-state evidence are maintained in `docs/design-source-snapshot.json`. Editable diagram sources live in `docs/diagram-review/sources/`; the Markdown remains authoritative for the Wiki and PDF. The comparison report, detailed API contract and separate testing records carry detail intentionally omitted here.
-
-Update contracts, model diagrams and status labels when a proposed design is agreed or implemented. Retain explicit open decisions until resolved, and regenerate the PDF from the same Markdown/assets after each document revision. Figures use descriptions, speech key ideas and coaching consistently: these are three different results with different source data and invalidation rules.
