@@ -83,21 +83,47 @@ also, when the app enters rehearsal/practice, make sure even if the slide was mo
 
 ### Y1. Microphone capture and local preview, September 30
 
-**Evidence: summary; original prompt missing; requester label conflicts.** The original commit uses Git author `joo`, mapped to Jooyoung by the requester. However, its AI-use entry says **“Contributor: Injoon (requester).”** Preserve this distinction until the members resolve whether Injoon prompted for Jooyoung's work or the entry was mislabelled.
+**Evidence: original user-role messages supplied by Jooyoung in the current reporting conversation (F2); requester label conflict remains.** The original commit uses Git author `joo`, mapped to Jooyoung by the requester. However, its AI-use entry says **“Contributor: Injoon (requester).”** The prompts below establish their wording, not who authored every earlier request; the members should resolve that label conflict.
+
+**Original user-role message, F2 (September 30; verbatim):**
+
+```text
+Read README.md, AGENTS.md, docs/api-contract.md, docs/iteration-1-handoff.md, and mobile/AGENTS.md.
+
+Implement only `RecordingService.start()` using Expo SDK 57 `expo-audio`. The current RehearsalScreen.txs is a fixture-only preview. Your first task is to implement the "Start recording" button. It requires requesting audio permission, (if granted) set audio mode, create a useAudioRecorder using RecordingPresets.High_QUALITY with directory: "document", await prepareToRecordAsync(), then call record(). Then, it will switch the UI to a real "Recording" state and enable Stop. Do not modify shared contracts, app.json, Android generated files, dependencies, or navigation. keep in mind that the next task is to implement slide-change timestamps on the same timeline. In the future, the app will allow re-recordings for selected slides. Show me the changed diff and run the relevant static checks. Do not commit or push. make sure to be on feature/recording-tracking branch
+```
+
+**Original user-role follow-ups, F2 (September 30; verbatim):**
+
+```text
+implement slide-change timestamps on the same timeline
+```
+
+```text
+use the local recording preview. additionally, when stop recording is clicked, keep the timestamp
+```
 
 Codex generated microphone permission handling, audio mode, capture, native-duration polling, `LocalRecording`, repeated/backward slide events and local preview. The original requester tested and reported permission/timer/Stop problems. A separate AI reviewer found stale duration from an earlier attempt, Preview navigation during capture and a failed Stop leaving unusable controls; Codex repaired them before the recorded commit. The requester confirmed capture/timeline behavior, but that person's name cannot be inferred from the commit alone.
 
-Evidence: [`04857fb`](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/04857fb93d0a64784feb8bfb1d4b61f4b47bf251), [recording entry](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/04857fb93d0a64784feb8bfb1d4b61f4b47bf251/docs/ai-use.md#L309-L346). Codex reported 21 mobile tests, typecheck/lint and Android export; the log distinguishes earlier human testing from the final static checks. The final device snapshot was not independently rechecked in that entry. No exact defect-report prompt or elapsed repair time was recovered.
+Evidence: [`04857fb`](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/04857fb93d0a64784feb8bfb1d4b61f4b47bf251), [recording entry](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/04857fb93d0a64784feb8bfb1d4b61f4b47bf251/docs/ai-use.md#L309-L346), and F2. Codex reported 21 mobile tests, typecheck/lint and Android export; the log distinguishes earlier human testing from the final static checks. The final device snapshot was not independently rechecked in that entry.
 
 ### Y2. Empty Android timeline after Stop, October 7–8
 
-**Evidence: named secondary development log and PR; original debugging prompts missing.** The later entry explicitly names Jooyoung as contributor, issue reporter and phone verifier. During Android testing he reported a blank timeline. The previous code read `durationMillis` after `await recorder.stop()` and even commented that final duration would be available then. Android reset the duration, so filtering against the zero result removed the timeline.
+**Evidence: original defect report supplied by Jooyoung (F2), named development log and PR.** The later entry explicitly names Jooyoung as contributor, issue reporter and phone verifier. During Android testing he reported:
+
+**Original user-role message, F2 (October 7; verbatim):**
+
+```text
+when i try the app, the slide timeline has nothing on it??
+```
+
+The previous code read `durationMillis` after `await recorder.stop()` and even commented that final duration would be available then. Android reset the duration, so filtering against the zero result removed the timeline.
 
 Codex added `stopCapture.ts` to pause and snapshot the native clock before stopping, and wired `RehearsalScreen.tsx` to the preserved duration. Jooyoung then confirmed that a stopped recording displayed its timeline. An independent Codex reviewer inspected the staged fix. This establishes a narrow phone result, not all timing boundaries or recording reliability.
 
 Evidence: [PR #13](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/13), [`040880f`](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/040880f8a21b2f866228984e9fb3c438fa6ee4bf), [duration-preservation helper](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/040880f8a21b2f866228984e9fb3c438fa6ee4bf/mobile/src/features/recording/stopCapture.ts#L1-L18), [named reporter and verification](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/040880f8a21b2f866228984e9fb3c438fa6ee4bf/docs/ai-use.md#L319-L352). Codex recorded `npm run check` (21 tests), Android export and a native launch. The PR explicitly leaves quick Stop, re-recording and automated pause/stop helper coverage pending at that revision. This is an **implementation error contradicted by observed Android behavior**. No fabricated API or other coding-model hallucination is established. Rework involved a new helper, caller change, rebuild and retest; minutes/hours were not logged.
 
-**Needed from Jooyoung:** original recording, permission/timer/Stop and empty-timeline prompts; any revised instructions; the date/device/check steps for his retest; acceptance/edit notes; resolution of Y1's Injoon label; model/version if known. Git authorship establishes ownership of the commit, not authorship of the AI-written repair.
+**Needed from Jooyoung:** date/device/check steps for his retest; acceptance/edit notes; resolution of Y1's Injoon label; model/version if known. Git authorship establishes ownership of the commit, not authorship of the AI-written repair.
 
 ## 5. Seoyeon: integration and interface
 
@@ -466,7 +492,7 @@ Use the original quotations above once; this table explains the comparison witho
 | [S3](#s3-rebuilding-the-current-feature-flow-october-8) | Roadmap carried forward local Whisper. | Specified hosted Whisper plus provider-selectable feedback; #19/#21 implement that choice. |
 | [S6](#s6-feedback-scope-rejected-pr-split-and-quota-behavior-october-8) | Large feedback plan; assistant then proposed five PRs. | Human requested checks between five parts in one PR; #21 retains that boundary. |
 | [S5](#s5-hosted-processing-and-saved-rehearsal-review-october-8) → [S7](#s7-automatic-transcription-and-cancellation-review-october-89) | Explicit Analyze was the earlier accepted behavior. | Later feature-change prompt switched to automatic processing; reviewer discovered/repaired a cancellation race. This is a requirement revision, not proof the earlier behavior was a bug. |
-| [I2](#i2-hosted-whisper-adapter-and-response-shape-repair-september-29), [Y2](#y2-empty-android-timeline-after-stop-october-78) | SDK response and native Stop assumptions failed. | AI repaired defects after independent AI review or Jooyoung's phone report. Original before/after debugging prompts remain missing, so these are not presented as recovered prompt pairs. |
+| [I2](#i2-hosted-whisper-adapter-and-response-shape-repair-september-29), [Y2](#y2-empty-android-timeline-after-stop-october-78) | SDK response and native Stop assumptions failed. | AI repaired defects after independent AI review or Jooyoung's recovered phone report. The initial recording request and the empty-timeline report are quoted above; the intermediate debugging exchange remains unavailable. |
 
 No complete, independently verified **development-assistant hallucination** was recovered. The defects and operation/planning mistakes above are documented separately. No debugging duration or time-saving estimate was recorded for these examples.
 
@@ -495,7 +521,7 @@ This original consolidation instruction led to [PR #17](https://github.com/snuhc
 | --- | --- |
 | Injoon | Export exact September 29 alignment, Whisper, transcript/playback and review prompts, including failed attempts and follow-ups. Confirm personal inspection, any hand edits, model/version and real-audio/device tests. Resolve Y1's requester label with Jooyoung. |
 | Jaewon | Three original prompt quotations supplied in F1; “Teammate A” identity resolved by the requester and supplied text. Supply acceptance/edit decisions, any additional failed attempts/revisions, personally performed test/review steps and model/version if known. Keep the agent-operated phone mistake separate from human testing. |
-| Jooyoung | Export initial recording/permission/timer/Stop and empty-timeline conversations. Confirm who prompted Y1, the Y2 report/retest, tool/model, direct edits (if any) and device test notes. |
+| Jooyoung | Confirm who prompted Y1, the Y2 date/device/retest, tool/model, direct edits (if any) and device test notes. The representative recording/timeline and empty-timeline messages are now supplied as F2. |
 | Seoyeon | Confirm S0–S8 messages and integration decisions, the human phone-test report, requester statements about all-code-by-AI/no hand edits, and the difference between reviewed plans and verified app behavior. Identify the report's human writer and obtain all four members' sign-off. |
 
 Each contribution should provide an original export or accessible source, date, exact request and revisions, generated output accepted/modified/rejected, file/commit/PR, reviewer and performed tests. “No manual application-code edits” is a valid answer when confirmed; do not invent a hand fix. The requester confirms that AI wrote all application code, Codex was preferred, humans handled keys/sensitive data and phone testing, and humans reviewed plans. These are requester statements, not four separate attestations.
