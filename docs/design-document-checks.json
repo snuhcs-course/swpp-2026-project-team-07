@@ -1,42 +1,37 @@
 {
-  "revision": "Rev.4.3",
+  "revision": "Rev.2.0",
   "markdown_primary_source": true,
-  "pdf_pages": 17,
+  "pdf_pages": 24,
   "figure_ids": [
-    "figure-1-system",
-    "figure-2-core",
-    "figure-3-feedback",
-    "figure-3a-planned-data",
-    "figure-4a-capture",
-    "figure-4b-processing",
-    "figure-5a-generation",
-    "figure-5b-recovery",
+    "figure-1-system-short",
+    "figure-2-core-short",
+    "figure-3-feedback-short",
+    "figure-4-processing-short",
+    "figure-5-coaching-short",
     "figure-6-frontend",
-    "figure-7-practice-comparison",
+    "figure-3a-planned-data",
     "figure-8-deletion"
   ],
-  "panels": 11,
-  "source_link_occurrences_verified": 5,
+  "panels": 12,
+  "source_link_occurrences_verified": 6,
   "unique_source_links": 5,
   "json_examples": 0,
   "pdf_text_parity": "pass",
-  "pdf_images_match_canonical_renders": 11,
+  "pdf_images_match_canonical_renders": 12,
   "local_asset_paths": "checked",
   "wiki_text_parity": "checked",
   "svg_sha256": {
-    "assets/outloud-design/figure-1-system.svg": "040a7122bb24fcaff0dda462f96ab83472fb182792aa741a6336628575cdb239",
-    "assets/outloud-design/figure-2-core.svg": "c2559d690e5718272f4114324432d285df2806a2a64d171f75ffed375fcd97b8",
-    "assets/outloud-design/figure-3-feedback.svg": "dfb3db4d61bdd456fd0098565fa1f53bd3e848957c8ff97bc2f444e9a2e887ca",
-    "assets/outloud-design/figure-3a-planned-data.svg": "791db6dd0b567e7f8ddd43f4437d2fa8c863329e412f1d93df72278cc2a4eb24",
-    "assets/outloud-design/figure-4a-capture.svg": "c3a257ab17aef072ab5872fff511a7e4fc4fc4714800f73f5e7ae6819049e277",
-    "assets/outloud-design/figure-4b-processing.svg": "970981c405557145874e3d3c247e0a7ff934547304ef8569334f51cdcb5c3be2",
-    "assets/outloud-design/figure-5a-generation.svg": "f8b20cfb0f524dfa81998d13ee4d87e0817ca9e895ee2a1c761f7e75a8ca763e",
-    "assets/outloud-design/figure-5b-recovery.svg": "a3de303e2f8fcc11f5de4c7eb91acd99740e7d7b6e3fc4df6e0880961fafd110",
-    "assets/outloud-design/figure-6-frontend.svg": "f8da71cd1fda79444e8f512a8d0d153aadf20f3c7630acd19ba60d5098245d4d",
-    "assets/outloud-design/figure-7-practice-comparison.svg": "8ccaba4a991f9949c1a4c5297f1dd4d50d5ae61643a23fe54d4b797f71ed070f",
-    "assets/outloud-design/figure-8-deletion.svg": "4fde5d33de6a930e4de69e34245a605eecdf41defa7197680a9c70386cc0caad"
+    "assets/outloud-design/figure-1-system-short.svg": "c9e44262a263c2443129840cecba3ea0484c58e6f554b44e058485e15102337c",
+    "assets/outloud-design/figure-2-core-short.svg": "594d163d82d4b22d741ba8a4cf1c21a3db7b0246dadbe8bc78f9499b96d43770",
+    "assets/outloud-design/figure-3-feedback-short.svg": "c139455e919d4487c98d65fe1b8bde7812b1a2b75e3b5408ddf3a3fa67b81015",
+    "assets/outloud-design/figure-4-processing-short.svg": "3be8eba39e24fdbb33e187079c69e3475767001770dcf4e21953395711640a3d",
+    "assets/outloud-design/figure-5-coaching-short.svg": "10acdd5d6c33c8b0cc9709bf2c73d4f72b8323e69008b9cb9f61e95ca135e6e5",
+    "assets/outloud-design/figure-6-frontend.svg": "6deeb3a695e28f8487849b2f3a0b807d0b026cad617924b25ca295a59c67563b",
+    "assets/outloud-design/figure-3a-planned-data.svg": "f08d37fc4628fb67a8ce155a80064b179015064789acda9b57276cbf4843446c",
+    "assets/outloud-design/figure-8-deletion.svg": "a41f67ca475983071ab52074b1c61dfb715cc63e6fe446ac7411238ea156d12f"
   },
-  "font": "Arial",
+  "font": "Arial; body/table/caption/code 11 pt",
+  "uniform_a4": true,
   "page_sizes": [
     {
       "page": 1,
@@ -48,43 +43,43 @@
     },
     {
       "page": 3,
-      "paper": "A3"
+      "paper": "A4"
     },
     {
       "page": 4,
-      "paper": "A3"
+      "paper": "A4"
     },
     {
       "page": 5,
-      "paper": "A3"
+      "paper": "A4"
     },
     {
       "page": 6,
-      "paper": "A3"
+      "paper": "A4"
     },
     {
       "page": 7,
-      "paper": "A3"
+      "paper": "A4"
     },
     {
       "page": 8,
-      "paper": "A2"
+      "paper": "A4"
     },
     {
       "page": 9,
-      "paper": "A2"
+      "paper": "A4"
     },
     {
       "page": 10,
-      "paper": "A2"
+      "paper": "A4"
     },
     {
       "page": 11,
-      "paper": "A2"
+      "paper": "A4"
     },
     {
       "page": 12,
-      "paper": "A3"
+      "paper": "A4"
     },
     {
       "page": 13,
@@ -92,11 +87,11 @@
     },
     {
       "page": 14,
-      "paper": "A2"
+      "paper": "A4"
     },
     {
       "page": 15,
-      "paper": "A2"
+      "paper": "A4"
     },
     {
       "page": 16,
@@ -105,11 +100,39 @@
     {
       "page": 17,
       "paper": "A4"
+    },
+    {
+      "page": 18,
+      "paper": "A4"
+    },
+    {
+      "page": 19,
+      "paper": "A4"
+    },
+    {
+      "page": 20,
+      "paper": "A4"
+    },
+    {
+      "page": 21,
+      "paper": "A4"
+    },
+    {
+      "page": 22,
+      "paper": "A4"
+    },
+    {
+      "page": 23,
+      "paper": "A4"
+    },
+    {
+      "page": 24,
+      "paper": "A4"
     }
   ],
-  "internal_pdf_destinations_verified": 28,
+  "internal_pdf_destinations_verified": 17,
   "requirements_covered": 10,
   "submission_copy_identical": true,
-  "current_schema_diagrams_unchanged": true,
+  "retained_long_schema_assets_unchanged": true,
   "errors": []
 }

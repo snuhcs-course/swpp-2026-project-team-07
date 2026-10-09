@@ -11,7 +11,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib import colors
 from reportlab.lib.styles import ParagraphStyle
-from reportlab.lib.pagesizes import A4, A3, A2
+from reportlab.lib.pagesizes import A4
 from reportlab.platypus import (BaseDocTemplate, PageTemplate, Frame, NextPageTemplate,
  PageBreak, Paragraph, Spacer, Table, TableStyle, Image, Preformatted, KeepTogether)
 from pypdf import PdfReader
@@ -33,15 +33,18 @@ for name,file in [('Arial','Arial.ttf'),('Arial-Bold','Arial Bold.ttf'),('Arial-
  pdfmetrics.registerFont(TTFont(name,str(FONT/file)))
 pdfmetrics.registerFontFamily('Arial',normal='Arial',bold='Arial-Bold',italic='Arial-Italic',boldItalic='Arial-BoldItalic')
 STYLES={
- 'p':ParagraphStyle('p',fontName='Arial',fontSize=10.5,leading=14,spaceAfter=8),
+ 'p':ParagraphStyle('p',fontName='Arial',fontSize=11,leading=14.5,spaceAfter=8),
  'h1':ParagraphStyle('h1',fontName='Arial-Bold',fontSize=21,leading=25,spaceAfter=12,keepWithNext=True),
  'h2':ParagraphStyle('h2',fontName='Arial-Bold',fontSize=15,leading=19,spaceBefore=5,spaceAfter=11,keepWithNext=True),
  'h3':ParagraphStyle('h3',fontName='Arial-Bold',fontSize=12,leading=16,spaceBefore=9,spaceAfter=7,keepWithNext=True),
- 'caption':ParagraphStyle('caption',fontName='Arial',fontSize=10.5,leading=14,spaceBefore=7,spaceAfter=11,keepWithNext=True),
- 'cell':ParagraphStyle('cell',fontName='Arial',fontSize=10,leading=13),
- 'th':ParagraphStyle('th',fontName='Arial-Bold',fontSize=10,leading=13),
- 'code':ParagraphStyle('code',fontName='Arial',fontSize=9.5,leading=12,spaceBefore=4,spaceAfter=9),
+ 'caption':ParagraphStyle('caption',fontName='Arial',fontSize=11,leading=14.5,spaceBefore=7,spaceAfter=11,keepWithNext=True),
+ 'cell':ParagraphStyle('cell',fontName='Arial',fontSize=11,leading=14),
+ 'th':ParagraphStyle('th',fontName='Arial-Bold',fontSize=11,leading=14),
+ 'code':ParagraphStyle('code',fontName='Arial',fontSize=11,leading=14,spaceBefore=4,spaceAfter=9),
 }
+for style in STYLES.values():
+ style.allowWidows=0
+ style.allowOrphans=0
 def anchor(t):return re.sub(r'[^\w\- ]','',t.lower()).replace(' ','-')
 def inline(t,web=False):
  tokens=[]
@@ -104,10 +107,10 @@ for b in BLOCKS:
  elif k=='image':web.append(f'<a class="figure" href="{b["path"]}"><img src="{b["path"]}" alt="{html.escape(b["alt"])}"></a>')
  elif k=='table':web.append('<table>'+''.join('<tr>'+''.join(f'<{"th" if i==0 else "td"}>{inline(c,True)}</{"th" if i==0 else "td"}>' for c in r)+'</tr>' for i,r in enumerate(b['rows']))+'</table>')
  elif k=='code':web.append('<pre><code>'+html.escape(b['text'])+'</code></pre>')
- elif k=='list':web.append('<div class="toc-item">'+inline(b['text'],True)+'</div>')
+ elif k=='list':web.append('<ul><li>'+inline(b['text'],True)+'</li></ul>')
  else:web.append('<p>'+inline(b['text'],True)+'</p>')
 (ROOT/'Design-Documentation.html').write_text('''<!doctype html><html lang="en"><meta charset="utf-8"><title>OutLoud Design Documentation - {REVISION}</title><style>
-body{font:16px/1.6 Arial,sans-serif;color:#111;max-width:880px;margin:36px auto;padding:0 24px;background:white}h1{font-size:28px}h2{font-size:23px;margin-top:36px}h3{font-size:19px}a{color:#111}table{border-collapse:collapse;width:100%;font-size:14px;margin:18px 0}th,td{text-align:left;vertical-align:top;border:1px solid #999;padding:8px}th{background:white}pre{white-space:pre-wrap;background:white;padding:14px;font-family:Arial}code{font-family:Arial}.figure{display:block;overflow:auto}.figure img{display:block;max-width:100%;height:auto}.toc-item{margin:3px 0} @media(max-width:650px){body{padding:0 14px}}
+body{font:16px/1.6 Arial,sans-serif;color:#111;max-width:880px;margin:36px auto;padding:0 24px;background:white}h1{font-size:28px}h2{font-size:23px;margin-top:36px}h3{font-size:19px}a{color:#111}table{border-collapse:collapse;width:100%;font-size:inherit;margin:18px 0}th,td{text-align:left;vertical-align:top;border:1px solid #999;padding:8px}th{background:white}pre{white-space:pre-wrap;background:white;padding:14px;font-family:Arial}code{font-family:Arial}.figure{display:block;overflow:auto}.figure img{display:block;max-width:100%;height:auto}.toc-item{margin:3px 0} @media(max-width:650px){body{padding:0 14px}}
 </style><main>'''.replace('{REVISION}',REVISION)+''.join(web)+'</main></html>')
 
 # A Wiki-only derivative changes asset URLs, not prose. Unpublished assets stay local.
@@ -117,11 +120,11 @@ wiki_base='https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2026-projec
 shutil.copytree(assets,WIKI/'assets/outloud-design',dirs_exist_ok=True)
 shutil.copytree(assets,OUT/'assets/outloud-design',dirs_exist_ok=True)
 
-# Group at major sections/figures; paper changes preserve baseline diagram legibility.
+# Group at major sections/figures; all content flows on uniform A4 paper.
 groups=[];pending=[];current=[]
 for b in BLOCKS:
  if b['kind']=='heading':
-  if (b['level']==2 or b['text'].startswith('8.5 ')) and current:
+  if (b['level']==2 or b['text'].startswith('8.1 ') or b['text']=='Key design decisions') and current:
    groups.append(current);current=[]
   pending.append(b);continue
  if b['kind']=='image':
@@ -140,8 +143,13 @@ for i in range(len(groups)-1,0,-1):
  if not any(b['kind']=='image' for b in groups[i]+groups[i-1]):
   if groups[i][0].get('text','').startswith('9.'):
    groups[i-1]+=groups.pop(i)
+# Keep the deletion feature prose separate from the sequence panels.
+for i in range(len(groups)-1,-1,-1):
+ if any(b.get('path','').endswith('figure-8-deletion.svg') for b in groups[i]):
+  split=next((j for j,b in enumerate(groups[i]) if b['kind']=='list'),None)
+  if split is not None:groups[i:i+1]=[groups[i][:split],groups[i][split:]]
 PAPER={key:spec['paper'] for key,spec in FIGURE_SPECS.items()}
-SIZES={'A4':A4,'A3':A3,'A2':A2}
+SIZES={'A4':A4}
 page_manifest=[]
 class Doc(BaseDocTemplate):
  def afterFlowable(self,f):
@@ -158,33 +166,62 @@ def render(b,width):
  if k=='heading':
   p=Paragraph('<a name="'+anchor(b['text'])+'"/>'+inline(b['text']),STYLES['h'+str(min(b['level'],3))]);p.heading=(b['text'],0 if b['level']<3 else 1);return [p]
  if k=='image':
-  stem=Path(b['path']).stem;png=assets/(stem+'.png');im=Image(str(png));natural=ET.parse(ROOT/b['path']).getroot();nw=float(natural.get('width').replace('px',''));nh=float(natural.get('height').replace('px',''));factor=im.imageWidth/nw;maxheight=SIZES[PAPER[stem]][1]-420;scale=min(width/im.imageWidth,maxheight/im.imageHeight,.72/factor);im.drawWidth=im.imageWidth*scale;im.drawHeight=im.imageHeight*scale;im.hAlign='CENTER';im.keepWithNext=True
-  b['pdf_scale']=scale;b['pdf_png']=str(png.relative_to(ROOT));return [im]
+  stem=Path(b['path']).stem;png=assets/(stem+'.png');spec=FIGURE_SPECS[stem]
+  natural=ET.parse(ROOT/b['path']).getroot();nw=float(natural.get('width').replace('px',''));nh=float(natural.get('height').replace('px',''))
+  flows=[];b['pdf_panels']=[]
+  with PILImage.open(png) as original:
+   factor=original.width/nw
+   for index,(top,bottom) in enumerate(spec.get('panels',[[0,nh]])):
+    target=png
+    if 'panels' in spec:
+     target=OUT/'panels'/(stem+'-'+str(index+1)+'.png');target.parent.mkdir(exist_ok=True)
+     original.crop((0,round(top*factor),original.width,round(bottom*factor))).save(target)
+    im=Image(str(target));scale=min(width/nw,spec.get('max_scale',1))
+    im.drawWidth=nw*scale;im.drawHeight=(bottom-top)*scale;im.hAlign='CENTER'
+    im.keepWithNext=index==len(spec.get('panels',[[0,nh]]))-1
+    flows.append(im)
+    if not im.keepWithNext:flows.append(Spacer(1,12))
+    b['pdf_panels'].append({'png':str(target.relative_to(ROOT)),'crop_svg_y':[top,bottom],'scale':scale})
+  return flows
  if k=='code':return [Preformatted(b['text'],STYLES['code'])]
  if k=='table':
-  rows=b['rows'];n=len(rows[0]);ratios=[.35,.65] if n==2 else [.23,.25,.52]
+  rows=b['rows'];n=len(rows[0]);ratios=[.35,.65] if n==2 else ([.17,.25,.23,.35] if n==4 else [.23,.25,.52])
   if rows[0][0]=='API group':ratios=[.17,.47,.36]
   if rows[0][0]=='Proposed operation':ratios=[.40,.28,.32]
-  if rows[0][0]=='Requirement':ratios=[.30,.19,.51]
+  if rows[0][0]=='Requirement':ratios=[.32,.52,.16]
   if rows[0][0]=='Version':ratios=[.16,.19,.65]
   if rows[0][0]=='Component':ratios=[.23,.37,.40]
-  if rows[0][0]=='Layer':ratios=[.16,.40,.44]
+  if rows[0][0]=='Layer':ratios=[.30,.70]
   cells=[[Paragraph(inline(c),STYLES['th' if i==0 else 'cell']) for c in r] for i,r in enumerate(rows)]
-  t=Table(cells,colWidths=[width*r for r in ratios],repeatRows=1,hAlign='LEFT');t.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.white),('VALIGN',(0,0),(-1,-1),'TOP'),('LEFTPADDING',(0,0),(-1,-1),6),('RIGHTPADDING',(0,0),(-1,-1),6),('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),5),('GRID',(0,0),(-1,-1),.4,colors.HexColor('#999999'))]));return [t,Spacer(1,10)]
+  t=Table(cells,colWidths=[width*r for r in ratios],repeatRows=1,hAlign='LEFT');t.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.white),('VALIGN',(0,0),(-1,-1),'TOP'),('LEFTPADDING',(0,0),(-1,-1),6),('RIGHTPADDING',(0,0),(-1,-1),6),('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),4),('GRID',(0,0),(-1,-1),.4,colors.HexColor('#999999'))]));return [t,Spacer(1,10)]
  paragraph=Paragraph(('&#8226; ' if k=='list' else '')+inline(b['text']),STYLES['caption' if k=='caption' else 'p'])
  return [KeepTogether([paragraph])] if b['text'].startswith('**Status legend') else [paragraph]
-story=[]
+story=[];previous_paper=None
 for index,g in enumerate(groups):
- fig=next((b for b in g if b['kind']=='image'),None);paper=PAPER[Path(fig['path']).stem] if fig else ('A3' if g[0].get('text','').startswith('4. Backend') else 'A4')
- if index:story.extend([NextPageTemplate(paper),PageBreak()])
+ fig=next((b for b in g if b['kind']=='image'),None);paper=PAPER[Path(fig['path']).stem] if fig else 'A4'
+ if index and paper!=previous_paper:story.extend([NextPageTemplate(paper),PageBreak()])
+ previous_paper=paper
  width=SIZES[paper][0]-88
- for b in g:story.extend(render(b,width))
+ j=0
+ while j<len(g):
+  b=g[j]
+  if b['kind']=='heading' and any(b['text'].startswith(n) for n in ('8.1 ','8.2 ','8.3 ')):
+   end=j+1
+   while end<len(g) and g[end]['kind'] not in ('heading','image'):end+=1
+   flows=[]
+   for item in g[j:end]:flows.extend(render(item,width))
+   story.append(KeepTogether(flows));j=end
+  else:
+   flows=render(b,width)
+   if b['kind']=='paragraph' and j+1<len(g) and g[j+1]['kind']=='image':
+    for flow in flows:flow.keepWithNext=True
+   story.extend(flows);j+=1
 doc=Doc(str(OUT/'OutLoud_Design_Documentation.pdf'),pagesize=A4,leftMargin=44,rightMargin=44,topMargin=48,bottomMargin=43,title='OutLoud Design Documentation - '+REVISION,author='Team 07')
 for label,size in SIZES.items():
  w,h=size;doc.addPageTemplates(PageTemplate(id=label,pagesize=size,frames=[Frame(44,43,w-88,h-91,id=label+'-frame',leftPadding=0,rightPadding=0,topPadding=0,bottomPadding=0)],onPage=page))
 doc.build(story)
 shutil.copy2(OUT/'OutLoud_Design_Documentation.pdf',OUT/'team7-iter1-design.pdf')
 assert hashlib.sha256(SRC.read_bytes()).hexdigest()==DIGEST,'Build must not modify Markdown'
-manifest={'revision':REVISION,'figure_manifest_sha256':hashlib.sha256((ROOT/'docs/design-tools/figure-manifest.json').read_bytes()).hexdigest(),'source':'Design-Documentation.md','markdown_sha256':DIGEST,'pages':page_manifest,'blocks':BLOCKS,'figure_sha256':{b['path']:hashlib.sha256((ROOT/b['path']).read_bytes()).hexdigest() for b in figs},'wiki_asset_base':wiki_base+'assets/outloud-design/','published':False}
+manifest={'revision':REVISION,'figure_manifest_sha256':hashlib.sha256((ROOT/'docs/design-tools/figure-manifest.json').read_bytes()).hexdigest(),'source':'Design-Documentation.md','markdown_sha256':DIGEST,'pages':page_manifest,'blocks':BLOCKS,'figure_sha256':{b['path']:hashlib.sha256((ROOT/b['path']).read_bytes()).hexdigest() for b in figs},'wiki_asset_base':wiki_base+'assets/outloud-design/','published':False,'typography':{'body':11,'tables':11,'captions':11,'code':11,'h1':21,'h2':15,'h3':12,'header_footer':8},'paper':'A4 portrait'}
 (OUT/'build-manifest.json').write_text(json.dumps(manifest,indent=2))
 print(json.dumps({'pdf':str(OUT/'OutLoud_Design_Documentation.pdf'),'pages':len(PdfReader(OUT/'OutLoud_Design_Documentation.pdf').pages),'page_sizes':page_manifest,'markdown_sha256':DIGEST}))

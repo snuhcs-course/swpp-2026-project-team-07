@@ -1,33 +1,33 @@
 # Design Documentation production
 
-`Design-Documentation.md` is authoritative. Edit it first; the PDF, HTML preview and Wiki package derive from it.
+`Design-Documentation.md` is the primary source. Edit it first; the PDF, HTML preview and Wiki-ready package derive from it. The document now uses two major revision entries: 1.0 (initial design) and 2.0 (Iteration 1 design). Earlier Rev.4.x drafts remain in Git history and local archives.
 
 ```sh
 python docs/design-tools/build_design_pdf.py
 python docs/design-tools/check_design.py --source-repo /path/to/OutLoud-with-reviewed-commits
 ```
 
-Use Python with ReportLab, Pillow, pypdf and pdfplumber, plus the installed macOS Arial fonts. The bundled Codex Python runtime supplies these libraries. These commands do not modify application code, call AI providers or publish anything.
+Use Python with ReportLab, Pillow, pypdf and pdfplumber, plus installed macOS Arial fonts. The bundled Codex runtime supplies these dependencies. These commands do not change application code, call AI providers or publish anything.
 
-## Diagram inputs
+## Figures
 
-`docs/design-tools/figure-manifest.json` lists the panels in document order, editable sources, paper sizes and reviewed source/render hashes. It replaces the former fixed eight-panel assumption. Rev.4.3 has eleven panels. Figures 2–3 retain the Rev.4.2 schema and graphics unchanged; Figure 3A is a separate proposed extension.
+`figure-manifest.json` lists the eight figures in document order, their sources, A4 panel boundaries and reviewed hashes. Figures 1-5 preserve the supplied short PDF's labels and structure as editable SVG paths and positioned Arial text; Figure 4 places lifelines behind its notes. Their `-short.svg` source files are canonical. The source PDF identity is recorded in the manifest. Figures 6, 3A and 8 retain the long draft's design content in A4-width panels; Figure 6 labels the controller/layout architecture Planned. Their original draw.io/Mermaid sources are retained; paired SVG sources and `reflow_a4_figures.py` define the current layout. Figure 7 is omitted from the document; its historical assets remain available.
 
-Edit `.drawio` sources in diagrams.net and `.mmd` sources in Mermaid Live Editor. Current-schema `.dbml` companions are retained. Inspect the result before saving matching SVG and PNG files under `docs/diagram-review/`. Rev.4.3 uses diagrams.net SVG exports and Mermaid's rendered SVG, with editor pan/zoom transforms removed and bounds set around the drawing. The PNGs are full-size browser renders cropped only to the SVG's bounds. Do not change prose embedded in a render without updating its editable source and rerendering.
+Sources and reviewed SVG/PNG pairs live under `docs/diagram-review/`. SVG labels use portable text instead of HTML foreign objects. Review each changed diagram in a browser, then save a matching PNG and update its manifest hashes. All active figures render at 3 pixels per SVG unit. The three reflowed figures use 11-point Arial labels at their natural 500-point export width. This keeps text sharp without excessive raster size. Old core/feedback assets remain checked against their saved Rev.4.2 hashes; that preservation check does not claim that the active short-version figures are byte-identical to the old figures.
 
-After reviewing a new source/render pair, update its manifest hashes. The builder rejects stale or missing files. It copies the canonical SVGs and sources into `assets/outloud-design/`, normalizes PNG encoding without changing pixels, and embeds those PNGs in the PDF. The manifest records the revision; document headers and metadata derive from the Markdown revision.
+## Outputs
 
-## Outputs and verification
+- `Design-Documentation.html`: Markdown-derived local preview.
+- `output/pdf/OutLoud_Design_Documentation.pdf`: complete export.
+- `output/pdf/team7-iter1-design.pdf`: identical submission-named copy.
+- `output/wiki/Design-Documentation.md` and assets: Wiki-ready derivative. Only image URL prefixes differ. These URLs require separately authorized Wiki publication.
+- `output/pdf/build-manifest.json` and `document-checks.json`: source hashes and checks.
+- `output/archive/before-merged-iteration1/`: local backup of the long draft, supplied short PDF and production inputs.
 
-- `Design-Documentation.html`: local browser preview.
-- `output/pdf/OutLoud_Design_Documentation.pdf`: full document export.
-- `output/pdf/team7-iter1-design.pdf`: byte-identical submission copy.
-- `output/wiki/Design-Documentation.md` and its assets: local Wiki-ready package. Only asset URL prefixes differ from the primary Markdown. The intended raw URLs will not be live until publication is separately authorized.
-- `output/pdf/build-manifest.json` and `document-checks.json`: content hashes, pagination and document-only checks.
-- `output/archive/Rev.4.2/`: local-only backup of Markdown, PDF, diagram sources/renders and build tools from before this edit. The committed manifest retains the current-schema baseline hashes, so checks do not require this local backup.
+The export uses A4 portrait throughout (210 x 297 mm), with 44-point side margins, black text, white tables and thin gray boundaries. Body text, tables, captions and code all use 11-point Arial. Headings use a consistent 21/15/12-point hierarchy; headers and footers use 8 points. Content flows continuously without paper-size transitions. Feature bullet groups stay together when they fit. The current export has 24 pages. Figures 6 and 3A each use two consecutive panels; Figure 8 uses three. The Wiki SVGs contain those same panels stacked vertically. The PDF embeds exact, gap-free crops of their canonical PNGs, keeping labels readable without changing the primary Markdown.
 
-A4 text pages, A3 architecture/data/API pages and A2 sequence pages preserve the established mixed-page approach and readable diagrams. Arial text, white tables and thin gray table grids retain the submission style. The pre-existing deletion of the obsolete root PDF is preserved; the two current PDFs are in `output/pdf/`.
+Checks cover the eight-section outline, major revision history, required-story roadmap, source/render hashes, assets, anchors, pinned source paths, Wiki/PDF text parity, pixel-identical PDF panels and lossless diagram reconstruction, link destinations, Arial text sizes, uniform A4 page boxes, page bounds and submission-copy identity. Render the final PDF with Poppler and inspect every page. Document checks are separate from application tests; testing plans and outcomes stay out of the design document.
 
-Checks cover required-story coverage, revision agreement, editable-source/render hashes, local assets, anchors, source paths at linked Git revisions, Wiki/Markdown text parity, complete PDF text parity, pixel-identical embedded graphics, PDF links, Arial typography, page bounds, submission-copy identity and unchanged current-schema diagrams. Render every PDF page with Poppler and inspect it after a final build. Automated checks complement visual inspection; neither is application testing.
+The previous mixed-size export and its inputs are preserved in `output/archive/before-uniform-a4/`.
 
-No tool in this directory commits, pushes or publishes the Wiki. Keep testing plans and results in separate documentation. The historical comparison report and earlier review galleries are not evidence of a new evaluation.
+Nothing here commits, pushes or publishes the Wiki.

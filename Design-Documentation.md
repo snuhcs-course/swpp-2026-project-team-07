@@ -1,288 +1,248 @@
 # OutLoud Design Documentation
 
-Team 07 | Rev.4.3 | 9 October 2026
+Team 07 | Rev.2.0 | Iteration 1 | 9 October 2026
 
-OutLoud is an Android presentation-rehearsal app. Presenters import PDF slides, record a rehearsal, and review their speech alongside the slides they visited. The design combines local recording and playback with server-side transcription and optional, user-requested AI coaching.
+OutLoud is an Android app for rehearsing presentations with PDF slides. It saves recordings and slide visits, transcribes speech, and links feedback to the relevant audio and slide.
 
 ## 1. Document Revision History
 
 | Version | Date | Description |
 | --- | --- | --- |
-| Rev.1.0 | 2026-09-28 | Initial architecture, data model and processing design. |
-| Rev.2.0 | 2026-10-09 | Expanded recording, persistence, transcription, review and feedback design. |
-| Rev.3.0 | 2026-10-09 | Added architecture and workflow diagrams; clarified component responsibilities and design rationale. |
-| Rev.4.0 | 2026-10-09 | Reorganized around seven design sections; simplified API and recovery explanations; removed implementation tracking and references. |
-| Rev.4.1 | 2026-10-09 | Added Iteration 1 features and technologies, observed outcomes, and real-voice transcription limitations. |
-| Rev.4.2 | 2026-10-09 | Removed Iteration 1 evaluation outcomes from the design document to keep testing results separate. |
-| Rev.4.3 | 2026-10-09 | Added mandatory requirement coverage, planned design beyond Iteration 1, and diagrams for proposed data, practice/comparison and deletion. |
+| 1.0 | 2026-09-28 | Initial design. |
+| 2.0 | 2026-10-09 | Iteration 1 design. |
 
-### Contents
-
-- [2. System Architecture](#2-system-architecture)
-- [3. Database Design](#3-database-design)
-- [4. Backend and API Design](#4-backend-and-api-design)
-- [5. Recording, Transcription, and Slide Alignment](#5-recording-transcription-and-slide-alignment)
-- [6. AI Feedback Design](#6-ai-feedback-design)
-- [7. Frontend Architecture](#7-frontend-architecture)
-- [8. Planned Design Beyond Iteration 1](#8-planned-design-beyond-iteration-1)
-- [9. References and Maintenance](#9-references-and-maintenance)
-
-### Scope and implementation status
-
-This living design document covers the intended product in [Requirements & Specifications, Version 2.0](https://github.com/snuhcs-course/swpp-2026-project-team-07/wiki/Requirements-&-Specifications). Mandatory requirements remain mandatory when their implementation is incomplete. Section 8 proposes the remaining design for work beyond Iteration 1; it does not record team approval or completed features. Testing plans and results belong in separate Testing Documentation.
-
-**Status legend, checked 9 October 2026:** **Merged** means the main-branch scaffold and standalone transcription/alignment and client foundations. **Unmerged** means the integrated PDF, capture, storage, transcription, review and coaching implementation in open PRs #17–21. **Local** means the staged controller/layout redesign on `codex/refactor-design`. **Planned** marks proposed components or changes; **Open** marks a decision still to resolve. Diagrams use these words, not line styles, for status. Dashed lines keep their usual reply, callback or relationship meaning.
-
-| Requirement | Design sections | Remaining design or implementation work |
-| --- | --- | --- |
-| US-01: PDF import | [2](#2-system-architecture), [3](#3-database-design), [7](#7-frontend-architecture) | Apply owner-scoped storage and private media access in 8.5. |
-| US-02: recording and slide visits | [5](#5-recording-transcription-and-slide-alignment), [8.3](#83-selected-slide-practice-and-comparison) | Add selected-slide scope and the pre-upload disclosure gate. |
-| US-03: transcript, playback, key ideas | [5](#5-recording-transcription-and-slide-alignment), [8.1](#81-key-ideas-summaries) | Implement speech summaries with independent state and retrieval. |
-| US-05: slide-specific feedback | [6](#6-ai-feedback-design), [8.3](#83-selected-slide-practice-and-comparison) | Limit coaching to practiced slides without renumbering them. |
-| US-06: delivery feedback | [5](#5-recording-transcription-and-slide-alignment), [8.2](#82-delivery-analysis) | Add per-slide rates, filler flags and measured pause intervals. |
-| US-07: audience-aware feedback | [6](#6-ai-feedback-design) | Preserve audience context and evidence; no new subsystem proposed. |
-| US-08: retry selected slides and compare | [8.3](#83-selected-slide-practice-and-comparison) | Persist selection; add comparison over shared deck/slide identities. |
-| US-10: history and recovery | [4](#4-backend-and-api-design), [5](#5-recording-transcription-and-slide-alignment), [7](#7-frontend-architecture) | Extend existing recovery to new analysis and deletion states. |
-| US-11: delete attempts/decks | [8.4](#84-deletion-and-recovery) | Coordinate local/server cleanup, dependencies and active jobs. |
-| NFR-05: privacy, consent, deletion | [8.4](#84-deletion-and-recovery), [8.5](#85-ownership-access-and-consent) | Add ownership, protected media and disclosure before upload; required before beta. |
-
-Slide-description editing (US-13) remains optional, although the unmerged coaching implementation supports it. Audience-question practice, script attachments, team sharing and Korean product support (US-17–20) remain optional. They do not replace the mandatory work above. The course's detailed analysis of at least two implemented design patterns remains an Iteration 5 documentation requirement.
+Iteration 1 features are in review (PRs #17–21). Section 8 is planned design.
 
 ## 2. System Architecture
 
-![Figure 1. System Architecture](assets/outloud-design/figure-1-system.svg)
+![Figure 1. System architecture](assets/outloud-design/figure-1-system-short.svg)
 
-**Figure 1. System Architecture.** Unmerged integration with explicitly labeled planned responsibilities.
+**Figure 1. System architecture.**
 
-OutLoud uses a client-server architecture with separate responsibilities for capture, storage and analysis. The Android application handles PDF navigation, microphone recording and playback. The application imports PDF presentations and sends them to the backend for slide preparation. Rehearsal audio is saved locally before being uploaded with its corresponding slide-transition timestamps. Django prepares uploaded PDFs, stores rehearsals and accepts processing requests. The client retrieves progress and results through REST polling.
+The Android app records and replays locally. Django accepts uploads, prepares PDF slides and serves saved state. Celery workers run transcription and coaching; Redis carries task messages. PostgreSQL stores metadata and job state, while a shared media volume stores PDFs, slide images and audio. The API and workers access that same volume, so queue messages carry job identifiers rather than media files. Celery Beat schedules recovery work through Redis.
 
-Celery workers perform transcription and feedback generation outside HTTP requests. Redis carries task messages, while PostgreSQL holds durable job state and results. The API and workers access the same server media volume, allowing workers to read uploaded files without transferring them through the queue. Celery Beat schedules recovery tasks that workers use to resume interrupted processing.
+The app uploads PDF/audio and slide events over REST, then polls for results. Workers send audio to hosted Whisper and slide/transcript context to the selected coaching provider. Provider credentials stay on the server. Local storage keeps recordings playable during network or analysis failures.
 
-| Component | Technologies | Responsibility |
-| --- | --- | --- |
-| Android application | Expo, React Native, TypeScript, Expo Router | Navigation, feature state and screen rendering. |
-| Device integrations | `react-native-pdf`, `expo-audio`, `expo-document-picker`, `expo-file-system`, `expo-sqlite` | PDF display, recording/playback, private files and local metadata. |
-| Backend | Django REST Framework, Celery, Redis | HTTP interfaces, background processing and task delivery. |
-| Media processing | pypdfium2, pypdf, Pillow; PyAV, Silero VAD with ONNX Runtime | Slide images/text, audio decoding and speech-presence detection. |
-| AI providers | Hosted OpenAI Whisper; OpenAI or Gemini feedback APIs | Word-timestamped transcription, slide descriptions and coaching. |
-| Server persistence | PostgreSQL and shared media storage | Relational data, structured results, jobs and media files. |
+| Layer | Main libraries and services |
+| --- | --- |
+| App | Expo, React Native, TypeScript, Expo Router |
+| Device files and media | react-native-pdf, expo-audio, expo-document-picker, expo-file-system, expo-sqlite |
+| Backend | Django REST Framework, Celery, Redis, PostgreSQL |
+| PDF and audio processing | pypdfium2, pypdf, Pillow, PyAV, Silero VAD, ONNX Runtime |
+| External AI | OpenAI Whisper (`whisper-1`); OpenAI or Gemini for descriptions and coaching |
 
-Local recording lets presenters rehearse and replay audio during network failures. Hosted inference avoids an on-device transcription model and keeps provider credentials on the backend, but introduces network dependence, latency and service cost. Whisper receives rehearsal audio; the selected feedback provider receives slide content and transcript context.
+### Key design decisions
 
-The planned additions use the same API, durable job storage and worker pool. Summary jobs consume saved speech; delivery jobs analyze words and audio intervals. Owner checks would protect both resource operations and media access. These additions extend the existing service boundaries rather than introducing a second backend. Section 8 defines their state and dependencies.
+| Decision | Choice | Alternative | Why |
+| --- | --- | --- | --- |
+| Client-server or on-device | Local capture/playback; server analysis | Run all analysis on the phone | Keeps model downloads and provider keys off the phone; analysis needs a network and server resources. |
+| Progress updates | REST polling of saved state | WebSocket connection | Review can resume after the app closes with less connection management; polling adds requests and update delay. |
+| Timeline persistence | JSON fields for events, words, visits and metrics | Separate row for each word/visit | Review reads the timeline together; JSON reduces joins but needs service validation. |
+| Description cache | Slide source plus provider/project, model, prompt and schema versions | Cache only by deck ID | Reuses compatible descriptions across attempts without mixing changed content or configurations; requires version management. |
+| Concurrent jobs | Durable job state, generation and claim tokens | Rely on queue delivery alone | Duplicate or late workers cannot overwrite a newer generation; recovery checks add state-handling work. |
+| Transcription | Hosted Whisper | Local Whisper model | Avoids operating local inference hardware; introduces external transfer, latency and usage costs. This choice does not establish transcript accuracy. |
+| Speech gate | Silero VAD through ONNX Runtime | Handwritten amplitude threshold | Uses an existing speech detector before transcription; adds model/runtime dependencies and may miss speech. The current gate returns presence, not pause events. |
+| Coaching integration | Common OpenAI/Gemini adapter with provider-specific requests | Provider calls spread through feature code | Keeps UI and job logic independent of provider payloads; each adapter still needs schema and error handling. |
+| Save order | Finalize private audio and metadata before upload | Upload before durable local save | Preserves playback and a stable retry identity offline; needs device storage and upload recovery. |
 
-REST polling allows review to resume from saved state after the app closes. Compared with WebSockets, it requires less connection management at the cost of extra requests and delayed progress updates. Persisting jobs before queue delivery allows recovery when a notification is lost; revision checks prevent older background work from replacing newer results.
+See the [processing and feedback contracts](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/ce9f248256b1bbfc0d66f139886503261cc25953/docs/api-contract.md) for the interfaces behind these decisions.
 
-## 3. Database Design
+## 3. Data Model
 
 ### Core rehearsal data
 
-![Figure 2. Core Database ER Diagram](assets/outloud-design/figure-2-core.svg)
+![Figure 2. Core rehearsal data](assets/outloud-design/figure-2-core-short.svg)
 
-**Figure 2. Core Database ER Diagram.**
+**Figure 2. Core rehearsal data.**
 
-A **Deck** represents a PDF presentation and owns an ordered collection of **Slides**. Each slide belongs to one deck, with a unique slide index within that deck. The PDF content hash and preparation version identify reusable slide preparation. One deck supports many **Attempts**, each representing a separate rehearsal with its own audio, duration, audience and slide timeline.
+A Deck contains ordered Slides and supports multiple Attempts. Each new recording gets a new attempt UUID. Upload and processing retries retain that UUID and its audio. ProviderRequest stores a private transcription receipt for a processing generation, allowing recovery to reuse a saved response.
 
-A new recording receives a new attempt UUID. Upload and processing retries retain that identity and its source audio, keeping retries within the same rehearsal. The current Attempt-to-Deck foreign key uses PROTECT, so ordinary deck deletion fails while attempts depend on it; several feedback relationships also use PROTECT. Slides use CASCADE. The planned deletion service in [8.4](#84-deletion-and-recovery) must remove dependents in order and clean their files; these relationships alone do not implement user-requested deletion.
+| Structure | Meaning |
+| --- | --- |
+| Slide event | Original zero-based slide index and integer audio-relative timestamp in milliseconds. |
+| Transcript word | Recognized text with start and end times on the same audio timeline. |
+| Visit | One chronological stay on a slide; repeated and backward visits remain separate. |
+| Attempt | Audio, duration, audience, events, transcript, visits, metrics and processing state. |
+| ProviderRequest | Private provider response and processing-generation record. |
 
-Attempt stores slide events, transcript words, chronological visits and metrics as JSON. Review reads these structures together, so JSON avoids separate word and visit tables while preserving the complete timeline. This simplifies retrieval but requires service-level validation of structure and timing. Database file fields point to PDFs, audio and slide images in media storage. **ProviderRequest** associates a saved transcription response with an attempt's processing generation, supporting recovery without repeating completed inference.
+The device keeps PDFs/audio in app-private files and metadata in SQLite. PostgreSQL holds server records; file fields point to shared media storage. A local checkpoint supports interrupted-capture recovery when the native audio file remains playable. Services validate JSON structure and time ranges before storing or returning the timeline.
 
-### Slide descriptions and feedback
+**Constraints.** `(deck, slide_index)` is unique. `(content_hash, preparation_version)` identifies reusable PDF preparation. Attempt-to-Deck uses PROTECT; Slide-to-Deck and ProviderRequest-to-Attempt use CASCADE. Deleting a deck with dependent attempts requires the cleanup service proposed in [8.4](#84-deletion-and-recovery).
 
-![Figure 3. AI Feedback Database ER Diagram](assets/outloud-design/figure-3-feedback.svg)
+### Feedback data and caching
 
-**Figure 3. AI Feedback Database ER Diagram.**
+![Figure 3. Feedback data](assets/outloud-design/figure-3-feedback-short.svg)
 
-The feedback model separates reusable presentation knowledge from rehearsal-specific advice. A deck can have multiple **DescriptionSets**, distinguished by slide content and provider configuration, including model, prompt and schema versions. Each set holds descriptions and owns its **DescriptionJobs**. This prevents incompatible inputs from sharing cached descriptions.
+**Figure 3. Feedback data.**
 
-An attempt has at most one **FeedbackAnalysis**, which groups successive **FeedbackJobs**. Each feedback job references a description set and retains the transcript context and description revision used to generate advice. **FeedbackRequest** belongs to either a description job or a feedback job and retains its provider response. These relationships preserve generation history and allow failed stages to recover independently.
+The backend keeps reusable slide descriptions separate from advice about a recording. A deck can have multiple DescriptionSets for different source/provider configurations. An attempt has at most one FeedbackAnalysis, which groups its coaching generations.
 
-Content revisions connect editable descriptions to dependent coaching. Changing a description makes advice based on the earlier revision stale. Retaining the previous generation supports traceability while regeneration produces advice from the updated content.
+| Model | Responsibility |
+| --- | --- |
+| DescriptionSet | Cached slide descriptions and their content revision. |
+| DescriptionJob | One generation of a description set. |
+| FeedbackAnalysis | Coaching history for one attempt. |
+| FeedbackJob | One coaching generation with frozen transcript and description inputs. |
+| FeedbackRequest | Private provider receipt for one description job or coaching job. |
 
-### Local and server storage
+Description edits increment a content revision and make dependent feedback stale. Regeneration uses the new revision. FeedbackRequest belongs to exactly one job type, and each job has at most one receipt. Main feedback relationships use PROTECT; quota buckets and reservations coordinate provider limits. The [Django models](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/ce9f248256b1bbfc0d66f139886503261cc25953/backend/rehearsals/models.py) define the full constraints.
 
-The device stores PDFs and recordings in app-private files. SQLite holds JSON records for the local catalog, capture checkpoints and cached review data. PostgreSQL remains authoritative for server jobs and generated results. Separating these stores keeps saved audio available offline while allowing analysis to continue on the server. Local checkpoints help recover interrupted capture when the native audio file remains playable.
+## 4. Backend API
 
-### Proposed data-model extension
+Routes use `/api/` and trailing slashes. Views validate and serialize requests; domain services handle storage and analysis. Celery invokes those services for background jobs. PDF preparation runs during deck upload; external AI calls run outside HTTP requests and database transactions.
 
-![Figure 3A. Proposed Data-Model Extension](assets/outloud-design/figure-3a-planned-data.svg)
+| Routes | Purpose |
+| --- | --- |
+| POST `decks/`; GET `decks/{id}/` | Store/prepare a PDF and read slide metadata. |
+| POST `attempts/`; GET `attempts/{id}/`; GET `decks/{id}/attempts/` | Store a recording, read results and list history. |
+| POST `attempts/{id}/process/` | Start transcription/alignment or request a processing retry. |
+| GET/PATCH `decks/{id}/descriptions/`; POST `decks/{id}/descriptions/generate/` | Read, edit or generate slide descriptions. |
+| GET `attempts/{id}/feedback/`; POST `attempts/{id}/feedback/generate/` | Read or request coaching. |
+| GET `health/`; GET `ready/` | Check API liveness and database/broker connectivity. |
 
-**Figure 3A. Proposed Data-Model Extension — Planned.** Figures 2–3 retain the current schema. This separate view shows the proposed additions needed by Sections 8.1–8.5; the names describe a design, not existing Django models.
+Recording upload contains multipart audio and JSON metadata: attempt UUID, deck UUID, duration, audience and slide events. Upload stores media; a separate processing request starts analysis. GET requests only read saved state. Processing responses expose progress, partial results and retry eligibility. Client validation checks resource IDs and response structure.
 
-An **Owner** would own Deck records; attempts and derived results inherit access through their deck. **AttemptSelection** would store the immutable original slide indexes chosen for one recording. **SummaryRun** and **DeliveryRun** would belong to an attempt and keep separate generation state, source digests and structured results. Multiple generations preserve recovery context; the API identifies the current compatible result rather than overwriting a newer generation with a late response.
+### Proposed interfaces
 
-**DeletionOperation** would retain an owner, target type/UUID, resource manifest and cleanup state. Its target identifier deliberately survives deletion of the target row. It is an operation record, not a new ownership link or a replacement for existing foreign keys. After cleanup, its receipt retains only identifiers and completion state, not rehearsal content. Tables and exact migration details remain provisional.
-
-## 4. Backend and API Design
-
-The backend separates HTTP handling from domain services. Views validate requests and serialize public results; services manage storage, transcription, alignment, descriptions and coaching. Celery tasks invoke those services for background work. PDF preparation occurs during deck upload, while external AI calls run outside HTTP requests and database transactions.
-
-The following routes exist in the unmerged integration. All use the `/api/` prefix and trailing slashes; paths below are relative to that prefix.
-
-| API group | Main routes | Responsibility |
-| --- | --- | --- |
-| Decks | POST `decks/`; GET `decks/{id}/` | Prepare/store PDFs and retrieve slide metadata. |
-| Attempts | POST `attempts/`; GET `attempts/{id}/`; GET `decks/{id}/attempts/` | Store recordings, retrieve results and list rehearsal history. |
-| Transcription | POST `attempts/{id}/process/` | Request transcription/alignment or retry processing. |
-| Descriptions | GET/PATCH `decks/{id}/descriptions/`; POST `decks/{id}/descriptions/generate/` | Read, edit and generate reusable slide descriptions. |
-| Coaching | GET `attempts/{id}/feedback/`; POST `attempts/{id}/feedback/generate/` | Retrieve feedback or request coaching. |
-| Operations | GET `health/`; GET `ready/` | Check API liveness and database/broker connectivity. |
-
-Recording upload uses multipart audio and JSON metadata containing the attempt identity, deck, duration, audience and slide events. Public interfaces use zero-based slide indexes and integer milliseconds relative to audio capture. TypeScript contracts and client validation connect these responses to frontend state.
-
-Upload and processing are separate operations: storing a rehearsal preserves its media even if analysis fails. Read requests return saved state without starting generation. Background results expose progress, available data and retry eligibility, allowing review to display useful partial results and refresh server state after a connection failure.
-
-### Proposed interface additions
-
-These operations are **Planned**. Their route names are provisional and separate from the implemented table above. GET remains read-only; queued work would return its state for polling and reuse existing revision-aware admission/retry conventions.
+These operations support Section 8. **Route names and new fields are provisional.** Queued work would return state for polling and use revision-aware admission/retry rules.
 
 | Proposed operation | Data or result | Purpose |
 | --- | --- | --- |
-| POST/GET `attempts/{id}/summaries/` | Independent summary state and visit-linked key ideas | Generate explicitly; retrieve cached speech summaries. |
-| POST/GET `attempts/{id}/delivery/` | Metric availability, detection rules and timestamped events | Generate/retrieve delivery analysis independently of coaching. |
-| Extend POST `attempts/` metadata | `selected_slide_indexes`, optional `source_attempt_id` | Freeze practice scope in a new attempt; preserve original deck indexes. |
+| POST/GET `attempts/{id}/summaries/` | Summary state and visit-linked key ideas | Generate explicitly; retrieve cached speech summaries. |
+| POST/GET `attempts/{id}/delivery/` | Metric availability and timestamped events | Generate/retrieve delivery analysis independently of coaching. |
+| Extend POST `attempts/` metadata | `selected_slide_indexes`, optional `source_attempt_id` | Freeze practice scope in a new attempt. |
 | DELETE `attempts/{id}/` or `decks/{id}/` | Accepted deletion operation ID | Request confirmed, authorized cleanup. |
-| GET `deletions/{id}/` | Server cleanup state and recoverable failure | Resume status after interruption; local cleanup has separate state. |
-| Authenticated media retrieval | Owner-checked PDF, image or audio stream | Replace public development media URLs before deployment. |
+| GET `deletions/{id}/` | Cleanup state and recoverable failure | Resume deletion status after interruption. |
+| Authenticated media retrieval | Owner-checked PDF, image or audio stream | Replace public development media URLs. |
 
-Comparison would reuse existing history and attempt reads; it needs no additional AI call or dedicated comparison endpoint. Frontend contracts would add typed selection, per-category analysis state and deletion progress. Authentication applies to existing routes as well as new ones. The team must version these additive contracts and their caches together; older recordings without an explicit selection retain their recorded visit scope and never trigger new analysis merely because they reopen.
+Comparison reuses history and attempt reads; it needs no new AI call or dedicated endpoint. Authentication would apply to existing routes as well as new ones. Frontend contracts and caches must evolve together; older attempts without selection metadata retain their recorded visit scope.
 
-## 5. Recording, Transcription, and Slide Alignment
+The [API contract](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/ce9f248256b1bbfc0d66f139886503261cc25953/docs/api-contract.md) contains payloads, response examples and errors; [route definitions](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/ce9f248256b1bbfc0d66f139886503261cc25953/backend/rehearsals/urls.py) identify their handlers.
 
-![Figure 4A. Recording and Durable Upload](assets/outloud-design/figure-4a-capture.svg)
+## 5. Recording, Transcription and Alignment
 
-**Figure 4A. Recording and Durable Upload.** Unmerged capture/storage behavior with the planned pre-upload consent gate required by NFR-05.
+![Figure 4. Recording and transcription](assets/outloud-design/figure-4-processing-short.svg)
 
-The recording controller obtains microphone permission and starts an audio timeline with an initial slide event at zero. During capture, confirmed PDF page changes record the slide index and elapsed native audio time. Using audio-relative timestamps keeps navigation and speech aligned regardless of network delay or device clock changes.
+**Figure 4. Recording and transcription.**
 
-Stopping a rehearsal finalizes the audio file and saves its metadata before any network transfer. In the target flow, the app explains transcription data transfer and obtains consent before sending the PDF/audio. Declining leaves the recording local; upload failure also leaves playback available, and upload retry uses the same attempt identity. This planned ordering protects the recording independently of backend availability.
+The app requests microphone permission and records the initial slide event at `0 ms`. Confirmed slide changes use the native audio clock. Stop finalizes the audio and saves the attempt before upload. Permission denial prevents capture; upload failure leaves local playback available and permits retry with the same attempt ID.
 
-The inspected unmerged client currently uploads first and asks for transcription consent before the processing request. Figure 4A shows the required correction as Planned; it is not a claim that the client already follows the target order. Feedback retains its separate disclosure and explicit request in Figure 5A.
+The current order is local save, PDF/audio upload, then the saved first-use OpenAI disclosure before requesting transcription. Acceptance enables automatic transcription for later new recordings on that device. Cancellation leaves the server upload saved without transcription. Opening an older recording does not start analysis.
 
-![Figure 4B. Transcription, Alignment and Review](assets/outloud-design/figure-4b-processing.svg)
+The API persists queued intent before task delivery. The active review screen polls only when a server attempt exists. A worker checks for speech, sends speech-containing audio to hosted Whisper and saves timestamped words before alignment. No detected speech produces an empty transcript with the slide timeline intact. Recovery can reuse a saved provider response or transcript; a failed stage leaves partial results and local audio available. An uncertain provider outcome requires confirmation before a retry that could repeat provider work.
 
-**Figure 4B. Transcription, Alignment and Review.** Unmerged processing with planned consent enforcement and independent analysis extensions.
+**Planned consent change:** obtain disclosure acceptance before recording-related PDF/audio upload, then enforce ownership and consent on the server. Valid saved consent can still allow automatic transcription. Declining keeps the recording local; see [8.5](#85-ownership-and-consent).
 
-After the planned pre-upload disclosure is accepted and upload succeeds, the target flow initiates transcription and slide alignment automatically. Processing admission would check the recorded consent; legacy server attempts lacking it require disclosure before provider submission. Results are processed asynchronously and become available in the review interface. The API schedules background work, and the active review screen polls only after it knows a server attempt exists. Reopening a saved rehearsal retrieves existing state rather than repeating analysis.
+### Word-start alignment and playback
 
-The worker checks for speech before sending the original audio to hosted Whisper, which returns timestamped words. Recordings without detected speech retain their slide timeline with an empty transcript. The worker saves transcription before aligning words to slides, so a later alignment failure does not discard recognized speech. Recovery can reuse completed results; failures that need another provider call remain separate from local playback.
+Each slide visit covers `[start_ms, end_ms)`: it includes its start and excludes its end. The final visit ends at recording duration. A binary search selects the last transition at or before a word's start time and assigns the word to that visit.
 
-Planned summary and delivery jobs attach to saved audio/transcript/visits after this pipeline. They have their own states and explicit generation actions, so a summary or detector failure cannot turn a completed transcript into a failed recording. Section 8 describes their prerequisites and independent recovery.
+For example, transitions to slides 0, 1 and 0 at 0, 4000 and 9000 ms create three visits. A word at 4000 ms belongs to slide 1; a word at 9000 ms belongs to the second visit to slide 0. The last event wins when transitions share a timestamp. A word crossing a transition stays in its starting visit.
 
-### Word-start alignment and synchronized review
+One shared player's audio position drives the displayed slide and transcript highlight. Word and feedback taps seek that player. Recorded slide events still support synchronization when the transcript is unavailable. The [alignment service](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/ce9f248256b1bbfc0d66f139886503261cc25953/backend/rehearsals/services/alignment.py) implements the word-start rule.
 
-Slide events define chronological visits with half-open intervals `[start_ms, end_ms)`. The final visit ends at the recording duration. Each word belongs to the visit containing its **start time**. A binary search selects the latest transition at or before that time, assigning an exact-boundary word to the new visit.
+## 6. AI Coaching
 
-For example, transitions to slides 0, 1 and 0 at 0, 4000 and 9000 ms produce three visits. A word starting at 4000 ms belongs to slide 1; one starting at 9000 ms belongs to the second visit to slide 0. Repeated and backward visits remain distinct, and the last event wins when transitions share a timestamp. A word crossing a transition stays intact in its starting visit.
+![Figure 5. Coaching and recovery](assets/outloud-design/figure-5-coaching-short.svg)
 
-This rule gives each word a deterministic place in the recorded navigation. During review, one native player's audio position drives slide selection and transcript highlighting. Tapping a word or feedback citation seeks that same player to the corresponding time. Recorded slide events still support synchronized slide playback when aligned text is unavailable.
+**Figure 5. Coaching and recovery.**
 
-## 6. AI Feedback Design
+The user requests feedback from a saved rehearsal and accepts its disclosure. The worker reuses compatible slide descriptions or generates missing ones, then calls the selected provider with the existing transcript, slide visits and audience context. Slide descriptions explain the slide; coaching comments on the rehearsal; planned key-ideas summaries describe what the presenter said.
 
-![Figure 5A. Feedback Generation and Description Reuse](assets/outloud-design/figure-5a-generation.svg)
+Each suggestion links slide evidence to speech within a recorded visit. The backend checks slide/visit identities, transcript quotations and word references, then derives playback times from saved words. The client checks that evidence belongs to the loaded attempt before allowing a seek. These checks support traceability; they do not establish advice quality. An empty suggestion list is valid.
 
-**Figure 5A. Feedback Generation and Description Reuse.** Unmerged coaching with a planned practiced-slide scope check (US-05, US-08).
+**Recovery.** Description generation and coaching keep separate job state. Retry can reuse a completed description or provider receipt. An uncertain provider outcome requires confirmation before potentially repeating provider work. Feedback failure leaves audio and transcript available.
 
-AI coaching starts when the user requests feedback from a saved rehearsal. It uses the existing transcript, slide visits and audience context without transcribing the audio again. The backend attaches compatible cached descriptions or generates them before coaching. Slide descriptions interpret images and extracted text; they describe presentation content rather than summarize what the presenter said.
-
-Separating descriptions from coaching avoids interpreting unchanged slides for every rehearsal. The cache accounts for both source content and generation configuration, trading additional version management for lower latency and fewer provider calls. Backend provider adapters support OpenAI or Gemini through a common service boundary, keeping provider-specific requests out of the app.
-
-Coaching produces suggestions about consistency, clarity and audience fit. Each suggestion links slide evidence to a passage within one recorded visit. The backend validates source identities, transcript quotations and word positions, then derives playback times from the saved transcript. The client checks that evidence belongs to the loaded rehearsal before enabling navigation. These checks establish traceability; they do not guarantee that the advice is semantically correct. A valid response can also contain no suggestions.
-
-![Figure 5B. Description Edits, Invalidation and Retry](assets/outloud-design/figure-5b-recovery.svg)
-
-**Figure 5B. Description Edits, Invalidation and Retry.** Unmerged optional description editing (US-13); planned retries retain the attempt's practiced-slide scope.
-
-Users can correct slide descriptions before requesting new advice. An edit creates a newer content revision, prevents older generation work from overwriting it, and makes dependent feedback stale. The interface disables stale evidence actions until regeneration. This keeps editable presentation knowledge consistent with the coaching that relies on it.
-
-Description generation and coaching retain separate job state, allowing a retry to reuse successful earlier work. Saved provider responses support recovery where possible. If a submitted request has an uncertain outcome, retry requires confirmation to avoid silently repeating a potentially completed, chargeable operation. Feedback failure leaves the rehearsal audio and transcript available for review.
-
-For selected-slide practice, the planned coaching snapshot includes the immutable selection and filters provider context and evidence to visited slides within it. Original slide indexes remain intact. Deck descriptions may remain reusable across rehearsals; missing-description work can use the existing whole-deck cache, but coaching must not flag slides outside the attempt scope as omitted speech. Current validators assume a complete ordered deck, so scope filtering belongs in a new validated projection rather than a renumbered replacement deck. Regeneration after description edits uses the same attempt scope.
+**Edits.** Optional description editing increments its revision and makes dependent feedback stale. Generation checks prevent older work from replacing the edit. The UI disables stale evidence actions until regeneration. Reading and polling saved results do not start new provider work. The [feedback services](https://github.com/snuhcs-course/swpp-2026-project-team-07/tree/ce9f248256b1bbfc0d66f139886503261cc25953/backend/rehearsals/services) own provider adapters, validation and recovery.
 
 ## 7. Frontend Architecture
 
-![Figure 6. Frontend Architecture](assets/outloud-design/figure-6-frontend.svg)
+**Planned.** The controller/layout redesign exists in a local prototype and is not included in PRs #17–21.
 
-**Figure 6. Frontend Architecture.** Local controller/layout redesign over unmerged services; planned responsibilities remain with controllers.
+![Figure 6. Frontend architecture](assets/outloud-design/figure-6-frontend.svg)
 
-The frontend separates navigation, feature behavior and presentation. Expo Router passes route context to feature hosts. Their controllers own application state and coordinate recording, playback, persistence and API clients. Replaceable layouts render the state and invoke controller-provided actions. This separation allows the interface to evolve without duplicating the underlying rehearsal behavior.
+**Figure 6. Frontend architecture.**
 
-| Feature controller | Owned state and behavior |
+Expo Router passes route context to feature hosts. Controllers own capture, playback, persistence and API state; replaceable layouts render display models and call controller actions through typed contracts. This controller/view separation lets the team change screen arrangement without duplicating recording, playback or backend behavior.
+
+| Feature controller | Owned state and actions |
 | --- | --- |
-| Library | PDF import, presentation catalog and rehearsal history. |
-| Setup | Selected deck/page, audience and readiness to record. |
-| Recording | Microphone lifecycle, slide timing and durable save. |
-| Saved review | Shared playback, transcript state and analysis requests. |
-| Feedback | Generation progress, description drafts and evidence navigation. |
+| Library / setup | PDF import, history, confirmed preview page and rehearsal setup. |
+| Recording | Microphone permission, capture lifecycle, slide timing, checkpoints and durable save. |
+| Saved review | One shared player, seeking, transcript/analysis state and review panels. |
+| Feedback | Generation progress, description drafts, edits and evidence navigation. |
 
-Home emphasizes importing and opening presentations; Practice groups saved attempts by deck. Saved review offers Overview, Slides and Transcript panels around a shared player. Playback and feedback state belong to the review host, so changing panels preserves the audio position and description drafts. Feedback evidence opens the relevant slide and seeks through the same playback controls used by the transcript.
+Home emphasizes importing/opening presentations; Practice groups attempts by deck. Review offers Overview, Slides and Transcript around one player. The review host retains playback position and feedback drafts across panel changes. Transcript and feedback evidence seek the same audio timeline.
 
-Typed layout contracts expose display models, available actions and native PDF/audio surfaces. Layouts do not own recorder, player, storage or network clients. A layout selection at startup connects views to the same feature hosts; keeping native surfaces mounted preserves active capture and playback during view updates.
+`mobile/src/layouts/contracts.ts` exposes display models, guarded callbacks and native PDF/audio surfaces. `registry.ts` and `selection.ts` select a layout at startup. Layouts arrange views and call supplied actions; controllers retain recorder/player lifetimes and use shared storage and API services. Native surfaces stay mounted during capture and playback.
 
-Shared services handle local persistence and backend communication beneath the controllers. Native libraries provide PDF and audio capabilities through these boundaries. The design requires maintaining contracts as features change, but confines visual changes to views and keeps lifecycle and recovery behavior in one place.
+The prototype places controllers in `LibraryScreen.tsx`, `ViewerScreen.tsx`, `RehearsalScreen.tsx`, `SavedAttemptScreen.tsx` and `FeedbackPanel.tsx`. Section 8 would extend setup with selection, review with summary/delivery/comparison state, and library/review with deletion progress. These additions belong in controller contracts, not separate layout-specific services.
 
-The planned setup controller owns slide selection; review owns key-ideas and delivery states, comparison selection and the single active player. Library/review controllers coordinate confirmation and deletion progress through shared persistence/API services. Layout contracts expose these states and actions to replaceable views, keeping media, network and cleanup logic out of rendering components.
+## 8. Planned Design (Iteration 2)
 
-## 8. Planned Design Beyond Iteration 1
+The roadmap below maps the [requirements](https://github.com/snuhcs-course/swpp-2026-project-team-07/wiki/Requirements-&-Specifications) to remaining work. All designs in this section are proposed for Iteration 2; open decisions require team agreement.
 
-These **Planned** designs address mandatory work beyond Iteration 1, intended for Iteration 2. Provisional choices guide implementation; **Open** decisions still need team agreement.
+| Requirement | Remaining work | Section |
+| --- | --- | --- |
+| US-01: PDF import | Owner-scoped storage and private media access. | [8.5](#85-ownership-and-consent) |
+| US-02: recording and visits | Selected-slide scope and pre-upload disclosure. | [8.3](#83-selected-slide-practice-and-comparison), [8.5](#85-ownership-and-consent) |
+| US-03: transcript, playback, key ideas | Independent speech summaries and retrieval. | [8.1](#81-speech-key-ideas) |
+| US-05: slide-specific feedback | Restrict coaching to practiced slides. | [8.3](#83-selected-slide-practice-and-comparison) |
+| US-06: delivery feedback | Per-slide rate, filler candidates and pause intervals. | [8.2](#82-delivery-analysis) |
+| US-07: audience-aware feedback | Retain audience context and evidence as practice scope changes. | [6](#6-ai-coaching), [8.3](#83-selected-slide-practice-and-comparison) |
+| US-08: selected-slide retry and comparison | Persist selection; compare shared deck/slide identities. | [8.3](#83-selected-slide-practice-and-comparison) |
+| US-10: history and recovery | Extend recovery to new analysis and deletion states. | [8.1](#81-speech-key-ideas), [8.2](#82-delivery-analysis), [8.4](#84-deletion-and-recovery) |
+| US-11: deletion | Coordinate rows, files, caches and active jobs. | [8.4](#84-deletion-and-recovery) |
+| NFR-05: privacy, consent, deletion | Ownership, protected media and pre-upload consent before multi-user use. | [8.4](#84-deletion-and-recovery), [8.5](#85-ownership-and-consent) |
 
-### 8.1 Key-ideas summaries
+![Figure 3A. Proposed data-model extension](assets/outloud-design/figure-3a-planned-data.svg)
 
-**US-03; AC-03b–e.** Proposed flow: the presenter selects **Generate key ideas** after transcription/alignment is available, accepts disclosure for sending recognized speech to the configured provider, and the API admits an independent SummaryRun. A Celery service groups words by chronological visit, asks the existing provider adapter for concise speech summaries, validates visit/word references, and saves structured output for retrieval. The provider receives the recognized speech for the relevant visits; slide descriptions are not substitutes for what the presenter said.
+**Figure 3A. Proposed data-model extension.**
 
-SummaryRun would record the attempt, transcript digest, selection digest, model/prompt version, generation and state. Each result retains the original `slide_index`, chronological `visit_id` and supporting word indexes; playback times derive from saved words. Repeated visits remain separate, with each slide's Key ideas view listing its visits in time order. The original transcript stays verbatim. A changed transcript makes derived summaries stale; incompatible source/selection digests cannot reuse cached output; editing a slide description alone does not, because this summary depends on speech.
+Owner would own decks; attempts and derived results inherit access through the deck. AttemptSelection would freeze the original slide indexes for a recording. SummaryRun and DeliveryRun would hold independent generations and source digests, so a late or failed analysis cannot replace newer output or fail the transcript. DeletionOperation would keep a target identifier and cleanup manifest that survive deletion of the target row. Entity names and migrations are provisional; Figures 2–3 show the current schema.
 
-Summary states are not requested, queued/running, available, no recognized speech, failed and stale. An empty transcript produces **No speech recognized** without a provider call or slide-description fallback. Missing transcription means **Transcript unavailable**; provider failure means **Summary unavailable**, with independent retry and audio/transcript intact. Reopening reads cached output and starts no paid work. **Open:** confirm the generation trigger, summary length and provider configuration. Reference validation cannot establish paraphrase or transcript accuracy.
+### 8.1 Speech key ideas
+
+- **Data:** SummaryRun stores the attempt, transcript/selection digests, provider/model/prompt version, generation and state. Each summary retains original `slide_index`, chronological `visit_id` and supporting word indexes; times derive from saved words. Keep repeated visits separate and the transcript unchanged.
+- **API:** POST the proposed summaries route after transcription/alignment and transcript-transfer disclosure; GET reads saved output. The provisional trigger is an explicit **Generate key ideas** action. A worker groups recognized speech by visit and validates returned references.
+- **Rules:** Summarize what was spoken, using no slide-description fallback. Reuse only compatible source/selection/configuration versions. Transcript changes invalidate summaries; description edits alone do not. Reopening starts no provider work.
+- **Failure states:** `not requested`, `queued/running`, `available`, `no recognized speech`, `failed`, `stale`. Missing transcription shows **Transcript unavailable**. Empty recognized speech skips the provider. A failed summary permits its own retry with audio/transcript intact.
+- **Open decisions:** Generation trigger, summary length and provider configuration. Reference checks cannot establish transcript or paraphrase accuracy.
 
 ### 8.2 Delivery analysis
 
-**US-06; AC-06a–e.** A proposed delivery service extends the timing/metrics boundary and stores a DeliveryRun separate from AI coaching. The review controller's explicit feedback action can request delivery analysis and coaching as independent jobs, displaying either result even if the other fails. The current Silero gate returns only a speech-presence boolean. Delivery analysis requires speech intervals and word-level processing in addition to that gate.
-
-For English-first per-slide pace, count recognized words assigned by the existing word-start rule and divide by that slide's total visited duration in minutes. Sum counts and durations across repeated visits before division; do not average visit rates. Preserve each visit for playback. Zero duration or no valid recognized speech produces an unavailable rate. This extends the existing per-slide durations and whole-recording rate estimate; it does not claim a speaking-only rate.
-
-The provisional filler rule matches standalone English **um** and **uh** in timestamped recognized words. Store each candidate's word reference and audio interval, label it **Transcript-detected filler**, and keep ambiguous words such as “like” outside this first rule. The provisional pause rule uses gaps of at least **1,000 ms between detected speech intervals**, excluding leading/trailing silence. Decode the original audio without trimming or concatenating it; clip intervals to the recording duration. Store detector version and threshold with the result. A pause crossing a slide change has one event ID and links to each overlapping visit, avoiding duplicate event counts while preserving slide navigation.
-
-Each category has an availability state. Successful detection with no candidates returns an empty list; failure, missing timestamps or unsupported input returns unavailable, not zero. No detected speech makes internal pauses unavailable. Errors can miss or misplace events, so flags remain playback-linked candidates. Rules keep timing explainable. **Open:** filler vocabulary, ambiguous fillers and pause thresholds. The recognizer may omit fillers; audio-based detection or a disfluency-preserving recognizer may be needed to satisfy the mandatory feature reliably.
+- **Data:** DeliveryRun stores source digest, generation, detector/rule version and per-category availability. Results contain per-slide rates and timestamped filler/pause candidates linked to visits and words where applicable. The current speech gate supplies a boolean; this job needs speech intervals.
+- **API:** POST/GET the proposed delivery route independently of coaching. A feedback action may request both jobs, while review displays either result if the other fails.
+- **Rules:** Per-slide words per minute equals total recognized words divided by total visited minutes; sum repeated-visit counts and durations before division. Provisional fillers match standalone English **um/uh** and retain word references. Provisional pauses are internal gaps of at least **1,000 ms** between detected speech intervals, excluding leading/trailing silence. Analyze the original untrimmed audio; one pause crossing slides has one event ID linked to each overlapping visit.
+- **Failure states:** Zero duration or missing valid speech makes rate unavailable. Missing timestamps, unsupported input or detector failure makes the affected category unavailable, not zero. Successful detection with no candidates returns an empty list. No detected speech makes internal pauses unavailable. Flags remain candidates that users can replay.
+- **Open decisions:** Filler vocabulary, ambiguous fillers, pause threshold and detector. Whisper may omit fillers; reliable coverage may require audio-based detection or a recognizer that preserves disfluencies.
 
 ### 8.3 Selected-slide practice and comparison
 
-**US-08; AC-08a–e; US-05 AC-05c.** Setup would store a nonempty selection of original deck slide indexes, initially in deck order. Choosing the whole deck expands to all indexes. AttemptSelection freezes that list when capture starts, and both navigation and upload validation reject visits outside it. The recorder still records confirmed page changes in audio-relative integer milliseconds, including backward and repeated visits within the selection.
-
-![Figure 7. Selected-Slide Practice and Same-Slide Comparison](assets/outloud-design/figure-7-practice-comparison.svg)
-
-**Figure 7. Selected-Slide Practice and Same-Slide Comparison — Planned.** The flow connects a new recording to review of the same slide in an earlier attempt, while keeping their media and time axes independent.
-
-Every new capture gets a new attempt UUID and audio file. An optional `source_attempt_id` records where focused practice began; deleting that source would clear the reference without deleting the newer attempt. Upload retry and processing retry keep the new attempt's own ID. Analysis uses actual visits within the frozen selection, and cannot treat excluded slides as missing explanations. A selected but unvisited slide remains distinguishable from a visited slide with no recognized speech.
-
-A comparison controller loads two authorized attempt results and intersects actual visited identities `(deck_id, slide_index)`. It shows earlier/later labels, available audio, transcript, feedback and visit lists side by side. It aggregates time per slide but retains each visit for seeking. One shared player switches between attempts, retaining separate positions and allowing only one recording to play at a time. Matching slide numbers from different decks is forbidden; the app explains an empty intersection. Missing feedback stays labeled while available audio/text remain reviewable. Selection metadata may be absent on older recordings; their actual visits still support comparison.
-
-Reusing saved results avoids repeat inference and leaves earlier attempts unchanged. No automatic improvement score is proposed. **Open:** whether users may reorder the selection, and whether a later deck-version feature should support explicit cross-version mapping. The initial proposal keeps deck order and compares only the same uploaded deck.
+- **Data:** AttemptSelection stores a nonempty list of original deck indexes, frozen at capture start. Optional `source_attempt_id` records where focused practice began; deleting the source clears that reference without deleting the new attempt. Every new capture has its own UUID/audio; retries retain them.
+- **API:** Extend attempt-upload metadata with the frozen selection and optional source. Reuse history and attempt reads for comparison; no additional AI call or comparison endpoint is needed. Setup owns selection; review owns comparison and the active player.
+- **Rules:** Start with deck order and reject visits outside the selection. Analyze actual visited slides without renumbering; excluded slides must not count as missing explanations. A selected but unvisited slide differs from one with no recognized speech. Compare two attempts from the same uploaded deck using intersecting `(deck_id, slide_index)` identities. Show earlier/later audio, text, feedback and visits side by side; retain separate positions and play one recording at a time. Build a validated coaching projection for the selection because current validators expect a complete deck.
+- **Failure states:** Explain an empty shared-slide intersection; reject different decks. Label missing feedback while retaining available audio/text. Older attempts without selection metadata use their actual visits. Never mutate an earlier attempt or infer improvement from missing data.
+- **Open decisions:** Whether selection can be reordered and whether future deck versions need explicit slide mappings. The initial design keeps deck order and compares only the same uploaded deck.
 
 ### 8.4 Deletion and recovery
 
-**US-11; AC-11a–c; NFR-05.** The library/review controller would show the named attempt, or the deck and its affected attempts, before confirmation. Cancellation changes nothing. Confirmation writes a local deletion journal, stops playback/uploads for the target and submits an owner-authorized request when online. For server-backed data, the UI distinguishes pending server deletion from completion; deleting a local-only recording needs no server request.
+![Figure 8. Confirmed deletion and recovery](assets/outloud-design/figure-8-deletion.svg)
 
-![Figure 8. Confirmed Deletion and Recovery](assets/outloud-design/figure-8-deletion.svg)
+**Figure 8. Confirmed deletion and recovery.**
 
-**Figure 8. Confirmed Deletion and Recovery — Planned.** A durable cleanup operation coordinates database rows, files and device caches. It also prevents delayed jobs from recreating deleted results.
+A durable cleanup operation coordinates database rows, files and device caches. A deletion marker blocks new work and prevents delayed workers from recreating results. File removal follows a saved manifest outside database transactions, so cleanup can resume after partial failure.
 
-The API would atomically mark the target as deleting, record a resource manifest in DeletionOperation, and block new attempts, processing, downloads and updates for that target. Workers must check this marker before provider submission and before saving any response; late results are discarded. Best-effort queue cancellation alone is insufficient. A submitted provider request may finish remotely; the app must not promise that cancellation erases a provider's retained copy.
+- **Data:** DeletionOperation records owner, target type/UUID, manifest and cleanup progress independently of the target row. The device journals deletion intent and a pending-server marker. After cleanup, keep only identifiers and completion state needed to prevent stale replay.
+- **API:** Confirm the named attempt or deck and affected data, then DELETE when authorized and online; GET the operation to resume status. Cancel preserves data. Local-only recordings need no server request. Show completion only after applicable server and requesting-device cleanup.
+- **Rules:** Lock and mark the target deleting before admitting cleanup; block new children, jobs, edits and media reads. Workers check deletion before provider submission and final writes, discarding late output. Reconcile quota reservations, remove private receipts/content snapshots and dependent coaching/summary/delivery jobs, then attempts/audio. Attempt deletion preserves its deck and reusable descriptions. Deck deletion removes attempts first, then description jobs/sets, slides/images and PDF, respecting PROTECT. Purge local results, checkpoints and player state; remove a cached PDF only if no surviving reference needs it. Preserve the user's original file outside app storage.
+- **Failure states:** Offline server deletion remains pending and blocks re-upload. File failures show **Deletion incomplete** and retry the remaining manifest; an already removed owned file counts as complete. Other devices reconcile markers when online. Queue cancellation cannot stop all late work or erase a provider's copy.
+- **Open decisions:** Tombstone/receipt lifetime, backup erasure and provider retention. Completion does not promise immediate erasure from disconnected devices or external backups.
 
-Cleanup would remove private provider responses and content-bearing snapshots, dependent feedback/summary/delivery jobs and results, then attempts and their audio. Attempt deletion retains the deck and reusable deck descriptions needed by other attempts. Deck deletion removes all its attempts first, then description jobs/sets, slide rows/images and the PDF. This explicit order resolves the current PROTECT relationships rather than silently changing them to CASCADE. Quota reservations must be released/reconciled before their request rows are removed; content-free accounting may remain.
+### 8.5 Ownership and consent
 
-File removal runs from a durable manifest, outside database transactions. Each retry checks what remains, treating an already removed owned file as complete and leaving unrelated files alone. The device purges capture checkpoints, downloaded audio, analysis/history caches and matching shared-player state; it removes a cached PDF only when no surviving local reference needs it. The user's original PDF outside app-owned storage is untouched. An offline device records pending server cleanup and blocks re-upload; other devices reconcile deletion markers when they next connect.
-
-Completion requires server cleanup and the requesting device's local cleanup, reported separately until both finish. Partial failure remains visible as **Deletion incomplete** with resumable cleanup; a failed refresh cannot resurrect deleted local content. The operation receipt keeps only the identifiers needed to prevent stale replay. **Open:** receipt/tombstone retention, backup erasure policy and provider retention terms; immediate deletion from disconnected devices or external provider backups is not promised.
-
-### 8.5 Ownership, access and consent
-
-**NFR-05; supports US-01, US-03, US-08 and US-11.** The current Compose pilot has no user authentication or ownership enforcement and exposes development media routes. Proposed protection must precede a multi-user deployment. Use a server-side Owner record keyed to a stable identity-provider issuer/subject; the client supplies a token, not an owner ID it can choose. A provisional managed OpenID Connect sign-in with PKCE would let Django validate the token and map requests to that Owner. Native secure storage would hold credentials; it is a planned dependency.
-
-Deck would gain an owner reference. Attempts, descriptions, jobs and results inherit authorization through that deck; deletion receipts retain their owner for later status reads. Every read, upload, process request, edit and deletion would check this relationship. Owner scope also changes the current global PDF deduplication constraint to `(owner, content_hash, preparation_version)` and isolates device caches by API, owner and resource. Existing pilot data requires an explicit migration/claim decision; it cannot become globally visible or silently belong to the first account.
-
-PDFs, images and audio would remain in private server storage. The API would stream media only after ownership checks, replacing unauthenticated development URLs. UUIDs alone are not authorization. Sign-out/account switches clear credentials and active views; account-scoped caches cannot appear under another account. A signed-in owner may continue recording offline, but upload waits for valid authorization. Uploading pre-account local captures requires an explicit association with the signed-in owner.
-
-As shown in Figures 4A–4B, the target app presents the transcription disclosure before any recording-related PDF/audio transfer, records the accepted disclosure version/provider and allows cancellation with local playback intact. Processing admission checks that consent. A different analysis provider or changed data use requires a new disclosure. Feedback keeps its own explicit request and disclosure; speech summaries likewise disclose transcript transfer before generation. On-device rendering and server-side delivery measurement create no implied permission for external AI processing.
-
-Ownership and authenticated media checks place access control at the shared API boundary rather than relying on screen visibility. **Open:** identity provider, token lifetime/revocation, handling local caches after sign-out, pilot-data migration and provider-retention policy. These choices remain proposals, while owner privacy, pre-upload consent and user-requested deletion remain mandatory.
+- **Data:** Proposed Owner maps a stable identity-provider `(issuer, subject)` to decks. Attempts and results inherit access; deletion receipts retain their owner. Change PDF deduplication to `(owner, content_hash, preparation_version)`. Scope device caches by API, owner and resource. Record accepted disclosure version, provider and data use.
+- **API:** A provisional managed OIDC sign-in with PKCE supplies a token that Django validates; the client cannot choose an owner ID. Add owner checks to every read/upload/process/edit/delete operation and stream private media after authorization. Native secure credential storage is a planned dependency. The current pilot has no authentication or ownership enforcement.
+- **Rules:** Disclose transcription before recording-related PDF/audio transfer; declined consent leaves local playback available. Check consent before processing, and renew it for a changed provider or data use. Feedback and summaries retain separate disclosures. Valid saved consent can allow automatic transcription. Account changes clear credentials/active views and isolate cached data; offline capture may continue, but upload needs authorization.
+- **Failure states:** Reject unauthorized resource/media access. Keep local recordings pending when authorization or consent is missing. Existing pilot data and pre-account captures require explicit ownership association; never expose them to all accounts or assign them to the first user.
+- **Open decisions:** Identity provider, token expiry/revocation, sign-out cache handling, pilot-data migration and provider retention.

@@ -255,5 +255,41 @@
     "main": "f6f6e76605632296a802aecef25ac10c6d0fd0cd",
     "scope": "Rev.4.3 local documentation; application implementation unchanged",
     "decisions": "All Section 8 model names, routes and policies are provisional; no team approval claimed"
+  },
+  "merged_iteration_1": {
+    "date": "2026-10-09",
+    "major_revision": "2.0",
+    "inputs": {
+      "short_pdf": "short.pdf (user-supplied; archived locally)",
+      "short_pdf_sha256": "e5aad1b8b695c1e5f3f4d6ff97c57a45873b48d89c8f783120f223928df3e3c8",
+      "short_diagram_pages": [
+        2,
+        4,
+        6,
+        8,
+        10
+      ],
+      "method": "PDF vector paths and positioned Arial text transcribed to SVG; no architecture changes.",
+      "long_revision": "23725b476ac83bf67098c815f8643eb208d291a6",
+      "latest_pr_commit": "aa2195f12b60bf71b44a29f3d175ddf71a9ec743",
+      "frontend_status": "Local prototype; no PR as of 2026-10-09; document labels Planned."
+    },
+    "feature_prs_17_to_21": "Rechecked open, head SHAs unchanged from revision_4_3",
+    "frontend_redesign": "Local staged prototype; no PR found; Section 7 labeled Planned",
+    "documents_only": true,
+    "wiki_published": false,
+    "previous_draft_archive": "output/archive/before-merged-iteration1",
+    "guidelines_rechecked": true
+  },
+  "uniform_a4_export": {
+    "date": "2026-10-09",
+    "markdown_unchanged_sha256": "9569b203779a5f4ba57bca1ef91b75b24c72c04c4aff34187f618ee270361240",
+    "pdf_sha256": "a41de7c89d76124391230b99a0c3168761577cb90451ed88c7e69f1d0d64b3ff",
+    "pages": 24,
+    "paper": "A4 portrait",
+    "body_font": "Arial 11 pt",
+    "archive": "output/archive/before-uniform-a4",
+    "formatting_only": true,
+    "published": false
   }
 }

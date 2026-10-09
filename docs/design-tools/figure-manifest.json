@@ -1,163 +1,165 @@
 {
-  "revision": "Rev.4.3",
+  "revision": "Rev.2.0",
   "figures": [
     {
-      "id": "figure-1-system",
-      "alt": "Figure 1. System Architecture",
-      "path": "assets/outloud-design/figure-1-system.svg",
-      "paper": "A3",
+      "id": "figure-1-system-short",
+      "alt": "Figure 1. System architecture",
+      "path": "assets/outloud-design/figure-1-system-short.svg",
+      "paper": "A4",
+      "max_scale": 1,
       "sources": [
-        "docs/diagram-review/sources/figure-1-system.drawio"
+        "docs/diagram-review/sources/figure-1-system-short.svg"
       ],
       "sha256": {
-        "docs/diagram-review/sources/figure-1-system.drawio": "0ad216cbb8ae45f645bc80ecbfa727193911b7695c415e43a6cf918b6c9a4e62",
-        "docs/diagram-review/svg/figure-1-system.svg": "040a7122bb24fcaff0dda462f96ab83472fb182792aa741a6336628575cdb239",
-        "docs/diagram-review/png/figure-1-system.png": "eee520e0f283dbb3762ab531d464d1ed70f19dc2725eecfa5b353eaa315f99c5"
+        "docs/diagram-review/sources/figure-1-system-short.svg": "c9e44262a263c2443129840cecba3ea0484c58e6f554b44e058485e15102337c",
+        "docs/diagram-review/svg/figure-1-system-short.svg": "c9e44262a263c2443129840cecba3ea0484c58e6f554b44e058485e15102337c",
+        "docs/diagram-review/png/figure-1-system-short.png": "992629373bb0489019645b3180b6a25b858cedc21d2abe2a16bf3bb8362f5b90"
       }
     },
     {
-      "id": "figure-2-core",
-      "alt": "Figure 2. Core Database ER Diagram",
-      "path": "assets/outloud-design/figure-2-core.svg",
-      "paper": "A3",
+      "id": "figure-2-core-short",
+      "alt": "Figure 2. Core rehearsal data",
+      "path": "assets/outloud-design/figure-2-core-short.svg",
+      "paper": "A4",
+      "max_scale": 1,
       "sources": [
-        "docs/diagram-review/sources/figure-2-core.dbml",
-        "docs/diagram-review/sources/figure-2-core.drawio"
+        "docs/diagram-review/sources/figure-2-core-short.svg"
       ],
       "sha256": {
-        "docs/diagram-review/sources/figure-2-core.dbml": "00d95aacbd4989bdb6a45d27603250b1b14bbb9549b3f48422fbd616bb59cf52",
-        "docs/diagram-review/sources/figure-2-core.drawio": "6b1241bf641726ce9e99003386187a961fb1b93fac882491b0961b930be9ef51",
-        "docs/diagram-review/svg/figure-2-core.svg": "c2559d690e5718272f4114324432d285df2806a2a64d171f75ffed375fcd97b8",
-        "docs/diagram-review/png/figure-2-core.png": "f7b670657b6a14ac3acb00f4645444cbec09bf855bd06adb4db382b267d9dcd7"
+        "docs/diagram-review/sources/figure-2-core-short.svg": "594d163d82d4b22d741ba8a4cf1c21a3db7b0246dadbe8bc78f9499b96d43770",
+        "docs/diagram-review/svg/figure-2-core-short.svg": "594d163d82d4b22d741ba8a4cf1c21a3db7b0246dadbe8bc78f9499b96d43770",
+        "docs/diagram-review/png/figure-2-core-short.png": "97df3766fd95a28b047b782674f55906af5b1b4b3297eecc69dc251e30a5ca44"
       }
     },
     {
-      "id": "figure-3-feedback",
-      "alt": "Figure 3. AI Feedback Database ER Diagram",
-      "path": "assets/outloud-design/figure-3-feedback.svg",
-      "paper": "A3",
+      "id": "figure-3-feedback-short",
+      "alt": "Figure 3. Feedback data",
+      "path": "assets/outloud-design/figure-3-feedback-short.svg",
+      "paper": "A4",
+      "max_scale": 1,
       "sources": [
-        "docs/diagram-review/sources/figure-3-feedback.dbml",
-        "docs/diagram-review/sources/figure-3-feedback.drawio"
+        "docs/diagram-review/sources/figure-3-feedback-short.svg"
       ],
       "sha256": {
-        "docs/diagram-review/sources/figure-3-feedback.dbml": "adc3101dcaf749c92719e7527366fcd20bbf663b6fc930299bf8ddf537c5a072",
-        "docs/diagram-review/sources/figure-3-feedback.drawio": "595b902f1a8531c59ec2bf6d2fd44a6b3e90ab1c1c3fdfa4564e4db6f5629539",
-        "docs/diagram-review/svg/figure-3-feedback.svg": "dfb3db4d61bdd456fd0098565fa1f53bd3e848957c8ff97bc2f444e9a2e887ca",
-        "docs/diagram-review/png/figure-3-feedback.png": "087a6c4d45804ae0340231fc095409bcdd575f783d5614fdb2270c094b3d738c"
+        "docs/diagram-review/sources/figure-3-feedback-short.svg": "c139455e919d4487c98d65fe1b8bde7812b1a2b75e3b5408ddf3a3fa67b81015",
+        "docs/diagram-review/svg/figure-3-feedback-short.svg": "c139455e919d4487c98d65fe1b8bde7812b1a2b75e3b5408ddf3a3fa67b81015",
+        "docs/diagram-review/png/figure-3-feedback-short.png": "03d9c400da98b0769c4a8aadbe98234cb5078cc2416efea4556301787d36f79c"
       }
     },
     {
-      "id": "figure-3a-planned-data",
-      "alt": "Figure 3A. Proposed Data-Model Extension",
-      "path": "assets/outloud-design/figure-3a-planned-data.svg",
-      "paper": "A3",
+      "id": "figure-4-processing-short",
+      "alt": "Figure 4. Recording and transcription",
+      "path": "assets/outloud-design/figure-4-processing-short.svg",
+      "paper": "A4",
+      "max_scale": 1,
       "sources": [
-        "docs/diagram-review/sources/figure-3a-planned-data.drawio"
+        "docs/diagram-review/sources/figure-4-processing-short.svg"
       ],
       "sha256": {
-        "docs/diagram-review/sources/figure-3a-planned-data.drawio": "ce8db396d78ed867d440c8ac9d5df5485bbc00d1f6da139092258cecc62d1cdc",
-        "docs/diagram-review/svg/figure-3a-planned-data.svg": "791db6dd0b567e7f8ddd43f4437d2fa8c863329e412f1d93df72278cc2a4eb24",
-        "docs/diagram-review/png/figure-3a-planned-data.png": "f32bc3642daf6c069b58a0341e7bcabd0acbb2c60ca4a2cf77a497551cd393d3"
+        "docs/diagram-review/sources/figure-4-processing-short.svg": "3be8eba39e24fdbb33e187079c69e3475767001770dcf4e21953395711640a3d",
+        "docs/diagram-review/svg/figure-4-processing-short.svg": "3be8eba39e24fdbb33e187079c69e3475767001770dcf4e21953395711640a3d",
+        "docs/diagram-review/png/figure-4-processing-short.png": "e456a34cd2d3379773ca2d9f90e04588fc0a7de69ef95c2d592ec1aff5a93bce"
       }
     },
     {
-      "id": "figure-4a-capture",
-      "alt": "Figure 4A. Recording and Durable Upload",
-      "path": "assets/outloud-design/figure-4a-capture.svg",
-      "paper": "A2",
+      "id": "figure-5-coaching-short",
+      "alt": "Figure 5. Coaching and recovery",
+      "path": "assets/outloud-design/figure-5-coaching-short.svg",
+      "paper": "A4",
+      "max_scale": 1,
       "sources": [
-        "docs/diagram-review/sources/figure-4a-capture.mmd"
+        "docs/diagram-review/sources/figure-5-coaching-short.svg"
       ],
       "sha256": {
-        "docs/diagram-review/sources/figure-4a-capture.mmd": "c4971d500f98b7cfbaebe007602f29029e90280b2b3099366cde6bd684b9a875",
-        "docs/diagram-review/svg/figure-4a-capture.svg": "c3a257ab17aef072ab5872fff511a7e4fc4fc4714800f73f5e7ae6819049e277",
-        "docs/diagram-review/png/figure-4a-capture.png": "5fc8cf66dce65082618f5ca3439f2cb4ae99c2a41c124570b2218e0221d79e70"
-      }
-    },
-    {
-      "id": "figure-4b-processing",
-      "alt": "Figure 4B. Transcription, Alignment and Review",
-      "path": "assets/outloud-design/figure-4b-processing.svg",
-      "paper": "A2",
-      "sources": [
-        "docs/diagram-review/sources/figure-4b-processing.mmd"
-      ],
-      "sha256": {
-        "docs/diagram-review/sources/figure-4b-processing.mmd": "7af294466dd92c07ebd490d3cf9bc0f47560ec3bfc4453a1870afab834585a47",
-        "docs/diagram-review/svg/figure-4b-processing.svg": "970981c405557145874e3d3c247e0a7ff934547304ef8569334f51cdcb5c3be2",
-        "docs/diagram-review/png/figure-4b-processing.png": "a15feb5e00b5fca9b89f01dcc0871d2a477ce3744a2581be3a305ca300fb0b02"
-      }
-    },
-    {
-      "id": "figure-5a-generation",
-      "alt": "Figure 5A. Feedback Generation and Description Reuse",
-      "path": "assets/outloud-design/figure-5a-generation.svg",
-      "paper": "A2",
-      "sources": [
-        "docs/diagram-review/sources/figure-5a-generation.mmd"
-      ],
-      "sha256": {
-        "docs/diagram-review/sources/figure-5a-generation.mmd": "b87ec77a9de368bcfc15120662f629160e77e39b6c19140b73865e5d6a59f82f",
-        "docs/diagram-review/svg/figure-5a-generation.svg": "f8b20cfb0f524dfa81998d13ee4d87e0817ca9e895ee2a1c761f7e75a8ca763e",
-        "docs/diagram-review/png/figure-5a-generation.png": "d455611f9786c861ef6fc521e01b081721262d4313a45abd7380b988c84edacb"
-      }
-    },
-    {
-      "id": "figure-5b-recovery",
-      "alt": "Figure 5B. Description Edits, Invalidation and Retry",
-      "path": "assets/outloud-design/figure-5b-recovery.svg",
-      "paper": "A2",
-      "sources": [
-        "docs/diagram-review/sources/figure-5b-recovery.mmd"
-      ],
-      "sha256": {
-        "docs/diagram-review/sources/figure-5b-recovery.mmd": "07a9dd304b4479400596f00533d4265f6d3602a63cbdcede6f2fc4a15161e4b8",
-        "docs/diagram-review/svg/figure-5b-recovery.svg": "a3de303e2f8fcc11f5de4c7eb91acd99740e7d7b6e3fc4df6e0880961fafd110",
-        "docs/diagram-review/png/figure-5b-recovery.png": "acb4dfd3f292d7ff2e07475737eb27cff02a261134783735e46b78ed120b585c"
+        "docs/diagram-review/sources/figure-5-coaching-short.svg": "10acdd5d6c33c8b0cc9709bf2c73d4f72b8323e69008b9cb9f61e95ca135e6e5",
+        "docs/diagram-review/svg/figure-5-coaching-short.svg": "10acdd5d6c33c8b0cc9709bf2c73d4f72b8323e69008b9cb9f61e95ca135e6e5",
+        "docs/diagram-review/png/figure-5-coaching-short.png": "cd481839938b16e63c47bcfcf93884da2db6556a5dbd7cf2fdbd860c3a71c2f6"
       }
     },
     {
       "id": "figure-6-frontend",
-      "alt": "Figure 6. Frontend Architecture",
+      "alt": "Figure 6. Frontend architecture",
       "path": "assets/outloud-design/figure-6-frontend.svg",
-      "paper": "A3",
+      "paper": "A4",
+      "max_scale": 1,
       "sources": [
-        "docs/diagram-review/sources/figure-6-frontend.drawio"
+        "docs/diagram-review/sources/figure-6-frontend.drawio",
+        "docs/diagram-review/sources/figure-6-frontend.svg"
       ],
       "sha256": {
-        "docs/diagram-review/sources/figure-6-frontend.drawio": "f40aa1cd3e3d5552fd426eb48f68fa7309cdfb5864ad1daeb89e7b9d93bc4554",
-        "docs/diagram-review/svg/figure-6-frontend.svg": "f8da71cd1fda79444e8f512a8d0d153aadf20f3c7630acd19ba60d5098245d4d",
-        "docs/diagram-review/png/figure-6-frontend.png": "28217d1fb21cf1af331182048ec5c83c57ce389dbbcf41e381b2fd4859271313"
-      }
+        "docs/diagram-review/sources/figure-6-frontend.drawio": "bfb583b1d96d8a6c2fd1e35f5e5f14bfae44a5a26a1887293922e2b2506dc189",
+        "docs/diagram-review/svg/figure-6-frontend.svg": "6deeb3a695e28f8487849b2f3a0b807d0b026cad617924b25ca295a59c67563b",
+        "docs/diagram-review/png/figure-6-frontend.png": "5cfab3218a9452aaa546f7f06b54e24fcd90133027dfefcfc564580fbb4000f0",
+        "docs/diagram-review/sources/figure-6-frontend.svg": "6deeb3a695e28f8487849b2f3a0b807d0b026cad617924b25ca295a59c67563b"
+      },
+      "panels": [
+        [
+          0,
+          618
+        ],
+        [
+          618,
+          1238
+        ]
+      ]
     },
     {
-      "id": "figure-7-practice-comparison",
-      "alt": "Figure 7. Selected-Slide Practice and Same-Slide Comparison",
-      "path": "assets/outloud-design/figure-7-practice-comparison.svg",
-      "paper": "A2",
+      "id": "figure-3a-planned-data",
+      "alt": "Figure 3A. Proposed data-model extension",
+      "path": "assets/outloud-design/figure-3a-planned-data.svg",
+      "paper": "A4",
+      "max_scale": 1,
       "sources": [
-        "docs/diagram-review/sources/figure-7-practice-comparison.mmd"
+        "docs/diagram-review/sources/figure-3a-planned-data.drawio",
+        "docs/diagram-review/sources/figure-3a-planned-data.svg"
       ],
       "sha256": {
-        "docs/diagram-review/sources/figure-7-practice-comparison.mmd": "2efa625f068efba574e71e964cda88579760078efdbbfc5f9589933f9afa077b",
-        "docs/diagram-review/svg/figure-7-practice-comparison.svg": "8ccaba4a991f9949c1a4c5297f1dd4d50d5ae61643a23fe54d4b797f71ed070f",
-        "docs/diagram-review/png/figure-7-practice-comparison.png": "c6dbf63e628d663bf2f42b3f6eb5365461dcef122a7d6977f8ae131b65ef5e03"
-      }
+        "docs/diagram-review/sources/figure-3a-planned-data.drawio": "ffe23a38a00e2091b9535da963facb69db215938a5b4b702a2bba8690880a1bc",
+        "docs/diagram-review/svg/figure-3a-planned-data.svg": "f08d37fc4628fb67a8ce155a80064b179015064789acda9b57276cbf4843446c",
+        "docs/diagram-review/png/figure-3a-planned-data.png": "7d456c73600cf5ad8315670da69f8f77abd7863db244aba45a524db8accfd349",
+        "docs/diagram-review/sources/figure-3a-planned-data.svg": "f08d37fc4628fb67a8ce155a80064b179015064789acda9b57276cbf4843446c"
+      },
+      "panels": [
+        [
+          0,
+          570
+        ],
+        [
+          570,
+          1021
+        ]
+      ]
     },
     {
       "id": "figure-8-deletion",
-      "alt": "Figure 8. Confirmed Deletion and Recovery",
+      "alt": "Figure 8. Confirmed deletion and recovery",
       "path": "assets/outloud-design/figure-8-deletion.svg",
-      "paper": "A2",
+      "paper": "A4",
+      "max_scale": 1,
       "sources": [
-        "docs/diagram-review/sources/figure-8-deletion.mmd"
+        "docs/diagram-review/sources/figure-8-deletion.mmd",
+        "docs/diagram-review/sources/figure-8-deletion.svg"
       ],
       "sha256": {
-        "docs/diagram-review/sources/figure-8-deletion.mmd": "642ec5183246a40d30afb45bb3e5b2e456dab54785feadf78d0704114561b421",
-        "docs/diagram-review/svg/figure-8-deletion.svg": "4fde5d33de6a930e4de69e34245a605eecdf41defa7197680a9c70386cc0caad",
-        "docs/diagram-review/png/figure-8-deletion.png": "8a22b2b5ca2aba8810d12df6fed9b1b949302ec472160e1443bfee5db9b82308"
-      }
+        "docs/diagram-review/sources/figure-8-deletion.mmd": "6f4c46114384a6c51d69bac46525474319c7d7099770ea13d0e96052600e79da",
+        "docs/diagram-review/svg/figure-8-deletion.svg": "a41f67ca475983071ab52074b1c61dfb715cc63e6fe446ac7411238ea156d12f",
+        "docs/diagram-review/png/figure-8-deletion.png": "9346439ed62f559c5c29eb15a3cb9c769ff5a546f9be6f6aa024318b5870bb8d",
+        "docs/diagram-review/sources/figure-8-deletion.svg": "a41f67ca475983071ab52074b1c61dfb715cc63e6fe446ac7411238ea156d12f"
+      },
+      "panels": [
+        [
+          0,
+          597
+        ],
+        [
+          597,
+          1164
+        ],
+        [
+          1164,
+          1728
+        ]
+      ]
     }
   ],
   "retained_schema_baseline": {
@@ -173,5 +175,26 @@
       "docs/diagram-review/svg/figure-3-feedback.svg": "dfb3db4d61bdd456fd0098565fa1f53bd3e848957c8ff97bc2f444e9a2e887ca",
       "docs/diagram-review/png/figure-3-feedback.png": "087a6c4d45804ae0340231fc095409bcdd575f783d5614fdb2270c094b3d738c"
     }
+  },
+  "short_pdf_source": {
+    "short_pdf": "short.pdf (user-supplied; archived locally)",
+    "short_pdf_sha256": "e5aad1b8b695c1e5f3f4d6ff97c57a45873b48d89c8f783120f223928df3e3c8",
+    "short_diagram_pages": [
+      2,
+      4,
+      6,
+      8,
+      10
+    ],
+    "method": "PDF vector paths and positioned Arial text transcribed to SVG; no architecture changes.",
+    "long_revision": "23725b476ac83bf67098c815f8643eb208d291a6",
+    "latest_pr_commit": "aa2195f12b60bf71b44a29f3d175ddf71a9ec743",
+    "frontend_status": "Local prototype; no PR as of 2026-10-09; document labels Planned."
+  },
+  "formatting": {
+    "paper": "A4 portrait",
+    "body_font": "Arial 11 pt",
+    "panel_layouts": "docs/design-tools/reflow_a4_figures.py",
+    "original_design_sources": "Existing draw.io/Mermaid sources preserved; paired SVG sources contain A4 reflow."
   }
 }
