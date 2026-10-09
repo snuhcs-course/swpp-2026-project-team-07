@@ -1,0 +1,46 @@
+%%{init: {"theme": "base", "themeCSS": ".actor-line {stroke-dasharray: 5 5 !important;}", "themeVariables": {"fontFamily": "Arial", "fontSize": "16px", "actorBkg": "#eaf1f5", "actorBorder": "#547083", "actorTextColor": "#1e2e38", "signalColor": "#526777", "signalTextColor": "#1e2e38", "noteBkgColor": "#f6f3ed", "noteBorderColor": "#c6bcaa", "noteTextColor": "#263640", "labelBoxBkgColor": "#ffffff", "labelBoxBorderColor": "#547083"}, "sequence": {"useMaxWidth": false, "mirrorActors": false, "actorMargin": 28, "messageMargin": 16, "noteMargin": 8, "wrap": false, "width": 155}}}%%
+sequenceDiagram
+ autonumber
+actor U as Presenter
+ participant A as Controller / local journal
+ participant API as Authorized Django API
+ participant W as Cleanup worker / media
+ Note over U,W: 8. Confirmed deletion and recovery | Planned
+ U->>A: Delete attempt or deck
+ A-->>U: Explain scope, deck includes its attempts<br/>and generated data
+ alt Cancel
+  U->>A: Cancel, preserve data
+ else Confirm
+  U->>A: Confirm target
+  A->>A: Journal intent, stop playback/upload, hide<br/>target
+  alt Local-only target
+   A->>A: No server request required
+  else Server-backed, offline or unreachable
+   A->>A: Remove local copies, keep pending-server<br/>tombstone
+   A-->>U: Local removal done, server deletion<br/>pending
+  else Server-backed and reachable
+   A->>API: DELETE attempt/deck with authenticated<br/>identity
+   API->>API: Check owner, lock target, mark deleting,<br/>persist DeletionOperation + file manifest
+   API-)W: Admit cleanup after commit
+   API-->>A: Operation ID, pending
+   Note over API,W: Block new child records/jobs/media reads.<br/>Workers check deletion before provider calls and final writes,<br/>discard late output. Queue cancellation alone is insufficient.
+   W->>W: Reconcile reservations, remove dependent<br/>jobs/results/receipts
+   alt Attempt target
+    W->>W: Remove attempt, preserve deck + reusable<br/>descriptions
+   else Deck target
+    W->>W: Remove attempts, description dependencies,<br/>slides, then deck
+    Note over API,W: Explicit dependency order resolves current PROTECT references.<br/>No silent change to current schema deletion policy.
+   end
+   W->>W: Delete manifest files idempotently
+   alt File or cleanup failure
+    W->>W: Retain remaining manifest + failure,<br/>schedule bounded retry
+   else Server cleanup complete
+    W->>W: Mark server complete, keep minimal<br/>operation tombstone
+   end
+   A->>API: Read operation status, retry pending<br/>request after reconnect
+   API-->>A: Pending / retryable / server complete
+  end
+  A->>A: Purge local audio, results, checkpoints<br/>and unreferenced PDFs,<br/>record local cleanup progress, retry<br/>failed removals
+  A-->>U: Complete only when applicable local +<br/>server work is done
+ end
+ Note over A,W: Other devices reconcile tombstones when online.<br/>Original files outside the app are untouched, retention policy remains open.

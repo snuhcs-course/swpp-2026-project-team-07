@@ -1,24 +1,40 @@
 {
+  "revision": "Rev.4.3",
   "markdown_primary_source": true,
-  "pdf_pages": 11,
-  "figures": 6,
-  "panels": 8,
-  "source_link_occurrences_verified": 24,
-  "unique_source_links": 22,
-  "json_examples": 2,
+  "pdf_pages": 17,
+  "figure_ids": [
+    "figure-1-system",
+    "figure-2-core",
+    "figure-3-feedback",
+    "figure-3a-planned-data",
+    "figure-4a-capture",
+    "figure-4b-processing",
+    "figure-5a-generation",
+    "figure-5b-recovery",
+    "figure-6-frontend",
+    "figure-7-practice-comparison",
+    "figure-8-deletion"
+  ],
+  "panels": 11,
+  "source_link_occurrences_verified": 5,
+  "unique_source_links": 5,
+  "json_examples": 0,
   "pdf_text_parity": "pass",
-  "pdf_images_match_approved_browser_renders": 8,
+  "pdf_images_match_canonical_renders": 11,
   "local_asset_paths": "checked",
   "wiki_text_parity": "checked",
   "svg_sha256": {
-    "assets/outloud-design/figure-1-system.svg": "55e1e593cd03be5d2e9c7b1a9a3e41182acc158069530054425c652615b35ab5",
+    "assets/outloud-design/figure-1-system.svg": "040a7122bb24fcaff0dda462f96ab83472fb182792aa741a6336628575cdb239",
     "assets/outloud-design/figure-2-core.svg": "c2559d690e5718272f4114324432d285df2806a2a64d171f75ffed375fcd97b8",
     "assets/outloud-design/figure-3-feedback.svg": "dfb3db4d61bdd456fd0098565fa1f53bd3e848957c8ff97bc2f444e9a2e887ca",
-    "assets/outloud-design/figure-4a-capture.svg": "c657be101140dacd74a13776e8d5c981e5131982e975eef1c7a3ea0434300567",
-    "assets/outloud-design/figure-4b-processing.svg": "3408f28ba7a113caf28335c5d6bb8d646b4f6e7d717e9ae94821084b30b80c7d",
-    "assets/outloud-design/figure-5a-generation.svg": "56b518fc7b7c263802c5063d39fec60d4c25a13a72140078fb4f410f0270d90b",
-    "assets/outloud-design/figure-5b-recovery.svg": "35a8a82bd87d1b4ac52b71f9d03552f3b687238aba1c29d80985879ec2ec3f6a",
-    "assets/outloud-design/figure-6-frontend.svg": "6dab1b8bcc3e375b896e0411cc7479235cb583920fa2b04b98d0f2046d26dd53"
+    "assets/outloud-design/figure-3a-planned-data.svg": "791db6dd0b567e7f8ddd43f4437d2fa8c863329e412f1d93df72278cc2a4eb24",
+    "assets/outloud-design/figure-4a-capture.svg": "c3a257ab17aef072ab5872fff511a7e4fc4fc4714800f73f5e7ae6819049e277",
+    "assets/outloud-design/figure-4b-processing.svg": "970981c405557145874e3d3c247e0a7ff934547304ef8569334f51cdcb5c3be2",
+    "assets/outloud-design/figure-5a-generation.svg": "f8b20cfb0f524dfa81998d13ee4d87e0817ca9e895ee2a1c761f7e75a8ca763e",
+    "assets/outloud-design/figure-5b-recovery.svg": "a3de303e2f8fcc11f5de4c7eb91acd99740e7d7b6e3fc4df6e0880961fafd110",
+    "assets/outloud-design/figure-6-frontend.svg": "f8da71cd1fda79444e8f512a8d0d153aadf20f3c7630acd19ba60d5098245d4d",
+    "assets/outloud-design/figure-7-practice-comparison.svg": "8ccaba4a991f9949c1a4c5297f1dd4d50d5ae61643a23fe54d4b797f71ed070f",
+    "assets/outloud-design/figure-8-deletion.svg": "4fde5d33de6a930e4de69e34245a605eecdf41defa7197680a9c70386cc0caad"
   },
   "font": "Arial",
   "page_sizes": [
@@ -28,7 +44,7 @@
     },
     {
       "page": 2,
-      "paper": "A3"
+      "paper": "A4"
     },
     {
       "page": 3,
@@ -40,7 +56,7 @@
     },
     {
       "page": 5,
-      "paper": "A4"
+      "paper": "A3"
     },
     {
       "page": 6,
@@ -48,7 +64,7 @@
     },
     {
       "page": 7,
-      "paper": "A2"
+      "paper": "A3"
     },
     {
       "page": 8,
@@ -60,19 +76,40 @@
     },
     {
       "page": 10,
-      "paper": "A3"
+      "paper": "A2"
     },
     {
       "page": 11,
+      "paper": "A2"
+    },
+    {
+      "page": 12,
+      "paper": "A3"
+    },
+    {
+      "page": 13,
+      "paper": "A4"
+    },
+    {
+      "page": 14,
+      "paper": "A2"
+    },
+    {
+      "page": 15,
+      "paper": "A2"
+    },
+    {
+      "page": 16,
+      "paper": "A4"
+    },
+    {
+      "page": 17,
       "paper": "A4"
     }
   ],
-  "errors": [],
-  "delivery": {
-    "type": "repository PR for proposed Wiki update",
-    "markdown_prose_matches_primary": true,
-    "wiki_current_state": "Restored byte-for-byte to prior tree at 411ce5d by revert commit 0856f77992e8783905bb62a57fe7eae9ed453ff1; no pending Wiki publication is authorized.",
-    "prior_publication": "449db72299d4e6595388aa7429d90c0aee708000; reverted at user request",
-    "visual_evidence": "Eight SVG panels loaded and architecture was inspected during the reverted publication. Earlier PDF visual review applies to the unchanged export."
-  }
+  "internal_pdf_destinations_verified": 28,
+  "requirements_covered": 10,
+  "submission_copy_identical": true,
+  "current_schema_diagrams_unchanged": true,
+  "errors": []
 }

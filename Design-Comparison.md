@@ -2,6 +2,8 @@
 
 **Team 07 | 9 October 2026 | Draft review companion**
 
+**Historical benchmark:** Sections 1–6 record the Rev.3.0 comparison and checks. They are not a new evaluation of Rev.4.3. The current design is in [Design-Documentation.md](Design-Documentation.md); current document checks are in [docs/design-document-checks.json](docs/design-document-checks.json).
+
 This report compares the current course guidance, four previous-year examples, the existing OutLoud wiki, and the proposed replacement. It evaluates documentation quality, not the correctness or performance of the example applications. All four example pages were accessible. Their text and representative rendered architecture, class, database and workflow diagrams were inspected on 9 October 2026.
 
 ## 1. Course reference benchmark
@@ -103,7 +105,7 @@ Checks are documentation self-review only. `build_design_pdf.py` leaves Markdown
 
 - Primary source: `Design-Documentation.md`; preview: `Design-Documentation.html`.
 - Approved SVGs, normalized PNG copies and editable sources: `assets/outloud-design/`.
-- Derived PDF: `output/pdf/OutLoud_Design_Documentation.pdf`; the repository root contains a byte-identical review copy. Keep `assets/` beside the PDF for offline full-size links. Relative-link support varies by PDF viewer.
+- Current Rev.4.3 PDFs: [documentation](output/pdf/OutLoud_Design_Documentation.pdf) and [submission copy](output/pdf/team7-iter1-design.pdf). The obsolete root PDF is removed. Rebuilding also creates the local HTML preview and Wiki bundle.
 - Wiki-ready derivative and assets: `output/wiki/`. It differs from the primary Markdown only in expanded asset URLs.
 - The supplied guidelines do not require a uniform paper size. The PDF uses A4 text pages, A3 figure pages and A2 pages for the longest sequences; fit-to-A4 printing would reduce legibility.
 - SVG rendering is confirmed locally. GitHub's [Wiki image guidance](https://docs.github.com/en/communities/documenting-your-project-with-wikis/editing-wiki-content) explicitly lists raster formats; PNG fallbacks are included in case its live renderer suppresses SVG.

@@ -8,7 +8,7 @@ sequenceDiagram
  participant P as Selected AI provider
  Note over U,P: 5A. Explicit feedback and description reuse | Unmerged PR21
  U->>A: Generate feedback
- A->>API: Read selection<br/>and revisions
+ A->>API: Read provider selection<br/>and revisions
  API-->>A: Provider/model, availability<br/>and saved state
  opt First use of this API/provider selection
   A-->>U: Disclose slide +<br/>transcript transfer
@@ -21,7 +21,7 @@ sequenceDiagram
  opt Consent valid and generation eligible
   A->>A: Save pending intent before POST
   A->>API: POST /api/attempts/{id}/<br/>feedback/generate/
-  API->>API: Snapshot transcript, visits and audience,<br/>admit versioned feedback job
+  API->>API: Snapshot transcript, visits and audience,<br/>Planned: freeze practiced-slide scope
   alt Descriptions cached
    API->>API: Attach saved description revision
   else Descriptions absent
@@ -35,7 +35,7 @@ sequenceDiagram
    P-->>W: Structured descriptions
    W->>W: Validate and persist descriptions
   end
-  Note over API,W: Wait for descriptions.<br/>Reuse the existing transcript.
+  Note over API,W: Reuse transcript + deck descriptions.<br/>Planned: project coaching input to practiced visits,<br/>keep original indexes and whole-deck cache.
   W->>W: Attach exact description revision,<br/>read frozen source snapshot
   W->>P: Descriptions + transcript/visits<br/>and configured provider input
   P-->>W: Coaching candidates
