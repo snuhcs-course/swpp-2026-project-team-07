@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAudioPlayer } from "expo-audio";
 import { useFocusEffect } from "expo-router";
-import { AppState, Text } from "react-native";
-import { Action, Card, Screen, styles } from "../../ui/components";
+import { AppState } from "react-native";
+import { activeLayout } from "../../layouts/registry";
+import { transcriptPresentation } from "../transcription/transcriptPresentation";
 import { getSavedAttempt, saveAttempt, type SavedAttempt } from "./storage";
 import { API_URL } from "../../services/api";
 import { activeVisitIndex, adjacentVisit, createPlaybackController, recordedVisits } from "../transcription/playback";
@@ -18,7 +19,6 @@ import { useReviewMedia } from "../transcription/useReviewMedia";
 import { useReviewPlayerStatus } from "../transcription/useReviewPlayerStatus";
 import { localUri } from "../transcription/reviewMedia";
 import { PlaybackSlide } from "../transcription/PlaybackSlide";
-import { PlaybackTranscript } from "../transcription/PlaybackTranscript";
 import { FeedbackPanel } from "../feedback/FeedbackPanel";
 import type { ReviewAttempt } from "../../contracts";
 
@@ -28,10 +28,21 @@ function readAttempt(id: string, api: string): { saved: SavedAttempt | null; rev
 }
 
 export function SavedAttemptScreen({ id, apiUrl = API_URL }: { id: string; apiUrl?: string }) {
-  if (!isUuid(id)) return <Screen><Text style={styles.heading}>Invalid rehearsal ID</Text></Screen>;
+  if (!isUuid(id)) return <activeLayout.Message title="Invalid rehearsal ID" />;
   return <SavedAttemptContent key={`${normalizeApi(apiUrl)}:${id}`} id={id} apiUrl={apiUrl} />;
 }
 function SavedAttemptContent({ id, apiUrl }: { id: string; apiUrl: string }) {
+  const { model, validators, feedbackInput } = useSavedReviewController(id, apiUrl);
+  // Validators and controller lifetimes belong to this host, never a tab panel.
+  return <>{validators}{feedbackInput ? <FeedbackPanel key={feedbackInput.identity} {...feedbackInput}>
+    {feedback => <activeLayout.Review model={{ ...model, feedback }} />}
+  </FeedbackPanel> : <activeLayout.Review model={model} />}</>;
+}
+export function useSavedReviewController(id: string, apiUrl: string) {
+  const [tab, setTab] = useState<'overview' | 'slides' | 'transcript'>('overview');
+  const slideReveal = useRef<(() => void) | null>(null);
+  const bindSlideReveal = useCallback((callback: () => void) => { slideReveal.current = callback; return () => { if (slideReveal.current === callback) slideReveal.current = null; }; }, []);
+  const [evidenceVisit, setEvidenceVisit] = useState(0);
   const [loaded, setLoaded] = useState(() => readAttempt(id, apiUrl));
   const saved = loaded.saved;
   const submitted = saved?.state === "submitted" && normalizeApi(saved.server_url || "") === normalizeApi(apiUrl);
@@ -96,6 +107,10 @@ function SavedAttemptContent({ id, apiUrl }: { id: string; apiUrl: string }) {
   const events = saved && validEvents(saved.recording.slide_events, duration, pages) ? saved.recording.slide_events : review?.slide_events || [];
   const aligned = validVisits(review?.visits, duration, pages, events.length ? events : undefined) ? review!.visits : null;
   const visits = aligned || recordedVisits(events, duration);
+  const slideTimings = [...new Set(visits.map(item => item.slide_index))].sort((a, b) => a - b).map(slide => {
+    const ranges = visits.filter(item => item.slide_index === slide);
+    return { slide, ranges, total: ranges.reduce((sum, item) => sum + item.end_ms - item.start_ms, 0) };
+  });
   const visit = activeVisitIndex(visits, position);
   const previousVisit = adjacentVisit(visits, visit, -1);
   const nextVisit = adjacentVisit(visits, visit, 1);
@@ -142,76 +157,28 @@ function SavedAttemptContent({ id, apiUrl }: { id: string; apiUrl: string }) {
     if (control.isPlaying()) { control.pause(); return; }
     if (ready) control.play(position, duration);
   }
-  if (!saved && !review) return <Screen>
-    <Text style={styles.heading}>{loaded.error ? "Could not load saved rehearsal" : "Saved rehearsal not found for this API"}</Text>
-    {!!loaded.error && <Text accessibilityRole="alert" style={styles.body}>{loaded.error}</Text>}
-    <Action label="Reload saved rehearsal" onPress={reload} />
-  </Screen>;
-  const interrupted = saved?.state === "capturing" || saved?.state === "interrupted";
-  return <Screen>
-    {media.validators}
-    <Text style={styles.heading}>{saved?.title || deckState.deck?.title || "Saved rehearsal"}</Text>
-    <Text style={styles.body}>{saved ? "Local capture" : "Server rehearsal · review copy"} · {saved?.created_at || review?.created_at ? new Date(saved?.created_at || review!.created_at!).toLocaleString() : "Date unavailable"}</Text>
-    <Card>
-      <Text style={styles.heading}>{submitted ? `Uploaded · ${analysis.result?.processing_state?.replaceAll("_", " ") || "awaiting analysis"}` : interrupted ? "Recovery needed" : saved ? "Saved on this device" : review?.processing_state.replaceAll('_', ' ')}</Text>
-      <Text style={styles.body}>{Math.floor(position / 1000)} / {Math.floor(duration / 1000)} seconds</Text>
-      <Action label={playingIntent ? "Pause" : "Play"} disabled={!ready && !playingIntent} onPress={toggle} />
-      <Action label="−5 seconds" disabled={!canSeek} onPress={() => seek(position - 5000)} secondary />
-      <Action label="+5 seconds" disabled={!canSeek} onPress={() => seek(position + 5000)} secondary />
-      {!!media.audio.error && <Text style={styles.body}>{media.audio.error}</Text>}
-      {!!status.error && <Text accessibilityRole="alert" style={styles.body}>Audio could not be opened. The original file is retained.</Text>}
-      {!media.audio.uri && media.audioSpec && <Action label={media.audio.busy ? "Checking audio…" : "Download audio for offline review"} disabled={media.audio.busy} onPress={() => void media.download('audio')} />}
-      {interrupted ? <Action label="Recover playable audio" disabled={!canRecover} onPress={recover} /> :
-        saved && !submitted && <Action label={busy ? "Uploading…" : "Upload recording"} disabled={busy} onPress={() => void upload()} />}
-      <Text style={styles.body}>New recordings upload the PDF and audio to the configured server automatically. Transcription starts after you accept the first-use OpenAI disclosure; cancelling leaves the server upload saved without transcription. Browsing older recordings never starts analysis.</Text>
-      {!!(notice || saved?.error) && <Text accessibilityRole="alert" style={styles.body}>{notice || saved?.error}</Text>}
-    </Card>
-    <Card>
-      <Text style={styles.heading}>{visit >= 0 ? `Slide ${visits[visit].slide_index + 1} · Visit ${visit + 1}` : 'Slides'}</Text>
-      {media.pdf.uri && <PlaybackSlide uri={media.pdf.uri} slide={visit >= 0 ? visits[visit].slide_index : 0} pages={pages} onError={media.pdfFailed} />}
-      {!!media.pdf.error && <Text style={styles.body}>{media.pdf.error} Audio and transcript remain available.</Text>}
-      {!media.pdf.uri && media.pdfSpec && <Action label={media.pdf.busy ? "Checking PDF…" : "Download PDF for offline review"} disabled={media.pdf.busy} onPress={() => void media.download('pdf')} />}
-      {!!deckState.notice && <Text style={styles.body}>{deckState.notice}</Text>}
-    </Card>
-    {(serverKnown || analysis.result || review) && <Card>
-      <Text style={styles.heading}>Recording analysis</Text>
-      <Action label="Refresh" disabled={analysis.busy} onPress={() => { deckState.refresh(); void analysis.refresh(); }} />
-      {canAnalyze && (!analysis.result || analysis.result.processing_state === "awaiting_analysis") &&
-        <Action label="Analyze recording" disabled={analysis.busy || !!analysis.prompt} onPress={analysis.analyze} />}
-      {canAnalyze && analysis.result?.status === "failed" && <Action label="Retry analysis" disabled={analysis.busy || !!analysis.prompt || !analysis.result.retry_available} onPress={analysis.retry} />}
-      {analysis.busy && <Text style={styles.body}>Checking analysis request…</Text>}
-      {!!analysis.result?.failed_stage && <Text style={styles.body}>Stopped during {analysis.result.failed_stage.replaceAll("_", " ")}.</Text>}
-      {!!analysis.result?.retry_at && <Text style={styles.body}>Retry available after {new Date(analysis.result.retry_at).toLocaleString()}. Refresh to check.</Text>}
-      {!!analysis.result?.error && <Text accessibilityRole="alert" style={styles.body}>{analysis.result.error.message}</Text>}
-      {!!analysis.notice && <Text accessibilityRole="alert" style={styles.body}>{analysis.notice}</Text>}
-      {analysis.prompt && <>
-        <Text style={styles.body}>{analysis.prompt.kind === "disclosure"
-          ? "Transcription sends your saved audio through this server to OpenAI for hosted Whisper transcription. Audio and results remain available locally. Continue to allow automatic transcription after future recordings on this device, or Cancel."
-          : "The previous OpenAI request may already have been charged. Retrying may send the audio again and incur another charge. There is no guarantee of exactly one provider request. Continue only if you accept this."}</Text>
-        <Action label="Continue" onPress={analysis.continuePrompt} />
-        <Action label="Cancel" onPress={analysis.cancelPrompt} />
-      </>}
-      {analysis.result?.analysis_outcome === "no_speech" && <Text style={styles.body}>No speech detected. No audio was sent to OpenAI.</Text>}
-      {review?.transcript && <>
-        <Text style={styles.heading}>{review.status === "completed" ? "Transcript" : "Saved partial transcript"}</Text>
-        <PlaybackTranscript transcript={review.transcript} positionMs={position} durationMs={duration} ready={canSeek} onSeek={seek} />
-      </>}
-    </Card>}
-    {review?.deck_id && <FeedbackPanel key={`${normalizeApi(apiUrl)}:${id}:${review.deck_id}:${review.transcript_id || ''}:${review.duration_ms}:${JSON.stringify(review.slide_events)}`}
-      id={id} apiUrl={apiUrl} review={review} pages={deckState.deck?.page_count || (submitted ? saved?.page_count : undefined)} canSeek={canSeek} onSeek={seek} />}
-    <Card><Text style={styles.heading}>Saved slide visits</Text>
-      <Text style={styles.body}>{aligned ? 'Aligned chronological visits' : 'Recorded navigation'}</Text>
-      <Action label="Previous visit" disabled={!canSeek || previousVisit < 0} onPress={() => seek(visits[previousVisit].start_ms)} secondary />
-      <Action label="Next visit" disabled={!canSeek || visit < 0 || nextVisit < 0} onPress={() => seek(visits[nextVisit].start_ms)} secondary />
-      {visits.map((item, index) => <Action key={index} label={`Visit ${index + 1} · Slide ${item.slide_index + 1} · ${item.start_ms}–${item.end_ms} ms${item.start_ms === item.end_ms ? ' · instantaneous' : ''}${index === visit ? ' · current' : ''}`}
-        disabled={!canSeek} secondary onPress={() => seek(item.start_ms)} />)}
-      {!visits.length && <Text style={styles.body}>Saved navigation timing is unavailable.</Text>}
-    </Card>
-    {review?.metrics && <Card>
-      <Text style={styles.heading}>Saved rehearsal timing</Text>
-      {review.metrics.time_per_slide.map(item => <Text key={item.slide_index} style={styles.body}>Slide {item.slide_index + 1}: {(item.duration_ms / 1000).toFixed(1)} seconds</Text>)}
-      {review.metrics.speaking_rates.map(rate => <Text key={rate.language} style={styles.body}>{rate.language === 'en' ? 'English words/min' : 'Korean Hangul runs/min'}: {rate.per_minute.toFixed(1)}</Text>)}
-      <Text style={styles.body}>Rates use total rehearsal time, including silence. Korean Hangul runs are an estimate, not a linguistic word count.</Text>
-    </Card>}
-  </Screen>;
+  const interrupted = saved?.state === 'capturing' || saved?.state === 'interrupted';
+  const slideStage = media.pdf.uri ? <PlaybackSlide uri={media.pdf.uri} slide={visit >= 0 ? visits[visit].slide_index : 0} pages={pages} onError={media.pdfFailed} /> : null;
+  const transcriptSpans = transcriptPresentation(review?.transcript, position, duration, canSeek, seek);
+  function refreshAnalysis() { if (!analysis.busy) { deckState.refresh(); void analysis.refresh(); } }
+  function seekPreviousVisit() { if (previousVisit >= 0) seek(visits[previousVisit].start_ms); }
+  function seekNextVisit() { if (visit >= 0 && nextVisit >= 0) seek(visits[nextVisit].start_ms); }
+  return {
+    validators: media.validators,
+    feedbackInput: review?.deck_id ? { id, apiUrl, review, pages: deckState.deck?.page_count || (submitted ? saved?.page_count : undefined), canSeek, section: tab,
+      identity: `${normalizeApi(apiUrl)}:${id}:${review.deck_id}:${review.transcript_id || ''}:${review.duration_ms}:${JSON.stringify(review.slide_events)}`,
+      slideIndex: visit >= 0 ? visits[visit].slide_index : undefined,
+      onSeek: (ms: number) => { slideReveal.current?.(); setEvidenceVisit(value => value + 1); seek(ms); } } : null,
+    model: {
+      tab, setTab, evidenceVisit, bindSlideReveal, duration, position, canSeek, playingIntent, ready, toggle, seek,
+      saved: saved ? { title: saved.title, created_at: saved.created_at, error: saved.error } : null,
+      deckState: { deck: deckState.deck, notice: deckState.notice }, review, busy, submitted, interrupted,
+      analysis: { result: analysis.result, busy: analysis.busy, prompt: analysis.prompt, notice: analysis.notice,
+        analyze: () => { if (canAnalyze) analysis.analyze(); }, retry: () => { if (canAnalyze) analysis.retry(); }, continuePrompt: analysis.continuePrompt, cancelPrompt: analysis.cancelPrompt },
+      media: { audio: { available: !!media.audio.uri, error: media.audio.error, busy: media.audio.busy }, pdf: { available: !!media.pdf.uri, error: media.pdf.error, busy: media.pdf.busy },
+        audioSpec: !!media.audioSpec, pdfSpec: !!media.pdfSpec, download: media.download }, status: { error: status.error },
+      canRecover, recover, upload, notice, serverKnown, canAnalyze, aligned, visits, slideTimings, visit, previousVisit, nextVisit, slideStage, transcriptSpans,
+      refreshAnalysis, seekPreviousVisit, seekNextVisit, loaded: { error: loaded.error }, reload,
+    },
+  };
 }

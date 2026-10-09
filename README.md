@@ -1,310 +1,215 @@
-# OutLoud · Team 07
+# OutLoud — Iteration 1 Demo
 
-An Android presentation practice app connecting PDF slides, recordings, slide-aligned transcripts, and feedback.
+**Team 07 · Android presentation rehearsal app**
 
-**Current branch: `feature/ai-feedback`, building on rehearsal-review PR #20 (`3abcf4b`).** The Library merges local captures and server history for known presentations. Saved rehearsals open by attempt UUID with actual PDF pages, audio, synchronized transcript and chronological slide visits. Missing audio/PDF can be downloaded explicitly for offline review. Ordinary browsing, refreshing, downloading and replaying never start analysis; the durable new-capture handoff is the explicit exception. Existing **Analyze recording**, OpenAI disclosure, stage/Refresh/Retry and uncertain-charge confirmation remain in place; sample previews stay separate.
+Practice with your PDF slides, record your voice, and review a transcript, slide timings, and AI feedback together.
 
-**Processing scope: `feature/whisper-api-processing`.** Finishing a real recording opens its saved result and uploads the PDF and audio to the configured server. Transcription starts automatically after the first-use OpenAI disclosure is accepted; cancelling the disclosure leaves the server upload saved without starting transcription. The saved-attempt screen retains **Analyze recording** for cancelled/older recordings, stage/Refresh/Retry controls and a plain real transcript. SQLite caches results by API address and attempt UUID. Local replay remains available through network/provider/analysis failures; sample previews stay separate.
+[Watch the demo](docs/demo/iteration-1-demo.mp4) · [Demo slides](docs/demo/Neural_Networks_7_Slides.pdf) · [Detailed setup and walkthrough](docs/iteration-1-demo.md)
 
-The backend coordinates a durable PostgreSQL queue, packaged Silero speech-presence check, hosted `whisper-1`, private raw-response persistence, normalized transcript, chronological slide visits and timing/rate estimates. Rehearsal coaching has an explicit durable generation API and remains disabled by default; its API and deck-description APIs are described below. See the [API contract](docs/api-contract.md) for revision-aware retries and uncertain outbound requests. Historical standalone adapter/alignment work is now integrated; its older pilot evidence does not establish this pipeline's live accuracy.
+## Table of Contents
 
-[AI feedback checkpoints 1–5](docs/ai-feedback.md) are implemented on one `feature/ai-feedback` PR, stacked on `feature/rehearsal-review` while unmerged. Gemini/OpenAI adapters provide durable editable slide descriptions, explicit rehearsal coaching, separate provider disclosure, revision-aware retries and API-scoped offline review. Up to three suggestions show exact evidence and seek the existing player; edits make affected feedback stale, and explicit regeneration reuses the saved transcript. Provider selection remains backend configuration and feedback defaults to disabled. Independent review and controlled live flows passed for both providers; [the evaluation](docs/feedback-evaluation.md) records weak advice and description overstatement separately from structural validity. Human review and physical-phone checks remain pending.
+- [Demo Overview](#demo-overview)
+- [Technology Stack](#technology-stack)
+- [Environment & Prerequisites](#environment--prerequisites)
+- [Setup Instructions](#setup-instructions)
+- [How to Run the Demo](#how-to-run-the-demo)
+- [API Information](#api-information)
+- [What This Demo Demonstrates](#what-this-demo-demonstrates)
+- [Demo Video](#demo-video)
+- [Development & Verification](#development--verification)
 
-Detected no-speech saves an empty transcript, chronological visits with empty word lists, and timing metrics over the original recording duration, with zero provider requests. Repeated, backward and zero-duration visits remain visible in the result data.
+## Demo Overview
 
-The rehearsal-review snapshot passed independent AI review, **209 mobile tests**, TypeScript/lint and Android export. Coordinator checks passed Django system/migration checks, 74 tests on real PostgreSQL, API restart/media retrieval, and Android emulator review/recovery checks using the saved synthetic Whisper pilot without another provider call. Physical-phone/audible quality, native interruption/API-switch stress cases and human review remain pending. See [final evidence](docs/ai-use.md#2026-10-08--rehearsal-review-final-verification-and-publication) for exact coverage, review repairs and limitations.
+This `iteration-1-demo` branch contains the mobile app and backend needed to reproduce the recorded flow. It includes the Refactor Design UI and functional dependencies through `ce9f248`; no separate feature-branch merges are required.
 
-## Start here
+### Implemented Features
 
-- [Understand everything in this setup](docs/setup-explained.md)
-- [Divide the work and start teammate branches](docs/team-work-division.md)
-- [Team handoff and feature ownership](docs/iteration-1-handoff.md)
-- [API and timestamp contract](docs/api-contract.md)
-- [Submitted requirements mapped to code](docs/source-alignment.md)
-- [Verification and code review](docs/review.md)
+- **PDF library and practice setup:** import a PDF, preview its pages, and optionally describe the audience.
+- **Voice recording and slide tracking:** save an audio recording with chronological slide visits, including repeated and backward visits.
+- **Automatic transcription:** a new saved attempt opens review, uploads its PDF/audio, and requests hosted Whisper transcription after the first-use OpenAI disclosure.
+- **Synchronized review:** switch between Overview, Slides, and Transcript; play audio, seek from timed words or visits, and inspect time per slide and whole-rehearsal speaking rates.
+- **AI feedback:** explicitly generate suggestions, inspect supporting slide/transcript quotes, and seek to the evidence. Saved slide descriptions can be edited; affected feedback becomes stale until explicitly regenerated.
+- **Saved practice history:** browse attempts grouped by presentation and reopen recordings. Available media can be downloaded for offline review; upload and analysis failures retain recovery controls.
 
-```text
-mobile/                         Expo + React Native + TypeScript
-  src/app/                      Expo Router route files
-  src/features/pdf/             Library, viewer, PDF service interface
-  src/features/recording/       Rehearsal screen and recording interface
-  src/features/transcription/  Result screen and API interface
-  src/contracts/                Shared wire types
-  src/fixtures/                 Hand-written demo content
-backend/                        Django REST + Celery
-  rehearsals/models.py          Deck, slide, and attempt storage
-  rehearsals/services/          PDF, Whisper, alignment, Gemini entry points
-  rehearsals/tasks.py           Background task entry point
-compose.yaml                    Local PostgreSQL, Redis, API, worker, scheduler
-```
+## Technology Stack
 
-## Run Android
+| Layer | Technology |
+| --- | --- |
+| Android app | Expo SDK 57, React Native 0.86, React 19, TypeScript, Expo Router |
+| On-device storage and media | SQLite, Expo Audio, native PDF renderer |
+| Backend API | Django 5.2, Django REST Framework |
+| Background processing | Celery, Redis 7 |
+| Server database | PostgreSQL 16 |
+| Speech processing | Silero speech-presence check, OpenAI `whisper-1` |
+| Demo feedback provider | OpenAI `gpt-6-luna`, configured on the backend |
+| Local development | Docker Compose, Android development client, Metro |
 
-Install Node.js 24 LTS (minimum 22.13), npm, Android Studio, **JDK 17**, Android SDK Platform 36, and an emulator or USB-debug-enabled phone. This project uses Expo SDK 57 / React Native 0.86. Set both the shell's `JAVA_HOME` and Android Studio's project Gradle JDK to JDK 17. The local build using Android Studio's bundled Java 25 failed during Worklets/CMake setup. Expect the first native build to download Gradle and Android dependencies.
+The backend also supports a configurable Gemini feedback adapter. Provider selection and credentials stay on the backend.
 
-After the scaffold is merged into the repository:
+## Environment & Prerequisites
+
+- Node.js **24 LTS** and npm.
+- Android Studio, **JDK 17**, Android SDK Platform 36, and Android platform-tools (`adb`). Use JDK 17 for both the shell and Android Studio's Gradle JDK.
+- Docker with Docker Compose.
+- An Android phone with USB debugging enabled, or an Android emulator. The submitted video uses a **Samsung Galaxy S23 Ultra (SM-S918N)**.
+- Internet access and backend provider credentials for real transcription and feedback. Provider calls may incur charges.
+
+Local PDF import, recording, and replay work without provider keys. Native PDF, audio, and SQLite modules require the Android development build; use the build below rather than Expo Go.
+
+## Setup Instructions
+
+### 1. Clone the Demo Branch
 
 ```sh
-git clone https://github.com/snuhcs-course/swpp-2026-project-team-07.git
-cd swpp-2026-project-team-07/mobile
-npm ci
-cp .env.example .env
-npm run android
+git clone --branch iteration-1-demo --single-branch https://github.com/snuhcs-course/swpp-2026-project-team-07.git
+cd swpp-2026-project-team-07
 ```
 
-Start an emulator in Android Studio Device Manager first. `npm run android` generates the native Android project, builds and installs a development client, and starts Metro. No EAS account/cloud build is required.
-
-To open the native project in Android Studio, run `npm run prebuild:android`, then open **`mobile/android`** and allow Gradle sync. Keep `npm start` running when launching a debug app from Android Studio. Feature code is TypeScript under `mobile/src`; this is not a Kotlin/Compose project. Generated `android/` is ignored by Git. Configure native changes through `app.json` or Expo config plugins so teammates can regenerate them.
-
-If a macOS shell cannot find Java or Android tools:
-
-```sh
-export JAVA_HOME="$(/usr/libexec/java_home -v 17)"
-export ANDROID_HOME="$HOME/Library/Android/sdk"
-export PATH="$ANDROID_HOME/platform-tools:$PATH"
-```
-
-That Java command requires a macOS-registered JDK 17. If Gradle provisioned your JDK instead, point `JAVA_HOME` directly to its `Contents/Home` directory. The exact path used on the setup machine is recorded in [setup-explained.md](docs/setup-explained.md).
-
-Local PDF import, capture and saved-audio playback run without backend services or provider keys. SQLite stores one UUID, the prepared audio URI and audio-relative slide checkpoints per real recording. On restart, interrupted capture requires playable-audio recovery; an unfinalized/missing native file cannot be reconstructed. Upload retries retain the UUID, source audio and slide visits. Native PDF rendering and SQLite require a rebuilt Android development client, not Expo Go.
-
-Limits remain **10 slides, 20 MiB PDF, ten minutes (600,000 ms), and 25,000,000 audio bytes**. Legacy audio above the byte limit stays local and can still be played; make a shorter new recording to upload. New captures automatically continue from upload to analysis; first-use cancellation leaves them awaiting analysis. Deck mappings are scoped to the configured API address, and confirmed missing mappings are repaired before audio upload.
-
-## Review a saved rehearsal
-
-Open a presentation's rehearsal history in Library, then **Open saved rehearsal**. Cached entries appear before online refresh; a failed refresh retains them with a stale notice. History covers only locally known presentation mappings for the current API, not an account-wide archive. Entries distinguish local captures from server review copies and show date, duration, upload/processing state and media availability.
-
-Review prefers existing local audio/PDF. Use **Download audio for offline review** or **Download PDF for offline review** when needed; each succeeds independently. **Refresh** retries both rehearsal and presentation metadata, including a failed lookup that prevented PDF recovery. Downloads are bounded and validated with the native player/renderer before durable cache publication. They never create a local capture or PDF import, and failed downloads preserve original and previously valid files. Switching API addresses separates history, analysis and downloaded media.
-
-The native audio position drives PDF pages and timed word highlighting. Tap a timed word or visit, use previous/next visit or ±5 seconds; seeks preserve playing/paused intent. Backgrounding or leaving the screen pauses playback, and returning requires Play. Repeated/backward and instantaneous visits remain listed; simultaneous events use the last event. Missing alignment falls back to **Recorded navigation**. Partial/untimed text remains readable, and saved EN/KO rates explicitly use total rehearsal time including silence. See the [review contract](docs/api-contract.md#mobile-rehearsal-review).
-
-## Run the backend
-
-Install Docker Desktop or another Docker Compose-compatible runtime. From the repository root:
-
-If macOS reports `docker: command not found` after installing Docker Desktop, first run `export PATH="/Applications/Docker.app/Contents/Resources/bin:$PATH"` in that terminal.
+### 2. Configure and Start the Backend
 
 ```sh
 cp backend/.env.example backend/.env
+```
+
+Edit the ignored `backend/.env`:
+
+| Setting | Value |
+| --- | --- |
+| `OPENAI_API_KEY` | Your OpenAI API key |
+| `FEEDBACK_ENABLED` | `true` |
+| `FEEDBACK_PROVIDER` | `openai` |
+| `FEEDBACK_OPENAI_MODEL` | `gpt-6-luna` |
+| `FEEDBACK_OPENAI_PROJECT_ID` | The project used by your key |
+| `FEEDBACK_OPENAI_RPM` / `FEEDBACK_OPENAI_TPM` | Positive application allowances appropriate for your account |
+
+Keep the other local defaults. These application allowances are not a monetary cap or a guarantee of provider capacity; the detailed [configuration notes](docs/iteration-1-demo.md#2-start-the-backend) explain admission accounting. Never put keys in `EXPO_PUBLIC_*` or commit `.env` files.
+
+```sh
 docker compose up --build
 ```
 
-This starts PostgreSQL, Redis, Django on port 8000, a Celery worker and periodic recovery scheduler, with persistent database/media volumes. The API container applies migrations. Ports bind to loopback. This is a local development configuration; authentication and production deployment are separate work.
-
-`http://127.0.0.1:8000/api/health/` checks API liveness. `/api/ready/` checks database/broker connectivity, not AI implementation or worker readiness. Check the worker using `docker compose exec worker celery -A config inspect ping`.
-
-For local Python development:
+Keep this terminal running. Compose starts the API, database, Redis, worker, and scheduler, and applies migrations. In another terminal at the repository root, verify readiness:
 
 ```sh
-cd backend
-python3.12 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt
-cp .env.example .env
+curl --fail http://127.0.0.1:8000/api/health/
+curl --fail http://127.0.0.1:8000/api/ready/
+docker compose exec worker celery -A config inspect ping
 ```
 
-Run `docker compose up -d db redis` from the repository root. Then run `python manage.py migrate` and `python manage.py runserver 0.0.0.0:8000` from `backend/`. In separate activated terminals, run `celery -A config worker --loglevel=info` and `celery -A config beat --loglevel=info --schedule=/tmp/outloud-celerybeat`. Keep one scheduler running. It republishes durable queued rows and recovers expired claims every 30 seconds.
+### 3. Build and Start the Android App
 
-The SQLite `config.test_settings` setup is for automated tests; persistent development and concurrency validation require PostgreSQL, Redis, the worker and scheduler. A successful SQLite test or Android JavaScript export does not establish worker recovery or device behavior.
-
-The dependency lock includes `silero-vad==6.2.0`, `torch==2.10.0`, `torchaudio==2.10.0`, `onnxruntime==1.23.2`, `numpy==2.2.6`, and `av==16.1.0`. Silero's packaged ONNX model runs on CPU; there are no local Whisper dependencies or model downloads. PyAV decodes only a temporary in-memory waveform for presence detection; hosted transcription receives the original audio bytes unchanged. Decode/model failures stop recoverably before provider submission.
-
-The coordinator's dependency audit reports two residual Torch advisories after this upgrade: PT2 loading (`PYSEC-2026-139`) and `torch.jit.script` (`PYSEC-2025-194`). The current gate uses neither affected operation on uploaded data; this is not an audit-clean dependency set. See the [dependency assessment](docs/whisper-transcription.md#packaged-gate-dependency-assessment-2026-10-08) for source paths, evidence and remaining risk.
-
-Regenerate the lock with `uv pip compile backend/requirements.in -o backend/requirements.txt --cache-dir /tmp/onloud-uv-cache` from the repository root (append `--offline` when the cache is populated). Install through the setup above; native CPU/runtime packaging must also be verified in the coordinator's Linux/Compose environment.
-
-## Saved-deck descriptions (checkpoint 2)
-
-Apply additive migrations with `python manage.py migrate`. Use the same worker and
-Beat setup above; `rehearsals.tasks.recover_work` now also recovers description jobs.
-Explicit `POST /api/decks/{id}/descriptions/generate/` or the coaching admission below can queue description
-work. GET is read-only; PATCH saves a complete set with its current description
-revision. See the [wire contract](docs/api-contract.md#durable-slide-descriptions-checkpoint-2).
-The saved-rehearsal feedback panel now exposes explicit generation, disclosure and description editing; checkpoint 3 supplies its coaching orchestration below.
-
-Checkpoint 2 passed independent AI review, Django system/migration checks and
-172 tests on real PostgreSQL. Synthetic checks verified Redis/Celery/Beat
-recovery and API/database restart with unchanged saved media. See the
-[checkpoint evidence](docs/ai-use.md#2026-10-08--ai-feedback-checkpoint-2-coordinator-handoff).
-Human inspection remains pending. Checkpoint-4 coordinator evidence for the mobile
-feedback controls is linked below; live-provider quality is evaluated separately.
-
-In backend configuration, set `FEEDBACK_ENABLED=true`; an omitted `FEEDBACK_PROVIDER`
-selects `openai`, while explicit `gemini` remains supported. Configure that provider's
-model, key and nonsecret `FEEDBACK_*_PROJECT_ID`.
-Positive `FEEDBACK_*_RPM` and `FEEDBACK_*_TPM` values are required for outbound work;
-missing values fail generation safely without breaking startup or Whisper.
-`FEEDBACK_*_DAILY_REQUEST_LIMIT` is optional. Use verified account allowances,
-with headroom for other callers; no free-tier values are assumed. Reservations
-use serialized UTF-8 request bytes plus maximum output tokens as conservative
-application units, not provider-perfect token counts or a monetary cap.
-Gemini daily windows use America/Los_Angeles midnight; OpenAI's optional daily
-ceiling is an application policy using UTC midnight.
-
-Gemini local RPM/TPM/daily exhaustion or shared cooldown stops that generation
-with `failed` / `quota_stopped` and preserves `retry_at`. After that time, refresh
-and explicitly retry with the current revision. Legacy Gemini quota waits also
-stop when claimed or recovered, even after expiry or a default-provider change.
-OpenAI local quota waits still resume automatically in the same generation.
-Actual provider 429 responses retain `provider_rate_limit`, Retry-After and explicit
-retry for both providers. Saved receipts recover without another call; uncertain
-submissions still require acknowledgement. Saved jobs/retries keep their provider.
-
-Defaults remain exactly `gemini-3.1-flash-lite` / `gpt-6-luna`, configurable, with
-feedback disabled until configured and no substitution or fallback. New Gemini
-requests use provider-specific wire schemas; local validation and OpenAI's strict
-schemas are unchanged. See [schema compatibility](docs/ai-feedback.md#checkpoint-5-gemini-schema-compatibility).
-Saved retries retain provider/project/model/prompt/schema/source selection,
-including the legacy wire schema; retrying an old rejected set does not upgrade it.
-Project configuration changes block old submissions; same-project key rotation is
-allowed. Unknown submitted outcomes retain reservations and require explicit
-acknowledgement before a new generation. Saved receipts recover without another
-call, including after completion-write failure. After retry or editing supersedes
-a job (even one already awaiting confirmation), recovery finalizes its late saved
-receipt as private request evidence and preserves newer work and descriptions.
-Known invalid responses require explicit retry. Correct completed content
-with PATCH, not paid regeneration. Read the
-[recovery validation recipe](docs/ai-feedback.md#checkpoint-2-coordinator-validation)
-before claiming real PostgreSQL/Redis/Celery recovery. Local tests use synthetic
-sources and mocked providers; no live provider or device validation is claimed.
-
-## Saved-rehearsal coaching (checkpoint 3)
-
-Apply migration `0006_durable_coaching` with the ordinary migration command; use
-that same worker/Beat setup. Explicit `POST /api/attempts/{id}/feedback/generate/`
-with `{}` admits one saved analysis. `GET /api/attempts/{id}/feedback/`, attempt
-GET/history and replay are read-only. Upload and Analyze never generate coaching.
-No-speech, missing/invalid transcript or alignment is rejected before either paid
-stage; no recording is retranscribed. Configuration failure leaves Whisper and
-cached results available.
-
-A cache hit submits coaching only; missing descriptions use the existing durable
-description job, then Beat continues coaching. A failed/uncertain dependency is
-never automatically paid-retried. Use its exposed `description_set_id` and
-`processing_revision` with the **description generate route** (and its own
-uncertainty acknowledgement); refresh feedback afterward. Coaching's failed or
-stale retry uses `feedback_revision` with the **feedback generate route**. An
-unknown coaching outcome additionally requires `acknowledge_uncertain: true`.
-This includes saved 408/5xx or incomplete 200 receipts awaiting normalization when
-a description edit makes the analysis stale.
-Description PATCH uses `description_revision`, a third independent revision.
-Feedback freshness includes description-dependency and current coaching-receipt
-transitions, so delayed refresh responses cannot overwrite newer failure actions
-or restore confirmation already resolved by a late receipt after an edit.
-See the [complete wire contract](docs/api-contract.md#durable-rehearsal-coaching-checkpoint-3).
-
-Results retain exact original word indexes, captured description facts and derived
-integer audio ranges. `accepted`, `partial`, valid `empty` and `all_invalid` remain
-distinct; valid empty says “No supported suggestions.” Prior suggestions can remain
-visible as stale alongside a current failure or uncertain outcome. Evidence
-validation proves references, not semantic correctness or advice quality.
-
-Run the full backend and mobile checks below. New PostgreSQL-only races are in
-`rehearsals.test_coaching.ConcurrentCoachingTests`; the populated migration test
-preserves checkpoint-2 descriptions/requests/reservations plus attempts and Whisper.
-Actual writer outcomes are in [AI-use](docs/ai-use.md). Real PostgreSQL/Redis/Celery
-crash/restart validation belongs to the coordinator, using synthetic fake providers.
-Checkpoint-3/4 coordinator infrastructure and emulator outcomes are recorded in
-AI-use; they do not establish this new repair's live compatibility, quality or human review.
-
-## Feedback review (checkpoint 4)
-
-In a saved rehearsal, **Generate feedback** refreshes the current revisions and
-provider selection before any submission. First use names Gemini or OpenAI and the
-configured model, explains the slide images/text, descriptions, saved transcript
-and optional audience context sent, and explicitly excludes audio. Continue/Cancel
-are separate from Whisper consent. Consent is local to the normalized API address,
-provider and disclosure version. Mobile supplies `expected_selection`; a changed
-selection returns 409 before admission. On a mismatch, review the refreshed disclosure
-and choose generation again. Legacy callers may omit that optional field and
-therefore do not get this disclosure-race comparison guard. Saved retries retain
-their original provider/model. There is no provider picker.
-
-Cached suggestions and descriptions open immediately. Failed refreshes retain them
-with a stale/offline notice. Active jobs, description dependencies and OpenAI quota waits
-poll only while focused and foregrounded. A timeout leaves the submission unknown:
-refresh precedes another action, and an unresolved paid request needs a separate
-charge acknowledgement. Failed description dependencies use their own set and
-processing revision. Reading, editing, downloading, refreshing and returning to
-the screen start neither provider work nor playback.
-
-Cards say **AI suggestions — check the evidence**. Partial, supported empty and
-failed/all-invalid outputs are distinct. Quotes expand as **Slide description**
-(with captured generated/edited-set origin, unavailable for legacy snapshots) and
-**Transcript excerpt**. Valid evidence seeks through the existing player and native
-PDF clock, preserving playing/paused intent; stale/invalid evidence or absent
-media/page metadata disables that action while leaving text readable. Seeking goes
-to the evidence start; it does not automatically play or stop at the excerpt end.
-See [small illustrative suggestions](docs/ai-feedback.md#illustrative-feedback-experience)
-for consistency, clarity and optional-audience examples, distinct from measured output.
-
-Validated saved descriptions remain readable and editable if presentation metadata
-cannot load; evidence playback still requires known actual pages. Expand a slide's
-description to edit existing summary, key-idea and visual
-fact text/uncertainty. Save submits the entire set with its captured revision;
-other slides/source IDs stay intact. Conflict/timeout keeps the draft and offers
-Reload/Cancel; Reload resumes active-job polling while focused and foregrounded.
-Generation is disabled while editing. Save does not generate feedback
-or retranscribe audio; choose **Regenerate feedback** explicitly afterward.
-
-Checkpoint 4 passed independent review, **270 mobile tests**, TypeScript/lint,
-Android JS export, Django system/migration checks, **229 SQLite tests (18 skips)**
-and **229/229 real PostgreSQL tests**. Agent-operated emulator checks covered
-disclosure/cancellation, editing/staleness/regeneration, offline restart and evidence
-seek with synthetic providers. See [coordinator evidence](docs/ai-use.md#2026-10-08--checkpoint-4-coordinator-verification).
-The final checkpoint-5 backend passed **247 SQLite tests (18 PostgreSQL-only skips)**, **247/247 PostgreSQL tests**, system/migration checks and independent review. Real-worker saved-v2/new-v3 receipt recovery preserved one provider-stub call per case. Controlled `gemini-3.1-flash-lite` and `gpt-6-luna` description/coaching runs each completed two synthetic cases without another Whisper request; refresh, duplicate jobs and restart reused results. All seven accepted live cards passed mobile parsing/seek validation. The [evaluation record](docs/feedback-evaluation.md) includes earlier Gemini rejections, diagnostic calls, partial output, token usage and agent-assessed quality limits. Physical-phone listening/synchronization, accessibility, extended text/keyboard usability and human usefulness testing remain pending.
-
-## App connection
-
-- Emulator: `EXPO_PUBLIC_API_URL=http://10.0.2.2:8000/api` in `mobile/.env`.
-- USB phone: run `adb reverse tcp:8000 tcp:8000`, use `http://127.0.0.1:8000/api`, and restart Metro.
-- Tap **Check connection** in the Library screen.
-
-Provider keys belong only in ignored `backend/.env`. Never use `EXPO_PUBLIC_*` for secrets. Storage/upload endpoints call no providers. After a new capture uploads, the mobile flow calls `/attempts/{id}/process/` following first-use disclosure; older/cancelled recordings retain Analyze and failures retain explicit Retry. Missing keys and provider rejection fail safely while retaining source audio.
-
-## Checks
+Connect the phone, accept its USB debugging prompt, and confirm it appears as `device` in `adb devices`.
 
 ```sh
 cd mobile
 npm ci
+cp .env.example .env
+```
+
+Set `mobile/.env`:
+
+```dotenv
+EXPO_PUBLIC_API_URL=http://127.0.0.1:8000/api
+EXPO_PUBLIC_UI_LAYOUT=refactor
+```
+
+Then build and launch:
+
+```sh
+adb reverse tcp:8000 tcp:8000
+adb reverse tcp:8081 tcp:8081
+npm run android -- --device
+```
+
+Select the physical phone when prompted. Keep USB connected and Metro running. The first build downloads native dependencies and can take several minutes.
+
+For later sessions, start the backend with `docker compose up`, run `npm start` from `mobile/`, repeat the port-forwarding commands, and open the installed app. Restart Metro after changing `.env`. If Metro selects a different port, forward that port instead of 8081. For an emulator, use `http://10.0.2.2:8000/api` as the API URL.
+
+See [detailed Android setup](docs/iteration-1-demo.md#3-build-and-open-the-app-on-a-physical-android-phone) for macOS PATH/JDK setup and multiple-device notes.
+
+## How to Run the Demo
+
+1. Copy the included [Neural Networks PDF](docs/demo/Neural_Networks_7_Slides.pdf) to the phone. Open OutLoud → **Import PDF** and select it.
+2. Preview the slides and enter an audience, such as “students learning about machine learning.”
+3. Start a rehearsal, record your voice, and move forward and backward through slides. Stop to save the attempt.
+4. Review the upload/transcription state. Accept the first-use OpenAI disclosure if prompted. The PDF/audio upload happens before that disclosure; cancelling leaves the server upload saved.
+5. Explore **Overview**, **Slides**, and **Transcript**. Play the recording, tap a timed word or slide visit, and inspect slide totals.
+6. Select **Generate feedback**, accept its separate provider disclosure if prompted, and wait for the result. Expand supporting quotes and use **Review evidence** to seek to the linked moment.
+7. Record another attempt, then open **Practice** to see both attempts grouped under the presentation.
+
+The [extended walkthrough](docs/iteration-1-demo.md#4-simple-feature-walkthrough) also covers editing slide descriptions and regenerating stale feedback. Reading history, switching review tabs, or replaying audio does not generate new coaching. AI wording may differ between runs.
+
+## API Information
+
+This demo uses a local development backend. No public production API is required.
+
+| Endpoint | Purpose |
+| --- | --- |
+| `http://127.0.0.1:8000/api` | API base for the USB-forwarded phone |
+| `/api/health/` | API liveness |
+| `/api/ready/` | Database and broker connectivity |
+
+A successful readiness response does not establish worker readiness; use the Celery ping above. Database and media persist in Docker volumes. Keep those volumes when restarting a demo whose recordings should remain available.
+
+For upload, transcription, alignment, feedback, retry, and timestamp formats, see the [API contract](docs/api-contract.md). The local configuration is not an authenticated production deployment.
+
+## What This Demo Demonstrates
+
+The submitted recording shows PDF selection and preview, audience entry, a new spoken rehearsal with repeated slide visits, completed transcription, slide timing summaries, playback and seeking, completed AI suggestions with supporting quotes and evidence seeking, another recording, and grouped saved attempts.
+
+The opening minute also browses an older silent rehearsal. The new neural-networks rehearsal starts around **1:50**; its results appear around **3:10**. The earlier no-speech result is separate from the new spoken attempt.
+
+Current limits are **10 slides**, **20 MiB per PDF**, **10 minutes per capture**, and **25,000,000 uploaded audio bytes**. Speaking-rate estimates use total rehearsal time, including silence.
+
+Description editing/regeneration, offline downloads, and failure recovery are implemented but not demonstrated in this recording. Selected-slide retry selection, attempt comparison, spoken key-idea summaries, filler/pause flags, per-slide pace, and full attempt/deck deletion are outside this snapshot. **Remove PDF** only removes the local library PDF.
+
+## Demo Video
+
+**[Watch the Iteration 1 demo (MP4)](docs/demo/iteration-1-demo.mp4)**
+
+A **6:42** screen recording made by the user on a physical Galaxy S23 Ultra. The repository copy retains the full timeline and original AAC audio, with smaller video dimensions for packaging. No captions were added.
+
+| Approximate time | Feature |
+| --- | --- |
+| 0:00 | Home, existing presentation and saved review |
+| 1:05 | Import neural-networks PDF, preview slides and enter audience |
+| 1:50 | Record speech while moving between slides |
+| 3:05 | Automatic processing, transcript completion and timing summary |
+| 3:30 | Request feedback; inspect slide totals and chronological visits |
+| 4:05 | Audio controls, visit seeking and transcript word highlighting |
+| 4:55 | Completed feedback, evidence seeking and supporting quotes |
+| 5:50 | Record another attempt |
+| 6:25 | Grouped Practice history |
+
+See the [recording and verification record](docs/iteration-1-demo.md#recording-and-verification-record) for inspection coverage and limits.
+
+## Development & Verification
+
+```sh
+cd mobile
 npm run check
 npm run bundle:android
 ```
 
-```sh
-cd backend
-.venv/bin/python manage.py check --settings=config.test_settings
-.venv/bin/python manage.py test --settings=config.test_settings
-.venv/bin/python manage.py makemigrations --check --dry-run --settings=config.test_settings
-```
-
-Unit tests use in-memory SQLite. PostgreSQL-specific processing/upload/description/coaching races are explicitly skipped there. Run them separately against the real test database with `.venv/bin/python manage.py test rehearsals.test_processing.ConcurrentProcessingTests rehearsals.test_storage.ConcurrentUploadTests rehearsals.test_descriptions.ConcurrentDescriptionTests rehearsals.test_coaching.ConcurrentCoachingTests --settings=config.settings` from `backend/` with test-database privileges. Never substitute SQLite for that evidence. Verify scheduler restart, missed broker publication, worker termination before/after submission and after raw persistence, Android lifecycle/cache/replay, and a consented hosted pilot separately.
-
-A submitted marker means a request may have reached the provider. SDK timeout is 120 seconds, task limit 300 seconds, and claim expiry 360 seconds. Automatic provider/SDK retries are disabled. Received raw output and successful transcripts are reused. Ambiguous outbound failures require explicit acknowledgement before a new generation; this does not promise provider exactly-once execution or a monetary cap.
-
-## Team branches
-
-Once the reviewed scaffold reaches `main`:
+With Compose running, from the repository root:
 
 ```sh
-git switch main
-git pull --ff-only origin main
-git switch -c feature/pdf-viewer
-# Implement, test, and arrange teammate review.
-git add <your-changed-files>
-git commit -m "Add PDF import and slide viewer"
-git push -u origin feature/pdf-viewer
+docker compose exec api python manage.py check --settings=config.test_settings
+docker compose exec api python manage.py test --settings=config.test_settings
+docker compose exec api python manage.py makemigrations --check --dry-run --settings=config.test_settings
 ```
 
-Use `feature/recording-tracking` and `feature/whisper-alignment` for the other workstreams. Coordinate changes to shared types, models/migrations, routes, and dependency locks. Follow the submitted team agreement on teammate review/testing before push, then use pull requests for merge review. Never force-push `main`.
+The prepared snapshot passed **300 mobile tests**, TypeScript, lint/layout-boundary checks and Android JavaScript export. Backend system/migration checks and **277 SQLite tests (18 PostgreSQL-only skips)** passed using the existing Python environment. These results do not claim a fresh native APK or Docker-image build. Real database/worker checks, independent AI review, and device evidence are recorded with their boundaries in [AI-use](docs/ai-use.md).
 
-## Tool references
+Start new work from updated `main` on a task branch. Follow the submitted team agreement on teammate review/testing before push, then use pull requests for merge review. Follow [AGENTS.md](AGENTS.md) for staged review and user final inspection; AI review is separate from human approval. Never force-push shared history.
 
-- [Expo local Android builds](https://docs.expo.dev/guides/local-app-development/)
-- [Expo Router](https://docs.expo.dev/router/installation/)
-- [Expo audio](https://docs.expo.dev/versions/v57.0.0/sdk/audio/)
-- [Expo document picker](https://docs.expo.dev/versions/v57.0.0/sdk/document-picker/)
-- [Celery with Django](https://docs.celeryq.dev/en/stable/django/first-steps-with-django.html)
-- [React Native Java setup](https://reactnative.dev/docs/set-up-your-environment#java-development-kit)
+- [Setup explained](docs/setup-explained.md)
+- [Feature boundaries and team handoff](docs/iteration-1-handoff.md)
+- [Work division](docs/team-work-division.md)
+- [Requirements mapped to implementation](docs/source-alignment.md)
+- [Verification and review](docs/review.md)
+- [Transcription pipeline](docs/whisper-transcription.md) · [Alignment](docs/word-alignment.md)
+- [AI feedback implementation](docs/ai-feedback.md) · [Feedback evaluation](docs/feedback-evaluation.md)
+- [Frontend layout contracts](docs/ui-layouts.md)
 
-The submitted proposal defines the stack. Expo template assets/license remain under `mobile/`.
+Historical checkpoint results and prior phone-session configurations remain in their linked records; use this README and the branch-specific demo setup for reproduction.

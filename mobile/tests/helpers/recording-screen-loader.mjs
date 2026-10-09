@@ -4,11 +4,11 @@ import ts from 'typescript';
 export function resolve(specifier, context, nextResolve) {
   if (specifier === 'react-native-pdf') return { url: new URL('./recording-screen-pdf.mjs', import.meta.url).href, shortCircuit: true };
   if (specifier === 'expo-audio') return { url: new URL('./recording-screen-audio.mjs', import.meta.url).href, shortCircuit: true };
-  if (['react-native', 'expo-router', 'expo-router/react-navigation'].includes(specifier) || specifier.endsWith('/ui/components') || specifier.endsWith('/SlidePreview')) {
+  if (['react-native', 'expo-router', 'expo-router/react-navigation', 'expo-status-bar', 'react-native-safe-area-context'].includes(specifier) || specifier.endsWith('/ui/components') || specifier.endsWith('/refactor/components') || (specifier === './components' && context.parentURL?.includes('/layouts/refactor/')) || specifier.endsWith('/SlidePreview')) {
     return { url: new URL('./recording-screen-ui.mjs', import.meta.url).href, shortCircuit: true };
   }
   if (specifier.startsWith('.') && context.parentURL) {
-    for (const extension of ['', '.ts', '.tsx']) {
+    for (const extension of ['', '.ts', '.tsx', '/index.ts', '/index.tsx']) {
       const url = new URL(specifier + extension, context.parentURL);
       if (/\.tsx?$/.test(url.pathname) && existsSync(url)) return { url: url.href, shortCircuit: true };
     }

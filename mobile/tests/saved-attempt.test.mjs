@@ -246,6 +246,10 @@ test('a newly finished recording uploads then starts transcription once without 
     assert.equal(getSavedAttempt(id).auto_process_api, undefined);
     assert.equal(getSavedAttempt(id).recording.audio_uri, original.audio_uri);
     assert.deepEqual(getSavedAttempt(id).recording.slide_events, original.slide_events);
+    for (const tab of ['slides', 'transcript', 'overview']) {
+      await tick(() => tree.root.findByType('tab-bar').props.onChange(tab));
+    }
+    assert.equal(network.requests.filter(r => r.url.includes('/feedback/') && r.method === 'POST').length, 0);
     await tick(() => tree.unmount()); tree = await mount(id);
     await tick(() => action(tree, 'Refresh').props.onPress());
     assert.equal(network.requests.filter(r => r.url.endsWith('/process/')).length, 1);

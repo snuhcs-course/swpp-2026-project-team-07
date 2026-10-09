@@ -41,7 +41,7 @@ async function close(tree) { await act(async () => tree.unmount()); }
 async function savedEvents(tree, duration = 2000) {
   captures.at(-1).durationMillis = duration;
   await press(tree, 'Stop recording');
-  await press(tree, 'Listen to recording');
+  await press(tree, 'Open review');
   assert.equal(savedRoute().recording.audio_uri, 'file:///test.m4a');
   return savedRoute().recording.slide_events;
 }
@@ -145,7 +145,7 @@ test('stop freezes capture and blocks PDF navigation while native finalization i
     assert.equal(action(tree, 'Next slide').props.disabled, true);
     await tick(() => pdf(tree).props.onPageChanged(2, 6));
     await tick(() => finish());
-    await press(tree, 'Listen to recording');
+    await press(tree, 'Open review');
     assert.deepEqual(savedRoute().recording.slide_events, [{ slide_index: 0, at_ms: 0 }]);
   } finally { finish?.(); await close(tree); }
 });
@@ -227,15 +227,16 @@ test('two real-PDF recordings preserve distinct audio, selected page and native 
     captures.at(-1).uri = 'file:///first.m4a';
     await press(tree, 'Start recording');
     await press(tree, 'Stop recording');
-    await press(tree, 'Listen to recording');
+    await press(tree, 'Open review');
     assert.equal(savedRoute().recording.audio_uri, 'file:///first.m4a');
+    await press(tree, 'Record again');
     assert.equal(action(tree, 'Start recording').props.disabled, true);
     await loaded(tree, 3, 6);
     captures.at(-1).uri = 'file:///second.m4a';
     await press(tree, 'Start recording');
     captures.at(-1).durationMillis = 1800;
     await press(tree, 'Stop recording');
-    await press(tree, 'Listen to recording');
+    await press(tree, 'Open review');
     assert.equal(savedRoute().recording.audio_uri, 'file:///second.m4a');
     assert.equal(savedRoute().page_count, 6);
     assert.equal(savedRoute().recording.duration_ms, 1800);
@@ -258,7 +259,7 @@ test('prepared URI is durable; failed checkpoint and interruption still release 
     await tick(() => pdf(tree).props.onPageChanged(1, 6));
     assert.equal(captures[0].released, true);
     assert.ok(action(tree, 'Try recording again'));
-    assert.equal(action(tree, 'Listen to recording'), undefined);
+    assert.equal(action(tree, 'Open review'), undefined);
   } finally { sqliteFaults.before = null; await close(tree); }
 });
 
@@ -301,4 +302,31 @@ test('native start failure needs only one durable write to retain prepared audio
     assert.equal(captures[0].released, true);
     assert.match(JSON.stringify(tree.toJSON()), /native start failed/);
   } finally { sqliteFaults.before = null; await close(tree); }
+});
+
+test('session completion waits for durable save, reports actual duration, and Record again returns to ready', async () => {
+  const tree = await mount(); let finish;
+  const contents = () => JSON.stringify(tree.toJSON());
+  try {
+    await loaded(tree);
+    await press(tree, 'Start recording');
+    captures[0].durationMillis = 2345;
+    captures[0].stopWait = new Promise(resolve => { finish = resolve; });
+    await press(tree, 'Stop recording');
+    assert.doesNotMatch(contents(), /Session saved/);
+    await tick(() => finish());
+    assert.match(contents(), /Session saved/);
+    assert.match(contents(), /0:02/);
+    assert.doesNotMatch(contents(), /Presentation complete/);
+    await press(tree, 'Open review');
+    assert.equal(savedRoute().recording.duration_ms, 2345);
+    await press(tree, 'Record again');
+    assert.equal(captures.at(-1).isRecording, false);
+    assert.match(contents(), /0:00/);
+    assert.doesNotMatch(contents(), /0:02/);
+    assert.equal(action(tree, 'Open review'), undefined);
+    assert.equal(action(tree, 'Start recording').props.disabled, true);
+    await loaded(tree);
+    assert.equal(action(tree, 'Start recording').props.disabled, false);
+  } finally { finish?.(); await close(tree); }
 });

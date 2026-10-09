@@ -66,7 +66,7 @@ test('Back finalizes capture and keeps the audio available before leaving', asyn
     await press(tree, 'Start recording');
     await act(async () => { assert.equal(requestBack(), true); await new Promise(setImmediate); });
     assert.equal(captures[0].isRecording, false);
-    await press(tree, 'Listen to recording');
+    await press(tree, 'Open review');
     assert.equal(routes.at(-1).params.audioUri, 'file:///test.m4a');
   } finally { await act(async () => tree.unmount()); }
 });
@@ -96,7 +96,7 @@ test('two rapid Start presses create one capture and repeated recordings reset t
     await press(tree, 'Stop recording');
     await press(tree, 'Start recording');
     await press(tree, 'Stop recording');
-    await press(tree, 'Listen to recording');
+    await press(tree, 'Open review');
     assert.deepEqual(JSON.parse(routes.at(-1).params.slideEvents), [{ slide_index: 1, at_ms: 0 }]);
   } finally { await act(async () => tree.unmount()); }
 });
@@ -128,7 +128,7 @@ test('a delayed native error after Stop resolves cannot silently expose failed a
     };
     await press(tree, 'Stop recording');
     assert.equal(actions(tree).some(item => item.props.label === 'Try recording again'), true);
-    assert.equal(actions(tree).some(item => item.props.label === 'Listen to recording'), false);
+    assert.equal(actions(tree).some(item => item.props.label === 'Open review'), false);
   } finally { await act(async () => tree.unmount()); }
 });
 
@@ -158,6 +158,6 @@ test('retrying a failed second capture never presents the previous recording as 
     await press(tree, 'Start recording');
     await act(async () => captures.at(-1).emitError());
     await press(tree, 'Try recording again');
-    assert.equal(actions(tree).some(item => item.props.label === 'Listen to recording'), false);
+    assert.equal(actions(tree).some(item => item.props.label === 'Open review'), false);
   } finally { await act(async () => tree.unmount()); }
 });

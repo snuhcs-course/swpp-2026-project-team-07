@@ -47,6 +47,60 @@ beforeEach(() => {
   removeStored(`analysis:v1:${encodeURIComponent(api)}:${attemptId}`); removeStored(`attempt:${attemptId}`);
 });
 
+test('review panels retain the same player and playing intent without requesting generation', async () => {
+  seed(); const tree = await mount();
+  try {
+    const first = tree.root.findByType('screen').findAll(node => typeof node.type === 'string')[1];
+    assert.equal(first.type, process.env.EXPO_PUBLIC_UI_LAYOUT === 'contract-test' ? 'view' : 'tab-bar', 'Alternate layout moves the player above content and tabs below it.');
+    await tick(() => action(tree, 'Download audio for offline review').props.onPress());
+    await tick(() => action(tree, 'Play').props.onPress());
+    const player = players.at(-1), played = playback.played, paused = playback.paused;
+    const tabs = () => tree.root.findAllByType('tab-bar')[0];
+    assert.ok(tabs(), 'Review exposes Overview, Slides and Transcript navigation');
+    assert.equal(tabs().props.value, 'overview');
+    for (const value of ['slides', 'transcript', 'overview']) {
+      await tick(() => tabs().props.onChange(value));
+      assert.equal(tabs().props.value, value);
+      assert.equal(players.at(-1), player);
+      let transcript = tree.root.findAllByType('text').find(n => n.props.children === 'Transcript');
+      while (transcript && transcript.type !== 'panel') transcript = transcript.parent;
+      assert.ok(transcript);
+      assert.equal(transcript.props.visible, value === 'transcript');
+      assert.ok(action(tree, 'Pause'));
+    }
+    assert.equal(playback.played, played); assert.equal(playback.paused, paused);
+    assert.ok(network.requests.every(r => r.method === 'GET'));
+  } finally { await tick(() => tree.unmount()); }
+});
+
+for (const aligned of [true, false]) test(`${aligned ? 'aligned' : 'recorded'} slide timing shows actual ranges and totals across repeated and instantaneous visits`, async () => {
+  const events = [{ slide_index: 0, at_ms: 0 }, { slide_index: 1, at_ms: 10000 }, { slide_index: 0, at_ms: 40000 }, { slide_index: 1, at_ms: 40000 }, { slide_index: 0, at_ms: 45250 }];
+  const visits = events.map((event, i) => ({ slide_index: event.slide_index, start_ms: event.at_ms, end_ms: events[i + 1]?.at_ms ?? 50000, words: [] }));
+  const result = wireResult({ duration_ms: 50000, slide_events: events, visits: aligned ? visits : null, metrics: null,
+    analysis_outcome: 'no_speech', transcript: { text: '', words: [] } });
+  seed(result); network.respond = () => { throw Error('offline'); };
+  const tree = await mount();
+  try {
+    await tick(() => tree.root.findAllByType('tab-bar')[0].props.onChange('slides'));
+    const summary = tree.root.findAllByType('card').find(card => text({ toJSON: () => card }).includes('Time by slide'));
+    assert.ok(summary, 'Timing remains readable offline before any audio download or analysis.');
+    const slideRows = summary.findAllByType('view').filter(row => row.findAllByType('text').some(n => ['Slide 1', 'Slide 2'].includes(flatten(n))));
+    assert.ok(slideRows.some(row => { const value = flatten(row); return value.includes('Slide 1') && value.includes('14.75 sec total') && value.includes('0–10 sec, 40–40 sec, 45.25–50 sec'); }));
+    assert.ok(slideRows.some(row => { const value = flatten(row); return value.includes('Slide 2') && value.includes('35.25 sec total') && value.includes('10–40 sec, 40–45.25 sec'); }));
+    const visitActions = () => tree.root.findAllByType('action').filter(n => n.props.label.startsWith('Visit '));
+    assert.equal(visitActions().length, 5);
+    assert.ok(visitActions().every(n => n.props.disabled));
+    assert.match(visitActions()[2].props.label, /instantaneous/);
+    validationAudio.status = { isLoaded: true, duration: 50, error: null };
+    network.respond = url => url.includes('/decks/') ? response(200, deckWire) : url.endsWith(`/attempts/${attemptId}/`) ? response(200, result) : new Response(new Uint8Array([1, 2, 3]), { status: 200 });
+    await tick(() => action(tree, 'Download audio for offline review').props.onPress());
+    await tick(() => visitActions()[1].props.onPress());
+    await tick(() => visitActions()[4].props.onPress());
+    assert.deepEqual(playback.seeks, [10, 45.25]);
+    assert.ok(network.requests.every(r => r.method === 'GET'));
+  } finally { await tick(() => tree.unmount()); }
+});
+
 test('offline upgrade opens a local capture with only its base-stage analysis cache', async () => {
   const result = wireResult();
   saveAnalysis(api, result);
@@ -233,7 +287,7 @@ for (const [label, target] of [['+5 seconds', 7], ['−5 seconds', 0]]) {
       const player = players.at(-1);
       await tick(() => player.emit({ currentTime: 2, duration: 10, playing: false, didJustFinish: false }));
       await tick(() => [...player.listeners].forEach(callback => callback({ ...player.currentStatus, currentTime: 10, didJustFinish: true })));
-      assert.match(text(tree), /2 \/ 10 seconds/);
+      assert.deepEqual(tree.root.findByProps({ accessibilityLabel: 'Audio progress' }).props.accessibilityValue, { min: 0, max: 10000, now: 2000 });
       assert.equal(tree.root.findAllByType('pdf').find(n => n.props.style.width === '100%').props.page, 1);
       assert.equal(tree.root.findAllByType('text').find(n => n.props.children === 'Early').props.accessibilityState.selected, true);
       assert.equal(action(tree, 'Pause'), undefined);
@@ -375,7 +429,7 @@ test('no-speech and legacy server rehearsals retain visits/text without enabling
   seed(silent); network.respond = url => response(200, url.includes('/decks/') ? deckWire : silent);
   let tree = await mount();
   try {
-    assert.match(text(tree), /No speech detected/); assert.ok(action(tree, 'Visit 2 · Slide 2 · 1000–2000 ms · current'));
+    assert.match(text(tree), /No speech detected/); assert.ok(action(tree, 'Visit 2 · Slide 2 · 1–2 seconds · current'));
     await tick(() => tree.unmount());
     const legacy = { attempt_id: attemptId, deck_id: deckId, transcript: { text: 'Legacy saved text', words: [] } };
     removeStored(`analysis:v1:${encodeURIComponent(api)}:${attemptId}`); removeStored(reviewKey(api, 'attempt', attemptId));
@@ -514,7 +568,7 @@ test('Play then immediate background returns paused at the native position witho
     assert.equal(players.at(-1), player);
     assert.equal(action(tree, 'Pause'), undefined);
     assert.equal(action(tree, 'Play').props.disabled, false);
-    assert.match(text(tree), /1 \/ 2 seconds/);
+    assert.deepEqual(tree.root.findByProps({ accessibilityLabel: 'Audio progress' }).props.accessibilityValue, { min: 0, max: 2000, now: 1000 });
     assert.equal(playback.played, 1);
     await tick(() => action(tree, 'Play').props.onPress());
     assert.equal(playback.played, 2);
@@ -872,6 +926,7 @@ test('feedback description Cancel is local and a conflicted save retains its dra
   seed(feedbackFixtures.withFeedback()); feedbackNetwork(feedbackFixtures.feedbackState({ selection: feedbackFixtures.selection }));
   const tree = await mount();
   try {
+    await tick(() => tree.root.findByType('tab-bar').props.onChange('slides'));
     await tick(() => action(tree, 'Show slide 1 description').props.onPress());
     await tick(() => action(tree, 'Edit slide 1 description').props.onPress());
     const input = () => tree.root.findAllByType('input').find(n => n.props.accessibilityLabel === 'Summary text');
@@ -886,7 +941,11 @@ test('feedback description Cancel is local and a conflicted save retains its dra
     const save = action(tree, 'Save description').props.onPress;
     await tick(() => { save(); save(); });
     assert.equal(network.requests.filter(r => r.method === 'PATCH').length, 1);
-    assert.equal(input().props.value, 'Keep this draft');
+    for (const tab of ['overview', 'transcript', 'slides']) {
+      await tick(() => tree.root.findByType('tab-bar').props.onChange(tab));
+      assert.equal(input().props.value, 'Keep this draft');
+      assert.equal(paidRequests().length, 0);
+    }
     assert.match(text(tree), /draft is retained/); assert.doesNotMatch(text(tree), /private must not display/);
     assert.ok(action(tree, 'Reload descriptions')); assert.equal(paidRequests().length, 0);
   } finally { await tick(() => tree.unmount()); }
@@ -1139,6 +1198,7 @@ for (const playing of [false, true]) {
       assert.equal(action(tree, 'Review evidence 1').props.disabled, false);
       if (playing) await tick(() => action(tree, 'Play').props.onPress());
       await tick(() => action(tree, 'Review evidence 1').props.onPress());
+      assert.equal(tree.root.findByType('tab-bar').props.value, 'slides');
       assert.equal(players.at(-1).currentStatus.playing, playing);
       assert.deepEqual(playback.seeks, [0]);
       if (playing) {

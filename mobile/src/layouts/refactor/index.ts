@@ -1,0 +1,15 @@
+import { SampleSlideView } from './SampleSlideView';
+import { ThumbnailView } from './ThumbnailView';
+import { TranscriptView } from './TranscriptView';
+import { PreviewView } from './PreviewView';
+import { ReviewView } from './ReviewView';
+import { FeedbackView } from './FeedbackView';
+import { MessageView } from './MessageView';
+import { RecordingView } from './RecordingView';
+import { LibraryView } from './LibraryView';
+import type { Layout } from '../contracts';
+import { RootNavigation } from './RootNavigation';
+import { MainNavigation } from './MainNavigation';
+import { UtilitiesView } from './UtilitiesView';
+import { SetupView } from './SetupView';
+export const refactorLayout: Layout = { id: 'refactor', SampleSlide: SampleSlideView, Thumbnail: ThumbnailView, Transcript: TranscriptView, Preview: PreviewView, Review: ReviewView, Feedback: FeedbackView, Message: MessageView, Recording: RecordingView, Library: LibraryView, name: 'Refactor Design', RootNavigation, MainNavigation, Utilities: UtilitiesView, Setup: SetupView };

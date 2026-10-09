@@ -5,25 +5,18 @@ import {
   useAudioRecorderState,
 } from "expo-audio";
 import { router, useLocalSearchParams } from "expo-router";
-import { ActivityIndicator, AppState, Text, View } from "react-native";
+import { ActivityIndicator, AppState } from "react-native";
 import Pdf from "react-native-pdf";
 import type { PdfRef } from "react-native-pdf";
 import { usePreventRemove } from "expo-router/react-navigation";
 import type { SlideEvent } from "../../contracts";
+import { API_URL } from "../../services/api";
 import { demoSlides } from "../../fixtures/demo";
 import { SlidePreview } from "../pdf/SlidePreview";
 import { createRecordingService } from "./service";
 import { stopCapture } from "./stopCapture";
 import { beginAttempt, checkpointAttempt, interruptAttempt, recoverPendingAttempts } from "./storage";
-import { Action, Card, Screen, colors, styles } from "../../ui/components";
-import { API_URL } from "../../services/api";
-
-function formatDuration(durationMillis: number) {
-  // Hours are out of scope
-  // for this short rehearsal preview.
-  const totalSeconds = Math.floor(durationMillis / 1_000);
-  return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")}`;
-}
+import { activeLayout } from "../../layouts/registry";
 
 type CapturePreview = { attemptId?: string; uri: string; durationMillis: number; slideEvents: SlideEvent[]; pageCount: number; };
 
@@ -32,6 +25,7 @@ export function RehearsalScreen() {
   const [generation, setGeneration] = useState(0);
   const [failure, setFailure] = useState<string | null>(null);
   const [retrySlide, setRetrySlide] = useState<number | undefined>(undefined);
+
   const openedAttempt = useRef("");
   useEffect(() => {
     const openSaved = () => {
@@ -49,13 +43,7 @@ export function RehearsalScreen() {
   // Removing the attempt component releases its native recorder through
   // useAudioRecorder. A failed/prepared recorder must never be reused on retry.
   if (failure) {
-    return (
-      <Screen>
-        <Text style={styles.heading}>Recording failed</Text>
-        <Text accessibilityRole="alert" style={styles.body}>{failure}</Text>
-        <Action label="Try recording again" onPress={() => setFailure(null)} />
-      </Screen>
-    );
+    return <activeLayout.Message title="Recording failed" message={failure} actionLabel="Try recording again" onAction={() => setFailure(null)} />;
   }
   return (
     <RehearsalAttempt
@@ -76,7 +64,9 @@ export function RehearsalScreen() {
   );
 }
 
-function RehearsalAttempt({ retrySlide, onFailure, savedPreview, onSaved, onStarting }: {
+type RecordingInput = { onStarting: () => void; savedPreview: CapturePreview | null; onSaved: (capture: CapturePreview, slide: number) => void; retrySlide?: number; onFailure: (message: string, slide: number) => void };
+function RehearsalAttempt(props: RecordingInput) { return <activeLayout.Recording model={useRecordingController(props)} />; }
+export function useRecordingController({ retrySlide, onFailure, savedPreview, onSaved, onStarting }: {
   onStarting: () => void;
   savedPreview: CapturePreview | null;
   onSaved: (capture: CapturePreview, slide: number) => void;
@@ -278,7 +268,7 @@ function RehearsalAttempt({ retrySlide, onFailure, savedPreview, onSaved, onStar
 
   function changeSlide(nextIndex: number) {
     if (!mounted.current || !pdfReady || capturePhase.current === "starting" || capturePhase.current === "stopping") return;
-    if (nextIndex < 0 || nextIndex >= pageCount) return;
+    if (!Number.isInteger(nextIndex) || nextIndex < 0 || nextIndex >= pageCount) return;
     if (pdfUri) {
       setChangingPage(true);
       pdfRef.current?.setPage(nextIndex + 1);
@@ -287,27 +277,16 @@ function RehearsalAttempt({ retrySlide, onFailure, savedPreview, onSaved, onStar
     }
   }
 
-  return (
-    <Screen>
-      <View style={styles.banner}>
-        <Text style={styles.bannerText}>
-          {pdfUri ? "ON-DEVICE PDF" : "SAMPLE SLIDES"} · Recording and slide visits
-          are saved on this device for imported PDFs. Finishing a recording
-          automatically uploads the PDF and audio to the configured server.
-          Transcription starts after you accept the first-use OpenAI disclosure.
-          Cancelling leaves the server upload saved without transcription. Failed uploads can be retried.
-        </Text>
-      </View>
-      <View style={styles.between}>
-        <Text style={styles.heading}>Rehearsal</Text>
-        <Text style={styles.label}>
-          {recordingState === "recording" ? "RECORDING" : "MICROPHONE OFF"}
-        </Text>
-      </View>
-      {!!pdfUri && <Text style={styles.body}>{params.title ?? "Presentation"}</Text>}
-      {pdfUri ? (
-        <View style={{ height: 460, width: "100%", borderRadius: 12, overflow: "hidden" }}
-          pointerEvents={recordingState === "starting" || recordingState === "stopping" ? "none" : "auto"}>
+  function openReview() {
+    router.push(recordingUri
+      ? savedPreview?.attemptId ? { pathname: "/results", params: { attemptId: savedPreview.attemptId } } : {
+        pathname: "/results", params: { audioUri: recordingUri, slideEvents: JSON.stringify(savedSlideEvents), durationMs: savedDurationMillis,
+          localDeckId, pageCount: savedPreview?.pageCount ?? pageCount, title: params.title ?? "Sample slides", pdfUri },
+      }
+      : "/results");
+  }
+
+  const stage = pdfUri ? (
           <Pdf
             ref={pdfRef}
             source={{ uri: pdfUri }}
@@ -316,7 +295,7 @@ function RehearsalAttempt({ retrySlide, onFailure, savedPreview, onSaved, onStar
             enablePaging
             scrollEnabled={recordingState !== "starting" && recordingState !== "stopping"}
             fitPolicy={0}
-            style={{ flex: 1, width: "100%", backgroundColor: colors.white }}
+            style={{ flex: 1, width: "100%", backgroundColor: "white" }}
             onLoadComplete={(pages) => {
               if (!mounted.current || !Number.isInteger(pages) || pages < 1) return;
               setPageCount(pages);
@@ -338,97 +317,9 @@ function RehearsalAttempt({ retrySlide, onFailure, savedPreview, onSaved, onStar
               setChangingPage(false);
               setPdfError("This PDF could not be opened in rehearsal.");
             }}
-            renderActivityIndicator={() => <ActivityIndicator color={colors.blue} />}
+            renderActivityIndicator={() => <ActivityIndicator  />}
           />
-        </View>
-      ) : <SlidePreview index={index} />}
-      {pageCount > 10 && <Text style={styles.body}>Choose a PDF with at most 10 slides to rehearse.</Text>}
-      {!!pdfUri && !localDeckId && <Text style={styles.body}>Open this PDF from your imported presentations before recording.</Text>}
-      {!!pdfError && <Text accessibilityRole="alert" style={styles.body}>{pdfError}</Text>}
-      <View style={styles.between}>
-        <Action
-          label="Previous slide"
-          secondary
-          disabled={index === 0 || !pdfReady || !pageCount || recordingState === "starting" || recordingState === "stopping"}
-          onPress={() => changeSlide(index - 1)}
-        />
-        <Text style={styles.body}>{pageCount ? `${index + 1} / ${pageCount}` : "Loading PDF…"}</Text>
-        <Action
-          label="Next slide"
-          secondary
-          disabled={index >= pageCount - 1 || !pdfReady || !pageCount || recordingState === "starting" || recordingState === "stopping"}
-          onPress={() => changeSlide(index + 1)}
-        />
-      </View>
-      <Card>
-        <Text
-          style={[
-            styles.title,
-            { textAlign: "center", fontVariant: ["tabular-nums"] },
-          ]}
-        >
-          {/* While recording, show the native live duration. After Stop, retain
-              the final duration captured above instead of reverting to 00:00. */}
-          {formatDuration(
-            recordingState === "ready"
-              ? savedDurationMillis
-              : recorderState.durationMillis,
-          )}
-        </Text>
-        <Text style={[styles.body, { textAlign: "center" }]}>
-          {recordingState === "recording"
-            ? "Recording in progress"
-            : recordingState === "stopping"
-              ? "Saving recording"
-            : "Ready for your next rehearsal"}
-        </Text>
-        <Action
-          label={recordingState === "starting" ? "Starting recording…" : "Start recording"}
-          disabled={recordingState !== "ready" || !pdfReady || !pageCount}
-          onPress={() => void startRecording()}
-        />
-        {recordingState === "recording" && (
-          <Action label="Stop recording" secondary onPress={() => void stopRecording()} />
-        )}
-        {!!recordingError && <Text style={styles.body}>{recordingError}</Text>}
-        {!!savedSlideEvents.length && recordingState === "ready" && (
-          <Text style={styles.body}>
-            {savedSlideEvents.length} slide visit
-            {savedSlideEvents.length === 1 ? "" : "s"} captured on the
-            recording timeline.
-          </Text>
-        )}
-      </Card>
-      {!!params.audience && (
-        <Text style={styles.body}>Audience: {params.audience}</Text>
-      )}
-      <Action
-        label={recordingUri ? "Listen to recording" : "Preview saved test transcript"}
-        secondary
-        // Do not navigate away while native capture is starting, active, or
-        // stopping: unmounting the recorder can lose its audio/timeline. The
-        // Ready state still permits the original fixture preview before Start.
-        disabled={recordingState !== "ready"}
-        onPress={() =>
-          // Imported PDFs use durable IDs; sample captures keep a local preview.
-          router.push(
-            recordingUri
-              ? savedPreview?.attemptId ? { pathname: "/results", params: { attemptId: savedPreview.attemptId } } : {
-                  pathname: "/results",
-                  params: {
-                    audioUri: recordingUri,
-                    slideEvents: JSON.stringify(savedSlideEvents),
-                    durationMs: savedDurationMillis,
-                    localDeckId,
-                    pageCount: savedPreview?.pageCount ?? pageCount,
-                    title: params.title ?? "Sample slides",
-                    pdfUri,
-                  },
-                }
-              : "/results",
-          )
-        }
-      />
-    </Screen>
-  );
+  ) : <SlidePreview index={index} />;
+  const elapsedMillis = recorderState.durationMillis;
+  return { savedPreview, savedDurationMillis, savedSlideEvents, params, recordingState, recordingUri, pdfUri, localDeckId, pdfReady, pageCount, index, pdfError, recordingError, elapsedMillis, stage, openReview, onStarting, startRecording, stopRecording, changeSlide };
 }
