@@ -1,4 +1,4 @@
-> **Historical snapshot, superseded.** This preserves the pre-revision audit for traceability; its counts, selected scope and statuses are not current. Relative links were adjusted for this directory. See the [current validation](../ai-collaboration-validation-iteration-1.md).
+> **Historical snapshot, superseded.** This preserves the pre-revision audit for traceability; its counts, selected scope and statuses are not current. Relative links were adjusted for this directory. See the [current validation](ai-collaboration-validation-iteration-1-retired-2026-10-09.md). Links to the retired review now point to its archive.
 
 # Iteration 1 reporting validation
 
@@ -271,8 +271,8 @@ claim was treated as contributor confirmation merely because it appeared in the
 draft. The course handout's checksum still matches C1; its six subjects and
 500–700-word target remain the editorial criteria.
 
-- **Physical-device work:** the [phone preparation](../ai-use.md#2026-10-06--physical-phone-test-preparation)
-  and [demo-launch](../ai-use.md#2026-10-07--physical-phone-demo-launch) records describe
+- **Physical-device work:** the [phone preparation](ai-use-before-prompt-consolidation-2026-10-09.md#2026-10-06--physical-phone-test-preparation)
+  and [demo-launch](ai-use-before-prompt-consolidation-2026-10-09.md#2026-10-07--physical-phone-demo-launch) records describe
   Codex starting Metro, configuring USB forwarding, installing/launching the app
   and checking phone rendering. The original demo-request message in session
   `01a1156d-300e-7072-8121-dd2db02113f1`, line 12, asks the agent to run the app
@@ -353,11 +353,11 @@ Report changes:
 
 Evidence consistency:
 
-- The [phone preparation](../ai-use.md#2026-10-06--physical-phone-test-preparation)
-  and [demo-launch](../ai-use.md#2026-10-07--physical-phone-demo-launch) records show
+- The [phone preparation](ai-use-before-prompt-consolidation-2026-10-09.md#2026-10-06--physical-phone-test-preparation)
+  and [demo-launch](ai-use-before-prompt-consolidation-2026-10-09.md#2026-10-07--physical-phone-demo-launch) records show
   Codex starting Metro, configuring USB forwarding and installing the app.
   Section 1 therefore says Codex installed builds and claims only hands-on
-  testing as human work. The [human phone-test record](../ai-use.md#2026-10-07--human-phone-test-result-and-clearer-iteration-1-presentation)
+  testing as human work. The [human phone-test record](ai-use-before-prompt-consolidation-2026-10-09.md#2026-10-07--human-phone-test-result-and-clearer-iteration-1-presentation)
   supports a human test: the user reported the phone flow worked overall, with
   transcription accuracy as the exception. The per-feature test-before-branch
   practice rests on the requester's statement; no per-feature test log exists.

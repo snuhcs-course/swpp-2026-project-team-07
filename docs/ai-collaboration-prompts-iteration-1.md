@@ -1,54 +1,180 @@
-# Iteration 1 prompt appendix
+# Iteration 1 AI collaboration log
 
-## 1. Purpose, coverage and provenance
+**Team 07 · OutLoud · September 26–October 9, 2026**
 
-This is the development evidence behind the [main report](ai-collaboration-report-iteration-1.md), covering **September 26–October 9, 2026**. It includes the earlier prototype and the post-revert rebuild because both fall inside the requested period. Earlier UI examples are historical; they do not describe the current `main` or claim that the rebuild restored that UI. The October 9 request to investigate the whole iteration supersedes the earlier draft's post-revert-only selection.
+This log documents our AI-assisted development: prompts, generated work, revisions, errors and verification. Prompt wording is unchanged; excerpts and AI-written plans are labelled. Results refer to the cited code revisions.
 
-Evidence labels used below:
+[AI Collaboration Report – Iteration 1](ai-collaboration-report-iteration-1.md)
 
-- **Original:** recovered from a `response_item` whose role is `user`, not a task title, generated summary or PR description. Fenced quotations retain spelling, capitalization and Markdown; terminal whitespace is omitted.
-- **Contributor-supplied original:** verbatim prompt text in a supplied contribution file, identified by the requester as that member's work. These quotations were checked against the supplied file; the underlying raw chat was not independently retrieved.
-- **Approved AI plan:** text first drafted by the assistant and then submitted in a user-role “PLEASE IMPLEMENT THIS PLAN” message. This proves approval/instruction, not independent human authorship of the plan.
-- **Secondary quotation:** exact wording in a dated AI-use log; the original conversation was not recovered.
-- **Summary / missing:** source describes the work but supplies no authentic prompt. Summary prose is never placed in a prompt quotation.
+<a id="2-injoon-transcription-and-alignment"></a>
 
-Source IDs and original record locations appear in the [source register](ai-collaboration-validation-iteration-1.md#source-register). Recovered Codex sessions record model identifier `gpt-6-astra`; the client version is not established. Other teammates' Codex model versions are unknown. `whisper-1`, Gemini and OpenAI feedback models are application providers, not evidence of the coding assistant's model.
+## Injoon: transcription and alignment
 
-Contributor identities use the requester's explicit mapping (S8:12: `joo`/`zoo`/`zoo_zero` → Jooyoung; `justaoj` → Jaewon), Git/PR records and named disclosures. Seoyeon identifies herself in S5:237. The local sessions grouped under Seoyeon are her available project history; that self-identification does not authenticate every older message's sender. She must confirm the selection. No prompt is assigned to a person solely from a commit author or filesystem username.
-
-## 2. Injoon: transcription and alignment
+**Tool:** OpenAI Codex · **Model:** `gpt-6-astra`
 
 ### I1. Standalone word-to-slide alignment, September 29
 
-**Evidence: summary; original prompt missing.** The contemporaneous log names Injoon as requester and Codex as implementer. It describes incremental work: alignment first, Whisper second, transcript UI afterward. This is the log's account, not a recovered quotation.
+- **Output and use:** Codex implemented word-start alignment with exact slide boundaries and repeated/backward visits in PR #3 (`e71c3e0`). Injoon approved incremental alignment → Whisper → transcript UI work and requested a longer example.
+- **Verification:** Nine synthetic alignment tests covered boundaries and invalid timings. They do not establish human-speech transcription accuracy.
 
-Codex generated `backend/rehearsals/services/alignment.py`, nine synthetic tests and `docs/word-alignment.md`. The implementation assigns each word by its start time, sends exact-boundary words to the new visit, retains silent/repeated/backward visits, and rejects invalid timestamps instead of clamping them. Injoon's recorded final inspection accepted the restaged backend scope; no human-written patch is reported.
+[Evidence](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/e71c3e06945517219b9a343e80f9680829c0bd58/docs/ai-use.md).
 
-Evidence: [PR #3](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/3), [nine tests](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/e71c3e06945517219b9a343e80f9680829c0bd58/backend/rehearsals/test_alignment.py#L19-L86), and [dated implementation/review log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/e71c3e06945517219b9a343e80f9680829c0bd58/docs/ai-use.md). Codex recorded nine alignment tests passing, an initial 14-test backend suite, and a later 23-test suite after the adapter/review fixes. These are different checkpoints. The boundaries are executable examples, not measured real-speech alignment accuracy. **Needed from Injoon:** original alignment request, revisions, model/version and personal edit/test notes.
+<!-- I-S1:22 -->
+
+**Prompt**
+
+```text
+아 그니까 녹음 담당자한테 물어봐야 돼? 근데 그 친구가 지금 바빠서 내가 먼저 내 기능을 추가를 해야 할 것 같아
+```
+
+<!-- I-S1:44 -->
+
+**Prompt**
+
+Approval of the proposed alignment → Whisper → transcript UI sequence.
+
+```text
+알겠어 그러면 그렇게 하자
+```
+
+<!-- I-S1:113 -->
+
+**Prompt**
+
+```text
+그러면 몇 단어가 아닌 제대로 된 script을 인풋으로 했을 때 나오는 output을 예시로 보여 줘
+```
+
+<!-- I-S1:132 -->
+
+**Prompt**
+
+```text
+그러면 우리  whisper 모델은 녹은 파일만 받고 time stamp뿐만 아니라 align도 해 준다는 거지??
+```
 
 ### I2. Hosted Whisper adapter and response-shape repair, September 29
 
-**Evidence: summary; implementation and debugging prompts missing.** Codex generated the hosted adapter, normalized seconds into integer milliseconds, retained the raw response, and added tests using the actual SDK over mocked HTTP. Injoon's task log records acceptance after restaging and personal inspection.
+- **Output and use:** Codex integrated hosted Whisper and generated a Korean TTS sample in PR #3.
+- **Error → correction:** The adapter assumed a success response supported `model_dump()`. An independent Codex reviewer found that non-object responses could escape as `AttributeError`; Codex added a type guard and regression cases. This was an implementation defect. Repair time was not recorded.
+- **Verification and human role:** The suite passed 23 backend tests; a live TTS call returned 38 words from 23,902 ms. Injoon reported inspecting the restaged changes. Human-speech accuracy and end-to-end app integration were unverified; the repair was AI-written.
 
-The generated code assumed a successful SDK result supported `model_dump()`. A separate Codex reviewer found that a non-object HTTP-success body could instead escape as `AttributeError`, violating the adapter's safe-error contract. Codex added a `TranscriptionVerbose` guard and cases for array, null, string and integer responses. The cases also assert one request and unchanged audio. The detecting reviewer was AI; Injoon's final inspection followed the repair. This is an **implementation error**, with no recovered false explanatory assertion sufficient to classify it as a hallucination. The recorded cost is an additional repair and review cycle; elapsed time is unknown.
+[Evidence](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/3).
 
-Evidence: [type guard](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/e71c3e06945517219b9a343e80f9680829c0bd58/backend/rehearsals/services/transcription.py#L78-L87), [malformed-response regression](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/e71c3e06945517219b9a343e80f9680829c0bd58/backend/rehearsals/test_transcription.py#L73-L81), [PR #3](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/3). The log records nine transcription tests and 23 total backend tests after repair. A separate live Korean TTS check returned 38 words on 23,902 ms audio; synthetic slide changes were supplied as test input. Neither that check nor the mocked suite establishes physical microphone capture or human-speech accuracy. **Needed:** Injoon's exact request/follow-ups and confirmation of his review; no debugging duration has been invented.
+<!-- I-S1:142 -->
+
+**Prompt**
+
+```text
+ok whisper연동하자.
+```
+
+<!-- I-S1:247 -->
+
+**Prompt**
+
+```text
+그 녹음 파일도 네가 생성해 줄 수 있나? TTS로.
+```
+
+<!-- I-S1:489 -->
+
+**Prompt**
+
+```text
+알겠어. 너무 좋다. 이번에 내가 push한 것도 agents.md에 추가된 계약조건을 바탕으로 확인해 줘. 난 이미 직접 검토했으니까 Ai 검토 후에 뭘 해야하는지도 알려줘
+```
+
+<!-- I-S1:645 -->
+
+**Prompt**
+
+```text
+알겠어 다 확인했어. 이제 push, commit하고 pr만들면 되는 건가?
+```
 
 ### I3. Mobile transcription client and synchronized transcript, September 29
 
-**Evidence: summary; original messages missing.** Injoon asked for work that could proceed before the recording teammate's implementation. Codex produced `client.ts`, the Expo file/fetch adapter, a saved-transcript screen, `playback.ts`, highlighting and tap-to-seek. These are distinct from Seoyeon's later full-PDF playback and navigation work in S2 below.
+- **Output and revision:** Codex built the mobile transcription client and saved-result screen, then changed it to playback-linked word highlighting and tap-to-seek after Injoon's feedback. That prompt made the intended audio/text relationship explicit.
+- **Errors and corrections:** The silent emulator used Codex's `-no-audio` launch option, a test-environment mistake. AI review also found status-validation and replay-race defects that Codex repaired; these are not recorded as human code edits.
+- **Verification and decision:** PR #4 (`92e542e`) records 21 mobile tests, static checks/export and agent-operated emulator checks. Injoon inspected staged work and deferred visual refinement. Live upload, physical-phone behavior and perceptual synchronization remained unverified.
 
-An independent Codex review found that `String(status)` admitted an array such as `["completed"]`. Codex required a string and added malformed-status plus cancellation cases. The review record reports 15 passing client tests; the final playback scope reports 21 mobile tests, TypeScript/lint and Android export. An agent-operated emulator check exercised play, pause and word seeking with saved TTS; audible timing and live upload remained unverified. The user reported no apparent functional issue but deferred the unsatisfactory transcript UI. That is partial acceptance, not visual approval.
+[Evidence](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/92e542e6f4cfe558bda39fa090826f539b3ae728/docs/ai-use.md).
 
-Evidence: [PR #4](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/4), [strict result validation](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/92e542e6f4cfe558bda39fa090826f539b3ae728/mobile/src/features/transcription/client.ts#L38-L46), [client, playback and inspection log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/92e542e6f4cfe558bda39fa090826f539b3ae728/docs/ai-use.md). **Needed from Injoon:** original client/playback prompts, the request to defer UI changes, review follow-ups and individual verification notes.
+<!-- I-S1:846 -->
 
-## 3. Jaewon: PDF import and rendering
+**Prompt**
 
-**Evidence: contributor-supplied original prompts, F1.** The requester supplied [Jaewon's contribution file](history/jaewon-ai-collaboration-prompts-iteration-1.md) on October 9 and explicitly identified it as his work. Its first prompt identifies the sender as **“Team mate A.”** Together with the requester's `justaoj` → Jaewon mapping, this resolves the earlier sender ambiguity. The file attributes these quotations to original Codex user messages; this revision checks them against the supplied file, without independently retrieving the raw chat. October 4 is the feature-record date, not a verified timestamp for each message. Source-message IDs, exact timestamps and coding model/version were not supplied.
+```text
+아 그러면 녹음 파일을 서버로 보내는 건 내가 하라고? 그건 할 수 있지
+```
+
+<!-- I-S1:856 -->
+
+**Prompt**
+
+```text
+근데 녹음 담당자가 아직 일을 시작 안 했어. 현재 repo를 기점으로 내가 할 수 있는 것부터 하자.
+```
+
+<!-- I-S2:37 -->
+
+**Prompt**
+
+Approval of a screen using the saved Whisper TTS result.
+
+```text
+알겠어 그렇게 해줘
+```
+
+<!-- I-S2:199 -->
+
+**Prompt**
+
+```text
+근데 이게 내가 생각하는 화면구조는 아닌 것 같아. 내가 생각했던 전사가 있으면 녹음의 진행에 따라 단어가 하이라이트가 되는 거지. 그래서 마치 녹음이랑 전사가 하나가 되는 것 처럼. 지금은 마치 분리가 된 것 같아.
+```
+
+<!-- I-S2:398 -->
+
+**Prompt**
+
+```text
+아무것도 안 들리는데 정상인가?
+```
+
+<!-- I-S2:493 -->
+
+**Prompt**
+
+```text
+알겠어 그러면 AI 검증을 한번 거치고, 문제 없으면 add해줘
+```
+
+<!-- I-S2:560 -->
+
+**Prompt**
+
+```text
+직접 확인했는데 문제는 없는 것 같아. 다만 branch이름이 적합한지 확인해보고, 필요하면 바꿔줘. 그리고 현재 전사 UI가 너무 별론데, 이건 나중에 변경할 사항이야
+```
+
+<a id="3-jaewon-pdf-import-and-rendering"></a>
+
+## Jaewon: PDF import and rendering
+
+**Tool:** OpenAI Codex · **Model:** not recorded
 
 ### J1. Local PDF import, persistent catalog and page viewer, October 4
 
-**Contributor-supplied original request, F1 J1** (full text):
+- **Output and use:** Codex generated local PDF import, private file copies/catalog, Library/Viewer screens and native rendering at `9547f1d`. Server slide-image/text preparation was still absent.
+- **Verification and error:** Codex checks included 21 existing mobile tests and an operated Samsung SM-S901N rendering a 14-page PDF. Codex tapped Remove instead of Open, deleted the app-private copy and reimported the original from Downloads. This was a tool-operation mistake, not a hallucination; time cost was not recorded. Cancellation and malformed files were not verified.
+
+[Evidence](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/9547f1dd397436f7fb1d74b9c4e94d7ca8d20d1b/docs/ai-use.md#L218-L267).
+
+<!-- F1 J1 -->
+
+**Prompt**
 
 ```text
 I am Team mate A and I have to implement the pdf import tool for the project.
@@ -57,35 +183,50 @@ i want to work on it off line on my mac and test it out before i uplaod the bran
 I want to first implement it so that you can upload the pdf (store it in your device, not server side) and be able to see it slide by slide like described.
 ```
 
-Codex implemented the PDF service, Library/Viewer screens, app-private copies and catalog, and native renderer configuration. This was local PDF rendering; server slide-image/text preparation was still absent. The work was incorporated into PR #5, removed from the baseline by #10, and reused during the rebuild. Seoyeon's restoration prompts below do not substitute for Jaewon's original contribution.
+<a id="j2-imported-pdf-in-practice-and-first-page-entry-october-4-feature-record"></a>
 
-Evidence: [`9547f1d`](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/9547f1dd397436f7fb1d74b9c4e94d7ca8d20d1b), [PDF task and phone follow-up](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/9547f1dd397436f7fb1d74b9c4e94d7ca8d20d1b/docs/ai-use.md#L218-L267). Codex reported 21 existing mobile tests, typecheck/lint, export and prebuild. A later agent-operated Samsung SM-S901N check rendered a 14-page PDF, swiped to page 2, used Next and opened rehearsal. It did not verify every rehearsal control, cancellation or malformed files. During coordinate-based testing Codex tapped **Remove** instead of **Open**; the app-private copy was deleted, the original remained in Downloads, and Codex reimported it. This is a verified **tool-operation mistake**, not a hallucination or human code repair; time cost was not recorded.
+### J2. Imported PDF in Practice and first-page entry, October 4
 
-### J2. Imported PDF in Practice and first-page entry, October 4 feature record
+- **Revision and use:** Jaewon extended PDF viewing to Practice, replacing sample slides with the imported PDF and requiring entry at page one. Codex implemented PDF-URI handoff with `slide: 0` and Practice navigation at `9547f1d`.
+- **Verification:** The agent-operated phone check observed that PDF opening in Practice at page one; Practice's Next control was not tested on the device.
 
-**Contributor-supplied original follow-up, F1 J2** (full text):
+[Evidence](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/9547f1dd397436f7fb1d74b9c4e94d7ca8d20d1b/docs/ai-use.md#L246-L267).
+
+<!-- F1 J2 -->
+
+**Prompt**
 
 ```text
 now implement after "preview rehearsal" - it leads to the practice tab. under rehearsal, currently there are sample slides. change them to the uplaoded pdf file and maintain the next slide feature in the same tab.
 ```
 
-**Contributor-supplied original follow-up, F1 J2** (full text):
+<!-- F1 J2 -->
+
+**Prompt**
 
 ```text
 also, when the app enters rehearsal/practice, make sure even if the slide was moved to a different slide in the your slides slide preview tab, when you press preview rehearsal and move to the practice slide, it always goes back to the first slide
 ```
 
-**Human decision and incorporated output:** Jaewon extended the import/viewer request to the Practice flow: replace its sample slides with the imported PDF, retain Next, and open at the first page regardless of the page selected in the viewer. At `9547f1d`, [Preview rehearsal passes the PDF URI and `slide: 0`](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/9547f1dd397436f7fb1d74b9c4e94d7ca8d20d1b/mobile/src/features/pdf/ViewerScreen.tsx#L134-L142), and [Practice renders that PDF with page-navigation controls](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/9547f1dd397436f7fb1d74b9c4e94d7ca8d20d1b/mobile/src/features/recording/RehearsalScreen.tsx#L62-L115). The [October 4 agent-operated phone check](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/9547f1dd397436f7fb1d74b9c4e94d7ca8d20d1b/docs/ai-use.md#L246-L267) observed the same PDF opening in Practice at page one; Practice's Next control itself was not tested on the device. These are historical requirements and results at that commit, not a claim about the current app's entry-page behavior.
+<a id="4-jooyoung-recording-and-timeline"></a>
 
-**Still needed from Jaewon:** acceptance/edit decisions, any additional failed attempts or revisions, personally performed phone-test/review notes, and coding model/version if recorded. The three supplied prompts and “Teammate A” identity are no longer missing. Native-build and device activity in the existing log belongs to Codex, not automatically to Jaewon.
+## Jooyoung: recording and timeline
 
-## 4. Jooyoung: recording and timeline
+**Tool:** OpenAI Codex · **Model:** not recorded
 
 ### Y1. Microphone capture and local preview, September 30
 
-**Evidence: original user-role messages supplied by Jooyoung in the current reporting conversation (F2); requester label conflict remains.** The original commit uses Git author `joo`, mapped to Jooyoung by the requester. However, its AI-use entry says **“Contributor: Injoon (requester).”** The prompts below establish their wording, not who authored every earlier request; the members should resolve that label conflict.
+- **Output and use:** Codex generated permission/audio-mode handling, recording, native-duration polling, repeated/backward slide events and local preview at `04857fb`.
+- **Errors and corrections:** The requester reported permission/timer/Stop problems. AI review found stale duration, Preview navigation during capture and unusable controls after failed Stop; Codex repaired them.
+- **Verification:** Static/export checks included 21 mobile tests. The final changes received static checks; no final device retest was documented.
 
-**Original user-role message, F2 (September 30; verbatim):**
+[Evidence](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/04857fb93d0a64784feb8bfb1d4b61f4b47bf251/docs/ai-use.md#L309-L346).
+
+**Prompt author:** unconfirmed. Jooyoung supplied these recording prompts.
+
+<!-- F2 · September 30 -->
+
+**Prompt**
 
 ```text
 Read README.md, AGENTS.md, docs/api-contract.md, docs/iteration-1-handoff.md, and mobile/AGENTS.md.
@@ -93,7 +234,9 @@ Read README.md, AGENTS.md, docs/api-contract.md, docs/iteration-1-handoff.md, an
 Implement only `RecordingService.start()` using Expo SDK 57 `expo-audio`. The current RehearsalScreen.txs is a fixture-only preview. Your first task is to implement the "Start recording" button. It requires requesting audio permission, (if granted) set audio mode, create a useAudioRecorder using RecordingPresets.High_QUALITY with directory: "document", await prepareToRecordAsync(), then call record(). Then, it will switch the UI to a real "Recording" state and enable Stop. Do not modify shared contracts, app.json, Android generated files, dependencies, or navigation. keep in mind that the next task is to implement slide-change timestamps on the same timeline. In the future, the app will allow re-recordings for selected slides. Show me the changed diff and run the relevant static checks. Do not commit or push. make sure to be on feature/recording-tracking branch
 ```
 
-**Original user-role follow-ups, F2 (September 30; verbatim):**
+<!-- F2 -->
+
+**Follow-up prompts**
 
 ```text
 implement slide-change timestamps on the same timeline
@@ -103,87 +246,114 @@ implement slide-change timestamps on the same timeline
 use the local recording preview. additionally, when stop recording is clicked, keep the timestamp
 ```
 
-Codex generated microphone permission handling, audio mode, capture, native-duration polling, `LocalRecording`, repeated/backward slide events and local preview. The original requester tested and reported permission/timer/Stop problems. A separate AI reviewer found stale duration from an earlier attempt, Preview navigation during capture and a failed Stop leaving unusable controls; Codex repaired them before the recorded commit. The requester confirmed capture/timeline behavior, but that person's name cannot be inferred from the commit alone.
-
-Evidence: [`04857fb`](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/04857fb93d0a64784feb8bfb1d4b61f4b47bf251), [recording entry](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/04857fb93d0a64784feb8bfb1d4b61f4b47bf251/docs/ai-use.md#L309-L346), and F2. Codex reported 21 mobile tests, typecheck/lint and Android export; the log distinguishes earlier human testing from the final static checks. The final device snapshot was not independently rechecked in that entry.
-
 ### Y2. Empty Android timeline after Stop, October 7–8
 
-**Evidence: original defect report supplied by Jooyoung (F2), named development log and PR.** The later entry explicitly names Jooyoung as contributor, issue reporter and phone verifier. During Android testing he reported:
+- **Error and detection:** Jooyoung reported an empty Android timeline. Code read `durationMillis` after Stop, but Android reset it to zero, causing timeline filtering to discard the events.
+- **Correction and outcome:** Codex added `stopCapture.ts` to pause and save native duration before stopping. Jooyoung confirmed the timeline appeared; an independent Codex reviewer checked the staged fix. The implementation defect was repaired by Codex.
+- **Evidence and limits:** PR #13 (`040880f`) records 21 tests, Android export and native launch. Quick Stop, re-recording and automated helper coverage were pending at that revision; elapsed repair cost was not recorded.
 
-**Original user-role message, F2 (October 7; verbatim):**
+[Evidence](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/040880f8a21b2f866228984e9fb3c438fa6ee4bf/docs/ai-use.md#L319-L352).
+
+<!-- F2 · October 7 -->
+
+**Prompt**
 
 ```text
 when i try the app, the slide timeline has nothing on it??
 ```
 
-The previous code read `durationMillis` after `await recorder.stop()` and even commented that final duration would be available then. Android reset the duration, so filtering against the zero result removed the timeline.
+<a id="5-seoyeon-integration-and-interface"></a>
 
-Codex added `stopCapture.ts` to pause and snapshot the native clock before stopping, and wired `RehearsalScreen.tsx` to the preserved duration. Jooyoung then confirmed that a stopped recording displayed its timeline. An independent Codex reviewer inspected the staged fix. This establishes a narrow phone result, not all timing boundaries or recording reliability.
+## Seoyeon: integration and interface
 
-Evidence: [PR #13](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/13), [`040880f`](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/040880f8a21b2f866228984e9fb3c438fa6ee4bf), [duration-preservation helper](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/040880f8a21b2f866228984e9fb3c438fa6ee4bf/mobile/src/features/recording/stopCapture.ts#L1-L18), [named reporter and verification](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/040880f8a21b2f866228984e9fb3c438fa6ee4bf/docs/ai-use.md#L319-L352). Codex recorded `npm run check` (21 tests), Android export and a native launch. The PR explicitly leaves quick Stop, re-recording and automated pause/stop helper coverage pending at that revision. This is an **implementation error contradicted by observed Android behavior**. No fabricated API or other coding-model hallucination is established. Rework involved a new helper, caller change, rebuild and retest; minutes/hours were not logged.
-
-**Needed from Jooyoung:** date/device/check steps for his retest; acceptance/edit notes; resolution of Y1's Injoon label; model/version if known. Git authorship establishes ownership of the commit, not authorship of the AI-written repair.
-
-## 5. Seoyeon: integration and interface
-
-The following originals come from the available local project sessions. Seoyeon's self-identification and the requester's contributor mapping support grouping them here; her per-record confirmation remains part of team sign-off. Do not transfer the earlier feature authors' work into this integration credit.
+**Tool:** OpenAI Codex · **Model:** `gpt-6-astra`
 
 ### S0. Shared scaffold and explainable handoff, September 28
 
-**Original user-role message, S0:9** (2026-09-28 05:00:47.584 UTC; full text):
+- **Output and decision:** Codex generated the Expo/Django scaffold, labelled preview screens, contracts and setup/handoff material. The follow-up redirected placeholder-hour planning toward the feature scaffold; the human requested an explanation and code inspection before publication.
+- **Verification:** PR #1 (`e80e813`) reports agent-run mobile/export/APK/emulator checks and five backend tests. The scaffold did not implement real PDF capture, recording or feedback.
+
+[Evidence](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/1).
+
+<!-- S0:9 -->
+
+**Prompt**
 
 ```text
 I would like to setup an android studio app and frames so that my team can implement the pdf import and slide viewer, the recording and slide tracking, and whisper implementation to complete iteration 1.&#x20;
 
 I would like to setup and then upload in on git so each invidivual can make a branch and implement their code.
 ```
-**Original user-role message, S0:180** (2026-09-28 05:06:03.696 UTC; full text):
+
+<!-- S0:180 -->
+
+**Prompt**
 
 ```text
 ignore hours cause they are just placeholder values focus on the original tas. setting up and uploading to github so my teammates can implement features
 ```
-**Original user-role message, S0:664** (2026-09-28 05:32:41.979 UTC; full text):
+
+<!-- S0:664 -->
+
+**Prompt**
 
 ```text
 Also I want to understand so write me a .md file about everything youve done
 ```
-**Context and decision:** the follow-up redirected attention from placeholder hours to the feature scaffold; the final request asked Codex to explain its work. Codex generated the Expo/Django starting code, labelled preview screens, contracts and setup/handoff material, including `docs/setup-explained.md`. The human asked to see code before pushing and later accepted the scaffold. **Outcome:** incorporated in [PR #1](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/1) at [`e80e813`](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/e80e81313d3c5faa775795fa97797b5507b17360). The [PR #1](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/1) record reports mobile checks/export, a JDK 17 APK/emulator run, and five backend tests by the agent. This did not implement real PDF capture, recording or feedback. These original requests improve attribution beyond the older log's missing-scaffold-prompt entry; they do not identify a human reviewer of every line.
 
 ### S1. Integrating teammate features, October 4
 
-**Original user-role message, S3:12** (2026-10-04 07:48:02.677 UTC; full text):
+- **Revision and use:** The initial request assumed teammate features were complete. After Codex identified integration gaps, the follow-up accepted combining the available PDF/recording pieces and finishing the rest later. PR #5 incorporated page-count/start-page/event integration at `c609514`.
+- **Verification and limits:** Integration checks included 23 mobile and 23 backend tests, export and mocked-provider checks, with no connected device in that session. The later revert is recorded in A1.
+
+[Evidence](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/54078a33a2409aae8d671aaabca6d26476f0ea02/docs/ai-use.md#L403-L408).
+
+<!-- S3:12 -->
+
+**Prompt**
 
 ```text
 All of my teammates have finished implementing their assinged tasks. Go over the code and merge it into one. They should be labeled as feature/
 ```
-**Original user-role message, S3:95** (2026-10-04 07:49:38.843 UTC; full text):
+
+<!-- S3:95 -->
+
+**Prompt**
 
 ```text
 merge what there is and we'll implement the missing portions
 ```
-**Context and decision:** the first request assumed assigned work was finished. After the agent identified unfinished integration, the follow-up accepted merging the available pieces and implementing missing portions later. Codex combined the PDF/recording branches, reconciled actual page count/start page/events and retained preview labels. [PR #5](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/5) reached [`c609514`](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/c6095141d182e4d5aa30b0d2e1c7d1eb5d311696); its [integration log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/54078a33a2409aae8d671aaabca6d26476f0ea02/docs/ai-use.md#L403-L408) records 23 mobile and 23 backend tests, export and mocked-provider checks, with no connected device in that session. Treat the initial completeness claim as a user assumption, not an AI hallucination. The later review-process reversal is explained under A1, not counted as a second implementation.
 
 ### S2. Playback transcript and navigation revision, October 6
 
-**Original user-role message, S1:12** (2026-10-06 01:13:44.757 UTC; full text):
+- **Revision and use:** The user requested three tabs, then reported clutter and approved Codex's revised Home + Presentations plan. Concrete navigation priorities removed a duplicate browsing destination and guided the implementation.
+- **Verification:** Commit `54078a3` includes both stages; checks included 45 tests initially and 52 after simplification, static checks/export, AI reviews and agent-operated emulator checks. Usability was not evaluated.
+
+[Evidence](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/54078a33a2409aae8d671aaabca6d26476f0ea02/docs/ai-use.md#L456-L480).
+
+<!-- S1:12 -->
+
+**Prompt**
 
 ```text
 I want to make it so transcript goes along with playback highlighting the current word it is t. Also place transcript inside the playback area. Also I would like the main screen to be divided into sdifferent tabas of presentations, librabry, home screen
 ```
-Codex drafted the three-tab implementation plan in S1:90; the user approved the full plan in S1:100. It placed transcript/highlighting inside the player and added Home, Presentations and Library. The feedback below followed that implementation:
 
-**Original user-role message, S2:12** (2026-10-06 02:10:26.696 UTC; full text):
+<!-- S2:12 -->
+
+**Prompt**
 
 ```text
 I feel like the ui is too cluttered right now how could we change it
 ```
-Codex proposed merging Library into Presentations, prioritizing practice on Home and separating Feedback/Playback. The user approved the revised plan at S2:94. Both approved plans are retained below to distinguish the user's feedback from agent-written implementation detail.
 
 <details>
-<summary>Exact approved initial three-tab plan (assistant draft: S1:90)</summary>
 
-**Original user-role message, S1:100** (2026-10-06 01:17:10.633 UTC; full text):
+<summary>Approved initial three-tab plan</summary>
+
+<!-- S1:100 -->
+
+**Approved AI plan**
 
 ```text
 PLEASE IMPLEMENT THIS PLAN:
@@ -239,9 +409,12 @@ Use Expo Router’s existing JavaScript tabs inside the root stack, ordered **Ho
 </details>
 
 <details>
-<summary>Exact approved revised two-tab plan (assistant draft: S2:84)</summary>
 
-**Original user-role message, S2:94** (2026-10-06 02:12:33.070 UTC; full text):
+<summary>Approved revised two-tab plan</summary>
+
+<!-- S2:94 -->
+
+**Approved AI plan**
 
 ```text
 PLEASE IMPLEMENT THIS PLAN:
@@ -281,14 +454,20 @@ Acceptance: normal browsing shows compact lists; each screen has one clear next 
 
 </details>
 
-**Accepted/revised outcome:** [`54078a3`](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/54078a33a2409aae8d671aaabca6d26476f0ea02) incorporates both stages, so the public commit is not a separately published three-tab baseline. Its [two dated checkpoints](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/54078a33a2409aae8d671aaabca6d26476f0ea02/docs/ai-use.md#L456-L480) reports 45 tests for the initial change and 52 after simplification, typecheck/lint, export, separate AI reviews and agent-operated emulator checks. Generated files include `mobile/src/features/transcription/PlaybackTranscript.tsx`, `reviewState.ts`, and `mobile/src/features/home/PresentationsScreen.tsx`. The revised constraints gave the agent concrete navigation priorities and removed a duplicate browsing destination. They produced the specified structure; there was **no usability study proving it easier to use**. This prototype change is historical, not restored UI on current `main`.
-
 <a id="p1-initial-roadmap-for-the-current-product"></a>
+
 <a id="p2-change-to-hosted-whisper-and-selectable-feedback"></a>
 
 ### S3. Rebuilding the current feature flow, October 8
 
-**Original user-role message, S4:163** (2026-10-07 23:39:30.096 UTC; full text):
+- **Revision and use:** The initial roadmap chose local Whisper; the next prompt chose the hosted API and Gemini/OpenAI feedback. Codex revised the plan and restored PDF/recording using the teammates' source in PR #17, followed by storage, processing, review and feedback in #18–#21.
+- **Verification and limits:** PR #17 checks included 60 mobile tests, export, AI review, native build and synthetic emulator import/capture/replay checks. Physical microphone/interruption checks remained pending. UI polish remained a later stage.
+
+[Evidence](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/17).
+
+<!-- S4:163 -->
+
+**Prompt**
 
 ```text
 I would like to implement the remaining work in this order:
@@ -300,30 +479,41 @@ I would like to implement the remaining work in this order:
 5. **Restore and validate feedback.** Bring back descriptions, evidence-linked suggestions, caching and quota handling. Live feedback usefulness still needs evaluation.
 6. **Bring back UI polish.** Home/Presentations navigation, Feedback/Playback organization and themes can follow the working flow.
 ```
-**Original user-role message, S4:234** (2026-10-07 23:45:56.910 UTC; full text):
+
+<!-- S4:234 -->
+
+**Prompt**
 
 ```text
 I would like to implement whisper api and i would like to give gemini or openai feedback
 ```
-**Revision and result:** the roadmap mentioned local Whisper; the next message chose the hosted API and Gemini/OpenAI feedback. Codex drafted the revised plan at S4:296, approved at S4:306. The roadmap is an authentic submitted message, not proof its polished wording was independently composed by the human. Codex restored PDF/recording using earlier teammates' source in [PR #14](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/14)/[PR #17](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/17), then storage [PR #18](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/18), processing [PR #19](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/19), review [PR #20](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/20) and feedback [PR #21](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/21). These PRs' acceptance/status differs from a merge; #17–#21 remain open at retrieval. Stage six's UI polish is a requested stage, not claimed completion. [PR #17](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/17) records 60 mobile tests/export, independent AI review, native build and synthetic emulator import/start-on-page-3/3→4→3 capture/replay; physical microphone quality and interruption checks remained pending.
 
 ### S4. Durable recording storage and retry acceptance, October 8
 
-The roadmap's second stage supplied the feature request. After implementation had started, the requester asked for tighter checkpoints:
+- **Output and decision:** Codex implemented SQLite checkpoints, durable audio references, backend deck/attempt storage and retry/duplicate protection in PR #18 (`06fe340`). The user required a progress report and revised plan before the next implementation.
+- **Verification:** Checks included 94 mobile tests, 42 SQLite backend tests with two PostgreSQL-only skips, and 19 PostgreSQL storage tests. Agent-operated failure/retry/restart checks compared UUID, media hashes, duration and visits.
 
-**Original user-role message, S4:1235** (2026-10-08 01:15:08.525 UTC; full text):
+[Evidence](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/06fe340a207639826143383364c13b4dd9636d31/docs/ai-use.md#L375-L387).
+
+<!-- S4:1235 -->
+
+**Prompt**
 
 ```text
 Before continuing to next step stop and report what was implemented and replan for next stage. Receive my confirmation before continuing
 ```
-**Original user-role message, S4:1306** (2026-10-08 01:20:07.215 UTC; full text):
+
+<!-- S4:1306 -->
+
+**Prompt**
 
 ```text
 Plan next implementation goals and methodology. Use the local multi agent pipeline in implementation
 ```
-The assistant's S4:1347 plan was approved in S4:1357. This opening excerpt records the concrete storage scope; it is an approved AI draft, not independently authored human prose:
 
-**Original user-role message, S4:1357** (2026-10-08 01:26:25.968 UTC; verbatim opening excerpt; remaining plan omitted):
+<!-- S4:1357 -->
+
+**Approved AI plan (excerpt)**
 
 ```text
 PLEASE IMPLEMENT THIS PLAN:
@@ -367,18 +557,26 @@ Use the existing runner at `tools/agents/pipeline.py` in the local pipeline work
 
 The pipeline does not replace Android, PostgreSQL, Redis/Celery, or live-provider checks.
 ```
-**Incorporation:** Codex implemented SQLite checkpoints, durable audio references, deck mapping, backend deck/attempt storage, retry and duplicate protection in [PR #18](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/18) at [`06fe340`](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/06fe340a207639826143383364c13b4dd9636d31). The [final verification](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/06fe340a207639826143383364c13b4dd9636d31/docs/ai-use.md#L375-L387) records 94 mobile tests, 42 SQLite backend tests with two PostgreSQL-only skips, and 19 PostgreSQL storage tests. Agent-operated emulator/API-restart checks compared UUID, bytes/hashes, duration and visits through failure/retry/restart. They verify the exercised recovery cases; no measured time saving or human acceptance is claimed. The human changed the process by requiring a report/replan before the next implementation.
 
 ### S5. Hosted processing and saved rehearsal review, October 8
 
-**Original user-role message, S4:2198** (2026-10-08 01:59:11.478 UTC; full text):
+- **Output and use:** PR #19 reused Injoon's hosted adapter/alignment and added durable processing/recovery, saved transcripts and consent/polling. PR #20 added actual-PDF/audio/transcript review, history and separate media recovery.
+- **Errors and corrections:** Six recorded AI-review rounds for the review stage led to Codex repairs for asynchronous player state, stale PDF callbacks and exact token mapping.
+- **Verification and limits:** Processing was checked with mocked providers, infrastructure recovery cases and a synthetic hosted pilot. Review checkpoint `1305917` records 209 mobile tests/export and agent-operated synthetic seek/recovery checks. Physical-phone perceptual synchronization was not tested.
+
+[Processing checks](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/c7733d8288833b010948d2c5737929088547aa1e/docs/ai-use.md#L397-L501) · [Review checks](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/130591744c976a1e7225b9c1b76172bb746ac3c4/docs/ai-use.md).
+
+<!-- S4:2198 -->
+
+**Prompt**
 
 ```text
 plan feature/whisper-api-processing implementation.
 ```
-The assistant wrote S4:2261; the user approved it at S4:2271. The exact opening scope was:
 
-**Original user-role message, S4:2271** (2026-10-08 02:01:13.931 UTC; verbatim opening excerpt; remaining plan omitted):
+<!-- S4:2271 -->
+
+**Approved AI plan (excerpt)**
 
 ```text
 PLEASE IMPLEMENT THIS PLAN:
@@ -392,16 +590,18 @@ The storage branch is clean at `06fe340`; [PR #18](https://github.com/snuhcs-cou
 
 Keep local audio playback available throughout. Full synchronized review screens, feedback providers and UI redesign remain later implementations.
 ```
-Codex reused Injoon's hosted adapter/alignment, added durable processing/admission/recovery, saved transcripts and a consent/polling client. [processing implementation and final checks](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/c7733d8288833b010948d2c5737929088547aa1e/docs/ai-use.md#L397-L501) records mocked checks, PostgreSQL/Redis/Celery recovery cases and a controlled synthetic hosted pilot, separately from human-phone accuracy. The chosen architecture excluded local inference/model downloads. These are agent-run or attributed runner checks in the source log, not new executions for this report.
 
-**Original user-role message, S4:3739** (2026-10-08 03:04:02.760 UTC; full text):
+<!-- S4:3739 -->
+
+**Prompt**
 
 ```text
 Plan next proposed stage
 ```
-The human then approved the assistant's S4:3790 plan at S4:3800. Its opening excerpt states what the review stage should do:
 
-**Original user-role message, S4:3800** (2026-10-08 03:53:29.958 UTC; verbatim opening excerpt; remaining plan omitted):
+<!-- S4:3800 -->
+
+**Approved AI plan (excerpt)**
 
 ```text
 PLEASE IMPLEMENT THIS PLAN:
@@ -415,115 +615,289 @@ PR #19 is currently open and unmerged at `c7733d8`. Start from that implementati
 
 Keep the current visual style. Feedback providers, Feedback/Playback tabs, themes, comparison, and deletion remain later work.
 ```
-**Incorporation:** [PR #20](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/20), initially [`1305917`](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/130591744c976a1e7225b9c1b76172bb746ac3c4), added actual-PDF/audio/transcript review, history and independent media recovery. The [review repair and final verification log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/130591744c976a1e7225b9c1b76172bb746ac3c4/docs/ai-use.md) records six AI review rounds and repairs for asynchronous player state, stale PDF callbacks and exact token mapping; 209 mobile tests/export and agent-operated synthetic emulator seek/recovery checks passed at the final checkpoint. Those checks did not establish audible/perceptual synchronization on a physical phone. No exact human debugging prompt for each AI-review repair was recovered, so those findings remain log summaries.
 
 <a id="p3-initial-ai-feedback-request-for-pr-21"></a>
 
 ### S6. Feedback scope, rejected PR split and quota behavior, October 8
 
-**Original user-role message, S4:5652** (2026-10-08 05:45:56.287 UTC; full text):
+- **Revision and use:** The user rejected five separate PRs and approved five checked implementation parts within one PR. Codex implemented feedback adapters/evidence validation, descriptions, coaching persistence and review controls in PR #21. The later quota instruction prioritized OpenAI and asked Gemini work to stop on quota problems.
+- **Result and limits:** Verification included AI review, synthetic checks and small live-provider evaluations. The revised split made the requested review structure explicit. This corrected a planning mismatch; productivity was not measured.
+
+[Evidence](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/ce9f248256b1bbfc0d66f139886503261cc25953/docs/ai-use.md).
+
+<!-- S4:5652 -->
+
+**Prompt**
 
 ```text
 Plan ai feedback feature. Be aware of prompt injections slopsquatting and other problems common with api implementation. Also describe how each form of feedback will be given what feedback will be given and how it will be received and displayed
 ```
-**Original user-role message, S4:5717** (2026-10-08 05:56:23.188 UTC; full text):
+
+<!-- S4:5717 -->
+
+**Prompt**
 
 ```text
 Scope seems to large divide it into smaller tasks with checks in between each task
 ```
-The agent answered at S4:5721 with five implementations and **five PRs**, which exceeded the requested implementation split. The human corrected that interpretation:
 
-**Original user-role message, S4:5728** (2026-10-08 05:57:23.486 UTC; full text):
+<!-- S4:5728 -->
+
+**Prompt**
 
 ```text
 Dont use various prs but when implementing split into the 5 parts and do the checks after each part upload on one pr
 ```
-**Original user-role message, S4:5740** (2026-10-08 05:58:26.160 UTC; full text):
+
+<!-- S4:5740 -->
+
+**Prompt**
+
+Approval of five implementation parts in one PR.
 
 ```text
 Implement the proposed plan.
 ```
-**Revision and result:** S4:5731 proposed five checked parts in one PR; the short approval above refers to that plan. Codex implemented adapters/evidence validation, durable descriptions, coaching persistence, review controls and controlled evaluation in [PR #21](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/21). The [feedback checkpoint/evaluation record](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/ce9f248256b1bbfc0d66f139886503261cc25953/docs/ai-use.md) distinguishes AI review, synthetic infrastructure/device checks and small live-provider evaluations. Scope splitting improved inspectability; no productivity estimate is available. This is a verified **planning mismatch corrected by feedback**, not a hallucinated API.
 
-**Original user-role message, S4:12339** (2026-10-08 12:32:09.003 UTC; full text):
+<!-- S4:12339 -->
+
+**Prompt**
 
 ```text
 For gemini if quota problems just stop . Priority is openai
 ```
-This later instruction changed implemented quota policy: stop Gemini jobs on local exhaustion and require explicit retry after cooldown, prioritize OpenAI, and retain provider choice without automatic fallback. The [PR #21](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/21) record reports eight synthetic Redis/Celery quota/recovery cases and zero automatic calls from stopped Gemini jobs. The command is not a measured evaluation of which provider is universally better.
 
 ### S7. Automatic transcription and cancellation review, October 8–9
 
-**Original user-role message, S7:118** (2026-10-08 14:32:06.816 UTC; full text):
+- **Revision and use:** The user changed the earlier explicit Analyze flow to automatic transcription after saving; coaching remained explicit. Codex updated PR #19 and its dependents.
+- **Error → correction:** An independent Codex reviewer found a delayed-status-read cancellation race. A regression failed before the fix; Codex changed Cancel to consume the pending automatic intent. Elapsed repair time was not recorded.
+- **Verification and limits:** Checkpoint `a0ee475` reports 125 tests/export and 47 focused review tests. The synthetic emulator's single process POST check preceded the cancellation repair. Native first-use cancellation remained untested.
+
+[Evidence](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/a0ee4755fb6f9a56c77fd967bdd83d1f7a37c400/docs/ai-use.md#L503-L516).
+
+<!-- S7:118 -->
+
+**Prompt**
 
 ```text
 Change corresponding pr such that transcription happens automatically after recording is over
 ```
-**Original user-role message, S7:514** (2026-10-08 15:14:43.909 UTC; full text):
+
+<!-- S7:514 -->
+
+**Prompt**
 
 ```text
 Test this using android studio
 ```
-**Context:** the earlier S5 plan required explicit Analyze. The new prompt deliberately revised that behavior to automatic transcription after saving, while coaching remained explicit. Codex changed PR #19 and synchronized dependents. An independent Codex reviewer found a delayed-status-read cancellation race. A regression failed before the fix; Codex made Cancel consume the pending automatic intent. The [automatic-transcription record](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/a0ee4755fb6f9a56c77fd967bdd83d1f7a37c400/docs/ai-use.md#L503-L516) reports 125 tests/export and 47 focused tests in review. An agent-operated emulator observed a single process POST after Stop using a clearly synthetic API; that core check preceded the cancellation repair. Native first-use cancellation and human acceptance remain unverified. The implementation was accepted into the PR, not merged into `main`; repair time was not recorded.
 
-### S8. Human testing evidence and its limits, October 6–7
+<a id="s8-human-testing-evidence-and-its-limits-october-67"></a>
 
-**Original user-role message, S6:12** (2026-10-06 14:53:15.407 UTC; full text):
+### S8. Phone testing, October 6–7
+
+- **Human observation:** At 00:38 KST on October 7, the user reported that the phone flow worked, with transcription accuracy as an exception. Codex prepared/installed the app and revised presentation material; the human judged the flow.
+- **Limit:** Transcription accuracy was reported qualitatively; no accuracy score or confirmed repair was recorded.
+
+
+<!-- S6:12 -->
+
+**Prompt**
 
 ```text
 Let's test the new features on phyiscal phone
 ```
-**Original user-role message, S6:199** (2026-10-06 15:38:28.539 UTC; full text):
+
+<!-- S6:199 -->
+
+**Prompt**
 
 ```text
 Everything worked well./ Just that transccription isnt as accurate . update the presentation pptx. to accomodate for these changes. Also make the pptx more clear as it sounds to sloppy and disoriented
 ```
-The report of successful phone use came at **00:38 KST on October 7**, with transcription accuracy as an exception. Codex prepared/installed the app and later revised presentation material; the human judged the phone flow. The message gives no device-by-device test matrix, quantified accuracy score or verified repair. This supports a human testing role while preserving the reported limitation. It must not be generalized into proof that every feature passed physical-phone acceptance.
 
-## 6. Meaningful revisions and debugging sequences
+<a id="7-additional-developmentadministrative-prompts"></a>
 
-Use the original quotations above once; this table explains the comparison without duplicating them.
+## Additional development/administrative prompts
 
-| Sequence | Why the initial result/instruction was inadequate | Human decision and observable outcome |
-| --- | --- | --- |
-| [J1](#j1-local-pdf-import-persistent-catalog-and-page-viewer-october-4) → [J2](#j2-imported-pdf-in-practice-and-first-page-entry-october-4-feature-record) | The initial request covered import/viewing; the follow-up reported sample slides in Practice and specified its entry page. | Jaewon requested the imported PDF, Next and a reset to page one. `9547f1d` contains the changes; the agent phone check observed first-page entry but did not test Practice Next. |
-| [S0](#s0-shared-scaffold-and-explainable-handoff-september-28) | Planning context included placeholder hours. | Redirected to scaffold/handoff and requested an explanation document. |
-| [S2](#s2-playback-transcript-and-navigation-revision-october-6) | The user described the implemented three-tab UI as cluttered. | Approved the assistant's two-tab plan; `54078a3` contains the changed navigation. No usability gain inferred from tests. |
-| [S3](#s3-rebuilding-the-current-feature-flow-october-8) | Roadmap carried forward local Whisper. | Specified hosted Whisper plus provider-selectable feedback; #19/#21 implement that choice. |
-| [S6](#s6-feedback-scope-rejected-pr-split-and-quota-behavior-october-8) | Large feedback plan; assistant then proposed five PRs. | Human requested checks between five parts in one PR; #21 retains that boundary. |
-| [S5](#s5-hosted-processing-and-saved-rehearsal-review-october-8) → [S7](#s7-automatic-transcription-and-cancellation-review-october-89) | Explicit Analyze was the earlier accepted behavior. | Later feature-change prompt switched to automatic processing; reviewer discovered/repaired a cancellation race. This is a requirement revision, not proof the earlier behavior was a bug. |
-| [I2](#i2-hosted-whisper-adapter-and-response-shape-repair-september-29), [Y2](#y2-empty-android-timeline-after-stop-october-78) | SDK response and native Stop assumptions failed. | AI repaired defects after independent AI review or Jooyoung's recovered phone report. The initial recording request and the empty-timeline report are quoted above; the intermediate debugging exchange remains unavailable. |
+<a id="a1-revert-and-consolidation-review-workflow-not-hallucination"></a>
 
-No complete, independently verified **development-assistant hallucination** was recovered. The defects and operation/planning mistakes above are documented separately. No debugging duration or time-saving estimate was recorded for these examples.
+### A1. Revert and consolidation, October 7–8
 
-## 7. Additional development/administrative prompts
+- **Decision and outcome:** PR #10 reverted #5 to restore separate feature-owner review. Later consolidation retained the PDF and recording work in PR #17; #15 and #17 shared head `b60c357`.
+- **Cost and classification:** Work included reverting, reapplying and re-reviewing features; elapsed time is unknown. The changes addressed the review process.
 
-### A1. Revert and consolidation: review workflow, not hallucination
+[Evidence](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f6f6e76605632296a802aecef25ac10c6d0fd0cd/docs/ai-use.md).
 
-[PR #10](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/10) says the reason for reverting #5 was to restore separate feature-owner review, not that all integrated code was defective. The dated [revert log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f6f6e76605632296a802aecef25ac10c6d0fd0cd/docs/ai-use.md) contains this **secondary quotation**, whose original user message was not recovered:
+**Tool:** OpenAI Codex · **Model:** not recorded for the revert; `gpt-6-astra` for consolidation.
+
+**Prompt from task log · October 7 · [PR #10 log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f6f6e76605632296a802aecef25ac10c6d0fd0cd/docs/ai-use.md)**
 
 > Okay I want to revert #5 through new PR.
 
-The agent preserved history and the previous AI-use log in `docs/history/pr-5-ai-use.md`. The process cost included reverting, reapplying and re-reviewing features; elapsed time is unknown.
+<!-- S4:1155 -->
 
-**Original user-role message, S4:1155** (2026-10-08 01:11:59.727 UTC; full text):
+**Prompt**
 
 ```text
 name the prs as feature/ and if they are similar make it into one branch
 ```
-This original consolidation instruction led to [PR #17](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/17). #15 and #17 have the identical head `b60c357`; #14's PDF and #16's recording lifecycle work were retained. #14–#16 are closed without merge, and #17 is open at retrieval. The PR metadata establishes consolidation rather than discarded defective implementations. Ownership review with #13 remains necessary.
 
+<a id="a2-additional-quotations-from-the-retired-log-october-69"></a>
+
+### A2. Repository and documentation tasks, October 6–9
+
+These task-log excerpts cover branch management, report writing and documentation review. Each entry links to its task record.
+
+**Tool:** OpenAI Codex · **Model:** see the linked task records; not recorded for all tasks.
+
+**Task-log excerpt · 2026-10-06 · [source entry](history/ai-use-before-prompt-consolidation-2026-10-09.md#2026-10-06--merged-github-branch-cleanup)**
+
+```text
+old onloud branches on git
+```
+
+**Task-log excerpt · 2026-10-06 · [source entry](history/ai-use-before-prompt-consolidation-2026-10-09.md#2026-10-06--after-hours-publication-follow-up)**
+
+```text
+push on new branch
+```
+
+**Task-log excerpt · 2026-10-07 · [source entry](history/ai-use-before-prompt-consolidation-2026-10-09.md#2026-10-07--preserve-prototype-and-restore-original-github-branch-layout)**
+
+```text
+yes back up everything so we have a view and then delete the branches so my teammates can reupload like before
+```
+
+**Task-log excerpt · 2026-10-09 · [source entry](history/ai-use-before-prompt-consolidation-2026-10-09.md#2026-10-09--ai-collaboration-report-preparation-and-task-log-formatting)**
+
+```text
+Make ai collaboration report guideline for our project.
+```
+
+**Task-log excerpt · 2026-10-09 · [source entry](history/ai-use-before-prompt-consolidation-2026-10-09.md#2026-10-09--reflective-ai-collaboration-report-revision)**
+
+```text
+The current draft is historically careful but reads too much like an evidence audit rather than a reflective account of human–AI collaboration.
+```
+
+**Task-log excerpt · 2026-10-09 · [source entry](history/ai-use-before-prompt-consolidation-2026-10-09.md#2026-10-09--focused-report-edit-and-non-use-claim-review)**
+
+```text
+Make a focused editorial revision, not a major rewrite.
+```
+
+**Task-log excerpt · 2026-10-09 · [source entry](history/ai-use-before-prompt-consolidation-2026-10-09.md#2026-10-09--focused-report-edit-and-non-use-claim-review)**
+
+```text
+make a light editorial revision of the existing report: simpler English, fewer disclaimers, preserved verbatim quotations, and more emphasis on what the team learned.
+```
+
+**Task-log excerpt · 2026-10-09 · [source entry](history/ai-use-before-prompt-consolidation-2026-10-09.md#2026-10-09--feature-focused-iteration-1-collaboration-report-and-source-attribution)**
+
+```text
+Do not merely polish the existing text. Reevaluate its structure, content, evidence and compliance against the official course requirements.
+```
+
+**Task-log excerpt · 2026-10-09 · [source entry](history/ai-use-before-prompt-consolidation-2026-10-09.md#2026-10-09--local-commit-preparation-after-requester-edits)**
+
+```text
+commit these changes
+```
+
+**Task-log excerpt · 2026-10-09 · [source entry](history/ai-use-before-prompt-consolidation-2026-10-09.md#2026-10-09--jaewons-supplied-pdf-and-practice-prompts)**
+
+```text
+This is jaewon's work, update the ai-collaboration-prompts document
+```
+
+**Task-log excerpt · 2026-10-09 · [source entry](history/ai-use-before-prompt-consolidation-2026-10-09.md#2026-10-09--injoons-recovered-alignment-whisper-and-playback-prompts)**
+
+```text
+Can you edit the appendix with the actual prompts that I used?
+```
+
+**Task-log excerpt · 2026-10-09 · [source entry](history/ai-use-before-prompt-consolidation-2026-10-09.md#2026-10-09--simplified-injoon-entries-and-incorporated-jooyoungs-update)**
+
+```text
+I feel like we don't need the english meaning part. I want to keep it simple and close to the other members.
+```
+
+**Task-log excerpt · 2026-10-09 · [source entry](history/ai-use-before-prompt-consolidation-2026-10-09.md#2026-10-09--verify-course-format-and-simplify-the-iteration-1-prompt-appendix)**
+
+```text
+I want to remove unnecessary stuff from the iteration 1 prompt appendix file.
+```
+
+### A3. Shared reporting workflow, October 9
+
+- **Output:** Codex combined prompt recording and task notes into one collaboration log and updated the reporting guide and shared agent instructions.
+- **Revision and verification:** Injoon requested tool/model metadata, examples across contributors and a human review checklist. Codex revised the report and guide, checked quotations and links, and preserved the earlier review as an archive. Contributor confirmations remain pending.
+
+**Contributor:** Injoon · **Tool:** OpenAI Codex · **Model:** not recorded
+
+```text
+The ai-collab prompts iteration and ai-use file overlaps. We need one file to keep track of the prompts. The ai-use file should be either combined or removed. The guidelines should be updated to accomodate this change. If I'm correct, the validation is to check whether the report itself is good right? Also there are many issues with agents.md so we need to change that as well.
+```
+
+```text
+The file "Review before commits and pushes for Injoon's work". As agents.md is a file that is referenced in everyone's workspace, it should be general to everyone and provide helpful guidance for the AI after any prompt
+```
+
+```text
+Ok but in the prompt log is there no need to mention things like which tool/model was used? The report should mention everything in the ai collab guidelines but I'm not sure if enough information is provided in the other documents for this guideline.
+```
+
+```text
+Okay in the guidelines it also says to mark down where hallucinations occured. In general, how do we keep track of these other things? I feel like the one that is in the github branch (the one we checked out) had useful information although it didn't just include the prompts only. I feel like we need some information to create the report.
+```
+
+```text
+I don't want you clutter the document by saying stuff like "recovered". I want you to make it seem like a submission ready documnet.
+```
+
+```text
+Btw, Injoon, Seoyeon, and Jaewon are male, Jooyoung is Female. Fix inconsistencies in gender throughout the documents. Similarly to what you did right now, can you make sure that the documents are submission ready by removing  clutter unless absolutely necessary for development.
+```
+
+```text
+You need to make changes to the content of the report. For example, in the prompt history and prompt revisions, you only mention Seoyeon's. Obviously we can't include everyone's changes but we can include what was notable with references. Also, wasn't the validation supposed to give checks on the content of the report? Maybe we need to change how the validation is done for the report to make sure it is compltely aligned with the requirements.
+```
+
+```text
+Instead of saying they make sure to say "we".
+```
+
+```text
+According to the official guidelines, I think it would be fine to just give a link to the prompt log in 2. To reduce the word count while increasing content and readability, use the bulleted format as in the guidelines. Make the wording very simple and sentence structure simple.
+```
+
+```text
+What happened to 7. Takeaway for Iteration N?
+```
+
+```text
+But this is not in the guidelines.md file. Remember all the documnets need to be consistent with each other
+```
+
+```text
+I feel like our takeaway is very bad? Is that the only thing we learned from this iteration
+```
+
+```text
+do u think that the validation file is important for us right now? I feel like it adds nothing and a human check on the report is much better
+```
+
+```text
+Ok sure
+```
+
+```text
+Ok I feel like it's good enough. Can you push the changes to the branch.
+```
+
+<a id="1-purpose-coverage-and-provenance"></a>
+<a id="6-meaningful-revisions-and-debugging-sequences"></a>
+<a id="8-missing-contributor-evidence-and-confirmation-checklist"></a>
 <a id="contributor-submission-form"></a>
 
-## 8. Missing contributor evidence and confirmation checklist
-
-| Person | What must be supplied or confirmed |
-| --- | --- |
-| Injoon | Export exact September 29 alignment, Whisper, transcript/playback and review prompts, including failed attempts and follow-ups. Confirm personal inspection, any hand edits, model/version and real-audio/device tests. Resolve Y1's requester label with Jooyoung. |
-| Jaewon | Three original prompt quotations supplied in F1; “Teammate A” identity resolved by the requester and supplied text. Supply acceptance/edit decisions, any additional failed attempts/revisions, personally performed test/review steps and model/version if known. Keep the agent-operated phone mistake separate from human testing. |
-| Jooyoung | Confirm who prompted Y1, the Y2 date/device/retest, tool/model, direct edits (if any) and device test notes. The representative recording/timeline and empty-timeline messages are now supplied as F2. |
-| Seoyeon | Confirm S0–S8 messages and integration decisions, the human phone-test report, requester statements about all-code-by-AI/no hand edits, and the difference between reviewed plans and verified app behavior. Identify the report's human writer and obtain all four members' sign-off. |
-
-Each contribution should provide an original export or accessible source, date, exact request and revisions, generated output accepted/modified/rejected, file/commit/PR, reviewer and performed tests. “No manual application-code edits” is a valid answer when confirmed; do not invent a hand fix. The requester confirms that AI wrote all application code, Codex was preferred, humans handled keys/sensitive data and phone testing, and humans reviewed plans. These are requester statements, not four separate attestations.
-
-The current revision is a team-review draft in the existing documentation branch/PR. Local logs were inspected read-only; the appendix exposes selected project prompts, not private media or credentials. The raw session records have not been published. Contributor-accessible source handoff, full code-marker coverage on the eventual integrated source, Wiki publication/subpage/sidebar and submission remain outstanding.
+[Archived source notes](history/ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register).

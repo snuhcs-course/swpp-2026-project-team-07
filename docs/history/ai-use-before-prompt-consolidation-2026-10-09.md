@@ -1,3 +1,5 @@
+> Retired as an active log on October 9, 2026. Preserve this historical record; do not append new entries. Actual prompts are maintained in the [iteration appendix](../ai-collaboration-prompts-iteration-1.md). The original body is retained below, with relative links rebased for this directory and one editorial pronoun corrected on October 9 at Injoon's request. Past instructions to update the old log are historical. Links to the retired review now point to its archive.
+
 # AI-use log
 
 ## Entry template
@@ -34,7 +36,7 @@
 - Limitations: This is an evidence-gap entry, not an AI-use claim. Confirm task date, contributor, actual output and checks.
 - Related PR/commit: [team schedule](https://docs.google.com/spreadsheets/d/1xpFF6HDp7Yg71O_VKgKQD7yxM8ptniUNu0Siw_2QCRI/edit#gid=1533464390)
 - Roles and evidence: Original author, prompt sender, integrator, reviewer, manual editor and verifier are unconfirmed.
-- Period: September 21–25 planning history, outside the report window after the September 25 milestone. The sheet’s “Iteration 1” label conflicts with the [official course boundary](ai-collaboration-validation-iteration-1.md#source-register); official clarification is needed before inclusion.
+- Period: September 21–25 planning history, outside the report window after the September 25 milestone. The sheet’s “Iteration 1” label conflicts with the [official course boundary](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register); official clarification is needed before inclusion.
 - Prompt provenance: No prompt supplied; do not reconstruct a quotation from the schedule.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
@@ -50,7 +52,7 @@
 - Limitations: This is an evidence-gap entry, not an AI-use claim. Confirm task date, contributor, actual output and checks.
 - Related PR/commit: [team schedule](https://docs.google.com/spreadsheets/d/1xpFF6HDp7Yg71O_VKgKQD7yxM8ptniUNu0Siw_2QCRI/edit#gid=1533464390)
 - Roles and evidence: Original author, prompt sender, integrator, reviewer, manual editor and verifier are unconfirmed.
-- Period: September 21–25 planning history, outside the report window after the September 25 milestone. The sheet’s “Iteration 1” label conflicts with the [official course boundary](ai-collaboration-validation-iteration-1.md#source-register); official clarification is needed before inclusion.
+- Period: September 21–25 planning history, outside the report window after the September 25 milestone. The sheet’s “Iteration 1” label conflicts with the [official course boundary](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register); official clarification is needed before inclusion.
 - Prompt provenance: No prompt supplied; do not reconstruct a quotation from the schedule.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
@@ -66,7 +68,7 @@
 - Limitations: This is an evidence-gap entry, not an AI-use claim. Confirm task date, contributor, actual output and checks.
 - Related PR/commit: [team schedule](https://docs.google.com/spreadsheets/d/1xpFF6HDp7Yg71O_VKgKQD7yxM8ptniUNu0Siw_2QCRI/edit#gid=1533464390)
 - Roles and evidence: Original author, prompt sender, integrator, reviewer, manual editor and verifier are unconfirmed.
-- Period: September 21–25 planning history, outside the report window after the September 25 milestone. The sheet’s “Iteration 1” label conflicts with the [official course boundary](ai-collaboration-validation-iteration-1.md#source-register); official clarification is needed before inclusion.
+- Period: September 21–25 planning history, outside the report window after the September 25 milestone. The sheet’s “Iteration 1” label conflicts with the [official course boundary](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register); official clarification is needed before inclusion.
 - Prompt provenance: No prompt supplied; do not reconstruct a quotation from the schedule.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
@@ -82,7 +84,7 @@
 - Limitations: Original prompt and a named scaffold AI-use disclosure are missing from main's first log entries. Do not infer personal prompting from authorship.
 - Related PR/commit: [PR #1](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/1), [scaffold](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/e80e81313d3c5faa775795fa97797b5507b17360)
 - Roles and evidence: Seoyeon is the recorded Git author. AI prompting, generated scope, manual editing and individual verification roles remain unconfirmed.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: Historical log; requests are summaries unless marked as logged quotations. Original chat not supplied.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
@@ -95,7 +97,7 @@
 - Representative request: Summary: Create the guidelines on a
   separate branch for review; add the AI-use log on that same branch; push the
   two files and open a PR only after the user has reviewed them.
-- Generated work and incorporation: Codex drafted [AGENTS.md](../AGENTS.md) and
+- Generated work and incorporation: Codex drafted [AGENTS.md](../../AGENTS.md) and
   this file. The draft uses the existing README, API contract, work-division
   documents, mobile instructions, and CI configuration. Existing mobile guidance
   and application code were left unchanged. Both files were prepared as local drafts
@@ -119,7 +121,7 @@
   The PR description summarizes this entry.
   [historical baseline log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f6f6e76605632296a802aecef25ac10c6d0fd0cd/docs/ai-use.md); [PR #2](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/2).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: Historical log; requests are summaries unless marked as logged quotations. Original chat not supplied.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
@@ -148,7 +150,7 @@
   and no feature PR has been created.
   [historical baseline log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f6f6e76605632296a802aecef25ac10c6d0fd0cd/docs/ai-use.md); [PR #3](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/3).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: Historical log; requests are summaries unless marked as logged quotations. Original chat not supplied.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
@@ -172,7 +174,7 @@
 - Related PR/commit: Related branch: `feature/whisper-alignment`; changes remain local and uncommitted.
   [historical baseline log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f6f6e76605632296a802aecef25ac10c6d0fd0cd/docs/ai-use.md); [PR #3](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/3).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: Historical log; requests are summaries unless marked as logged quotations. Original chat not supplied.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
@@ -194,7 +196,7 @@
   and live transcription remain pending.
 - Related PR/commit: [historical baseline log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f6f6e76605632296a802aecef25ac10c6d0fd0cd/docs/ai-use.md); [PR #3](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/3).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: Historical log; requests are summaries unless marked as logged quotations. Original chat not supplied.
 - Error/correction: The first sandboxed speech synthesis produced an empty file. Codex reran it with system speech-service access and verified the replacement; this records an execution failure, not an incorrect model assertion. Cost not recorded.
 
@@ -221,7 +223,7 @@
   correction or clamping was applied.
 - Related PR/commit: [historical baseline log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f6f6e76605632296a802aecef25ac10c6d0fd0cd/docs/ai-use.md); [PR #3](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/3).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: Historical log; requests are summaries unless marked as logged quotations. Original chat not supplied.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
@@ -244,7 +246,7 @@
   feature has run, nor does it install a Git hook or authorize publication.
 - Related PR/commit: [historical baseline log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f6f6e76605632296a802aecef25ac10c6d0fd0cd/docs/ai-use.md); [PR #3](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/3).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: Historical log; requests are summaries unless marked as logged quotations. Original chat not supplied.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
@@ -275,7 +277,7 @@
   optional hardening, not a material finding for this review.
 - Related PR/commit: [historical baseline log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f6f6e76605632296a802aecef25ac10c6d0fd0cd/docs/ai-use.md); [PR #3](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/3).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: Historical log; requests are summaries unless marked as logged quotations. Original chat not supplied.
 - Error/correction: Generated-code defect. Finding P2: a non-object successful provider response escaped as AttributeError
   at model_dump instead of a safe TranscriptionError. Codex added a
@@ -300,7 +302,7 @@
 - Limitations: Historical status belongs to the dated source; later publication or acceptance requires separate evidence.
 - Related PR/commit: [historical baseline log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f6f6e76605632296a802aecef25ac10c6d0fd0cd/docs/ai-use.md); [PR #3](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/3).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: Historical log; requests are summaries unless marked as logged quotations. Original chat not supplied.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
@@ -323,7 +325,7 @@
   remains separate follow-up work after merge. Merge is not authorized here.
 - Related PR/commit: [historical baseline log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f6f6e76605632296a802aecef25ac10c6d0fd0cd/docs/ai-use.md); [PR #3](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/3).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: Historical log; requests are summaries unless marked as logged quotations. Original chat not supplied.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
@@ -347,7 +349,7 @@
   were introduced. Server 501 is an explicit error; preview UI remains labeled.
 - Related PR/commit: [historical baseline log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f6f6e76605632296a802aecef25ac10c6d0fd0cd/docs/ai-use.md); [PR #4](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/4).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: Historical log; requests are summaries unless marked as logged quotations. Original chat not supplied.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
@@ -368,7 +370,7 @@
 - Limitations: Historical status belongs to the dated source; later publication or acceptance requires separate evidence.
 - Related PR/commit: [historical baseline log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f6f6e76605632296a802aecef25ac10c6d0fd0cd/docs/ai-use.md); [PR #4](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/4).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: Historical log; requests are summaries unless marked as logged quotations. Original chat not supplied.
 - Error/correction: Generated-code defect. A separate Codex reviewer found that coercing response status with String()
   allowed an array such as ["completed"] through validation. Codex required a
@@ -401,7 +403,7 @@
   remain local/unstaged; no commit or push was performed.
 - Related PR/commit: [historical baseline log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f6f6e76605632296a802aecef25ac10c6d0fd0cd/docs/ai-use.md); [PR #4](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/4).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: Historical log; requests are summaries unless marked as logged quotations. Original chat not supplied.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
@@ -427,7 +429,7 @@
   mismatches. Audio/script/raw JSON remain ignored. No new provider call or upload.
 - Related PR/commit: [historical baseline log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f6f6e76605632296a802aecef25ac10c6d0fd0cd/docs/ai-use.md); [PR #4](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/4).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: Historical log; requests are summaries unless marked as logged quotations. Original chat not supplied.
 - Error/correction: Generated-code defects; Codex repaired the failures, with separate AI review. Separate reviewer identified a late Replay seek that could resume after newer
   navigation/source intent and a swallowed seek failure. Codex added intent/focus
@@ -456,7 +458,7 @@
   integration remains unverified and is not represented as implemented end-to-end.
 - Related PR/commit: [historical baseline log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f6f6e76605632296a802aecef25ac10c6d0fd0cd/docs/ai-use.md); [PR #4](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/4).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: Historical log; requests are summaries unless marked as logged quotations. Original chat not supplied.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
@@ -477,7 +479,7 @@
 - Limitations: Historical status belongs to the dated source; later publication or acceptance requires separate evidence.
 - Related PR/commit: [historical baseline log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f6f6e76605632296a802aecef25ac10c6d0fd0cd/docs/ai-use.md); [PR #4](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/4).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: Historical log; requests are summaries unless marked as logged quotations. Original chat not supplied.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
@@ -497,7 +499,7 @@
 - Limitations: Historical status belongs to the dated source; later publication or acceptance requires separate evidence.
 - Related PR/commit: [historical baseline log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f6f6e76605632296a802aecef25ac10c6d0fd0cd/docs/ai-use.md); [PR #4](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/4).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: Historical log; requests are summaries unless marked as logged quotations. Original chat not supplied.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
@@ -544,9 +546,9 @@
 - Related PR/commit: Historical status: local commit on `feature/recording-tracking`; PR pending at that step. Original recording commit: [04857fb](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/04857fb93d0a64784feb8bfb1d4b61f4b47bf251).
   [prototype source log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/33907d35fd7a52ef3b3fcbd56990af41b50d7cfd/docs/ai-use.md).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: The task entry in [prototype source log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/33907d35fd7a52ef3b3fcbd56990af41b50d7cfd/docs/ai-use.md) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
-- Error/correction: October 9 attribution correction: the user credits original recording to Jooyoung (joo / zoo / zoo_zero); 04857fb corroborates original authorship. The prior log labelled Injoon as requester; keep that wording only in the [historical archive](history/pr-5-ai-use.md), not as a confirmed prompt-sender claim. Codex repaired the generated lifecycle defects described in the source.
+- Error/correction: October 9 attribution correction: the user credits original recording to Jooyoung (joo / zoo / zoo_zero); 04857fb corroborates original authorship. The prior log labelled Injoon as requester; keep that wording only in the [historical archive](../history/pr-5-ai-use.md), not as a confirmed prompt-sender claim. Codex repaired the generated lifecycle defects described in the source.
 
 ## 2026-10-04 — On-device PDF import and slide viewer
 
@@ -577,7 +579,7 @@
 - Related PR/commit: Historical branch: `feature/pdf-viewer`, based on `origin/main`. Original PDF contribution: [9547f1d](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/9547f1dd397436f7fb1d74b9c4e94d7ca8d20d1b).
   [prototype source log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/33907d35fd7a52ef3b3fcbd56990af41b50d7cfd/docs/ai-use.md).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: The task entry in [prototype source log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/33907d35fd7a52ef3b3fcbd56990af41b50d7cfd/docs/ai-use.md) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
 - Error/correction: Agent operation error documented in the physical Android follow-up: Codex tapped Remove instead of Open; the app-private PDF copy was restored by reimporting the retained source. Original PDF loss and human-written code repair are not established.
 
@@ -597,7 +599,7 @@
 - Limitations: Historical status belongs to the dated source; later publication or acceptance requires separate evidence.
 - Related PR/commit: [prototype source log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/33907d35fd7a52ef3b3fcbd56990af41b50d7cfd/docs/ai-use.md).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: The task entry in [prototype source log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/33907d35fd7a52ef3b3fcbd56990af41b50d7cfd/docs/ai-use.md) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
 - Error/correction: Agent operation error: Codex selected Remove rather than Open and reimported the retained source. See the source account and verification; measured cost not recorded.
 
@@ -614,7 +616,7 @@
 - Limitations: Remaining implementation: backend deck/attempt endpoints and PDF preparation, worker orchestration, Gemini feedback, live result rendering, durable recording metadata, cancellation/interruption policy, and device validation. No end-to-end AI completion is claimed.
 - Related PR/commit: [prototype source log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/33907d35fd7a52ef3b3fcbd56990af41b50d7cfd/docs/ai-use.md).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: The task entry in [prototype source log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/33907d35fd7a52ef3b3fcbd56990af41b50d7cfd/docs/ai-use.md) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
 - Error/correction: Codex repaired native-stop duration and shared-screen handoffs. PR #5 later underwent the user-authorized review-process reset in PR #10; this does not establish hallucination or that all integration code was defective.
   Independent review identified the overlapping PDF timeline and local playback handoff; final staged changes were reviewed again after resolution. Review also identified unfinished interruption/back-navigation handling and concurrent PDF catalog mutations. Those remain follow-ups under the user's explicit merge-existing-work scope.
@@ -632,7 +634,7 @@
 - Limitations: Historical status belongs to the dated source; later publication or acceptance requires separate evidence.
 - Related PR/commit: [prototype source log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/33907d35fd7a52ef3b3fcbd56990af41b50d7cfd/docs/ai-use.md).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: The task entry in [prototype source log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/33907d35fd7a52ef3b3fcbd56990af41b50d7cfd/docs/ai-use.md) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
 - Error/correction: Independent review found and rechecked fixes for native timed-stop duration loss and empty permission-denied entries. Controlled duration cap freezes the recorder before Stop. Full boundary/interruption/device speech evaluation remains for the complete mobile milestone; no human speech quality claim.
 
@@ -651,7 +653,7 @@
 - Limitations: Historical status belongs to the dated source; later publication or acceptance requires separate evidence.
 - Related PR/commit: [prototype source log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/33907d35fd7a52ef3b3fcbd56990af41b50d7cfd/docs/ai-use.md).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: The task entry in [prototype source log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/33907d35fd7a52ef3b3fcbd56990af41b50d7cfd/docs/ai-use.md) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
 - Error/correction: Generated-code defects included duplicate failed-stage redelivery, codec-tail loss and NumPy scalar normalization; Codex repaired them. The language-switch omission is a product-model quality limitation, not a development-assistant assertion.
   Independent review reproduced duplicate failed-stage redelivery and codec-tail alignment loss. Fixed failed-state delivery guards, pending enqueue deduplication, and durable transcript persistence before alignment; accepted codec tails extend only the final visit, preserving original timestamps. Enabled per-segment multilingual detection.
@@ -670,7 +672,7 @@
 - Limitations: Historical status belongs to the dated source; later publication or acceptance requires separate evidence.
 - Related PR/commit: [prototype source log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/33907d35fd7a52ef3b3fcbd56990af41b50d7cfd/docs/ai-use.md).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: The task entry in [prototype source log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/33907d35fd7a52ef3b3fcbd56990af41b50d7cfd/docs/ai-use.md) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
 - Error/correction: Additional review fixes: provider 429 now persists a project-wide cooldown across deck/feedback keys, and generated description caches honor model/prompt changes while explicitly preserving manual corrections. Regression tests reproduce both cases. No live Gemini calls were made.
 
@@ -687,7 +689,7 @@
 - Limitations: Live test database has zero provider requests. Gemini cache, quota, unknown-outcome and evidence behavior was tested with mocked responses only. Free-tier project attestation/actual limits, physical-device speech accuracy (including a full spoken ten minutes), chart descriptions and suggestion usefulness still require pilot sign-off. Human review remains pending.
 - Related PR/commit: [prototype source log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/33907d35fd7a52ef3b3fcbd56990af41b50d7cfd/docs/ai-use.md).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: The task entry in [prototype source log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/33907d35fd7a52ef3b3fcbd56990af41b50d7cfd/docs/ai-use.md) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
 - Error/correction: The application’s Whisper output contained words for silent audio; Codex added a speech-presence gate and regression. Classify this as product-model output error, separately from development-assistant hallucination. Codex also repaired the lifecycle failures recorded below.
   A silent full-length emulator recording produced hallucinated words in Whisper. Added a local Silero speech-presence gate before decoding (no waveform cutting or timestamp shift), plus a regression test. Human mixed-language accuracy and real Gemini output remain unverified; no provider credentials were used.
@@ -705,7 +707,7 @@
 - Limitations: Historical status belongs to the dated source; later publication or acceptance requires separate evidence.
 - Related PR/commit: [prototype source log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/33907d35fd7a52ef3b3fcbd56990af41b50d7cfd/docs/ai-use.md).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: The task entry in [prototype source log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/33907d35fd7a52ef3b3fcbd56990af41b50d7cfd/docs/ai-use.md) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
@@ -724,7 +726,7 @@
 - Limitations: Historical status belongs to the dated source; later publication or acceptance requires separate evidence.
 - Related PR/commit: [prototype source log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/33907d35fd7a52ef3b3fcbd56990af41b50d7cfd/docs/ai-use.md).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: The task entry in [prototype source log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/33907d35fd7a52ef3b3fcbd56990af41b50d7cfd/docs/ai-use.md) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
 - Error/correction: Independent reviewer inspected the exact staged diff and independently passed TypeScript/lint/all 45 tests, with no actionable findings. It rechecked the later staged tab-label correction; unchanged review evidence was reused. Final staged code matches the working tree used for checks. This is AI review and agent-operated emulator testing, not human approval or physical-device speech/timing evaluation; those remain pending.
 
@@ -742,7 +744,7 @@
 - Limitations: physical-device and human usability/TalkBack testing remain pending; native microphone quality and real feedback usefulness were not evaluated. Existing pilot limitations still apply. Temporary fixture routing, display overrides and development-toolbar settings were restored; the temporary imported layout PDF was removed. No commit or push was performed.
 - Related PR/commit: [prototype source log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/33907d35fd7a52ef3b3fcbd56990af41b50d7cfd/docs/ai-use.md).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: The task entry in [prototype source log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/33907d35fd7a52ef3b3fcbd56990af41b50d7cfd/docs/ai-use.md) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
 - Error/correction: Independent AI review covered the working-tree diff against the existing index plus new source/tests. It found and rechecked three fixes: switching Review tabs now resets the outer scroll without replacing the player; the timer's accessibility label includes elapsed time; and `error.code=unknown_outcome` blocks retry even when the API exposes the feedback stage as stale. The reviewer independently passed the relevant tests and found no remaining concrete blocker. A later check covered concise upload failure text and secondary recovery/retry actions. A final tab-layout adjustment removes item padding and sets a 48-dp minimum touch height. This is AI review, not human approval; the staged snapshot is not claimed to contain these new edits.
 
@@ -758,7 +760,7 @@
 - Limitations: Historical status belongs to the dated source; later publication or acceptance requires separate evidence.
 - Related PR/commit: [prototype source log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/33907d35fd7a52ef3b3fcbd56990af41b50d7cfd/docs/ai-use.md).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: The task entry in [prototype source log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/33907d35fd7a52ef3b3fcbd56990af41b50d7cfd/docs/ai-use.md) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
@@ -780,10 +782,10 @@
   GitHub displayed Deleted/Restore for each branch. A fresh connector branch listing and reloaded All branches page both showed six remaining branches: `main`, `codex/simplify-practice-review`, and `feature/prototype-{storage,local-transcription,cached-feedback,mobile-flow}`. Draft PRs #6–#9 remain open; the newer UI work is preserved.
 - Human review/corrections: Awaiting contributor evidence for human review or direct manual edits.
 - Limitations: Historical status belongs to the dated source; later publication or acceptance requires separate evidence.
-- Related PR/commit: [retained local source L1](ai-collaboration-validation-iteration-1.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here).
+- Related PR/commit: [retained local source L1](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
-- Prompt provenance: The task entry in [retained local source L1](ai-collaboration-validation-iteration-1.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Prompt provenance: The task entry in [retained local source L1](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
 ## 2026-10-06 — After Hours light and dark appearance
@@ -799,7 +801,7 @@
   Other-task changes: retained the separate unstaged branch-cleanup entry in this log and the untracked schedule draft; neither belongs to this implementation's staged scope.
 - Related PR/commit: [prototype source log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/33907d35fd7a52ef3b3fcbd56990af41b50d7cfd/docs/ai-use.md).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: The task entry in [prototype source log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/33907d35fd7a52ef3b3fcbd56990af41b50d7cfd/docs/ai-use.md) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
 - Error/correction: Independent AI review: reviewed the exact staged source and found no actionable defect; independently passed 19 theme, playback and transcript-layout tests and verified staged mobile files match working-tree files. This is AI review, not human approval. `git diff --cached --check` passed.
 
@@ -815,7 +817,7 @@
 - Limitations: Historical status belongs to the dated source; later publication or acceptance requires separate evidence.
 - Related PR/commit: [prototype source log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/33907d35fd7a52ef3b3fcbd56990af41b50d7cfd/docs/ai-use.md).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: The task entry in [prototype source log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/33907d35fd7a52ef3b3fcbd56990af41b50d7cfd/docs/ai-use.md) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
@@ -829,10 +831,10 @@
 - Verification: No separate check is recorded for this step; do not infer one from nearby entries.
 - Human review/corrections: Awaiting contributor evidence for human review or direct manual edits.
 - Limitations: No product source changed. Desktop CUA still could not attach to the emulator display, so this establishes build/install/launch and server reachability, not visual layout, theme-switching, restart persistence, audio or human-device validation. The user can switch modes at Home → Settings → Appearance. This launch note remains local; no additional commit or push was made.
-- Related PR/commit: [retained local source L1](ai-collaboration-validation-iteration-1.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here).
+- Related PR/commit: [retained local source L1](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
-- Prompt provenance: The task entry in [retained local source L1](ai-collaboration-validation-iteration-1.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Prompt provenance: The task entry in [retained local source L1](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
 ## 2026-10-06 — TA meeting slides and demo preparation
@@ -846,10 +848,10 @@
 - Human review/corrections: Human review and actual meeting rehearsal remain pending. The schedule and Wiki were not edited, and no product source, branch, commit, push or merge changed. Preserved the pre-existing AI-use entries and untracked schedule draft. This documentation/artifact task used proportionate self-review; no independent code review or application rebuild was needed.
 - Limitations: Historical status belongs to the dated source; later publication or acceptance requires separate evidence.
 - Related PR/commit: Deliverables are outside the repository in this chat's artifact workspace: `OutLoud_TA_Meeting_Final.pptx` (SHA-256 `ab559632a968ec426a099d539a1bc1ab9e471deba83ef757d16787970e76f0f5`) and `OutLoud_TA_Demo_Runbook.txt`. The runbook includes preflight commands, a five-minute demo, an explicit saved-result fallback and a video-backup checklist. No backup video was recorded and no fresh Android/backend/provider run is claimed.
-  [retained local source L1](ai-collaboration-validation-iteration-1.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here).
+  [retained local source L1](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
-- Prompt provenance: The task entry in [retained local source L1](ai-collaboration-validation-iteration-1.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Prompt provenance: The task entry in [retained local source L1](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
 ## 2026-10-06 — Update the supplied Iteration 1 presentation
@@ -864,10 +866,10 @@
 - Human review/corrections: Awaiting contributor evidence for human review or direct manual edits.
 - Limitations: Historical status belongs to the dated source; later publication or acceptance requires separate evidence.
 - Related PR/commit: Deliverable: `Team7_Iteration_1_Updated_2026-10-06_final.pptx` in this chat's artifact output folder, SHA-256 `2e36e8045e610908e20c5cf85695ba4ce92b39a119720714633481dd7680af74`. Native PowerPoint rendering and human rehearsal were not tested. No fresh app/provider test, product-code change, commit, push or merge was performed. Preserved the existing local AI-use entries and schedule draft.
-  [retained local source L1](ai-collaboration-validation-iteration-1.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here).
+  [retained local source L1](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
-- Prompt provenance: The task entry in [retained local source L1](ai-collaboration-validation-iteration-1.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Prompt provenance: The task entry in [retained local source L1](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
 ## 2026-10-06 — Physical-phone test preparation
@@ -881,10 +883,10 @@
   After the user's continuation, USB authorization succeeded. Installed the existing APK with `adb install -r` (Success, retained app data) on a Samsung SM-S918N physical phone running Android 16 / API 36, forwarded ports 8081 and 8000, and launched the development-client intent. Metro responded with `packager-status:running`; OutLoud had a live process and the focused recent ReactNativeJS/AndroidRuntime error read was empty. The phone remained behind the Android lock screen (`isKeyguardShowing=true`), so requested an unlock before visual or interactive testing. This proves install/process launch only; appearance, persistence and recording/playback checks remain pending.
 - Human review/corrections: Awaiting contributor evidence for human review or direct manual edits.
 - Limitations: Historical status belongs to the dated source; later publication or acceptance requires separate evidence.
-- Related PR/commit: [retained local source L1](ai-collaboration-validation-iteration-1.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here).
+- Related PR/commit: [retained local source L1](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
-- Prompt provenance: The task entry in [retained local source L1](ai-collaboration-validation-iteration-1.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Prompt provenance: The task entry in [retained local source L1](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
 ## 2026-10-07 — Revert PR #5 for separate feature reviews
@@ -894,14 +896,14 @@
 - Task and scope: Purpose: reintroduce PDF viewing and recording through separate teammate-owned PRs with review and verification. This is a review-process reset, not a claim that all integration changes were defective.
 - Representative request: Source/status: user request received 2026-10-07 in Codex: “Okay I want to revert #5 through new PR.” Confirmed authorization to prepare and publish a revert PR; merging it remains pending.
 - Generated work and incorporation: OpenAI Codex. Applied the inverse of merge `c6095141d182e4d5aa30b0d2e1c7d1eb5d311696` relative to its first parent, preserving shared Git history. Application code, configuration, dependencies, and README return to the PR #4 baseline `7af66ab`.
-  Historical disclosures removed by the mechanical revert are preserved verbatim in [PR #5 AI-use history](history/pr-5-ai-use.md). Original feature commits remain in Git history: PDF `9547f1d`, recording `04857fb`.
+  Historical disclosures removed by the mechanical revert are preserved verbatim in [PR #5 AI-use history](../history/pr-5-ai-use.md). Original feature commits remain in Git history: PDF `9547f1d`, recording `04857fb`.
 - Verification: clean dependency install from the restored lockfile succeeded. `npm run check` passed TypeScript and all 21 mobile tests; lint had zero errors and one existing `react-hooks/exhaustive-deps` warning in `ResultsScreen.tsx:33`. `npm run bundle:android` passed. Staged whitespace check passed; the entire staged tree matches `7af66ab` except this disclosure and the historical AI-use archive. Backend files are unchanged; backend tests were not rerun.
   Independent Codex review of the exact staged diff found no actionable findings: correct merge parent and baseline, consistent removed dependencies/plugins/consumers, and verbatim preservation of both original AI-use additions. Working tree matched the staged snapshot. No new Android device verification or human teammate approval is claimed; native/device behavior remains unverified in this task.
 - Human review/corrections: The source records user authorization for the revert and separate feature reviews. Human teammate approval is not established.
 - Limitations: Follow-up: after this revert merges, each owner starts a fresh branch from updated main and reapplies their original feature change. Review integration changes explicitly when updating the second feature PR after the first merges. PRs #6–#9 depend on the reverted integration; this task does not close or delete them.
 - Related PR/commit: [historical baseline log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f6f6e76605632296a802aecef25ac10c6d0fd0cd/docs/ai-use.md); [PR #10](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/10).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: Exact logged quotation in the linked baseline entry: “Okay I want to revert #5 through new PR.” Original chat sender remains unconfirmed; see [original revert log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f6f6e76605632296a802aecef25ac10c6d0fd0cd/docs/ai-use.md#L309-L317).
 - Error/correction: Human review decision / review-process reset: PR #10 reversed the authorized integration in PR #5 so owners could review features separately. Existing commits and disclosures were retained. Neither the revert nor dependent PRs #6–#9 establish an AI hallucination. Reapplication and repeated verification were required; elapsed cost not measured.
 
@@ -916,10 +918,10 @@
 - Human review/corrections: Human report: the user reported that the physical-phone test worked well overall, with transcription accuracy as the exception. This supersedes the earlier pending overall phone-test status. It is a qualitative human test result; no transcript/reference comparison, error rate, detailed scenario checklist or full ten-minute spoken-test result was supplied. Agent-operated installation/runtime checks remain separate from the user's experience report. No transcription fix or measured accuracy gain is claimed.
 - Limitations: Historical status belongs to the dated source; later publication or acceptance requires separate evidence.
 - Related PR/commit: Deliverable: `Team7_Iteration_1_Phone_Test_Update_2026-10-07_final.pptx` in this chat's `iteration-phone-update/output` artifact folder, SHA-256 `39cc4a41063e62e367f369a13c7d3ef812b8c02cfb5bc005bd90bac22aa4c23d`. No product code, provider setup, shared Wiki, commit, push or merge changed. Preserved the existing documentation edits and schedule draft. Deck review was a proportionate artifact self-review, not independent code review or a fresh physical test.
-  [retained local source L1](ai-collaboration-validation-iteration-1.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here).
+  [retained local source L1](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
-- Prompt provenance: The task entry in [retained local source L1](ai-collaboration-validation-iteration-1.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Prompt provenance: The task entry in [retained local source L1](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
 ## 2026-10-07 — Required TA template and shared schedule update
@@ -935,10 +937,10 @@
 - Human review/corrections: Awaiting contributor evidence for human review or direct manual edits.
 - Limitations: Historical status belongs to the dated source; later publication or acceptance requires separate evidence.
 - Related PR/commit: Final artifact: `OutLoud_TA_Meeting.pptx` in this chat's `ta-template-update/output` folder, SHA-256 `f0a6083e586097ae24af0457c4194d5a5d2c1879b59903d6e93ef06a856aa645`. Native PowerPoint rendering and a full meeting rehearsal were not tested. No product code, provider setup, Wiki, commit, push or merge was changed. Preserved prior local AI-use edits and the untracked schedule draft; no application rebuild was needed for this artifact/document task.
-  [retained local source L1](ai-collaboration-validation-iteration-1.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here).
+  [retained local source L1](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
-- Prompt provenance: The task entry in [retained local source L1](ai-collaboration-validation-iteration-1.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Prompt provenance: The task entry in [retained local source L1](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
 ## 2026-10-07 — Focused edits to the user's own TA presentation
@@ -952,10 +954,10 @@
 - Human review/corrections: Awaiting contributor evidence for human review or direct manual edits.
 - Limitations: Template assessment: the deck covers the required topic sequence, spread across ten slides. Slide 7 still lacks branch origins and merge plans, and slide 8 lists design differences rather than identifying document updates actually made this week. Reported these gaps without expanding the requested edits to those slides.
 - Related PR/commit: Deliverable: `user-deck-edit/output/OutLoud_TA_Presentation_Edited.pptx` in this chat's artifact directory, SHA-256 `9565d3b84b540b84d4894d99bc597d18c5daf433b2ea0d5dffa7cb24a92bd9ca`. Original source remains unchanged, SHA-256 `d5856659dc18bad0b22e9fc823426820b1ddef8fd123fb327cc56924a46e0125`. No spreadsheet, product code, provider configuration, Wiki, commit, push or merge changed in this focused edit. Preserved existing local documentation edits and the schedule draft. Review was artifact self-review; no application rebuild was needed.
-  [retained local source L1](ai-collaboration-validation-iteration-1.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here).
+  [retained local source L1](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
-- Prompt provenance: The task entry in [retained local source L1](ai-collaboration-validation-iteration-1.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Prompt provenance: The task entry in [retained local source L1](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
 ## 2026-10-07 — Physical-phone demo launch
@@ -968,10 +970,10 @@
 - Verification: Fresh verification: `npm run check` passed TypeScript, Expo lint and all 54 tests. Existing Docker Compose services were running; `/api/health/` returned ok, `/api/ready/` reported database/broker reachable, and Celery inspect ping returned one online worker. `GEMINI_ENABLED` is false. ADB reported OutLoud foreground with the phone unlocked and both reverse mappings active; focused recent ReactNativeJS/AndroidRuntime error reads were empty. A phone screenshot visibly confirmed the dark Playback screen with rendered PDF, transcript, slide-visit controls and an active player. No screenshot or private content is incorporated into the repository.
 - Human review/corrections: Awaiting contributor evidence for human review or direct manual edits.
 - Limitations: Limits/handoff: Metro still emitted manifest-asset timeout warnings, although the captured app screen rendered its fonts and slide. An accessibility dump failed to reach idle during playback, so the prior dump was not treated as fresh screen proof; the screenshot supplied that evidence. This run did not create a recording or independently assess microphone quality, transcription accuracy, audible playback, timing synchronization, theme persistence or Gemini output. Metro/backend remain running for the USB demo; keep the Mac awake and the cable attached. This is agent-operated launch verification, not a new human acceptance test.
-- Related PR/commit: [retained local source L1](ai-collaboration-validation-iteration-1.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here).
+- Related PR/commit: [retained local source L1](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
-- Prompt provenance: The task entry in [retained local source L1](ai-collaboration-validation-iteration-1.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Prompt provenance: The task entry in [retained local source L1](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
 ## 2026-10-07 — Mac emulator PDF-import demo preparation
@@ -984,10 +986,10 @@
 - Verification: No separate check is recorded for this step; do not infer one from nearby entries.
 - Human review/corrections: Awaiting contributor evidence for human review or direct manual edits.
 - Limitations: Handoff/limits: desktop controls could not attach to the standalone emulator window. The user declined alternate ADB UI control in favor of importing manually. No app navigation, PDF import, recording or processing was performed or verified in this run. No product code, dependencies, commit or push changed; preserved earlier local documentation edits and the schedule draft. Documentation received a focused accuracy/diff review; application checks were not repeated for runtime preparation.
-- Related PR/commit: [retained local source L1](ai-collaboration-validation-iteration-1.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here).
+- Related PR/commit: [retained local source L1](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here).
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
-- Prompt provenance: The task entry in [retained local source L1](ai-collaboration-validation-iteration-1.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Prompt provenance: The task entry in [retained local source L1](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
 ## 2026-10-07 — Preserve prototype and restore original GitHub branch layout
@@ -1001,10 +1003,10 @@
 - Verification: checked every archived file against its SHA-256 manifest; independently reconstructed the Git bundle and passed `git fsck --full --no-dangling`; verified all 10 pre-cleanup GitHub tips and all 49 saved refs are recoverable. A separate recovery clone opened the prototype at `33907d3`. GitHub API and UI confirm exactly the expected five remaining branches, both draft PRs closed/unmerged, and main unchanged at `f6f6e76605632296a802aecef25ac10c6d0fd0cd`. Local refs and all four worktrees' staged/unstaged diffs matched the backup before appending this disclosure. Documentation whitespace checked afterward.
 - Human review/corrections: Seoyeon authorized the enumerated backup, branch restoration, nine remote-branch deletions and closure of draft PRs #11/#12. The source records no new human code review.
 - Limitations: Scope/limits: no application changes, main reset, force-push, feature merge, or local branch/worktree deletion. Existing uncommitted work and the unfinished integration merge are retained. Application builds/device/provider tests were not rerun for this repository housekeeping task; no new functional validation or teammate approval is claimed. Existing GitHub PR/merge records remain. The restored branches are original reference tips; rebuilding must start from current main and reapply selected changes because main retains the prior merge/revert history. User approved the cleanup; team feature planning and review remain pending.
-- Related PR/commit: [retained local source L1](ai-collaboration-validation-iteration-1.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here).
+- Related PR/commit: [retained local source L1](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here).
 - Roles and evidence: Seoyeon commissioned/authorized this housekeeping task; Codex performed backup, restoration, cleanup and verification. Original feature authors retained their credit. No source-code manual editor or new human verifier is established.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
-- Prompt provenance: The task entry in [retained local source L1](ai-collaboration-validation-iteration-1.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Prompt provenance: The task entry in [retained local source L1](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register) (unpublished task record; underlying runtime/artifact claims not rerun here) supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
 - Error/correction: Authorized repository restoration/organization; retained code and independently checked backups. Branch deletion does not establish repository deletion, hallucination or loss of the original features.
 
 ## 2026-10-07 — Recording feature reintroduction after PR #5 revert
@@ -1041,7 +1043,7 @@
   persisted deck ID.
 - Related PR/commit: [source log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/040880f8a21b2f866228984e9fb3c438fa6ee4bf/docs/ai-use.md); [PR #13](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/13); original recording [04857fb](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/04857fb93d0a64784feb8bfb1d4b61f4b47bf251). The original entry’s “PR pending” text predates this source revision.
 - Roles and evidence: Jooyoung is the named contributor, bug reporter and human verifier. Codex reapplied the feature and wrote the duration fix; a separate Codex reviewer checked the staged code. A direct human-written fix is not established.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
 - Prompt provenance: Historical log; requests are summaries unless marked as logged quotations. Original chat not supplied.
 - Error/correction: Generated-code/native-integration defect: Jooyoung detected an empty timeline after Stop; Codex preserved native duration before Stop and Jooyoung confirmed the corrected display. Measured cost not recorded.
 
@@ -1050,15 +1052,15 @@
 - Contributor: Seoyeon (recorded Git/PR author); the current requester confirms the initial roadmap. Named prompt attribution, manual edits and individual human reviews remain separate roles.
 - Tool: OpenAI Codex; development model/version not recorded.
 - Task and scope: PDF/recording restoration and consolidation; Seoyeon recorded PR author.
-- Representative request: Summary of original messages: Stage 1 of the requester-confirmed [initial roadmap](ai-collaboration-prompts-iteration-1.md#p1-initial-roadmap-for-the-current-product): complete PDF/recording integration, including actual deck identity, page count, starting page and page-change events.
+- Representative request: Summary of original messages: Stage 1 of the requester-confirmed [initial roadmap](../ai-collaboration-prompts-iteration-1.md#p1-initial-roadmap-for-the-current-product): complete PDF/recording integration, including actual deck identity, page count, starting page and page-change events.
 - Generated work and incorporation: Codex restored Jaewon’s PDF work and Jooyoung’s recording work, then connected PDF identity/page changes, native capture and saved audio preview. It added lifecycle/catalog regression repairs. PRs #14–#16 were consolidated into #17; their code was retained.
 - Verification: Historical source disclosure: Codex reused Jaewon/Jooyoung features and reviewed fixes. 60 tests/export/APK and synthetic emulator capture 3→4→3 recorded. These checks belong to the linked revisions and were not rerun for report preparation or formatting.
 - Human review/corrections: The user authorized PR publication and continued implementation, then requested consolidation. Teammate review/merge approval remained pending in the source. See [publication instructions in the stage-1 log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/b60c3571a481cd60160ea79a3ab44bd5a86f2856/docs/ai-use.md#L329-L337).
 - Limitations: PRs #14–#16 closed into #17; code retained. Physical audio quality, hardware interruption and subsecond Stop remained pending; prompt sender not individually named.
 - Related PR/commit: [PR #17](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/17), [stage-1 log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/b60c3571a481cd60160ea79a3ab44bd5a86f2856/docs/ai-use.md#L320-L337)
 - Roles and evidence: Seoyeon is the recorded PR author/restorer where the source identifies restoration. Codex performed the logged generation, repairs and agent checks. Original reused-feature credit remains with the source authors; the initial roadmap is requester-confirmed, while other prompting, manual editing and review roles need separate confirmation.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
-- Prompt provenance: Initial request verified against original user-role messages in R4 and the requester’s October 9 confirmation; exact selected wording is in the prompt appendix. See [recovery evidence](ai-collaboration-validation-iteration-1.md#initial-roadmap-prompt-recovery). Later requests are not reconstructed from summaries.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Prompt provenance: Initial request verified against original user-role messages in R4 and the requester’s October 9 confirmation; exact selected wording is in the prompt appendix. See [recovery evidence](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#initial-roadmap-prompt-recovery). Later requests are not reconstructed from summaries.
 - Error/correction: PR organization problem: redundant splitting required consolidation of [PR #14](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/14), [PR #15](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/15) and [PR #16](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/16) into [PR #17](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/17). The [dated consolidation record](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/ce9f248256b1bbfc0d66f139886503261cc25953/docs/ai-use.md#L340-L348) records user authorization and independently verified backup before deleting three redundant remote branches. PR closure, branch deletion and repository deletion are different actions; this case does not establish hallucination. No measured rework cost recorded.
 
 ## 2026-10-08 — Durable recording storage and upload
@@ -1066,15 +1068,15 @@
 - Contributor: Seoyeon (recorded Git/PR author); the current requester confirms the initial roadmap. Named prompt attribution, manual edits and individual human reviews remain separate roles.
 - Tool: OpenAI Codex; development model/version not recorded.
 - Task and scope: Durable storage/upload, Seoyeon recorded PR author.
-- Representative request: Summary of original messages: Stage 2 of the requester-confirmed [initial roadmap](ai-collaboration-prompts-iteration-1.md#p1-initial-roadmap-for-the-current-product): retain audio/timelines across restart and implement storage endpoints, retries and duplicate protection.
+- Representative request: Summary of original messages: Stage 2 of the requester-confirmed [initial roadmap](../ai-collaboration-prompts-iteration-1.md#p1-initial-roadmap-for-the-current-product): retain audio/timelines across restart and implement storage endpoints, retries and duplicate protection.
 - Generated work and incorporation: Codex pipeline reused prototype storage and repaired failure paths. 94 mobile tests; 42 SQLite tests with two skips; 19 PostgreSQL storage tests; native restart/retry and media-hash checks recorded.
 - Verification: Historical source disclosure: Codex pipeline reused prototype storage and repaired failure paths. 94 mobile tests; 42 SQLite tests with two skips; 19 PostgreSQL storage tests; native restart/retry and media-hash checks recorded. These checks belong to the linked revisions and were not rerun for report preparation or formatting.
 - Human review/corrections: Awaiting contributor evidence for human review or direct manual edits.
 - Limitations: Checks belong to this snapshot, not all later code. Human review and provider processing remained separate. Configured development model unspecified.
 - Related PR/commit: [PR #18](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/18), [final storage evidence](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/06fe340a207639826143383364c13b4dd9636d31/docs/ai-use.md#L375-L387)
 - Roles and evidence: Seoyeon is the recorded PR author/restorer where the source identifies restoration. Codex performed the logged generation, repairs and agent checks. Original reused-feature credit remains with the source authors; the initial roadmap is requester-confirmed, while other prompting, manual editing and review roles need separate confirmation.
-- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
-- Prompt provenance: Initial request verified against original user-role messages in R4 and the requester’s October 9 confirmation; exact selected wording is in the prompt appendix. See [recovery evidence](ai-collaboration-validation-iteration-1.md#initial-roadmap-prompt-recovery). Later requests are not reconstructed from summaries.
+- Period: Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Prompt provenance: Initial request verified against original user-role messages in R4 and the requester’s October 9 confirmation; exact selected wording is in the prompt appendix. See [recovery evidence](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#initial-roadmap-prompt-recovery). Later requests are not reconstructed from summaries.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
 ## 2026-10-08 — Hosted processing and automatic transcription
@@ -1082,15 +1084,15 @@
 - Contributor: Seoyeon (recorded Git/PR author); the current requester confirms the initial roadmap. Named prompt attribution, manual edits and individual human reviews remain separate roles.
 - Tool: OpenAI Codex; development model/version not recorded.
 - Task and scope: Hosted processing and automatic transcription, Seoyeon recorded PR author.
-- Representative request: Summary of original messages: Stage 3 of the [initial roadmap](ai-collaboration-prompts-iteration-1.md#p1-initial-roadmap-for-the-current-product), refined by the [hosted-Whisper request](ai-collaboration-prompts-iteration-1.md#p2-change-to-hosted-whisper-and-selectable-feedback). These requests are original-message verified; later automatic-transcription work is a separate follow-up.
+- Representative request: Summary of original messages: Stage 3 of the [initial roadmap](../ai-collaboration-prompts-iteration-1.md#p1-initial-roadmap-for-the-current-product), refined by the [hosted-Whisper request](../ai-collaboration-prompts-iteration-1.md#p2-change-to-hosted-whisper-and-selectable-feedback). These requests are original-message verified; later automatic-transcription work is a separate follow-up.
 - Generated work and incorporation: Codex pipeline wrote request-state/recovery/consent flow, reusing existing alignment/adapter concepts; final automatic-flow update records 125 mobile tests/export; processing records 74 PostgreSQL tests and one synthetic hosted call.
 - Verification: Historical source disclosure: Codex pipeline wrote request-state/recovery/consent flow, reusing existing alignment/adapter concepts; final automatic-flow update records 125 mobile tests/export; processing records 74 PostgreSQL tests and one synthetic hosted call. These checks belong to the linked revisions and were not rerun for report preparation or formatting.
 - Human review/corrections: Awaiting contributor evidence for human review or direct manual edits.
 - Limitations: First-use native cancellation after the final repair and human speech quality remain unverified; user authorization is distinct from teammate review.
 - Related PR/commit: [PR #19](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/19), [revision log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/a0ee4755fb6f9a56c77fd967bdd83d1f7a37c400/docs/ai-use.md)
 - Roles and evidence: Seoyeon is the recorded PR author/restorer where the source identifies restoration. Codex performed the logged generation, repairs and agent checks. Original reused-feature credit remains with the source authors; the initial roadmap is requester-confirmed, while other prompting, manual editing and review roles need separate confirmation.
-- Period: October 8–9 follow-ups, included only through the recorded retrieval snapshot. Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
-- Prompt provenance: Initial request verified against original user-role messages in R4 and the requester’s October 9 confirmation; exact selected wording is in the prompt appendix. See [recovery evidence](ai-collaboration-validation-iteration-1.md#initial-roadmap-prompt-recovery). Later requests are not reconstructed from summaries.
+- Period: October 8–9 follow-ups, included only through the recorded retrieval snapshot. Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Prompt provenance: Initial request verified against original user-role messages in R4 and the requester’s October 9 confirmation; exact selected wording is in the prompt appendix. See [recovery evidence](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#initial-roadmap-prompt-recovery). Later requests are not reconstructed from summaries.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
 ## 2026-10-08 — Saved rehearsal review and offline recovery
@@ -1098,15 +1100,15 @@
 - Contributor: Seoyeon (recorded Git/PR author); the current requester confirms the initial roadmap. Named prompt attribution, manual edits and individual human reviews remain separate roles.
 - Tool: OpenAI Codex; development model/version not recorded.
 - Task and scope: Saved review/offline recovery, Seoyeon recorded PR author.
-- Representative request: Summary of original messages: Stage 4 of the requester-confirmed [initial roadmap](ai-collaboration-prompts-iteration-1.md#p1-initial-roadmap-for-the-current-product): render the transcript, synchronize actual PDF playback, and expose saved history and recovery.
+- Representative request: Summary of original messages: Stage 4 of the requester-confirmed [initial roadmap](../ai-collaboration-prompts-iteration-1.md#p1-initial-roadmap-for-the-current-product): render the transcript, synchronize actual PDF playback, and expose saved history and recovery.
 - Generated work and incorporation: Codex pipeline implemented player/cache/media recovery and repairs; dependency merge records 219 mobile tests/export and a separate 105-test focused review.
 - Verification: Historical source disclosure: Codex pipeline implemented player/cache/media recovery and repairs; dependency merge records 219 mobile tests/export and a separate 105-test focused review. These checks belong to the linked revisions and were not rerun for report preparation or formatting.
 - Human review/corrections: Awaiting contributor evidence for human review or direct manual edits.
 - Limitations: No fresh provider call or physical/perceptual synchronization proof; inherited backend checks are not a new backend implementation.
 - Related PR/commit: [PR #20](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/20), [revision log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/3abcf4b6c97bbd6ef2da6cfd6d40670b4dbfca88/docs/ai-use.md)
 - Roles and evidence: Seoyeon is the recorded PR author/restorer where the source identifies restoration. Codex performed the logged generation, repairs and agent checks. Original reused-feature credit remains with the source authors; the initial roadmap is requester-confirmed, while other prompting, manual editing and review roles need separate confirmation.
-- Period: October 8–9 follow-ups, included only through the recorded retrieval snapshot. Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
-- Prompt provenance: Initial request verified against original user-role messages in R4 and the requester’s October 9 confirmation; exact selected wording is in the prompt appendix. See [recovery evidence](ai-collaboration-validation-iteration-1.md#initial-roadmap-prompt-recovery). Later requests are not reconstructed from summaries.
+- Period: October 8–9 follow-ups, included only through the recorded retrieval snapshot. Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Prompt provenance: Initial request verified against original user-role messages in R4 and the requester’s October 9 confirmation; exact selected wording is in the prompt appendix. See [recovery evidence](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#initial-roadmap-prompt-recovery). Later requests are not reconstructed from summaries.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
 ## 2026-10-08 — AI feedback, image admission and dependency synchronization
@@ -1114,15 +1116,15 @@
 - Contributor: Seoyeon (recorded Git/PR author); the current requester confirms the initial roadmap. Named prompt attribution, manual edits and individual human reviews remain separate roles.
 - Tool: OpenAI Codex; development model/version not recorded.
 - Task and scope: Feedback, image admission repair and dependency synchronization, Seoyeon recorded PR author.
-- Representative request: Summary of original messages: Stage 5 of the [initial roadmap](ai-collaboration-prompts-iteration-1.md#p1-initial-roadmap-for-the-current-product) and the [initial feedback request](ai-collaboration-prompts-iteration-1.md#p3-initial-ai-feedback-request-for-pr-21), including output/display design, prompt injection and slopsquatting. Later repairs and dependency synchronization were follow-ups, not all specified by this initial request.
+- Representative request: Summary of original messages: Stage 5 of the [initial roadmap](../ai-collaboration-prompts-iteration-1.md#p1-initial-roadmap-for-the-current-product) and the [initial feedback request](../ai-collaboration-prompts-iteration-1.md#p3-initial-ai-feedback-request-for-pr-21), including output/display design, prompt injection and slopsquatting. Later repairs and dependency synchronization were follow-ups, not all specified by this initial request.
 - Generated work and incorporation: Codex pipeline implemented providers, persistence/evidence UI and bounded-image repair. Latest stack records 288 mobile tests/export; image repair records 277 SQLite tests with 18 skips; earlier PostgreSQL results are revision-specific.
 - Verification: Historical source disclosure: Codex pipeline implemented providers, persistence/evidence UI and bounded-image repair. Latest stack records 288 mobile tests/export; image repair records 277 SQLite tests with 18 skips; earlier PostgreSQL results are revision-specific. These checks belong to the linked revisions and were not rerun for report preparation or formatting.
 - Human review/corrections: Awaiting contributor evidence for human review or direct manual edits.
 - Limitations: Product-provider models are not development-model identities. Live small synthetic cases and physical feedback rendering are not human usefulness acceptance. No new whole-stack PostgreSQL claim.
 - Related PR/commit: [PR #21](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/21), [revision log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/ce9f248256b1bbfc0d66f139886503261cc25953/docs/ai-use.md), [controlled evaluation](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/ce9f248256b1bbfc0d66f139886503261cc25953/docs/feedback-evaluation.md)
 - Roles and evidence: Seoyeon is the recorded PR author/restorer where the source identifies restoration. Codex performed the logged generation, repairs and agent checks. Original reused-feature credit remains with the source authors; the initial roadmap is requester-confirmed, while other prompting, manual editing and review roles need separate confirmation.
-- Period: October 8–9 follow-ups, included only through the recorded retrieval snapshot. Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
-- Prompt provenance: Initial request verified against original user-role messages in R4 and the requester’s October 9 confirmation; exact selected wording is in the prompt appendix. See [recovery evidence](ai-collaboration-validation-iteration-1.md#initial-roadmap-prompt-recovery). Later requests are not reconstructed from summaries.
+- Period: October 8–9 follow-ups, included only through the recorded retrieval snapshot. Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Prompt provenance: Initial request verified against original user-role messages in R4 and the requester’s October 9 confirmation; exact selected wording is in the prompt appendix. See [recovery evidence](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#initial-roadmap-prompt-recovery). Later requests are not reconstructed from summaries.
 - Error/correction: Product-model evaluation recorded an overstated chart claim, a possible slide-number false positive and an unsupported “controlled trial” description in [controlled feedback evaluation](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/ce9f248256b1bbfc0d66f139886503261cc25953/docs/feedback-evaluation.md). These tiny synthetic cases concern application output, not development-assistant assertions or human acceptance. Codex also repaired image admission and synchronized dependencies; the source preserves revision-specific checks.
 
 ## 2026-10-09 — Approved Excel schedule revision
@@ -1134,12 +1136,12 @@
 - Generated work and incorporation: Incorporated material: `outputs/01a11c76-4ecb-7723-93b6-49f6fac45af0/Team_07_Project_Schedule_Revised.xlsx` has 22 planned and 20 unexpected Iteration 1 tasks, 15 retained later tasks, and 46 cleared task slots. Every active task has planned hours at most four. Open-PR-dependent tasks are Hold with blank actual end dates. Source notes retain prior dates, contribution evidence, and hour-allocation assumptions. Original task totals remain 14 human hours and 16.5 agent hours; added tasks contain explicitly estimated 5 human hours and 11.3 agent hours. Recorded session durations anchor estimates but are not claimed as measured human effort. Overlapping/inherited PR work is counted once.
   Preservation: source workbook SHA-256 remains `12a99c3b4342536a2d97f70186bce7e80e2a3f1bea76046a0be620c4f5968daa`; revised workbook SHA-256 is `bec23900b6d8da9cc1005d36ced8c7cf853f3ad65c0a3dc391ff647b5b851202`. Existing repository changes were preserved. No application source, shared Google Sheet, GitHub PR, commit, push or merge was changed. This artifact received proportionate agent review; no teammate approval or new application/device testing is claimed.
 - Verification: rebuilt and recalculated the affected schedule/metrics; independent checks reconciled counts, each parent task's retained hours, role rules, deadlines, unique IDs, cleared-row totals, and all four member totals. Reopened the final XLSX with no cached formula errors; disposable input changes verified planned-hour, human-hour and blank-role recalculation. Five chart sources/caches were checked and relevant views rendered. Native OOXML preservation retained the original Overview, Copy of Schedule and Config parts byte-for-byte, and semantic checks confirmed their values, styles, dimensions, merges and validation unchanged. Artifact Tool's wildcard-calculation issue was avoided with equivalent helper-based formulas; its legacy A230 evaluation limitation was handled by retaining that unrelated original cell unchanged. Native Excel interactive rendering was not tested.
-- Human review/corrections: Human decisions: user selected Schedule only; clearing all task fields while keeping formatted slots; no duplicate work rows; preserving original actual totals; later Overview PM assignments with other roles blank; Hold for open PR work; Worker for 박서연 on her implementation tasks; and task-time units rather than multiplied person-hours. Meetings/preparation retain the agreed PM/Participant exception.
+- Human review/corrections: Human decisions: user selected Schedule only; clearing all task fields while keeping formatted slots; no duplicate work rows; preserving original actual totals; later Overview PM assignments with other roles blank; Hold for open PR work; Worker for 박서연 on his implementation tasks; and task-time units rather than multiplied person-hours. Meetings/preparation retain the agreed PM/Participant exception.
 - Limitations: Historical status belongs to the dated source; later publication or acceptance requires separate evidence.
-- Related PR/commit: [subsequent local schedule record](ai-collaboration-validation-iteration-1.md#documentation-verification), observed after the main report’s retrieval snapshot; no stable published revision supplied.
+- Related PR/commit: [subsequent local schedule record](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#documentation-verification), observed after the main report’s retrieval snapshot; no stable published revision supplied.
 - Roles and evidence: Agent work: Codex, as recorded above. Prompt sender, human editor/reviewer/verifier and integration roles: unknown unless named in this entry; Git authorship alone is insufficient.
-- Period: October 9, within the calendar window, but observed after the main report’s retrieval snapshot; master-log only for that snapshot. Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
-- Prompt provenance: The task entry in [subsequent local schedule record](ai-collaboration-validation-iteration-1.md#documentation-verification), observed after the main report’s retrieval snapshot; no stable published revision supplied supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
+- Period: October 9, within the calendar window, but observed after the main report’s retrieval snapshot; master-log only for that snapshot. Iteration 1, within the [official reporting window](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Checks retain their source dates/revisions; not rerun for this log update.
+- Prompt provenance: The task entry in [subsequent local schedule record](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#documentation-verification), observed after the main report’s retrieval snapshot; no stable published revision supplied supplies the request summary and any explicitly logged quotation. The original chat and sender need confirmation unless identified above.
 - Error/correction: No additional error or correction is established for this step; measured cost not recorded.
 
 ## 2026-10-09 — AI collaboration report preparation and task-log formatting
@@ -1148,14 +1150,14 @@
 - Tool: OpenAI Codex, source-reading tools and Python documentation checks; development model/version not recorded. The stop-slop skill guided new prose in the formatting follow-up.
 - Task and scope: Prepare the Iteration 1 report and reusable guide, reconcile historical task evidence, then format the master log as task entries only.
 - Representative request: Exact excerpt: “Make ai collaboration report guideline for our project.” The user subsequently required the existing entry template for every task and removal of the contributor/role index; that follow-up is summarized here.
-- Generated work and incorporation: Updated this log and created the [main report](ai-collaboration-report-iteration-1.md), [prompt appendix](ai-collaboration-prompts-iteration-1.md), [guide](ai-collaboration-guidelines.md) and [validation record](ai-collaboration-validation-iteration-1.md). The formatting follow-up removes the index and table inventory, converts task records to the template, adds entries for formerly summary-only tasks and repairs supporting links.
-- Verification: Documentation checks cover template fields, task deduplication, source references, local anchors, Markdown formatting, report word count and preservation of the original checkout. See the dated [validation record](ai-collaboration-validation-iteration-1.md#documentation-verification) for actual outcomes. Application tests, device checks and provider calls were not rerun.
+- Generated work and incorporation: Updated this log and created the [main report](../ai-collaboration-report-iteration-1.md), [prompt appendix](../ai-collaboration-prompts-iteration-1.md), [guide](../ai-collaboration-guidelines.md) and [validation record](ai-collaboration-validation-iteration-1-retired-2026-10-09.md). The formatting follow-up removes the index and table inventory, converts task records to the template, adds entries for formerly summary-only tasks and repairs supporting links.
+- Verification: Documentation checks cover template fields, task deduplication, source references, local anchors, Markdown formatting, report word count and preservation of the original checkout. See the dated [validation record](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#documentation-verification) for actual outcomes. Application tests, device checks and provider calls were not rerun.
 - Human review/corrections: User confirmed original recording credit for Jooyoung, supplied reporting boundaries/evidence safeguards and corrected the requested log format. These are documentation directions; they do not establish manual application-code edits.
 - Limitations: Report remains a draft awaiting contributor prompts, non-use, prompt revisions, manual fixes, attribution and hallucination evidence, team reflection/approval and code-marker compliance. Original source logs retain historical wording; no commit, push, publication or submission performed.
-- Related PR/commit: Local branch `codex/ai-collaboration-report`; no commit or PR created. [Validation](ai-collaboration-validation-iteration-1.md).
+- Related PR/commit: Local branch `codex/ai-collaboration-report`; no commit or PR created. [Validation](ai-collaboration-validation-iteration-1-retired-2026-10-09.md).
 - Roles and evidence: Codex drafted/reformatted documents and performed documentation checks. The user requested changes and supplied corrections. A separate AI reviewer checked the earlier draft; the formatting follow-up receives proportionate self-review, without claiming a new independent review or human sign-off.
 - Period: October 9 documentation task. The follow-up is kept in the master log without extending the earlier report’s retrieval snapshot.
-- Prompt provenance: The current conversation supplies the original report request and formatting correction; the report request is quoted in [source U1](ai-collaboration-validation-iteration-1.md#source-register). No public conversation URL supplied.
+- Prompt provenance: The current conversation supplies the original report request and formatting correction; the report request is quoted in [source U1](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). No public conversation URL supplied.
 - Error/correction: Human formatting correction: the initial draft added an unwanted contributor/role index and table inventory. Codex removed those structures and retained attribution/evidence within task entries. No hallucination or measured rework cost established.
 
 ## 2026-10-09 — Reflective AI collaboration report revision
@@ -1164,7 +1166,7 @@
 - Tool: OpenAI Codex with PDF text extraction, local agent-record inspection, Git/GitHub read-only evidence and Python documentation checks; development model/version not recorded.
 - Task and scope: Revise the Iteration 1 report against the course guidelines while keeping six sections and 500–700 words; find genuine errors, prompt revisions, manual edits and deliberate non-use.
 - Representative request: Exact excerpt: “The current draft is historically careful but reads too much like an evidence audit rather than a reflective account of human–AI collaboration.”
-- Generated work and incorporation: Revised the [main report](ai-collaboration-report-iteration-1.md), added original-message excerpts [earlier P5/P6 evidence](ai-collaboration-validation-iteration-1.md#reflective-revision-evidence-search), and moved detailed search/provenance qualifications into [validation](ai-collaboration-validation-iteration-1.md#reflective-revision-evidence-search). Retained alignment and historical test evidence, added the adapter defect, shortened PR histories, and explained a verified UI revision and manual-import choice.
+- Generated work and incorporation: Revised the [main report](../ai-collaboration-report-iteration-1.md), added original-message excerpts [earlier P5/P6 evidence](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#reflective-revision-evidence-search), and moved detailed search/provenance qualifications into [validation](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#reflective-revision-evidence-search). Retained alignment and historical test evidence, added the adapter defect, shortened PR histories, and explained a verified UI revision and manual-import choice.
 - Verification: Checked the course handout, task logs, 16 available project agent records with 68 substantive user-role messages, nine PR discussion timelines, two commit-comment endpoints and relevant historical source. Documentation checks cover word count, sections, quotations, links, source-line bounds, template consistency and workspace preservation. Outcomes and scope are in the validation record; no fresh application/device/provider test was run.
 - Human review/corrections: The user requested a more reflective report and required role/evidence distinctions. Contributor confirmation of manual code fixes was requested; no verified human-authored patch or reason for stopping prompting was supplied during drafting. Team approval remains pending.
 - Limitations: The recovered UI plan was agent-drafted and user-approved; requester identity remains unconfirmed. The manual-import decision concerns a UI operation whose completion was not observed. No development-assistant hallucination, manual code repair, measured time saving or shared personal reflection was invented. The report remains a draft.
@@ -1181,7 +1183,7 @@
 - Task and scope: Make a focused editorial revision, retain all six sections and verified examples, and check non-use and manual-code claims.
 - Representative request: Exact excerpt: “Make a focused editorial revision, not a major rewrite.”
   Follow-up request: “make a light editorial revision of the existing report: simpler English, fewer disclaimers, preserved verbatim quotations, and more emphasis on what the team learned.”
-- Generated work and incorporation: Edited the [report](ai-collaboration-report-iteration-1.md) and added [supporting findings](ai-collaboration-validation-iteration-1.md#focused-editorial-review). Shortened PR history and repeated qualifications; replaced unsupported blanket non-use/manual-code claims with scoped findings. Original prompt quotations remain unchanged.
+- Generated work and incorporation: Edited the [report](../ai-collaboration-report-iteration-1.md) and added [supporting findings](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#focused-editorial-review). Shortened PR history and repeated qualifications; replaced unsupported blanket non-use/manual-code claims with scoped findings. Original prompt quotations remain unchanged.
   Light editorial follow-up: simplified sentences and emphasized the lessons from timing tests, unexpected API responses, clearer navigation priorities and human checking. Restored one spell-corrected quotation to its original wording in P5 and repaired two section headings in the latest draft.
 - Verification: Course PDF checksum matches the reviewed handout. Checked phone/demo records, historical setup disclosure and existing manual-fix search; documentation validation covers word count, six sections, quotations, links, source ranges, task-template consistency and preservation. No application tests or fresh device/provider checks.
   Follow-up checks are recorded in the same validation section; the prompt appendix and source records were used to check quotations without reconstructing missing prompts.
@@ -1200,7 +1202,7 @@
 - Task and scope: Add representative initial requests for PRs #14 and #17–#21; restrict both report and appendix to the current product after the revert.
 - Representative request: Summary of current instructions: include the initial six-stage roadmap and PR #21 feedback prompt, omit the full prompt history, and exclude pre-revert code/prompt examples and the earlier theme work.
 - Generated work and incorporation: Replaced the appendix selection with three original prompts: the roadmap, hosted-Whisper refinement and feedback request. Updated the main report with post-revert storage recovery, cancellation repair and provider-choice examples; linked the five existing implementation entries to their initial requests.
-- Verification: Original message matching, PR/commit mapping, period membership, historical test claims, Markdown links, word count, task-template consistency and workspace preservation are checked in [validation](ai-collaboration-validation-iteration-1.md#initial-roadmap-prompt-recovery). No application tests, device checks or provider calls were run.
+- Verification: Original message matching, PR/commit mapping, period membership, historical test claims, Markdown links, word count, task-template consistency and workspace preservation are checked in [validation](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#initial-roadmap-prompt-recovery). No application tests, device checks or provider calls were run.
 - Human review/corrections: User identified the missing implementation prompts, supplied the initial roadmap again, added PR #21 and explicitly requested post-revert scope for both report and appendix. The user’s earlier statement that Codex was the preferred coding agent remains attributed to the requester.
 - Limitations: Original source logs remain historical. Other contributors’ role confirmation, final report approval and source-code markers remain pending; no submission-readiness claim.
 - Related PR/commit: Documentation baseline `6ac097f6d6bad7f5a7b3dace61f36fc87439df50`; this follow-up creates no commit, push or publication. Historical implementation targets are recorded in validation.
@@ -1249,9 +1251,47 @@
 - Task and scope: Update the Iteration 1 prompt appendix using Jaewon's supplied file, preserve the main report and existing historical records, and refresh the corresponding evidence checklist.
 - Representative request: “This is jaewon's work, update the ai-collaboration-prompts document”.
 - Generated work and incorporation: Added three verbatim contributor-supplied prompts covering local PDF import, imported-PDF Practice navigation and first-page entry. Resolved the earlier sender ambiguity, added the J1→J2 comparison, preserved the supplied file under `docs/history/`, and updated validation provenance and remaining gaps.
-- Verification: Compared every new quotation and the archived source against the attachment; inspected `9547f1d`'s viewer, Practice screen and dated AI-use entry; checked all existing quotations, Markdown links/anchors, Git references, sensitive content and diff whitespace. Confirmed the main report and application source remain unchanged. Results are recorded in [validation](ai-collaboration-validation-iteration-1.md#verification-of-this-revision). No application build, device or provider checks were run for this documentation-only change.
+- Verification: Compared every new quotation and the archived source against the attachment; inspected `9547f1d`'s viewer, Practice screen and dated AI-use entry; checked all existing quotations, Markdown links/anchors, Git references, sensitive content and diff whitespace. Confirmed the main report and application source remain unchanged. Results are recorded in [validation](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#verification-of-this-revision). No application build, device or provider checks were run for this documentation-only change.
 - Human review/corrections: Requester supplied the contribution and confirmed its attribution. Jaewon's personal acceptance/edit decisions and performed test/review notes remain pending. Codex's historical phone operation is not credited as Jaewon's own testing.
 - Limitations: Supplied quotations are not independently retrieved raw-chat records; exact message timestamps/IDs and coding model/version are unavailable. Historical first-page behavior does not establish current app behavior. Other members' outstanding evidence remains unchanged.
 - Related PR/commit: Local follow-up on `codex/ai-collaboration-report` after `3ca1e02`, associated with PR #22. No commit, push, merge, Wiki publication or submission performed in this follow-up.
 
 - Commit/push follow-up: The requester subsequently instructed, “commit and push onto pr #22”. Codex rechecked the four documentation files (appendix, validation, AI-use log and supplied-source archive) against parent `3ca1e02`; no accuracy or link defect was found. `python3 /tmp/outloud-report-audit/validate.py --installed` passed with 28 existing original-message matches, 143 local links, 92 Git references, six report sections and 572 words. The three supplied quotations and byte-identical source archive passed separate comparisons. The main report and application files are unchanged; no application build or new human/independent review is claimed. The final staged snapshot and outgoing commit receive allowlist, sensitive-content, whitespace and index/working-tree checks before commit/push. This authorization covers PR #22's branch and description, not merge or course publication. Earlier no-commit/no-push statements describe prior checkpoints.
+
+
+## 2026-10-09 — Injoon's recovered alignment, Whisper and playback prompts
+
+- Contributor: Injoon requested recovery of his own original development prompts for the existing Iteration 1 appendix.
+- Tool: OpenAI Codex for read-only project-session retrieval, documentation editing and self-review. The historical source turns record `gpt-6-astra`; segment CLI versions are preserved in the validation source register.
+- Task and scope: Add authentic prompts to I1–I3 on `codex/ai-collaboration-report`, retaining teammates' sections and historical evidence. Refresh the affected provenance, revision comparison and contributor checklist.
+- Representative request: “Can you edit the appendix with the actual prompts that I used?”
+- Generated work and incorporation: Added 15 full original Korean user messages with source segment/line and UTC timestamps, English editorial explanations, assistant-proposal context for short approvals, and linked PR #3/#4 outcomes. Recovered requests cover incremental alignment, a full-script example, Whisper/TTS, mobile upload, the saved-result screen, synchronized playback, silent-emulator diagnosis, AI review and the user's own staged inspection/deferred UI decision.
+- Human review/corrections: Original September 29 messages establish reported personal inspections after AI review and rejection of the disconnected transcript layout. The emulator's disabled audio was an agent test-environment issue. These messages do not establish physical-phone acceptance, an additional teammate's approval, or direct human code edits. Final selection confirmation and Y1's Injoon/Jooyoung requester ambiguity remain pending.
+- Limitations: Jooyoung's original feature prompts remain missing. Defects found by AI reviewers are not relabeled as human debugging prompts. No human-speech accuracy, measured repair time, complete individual non-use attestation or current-stack acceptance is inferred.
+- Related PR/commit: Existing PR #22, local follow-up from `2a571bfa475a86283b6c017e026e7cf7418b4ada`. No staging, commit, push, merge, Wiki publication or eTL submission was performed.
+- Roles and provenance: Injoon supplied the original requests and current recovery instruction; Codex recovered, explained and checked the documentation. See I-S1/I-S2 in [validation](ai-collaboration-validation-iteration-1-retired-2026-10-09.md#source-register). Only selected prompt text and source locators were incorporated, not raw private logs, media or credentials. Earlier log entries saying originals/models were missing describe earlier evidence availability and are preserved.
+- Verification: Exact-source checks passed for all 15 new quotations, timestamps and turn models. All 31 pre-existing fenced prompt quotations and teammates’ feature sections are byte-identical; the main report and historical AI-use prefix are unchanged. All 135 local Markdown links/anchors in the three changed documents resolve. File allowlist, empty index, code-fence balance, added-content credential-pattern scan and `git diff --check` passed. An initial link check caught a historical validation anchor affected by the renamed heading; its compatibility anchor was restored and the check passed. Only the appendix, validation and this AI-use log changed. No application builds, tests or provider/device checks were rerun, and no independent reviewer or new human approval is claimed.
+
+
+## 2026-10-09 — Simplified Injoon entries and incorporated Jooyoung's update
+
+- Contributor: Injoon requested simpler entries without English-meaning paragraphs and reported that Jooyoung had pushed her prompts.
+- Tool: OpenAI Codex; Git fetch, documentation editing and self-review.
+- Task and scope: Preserve the 15 original Korean prompts, timestamps and source locators while shortening I1–I3 to context/results and evidence. Incorporate upstream `5bad9b7` (Jooyoung's four recording messages and F2 provenance) into the local report branch.
+- Representative request: “I feel like we don't need the english meaning part. I want to keep it simple and close to the other members.”
+- Generated work and incorporation: Removed translations and repetitive explanations, kept short-assent context and factual outcomes, and reconciled shared evidence/checklist rows with Jooyoung's update. Her Y1/Y2 text and all other teammate feature sections are preserved from upstream.
+- Human review/corrections: The user confirmed the desired editorial format. This is not final report approval. Y1's requester-label conflict and individual acceptance/edit/test confirmations remain open.
+- Provenance: Injoon's 15 quotations remain checked against I-S1/I-S2. Jooyoung's F2 text is preserved from her published commit; its private source conversation was not independently retrieved here. Earlier statements that her representative prompts were missing describe the prior local snapshot.
+- Git handling: Saved a recovery snapshot of all three local files, prepared the combined edits, and fast-forwarded the local branch to the fetched upstream revision before restoring the combined working changes. No new commit, push, Wiki publication or eTL submission is part of this task.
+- Verification: All 15 Injoon quotations/timestamps/models match the original records; all 35 upstream fenced prompt quotations and teammate feature sections match `5bad9b7` exactly. All 135 local links/anchors resolve; code-fence, added-content credential-pattern, three-file allowlist and `git diff --check` checks passed. The index is empty; local HEAD matches the fetched upstream commit. The main report and application code are unchanged. No application tests or independent reviewer are claimed.
+
+### 2026-10-09 — Verify course format and simplify the Iteration 1 prompt appendix
+
+- Contributor/requester: Injoon.
+- Tool: OpenAI Codex; local documentation editing, eTL browser access and read-only course Slack review.
+- Representative request: “I want to remove unnecessary stuff from the iteration 1 prompt appendix file.” The user asked to check official course documents and announcements first.
+- Sources: All three pages of eTL file 9386035, announced October 7; the September 28 Iteration 1 announcement and October 9 submission clarification. The PDF hash matches the earlier C1 audit. The course allows a custom format, requires verbatim prompts, and places a longer log on a linked Wiki subpage. No numerical prompt-count limit was established; an unanswered student question was not treated as a rule.
+- Generated work and incorporation: Reduced the appendix from 6,854 to 3,424 whitespace-delimited words. Kept the short introduction, contributor/task headings, all 50 original fenced prompt blocks, the labelled secondary revert quotation, and minimal context for short approvals. Retained excerpt/approved-plan labels and unresolved attribution. Preserved detailed outcomes, PR history, timestamps and contributor checklist in `docs/history/ai-collaboration-prompts-iteration-1-before-format-cleanup.md`; updated validation, guide and main-report evidence links. The main report's visible text is unchanged.
+- Verification: All 50 prompt blocks match the pre-cleanup version and preserved snapshot exactly; all 15 Injoon prompts match the original user records. Checked 211 local links/anchors across the reporting package and associated workspace notes, PDF hash, Markdown fences, documentation-only scope, historical log preservation, credential patterns and `git diff --check`. These checks passed before appending this disclosure. No runtime tests or independent reviewer were needed for this documentation edit.
+- Human review/corrections: The user specified the simpler format and completed eTL sign-in. This does not constitute final contributor confirmation or submission approval. Existing attribution and report-completeness questions remain open.
+- Publication: Local working changes only; no commit, push, Wiki publication or eTL submission. The generated eTL mirror/index and synchronization metadata were not manually edited; the unavailable sync token was worked around by reading the specific source in the browser.

@@ -1,131 +1,86 @@
-# OutLoud AI collaboration reporting guide
+# AI collaboration reporting guide
 
-Use this guide with [AGENTS.md](../AGENTS.md), the [master AI-use log](ai-use.md),
-the [Iteration 1 report](ai-collaboration-report-iteration-1.md), its
-[prompt appendix](ai-collaboration-prompts-iteration-1.md), and
-[validation summary](ai-collaboration-validation-iteration-1.md).
-Course requirements come from “5 - AI Collaboration Report Guidelines.pdf”
-(pages 1–3); this guide applies them to Team 07 without treating examples in the
-course PDF as events that happened in this project.
+Based on the [official AI Collaboration Report Guidelines](https://myetl.snu.ac.kr/courses/305891/files/9386035), pp. 1–3. Maintain one collaboration log per iteration and use it to write the team report.
 
-## What to produce each iteration
+## Working documents
 
-| Document | Purpose | Length / destination |
-| --- | --- | --- |
-| Main report | Team analysis covering all six required subjects | Roughly 500–700 words; Wiki page “AI Collaboration Report – Iteration N” |
-| Prompt appendix | Exact actual prompts, provenance, dates, outcomes and verified revisions | Separate linked Wiki sub-page “Iteration N – Prompt Log”; no 500–700-word cap |
-| Master AI-use log | Dated project-wide task evidence, including out-of-period work | Repository `docs/ai-use.md`; detailed sources may stay at stable commits |
-| Validation summary | Boundary evidence, checks, unknowns and submission blockers | Supporting record; excluded from report word count |
-| This guide | Repeatable collection and writing process | Supporting document; excluded from report word count |
+| Document | Purpose |
+| --- | --- |
+| [Collaboration log](ai-collaboration-prompts-iteration-1.md) | Actual prompts, tool/model metadata and concise task notes; update during work and at handoff |
+| [Report](ai-collaboration-report-iteration-1.md) | The team's analysis of AI use, results, failures, revisions and human decisions |
+| [This guide](#human-review-before-submission) | Collection rules, report format and human review checklist |
 
-The team rotates the human writer. Every member supplies their own prompts and edit
-notes. Do not assign a writer from PM rotation without confirmation. Link reports
-from the Wiki sidebar in iteration order. The course Project Overview also describes
-exporting Wiki deliverables to PDF for eTL; verify the actual assignment destination
-and cutoff before submission. Creating local Markdown is not Wiki publication or
-submission.
+The earlier [AI-use record](history/ai-use-before-prompt-consolidation-2026-10-09.md) and [validation review](history/ai-collaboration-validation-iteration-1-retired-2026-10-09.md) are archived. Keep one collaboration log per iteration at `docs/ai-collaboration-prompts-iteration-N.md`. Do not recreate either retired document as an active log.
 
-## Collect evidence while the work occurs
+## Compact task entry
 
-1. Add a dated task entry on the same branch as the associated work, using the
-   [master-log entry template](ai-use.md#entry-template). Keep the log limited to
-   that template and task entries; put report guidance and cross-task analysis in
-   the supporting documents. Record the
-   request, AI-produced material accepted/modified/rejected, exact revision, actual
-   checks, human corrections and limitations. Preserve earlier entries and add
-   dated follow-ups when status changes.
-2. Separate original feature author, prompt sender, integrator, restorer, reviewer,
-   manual editor and verifier within each task entry. Normalize Seoyeon / Seoyeon
-   Park / gabdeguate to Seoyeon; Injoon / Injoon Jun / BonjourInjoon to Injoon;
-   zoo / joo / zoo_zero / zoo-zer0 / kepten31415926 to Jooyoung; and
-   justaoj / 재원 / just_aoj to Jaewon,
-   but never infer these roles merely from Git authorship or a schedule assignment.
-3. Preserve exact prompts at the time they are sent. Record tool/model if known;
-   otherwise write “not recorded.” Do not substitute a product model such as
-   Whisper or Gemini for the development assistant's model.
-4. Link portable repository paths and immutable commit URLs. A PR link supplies
-   discussion/status context; record the inspected head SHA and retrieval date
-   because PR text and heads can change.
-5. Separate automated checks, AI review, agent-operated device checks, human testing
-   and live-provider evaluation. State fixture/mocked/synthetic inputs and skipped
-   checks. A JS export is not an APK/device check; valid quotations/timestamps do
-   not establish useful or semantically correct feedback.
-6. Exclude secrets/private media. Explicitly label redactions. Retain rejected work
-   and rework evidence when useful; never pad the report with invented examples.
+| Field | Record |
+| --- | --- |
+| Context | Contributor, date, task, tool and model; note changes during the task |
+| Prompts | Actual requests and meaningful follow-ups, verbatim and in order |
+| Output and use | What AI generated and what was retained, changed or rejected; file/commit/PR |
+| Verification | Who checked it, how, the result and relevant limits |
+| Hallucinations/errors | Wrong claim or behavior, why it was wrong, how/who detected it, correction author, result and known cost |
+| Prompt revisions | Before → after references and why the change helped or failed |
+| Human decisions | Manual edits and why prompting stopped; deliberate non-use and its reason; acceptance or rejection |
 
-Use the existing template for missing task entries too. Write “unknown” or
-“awaiting contributor evidence” when a field lacks support; do not invent a
-prompt, participant, check or error to fill it. Keep original source links and
-date attribution corrections within the affected entry.
+Keep notes to a sentence or two per field and combine related fields where useful. Several prompts can share one task entry. Link detailed diffs, tests and PR records instead of copying them.
 
-## Write the six sections
+Update the same entry when a meaningful failure, revision or decision occurs. At handoff, record the incorporated result, checks and unresolved issues. At iteration close, every member confirms their entries and supplies missing edit notes; rotate the report writer.
 
-| Required section | Include | If evidence is missing |
-| --- | --- | --- |
-| Where AI was used and deliberately not used | Feature/files, tool/model, person/role; actual decisions not to use AI and reasons | Request named task, explicit choice, reason and contributor confirmation. Missing disclosure is not non-use. |
-| Prompt history | Actual verbatim prompts with dates/senders and accessible evidence | Mark original prompts pending; distinguish logged quotations from verified original messages and summaries. |
-| What AI did well | A concrete output, revision, meaningful verification and supported technical takeaway | Use the alignment example only within its recorded synthetic-test limits. Time saved requires evidence. Confirm personal/team reflections. |
-| Hallucinations / errors | Category, exact assertion or wrong behavior, why wrong, detection, consequence and correction | Ask for the original assertion/behavior, contrary evidence, detector, repair and documented cost. Do not call all reverts hallucinations. |
-| Prompt revisions | Exact before → after, reason, changed output and verification | Request a real paired example. Unrelated successive instructions do not count. |
-| Manual fixes and why | Actual human-written changes, editor, diff, reason prompting stopped and checks | Record “awaiting contributor evidence.” Human bug reporting, approval, rollback choice or an agent-written repair is not a manual code fix. |
+## Accuracy and presentation
 
-One or two closing takeaway lines are encouraged. Label proposed practices as
-proposals until the team confirms adopting them.
+- Preserve prompt wording, typos and language. Label approved AI-written plans, excerpts, redactions and task-log quotations. Do not reconstruct missing prompts or expose secrets/private media.
+- Identify the development assistant separately from app providers such as Whisper or Gemini. Include documentation, testing and review assistance as well as code generation.
+- Write "not recorded" for missing dates/models/costs and "unconfirmed" for missing contributor input. Silence does not establish zero errors, no manual edits or acceptance.
+- Distinguish hallucinations from implementation defects, tool-operation mistakes and changed requirements. Support an incorrect-claim account with code, documentation or observed behavior. Record useful failures even when they are not hallucinations.
+- Separate human edits/testing from AI-written repairs and agent-operated checks. Do not invent time savings, debugging costs, authorship or approval.
+- Write submission-facing prose about the work and results. Keep historical source/review details in `docs/history/`. Note missing input with its task in the log. Source IDs may remain in Markdown comments. Use the [contributor references](#contributor-references) below.
 
-## Classify failures accurately
+The course permits a custom appendix format; it specifies no English translation requirement or numerical prompt limit.
 
-| Category | Minimum evidence | OutLoud treatment |
-| --- | --- | --- |
-| Development-assistant hallucination | Specific model assertion contradicted by inspected evidence | Awaiting a complete example; do not infer from #5–#10 or #14–#17 |
-| Generated-code defect | Reproducible incorrect behavior in an identified revision | Non-object Whisper response handling is a documented defect repaired by Codex |
-| Agent workflow or operation error | Intended action/constraint, actual action and mismatch | Recorded PDF Remove-versus-Open tap is an operation error; do not generalize to unauthorized repository actions |
-| Human review decision | Recorded choice, rationale and authorization | #10 resets review boundaries after authorized #5 |
-| PR organization problem | PR relationships, duplication/dependencies and corrective decision | #14–#16 closed into #17; code retained; branch deletion is separate from PR closure |
-| Product-model output error | Model output and source/evaluation supporting the assessment | Feedback-model overstatement and silent-audio decoding belong to application evaluation, not automatically development-assistant hallucinations |
+## Main report
 
-Keep measured costs separate from qualitative rework. Do not assume fees were zero
-when provider usage was unrecorded, or turn elapsed inference time into development
-time saved.
+Write one team report per iteration, one page (roughly 500–700 words). A longer prompt log belongs on a linked Wiki subpage. Use the seven-section outline below. The course requires sections 1–6 and calls the takeaway optional but strongly encouraged. Our report includes it as section 7.
 
-## Source-code attribution markers
+1. **Where AI was used and deliberately not used:** tasks/files, tool/model and reasons for choosing not to use AI.
+2. **Prompt history:** link to the full log of actual, verbatim prompts. Keep short before → after quotations with the revision analysis in §5.
+3. **What AI did well:** concrete outputs with checkable evidence.
+4. **Hallucinations and errors:** what was wrong, how it was caught, the correction and known cost.
+5. **Prompt revisions:** before → after and the effect of the change.
+6. **Manual fixes and why:** actual human code edits and reasons for stopping prompting. If none occurred, state that accurately.
+7. **Takeaway for the next iteration:** brief bullets connecting the main lessons to changes for next iteration. For each lesson, state what happened and what we will do differently. Choose concrete lessons from the report about prompting, review, testing or teamwork.
 
-The course asks for a short code comment identifying AI-generated code, tool/date,
-and actual reviewer, with report links to those markers. A documentation log alone
-does not establish compliance.
+Choose notable examples across the team's work: a useful constraint, a failure, a meaningful revision or a human decision with a verifiable result. Explain why each example matters. Equal space per person is not required; do not let the most complete chat dominate the report by default. The full log retains the remaining material.
 
-Audit the final relevant revision for markers and accurate scope. Do not invent a
-reviewer or imply whole-file AI authorship when only a helper was generated.
-Example format, to be filled only with verified information:
+Use short bullets, simple words and short sentences. Use “we” and “our” for the team’s narrative. Keep individual names where attribution matters, and preserve quoted prompts verbatim.
 
-```text
-AI-assisted: <tool>, <date>, scope <function/change>; reviewed by <actual reviewer>.
-```
+The guideline allows a long prompt log on a linked Wiki subpage. Our format uses only that link in §2 and keeps exact revision excerpts in §5. This is our reading of the log/analysis split; the guideline does not explicitly prescribe a link-only §2.
 
-If review has not occurred, disclose it as pending and keep the compliance item open.
-Any source-comment additions require their own authorized change and review; this
-reporting task does not add them. Existing historical records remain intact.
+Reference files/lines, commits, PRs or issues so readers can check the examples.
 
-## Validate and publish deliberately
+## Human review before submission
 
-- Confirm the official reporting window before selecting work. Keep retrieval time
-  separate from work time. Record conflicting schedule labels rather than silently
-  moving early or late work into the iteration.
-- Reconcile branch histories without counting inherited entries as multiple tasks.
-  Credit original code separately from reapplication and integration.
-- Check all six sections, the main report's 500–700-word count, quotes, aliases,
-  links/anchors, period membership, PR state and revision-specific results.
-- Mark each requirement **supported**, **awaiting contributor evidence**, or
-  **not applicable with contributor confirmation**. Never convert a blank into
-  “none occurred.”
-- Separate “structurally complete draft” from “submission ready.” List unresolved
-  original prompts, revisions, non-use, manual edits, hallucination evidence,
-  attribution, source markers and human review explicitly.
-- Have every member confirm their own evidence and the writer confirm the final
-  report. Do not treat this confirmation as application-code review.
-- Before authorized Wiki publication, turn supporting repository-relative links
-  into verified Wiki/commit links appropriate for the destination. Remove local
-  filesystem paths, temporary citations and scratch identifiers. Verify the saved
-  Wiki page, prompt sub-page and sidebar links afterward.
-- Commit, push, PR creation, Wiki publication and eTL submission are separate
-  authorized actions. Record their actual receipts/status; preparing files does
-  not perform them.
+Review the report together using this checklist. Automated checks can help with quotations, links and formatting; contributors confirm their own work. Keep corrections in the report or log rather than maintaining a separate validation file.
+
+- [ ] Choose the rotating writer. Each member confirms their prompts, tool/model, manual edits, deliberate non-use, errors and personal testing. Do not treat missing input as “none.”
+- [ ] Read all six required subjects and §7. Check that the examples reflect the team's work and explain what helped, what failed and what we will change next time.
+- [ ] Match quotations to the log and claims to cited evidence. Distinguish human edits/testing from AI-written repairs and agent-operated checks. Keep unknown costs and test limits explicit.
+- [ ] Check AI code comments on the final submitted revision and verify the report's links to them.
+- [ ] Check the one-page PDF, roughly 500–700 words, working links, Wiki page/subpage/sidebar and required submission filename.
+
+For Iteration 1, confirm Jaewon's and Jooyoung's model details if available and resolve the Y1 prompt author's name with Injoon and Jooyoung. Each member still needs to confirm personal edits/non-use and review the report. The archived review preserves the earlier source notes and open findings.
+
+Keep this guide, the report, the log and affected shared instructions consistent when any of them changes. Human review has not happened until the contributors say it has.
+
+## Contributor references
+
+For Iteration 1, use he/him for Injoon, Jaewon and Seoyeon, and she/her for Jooyoung, as confirmed by Injoon on October 9. Names and pronouns do not resolve the unconfirmed Y1 prompt authorship.
+
+## Code attribution and submission
+
+Mark AI-generated code with short source comments and point to them from the report. Identify the actual scope/tool; include dates or reviewers only when supported. Review the final submitted code revision. Prompt logs and commit trailers do not replace the required source comments.
+
+After human review, publish **AI Collaboration Report – Iteration N** on the repository Wiki, add a sidebar link and link the full prompt log. Check the exported PDF's one-page layout and links.
+
+For Iteration 1, the [eTL assignment](https://myetl.snu.ac.kr/courses/305891/assignments/381929) requires `team7-iter1-AI-collaboration-report.pdf` in the submission ZIP. This guide is internal working guidance. Commit, push, Wiki publication and eTL submission must stay within the user's authorization.
