@@ -1,20 +1,55 @@
-import { useState } from "react";
-import { router } from "expo-router";
+import { useCallback, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
 import { Text, View } from "react-native";
-import { Action, Card, DemoNotice, Screen, styles } from "../../ui/components";
+import { Action, Card, Screen, styles } from "../../ui/components";
 import { API_URL, checkBackend } from "../../services/api";
-import { pdfService } from "./service";
+import { getImportedPdfs, pdfService, type LocalPdf } from "./service";
 
 export function LibraryScreen() {
   const [notice, setNotice] = useState("");
   const [checking, setChecking] = useState(false);
-  async function importPdf() {
+  const [importing, setImporting] = useState(false);
+  const [pdfs, setPdfs] = useState<LocalPdf[]>([]);
+
+  const refreshLibrary = useCallback(async () => {
     try {
-      await pdfService.importPdf();
-    } catch (e) {
-      setNotice(e instanceof Error ? e.message : "Import failed.");
+      setPdfs(await getImportedPdfs());
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not load PDFs.");
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshLibrary();
+    }, [refreshLibrary]),
+  );
+
+  async function importPdf() {
+    setNotice("");
+    setImporting(true);
+    try {
+      const pdf = await pdfService.importPdf();
+      if (!pdf) return;
+      await refreshLibrary();
+      router.push({ pathname: "/viewer", params: { uri: pdf.uri, title: pdf.title, localDeckId: pdf.id } });
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "PDF import failed.");
+    } finally {
+      setImporting(false);
     }
   }
+
+  async function removePdf(pdf: LocalPdf) {
+    try {
+      await pdfService.removePdf(pdf.id);
+      await refreshLibrary();
+      setNotice(`Removed ${pdf.title} from this device.`);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not remove PDF.");
+    }
+  }
+
   async function connect() {
     setChecking(true);
     try {
@@ -27,19 +62,21 @@ export function LibraryScreen() {
       setChecking(false);
     }
   }
+
   return (
     <Screen>
       <View>
         <Text style={styles.label}>YOUR PRACTICE SPACE</Text>
-        <Text style={[styles.title, { marginTop: 8 }]}>
-          A clearer presentation{"\n"}starts here.
-        </Text>
+        <Text style={[styles.title, { marginTop: 8 }]}>A clearer presentation{"\n"}starts here.</Text>
       </View>
       <Text style={styles.body}>
-        Bring your slides, rehearse at your pace, and review what you said.
+        Import a PDF stored on this device, then move through its pages one at a time.
       </Text>
-      <DemoNotice />
-      <Action label="Import a PDF" onPress={importPdf} />
+      <Action
+        label={importing ? "Importing PDF…" : "Import a PDF"}
+        disabled={importing}
+        onPress={importPdf}
+      />
       {!!notice && (
         <Text accessibilityLiveRegion="polite" style={styles.body}>
           {notice}
@@ -47,19 +84,32 @@ export function LibraryScreen() {
       )}
       <View style={styles.between}>
         <Text style={styles.heading}>Presentations</Text>
-        <Text style={styles.label}>1 SAMPLE</Text>
+        <Text style={styles.label}>{pdfs.length} SAVED HERE</Text>
       </View>
+      {pdfs.map((pdf) => (
+        <Card key={pdf.id}>
+          <Text style={styles.label}>ON THIS DEVICE</Text>
+          <Text style={styles.heading}>{pdf.title}</Text>
+          <View style={styles.between}>
+            <Action
+              label="Open slides"
+              onPress={() =>
+                router.push({ pathname: "/viewer", params: { uri: pdf.uri, title: pdf.title, localDeckId: pdf.id } })
+              }
+            />
+            <Action label="Remove" onPress={() => void removePdf(pdf)} secondary />
+          </View>
+        </Card>
+      ))}
+      {!pdfs.length && (
+        <Card>
+          <Text style={styles.body}>Your imported PDFs will appear here.</Text>
+        </Card>
+      )}
       <Card>
-        <Text style={styles.label}>SAMPLE PRESENTATION</Text>
-        <Text style={styles.heading}>A clearer story</Text>
-        <Text style={styles.body}>
-          3 sample slides · Explore the rehearsal flow
-        </Text>
-        <Action
-          label="Open sample slides"
-          onPress={() => router.push("/viewer")}
-          secondary
-        />
+        <Text style={styles.heading}>Sample presentation</Text>
+        <Text style={styles.body}>Explore the rehearsal preview with sample slides.</Text>
+        <Action label="Open sample slides" onPress={() => router.push("/viewer")} secondary />
       </Card>
       <Card>
         <Text style={styles.heading}>Backend connection</Text>

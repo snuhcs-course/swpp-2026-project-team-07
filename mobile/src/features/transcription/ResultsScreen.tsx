@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
@@ -9,10 +9,9 @@ import {
   useLocalSearchParams,
 } from "expo-router";
 import { savedWhisperTranscript } from "../../fixtures/whisperTranscript";
-import type { LocalRecording, SlideEvent } from "../../contracts";
+import type { SlideEvent } from "../../contracts";
 import { Action, Card, colors, styles } from "../../ui/components";
 import { activeWordIndex, resumeAfterSeek, transcriptSpans } from "./playback";
-import { transcriptionService, TranscriptionClientError } from "./service";
 
 type Preview = "completed" | "processing" | "failed";
 const spans = transcriptSpans(savedWhisperTranscript);
@@ -46,39 +45,14 @@ function parseSlideEvents(value: string | undefined): SlideEvent[] {
   }
 }
 
-function parseRecording(value: string | undefined): LocalRecording | null {
-  if (!value) return null;
-  try {
-    const recording: unknown = JSON.parse(value);
-    const record = recording as Record<string, unknown>;
-    if (
-      recording === null ||
-      typeof recording !== "object" ||
-      Array.isArray(recording) ||
-      typeof record.id !== "string" ||
-      typeof record.deck_id !== "string" ||
-      typeof record.duration_ms !== "number" ||
-      typeof record.audience !== "string" ||
-      typeof record.audio_uri !== "string" ||
-      !Array.isArray(record.slide_events)
-    ) return null;
-    return recording as LocalRecording;
-  } catch {
-    return null;
-  }
-}
-
 export function ResultsScreen() {
   const params = useLocalSearchParams<{
     audioUri?: string;
     slideEvents?: string;
-    recording?: string;
+    title?: string;
+    durationMs?: string;
   }>();
   const recordingUri = typeof params.audioUri === "string" ? params.audioUri : null;
-  const localRecording = useMemo(
-    () => parseRecording(params.recording),
-    [params.recording],
-  );
   // DEBUG ONLY: the completed recording's slide events travel in the route for
   // manual inspection. Production results should fetch persisted metadata by
   // attempt ID instead of placing JSON in a navigation URL.
@@ -91,10 +65,9 @@ export function ResultsScreen() {
   // pause, and replay for both local recordings and eventual server results.
   const isFocused = useIsFocused();
   const [audioName, setAudioName] = useState<string | null>(
-    recordingUri ? "Your recording" : null,
+    recordingUri ? params.title ?? "Your recording" : null,
   );
   const [error, setError] = useState<string | null>(null);
-  const [submissionNotice, setSubmissionNotice] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
   // DEBUG ONLY: fixture processing/failure states, not real backend status.
   const [preview, setPreview] = useState<Preview>("completed");
@@ -131,38 +104,6 @@ export function ResultsScreen() {
     // cleanup: useAudioPlayer releases its native object on unmount itself.
     if (!isFocused) player.pause();
   }, [isFocused, player]);
-  useEffect(() => {
-    // TODO(transcription): navigate with an attempt ID and load this metadata
-    // from durable local/server storage instead of serializing a LocalRecording
-    // through route parameters.
-    const recording = localRecording;
-    if (!recording) return;
-    const controller = new AbortController();
-    async function submitRecording() {
-      setSubmissionNotice("Uploading recording…");
-      try {
-        const { attempt_id } = await transcriptionService.submit(recording!, {
-          signal: controller.signal,
-        });
-        setSubmissionNotice("Processing recording…");
-        await transcriptionService.waitForResult(attempt_id, {
-          signal: controller.signal,
-        });
-        // TODO(transcription): store the completed AttemptResult in state and
-        // render its transcript, feedback, and aligned slide visits here.
-        setSubmissionNotice("Recording processed. Live result display is next.");
-      } catch (cause) {
-        if (controller.signal.aborted) return;
-        setSubmissionNotice(
-          cause instanceof TranscriptionClientError
-            ? cause.message
-            : "Could not submit the recording.",
-        );
-      }
-    }
-    void submitRecording();
-    return () => controller.abort();
-  }, [localRecording]);
 
   const mismatch =
     !recordingUri &&
@@ -245,8 +186,8 @@ export function ResultsScreen() {
         <Text style={styles.label}>
           {recordingUri ? "SAVED RECORDING" : "SAVED TEST · KOREAN TTS"}
         </Text>
-        <Text style={styles.title}>Listen & follow</Text>
-        <Text style={styles.body}>Play your recording. Follow each word. Tap a word to jump back into the audio.</Text>
+        <Text style={styles.title}>{recordingUri ? "Listen to your rehearsal" : "Listen & follow"}</Text>
+        <Text style={styles.body}>{recordingUri ? "Play the audio from this rehearsal." : "Play the sample audio, follow each word and tap a word to seek."}</Text>
         <View style={{ backgroundColor: colors.white, borderRadius: 18, padding: 16, gap: 12 }}>
           <View style={styles.between}>
             <Text style={{ ...styles.body, fontVariant: ["tabular-nums"] }}>
@@ -299,13 +240,9 @@ export function ResultsScreen() {
             <Card>
               <Text style={styles.heading}>Transcript not available yet</Text>
               <Text style={styles.body}>
-                This is your saved local recording. It is submitted when a real
-                deck ID is available; live transcript and feedback display are
-                still pending.
+                Listen to the recording from this session. Upload, restart recovery,
+                transcription and feedback are not connected yet.
               </Text>
-              {!!submissionNotice && (
-                <Text style={styles.body}>{submissionNotice}</Text>
-              )}
             </Card>
             <Card>
               <Text style={styles.heading}>Slide timeline · testing</Text>
