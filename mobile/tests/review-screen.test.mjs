@@ -2,6 +2,7 @@ import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import React from 'react';
 import { create, act } from 'react-test-renderer';
+import { waitFor } from './helpers/wait-for.mjs';
 import { registerHooks } from 'node:module';
 import { resolve, load } from './helpers/saved-screen-loader.mjs';
 import { playback, players, resetPlayback, validationAudio } from './helpers/recording-screen-audio.mjs';
@@ -18,6 +19,7 @@ const { readStored, removeStored } = await import('../src/services/storage.ts');
 const { getSavedAttempt, saveAttempt } = await import('../src/features/recording/storage.ts');
 const { validateAudio, useMediaValidators } = await import('../src/features/transcription/nativeMediaValidation.tsx');
 const { useReviewMedia } = await import('../src/features/transcription/useReviewMedia.ts');
+const { useReviewPdf } = await import('../src/features/transcription/useReviewPdf.ts');
 const { useReviewPlayerStatus } = await import('../src/features/transcription/useReviewPlayerStatus.ts');
 const { saveAnalysis } = await import('../src/features/transcription/analysisStorage.ts');
 const api = 'http://review.invalid/api';
@@ -711,18 +713,36 @@ test('EOF from an older seek does not pause a newer queued word seek', async () 
   } finally { finish?.(); await tick(() => tree.unmount()); }
 });
 
+test('an empty PDF catalog retains the initial candidate identity after asynchronous discovery', async () => {
+  const candidates = [];
+  function Catalog() { candidates.push(useReviewPdf(api, deckId)); return null; }
+  let tree;
+  await tick(() => { tree = create(React.createElement(Catalog)); });
+  try {
+    await waitFor(() => candidates.length >= 2, 'PDF catalog discovery to publish its identity');
+    assert.deepEqual(candidates.at(-1), []);
+    assert.equal(candidates.at(-1), candidates[0], 'unchanged candidates must not cancel an in-flight media session');
+  } finally { await tick(() => tree.unmount()); }
+});
+
 test('a detached PDF renderer cannot clear a successfully validated replacement', async () => {
   seed(); const tree = await mount();
   try {
     await tick(() => action(tree, 'Download PDF for offline review').props.onPress());
-    await tick(() => tree.root.findAllByType('pdf').find(n => n.props.style.width === 1).props.onLoadComplete(2));
-    const first = tree.root.findAllByType('pdf').find(n => n.props.style.width === '100%');
+    const probe = await waitFor(() => tree.root.findAllByType('pdf').find(n => n.props.style.width === 1), 'initial PDF validation renderer');
+    await tick(() => probe.props.onLoadComplete(2));
+    const first = await waitFor(() => tree.root.findAllByType('pdf').find(n => n.props.style.width === '100%'), 'validated PDF renderer');
     const oldFailure = first.props.onError;
     const firstRecord = readStored(reviewKey(api, 'media-pdf', deckId));
     await tick(() => oldFailure());
     assert.ok(action(tree, 'Download PDF for offline review'));
     await tick(() => action(tree, 'Download PDF for offline review').props.onPress());
-    await tick(() => tree.root.findAllByType('pdf').find(n => n.props.style.width === 1).props.onLoadComplete(2));
+    const replacementProbe = await waitFor(() => tree.root.findAllByType('pdf').find(n => n.props.style.width === 1), 'replacement PDF validation renderer');
+    await tick(() => replacementProbe.props.onLoadComplete(2));
+    await waitFor(() => {
+      const current = readStored(reviewKey(api, 'media-pdf', deckId));
+      return current && current.uri !== firstRecord.uri;
+    }, 'validated replacement PDF record');
     const replacement = readStored(reviewKey(api, 'media-pdf', deckId));
     assert.notEqual(replacement.uri, firstRecord.uri);
     await tick(() => oldFailure());

@@ -964,6 +964,23 @@ merge remaining feature. The most recent document PRs should be merged.
 - **Verification:** All four original feature heads have passing GitHub mobile/backend checks. Local merge-tree comparisons show only the retained recording history differs from each feature head. Design/requirements self-review verifies exact source/artifact preservation and the previously reviewed PDF hashes. Independent Codex review confirmed all 34 code changes are comments only, original archives are intact, the frozen snapshot preserves the full previous body, and all 16 affected archive anchors resolve. It found a historical human-review comment that could imply coverage of later transcription changes; Codex qualified it to the PR #3 version and the reviewer verified the repair with no remaining findings. GitHub checks on the report integration remain pending publication. No fresh device or live-provider checks are claimed.
 - **Errors and corrections:** One GitHub merge approval check timed out; its permitted retry succeeded. A local verification script used a non-ASCII bytes literal and then incorrectly expected the merged README to equal the old document-only README; both checks were corrected, with no published content loss. An automatic approval review also rejected the requirements ref update by confusing it with the separate report candidate; reading the exact remote commit proved the flagged comment was absent, and retry was approved. Contributor acceptance and human code review are not inferred from automated results.
 
+### A7. Diagnose and fix intermittent Scaffold checks, October 11
+
+**Contributor:** Injoon · **Date:** 2026-10-11 · **Tool:** OpenAI Codex · **Model:** not recorded
+
+```text
+what are scaffold checks and why did they fail
+```
+
+```text
+How do we fix this
+```
+
+- **Investigation and correction:** Codex's prior “all checks passed” summary described passing pre-merge PR checks too broadly. Post-merge main runs 38109256014 and 38109391886 failed mobile tests despite passing backend checks. Logs showed a Library cancellation assertion and an absent PDF validator. The initial inference that these were only test timing problems was incomplete: delayed I/O also exposed an application race.
+- **Cause and changes:** The Library test assumed one event-loop turn completed real catalog I/O and could inspect the preceding request instead of a new refresh. Tests now wait for bounded, observable prerequisites without replaying actions or relaxing cancellation assertions. Empty PDF catalog discovery also replaced the initial shared empty array, restarting the media session and cancelling an in-progress PDF download. `useReviewPdf` now reuses the same empty candidate array; populated candidates and identity changes still use the existing logic. A regression checks reference stability after asynchronous discovery, and the detached-renderer test still verifies stale failures cannot erase a replacement.
+- **Reproduction:** A temporary Node preload delayed filesystem `stat` and stream-reader `read` by 25 ms. The original two tests failed; after test waits alone the PDF case still timed out. The new empty-catalog regression failed before the source fix. With both fixes, all three targeted tests passed under delayed I/O. No test is skipped and no production timeout is increased.
+- **Environment:** Initial full typecheck found the investigation clone still had PR #17 dependencies installed (missing expo-crypto/expo-sqlite). Codex installed the current lockfile before final checks; no dependency files were changed. Final Node 24 verification passed TypeScript, lint, all 289 mobile tests and Android export. Twenty delayed-I/O runs passed all three targeted cases (60 executions). Independent Codex review found no actionable defects and separately passed the same three delayed cases on Node 26. Source, tests and dependencies outside the five-file fix are unchanged. The fix PR records publication and CI results. No new native-device, live-provider or human review is claimed.
+
 <a id="1-purpose-coverage-and-provenance"></a>
 <a id="6-meaningful-revisions-and-debugging-sequences"></a>
 <a id="8-missing-contributor-evidence-and-confirmation-checklist"></a>

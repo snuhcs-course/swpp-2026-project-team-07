@@ -5,6 +5,7 @@ import { act, create } from 'react-test-renderer';
 import { registerHooks } from 'node:module';
 import { resolve, load } from './helpers/saved-screen-loader.mjs';
 import { network, response } from './helpers/upload-native.mjs';
+import { waitFor } from './helpers/wait-for.mjs';
 import { wireResult, deckWire, deckId, attemptId } from './helpers/review-fixtures.mjs';
 registerHooks({ resolve, load });
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -27,6 +28,7 @@ test('Library displays cached merged presentation history before requests finish
   let finish; network.respond = () => new Promise(resolve => { finish = resolve; }); network.requests.length = 0;
   let tree; await tick(() => { tree = create(React.createElement(LibraryScreen, { apiUrl: api })); });
   try {
+    await waitFor(() => network.requests.length === 1, 'initial history request');
     assert.equal(action(tree, 'Open saved rehearsal').length, 2); // Local/server UUID dedup.
     assert.equal(network.requests.length, 1); assert.ok(action(tree, 'Refreshing history…').length);
     await tick(() => action(tree, 'Open saved rehearsal')[1].props.onPress());
@@ -34,7 +36,11 @@ test('Library displays cached merged presentation history before requests finish
     await tick(() => finish(response(503, {})));
     assert.match(JSON.stringify(tree.toJSON()), /History may be stale/); assert.equal(action(tree, 'Open saved rehearsal').length, 2);
     network.respond = () => new Promise(resolve => { finish = resolve; });
-    await tick(() => action(tree, 'Refresh history')[0].props.onPress()); const old = network.requests.at(-1);
+    const previousRequests = network.requests.length;
+    await tick(() => action(tree, 'Refresh history')[0].props.onPress());
+    await waitFor(() => network.requests.length === previousRequests + 1, 'new history refresh request');
+    const old = network.requests.at(-1);
+    assert.equal(old.signal.aborted, false);
     await tick(() => tree.update(React.createElement(LibraryScreen, { apiUrl: 'http://other.invalid/api' })));
     assert.equal(old.signal.aborted, true); await tick(() => finish(response(200, deckWire)));
     assert.equal(action(tree, 'Open saved rehearsal').length, 1); assert.equal(readHistory('http://other.invalid/api', deckId).length, 0);
