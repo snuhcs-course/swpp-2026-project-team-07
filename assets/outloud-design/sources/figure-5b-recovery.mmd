@@ -1,0 +1,41 @@
+%%{init: {"theme": "base", "themeCSS": ".actor-line {stroke-dasharray: 5 5 !important;}", "themeVariables": {"fontFamily": "Arial", "fontSize": "16px", "actorBkg": "#eaf1f5", "actorBorder": "#547083", "actorTextColor": "#1e2e38", "signalColor": "#526777", "signalTextColor": "#1e2e38", "noteBkgColor": "#f6f3ed", "noteBorderColor": "#c6bcaa", "noteTextColor": "#263640", "labelBoxBkgColor": "#ffffff", "labelBoxBorderColor": "#547083"}, "sequence": {"useMaxWidth": false, "mirrorActors": false, "actorMargin": 28, "messageMargin": 16, "noteMargin": 8, "wrap": false, "width": 155}}}%%
+sequenceDiagram
+ autonumber
+ actor U as Presenter
+ participant A as Feedback host
+ participant API as Django services
+ participant W as Celery worker
+ Note over U,W: 5B. Edits, invalidation and safe retries | Unmerged PR21
+ U->>A: Edit a slide description and Save
+ A->>API: PATCH /api/decks/{id}/descriptions/<br/>set ID + description_revision + content
+ alt Source/revision conflict
+  API-->>A: Conflict, no overwrite
+  A-->>U: Retain draft, offer reload
+ else Current revision matches
+  API->>API: Validate and store edit,<br/>increment description + processing revisions
+  API-->>A: Updated descriptions and revision
+  A->>API: Read feedback
+  API-->>A: Old feedback marked stale<br/>by revision comparison
+  A-->>U: Show stale label, disable evidence seek
+  Note over API,W: Stale worker writes cannot replace newer edits.<br/>Regeneration requires an explicit user action.
+ end
+ opt Generation failed or interrupted
+  A->>API: Refresh dependency/feedback state
+  API-->>A: Stage, retry availability,<br/>revision and confirmation requirement
+  opt Unknown submitted outcome
+   A-->>U: Explain uncertain provider outcome
+   U->>A: Confirm before retry (or cancel)
+  end
+  alt Authorized retry, descriptions failed
+   U->>A: Retry slide descriptions
+   A->>API: POST descriptions/generate/<br/>own processing_revision
+   Note over API,W: Waiting coaching follows the dependency.<br/>Retry descriptions at their own endpoint.
+  else Authorized retry, coaching failed / stale feedback
+   U->>A: Retry or regenerate feedback
+   A->>API: POST feedback/generate/<br/>current feedback_revision
+  end
+  Note over U,API: Cancellation sends no retry request.<br/>Confirmed retries include acknowledge_uncertain.
+  API-)W: Admit eligible generation via Redis
+  Note right of W: Retain provider receipts.<br/>Reuse received output.<br/>Wait for quota when needed.<br/>Beat triggers safe recovery.
+ end
+ Note over API,W: Evidence checks source, visit, time and quotes.<br/>Planned: also enforce frozen practiced-slide scope.<br/>Unsupported cards are removed.<br/>All-invalid output fails.
