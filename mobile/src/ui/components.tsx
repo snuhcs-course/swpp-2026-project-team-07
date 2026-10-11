@@ -79,8 +79,9 @@ export function DemoNotice() {
   return (
     <View style={styles.banner}>
       <Text style={styles.bannerText}>
-        SCREEN PREVIEW · Sample data only. PDF import, microphone recording and
-        AI processing are not connected.
+        SAMPLE PREVIEW · This deck is example content. Your imported PDF is
+        stored on this device; microphone recording and AI processing are not
+        connected yet.
       </Text>
     </View>
   );
@@ -93,17 +94,19 @@ export function Action({
   onPress,
   secondary = false,
   disabled = false,
+  expanded,
 }: {
   label: string;
   onPress: () => void;
   secondary?: boolean;
   disabled?: boolean;
+  expanded?: boolean;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityState={{ disabled }}
+      accessibilityState={{ disabled, ...(expanded !== undefined ? { expanded } : {}) }}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => ({

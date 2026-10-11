@@ -2,11 +2,11 @@ export const API_URL = (
   process.env.EXPO_PUBLIC_API_URL ?? "http://10.0.2.2:8000/api"
 ).replace(/\/$/, "");
 
-export async function checkBackend(): Promise<string> {
+export async function checkBackend(apiUrl = API_URL): Promise<string> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5000);
   try {
-    const response = await fetch(`${API_URL}/health/`, {
+    const response = await fetch(`${apiUrl.replace(/\/+$/, "")}/health/`, {
       signal: controller.signal,
     });
     if (!response.ok)

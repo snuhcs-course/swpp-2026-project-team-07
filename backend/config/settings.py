@@ -47,3 +47,8 @@ CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://127.0.0.1:6379/0")
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 300
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+
+# PostgreSQL rows are the queue authority; Beat only wakes the recovery task.
+CELERY_BEAT_SCHEDULE = {"recover-processing": {"task": "rehearsals.tasks.recover_work", "schedule": 30.0}}
+CELERY_TASK_PUBLISH_RETRY = False
+CELERY_BROKER_TRANSPORT_OPTIONS = {"socket_connect_timeout": 2, "socket_timeout": 2}
