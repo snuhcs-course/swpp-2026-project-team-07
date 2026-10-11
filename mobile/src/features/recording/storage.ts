@@ -10,6 +10,8 @@ export type SavedAttempt = {
   state: "capturing" | "interrupted" | "saved" | "uploading" | "submitted" | "upload_failed";
   recording: DeviceRecording; error?: string; result?: AttemptResult;
   server_url?: string;
+  // One initial handoff after capture, pinned to the selected server.
+  auto_process_api?: string;
 };
 export function getSavedAttempt(id: string) { return readStored<SavedAttempt>(`attempt:${id}`); }
 export function saveAttempt(attempt: SavedAttempt) { writeStored(`attempt:${attempt.id}`, attempt); }
@@ -26,12 +28,13 @@ export function beginAttempt(deck: { id: string; title: string; uri: string; pag
     recording: { id, audience, audio_uri: audioUri, duration_ms: 0, slide_events: [{ slide_index: initialSlide, at_ms: 0 }] } });
   return id;
 }
-export function checkpointAttempt(id: string, uri: string, duration: number, events: SlideEvent[], finished = false) {
+export function checkpointAttempt(id: string, uri: string, duration: number, events: SlideEvent[], finished = false, autoProcessApi?: string) {
   const attempt = getSavedAttempt(id);
   if (!attempt) throw new Error("The recording metadata could not be found.");
   if (!Number.isFinite(duration) || duration < 0) throw new Error("Invalid audio clock.");
   if (finished && (!uri || duration < 1 || duration > 600_000)) throw new Error("Recording exceeds the ten-minute limit or is empty. Audio is kept for recovery.");
-  saveAttempt({ ...attempt, state: finished ? "saved" : "capturing", error: undefined, recording: {
+  saveAttempt({ ...attempt, state: finished ? "saved" : "capturing", error: undefined,
+    auto_process_api: finished ? autoProcessApi?.replace(/\/+$/, '') : attempt.auto_process_api, recording: {
     ...attempt.recording, audio_uri: uri || attempt.recording.audio_uri,
     duration_ms: Math.floor(duration), slide_events: events.map(event => ({ ...event })),
   } });

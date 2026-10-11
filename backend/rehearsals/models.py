@@ -52,3 +52,35 @@ class Attempt(models.Model):
     feedback = models.JSONField(default=list)
     error = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    # Revision is the authorized processing generation, consumed once by admission.
+    processing_state = models.CharField(max_length=32, default='awaiting_analysis', db_index=True)
+    processing_revision = models.PositiveIntegerField(default=0)
+    failed_stage = models.CharField(max_length=32, blank=True)
+    queued_at = models.DateTimeField(null=True, blank=True)
+    claimed_at = models.DateTimeField(null=True, blank=True)
+    claim_token = models.UUIDField(null=True, blank=True)
+    retry_at = models.DateTimeField(null=True, blank=True)
+    visits = models.JSONField(null=True, blank=True)
+    metrics = models.JSONField(null=True, blank=True)
+    analysis_outcome = models.CharField(max_length=32, blank=True)
+    feedback_state = models.CharField(max_length=20, default='disabled')
+
+
+class ProviderRequest(models.Model):
+    """Private database evidence. Never serialize this model or serve it as media."""
+    attempt = models.ForeignKey(Attempt, on_delete=models.CASCADE, related_name='provider_requests')
+    generation = models.PositiveIntegerField()
+    claim_token = models.UUIDField()
+    provider = models.CharField(max_length=32, default='openai')
+    model = models.CharField(max_length=32, default='whisper-1')
+    input_hash = models.CharField(max_length=64)
+    created_at = models.DateTimeField(auto_now_add=True)
+    submitted_at = models.DateTimeField(null=True)
+    finished_at = models.DateTimeField(null=True)
+    raw_received_at = models.DateTimeField(null=True)
+    outcome = models.CharField(max_length=32, default='submitted')
+    raw_response = models.JSONField(null=True)
+    usage = models.JSONField(null=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['attempt', 'generation'], name='one_provider_request_per_generation')]

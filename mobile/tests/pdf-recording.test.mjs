@@ -46,6 +46,23 @@ async function savedEvents(tree, duration = 2000) {
   return savedRoute().recording.slide_events;
 }
 
+test('finishing a real recording opens its saved result automatically with one transcription intent', async () => {
+  const tree = await mount();
+  try {
+    await loaded(tree);
+    await press(tree, 'Start recording');
+    captures.at(-1).durationMillis = 2000;
+    await press(tree, 'Stop recording');
+    assert.equal(routes.length, 1);
+    assert.equal(routes[0].pathname, '/results');
+    assert.equal(savedRoute().state, 'saved');
+    assert.equal(savedRoute().recording.duration_ms, 2000);
+    assert.ok(savedRoute().auto_process_api);
+    await tick(() => tree.update(React.createElement(RehearsalScreen)));
+    assert.equal(routes.length, 1);
+  } finally { await close(tree); }
+});
+
 test('viewer hands off the confirmed PDF page and metadata, never an unrendered navigation target', async () => {
   const tree = await mount(ViewerScreen, {});
   try {

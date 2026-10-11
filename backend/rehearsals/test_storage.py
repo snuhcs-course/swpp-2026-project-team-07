@@ -95,8 +95,9 @@ class UploadTests(TestCase):
         self.assertEqual(result['processing_state'], 'awaiting_analysis')
         self.assertIsNone(result['transcript'])
         self.assertEqual(result['feedback'], [])
-        self.assertEqual(self.client.post(f"/api/attempts/{metadata['id']}/process/").status_code, 501)
+        # Upload/GET alone must never enqueue processing.
         self.assertEqual(Attempt.objects.get().status, 'pending')
+        self.assertIsNone(Attempt.objects.get().queued_at)
 
     def test_uuid_and_default_audience_normalization_deduplicate_exact_retries(self):
         deck = self.deck()['deck']

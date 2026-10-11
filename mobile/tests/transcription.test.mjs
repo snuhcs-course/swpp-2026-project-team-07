@@ -6,9 +6,19 @@ const id = '33333333-3333-4333-8333-333333333333';
 const recording = { id, deck_id: '11111111-1111-4111-8111-111111111111',
   audio_uri: 'file:///private/example.m4a', duration_ms: 5000, audience: '',
   slide_events: [{ slide_index: 0, at_ms: 0 }, { slide_index: 1, at_ms: 2000 }, { slide_index: 0, at_ms: 4000 }] };
-const result = (status = 'completed') => ({ attempt_id: id, status,
+const result = (status = 'completed') => ({ attempt_id: id, status, duration_ms: 5000,
+  processing_state: status === 'pending' ? 'queued' : status === 'processing' ? 'transcribing' : status,
+  processing_revision: 1, failed_stage: status === 'failed' ? 'transcribing' : null,
+  retry_available: status === 'failed', retry_at: null, requires_confirmation: false,
+  partial_available: { transcript: status === 'completed', alignment: status === 'completed' },
   transcript: status === 'completed' ? { text: 'Hello', words: [{ text: 'Hello', start_ms: 0, end_ms: 1000 }] } : null,
-  feedback: [], error: status === 'failed' ? { code: 'provider_timeout', message: 'Try later' } : null });
+  visits: status === 'completed' ? [{ slide_index: 0, start_ms: 0, end_ms: 5000, words: [{ text: 'Hello', start_ms: 0, end_ms: 1000 }] }] : null,
+  metrics: status === 'completed' ? { duration_ms: 5000, time_per_slide: [{ slide_index: 0, duration_ms: 5000 }], detected_language: 'english', speaking_rates: [], rate_note: 'Estimate' } : null,
+  analysis_outcome: status === 'completed' ? 'speech' : null, feedback_state: 'disabled',
+  provenance: { provider: 'openai', model: 'whisper-1', generation: 1, outcome: 'received', speech_gate: null },
+  feedback: [], error: status === 'failed' ? { code: 'provider_timeout', message: 'Try later' } : null,
+  ...(status === 'pending' ? { status: 'processing' } : {}),
+});
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status });
 function setup(responses, overrides = {}) {
   const calls = [];
@@ -24,7 +34,7 @@ const rejects = (promise, code) => assert.rejects(promise, e =>
 
 test('upload metadata/file then process the same ID; preserve input', async () => {
   const original = structuredClone(recording);
-  const { client, calls } = setup([json({ attempt_id: id }, 201), json({ attempt_id: id }, 202)]);
+  const { client, calls } = setup([json({ attempt_id: id }, 201), json(result('processing'), 202)]);
   assert.deepEqual(await client.submit(recording), { attempt_id: id });
   assert.deepEqual(calls.map(c => c.url), ['https://example.test/api/attempts/', `https://example.test/api/attempts/${id}/process/`]);
   const form = calls[0].init.body;
@@ -40,8 +50,8 @@ test('501 never starts processing or substitutes sample data', async () => {
   await rejects(client.submit(recording), 'not_implemented'); assert.equal(calls.length, 1);
 });
 test('process failure retains ID; retry only processes without reupload', async () => {
-  const { client, calls } = setup([json({ attempt_id: id }, 201), json({}, 503), json({ attempt_id: id }, 202)]);
-  await rejects(client.submit(recording), 'http_error'); await client.retry(id);
+  const { client, calls } = setup([json({ attempt_id: id }, 201), json({}, 503), json(result('processing'), 202)]);
+  await rejects(client.submit(recording), 'http_error'); await client.retry(id, { processing_revision: 1 });
   assert.equal(calls.filter(c => c.url.endsWith('/attempts/')).length, 1);
 });
 test('wrong upload/processing IDs fail', async () => {
@@ -147,4 +157,43 @@ test('25,000,000-byte limit is decimal and exact, including legacy files', async
   await client.upload(recording); assert.equal(calls.length, 1);
   const rejected = setup([], {audioFile: () => ({size:25_000_001, name:'legacy.m4a'})});
   await rejects(rejected.client.upload(recording), 'invalid_audio_size'); assert.equal(rejected.calls.length, 0);
+});
+
+test('processing validates stages and accepts completed 200 with revision-aware retry', async () => {
+  const complete = { ...result(), processing_state: 'completed', processing_revision: 3,
+    failed_stage: null, retry_available: false, retry_at: null, requires_confirmation: false,
+    partial_available: { transcript: true, alignment: true }, visits: [{ slide_index: 0, start_ms: 0, end_ms: 5000, words: result().transcript.words }],
+    duration_ms: 5000, metrics: { duration_ms: 5000, time_per_slide: [{ slide_index: 0, duration_ms: 5000 }], detected_language: 'english', speaking_rates: [], rate_note: 'Estimate' },
+    feedback_state: 'disabled', analysis_outcome: 'speech', provenance: { provider: 'openai', model: 'whisper-1', generation: 3, outcome: 'received', speech_gate: 'silero-vad' } };
+  const { client, calls } = setup([json(complete)]);
+  assert.deepEqual(await client.process(id, { processing_revision: 2, acknowledge_uncertain: true }), complete);
+  assert.deepEqual(JSON.parse(calls[0].init.body), { processing_revision: 2, acknowledge_uncertain: true });
+  for (const update of [{ processing_revision: '3' }, { processing_state: 'imaginary' }, { visits: [{ slide_index: -1 }] }, { metrics: { duration_ms: 'bad' } }]) {
+    await rejects(setup([json({ ...complete, ...update })]).client.getResult(id), 'invalid_response');
+  }
+});
+
+test('no-speech completion accepts empty-word visits and timing metrics without provider provenance', async () => {
+  const silent = { ...result(), analysis_outcome: 'no_speech', transcript: { text: '', words: [] },
+    slide_events: [{ slide_index: 1, at_ms: 0 }, { slide_index: 0, at_ms: 0 },
+      { slide_index: 0, at_ms: 2000 }, { slide_index: 1, at_ms: 4000 }],
+    visits: [{ slide_index: 1, start_ms: 0, end_ms: 0, words: [] },
+      { slide_index: 0, start_ms: 0, end_ms: 2000, words: [] },
+      { slide_index: 0, start_ms: 2000, end_ms: 4000, words: [] },
+      { slide_index: 1, start_ms: 4000, end_ms: 5000, words: [] }],
+    metrics: { ...result().metrics, detected_language: 'und', time_per_slide: [
+      { slide_index: 0, duration_ms: 4000 }, { slide_index: 1, duration_ms: 1000 }] },
+    provenance: { provider: null, model: null, generation: null, outcome: null, speech_gate: 'silero-vad' } };
+  const { client, calls } = setup([json(silent), json(silent)]);
+  assert.deepEqual(await client.getResult(id), silent);
+  assert.deepEqual(await client.process(id), silent);
+  assert.equal(calls.length, 2);
+  for (const update of [
+    { visits: [], metrics: {} },
+    { metrics: { ...silent.metrics, duration_ms: 6000 } },
+    { transcript: result().transcript },
+    { visits: [{ slide_index: 0, start_ms: 0, end_ms: 5000, words: result().transcript.words }] },
+  ]) {
+    await rejects(setup([json({ ...silent, ...update })]).client.getResult(id), 'invalid_response');
+  }
 });
