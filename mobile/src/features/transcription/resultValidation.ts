@@ -1,3 +1,4 @@
+import { optionalFeedback, isDigest } from "../feedback/validation";
 import type { AttemptResult, TranscriptWord, Feedback } from "../../contracts";
 
 const object = (value: unknown): value is Record<string, unknown> =>
@@ -15,7 +16,7 @@ const feedback = (value: unknown): value is Feedback => object(value) &&
 const stages = ["awaiting_analysis", "queued", "checking_audio", "transcribing", "aligning", "completed", "failed", "needs_confirmation"];
 const activeStages = ["queued", "checking_audio", "transcribing", "aligning"];
 const nullableDate = (value: unknown) => value === null || (typeof value === "string" && Number.isFinite(Date.parse(value)));
-export function validResult(value: unknown, id: string): value is AttemptResult {
+function validRecording(value: unknown, id: string): value is AttemptResult {
   if (!object(value) || value.attempt_id !== id || typeof value.status !== "string" ||
       !["pending", "processing", "completed", "failed"].includes(value.status) ||
       typeof value.processing_state !== "string" || !stages.includes(value.processing_state) ||
@@ -68,4 +69,50 @@ export function validResult(value: unknown, id: string): value is AttemptResult 
     (value.feedback_state !== "disabled" || value.feedback.length === 0) &&
     (value.status !== "completed" || (transcript !== null && error === null)) &&
     (value.status !== "failed" || error !== null);
+}
+
+
+/** Parse into an allowlist, isolating untrusted optional feedback from recording data. */
+export function parseResult(value: unknown, id: string): AttemptResult | null {
+  if (!object(value)) return null;
+  const candidate = { ...value, feedback: [], feedback_state: value.feedback_state === 'legacy' ? 'legacy' : 'disabled' };
+  if (!validRecording(candidate, id)) return null;
+  const copyWord = (w: TranscriptWord) => ({ text: w.text, start_ms: w.start_ms, end_ms: w.end_ms });
+  const legacy = candidate.feedback_state === 'legacy' && Array.isArray(value.feedback) ? value.feedback.filter((v): v is Feedback =>
+    feedback(v) && v.slide_index < 10 && v.end_ms <= candidate.duration_ms &&
+    [v.observation, v.slide_evidence, v.suggestion].every(s => s.length <= 2000 && !s.includes('\u0000'))).map(v => ({
+      slide_index: v.slide_index, start_ms: v.start_ms, end_ms: v.end_ms, observation: v.observation,
+      slide_evidence: v.slide_evidence, suggestion: v.suggestion,
+    })) : [];
+  const m = candidate.metrics, p = candidate.provenance;
+  const parsed: AttemptResult = {
+    attempt_id: id, status: candidate.status, duration_ms: candidate.duration_ms,
+    processing_state: candidate.processing_state, processing_revision: candidate.processing_revision,
+    failed_stage: candidate.failed_stage, retry_available: candidate.retry_available, retry_at: candidate.retry_at,
+    requires_confirmation: candidate.requires_confirmation,
+    partial_available: { transcript: candidate.partial_available.transcript, alignment: candidate.partial_available.alignment },
+    transcript: candidate.transcript ? { text: candidate.transcript.text, words: candidate.transcript.words.map(copyWord) } : null,
+    visits: candidate.visits?.map(v => ({ slide_index: v.slide_index, start_ms: v.start_ms, end_ms: v.end_ms, words: v.words.map(copyWord) })) ?? null,
+    metrics: m ? { duration_ms: m.duration_ms, detected_language: m.detected_language, rate_note: m.rate_note,
+      time_per_slide: m.time_per_slide.map(t => ({ slide_index: t.slide_index, duration_ms: t.duration_ms })),
+      speaking_rates: m.speaking_rates.map(r => ({ language: r.language, unit: r.unit, count: r.count, per_minute: r.per_minute })) } : null,
+    analysis_outcome: candidate.analysis_outcome, feedback_state: candidate.feedback_state, feedback: legacy,
+    provenance: { provider: p.provider, model: p.model, generation: p.generation, outcome: p.outcome, speech_gate: p.speech_gate },
+    error: candidate.error ? { code: candidate.error.code, message: candidate.error.message } : null,
+  };
+  if (candidate.slide_events) parsed.slide_events = candidate.slide_events.map(e => ({ slide_index: e.slide_index, at_ms: e.at_ms }));
+  if (typeof value.deck_id === 'string') parsed.deck_id = value.deck_id;
+  if (typeof value.audience === 'string') parsed.audience = value.audience;
+  if (typeof value.created_at === 'string') parsed.created_at = value.created_at;
+  if (typeof value.audio_url === 'string') parsed.audio_url = value.audio_url;
+  if (value.transcript_id === null || isDigest(value.transcript_id)) parsed.transcript_id = value.transcript_id;
+  const coaching = optionalFeedback(value.feedback_analysis, id, parsed);
+  if (coaching) parsed.feedback_analysis = coaching;
+  return parsed;
+}
+
+/** Legacy strict guard. Consumers use parseResult so quarantined fields cannot leak. */
+export function validResult(value: unknown, id: string): value is AttemptResult {
+  return validRecording(value, id) && (!object(value) || value.feedback_analysis === undefined ||
+    optionalFeedback(value.feedback_analysis, id, value as AttemptResult) !== undefined);
 }

@@ -53,7 +53,9 @@ h11==0.16.0
 httpcore==1.0.9
     # via httpx
 httpx==0.28.1
-    # via openai
+    # via
+    #   -r backend/requirements.in
+    #   openai
 humanfriendly==10.0
     # via coloredlogs
 idna==3.20
@@ -98,7 +100,9 @@ psycopg==3.3.6
 psycopg-binary==3.3.6
     # via psycopg
 pydantic==2.13.5
-    # via openai
+    # via
+    #   -r backend/requirements.in
+    #   openai
 pydantic-core==2.46.5
     # via pydantic
 pypdf==6.19.0

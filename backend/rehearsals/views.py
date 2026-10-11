@@ -11,6 +11,7 @@ from .serializers import AttemptMetadataSerializer, ProcessSerializer
 from .services.processing import admit, ProcessConflict
 from django.utils import timezone
 from .services.storage import store_deck, store_attempt
+from .services.coaching import read as read_feedback, transcript_identity
 
 
 def deck_data(deck, request):
@@ -32,6 +33,7 @@ def attempt_data(attempt, request):
     latest = attempt.provider_requests.order_by('-generation').first()
     return {"attempt_id": str(attempt.id), "deck_id": str(attempt.deck_id),
             "status": attempt.status, "transcript": transcript,
+            "transcript_id": transcript_identity(attempt), "feedback_analysis": read_feedback(attempt.pk),
             "feedback": attempt.feedback, "feedback_state": attempt.feedback_state, "error": attempt.error,
             "duration_ms": attempt.duration_ms, "slide_events": attempt.slide_events,
             "audience": attempt.audience, "created_at": attempt.created_at,
