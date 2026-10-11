@@ -54,6 +54,18 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+  scheduler:
+    build: ./backend
+    env_file: backend/.env
+    environment: *backend_environment
+    command: celery -A config beat --loglevel=info --schedule=/tmp/outloud-celerybeat
+    volumes:
+      - ./backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 volumes:
   postgres_data:
   media_data:

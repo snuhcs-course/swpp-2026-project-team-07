@@ -1,4 +1,9 @@
-import type { AttemptResult, LocalRecording, TranscriptWord, Feedback } from "../../contracts";
+import { parseResult } from "./resultValidation";
+import { canonicalUuid, parseFeedback, parseDescriptionState, validateFeedbackRequest, validateDescriptionRequest } from "../feedback/validation";
+import type { FeedbackContext } from "../feedback/validation";
+import { parseDeck, parseReview } from './reviewValidation';
+import type { DeckDetail, ReviewAttempt, AttemptResult, LocalRecording, ProcessRequest, DescriptionGenerateRequest, DescriptionEditRequest, FeedbackGenerateRequest } from "../../contracts";
+export { validResult } from "./resultValidation";
 
 export class TranscriptionClientError extends Error {
   readonly code: string;
@@ -15,7 +20,7 @@ export class TranscriptionClientError extends Error {
 }
 
 type Options = { signal?: AbortSignal };
-type PollOptions = Options & { intervalMs?: number; maxAttempts?: number };
+type PollOptions = Options & { intervalMs?: number; maxAttempts?: number; onUpdate?: (result: AttemptResult) => void };
 type Dependencies = {
   baseUrl: string;
   audioFile: (uri: string) => Blob;
@@ -27,27 +32,6 @@ const object = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 const integer = (value: unknown): value is number =>
   typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
-const word = (value: unknown): value is TranscriptWord => object(value) &&
-  typeof value.text === "string" && integer(value.start_ms) &&
-  integer(value.end_ms) && value.start_ms <= value.end_ms;
-const feedback = (value: unknown): value is Feedback => object(value) &&
-  integer(value.slide_index) && integer(value.start_ms) && integer(value.end_ms) &&
-  value.start_ms <= value.end_ms && typeof value.observation === "string" &&
-  typeof value.slide_evidence === "string" && typeof value.suggestion === "string";
-
-function validResult(value: unknown, id: string): value is AttemptResult {
-  if (!object(value) || value.attempt_id !== id || typeof value.status !== "string" ||
-      !["pending", "processing", "completed", "failed"].includes(value.status)) return false;
-  const transcript = value.transcript;
-  if (transcript !== null && (!object(transcript) || typeof transcript.text !== "string" ||
-      !Array.isArray(transcript.words) || !transcript.words.every(word))) return false;
-  const error = value.error;
-  if (error !== null && (!object(error) || typeof error.code !== "string" ||
-      typeof error.message !== "string")) return false;
-  return Array.isArray(value.feedback) && value.feedback.every(feedback) &&
-    (value.status !== "completed" || (transcript !== null && error === null)) &&
-    (value.status !== "failed" || error !== null);
-}
 
 export function createTranscriptionClient(deps: Dependencies) {
   const fetcher = deps.fetch ?? fetch;
@@ -61,7 +45,7 @@ export function createTranscriptionClient(deps: Dependencies) {
   }
   function cancelled(id: string) { return error("cancelled", id, "Result checking was cancelled."); }
 
-  async function request(id: string, route: string, expected: number, init: RequestInit, options: Options) {
+  async function request(id: string, route: string, expected: number | number[], init: RequestInit, options: Options) {
     checkId(id);
     if (options.signal?.aborted) throw cancelled(id);
     const controller = new AbortController();
@@ -71,7 +55,12 @@ export function createTranscriptionClient(deps: Dependencies) {
     const timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
     try {
       const response = await fetcher(`${base}${route}`, { ...init, signal: controller.signal });
-      if (response.status !== expected) {
+      if (!(Array.isArray(expected) ? expected : [expected]).includes(response.status)) {
+        let detail: unknown;
+        try { detail = await response.json(); } catch { /* Use the safe HTTP fallback. */ }
+        if (object(detail) && object(detail.error) && typeof detail.error.code === "string" && typeof detail.error.message === "string") {
+          throw error(detail.error.code, id, detail.error.message, response.status);
+        }
         throw error(response.status === 501 ? "not_implemented" : "http_error", id,
           response.status === 501 ? "The server has not implemented this feature yet." :
             `The server returned HTTP ${response.status}.`, response.status);
@@ -95,15 +84,28 @@ export function createTranscriptionClient(deps: Dependencies) {
     }
   }
 
-  async function retry(id: string, options: Options = {}): Promise<void> {
-    const data = await request(id, `/attempts/${encodeURIComponent(id)}/process/`, 202,
-      { method: "POST" }, options);
-    if (!object(data) || data.attempt_id !== id) {
-      throw error("invalid_response", id, "The processing response did not match the recording.");
+  const processing = new Set<string>();
+  async function process(id: string, payload: ProcessRequest = {}, options: Options = {}): Promise<AttemptResult> {
+    if (processing.has(id)) throw error("request_in_progress", id, "An analysis request is already in progress. Refresh for its status.");
+    if ((payload.processing_revision !== undefined && !integer(payload.processing_revision)) ||
+        (payload.acknowledge_uncertain !== undefined && typeof payload.acknowledge_uncertain !== "boolean")) {
+      throw error("invalid_request", id, "Invalid analysis revision or acknowledgement.");
     }
+    processing.add(id);
+    try {
+      const data = await request(id, `/attempts/${encodeURIComponent(id)}/process/`, [200, 202],
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }, options);
+      const parsed = parseResult(data, id);
+      if (!parsed) throw error("invalid_response", id, "The processing response did not match the recording.");
+      return parsed;
+    } finally { processing.delete(id); }
+  }
+  async function retry(id: string, payload: ProcessRequest, options: Options = {}) {
+    if (!integer(payload.processing_revision)) throw error("invalid_request", id, "Refresh before retrying with the current revision.");
+    return process(id, payload, options);
   }
 
-  async function submit(recording: LocalRecording, options: Options = {}) {
+  async function upload(recording: LocalRecording, options: Options = {}) {
     const { id, deck_id, duration_ms, audience, slide_events, audio_uri } = recording;
     checkId(id);
     if (options.signal?.aborted) throw cancelled(id);
@@ -135,16 +137,15 @@ export function createTranscriptionClient(deps: Dependencies) {
     if (!object(uploaded) || uploaded.attempt_id !== id) {
       throw error("invalid_response", id, "The upload response did not match the recording.");
     }
-    // On failure, the caller retains id and can retry processing without re-uploading.
-    await retry(id, options);
     return { attempt_id: id };
   }
 
   async function getResult(id: string, options: Options = {}): Promise<AttemptResult> {
     const data = await request(id, `/attempts/${encodeURIComponent(id)}/`, 200,
       { method: "GET" }, options);
-    if (!validResult(data, id)) throw error("invalid_response", id, "The result did not match the expected recording format.");
-    return data;
+    const parsed = parseResult(data, id);
+    if (!parsed) throw error("invalid_response", id, "The result did not match the expected recording format.");
+    return parsed;
   }
 
   async function waitForResult(id: string, options: PollOptions = {}): Promise<AttemptResult> {
@@ -155,6 +156,7 @@ export function createTranscriptionClient(deps: Dependencies) {
     }
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       const result = await getResult(id, options);
+      options.onUpdate?.(result);
       if (result.status === "completed" || result.status === "failed") return result;
       if (attempt + 1 === maxAttempts) break;
       await new Promise<void>((resolve, reject) => {
@@ -170,5 +172,73 @@ export function createTranscriptionClient(deps: Dependencies) {
     throw error("poll_limit", id, "Processing is still pending. Check this attempt again later.");
   }
 
-  return { submit, getResult, retry, waitForResult };
+  async function submit(recording: LocalRecording, options: Options = {}) {
+    const result = await upload(recording, options);
+    await process(recording.id, {}, options);
+    return result;
+  }
+  async function getDeck(id: string, options: Options = {}): Promise<DeckDetail> {
+    return parseDeck(await request(id, `/decks/${encodeURIComponent(id)}/`, 200, { method: 'GET' }, options), id, base);
+  }
+  async function getReview(id: string, options: Options = {}, deck?: DeckDetail): Promise<ReviewAttempt> {
+    return parseReview(await request(id, `/attempts/${encodeURIComponent(id)}/`, 200, { method: 'GET' }, options), id, base, deck);
+  }
+  async function getHistory(deck: DeckDetail, options: Options = {}): Promise<ReviewAttempt[]> {
+    const data = await request(deck.id, `/decks/${encodeURIComponent(deck.id)}/attempts/`, 200, { method: 'GET' }, options);
+    if (!Array.isArray(data)) throw error('invalid_response', deck.id, 'Invalid rehearsal history.');
+    return data.map(item => {
+      if (!object(item) || typeof item.attempt_id !== 'string' || item.deck_id !== deck.id) throw error('invalid_response', deck.id, 'History contains a different presentation.');
+      return parseReview(item, item.attempt_id, base, deck);
+    });
+  }
+  function feedbackInput(id: string, check: () => void) {
+    try { if (!canonicalUuid(id)) throw Error(); check(); }
+    catch { throw error('invalid_request', id, 'Invalid feedback request. Refresh its current revision before retrying.'); }
+  }
+  function feedbackOutput<T>(id: string, parse: () => T): T {
+    try { return parse(); } catch { throw error('invalid_response', id, 'The feedback response was invalid. The recording is unchanged.'); }
+  }
+  async function getDescriptions(deckId: string, setId?: string, options: Options = {}) {
+    feedbackInput(deckId, () => { if (setId !== undefined && !canonicalUuid(setId)) throw Error(); });
+    const data = await request(deckId, `/decks/${deckId}/descriptions/${setId ? `?description_set_id=${setId}` : ''}`, 200, { method: 'GET' }, options);
+    return feedbackOutput(deckId, () => {
+      const parsed = parseDescriptionState(data, deckId);
+      if (setId && parsed.description_set_id !== setId) throw Error();
+      return parsed;
+    });
+  }
+  async function generateDescriptions(deckId: string, payload: DescriptionGenerateRequest = {}, options: Options = {}) {
+    feedbackInput(deckId, () => validateDescriptionRequest(payload, deckId));
+    const data = await request(deckId, `/decks/${deckId}/descriptions/generate/`, [200, 202],
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }, options);
+    return feedbackOutput(deckId, () => {
+      const parsed = parseDescriptionState(data, deckId);
+      if (payload.description_set_id && parsed.description_set_id !== payload.description_set_id) throw Error();
+      return parsed;
+    });
+  }
+  async function editDescriptions(deckId: string, payload: DescriptionEditRequest, options: Options = {}) {
+    feedbackInput(deckId, () => validateDescriptionRequest(payload, deckId, true));
+    const data = await request(deckId, `/decks/${deckId}/descriptions/`, 200,
+      { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }, options);
+    return feedbackOutput(deckId, () => {
+      const parsed = parseDescriptionState(data, deckId);
+      if (payload.description_set_id && parsed.description_set_id !== payload.description_set_id) throw Error();
+      return parsed;
+    });
+  }
+  async function getFeedback(id: string, options: Options = {}, context?: FeedbackContext) {
+    feedbackInput(id, () => {});
+    const data = await request(id, `/attempts/${id}/feedback/`, 200, { method: 'GET' }, options);
+    return feedbackOutput(id, () => parseFeedback(data, id, context));
+  }
+  async function generateFeedback(id: string, payload: FeedbackGenerateRequest = {}, options: Options = {}, context?: FeedbackContext) {
+    feedbackInput(id, () => validateFeedbackRequest(payload));
+    const data = await request(id, `/attempts/${id}/feedback/generate/`, [200, 202],
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }, options);
+    return feedbackOutput(id, () => parseFeedback(data, id, context));
+  }
+  return { upload, submit, getResult, getReview, getDeck, getHistory, process, retry, waitForResult,
+    getDescriptions, generateDescriptions, editDescriptions, getFeedback, generateFeedback };
+
 }

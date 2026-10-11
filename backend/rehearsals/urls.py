@@ -1,25 +1,28 @@
 from django.urls import path
-from . import views
+from . import views, description_views, feedback_views
 
 urlpatterns = [
+    path("attempts/<uuid:attempt_id>/feedback/", feedback_views.feedback),
+    path("attempts/<uuid:attempt_id>/feedback/generate/", feedback_views.generate),
     path("health/", views.health),
+    path("decks/<uuid:deck_id>/descriptions/", description_views.descriptions),
+    path("decks/<uuid:deck_id>/descriptions/generate/", description_views.generate),
     path("ready/", views.ready),
     path(
-        "decks/", views.feature_pending, {"feature": "PDF upload and slide preparation"}
+        "decks/", views.decks
     ),
     path(
         "attempts/",
-        views.feature_pending,
-        {"feature": "Audio upload and attempt creation"},
+        views.attempts,
     ),
     path(
         "attempts/<uuid:attempt_id>/",
-        views.feature_pending,
-        {"feature": "Attempt results"},
+        views.attempt_detail,
     ),
     path(
         "attempts/<uuid:attempt_id>/process/",
-        views.feature_pending,
-        {"feature": "Background processing and retry"},
+        views.process_attempt,
     ),
+    path("decks/<uuid:deck_id>/", views.deck_detail),
+    path("decks/<uuid:deck_id>/attempts/", views.deck_attempts),
 ]
