@@ -2,17 +2,17 @@
 
 An Android presentation practice app connecting PDF slides, recordings, slide-aligned transcripts, and feedback.
 
-**Current branch: `feature/ai-feedback`, building on rehearsal-review PR #20 (`3abcf4b`).** The Library merges local captures and server history for known presentations. Saved rehearsals open by attempt UUID with actual PDF pages, audio, synchronized transcript and chronological slide visits. Missing audio/PDF can be downloaded explicitly for offline review. Ordinary browsing, refreshing, downloading and replaying never start analysis; the durable new-capture handoff is the explicit exception. Existing **Analyze recording**, OpenAI disclosure, stage/Refresh/Retry and uncertain-charge confirmation remain in place; sample previews stay separate.
+**Current status: Iteration 1 features merged into `main` on October 11, 2026 (#17–#21).** The Library merges local captures and server history for known presentations. Saved rehearsals open by attempt UUID with actual PDF pages, audio, synchronized transcript and chronological slide visits. Missing audio/PDF can be downloaded explicitly for offline review. Ordinary browsing, refreshing, downloading and replaying never start analysis; the durable new-capture handoff is the explicit exception. Existing **Analyze recording**, OpenAI disclosure, stage/Refresh/Retry and uncertain-charge confirmation remain in place; sample previews stay separate.
 
 **Processing scope: `feature/whisper-api-processing`.** Finishing a real recording opens its saved result and uploads the PDF and audio to the configured server. Transcription starts automatically after the first-use OpenAI disclosure is accepted; cancelling the disclosure leaves the server upload saved without starting transcription. The saved-attempt screen retains **Analyze recording** for cancelled/older recordings, stage/Refresh/Retry controls and a plain real transcript. SQLite caches results by API address and attempt UUID. Local replay remains available through network/provider/analysis failures; sample previews stay separate.
 
 The backend coordinates a durable PostgreSQL queue, packaged Silero speech-presence check, hosted `whisper-1`, private raw-response persistence, normalized transcript, chronological slide visits and timing/rate estimates. Rehearsal coaching has an explicit durable generation API and remains disabled by default; its API and deck-description APIs are described below. See the [API contract](docs/api-contract.md) for revision-aware retries and uncertain outbound requests. Historical standalone adapter/alignment work is now integrated; its older pilot evidence does not establish this pipeline's live accuracy.
 
-[AI feedback checkpoints 1–5](docs/ai-feedback.md) are implemented on one `feature/ai-feedback` PR, stacked on `feature/rehearsal-review` while unmerged. Gemini/OpenAI adapters provide durable editable slide descriptions, explicit rehearsal coaching, separate provider disclosure, revision-aware retries and API-scoped offline review. Up to three suggestions show exact evidence and seek the existing player; edits make affected feedback stale, and explicit regeneration reuses the saved transcript. Provider selection remains backend configuration and feedback defaults to disabled. Independent review and controlled live flows passed for both providers; [the evaluation](docs/feedback-evaluation.md) records weak advice and description overstatement separately from structural validity. Human review and physical-phone checks remain pending.
+[AI feedback checkpoints 1–5](docs/ai-feedback.md) were implemented in PR #21 and merged after their dependencies on October 11, 2026. Gemini/OpenAI adapters provide durable editable slide descriptions, explicit rehearsal coaching, separate provider disclosure, revision-aware retries and API-scoped offline review. Up to three suggestions show exact evidence and seek the existing player; edits make affected feedback stale, and explicit regeneration reuses the saved transcript. Provider selection remains backend configuration and feedback defaults to disabled. Independent review and controlled live flows passed for both providers; [the evaluation](docs/feedback-evaluation.md) records weak advice and description overstatement separately from structural validity. Human review and physical-phone checks remain pending.
 
 Detected no-speech saves an empty transcript, chronological visits with empty word lists, and timing metrics over the original recording duration, with zero provider requests. Repeated, backward and zero-duration visits remain visible in the result data.
 
-The rehearsal-review snapshot passed independent AI review, **209 mobile tests**, TypeScript/lint and Android export. Coordinator checks passed Django system/migration checks, 74 tests on real PostgreSQL, API restart/media retrieval, and Android emulator review/recovery checks using the saved synthetic Whisper pilot without another provider call. Physical-phone/audible quality, native interruption/API-switch stress cases and human review remain pending. See [final evidence](docs/ai-use.md#2026-10-08--rehearsal-review-final-verification-and-publication) for exact coverage, review repairs and limitations.
+The rehearsal-review snapshot passed independent AI review, **209 mobile tests**, TypeScript/lint and Android export. Coordinator checks passed Django system/migration checks, 74 tests on real PostgreSQL, API restart/media retrieval, and Android emulator review/recovery checks using the saved synthetic Whisper pilot without another provider call. Physical-phone/audible quality, native interruption/API-switch stress cases and human review remain pending. See [final evidence](docs/history/ai-use-before-stack-consolidation-2026-10-11.md#2026-10-08--rehearsal-review-final-verification-and-publication) for exact coverage, review repairs and limitations.
 
 ## Start here
 
@@ -23,6 +23,7 @@ The rehearsal-review snapshot passed independent AI review, **209 mobile tests**
 - [API and timestamp contract](docs/api-contract.md)
 - [Submitted requirements mapped to code](docs/source-alignment.md)
 - [Verification and code review](docs/review.md)
+- [AI collaboration reporting](docs/ai-collaboration-guidelines.md): the shared collaboration log, iteration report and human review checklist.
 
 ```text
 mobile/                         Expo + React Native + TypeScript
@@ -126,7 +127,7 @@ The saved-rehearsal feedback panel now exposes explicit generation, disclosure a
 Checkpoint 2 passed independent AI review, Django system/migration checks and
 172 tests on real PostgreSQL. Synthetic checks verified Redis/Celery/Beat
 recovery and API/database restart with unchanged saved media. See the
-[checkpoint evidence](docs/ai-use.md#2026-10-08--ai-feedback-checkpoint-2-coordinator-handoff).
+[checkpoint evidence](docs/history/ai-use-before-stack-consolidation-2026-10-11.md#2026-10-08--ai-feedback-checkpoint-2-coordinator-handoff).
 Human inspection remains pending. Checkpoint-4 coordinator evidence for the mobile
 feedback controls is linked below; live-provider quality is evaluated separately.
 
@@ -203,7 +204,7 @@ validation proves references, not semantic correctness or advice quality.
 Run the full backend and mobile checks below. New PostgreSQL-only races are in
 `rehearsals.test_coaching.ConcurrentCoachingTests`; the populated migration test
 preserves checkpoint-2 descriptions/requests/reservations plus attempts and Whisper.
-Actual writer outcomes are in [AI-use](docs/ai-use.md). Real PostgreSQL/Redis/Celery
+Actual writer outcomes are in [AI-use](docs/history/ai-use-before-stack-consolidation-2026-10-11.md). Real PostgreSQL/Redis/Celery
 crash/restart validation belongs to the coordinator, using synthetic fake providers.
 Checkpoint-3/4 coordinator infrastructure and emulator outcomes are recorded in
 AI-use; they do not establish this new repair's live compatibility, quality or human review.
@@ -252,7 +253,7 @@ Checkpoint 4 passed independent review, **270 mobile tests**, TypeScript/lint,
 Android JS export, Django system/migration checks, **229 SQLite tests (18 skips)**
 and **229/229 real PostgreSQL tests**. Agent-operated emulator checks covered
 disclosure/cancellation, editing/staleness/regeneration, offline restart and evidence
-seek with synthetic providers. See [coordinator evidence](docs/ai-use.md#2026-10-08--checkpoint-4-coordinator-verification).
+seek with synthetic providers. See [coordinator evidence](docs/history/ai-use-before-stack-consolidation-2026-10-11.md#2026-10-08--checkpoint-4-coordinator-verification).
 The final checkpoint-5 backend passed **247 SQLite tests (18 PostgreSQL-only skips)**, **247/247 PostgreSQL tests**, system/migration checks and independent review. Real-worker saved-v2/new-v3 receipt recovery preserved one provider-stub call per case. Controlled `gemini-3.1-flash-lite` and `gpt-6-luna` description/coaching runs each completed two synthetic cases without another Whisper request; refresh, duplicate jobs and restart reused results. All seven accepted live cards passed mobile parsing/seek validation. The [evaluation record](docs/feedback-evaluation.md) includes earlier Gemini rejections, diagnostic calls, partial output, token usage and agent-assessed quality limits. Physical-phone listening/synchronization, accessibility, extended text/keyboard usability and human usefulness testing remain pending.
 
 ## App connection

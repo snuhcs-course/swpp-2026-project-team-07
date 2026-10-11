@@ -1,3 +1,5 @@
+> Frozen pre-consolidation snapshot from the feature/design/requirements merge on October 11, 2026. The source body below is preserved verbatim; relative links inside it refer to the original docs/ directory. New task records belong in [the active collaboration log](../ai-collaboration-prompts-iteration-1.md).
+
 # AI-use log
 
 Record AI contributions to each task here, on the same branch as the associated

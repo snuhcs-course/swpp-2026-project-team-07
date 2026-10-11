@@ -1,3 +1,5 @@
+# AI-generated/modified with OpenAI Codex, Iteration 1 (2026-09-26 to 2026-10-09).
+# Attribution/review scope: docs/history/ai-collaboration-validation-iteration-1-retired-2026-10-09.md#ai-code-markers
 """Private, immutable deck and rehearsal evidence; no network or database I/O.
 
 Small schema/prompt ideas from prototype 33907d3; indexed evidence replaces its

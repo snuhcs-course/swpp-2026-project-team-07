@@ -64,7 +64,7 @@ Coordinator repair: no-speech now follows shared alignment/metrics with a saved 
 
 Verification separates mocked/SQLite checks, real infrastructure, synthetic hosted speech, emulator behavior and human review. The final outcomes and outstanding checks follow.
 
-Base-stage handoff: independent staged review passed. Mobile checks (115 tests), Android export, backend checks (74 tests; five skips on SQLite, all 74 passing on PostgreSQL), populated/interrupted upgrades, real worker crash recovery and Linux packaged VAD passed. A controlled hosted English TTS pilot produced 41 timestamped words and slide visits 3 → 4 → 3; completed retries reused its saved result. Android emulator checks covered consent, Analyze, silence metadata, restart/offline cache and local replay. Physical-phone/human-speech and Korean VAD evaluation, native API-switch/background stress checks and human code review remained pending. See [AI-use evidence](ai-use.md#2026-10-08--hosted-processing-coordinator-verification-and-publication). That stage was stacked on `feature/recording-storage-upload`. The later explicit rehearsal-review authorization supersedes its historical stop instruction.
+Base-stage handoff: independent staged review passed. Mobile checks (115 tests), Android export, backend checks (74 tests; five skips on SQLite, all 74 passing on PostgreSQL), populated/interrupted upgrades, real worker crash recovery and Linux packaged VAD passed. A controlled hosted English TTS pilot produced 41 timestamped words and slide visits 3 → 4 → 3; completed retries reused its saved result. Android emulator checks covered consent, Analyze, silence metadata, restart/offline cache and local replay. Physical-phone/human-speech and Korean VAD evaluation, native API-switch/background stress checks and human code review remained pending. See [AI-use evidence](history/ai-use-before-stack-consolidation-2026-10-11.md#2026-10-08--hosted-processing-coordinator-verification-and-publication). That stage was stacked on `feature/recording-storage-upload`. The later explicit rehearsal-review authorization supersedes its historical stop instruction.
 
 ## Historical rehearsal-review handoff (2026-10-08)
 
@@ -84,7 +84,7 @@ Round-3 review reproduced three issues, now repaired: offline upgrades without a
 
 Final verification: independent staged review passed after the documented repair rounds. Mobile TypeScript/lint, **209 tests** and Android export passed. Final application/test bytes match the reviewed snapshot; coordinator-only documentation records publication evidence. Backend source/dependencies are unchanged, with system/migration checks, 74 PostgreSQL tests and API restart/media retrieval verified separately. Android emulator checks covered real PDF/transcript/audio review, server-only audio/PDF recovery, offline restart, word/visit seeks, pause/foreground behavior and EOF/replay. No new provider request occurred.
 
-Physical-phone/audible synchronization, native audio-focus fault injection, API-switch and exhaustive callback/download-cancellation stress remain pending; automated regressions cover their modeled cases. Human review remains pending. See [final evidence](ai-use.md#2026-10-08--rehearsal-review-final-verification-and-publication). Publish one PR against `feature/whisper-api-processing`; do not merge. The proposed next implementation is `feature/ai-feedback`, and it requires user confirmation after this handoff.
+Physical-phone/audible synchronization, native audio-focus fault injection, API-switch and exhaustive callback/download-cancellation stress remain pending; automated regressions cover their modeled cases. Human review remains pending. See [final evidence](history/ai-use-before-stack-consolidation-2026-10-11.md#2026-10-08--rehearsal-review-final-verification-and-publication). Publish one PR against `feature/whisper-api-processing`; do not merge. The proposed next implementation is `feature/ai-feedback`, and it requires user confirmation after this handoff.
 
 
 ## Historical AI feedback checkpoint-2 handoff (2026-10-08)
@@ -120,7 +120,7 @@ for deck cache/revision, private usage and Pacific reset ideas. Its countTokens,
 free-tier assumptions, automatic orchestration and cross-scope edit reuse were
 not imported.
 
-Writer checks and limitations are in [AI-use](ai-use.md). The runner owns staging,
+Writer checks and limitations are in [AI-use](history/ai-use-before-stack-consolidation-2026-10-11.md). The runner owns staging,
 mandatory checks and independent review; the coordinator owns real PostgreSQL/
 Redis/Celery/process-restart validation using synthetic media and an external
 temporary fake-provider seam, without live API calls. Human inspection remains
@@ -136,7 +136,7 @@ worker termination points, late-receipt recovery, edit fencing, disabled/project
 change rejection, and broker-outage redispatch. API/database restart retained
 description/history results and all five synthetic PDF/audio/image hashes.
 Provider-request counts were unchanged by reads. See the
-[coordinator record](ai-use.md#2026-10-08--ai-feedback-checkpoint-2-coordinator-handoff).
+[coordinator record](history/ai-use-before-stack-consolidation-2026-10-11.md#2026-10-08--ai-feedback-checkpoint-2-coordinator-handoff).
 Checkpoint 2 is staged on `feature/ai-feedback` for human inspection; no checkpoint-2
 commit, push, PR or merge had been performed at that checkpoint-2 handoff. Its original stop-before-part-3 gate is superseded by the current authorization below.
 
@@ -167,7 +167,7 @@ Prototype `33907d3` supplied bounded-card/cache/usage-ledger ideas read-only;
 substring word matching, automatic orchestration and cross-scope reuse were not
 incorporated. Sources and generated advice remain untrusted data.
 
-Actual commands/outcomes and limitations are in [AI-use](ai-use.md). The runner
+Actual commands/outcomes and limitations are in [AI-use](history/ai-use-before-stack-consolidation-2026-10-11.md). The runner
 stages and independently reviews; the coordinator runs PostgreSQL/Redis/Celery
 and API restart/crash checks with synthetic inputs/fake providers. Human inspection,
 Android device regression, checkpoint-4 interaction and checkpoint-5 live quality
@@ -181,14 +181,14 @@ late-receipt recovery and explicit dependency retry. NUL-source regressions inje
 malformed inputs at the read/preflight boundary because PostgreSQL rejects NUL
 fixtures before validation. Current description documentation now covers dependent
 coaching staleness and existing mobile clients. Repair checks and remaining
-coordinator/human verification are recorded in [AI-use](ai-use.md).
+coordinator/human verification are recorded in [AI-use](history/ai-use-before-stack-consolidation-2026-10-11.md).
 
 The subsequent bounded receipt/admission repair preserves uncertainty acknowledgement
 after an edit between receipt persistence and normalization. Saved 408/5xx and
 incomplete 200 receipts use the adapter's transport classification; complete 200
 and known rejections keep their existing handling. Raw/usage recovery remains tied
 to the original generation, with no automatic call. The runner must independently
-review the final repaired snapshot; see the new red/green evidence in [AI-use](ai-use.md).
+review the final repaired snapshot; see the new red/green evidence in [AI-use](history/ai-use-before-stack-consolidation-2026-10-11.md).
 
 Current coaching receipt/finalization timestamps now contribute to feedback
 freshness even after a description edit leaves the job stale. Reversed refresh
@@ -234,14 +234,14 @@ regressions failed before the two focused fixes and passed afterward.
 
 Writer checks after repair passed: 270 mobile tests, TypeScript/lint, Android JavaScript export;
 Django system/migration checks and 229 SQLite tests with 18 PostgreSQL-only skips.
-See [exact repair evidence](ai-use.md#2026-10-08--ai-feedback-checkpoint-4-review-repair).
+See [exact repair evidence](history/ai-use-before-stack-consolidation-2026-10-11.md#2026-10-08--ai-feedback-checkpoint-4-review-repair).
 Subsequent independent review and coordinator verification passed at `64ec596`:
 229/229 real PostgreSQL tests and agent-operated Android emulator disclosure,
 edit/stale/regenerate, offline restart and evidence-seek flows against the real
 API/PostgreSQL/Redis/Celery/Beat stack with synthetic providers. The reviewed patch
 was `64399166b696522607fc588d0cd1fcd7a524ca2196992da488cce12920043bf9`;
 backend bytes matched the PostgreSQL-tested snapshot. See the
-[coordinator record](ai-use.md#2026-10-08--checkpoint-4-coordinator-verification).
+[coordinator record](history/ai-use-before-stack-consolidation-2026-10-11.md#2026-10-08--checkpoint-4-coordinator-verification).
 TalkBack, extended text/keyboard layout, physical-phone audible synchronization and
 human inspection remain pending. No live generation occurred in those emulator
 checks. Their results do not verify the new checkpoint-5 backend repair below.

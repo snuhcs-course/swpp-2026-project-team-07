@@ -1,3 +1,5 @@
+# AI-generated/modified with OpenAI Codex, Iteration 1 (2026-09-26 to 2026-10-09).
+# Attribution/review scope: docs/history/ai-collaboration-validation-iteration-1-retired-2026-10-09.md#ai-code-markers
 from celery import shared_task
 from .services.processing import run_attempt, recover_work as recover_processing
 from .services.descriptions import run_description, recover_descriptions

@@ -1,3 +1,5 @@
+// AI-generated/modified with OpenAI Codex, Iteration 1 (2026-09-26 to 2026-10-09).
+// Attribution/review scope: docs/history/ai-collaboration-validation-iteration-1-retired-2026-10-09.md#ai-code-markers
 import type { FeedbackAnalysis } from './feedback';
 export * from './feedback';
 /** Wire-format names match docs/api-contract.md and the Django serializers. */

@@ -19,7 +19,7 @@ Checkpoint 4 adds feedback review/disclosure and description editing within the 
 | 4 — feedback review UI | Independently reviewed and coordinator-verified at `64ec596`: 270 mobile tests, TypeScript/lint, Android export, Django checks, 229 SQLite tests (18 skips), 229/229 real PostgreSQL tests and synthetic emulator disclosure/edit/stale/regenerate/offline/evidence-seek flows. Human/physical-phone checks remain pending. |
 | 5 — controlled provider evaluation | Complete as an agent-operated check: independent review, 247 SQLite tests (18 skips), 247/247 PostgreSQL tests, real-worker v2/v3 receipt recovery and successful full Gemini/OpenAI flows on identical synthetic inputs. Gemini adversarial output was partial (1 accepted / 1 discarded); OpenAI returned 3 accepted. Quality limitations and human/device checks are documented in the evaluation. |
 
-All five checkpoints share one `feature/ai-feedback` PR, stacked on `feature/rehearsal-review` while unmerged. Each checkpoint used the configured-model local pipeline and checks; the coordinator verified and transferred reviewed snapshots before publication. No merge or human approval is implied. New detectors, local Whisper, themes, authentication and public deployment remain excluded. See the [controlled evaluation](feedback-evaluation.md), [AI-use evidence](ai-use.md), [team boundaries](team-work-division.md) and [API contract](api-contract.md).
+All five checkpoints were delivered in PR #21, merged into main after PRs #17–#20 on October 11, 2026. Each checkpoint used the configured-model local pipeline and checks; the coordinator verified and transferred reviewed snapshots before publication. The historical checkpoint evidence below does not establish human approval. New detectors, local Whisper, themes, authentication and public deployment remain excluded. See the [controlled evaluation](feedback-evaluation.md), [AI-use evidence](history/ai-use-before-stack-consolidation-2026-10-11.md), [team boundaries](team-work-division.md) and [API contract](api-contract.md).
 
 ## Internal preparation and evidence contracts
 
@@ -264,7 +264,7 @@ external fact checking, emotion/pronunciation/personality assessments or new
 speaking-habit detectors are implemented.
 
 Run the README's Django check, full suite and migration-drift check with
-`config.test_settings`. Exact local outcomes are in [AI-use evidence](ai-use.md).
+`config.test_settings`. Exact local outcomes are in [AI-use evidence](history/ai-use-before-stack-consolidation-2026-10-11.md).
 Independent review covered new files and exact staged snapshots. Checkpoints 2–4 have coordinator infrastructure evidence below and in AI-use; checkpoint 4 also has synthetic-provider emulator evidence. Checkpoint 5 adds 247/247 PostgreSQL tests, saved-v2/new-v3 real-worker receipt recovery and full controlled Gemini/OpenAI results. Korean/mixed-language quality, human usefulness/code inspection and physical-phone/accessibility checks remain pending. Structural checks and agent-operated live tests do not imply human approval.
 
 
@@ -390,7 +390,7 @@ or money-cap claim is made.
 
 ## Checkpoint 2 coordinator validation
 
-The writer's SQLite/mocked results are recorded in [AI-use](ai-use.md). The
+The writer's SQLite/mocked results are recorded in [AI-use](history/ai-use-before-stack-consolidation-2026-10-11.md). The
 coordinator owns real infrastructure/process checks and the final staged review:
 
 1. With the exact pinned environment, run the full Django suite on real PostgreSQL
@@ -455,7 +455,7 @@ coordinator owns real infrastructure/process checks and the final staged review:
    allowlist. Record this separately from SQLite mocks; no process/service changes
    or real infrastructure validation were performed by the writer.
 
-Independent review and coordinator infrastructure checks passed; see the [checkpoint-2 handoff evidence](ai-use.md#2026-10-08--ai-feedback-checkpoint-2-coordinator-handoff). Human inspection remains pending. The historical checkpoint-3 patch built on reviewed/tested base `ce16ae1`.
+Independent review and coordinator infrastructure checks passed; see the [checkpoint-2 handoff evidence](history/ai-use-before-stack-consolidation-2026-10-11.md#2026-10-08--ai-feedback-checkpoint-2-coordinator-handoff). Human inspection remains pending. The historical checkpoint-3 patch built on reviewed/tested base `ce16ae1`.
 The checkpoint ledger and checkpoint-5 section give current status;
 checkpoint 5 is complete with the bounded evidence and limitations in the evaluation record. The runner stages
 changes for checks and review; it does not commit, push, create PRs or merge.
@@ -560,7 +560,7 @@ orchestration and cross-provider/source edited reuse were not incorporated.
 
 ## Checkpoint 3 coordinator verification handoff
 
-Writer automated results are recorded in [AI-use](ai-use.md); human review remains
+Writer automated results are recorded in [AI-use](history/ai-use-before-stack-consolidation-2026-10-11.md); human review remains
 pending. The runner owns staging/independent review and the coordinator owns:
 
 1. Full PostgreSQL suite, especially `ConcurrentCoachingTests` and populated
@@ -640,7 +640,7 @@ Checkpoint-4 independent review and coordinator checks passed: 270 mobile tests,
 TypeScript/lint, Android export, Django checks, 229 SQLite tests (18 skips) and
 229/229 real PostgreSQL tests. Agent-operated emulator checks covered disclosure,
 editing, staleness, regeneration, offline restart and evidence seeking with synthetic
-providers. See [AI-use](ai-use.md#2026-10-08--checkpoint-4-coordinator-verification).
+providers. See [AI-use](history/ai-use-before-stack-consolidation-2026-10-11.md#2026-10-08--checkpoint-4-coordinator-verification).
 Human TalkBack, extended text/keyboard, physical-phone listening/synchronization and
 code inspection remain pending. Checkpoint 5 completed controlled live evaluation with [documented quality limitations](feedback-evaluation.md). Prior prototype attribution is unchanged; this repair does not touch
 prototype, mobile or other-worktree source.
@@ -733,5 +733,5 @@ anchors, local cardinality boundaries, selection/cache identity and saved v1/v2
 queue/retry/waiting/receipt recovery after edit/retry supersession without duplicate
 calls. The new description array-bound regression failed before this fix. Actual
 check results and passed independent review are recorded in
-[AI-use](ai-use.md#2026-10-08--checkpoint-5-description-v3-schema-repair).
+[AI-use](history/ai-use-before-stack-consolidation-2026-10-11.md#2026-10-08--checkpoint-5-description-v3-schema-repair).
 Coordinator PostgreSQL/worker verification and the full live Gemini evaluation also passed their integration assertions. The evaluation records semantic weaknesses; no general accuracy, safety or human-review claim follows.
