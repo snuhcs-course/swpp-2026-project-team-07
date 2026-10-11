@@ -22,7 +22,10 @@ export function useReviewPdf(api: string, deckId: string | null): readonly strin
       try {
         imported = (await getImportedPdfs()).filter(p => serverDeckId(p.id, api) === deckId).map(p => p.uri);
       } catch { /* An unavailable import catalog must not hide capture copies. */ }
-      const uris = [...new Set([...imported, ...local])];
+      const found = [...new Set([...imported, ...local])];
+      // Codex-assisted fix (collaboration log A7): an empty discovery must retain
+      // the initial array so it cannot cancel an already-started PDF download.
+      const uris = found.length ? found : noPdfs;
       // Keep candidate identity stable on return so validated media stays attached.
       if (active) setState(previous => previous.identity === identity && previous.uris.length === uris.length &&
         previous.uris.every((uri, index) => uri === uris[index]) ? previous : { identity, uris });

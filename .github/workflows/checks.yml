@@ -1,4 +1,4 @@
-name: Scaffold checks
+name: App checks
 on:
   push:
   pull_request:
