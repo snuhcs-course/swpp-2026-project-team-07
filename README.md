@@ -2,13 +2,15 @@
 
 An Android presentation practice app connecting PDF slides, recordings, slide-aligned transcripts, and feedback.
 
+**Current scope: `feature/rehearsal-review`, stacked on Whisper PR #19 (`c7733d8`).** The Library merges local captures and server history for known presentations. Saved rehearsals open by attempt UUID with actual PDF pages, audio, synchronized transcript and chronological slide visits. Missing audio/PDF can be downloaded explicitly for offline review. Ordinary browsing, refreshing, downloading and replaying never start analysis; the single-use new-capture handoff below is the explicit exception. Existing **Analyze recording**, OpenAI disclosure, stage/Refresh/Retry and uncertain-charge confirmation remain in place; sample previews stay separate.
+
 **Processing scope: `feature/whisper-api-processing`.** Finishing a real recording opens its saved result and uploads the PDF and audio to the configured server. Transcription starts automatically after the first-use OpenAI disclosure is accepted; cancelling the disclosure leaves the server upload saved without starting transcription. The saved-attempt screen retains **Analyze recording** for cancelled/older recordings, stage/Refresh/Retry controls and a plain real transcript. SQLite caches results by API address and attempt UUID. Local replay remains available through network/provider/analysis failures; sample previews stay separate.
 
 The backend coordinates a durable PostgreSQL queue, packaged Silero speech-presence check, hosted `whisper-1`, private raw-response persistence, normalized transcript, chronological slide visits and timing/rate estimates. Feedback is disabled for this stage. See the [API contract](docs/api-contract.md) for revision-aware retries and uncertain outbound requests. Historical standalone adapter/alignment work is now integrated; its older pilot evidence does not establish this pipeline's live accuracy.
 
 Detected no-speech saves an empty transcript, chronological visits with empty word lists, and timing metrics over the original recording duration, with zero provider requests. Repeated, backward and zero-duration visits remain visible in the result data.
 
-Independent AI review, 115 mobile tests, Android export, 74 PostgreSQL tests, worker recovery checks, Linux packaged-gate checks and a controlled hosted synthetic-speech pilot passed. Android emulator checks covered explicit Analyze, consent, cached offline results and local playback. Physical-phone/human-speech quality and human code review remain pending. Detailed evidence and dependency limitations are in [docs/ai-use.md](docs/ai-use.md#2026-10-08--hosted-processing-coordinator-verification-and-publication).
+The rehearsal-review snapshot passed independent AI review, **209 mobile tests**, TypeScript/lint and Android export. Coordinator checks passed Django system/migration checks, 74 tests on real PostgreSQL, API restart/media retrieval, and Android emulator review/recovery checks using the saved synthetic Whisper pilot without another provider call. Physical-phone/audible quality, native interruption/API-switch stress cases and human review remain pending. See [final evidence](docs/ai-use.md#2026-10-08--rehearsal-review-final-verification-and-publication) for exact coverage, review repairs and limitations.
 
 ## Start here
 
@@ -65,6 +67,14 @@ That Java command requires a macOS-registered JDK 17. If Gradle provisioned your
 Local PDF import, capture and saved-audio playback run without backend services or provider keys. SQLite stores one UUID, the prepared audio URI and audio-relative slide checkpoints per real recording. On restart, interrupted capture requires playable-audio recovery; an unfinalized/missing native file cannot be reconstructed. Upload retries retain the UUID, source audio and slide visits. Native PDF rendering and SQLite require a rebuilt Android development client, not Expo Go.
 
 Limits remain **10 slides, 20 MiB PDF, ten minutes (600,000 ms), and 25,000,000 audio bytes**. Legacy audio above the byte limit stays local and can still be played; make a shorter new recording to upload. New captures automatically continue from upload to analysis; first-use cancellation leaves them awaiting analysis. Deck mappings are scoped to the configured API address, and confirmed missing mappings are repaired before audio upload.
+
+## Review a saved rehearsal
+
+Open a presentation's rehearsal history in Library, then **Open saved rehearsal**. Cached entries appear before online refresh; a failed refresh retains them with a stale notice. History covers only locally known presentation mappings for the current API, not an account-wide archive. Entries distinguish local captures from server review copies and show date, duration, upload/processing state and media availability.
+
+Review prefers existing local audio/PDF. Use **Download audio for offline review** or **Download PDF for offline review** when needed; each succeeds independently. **Refresh** retries both rehearsal and presentation metadata, including a failed lookup that prevented PDF recovery. Downloads are bounded and validated with the native player/renderer before durable cache publication. They never create a local capture or PDF import, and failed downloads preserve original and previously valid files. Switching API addresses separates history, analysis and downloaded media.
+
+The native audio position drives PDF pages and timed word highlighting. Tap a timed word or visit, use previous/next visit or ±5 seconds; seeks preserve playing/paused intent. Backgrounding or leaving the screen pauses playback, and returning requires Play. Repeated/backward and instantaneous visits remain listed; simultaneous events use the last event. Missing alignment falls back to **Recorded navigation**. Partial/untimed text remains readable, and saved EN/KO rates explicitly use total rehearsal time including silence. See the [review contract](docs/api-contract.md#mobile-rehearsal-review).
 
 ## Run the backend
 
