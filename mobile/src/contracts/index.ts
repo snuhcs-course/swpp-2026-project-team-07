@@ -27,6 +27,13 @@ export type Feedback = {
 };
 export type AttemptResult = {
   attempt_id: string;
+  deck_id?: string;
+  duration_ms?: number;
+  slide_events?: SlideEvent[];
+  audience?: string;
+  created_at?: string;
+  audio_url?: string;
+  processing_state?: "awaiting_analysis" | "processing" | "completed" | "failed";
   status: "pending" | "processing" | "completed" | "failed";
   transcript: Transcript | null;
   feedback: Feedback[];

@@ -133,3 +133,18 @@ test('cancellation after upload response prevents processing and preserves ID', 
   assert.equal(calls.length, 1);
   assert.equal(recording.id, id);
 });
+
+
+test('upload alone is durable success without a processing request', async () => {
+  const { client, calls } = setup([json({ attempt_id: id, status: 'pending' }, 201)]);
+  assert.deepEqual(await client.upload(recording), { attempt_id: id });
+  assert.deepEqual(calls.map(c => c.url), ['https://example.test/api/attempts/']);
+});
+test('25,000,000-byte limit is decimal and exact, including legacy files', async () => {
+  const { client, calls } = setup([json({ attempt_id: id }, 201)], { audioFile: () => {
+    const file = new File(['audio'], 'pilot.m4a'); Object.defineProperty(file, 'size', {value:25_000_000}); return file;
+  } });
+  await client.upload(recording); assert.equal(calls.length, 1);
+  const rejected = setup([], {audioFile: () => ({size:25_000_001, name:'legacy.m4a'})});
+  await rejects(rejected.client.upload(recording), 'invalid_audio_size'); assert.equal(rejected.calls.length, 0);
+});

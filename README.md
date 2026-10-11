@@ -2,18 +2,17 @@
 
 An Android presentation practice app connecting PDF slides, recordings, slide-aligned transcripts, and feedback.
 
-**Current branch: PDF and recording integration restoration.** Real local PDF identity, native page count (up to 10), confirmed selected starting page, and audio-timed page-change callbacks are connected to capture. Actual saved audio plays in Results without a sample transcript. Capture failures/navigation use the reviewed lifecycle behavior. Server uploads, durable attempt recovery, processing and AI feedback are subsequent restoration stages; feature routes still return 501.
+**Storage/upload scope: `feature/recording-storage-upload` (ready for teammate review).** Real local PDF identity, native page count (up to 10), confirmed selected starting page, and audio-timed page-change callbacks are connected to capture. Actual saved audio plays in Results without a sample transcript. Capture failures/navigation use the reviewed lifecycle behavior. Durable SQLite attempts/checkpoints, restart recovery and retryable PDF/audio upload are implemented on this branch. Uploaded attempts explicitly await analysis; processing still returns 501. Independent AI review, automated checks, and Android emulator storage/recovery/upload checks passed. Physical-phone microphone quality and human review remain pending; verification is recorded in [docs/ai-use.md](docs/ai-use.md).
 
-On `feature/whisper-alignment`, the hosted Whisper adapter, standalone word-to-slide matcher, and mocked/synthetic tests are implemented. [Alignment notes](docs/word-alignment.md) describe its
+Historical standalone work on `feature/whisper-alignment`: the hosted Whisper adapter, standalone word-to-slide matcher, and mocked/synthetic tests are implemented. [Alignment notes](docs/word-alignment.md) describe its
 proposed internal output and a runnable example. It is not yet wired into the
 worker, API, or app. [Whisper setup](docs/whisper-transcription.md) explains how to run a real-audio check; a live TTS transcription/alignment check passed; human-speech accuracy remains unverified.
 
-On `feature/transcription-client-and-playback`, the [mobile transcription client](docs/mobile-transcription.md)
-implements upload, processing requests, validated results, retries, and cancellable
-polling with mocked-network tests. Recorder, real feature endpoints, and live result-screen
-wiring remain pending. The result screen now displays the saved Whisper TTS transcript,
-synchronized local-audio word highlighting and tap-to-seek. Processing/failure/retry
-states remain explicitly simulated.
+The [mobile transcription client](docs/mobile-transcription.md), originally developed on
+`feature/transcription-client-and-playback`, also contains processing/polling helpers
+and an explicitly labeled TTS playback preview. The current real-recording flow
+uses only upload and saved local audio playback. It never requests processing or
+shows the fixture transcript for a real recording; live analysis/results remain pending.
 
 ## Start here
 
@@ -67,7 +66,9 @@ export PATH="$ANDROID_HOME/platform-tools:$PATH"
 
 That Java command requires a macOS-registered JDK 17. If Gradle provisioned your JDK instead, point `JAVA_HOME` directly to its `Contents/Home` directory. The exact path used on the setup machine is recorded in [setup-explained.md](docs/setup-explained.md).
 
-The local flow runs without backend services or provider keys. Sample transcripts remain explicitly labeled. Recording metadata currently lasts only for the mounted rehearsal/review flow; restart recovery is stage 2. Native PDF rendering requires a rebuilt Android development client, not Expo Go.
+Local PDF import, capture and saved-audio playback run without backend services or provider keys. SQLite stores one UUID, the prepared audio URI and audio-relative slide checkpoints per real recording. On restart, interrupted capture requires playable-audio recovery; an unfinalized/missing native file cannot be reconstructed. Upload retries retain the UUID, source audio and slide visits. Native PDF rendering and SQLite require a rebuilt Android development client, not Expo Go.
+
+Limits remain **10 slides, 20 MiB PDF, ten minutes (600,000 ms), and 25,000,000 audio bytes**. Legacy audio above the byte limit stays local and can still be played; make a shorter new recording to upload. The saved screen explicitly shows uploaded recordings as awaiting analysis. Deck mappings are scoped to the configured API address, and confirmed missing mappings are repaired before audio upload.
 
 ## Run the backend
 
@@ -96,7 +97,7 @@ cp .env.example .env
 
 Run `docker compose up -d db redis` from the repository root. Then run `python manage.py migrate` and `python manage.py runserver 0.0.0.0:8000` from `backend/`. In another activated terminal, run `celery -A config worker --loglevel=info`.
 
-The **health endpoint and unfinished routes only** can be smoke-tested without PostgreSQL/Redis using `python manage.py runserver --settings=config.test_settings 127.0.0.1:8000`. This uses an ephemeral test database and may warn about unapplied migrations; do not use it for feature development or saving attempts. Storage/processing need the real services; this limited smoke check is not infrastructure validation.
+The **health endpoint and the unimplemented process route only** can be smoke-tested without PostgreSQL/Redis using `python manage.py runserver --settings=config.test_settings 127.0.0.1:8000`. This uses an ephemeral test database and may warn about unapplied migrations; do not use it for feature development or saving attempts. Persistent storage needs the real database/media setup. Processing remains unimplemented, and this limited smoke check is not infrastructure validation.
 
 ## App connection
 
@@ -104,7 +105,7 @@ The **health endpoint and unfinished routes only** can be smoke-tested without P
 - USB phone: run `adb reverse tcp:8000 tcp:8000`, use `http://127.0.0.1:8000/api`, and restart Metro.
 - Tap **Check connection** in the Library screen.
 
-Provider keys belong only in ignored `backend/.env`. Never use `EXPO_PUBLIC_*` for secrets. No provider is called by this scaffold, and keys are not needed for its preview.
+Provider keys belong only in ignored `backend/.env`. Never use `EXPO_PUBLIC_*` for secrets. The storage/upload flow calls no providers and requires no provider keys. Deck/attempt uploads and retrieval are implemented; `/attempts/{id}/process/` still returns HTTP 501 and queues no work.
 
 ## Checks
 
@@ -117,12 +118,12 @@ npm run bundle:android
 
 ```sh
 cd backend
-.venv/bin/python manage.py check
+.venv/bin/python manage.py check --settings=config.test_settings
 .venv/bin/python manage.py test --settings=config.test_settings
 .venv/bin/python manage.py makemigrations --check --dry-run --settings=config.test_settings
 ```
 
-Unit tests use in-memory SQLite. GitHub CI also configures PostgreSQL and applies migrations. JavaScript bundle validation is separate from APK/device testing. See `docs/review.md` for verification actually performed.
+Unit tests use in-memory SQLite. GitHub CI also configures PostgreSQL and applies migrations. JavaScript bundle validation is separate from APK/device testing. For this storage change, Android emulator restart/recovery/replay/offline retry, PostgreSQL concurrent submissions, server restart/media retrieval, and isolated Redis/Celery media access passed. Independent AI review passed; physical-device checks and human review remain pending. See [docs/ai-use.md](docs/ai-use.md) for commands, results and limitations.
 
 ## Team branches
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   RecordingPresets,
   useAudioRecorder,
@@ -14,6 +14,7 @@ import { demoSlides } from "../../fixtures/demo";
 import { SlidePreview } from "../pdf/SlidePreview";
 import { createRecordingService } from "./service";
 import { stopCapture } from "./stopCapture";
+import { beginAttempt, checkpointAttempt, interruptAttempt, recoverPendingAttempts } from "./storage";
 import { Action, Card, Screen, colors, styles } from "../../ui/components";
 
 function formatDuration(durationMillis: number) {
@@ -23,7 +24,7 @@ function formatDuration(durationMillis: number) {
   return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")}`;
 }
 
-type CapturePreview = { uri: string; durationMillis: number; slideEvents: SlideEvent[]; pageCount: number; };
+type CapturePreview = { attemptId?: string; uri: string; durationMillis: number; slideEvents: SlideEvent[]; pageCount: number; };
 
 export function RehearsalScreen() {
   const [savedPreview, setSavedPreview] = useState<CapturePreview | null>(null);
@@ -68,6 +69,8 @@ function RehearsalAttempt({ retrySlide, onFailure, savedPreview, onSaved, onStar
   retrySlide?: number;
   onFailure: (message: string, slide: number) => void;
 }) {
+  const attemptId = useRef("");
+  const lastCheckpoint = useRef(-1);
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
@@ -115,8 +118,7 @@ function RehearsalAttempt({ retrySlide, onFailure, savedPreview, onSaved, onStar
   const stopRequested = useRef(false);
   const stopRef = useRef<() => Promise<void>>(async () => {});
   const [recordingError, setRecordingError] = useState<string | null>(null);
-  // Local output retained after Stop for the current preview navigation.
-  // It is not an uploaded attempt or a durable recording-library entry yet.
+  // Retain local output after Stop; real PDFs navigate by durable attempt ID.
   const [recordingUri, setRecordingUri] = useState<string | null>(savedPreview?.uri ?? null);
 
   const [savedDurationMillis, setSavedDurationMillis] = useState(savedPreview?.durationMillis ?? 0);
@@ -129,20 +131,27 @@ function RehearsalAttempt({ retrySlide, onFailure, savedPreview, onSaved, onStar
     directory: "document",
   }, (status) => {
     if ((status.hasError || (status.isFinished && capturePhase.current === "recording")) && mounted.current && !captureFailed.current) {
-      captureFailed.current = true;
-      onFailure("The recording could not be saved. Please record again.", visibleSlide.current);
+      failCapture("The recording could not be finalized. Any checkpoint remains in saved rehearsals.");
     }
   });
   const recorderState = useAudioRecorderState(recorder, 250);
-  // TODO(recording): persist LocalRecording metadata locally if recordings must
-  // survive an app restart or be retried after a failed upload. State currently
-  // lasts only for this mounted rehearsal/preview flow.
   // The service holds its own mutable event list. Memoization is essential:
   // recreating it on each React render would lose earlier slide visits.
   const recordingService = useMemo(
     () => createRecordingService(recorder),
     [recorder],
   );
+
+  function failCapture(message: string) {
+    captureFailed.current = true;
+    try {
+      if (attemptId.current) interruptAttempt(attemptId.current, message);
+    } catch {
+      message += " Could not update saved metadata. The previous checkpoint and audio file are retained.";
+    }
+    // Always unmount/release the native recorder, even when SQLite also fails.
+    onFailure(message, visibleSlide.current);
+  }
 
   // The SDK 57 router exposes the navigation guard through this compatibility
   // entry point. Back stops capture but stays here so in-memory audio is usable.
@@ -179,6 +188,7 @@ function RehearsalAttempt({ retrySlide, onFailure, savedPreview, onSaved, onStar
 
     setRecordingState("starting");
     try {
+      recoverPendingAttempts();
       // start resolves only after native preparation and record() succeeded.
       // Read the visible page after asynchronous native preparation, immediately
       // before capture begins. Ignore callbacks belonging to a released attempt.
@@ -187,6 +197,9 @@ function RehearsalAttempt({ retrySlide, onFailure, savedPreview, onSaved, onStar
           throw new Error("Recording could not start. Please try again.");
         }
         return visibleSlide.current;
+      }, (uri, slide) => {
+        if (!localDeckId) return; // Sample capture stays separate from durable real PDFs.
+        attemptId.current = beginAttempt({ id: localDeckId, title: params.title ?? "Presentation", uri: pdfUri, pageCount }, params.audience ?? "", slide, uri);
       });
       if (mounted.current && !captureFailed.current) {
         capturePhase.current = "recording";
@@ -194,8 +207,7 @@ function RehearsalAttempt({ retrySlide, onFailure, savedPreview, onSaved, onStar
       }
     } catch (error) {
       if (!mounted.current) return;
-      captureFailed.current = true;
-      onFailure(error instanceof Error ? error.message : "Could not start recording.", visibleSlide.current);
+      failCapture(error instanceof Error ? error.message : "Could not start recording.");
     }
   }
 
@@ -209,21 +221,43 @@ function RehearsalAttempt({ retrySlide, onFailure, savedPreview, onSaved, onStar
       const slideEvents = recordingService.getSlideEvents(finalDurationMillis);
       // Remount after each finalized capture. A late event from this native
       // recorder must never affect a later rehearsal using another recorder.
-      onSaved({ uri, durationMillis: finalDurationMillis, slideEvents, pageCount }, visibleSlide.current);
+      if (attemptId.current) checkpointAttempt(attemptId.current, uri, finalDurationMillis, slideEvents, true);
+      onSaved({ attemptId: attemptId.current || undefined, uri, durationMillis: finalDurationMillis, slideEvents, pageCount }, visibleSlide.current);
     } catch (error) {
       if (!mounted.current) return;
-      captureFailed.current = true;
-      onFailure(error instanceof Error ? error.message : "Could not stop recording.", visibleSlide.current);
+      failCapture(error instanceof Error ? error.message : "Could not stop recording.");
     }
   }
 
   useEffect(() => { stopRef.current = stopRecording; });
+
+  const checkpoint = useCallback(() => {
+    if (!attemptId.current || capturePhase.current !== "recording") return;
+    const duration = Math.floor(recorder.getStatus().durationMillis);
+    checkpointAttempt(attemptId.current, recorder.uri ?? "", duration, recordingService.getSlideEvents());
+    lastCheckpoint.current = duration;
+  }, [recorder, recordingService]);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (capturePhase.current !== "recording") return;
+      try {
+        const duration = recorder.getStatus().durationMillis;
+        if (duration - lastCheckpoint.current >= 1000) checkpoint();
+        if (duration >= 599_000) void stopRef.current();
+      } catch {
+        setRecordingError("Could not save the timeline. Stopping capture; the previous checkpoint is retained.");
+        void stopRef.current();
+      }
+    }, 250);
+    return () => clearInterval(timer);
+  }, [checkpoint, recorder]);
 
   function acceptSlide(nextIndex: number) {
     if (!mounted.current || nextIndex === visibleSlide.current) return;
     // The service checks native capture state, avoiding a stale React render at
     // the start/stop boundary. Only actual visible-page changes reach it.
     recordingService.onSlideChanged(nextIndex);
+    try { checkpoint(); } catch { void stopRef.current(); }
     visibleSlide.current = nextIndex;
     setIndex(nextIndex);
   }
@@ -244,7 +278,7 @@ function RehearsalAttempt({ retrySlide, onFailure, savedPreview, onSaved, onStar
       <View style={styles.banner}>
         <Text style={styles.bannerText}>
           {pdfUri ? "ON-DEVICE PDF" : "SAMPLE SLIDES"} · Recording and slide visits
-          are available in this session. Restart recovery, upload and AI results are not connected yet.
+          are saved on this device for imported PDFs. Upload can be retried; analysis is not connected yet.
         </Text>
       </View>
       <View style={styles.between}>
@@ -359,14 +393,10 @@ function RehearsalAttempt({ retrySlide, onFailure, savedPreview, onSaved, onStar
         // Ready state still permits the original fixture preview before Start.
         disabled={recordingState !== "ready"}
         onPress={() =>
-          // DEBUG HANDOFF: the URI and serialized events only bridge this
-          // in-memory preview to ResultsScreen. Replace with a LocalRecording
-          // ID once attempt storage and upload are implemented.
-
-          //route handoff
+          // Imported PDFs use durable IDs; sample captures keep a local preview.
           router.push(
             recordingUri
-              ? {
+              ? savedPreview?.attemptId ? { pathname: "/results", params: { attemptId: savedPreview.attemptId } } : {
                   pathname: "/results",
                   params: {
                     audioUri: recordingUri,
