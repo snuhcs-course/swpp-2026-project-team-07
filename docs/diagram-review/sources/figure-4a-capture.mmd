@@ -1,0 +1,41 @@
+%%{init: {"theme": "base", "themeCSS": ".actor-line {stroke-dasharray: 5 5 !important;}", "themeVariables": {"fontFamily": "Arial", "fontSize": "16px", "actorBkg": "#eaf1f5", "actorBorder": "#547083", "actorTextColor": "#1e2e38", "signalColor": "#526777", "signalTextColor": "#1e2e38", "noteBkgColor": "#f6f3ed", "noteBorderColor": "#c6bcaa", "noteTextColor": "#263640", "labelBoxBkgColor": "#ffffff", "labelBoxBorderColor": "#547083"}, "sequence": {"useMaxWidth": false, "mirrorActors": false, "actorMargin": 28, "messageMargin": 16, "noteMargin": 8, "wrap": false, "width": 155}}}%%
+sequenceDiagram
+ autonumber
+actor U as Presenter
+ participant A as Android host
+ participant L as Native / local store
+ participant API as Django API
+ Note over U,API: 4A. Durable capture: unmerged | Pre-upload disclosure: Planned
+ U->>A: Start recording
+ A->>L: Request microphone permission
+ alt Permission denied
+  L-->>A: Denied
+  A-->>U: Explain denial, remain idle
+ else Permission granted
+  A->>L: Persist new UUID, audio target and<br/>checkpoint
+  A->>L: Start capture, initial slide event at 0 ms
+  loop Confirmed page changes
+   L-->>A: Audio time + confirmed original slide<br/>index
+   A->>L: Checkpoint event, retain repeated/backward<br/>visits
+  end
+  U->>A: Stop
+  A->>L: Finalize audio and durably save attempt
+  L-->>A: Saved recording, local playback available
+  A-->>U: Planned: disclose PDF/audio upload +<br/>transcription before transfer
+  alt Consent declined
+   A-->>U: Keep local playback, no upload or polling
+  else Valid consent for this destination and use
+   U->>A: Accept, or use stored valid disclosure
+   A->>L: Planned: record disclosure version and<br/>destination
+   A->>API: POST /api/decks/ if needed, then<br/>/api/attempts/
+   Note right of API: Prepare PDF slides, persist files and<br/>rows.
+   alt Upload fails / acknowledgment lost
+    API--xA: No confirmed server attempt
+    A-->>U: Keep local playback, offer explicit upload<br/>retry
+    Note over A,API: Same UUID/content on upload retry.<br/>No polling without a known server attempt.
+   else Upload acknowledged
+    API-->>A: attempt_id + pending state
+    Note over A,API: Continue at 4B. Current client uploads before disclosure,<br/>this diagram shows the Planned correction.
+   end
+  end
+ end

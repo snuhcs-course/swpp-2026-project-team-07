@@ -128,3 +128,34 @@ class TranscriptionTests(TestCase):
                     transcribe(self.path)
                 self.assertEqual(caught.exception.code, "invalid_audio_size")
             client.assert_not_called()
+
+    def test_extreme_finite_timestamps_are_safe_invalid_responses(self):
+        raw = deepcopy(self.raw)
+        raw['words'][0].update(start=1e100, end=1e101)
+        with self.assertRaises(TranscriptionError) as caught:
+            _normalize(raw)
+        self.assertEqual(caught.exception.code, 'invalid_response')
+
+    def test_retry_after_and_ambiguous_server_errors_use_one_request(self):
+        from .services.transcription import retry_time
+        from datetime import datetime, timezone
+        self.assertGreater(retry_time({'retry-after': '120'}), datetime.now(timezone.utc))
+        self.assertEqual(retry_time({'retry-after': 'Fri, 09 Oct 2026 10:00:00 GMT'}), datetime(2026, 10, 9, 10, tzinfo=timezone.utc))
+        self.assertIsNone(retry_time({'retry-after': 'invalid'}))
+        for status, uncertain in [(401, False), (429, False), (408, True), (503, True)]:
+            with self.assertRaises(TranscriptionError) as caught:
+                self.request(status=status)
+            self.assertEqual(caught.exception.uncertain, uncertain)
+            self.assertEqual(len(self.calls), 1)
+
+    def test_nonfinite_json_is_retained_as_private_text_before_normalization(self):
+        from .services.transcription import prepare_request, request_raw
+        body = '{"text":"invalid", "words":[{"word":"invalid", "start":NaN,"end":1}]}'
+        def client(**kwargs):
+            return OpenAI(**kwargs, http_client=httpx.Client(transport=httpx.MockTransport(
+                lambda request: httpx.Response(200, content=body, headers={'content-type': 'application/json'}))))
+        with patch('rehearsals.services.transcription.OpenAI', side_effect=client), prepare_request(self.path) as prepared:
+            raw = request_raw(prepared)
+        self.assertEqual(raw, body)
+        with self.assertRaises(TranscriptionError):
+            _normalize(raw)

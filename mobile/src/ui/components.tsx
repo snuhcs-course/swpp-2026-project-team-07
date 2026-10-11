@@ -1,5 +1,5 @@
 // AI-generated/modified with OpenAI Codex, Iteration 1 (2026-09-26 to 2026-10-09).
-// Attribution/review scope: docs/ai-collaboration-validation-iteration-1.md#ai-code-markers
+// Attribution/review scope: docs/history/ai-collaboration-validation-iteration-1-retired-2026-10-09.md#ai-code-markers
 import type { PropsWithChildren } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -81,8 +81,9 @@ export function DemoNotice() {
   return (
     <View style={styles.banner}>
       <Text style={styles.bannerText}>
-        SCREEN PREVIEW · Sample data only. PDF import, microphone recording and
-        AI processing are not connected.
+        SAMPLE PREVIEW · This deck is example content. Your imported PDF is
+        stored on this device; microphone recording and AI processing are not
+        connected yet.
       </Text>
     </View>
   );
@@ -95,17 +96,19 @@ export function Action({
   onPress,
   secondary = false,
   disabled = false,
+  expanded,
 }: {
   label: string;
   onPress: () => void;
   secondary?: boolean;
   disabled?: boolean;
+  expanded?: boolean;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityState={{ disabled }}
+      accessibilityState={{ disabled, ...(expanded !== undefined ? { expanded } : {}) }}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => ({

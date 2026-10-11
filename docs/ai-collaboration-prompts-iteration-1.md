@@ -895,6 +895,75 @@ Ok sure
 Ok I feel like it's good enough. Can you push the changes to the branch.
 ```
 
+### A5. Resolve PR #17 after the recording merge, October 11
+
+**Contributor:** Injoon · **Date:** 2026-10-11 · **Tool:** OpenAI Codex · **Model:** not recorded
+
+- **Decision and scope:** Injoon requested using #17's integrated application code to resolve overlap with Jooyoung's merged #13, while retaining feature PRs #18–#21 as a stack and keeping documentation PRs #22–#24 separate.
+- **Investigation and correction:** Git ancestry showed #17's consolidated commit `b60c357` starts from `f6f6e76`, rather than descending from #13's `040880f8`. Codex initially explained merging main into the branch as more mandatory than it is. Injoon challenged that explanation; Codex clarified that choosing #17's code is itself a valid conflict resolution. Source comparison confirmed preservation of the Android duration fix and intentional replacement of provisional upload wiring by the staged implementation.
+- **Work and outcome:** Codex published resolution commit `0b07032` and merged [PR #17](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/17) with normal merge commit `464048d`. All application/configuration/dependency/test files remain identical to the original #17 (`b60c357`); both append-only AI-use source entries are preserved verbatim. The published resolution and merged main have the exact reviewed tree `4cb55164c30d68b0cd90fd7116a43ce3034b0bc6`.
+- **Verification:** Fresh Node 24 TypeScript/lint, 60/60 tests and Android export passed. A separate Codex reviewer found no actionable resolution defect. [GitHub mobile/backend checks](https://github.com/snuhcs-course/swpp-2026-project-team-07/actions/runs/38107676548) passed before merge. No new device or provider tests were run; earlier device evidence remains revision-specific. No new application code or human testing is claimed.
+- **Stack and limits:** #18 now targets main; #19 → #18, #20 → #19 and #21 → #20 retain their original branch heads. All four were verified open and mergeable. Local merge simulations show the resolution adds only the preserved AI-use entry to each original feature tree. No rebase or force-push occurred. Documentation PRs #22–#24 remain separately based on main and still have conflicts; their branches, the Wiki and submissions were not changed. This task entry and the earlier local A4 review entry remain uncommitted on the report checkout.
+- **Tool recovery:** Initial Git downloads stalled; a scoped HTTP/1.1 fetch succeeded. The GitHub connector temporarily rejected the #18 metadata update due to a changed tool catalog; CLI fallback lacked authentication, and the temporary browser failed to load. A later connector retry completed and verified the base/description update. No credentials were changed.
+
+```text
+I'm getting merge conflict errors after merging jooyoung's PR
+```
+
+```text
+github pr
+```
+
+```text
+I'm just wondering why there is a conflict because I thought that gabeduate stacked their pr on jooyoung's branch
+```
+
+```text
+what does it mean **commits aren’t its ancestors**.
+```
+
+```text
+So is it fine if we still merge it
+```
+
+```text
+그니까 주영이가 만든 PR을 방금 merge했는데, 이제 17을 main 기준으로 rebase해야 한다는 거지?
+```
+
+```text
+But i dont get it why do we have to merge it can't we just stack the PRs and merge that onto current main
+```
+
+```text
+ik but doesn't 17 contain jooyoung's code anyways + more so you can just override it
+```
+
+```text
+Do that but I want to stack the other PRs
+```
+
+```text
+Keep #18–#21 stacked; leave documentation PRs separate
+```
+
+
+### A6. Merge the remaining features and current documents, October 11
+
+**Contributor:** Injoon · **Date:** 2026-10-11 · **Tool:** OpenAI Codex · **Model:** not recorded
+
+```text
+Do it for me
+```
+
+```text
+merge remaining feature. The most recent document PRs should be merged.
+```
+
+- **Decision:** This follow-up authorizes merging #18–#21 in order and the latest documentation PRs #22–#24. It supersedes A5's temporary open-PR state. Documentation PRs retain main as their base; the separate Wiki and eTL submission are outside this request.
+- **Incorporation:** Feature PRs merged with unchanged application/configuration/test bytes. Design and requirements sources, PDFs and assets remain byte-identical to their reviewed PR heads. The report's 34 attribution-only comments are carried onto current feature code, with links corrected to the archived review. Both histories are preserved in a [frozen stack snapshot](history/ai-use-before-stack-consolidation-2026-10-11.md); the October 9 archives remain unchanged. New records use this single active log. A5 is now included; the unrelated local A4 entry remains only in its original checkout.
+- **Verification:** All four original feature heads have passing GitHub mobile/backend checks. Local merge-tree comparisons show only the retained recording history differs from each feature head. Design/requirements self-review verifies exact source/artifact preservation and the previously reviewed PDF hashes. Independent Codex review confirmed all 34 code changes are comments only, original archives are intact, the frozen snapshot preserves the full previous body, and all 16 affected archive anchors resolve. It found a historical human-review comment that could imply coverage of later transcription changes; Codex qualified it to the PR #3 version and the reviewer verified the repair with no remaining findings. GitHub checks on the report integration remain pending publication. No fresh device or live-provider checks are claimed.
+- **Errors and corrections:** One GitHub merge approval check timed out; its permitted retry succeeded. A local verification script used a non-ASCII bytes literal and then incorrectly expected the merged README to equal the old document-only README; both checks were corrected, with no published content loss. An automatic approval review also rejected the requirements ref update by confusing it with the separate report candidate; reading the exact remote commit proved the flagged comment was absent, and retry was approved. Contributor acceptance and human code review are not inferred from automated results.
+
 <a id="1-purpose-coverage-and-provenance"></a>
 <a id="6-meaningful-revisions-and-debugging-sequences"></a>
 <a id="8-missing-contributor-evidence-and-confirmation-checklist"></a>
