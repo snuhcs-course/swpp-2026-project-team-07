@@ -981,6 +981,21 @@ How do we fix this
 - **Reproduction:** A temporary Node preload delayed filesystem `stat` and stream-reader `read` by 25 ms. The original two tests failed; after test waits alone the PDF case still timed out. The new empty-catalog regression failed before the source fix. With both fixes, all three targeted tests passed under delayed I/O. No test is skipped and no production timeout is increased.
 - **Environment:** Initial full typecheck found the investigation clone still had PR #17 dependencies installed (missing expo-crypto/expo-sqlite). Codex installed the current lockfile before final checks; no dependency files were changed. Final Node 24 verification passed TypeScript, lint, all 289 mobile tests and Android export. Twenty delayed-I/O runs passed all three targeted cases (60 executions). Independent Codex review found no actionable defects and separately passed the same three delayed cases on Node 26. Source, tests and dependencies outside the five-file fix are unchanged. The fix PR records publication and CI results. No new native-device, live-provider or human review is claimed.
 
+### A8. Rename the GitHub workflow, October 11
+
+**Contributor:** Injoon · **Date:** 2026-10-11 · **Tool:** OpenAI Codex · **Model:** not recorded
+
+```text
+Why would pdfs cause scaffold problems
+```
+
+```text
+Okay let's change it.
+```
+
+- **Confirmed decision:** After Codex explained that the workflow covers the full application and proposed “App checks,” Injoon approved that display name.
+- **Change and verification:** Renamed only the workflow's top-level name from “Scaffold checks” to “App checks” in PR #25. Triggers, job identifiers and all check commands remain byte-identical. Self-reviewed the exact diff and checked for workflow-name references; historical run/log names remain historical. No application test rerun was needed for this label-only follow-up.
+
 <a id="1-purpose-coverage-and-provenance"></a>
 <a id="6-meaningful-revisions-and-debugging-sequences"></a>
 <a id="8-missing-contributor-evidence-and-confirmation-checklist"></a>
