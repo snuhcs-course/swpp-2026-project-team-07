@@ -23,7 +23,9 @@ The rehearsal-review snapshot passed independent AI review, **209 mobile tests**
 - [API and timestamp contract](docs/api-contract.md)
 - [Submitted requirements mapped to code](docs/source-alignment.md)
 - [Verification and code review](docs/review.md)
-- [AI collaboration reporting](docs/ai-collaboration-guidelines.md): the shared collaboration log, iteration report and human review checklist.
+- [Shared agent instructions](AGENTS.md): current iteration and project-wide working rules.
+- [Iteration 2 AI collaboration log](docs/ai-collaboration-prompts-iteration-2.md) · [reporting guide](docs/ai-collaboration-guidelines.md).
+- [Meeting-log workflow](docs/meeting-log-workflow.md) · [reusable template](docs/daily-standup-meeting-log-template.md): prepare a Wiki entry and publish after approval.
 
 ```text
 mobile/                         Expo + React Native + TypeScript

@@ -29,7 +29,8 @@ when diagnosing configuration or dependency issues; do not run broad dependency
 fixes as routine cleanup.
 
 Mobile code changes need the relevant checks and Android flow verification described
-in the shared instructions. Documentation-only edits need accuracy/link/diff checks,
+in the [repository verification guide](../README.md#checks).
+Documentation-only edits need accuracy/link/diff checks,
 not lint, typechecking or a rebuild solely because the file is under `mobile/`.
 
 ## Navigation and native development
