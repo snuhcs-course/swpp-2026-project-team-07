@@ -72,3 +72,32 @@ But I feel like the agents.md file should contain guidelines that are relevant t
 ```text
 Looks good, I want you to one last check on the agents.md making sure that all of is important and would be relevant to any prompt. Make those changes and update PR #26. Keep the Wiki upload approval step and make sure prompts go into the iteration 2 collaboration log.
 ```
+
+
+## README readability and documentation relocation, October 13, 2026
+
+**Contributor:** Injoon · **Tool:** OpenAI Codex · **Model:** not recorded
+
+- **Human decisions:** Injoon requested suggestions for the current repository README, then approved a rewrite with setup and TA context retained. He prefers bullets/lists where appropriate and requires review before commit or push. This approval covers preparing local documentation, not publication or teammate approval.
+- **Output and use:** Codex prepared the rewrite from current main (`2ca1278`) in an isolated `docs/readme-simplification` checkout. The README now organizes status, quick start, the main flow, configuration/limits, checks and document navigation. Detailed setup, rehearsal behavior and verification snapshots moved to linked guides; the feedback reference retains the removed operator details. Historical evidence and original scaffold records remain intact.
+- **Errors and revisions:** The first local README was on an older AI-report branch; a live GitHub read identified current main before recommendations. The rewrite starts from freshly fetched main and leaves existing checkouts and their changes untouched. The first ordinary fetch could not write Git metadata under the sandbox; the approved retry succeeded. A whitespace checker initially flagged a trailing space in an earlier verbatim prompt; Codex scoped the check to new content and preserved that original prompt. The final staged check caught an extra blank line at the end of the new setup guide; Codex removed it and clarified that verification blocks start from the repository root. No code defect or elapsed repair time is claimed.
+- **Verification:** Documentation checks verified local file/heading links, compared relocated text with the original README, and checked whitespace and the intended diff. README commands were checked against package scripts, environment examples and Compose configuration; they were not executed. No application code changed; app builds, dependency installation and device tests were not run. All 79 relative file/heading links passed; all 55 original content blocks checked were accounted for after explicit link/wording adjustments. Earlier collaboration entries are preserved byte-for-byte.
+- **Publication authorization:** After reviewing the draft, Injoon approved pushing the documentation branch and creating a PR on October 13, 2026. This does not authorize PR merge, Wiki publication or eTL submission. Final publication evidence belongs to the resulting branch and PR.
+
+### Prompts — verbatim, in order
+
+```text
+I want to make a focused change for the README.md file. Right now I feel like it's hard to read because it is very verbose and I'm not sure if everything is relevant. I want you to read the entire readme file and give me suggestions on how to make it 1) more readable 2) more simple without losing important information for us and the TA or context for other files.
+```
+
+```text
+The most current repo
+```
+
+```text
+Go ahead and rewrite the README with that structure. Keep the important setup details and TA context, preserve anything you move in the linked docs, and let me review the changes before committing or pushing. I also prefer bullet points and lists over paragraphs, so apply when appropriate
+```
+
+```text
+Ok that looks good. I want you to push to branch and make PR.
+```
