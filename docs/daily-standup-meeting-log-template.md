@@ -50,4 +50,4 @@ Keep one Wiki page titled **Daily Standup Meeting Log**, group entries by iterat
 
 ---
 
-Before posting, check names, attendance, deadlines, decisions, unresolved items and links against the notes. Task ownership does not establish attendance. Get approval for the proposed Wiki update.
+Before posting, check names, attendance, deadlines, decisions, unresolved items and links against the notes. Task ownership does not establish attendance. Get approval for the proposed Wiki update. Follow the [meeting-log workflow](meeting-log-workflow.md) for drafting, publication and verification.

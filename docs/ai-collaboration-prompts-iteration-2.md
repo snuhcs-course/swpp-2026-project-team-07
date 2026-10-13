@@ -30,3 +30,45 @@ Ideas worth investing on, addressing elephant in the room, requirements are all 
 ```text
 Looks good, upload reusable template on github and update wiki with daraft 
 ```
+
+
+## Shared instructions and meeting-log workflow, October 13, 2026
+
+**Contributor:** Injoon · **Tool:** OpenAI Codex · **Model:** not recorded
+
+- **Output and use:** Reviewed PR #26 and separated shared agent rules from the meeting workflow. `AGENTS.md` explicitly selects Iteration 2's collaboration log; a linked guide covers template-based drafts, user approval, Wiki upload and remote verification. README, template, mobile verification pointer and reporting-guide references were aligned.
+- **Errors and revisions:** The first local change put the whole meeting workflow in `AGENTS.md` on an unrelated checkout. Injoon requested a plan and general-purpose instructions; Codex moved the detailed workflow into its own guide and prepared this PR update in a separate checkout. The initial answer said the log was not automatically updated; existing agent instructions already required agents to maintain it, though no background capture service exists. Current iteration routing is now explicit. The link check caught an incorrect `#verification` heading in two new README links; Codex corrected both to the existing `#checks` heading. An earlier same-day source review reported no open PRs; the live lookup found open PR #26.
+- **Human decisions:** Injoon approved the plan and authorized updating PR #26, explicitly retaining Wiki upload approval. No new meeting entry, Wiki publication, PR merge or coursework submission was requested. This is requester approval, not teammate review.
+- **Verification:** 59 local links/headings passed; the original October 12 log entry is preserved byte-for-byte. Documentation whitespace checks passed. Codex reviewed the full outgoing documentation diff, template approval rule and current-iteration references. No application code changed; app builds and device tests were not run. Publication evidence is tracked in [PR #26](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/26).
+
+### Prompts — verbatim, in order
+
+```text
+Check this PR: Add reusable daily standup meeting log template
+
+From what i understand the file changes are for the iteration 2 prompts and meeting logs. For the meeting logs, is it providing only the template or is it also uploading on wiki?
+```
+
+```text
+So the ai-collaboration-prompts file is automatically updated with every prompt but the template is just a template right? So how do we make sure that we use this template
+```
+
+```text
+So you're saying that we need to follow this template when writing our meeting logs on wiki right that's why seoyeon put this into our PR
+```
+
+```text
+Is it possible to ask you to give you unstructured notes and then put that into our wiki using the template
+```
+
+```text
+I want to make agents upload this with the agents.md file is that possible
+```
+
+```text
+But I feel like the agents.md file should contain guidelines that are relevant to any prompt but this is relevant for only prompts that are related to meeting notes. I also want to make it explicit that we are in iteration 2 so that the prompts go to ai-collaboration-prompts. Can you give me a plan before you change
+```
+
+```text
+Looks good, I want you to one last check on the agents.md making sure that all of is important and would be relevant to any prompt. Make those changes and update PR #26. Keep the Wiki upload approval step and make sure prompts go into the iteration 2 collaboration log.
+```

@@ -4,10 +4,15 @@ Based on the [official AI Collaboration Report Guidelines](https://myetl.snu.ac.
 
 ## Working documents
 
+**Current iteration: 2.** Record new project-task prompts in the
+[Iteration 2 collaboration log](ai-collaboration-prompts-iteration-2.md).
+The [shared agent instructions](../AGENTS.md#current-iteration-and-prompt-logging)
+identify the active iteration; update both references at a confirmed transition.
+
 | Document | Purpose |
 | --- | --- |
-| [Collaboration log](ai-collaboration-prompts-iteration-1.md) | Actual prompts, tool/model metadata and concise task notes; update during work and at handoff |
-| [Report](ai-collaboration-report-iteration-1.md) | The team's analysis of AI use, results, failures, revisions and human decisions |
+| [Iteration 2 collaboration log](ai-collaboration-prompts-iteration-2.md) | Actual prompts, tool/model metadata and concise task notes; update during work and at handoff |
+| Iteration report | The team's analysis of AI use, results, failures, revisions and human decisions; the [Iteration 1 report](ai-collaboration-report-iteration-1.md) is a prior-iteration reference |
 | [This guide](#human-review-before-submission) | Collection rules, report format and human review checklist |
 
 The earlier [AI-use record](history/ai-use-before-prompt-consolidation-2026-10-09.md) and [validation review](history/ai-collaboration-validation-iteration-1-retired-2026-10-09.md) are archived. Keep one collaboration log per iteration at `docs/ai-collaboration-prompts-iteration-N.md`. Do not recreate either retired document as an active log.
