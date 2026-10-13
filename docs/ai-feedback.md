@@ -735,3 +735,138 @@ calls. The new description array-bound regression failed before this fix. Actual
 check results and passed independent review are recorded in
 [AI-use](history/ai-use-before-stack-consolidation-2026-10-11.md#2026-10-08--checkpoint-5-description-v3-schema-repair).
 Coordinator PostgreSQL/worker verification and the full live Gemini evaluation also passed their integration assertions. The evaluation records semantic weaknesses; no general accuracy, safety or human-review claim follows.
+
+
+## Operator and review summary
+
+- Relocated from README on October 13, 2026 to preserve its configuration, API and UI details alongside the full feedback reference.
+- Relocated passages retain checkpoint-specific verification scope; later controlled provider results are recorded separately in the evaluation.
+- Checkpoint names describe implementation stages. Their test counts and verification limits remain in the [dated verification snapshots](verification.md#historical-evidence-snapshots).
+- Use the [README](../README.md#configuration-and-limits) for the short configuration overview.
+
+### Saved-deck descriptions (checkpoint 2)
+
+Apply additive migrations with `python manage.py migrate`. Use the worker and
+Beat setup in the [local development guide](local-development.md#run-the-backend); `rehearsals.tasks.recover_work` now also recovers description jobs.
+Explicit `POST /api/decks/{id}/descriptions/generate/` or the coaching admission below can queue description
+work. GET is read-only; PATCH saves a complete set with its current description
+revision. See the [wire contract](api-contract.md#durable-slide-descriptions-checkpoint-2).
+The saved-rehearsal feedback panel now exposes explicit generation, disclosure and description editing; checkpoint 3 supplies its coaching orchestration below.
+
+In backend configuration, set `FEEDBACK_ENABLED=true`; an omitted `FEEDBACK_PROVIDER`
+selects `openai`, while explicit `gemini` remains supported. Configure that provider's
+model, key and nonsecret `FEEDBACK_*_PROJECT_ID`.
+Positive `FEEDBACK_*_RPM` and `FEEDBACK_*_TPM` values are required for outbound work;
+missing values fail generation safely without breaking startup or Whisper.
+`FEEDBACK_*_DAILY_REQUEST_LIMIT` is optional. Use verified account allowances,
+with headroom for other callers; no free-tier values are assumed. Reservations
+use serialized UTF-8 request bytes plus maximum output tokens as conservative
+application units, not provider-perfect token counts or a monetary cap.
+Gemini daily windows use America/Los_Angeles midnight; OpenAI's optional daily
+ceiling is an application policy using UTC midnight.
+
+Gemini local RPM/TPM/daily exhaustion or shared cooldown stops that generation
+with `failed` / `quota_stopped` and preserves `retry_at`. After that time, refresh
+and explicitly retry with the current revision. Legacy Gemini quota waits also
+stop when claimed or recovered, even after expiry or a default-provider change.
+OpenAI local quota waits still resume automatically in the same generation.
+Actual provider 429 responses retain `provider_rate_limit`, Retry-After and explicit
+retry for both providers. Saved receipts recover without another call; uncertain
+submissions still require acknowledgement. Saved jobs/retries keep their provider.
+
+Defaults remain exactly `gemini-3.1-flash-lite` / `gpt-6-luna`, configurable, with
+feedback disabled until configured and no substitution or fallback. New Gemini
+requests use provider-specific wire schemas; local validation and OpenAI's strict
+schemas are unchanged. See [schema compatibility](ai-feedback.md#checkpoint-5-gemini-schema-compatibility).
+Saved retries retain provider/project/model/prompt/schema/source selection,
+including the legacy wire schema; retrying an old rejected set does not upgrade it.
+Project configuration changes block old submissions; same-project key rotation is
+allowed. Unknown submitted outcomes retain reservations and require explicit
+acknowledgement before a new generation. Saved receipts recover without another
+call, including after completion-write failure. After retry or editing supersedes
+a job (even one already awaiting confirmation), recovery finalizes its late saved
+receipt as private request evidence and preserves newer work and descriptions.
+Known invalid responses require explicit retry. Correct completed content
+with PATCH, not paid regeneration. Read the
+[recovery validation recipe](ai-feedback.md#checkpoint-2-coordinator-validation)
+before claiming real PostgreSQL/Redis/Celery recovery. Local tests use synthetic
+sources and mocked providers; no live provider or device validation is claimed.
+
+### Saved-rehearsal coaching (checkpoint 3)
+
+Apply migration `0006_durable_coaching` with the ordinary migration command; use
+the [worker/Beat setup](local-development.md#run-the-backend). Explicit `POST /api/attempts/{id}/feedback/generate/`
+with `{}` admits one saved analysis. `GET /api/attempts/{id}/feedback/`, attempt
+GET/history and replay are read-only. Upload and Analyze never generate coaching.
+No-speech, missing/invalid transcript or alignment is rejected before either paid
+stage; no recording is retranscribed. Configuration failure leaves Whisper and
+cached results available.
+
+A cache hit submits coaching only; missing descriptions use the existing durable
+description job, then Beat continues coaching. A failed/uncertain dependency is
+never automatically paid-retried. Use its exposed `description_set_id` and
+`processing_revision` with the **description generate route** (and its own
+uncertainty acknowledgement); refresh feedback afterward. Coaching's failed or
+stale retry uses `feedback_revision` with the **feedback generate route**. An
+unknown coaching outcome additionally requires `acknowledge_uncertain: true`.
+This includes saved 408/5xx or incomplete 200 receipts awaiting normalization when
+a description edit makes the analysis stale.
+Description PATCH uses `description_revision`, a third independent revision.
+Feedback freshness includes description-dependency and current coaching-receipt
+transitions, so delayed refresh responses cannot overwrite newer failure actions
+or restore confirmation already resolved by a late receipt after an edit.
+See the [complete wire contract](api-contract.md#durable-rehearsal-coaching-checkpoint-3).
+
+Results retain exact original word indexes, captured description facts and derived
+integer audio ranges. `accepted`, `partial`, valid `empty` and `all_invalid` remain
+distinct; valid empty says “No supported suggestions.” Prior suggestions can remain
+visible as stale alongside a current failure or uncertain outcome. Evidence
+validation proves references, not semantic correctness or advice quality.
+
+Run the [backend and mobile checks](verification.md#routine-and-integration-checks). New PostgreSQL-only races are in
+`rehearsals.test_coaching.ConcurrentCoachingTests`; the populated migration test
+preserves checkpoint-2 descriptions/requests/reservations plus attempts and Whisper.
+Actual writer outcomes are in [AI-use](history/ai-use-before-stack-consolidation-2026-10-11.md). Real PostgreSQL/Redis/Celery
+crash/restart validation belongs to the coordinator, using synthetic fake providers.
+Checkpoint-3/4 coordinator infrastructure and emulator outcomes are recorded in
+AI-use; they do not establish this new repair's live compatibility, quality or human review.
+
+### Feedback review (checkpoint 4)
+
+In a saved rehearsal, **Generate feedback** refreshes the current revisions and
+provider selection before any submission. First use names Gemini or OpenAI and the
+configured model, explains the slide images/text, descriptions, saved transcript
+and optional audience context sent, and explicitly excludes audio. Continue/Cancel
+are separate from Whisper consent. Consent is local to the normalized API address,
+provider and disclosure version. Mobile supplies `expected_selection`; a changed
+selection returns 409 before admission. On a mismatch, review the refreshed disclosure
+and choose generation again. Legacy callers may omit that optional field and
+therefore do not get this disclosure-race comparison guard. Saved retries retain
+their original provider/model. There is no provider picker.
+
+Cached suggestions and descriptions open immediately. Failed refreshes retain them
+with a stale/offline notice. Active jobs, description dependencies and OpenAI quota waits
+poll only while focused and foregrounded. A timeout leaves the submission unknown:
+refresh precedes another action, and an unresolved paid request needs a separate
+charge acknowledgement. Failed description dependencies use their own set and
+processing revision. Reading, editing, downloading, refreshing and returning to
+the screen start neither provider work nor playback.
+
+Cards say **AI suggestions — check the evidence**. Partial, supported empty and
+failed/all-invalid outputs are distinct. Quotes expand as **Slide description**
+(with captured generated/edited-set origin, unavailable for legacy snapshots) and
+**Transcript excerpt**. Valid evidence seeks through the existing player and native
+PDF clock, preserving playing/paused intent; stale/invalid evidence or absent
+media/page metadata disables that action while leaving text readable. Seeking goes
+to the evidence start; it does not automatically play or stop at the excerpt end.
+See [small illustrative suggestions](ai-feedback.md#illustrative-feedback-experience)
+for consistency, clarity and optional-audience examples, distinct from measured output.
+
+Validated saved descriptions remain readable and editable if presentation metadata
+cannot load; evidence playback still requires known actual pages. Expand a slide's
+description to edit existing summary, key-idea and visual
+fact text/uncertainty. Save submits the entire set with its captured revision;
+other slides/source IDs stay intact. Conflict/timeout keeps the draft and offers
+Reload/Cancel; Reload resumes active-job polling while focused and foregrounded.
+Generation is disabled while editing. Save does not generate feedback
+or retranscribe audio; choose **Regenerate feedback** explicitly afterward.
