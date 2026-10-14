@@ -40,13 +40,13 @@ function validRecording(value: unknown, id: string): value is AttemptResult {
   if (!object(partial) || partial.transcript !== (transcript !== null) || partial.alignment !== (value.visits !== null)) return false;
   const duration = value.duration_ms;
   if (value.visits !== null && (!Array.isArray(value.visits) || !value.visits.every(v => object(v) &&
-      integer(v.slide_index) && v.slide_index < 10 && integer(v.start_ms) && integer(v.end_ms) &&
+      integer(v.slide_index) && integer(v.start_ms) && integer(v.end_ms) &&
       v.start_ms <= v.end_ms && v.end_ms <= duration && Array.isArray(v.words) &&
       v.words.every(w => word(w) && w.start_ms >= (v.start_ms as number) && w.start_ms < (v.end_ms as number) && w.end_ms <= duration)))) return false;
   const m = value.metrics;
   if (m !== null) {
     if (!object(m) || m.duration_ms !== duration || !Array.isArray(m.time_per_slide) ||
-        !m.time_per_slide.every(t => object(t) && integer(t.slide_index) && t.slide_index < 10 && integer(t.duration_ms) && t.duration_ms <= duration) ||
+        !m.time_per_slide.every(t => object(t) && integer(t.slide_index) && integer(t.duration_ms) && t.duration_ms <= duration) ||
         typeof m.detected_language !== "string" || typeof m.rate_note !== "string" || !Array.isArray(m.speaking_rates) ||
         !m.speaking_rates.every(r => object(r) && typeof r.language === "string" && ["en", "ko"].includes(r.language) && typeof r.unit === "string" && integer(r.count) &&
           typeof r.per_minute === "number" && Number.isFinite(r.per_minute) && r.per_minute >= 0)) return false;
@@ -63,7 +63,7 @@ function validRecording(value: unknown, id: string): value is AttemptResult {
         (value.visits as { words: unknown[] }[]).some(v => v.words.length !== 0))) return false;
   }
   if (value.slide_events !== undefined && (!Array.isArray(value.slide_events) || !value.slide_events.length ||
-      !value.slide_events.every((e, i, all) => object(e) && integer(e.slide_index) && e.slide_index < 10 && integer(e.at_ms) && e.at_ms < duration &&
+      !value.slide_events.every((e, i, all) => object(e) && integer(e.at_ms) && e.at_ms < duration &&
         (i === 0 ? e.at_ms === 0 : e.at_ms >= all[i - 1].at_ms)))) return false;
   return Array.isArray(value.feedback) && value.feedback.every(feedback) &&
     (value.feedback_state !== "disabled" || value.feedback.length === 0) &&
@@ -79,7 +79,7 @@ export function parseResult(value: unknown, id: string): AttemptResult | null {
   if (!validRecording(candidate, id)) return null;
   const copyWord = (w: TranscriptWord) => ({ text: w.text, start_ms: w.start_ms, end_ms: w.end_ms });
   const legacy = candidate.feedback_state === 'legacy' && Array.isArray(value.feedback) ? value.feedback.filter((v): v is Feedback =>
-    feedback(v) && v.slide_index < 10 && v.end_ms <= candidate.duration_ms &&
+    feedback(v) && v.end_ms <= candidate.duration_ms &&
     [v.observation, v.slide_evidence, v.suggestion].every(s => s.length <= 2000 && !s.includes('\u0000'))).map(v => ({
       slide_index: v.slide_index, start_ms: v.start_ms, end_ms: v.end_ms, observation: v.observation,
       slide_evidence: v.slide_evidence, suggestion: v.suggestion,

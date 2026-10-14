@@ -19,14 +19,14 @@ export function mediaUrl(value: unknown, api: string): string | null {
 }
 export function parseDeck(value: unknown, id: string, api: string): DeckDetail {
   if (!object(value) || !isUuid(id) || value.id !== id || typeof value.title !== 'string' ||
-      !integer(value.page_count) || value.page_count < 1 || value.page_count > 10) throw new Error('Invalid presentation metadata.');
+      !integer(value.page_count) || value.page_count < 1) throw new Error('Invalid presentation metadata.');
   return { id, title: value.title, page_count: value.page_count, pdf_url: mediaUrl(value.pdf_url, api) };
 }
-export function validEvents(value: unknown, duration: number, pages = 10): value is SlideEvent[] {
+export function validEvents(value: unknown, duration: number, pages = Number.MAX_SAFE_INTEGER): value is SlideEvent[] {
   return Array.isArray(value) && value.length > 0 && value.every((e, i) => object(e) && integer(e.slide_index) &&
     e.slide_index < pages && integer(e.at_ms) && e.at_ms < duration && (i === 0 ? e.at_ms === 0 : e.at_ms >= value[i - 1].at_ms));
 }
-export function validVisits(value: unknown, duration: number, pages = 10, events?: SlideEvent[]): value is Visit[] {
+export function validVisits(value: unknown, duration: number, pages = Number.MAX_SAFE_INTEGER, events?: SlideEvent[]): value is Visit[] {
   return Array.isArray(value) && value.length > 0 && (!events || events.length === value.length) && value.every((v, i) =>
     object(v) && integer(v.slide_index) && v.slide_index < pages && integer(v.start_ms) && integer(v.end_ms) &&
     v.start_ms <= v.end_ms && v.end_ms <= duration && (i === 0 ? v.start_ms === 0 : v.start_ms === value[i - 1].end_ms) &&
@@ -52,7 +52,7 @@ export function parseReview(value: unknown, id: string, api: string, deck?: Deck
     throw new Error('This rehearsal does not belong to the expected presentation.');
   }
   const duration = validDuration(value.duration_ms) ? value.duration_ms : null;
-  const pages = deck?.page_count ?? 10;
+  const pages = deck?.page_count ?? Number.MAX_SAFE_INTEGER;
   const events = duration && validEvents(value.slide_events, duration, pages) ? value.slide_events : [];
   const visits = duration && validVisits(value.visits, duration, pages, events.length ? events : undefined) ? value.visits : null;
   const rawTranscript = value.transcript;

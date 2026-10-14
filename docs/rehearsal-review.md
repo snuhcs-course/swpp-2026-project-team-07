@@ -19,7 +19,7 @@ Detected no-speech saves an empty transcript, chronological visits with empty wo
 
 Local PDF import, capture and saved-audio playback run without backend services or provider keys. SQLite stores one UUID, the prepared audio URI and audio-relative slide checkpoints per real recording. On restart, interrupted capture requires playable-audio recovery; an unfinalized/missing native file cannot be reconstructed. Upload retries retain the UUID, source audio and slide visits. Native PDF rendering and SQLite require a rebuilt Android development client, not Expo Go.
 
-Limits remain **10 slides, 20 MiB PDF, ten minutes (600,000 ms), and 25,000,000 audio bytes**. Legacy audio above the byte limit stays local and can still be played; make a shorter new recording to upload. New captures automatically continue from upload to analysis; first-use cancellation leaves them awaiting analysis. Deck mappings are scoped to the configured API address, and confirmed missing mappings are repaired before audio upload.
+Limits are **at least one slide, 50 MiB PDF, ten minutes (600,000 ms), and 25,000,000 audio bytes**. Legacy audio above the byte limit stays local and can still be played; make a shorter new recording to upload. New captures automatically continue from upload to analysis; first-use cancellation leaves them awaiting analysis. Deck mappings are scoped to the configured API address, and confirmed missing mappings are repaired before audio upload.
 
 ## Review a saved rehearsal
 

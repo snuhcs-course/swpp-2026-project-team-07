@@ -53,7 +53,7 @@ class UploadTests(TestCase):
         self.assertTrue(deck.slides.first().image.storage.exists(deck.slides.first().image.name))
 
     def test_invalid_and_oversized_decks(self):
-        for upload in [pdf_file(11), SimpleUploadedFile("bad.pdf", b"not a pdf"), SimpleUploadedFile("big.pdf", b"0" * (20 * 1024 * 1024 + 1))]:
+        for upload in [SimpleUploadedFile("bad.pdf", b"not a pdf"), SimpleUploadedFile("big.pdf", b"0" * (50 * 1024 * 1024 + 1))]:
             self.assertEqual(self.client.post("/api/decks/", {"file": upload}).status_code, 400)
         self.assertEqual(Deck.objects.count(), 0)
 

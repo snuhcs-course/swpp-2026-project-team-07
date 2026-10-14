@@ -106,3 +106,29 @@ export function useReviewMedia(api: string, id: string, saved: SavedAttempt | nu
   return { audio, pdf, audioSpec, pdfSpec, validators, download: (kind: 'audio' | 'pdf') => kind === 'audio' ? audio.download() : pdf.download(),
     audioFailed: audio.failed, pdfFailed: pdf.failed };
 }
+
+/** Playback opens audio first; a 50 MiB PDF should not be decoded just to play a take. */
+export function useReviewAudio(api: string, id: string, saved: SavedAttempt | null, review: ReviewAttempt | null) {
+  const { validate, validators } = useMediaValidators();
+  const audioUrl = review?.audio_url, audioDuration = review?.duration_ms;
+  const audioSpec = useMemo<MediaSpec | null>(() => audioUrl && audioDuration ?
+    { api, id, kind: 'audio', url: audioUrl, durationMs: audioDuration } : null, [api, id, audioUrl, audioDuration]);
+  const duration = saved && !['capturing', 'interrupted'].includes(saved.state) ? saved.recording.duration_ms || undefined : undefined;
+  const localSpec = useMemo<MediaSpec>(() => ({ api, id, kind: 'audio', url: '', durationMs: duration }), [api, id, duration]);
+  const originals = useMemo(() => [saved?.recording.audio_uri], [saved?.recording.audio_uri]);
+  const audio = useMediaPart(originals, audioSpec, localSpec, validate);
+  return { audio, audioSpec, validators, download: audio.download, audioFailed: audio.failed };
+}
+
+/** Mount only when the user opens PDF tools so native PDF validation is explicit. */
+export function useReviewPdfMedia(api: string, id: string, saved: SavedAttempt | null, deck: DeckDetail | null, knownPdfs: readonly string[] = noPdfs) {
+  const { validate, validators } = useMediaValidators();
+  const pdfUrl = deck?.pdf_url, deckId = deck?.id, pageCount = deck?.page_count;
+  const pdfSpec = useMemo<MediaSpec | null>(() => pdfUrl && deckId ?
+    { api, id: deckId, kind: 'pdf', url: pdfUrl, pageCount } : null, [api, deckId, pdfUrl, pageCount]);
+  const localSpec = useMemo<MediaSpec>(() => ({ api, id, kind: 'pdf', url: '', pageCount: saved?.page_count || deck?.page_count }),
+    [api, id, saved?.page_count, deck?.page_count]);
+  const originals = useMemo(() => [saved?.pdf_uri, ...knownPdfs], [saved?.pdf_uri, knownPdfs]);
+  const pdf = useMediaPart(originals, pdfSpec, localSpec, validate);
+  return { pdf, pdfSpec, validators, download: pdf.download };
+}

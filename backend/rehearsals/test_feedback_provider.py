@@ -23,7 +23,7 @@ from .services.feedback_config import prompt_digest, coaching_digest
 from .services.feedback_provider import (
     FeedbackAdapter, ProviderConfig, DESCRIPTION_RULES, COACHING_RULES,
     MAX_REQUEST_BYTES, MAX_RESPONSE_BYTES, MAX_OUTPUT_BYTES,
-    request_raw, normalize, _retry_time, _gemini_schema, response_schema,
+    request_raw, normalize, _retry_time, _gemini_schema, _historical_slide_schema, response_schema,
 )
 from .test_feedback import fixture, description_value, suggestion
 
@@ -104,7 +104,7 @@ class FeedbackProviderTests(TestCase):
         for stage, model, version in [('descriptions', Descriptions, 'description-gemini-v2'),
                                       ('coaching', Suggestions, 'coaching-gemini-v2')]:
             schema = response_schema('gemini', stage, version)
-            original = model.model_json_schema()
+            original = _historical_slide_schema(model.model_json_schema(), stage)
             self.assertEqual(schema['properties'], original['properties'])  # Includes array cardinality/ref.
             for name, definition in schema['$defs'].items():
                 self.assertEqual(definition['required'], original['$defs'][name]['required'])
@@ -160,7 +160,7 @@ class FeedbackProviderTests(TestCase):
             self.assertEqual(hashlib.sha256(prepared.payload).hexdigest(), payload_hash)
             self.assertEqual(prepared.input_hash, payload_hash)
             self.assertEqual(digest_fn('gemini', version), digest)
-        self.assertEqual(self.coaching().payload, requests[1].payload)
+        self.assertNotEqual(self.coaching().payload, requests[1].payload)
         old_body, new_body = json.loads(requests[0].payload), json.loads(self.adapter().prepare_descriptions(self.analysis).payload)
         old_body['generationConfig'].pop('responseJsonSchema')
         new_body['generationConfig'].pop('responseJsonSchema')
@@ -187,17 +187,15 @@ class FeedbackProviderTests(TestCase):
                     ('coaching', 'coaching-v1', 'f6ef610d9f3f24ccf38e7b25b766c6f3c23bb4e61515050ad143d5b129068f4e')]:
                 self.assertEqual(hashlib.sha256(json_bytes(response_schema(name, stage, version))).hexdigest(), expected)
             current = [self.adapter(name).prepare_descriptions(self.analysis), self.coaching(name)]
-            if name == 'openai':
-                self.assertEqual([p.payload for p in current], [p.payload for p in requests])
-            else:
-                for old, new in zip(requests, current):
-                    self.assertNotEqual(old.input_hash, new.input_hash)
+            for old, new in zip(requests, current):
+                self.assertNotEqual(old.input_hash, new.input_hash)
+                if name == 'gemini':
                     old_body, new_body = json.loads(old.payload), json.loads(new.payload)
                     old_body['generationConfig'].pop('responseJsonSchema')
                     new_body['generationConfig'].pop('responseJsonSchema')
-                    self.assertEqual(old_body, new_body)  # Instructions, limits and context unchanged.
-                self.assertNotEqual(prompt_digest(), prompt_digest(name, 'description-v1'))
-                self.assertNotEqual(coaching_digest(), coaching_digest(name, 'coaching-v1'))
+                    self.assertEqual(old_body, new_body)  # Instructions and context unchanged.
+            self.assertNotEqual(prompt_digest(name), prompt_digest(name, 'description-v1'))
+            self.assertNotEqual(coaching_digest(name), coaching_digest(name, 'coaching-v1'))
 
     def test_unknown_and_other_provider_schema_versions_fail_before_transport(self):
         for name in ['gemini', 'openai']:
@@ -206,6 +204,8 @@ class FeedbackProviderTests(TestCase):
                             'coaching-gemini-v2' if stage == 'descriptions' else 'description-gemini-v2']
                 if stage == 'coaching' or name == 'openai':
                     versions.append('description-gemini-v3')
+                if name == 'openai':
+                    versions.append('description-gemini-v4')
                 if name == 'openai':
                     versions.append('description-gemini-v2' if stage == 'descriptions' else 'coaching-gemini-v2')
                 for version in versions:

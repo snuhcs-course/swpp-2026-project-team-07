@@ -1,5 +1,5 @@
-MAX_PDF_BYTES = 20 * 1024 * 1024
+# Updated PDF and slide limits by OpenAI Codex, Iteration 2 (2026-10-14).
+MAX_PDF_BYTES = 50 * 1024 * 1024
 MAX_AUDIO_BYTES = 25_000_000
-MAX_SLIDES = 10
 MAX_DURATION_MS = 600_000
 PREPARATION_VERSION = "pdfium-v1"

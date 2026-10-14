@@ -333,7 +333,7 @@ Each requirement below states testable behavior and how the team will verify it.
 | Feedback quality | Share of suggestions that human reviewers rate correct and useful | Set from pilot results |
 | Cost per rehearsal | Provider cost per rehearsal minute | Set from pilot results |
 
-**Provisional limits.** The current design uses 20 MiB per PDF, 10 slides per rehearsal, 10 minutes per recording and 500 characters of audience text. These are provisional implementation constraints, not product requirements, and may change.
+**Provisional limits.** The current design allows PDFs up to 50 MiB with at least one slide and no fixed slide-count cap. Recordings remain limited to 10 minutes and audience text to 500 characters. These are provisional implementation constraints, not product requirements, and may change.
 
 ## 7. User Interface Requirements
 
