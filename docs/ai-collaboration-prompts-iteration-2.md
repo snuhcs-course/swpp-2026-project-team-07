@@ -525,3 +525,80 @@ Keep the synthetic-only result
 ```text
 when added to git (as a branch), npm run check is a failure as well as run python manage.py test failed
 ```
+
+## Phase 1 AI-feedback foundation — October 15, 2026
+
+- **Context:** Contributor not recorded. Codex desktop (GPT-6; exact model identifier not recorded), with a separate reviewer agent. Isolated branch `it2/feature/ai_feedback` from `eeb3307a431e62d80b2b2d261420963193da22c3`. The user approved the phased plan and authorized Phase 1 only; no UI, Phase 2, commit, push or merge is authorized.
+- **Retained AI material:** Requirements/context model and strict API, additive migration, separate mobile requirements persistence and API client, canonical selected-run analysis-scope helper, tests and contract/phase documentation. Existing screens, runs, attempts, workers and provider paths remain unchanged.
+- **Verification:** Baseline: 168 mobile tests; 286 SQLite backend tests (19 skips). Final Phase 1 after review fix: `npm run check` passed typecheck/lint and 178 mobile tests; `npm run bundle:android` passed. Backend `manage.py check`, `test`, and `makemigrations --check --dry-run` with `config.test_settings` passed (297 tests, 20 skips). Disposable PostgreSQL 16: 297 tests passed (1 packaged-VAD dependency skip), including row-lock concurrency; migration drift check passed. Migration 0006→0007→0006→0007 preserved all synthetic deck/slide/attempt fields and did not backfill requirements. No live-provider calls, Redis/worker runtime checks, or device-flow claims; no worker behavior changed.
+- **Independent review:** Initial staged snapshot SHA256 `039c7f24ef3ade7883d1bde21b93a89b869461d92ff8e3a5690d15ff9142914c`: one P3 malformed-Unicode finding. Agent added backend/mobile failing regression tests, then rejected unpaired surrogates while preserving valid emoji/code-point limits. Fix snapshot `2733b9e0c82ad07557acedfb22013810e2ff480a41f9361348abef852081d849`: reviewer independently passed 11 backend context tests (1 PostgreSQL-only skip), 10 mobile requirements tests and whitespace check, and found no additional actionable issues. Reviewer did not independently rerun full suites, PostgreSQL migration/concurrency or Android export. Final documentation-only evidence updates receive a separate accuracy/diff review; staged runtime content is unchanged from the fix snapshot. Human inspection remains pending.
+- **Errors/corrections:** Initial worktree creation lacked the approved Git object; fetched JJ and recreated at the exact revision. Sandbox blocked migration generation; reran with approved access to the isolated checkout. First PostgreSQL preservation-script invocation lacked the backend import path; corrected PYTHONPATH and verified successfully. New tests failed before feature implementation and passed afterward.
+- **Human decisions:** Keep JJ's selected run, use 30-minute support in Phase 3, audience-aware feedback without rewriting, automatic generation without separate consent prompts in later phases, and hold new UI. User approved starting Docker Desktop and a disposable localhost-only PostgreSQL test container; no shared database/volume was used. No human code edits or final acceptance recorded.
+- **Outstanding:** All Phases 2–7, new UI designs, allocation, long capture, correction synchronization, automatic provider scheduling, per-slide findings and Q&A durability. Helpers are API/module level only; no complete user-facing flow is claimed. Docker Desktop was started with user approval. Temporary test-container cleanup is recorded in the inspection evidence; shared project databases/volumes were not used.
+
+### Original feature request — verbatim wording (line-ending spaces omitted)
+
+```text
+Let's plan to implement the following features by making a branch from JJ's frontend code. A lot of the frontend code is there but they have deafult values. Name the branch it2/feature/ai_feedback
+
+Features to implement
+1) Slide/speech differences, especially graphs;
+2) per-slide time allocation using the required presentation duration": Prompt the user to give requirements for the presentation: time limit(UI for it might be needed)
+3)manual grammar checking: For words that do not exist or seem wrong highlight them so the user can select which word they would've want to say. For example, if it transcribed ChatGPTN but i wanted to say ChatGPT and it allows me to fix this .
+4)audience transcript adaptation: Allow the user to add who their main audience is, and base feedback on this particular audience.
+5) repeated terms and filler words analysis
+6)cues: For each slide presentation have the AI give the top 4 things the user must talk about. It could be less than 4 if there anre not much such as title page or last page etc.
+7)four-line problem summary: After each recording at a per slide basis give out at most the top 4 problems from the presentation things that the user should focus on. If there are none then it could be blank or say Looks good!
+8) audience Q&A: Based on the inputted audience generate questions that the audience might have.
+
+First name any issues that should be fixed ask me.
+ALso if a feature is not clear enough ask me
+Also I was thinking when we first scan the presentation for cues we could maintain more data about each slide which we could use later to implement saved slide feedback but if you have better ideas implement your way.
+Do tell me if a new screen is needed to be implemented
+```
+
+### Meaningful follow-ups — verbatim
+
+```text
+Also hold on implementations where new ui has to be made
+```
+
+```text
+Treat the full Iteration 2 specification as the implementation contract, but do not implement all features in one pass.
+First, inspect the existing front-end-design-JJ frontend, selected-run model, backend API, persistence layer, and worker infrastructure.
+Prepare an implementation plan divided into independently verifiable phases. Identify:
+- Existing components and endpoints to reuse.
+- Required schema and API changes.
+- Dependencies between features.
+- Output invalidation and job deduplication rules.
+- Features blocked by unapproved UI designs.
+- Tests and acceptance criteria for each phase.
+Prioritize compatibility with JJ's existing functionality.
+Start implementation with Phase 1 only. After each phase:
+1. Run the relevant checks and tests.
+2. Document completed functionality and outstanding issues.
+3. Review the diff for regressions and unintended changes.
+4. Present the results for inspection before advancing.
+Keep all work in the isolated it2/feature/ai_feedback checkout. Preserve unrelated local work.
+Do not implement any held UI designs. Do not commit, push, or merge without explicit authorization.
+Do not simplify or remove requirements from the original specification merely to make implementation easier.
+```
+
+```text
+Approve this phased implementation plan.
+Proceed with Phase 1 only, following the specified revision and isolated checkout requirements.
+Before implementing, verify the baseline and inspect JJ's existing persistence, selected-run model, and backend contracts. Keep the Phase 1 data models and revisions as simple as possible while supporting all downstream requirements.
+Explicitly distinguish missing presentation requirements from legacy defaults.
+Complete the Phase 1 implementation, run the specified tests and migration verification, obtain independent review, and present the exact staged diff and verification evidence for my inspection.
+Do not begin Phase 2, implement new UI, commit, push, or merge without my authorization.
+```
+
+```text
+Proceed with Phase 1 of the approved plan in execution mode.
+Create the isolated checkout from the verified JJ revision, implement Phase 1, run the required verification, and obtain independent review.
+Stop after presenting the exact staged diff and verification evidence. Do not proceed to Phase 2, implement new UI, commit, push, or merge.
+```
+
+```text
+Start Docker and run isolated verification
+```

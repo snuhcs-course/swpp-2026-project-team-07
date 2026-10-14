@@ -2,8 +2,11 @@
 # Attribution/review scope: docs/history/ai-collaboration-validation-iteration-1-retired-2026-10-09.md#ai-code-markers
 from django.urls import path
 from . import views, description_views, feedback_views, qa_views
+from . import presentation_context_views
 
 urlpatterns = [
+    path('presentation-contexts/', presentation_context_views.contexts),
+    path('presentation-contexts/<uuid:context_id>/', presentation_context_views.context),
     path("attempts/<uuid:attempt_id>/feedback/", feedback_views.feedback),
     path("attempts/<uuid:attempt_id>/feedback/generate/", feedback_views.generate),
     path("health/", views.health),

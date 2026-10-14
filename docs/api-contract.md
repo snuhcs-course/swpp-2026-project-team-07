@@ -33,6 +33,42 @@ Example metadata:
 }
 ```
 
+## Iteration 2 Phase 1: presentation requirements
+
+`PresentationContext` is independent of deduplicated decks, original attempt audiences,
+and JJ's local selected-run record. Multiple contexts may reference the same deck.
+No context operation admits provider/worker work, modifies a transcript/run, or changes
+the current recording limit. See [the full phased contract](iteration-2-ai-feedback.md).
+
+| Route | Exact JSON input | Response |
+| --- | --- | --- |
+| `POST /presentation-contexts/` | `{id, deck_id}` canonical lowercase UUIDs | 201 new; 200 identical identity retry, returning current requirements; 409 context ID bound to another deck |
+| `GET /presentation-contexts/{id}/` | None; no query fields | 200 current context; 404 missing |
+| `PATCH /presentation-contexts/{id}/` | `{expected_revision, required_duration_seconds, audience}` | 200 current/updated; 409 stale or exhausted revision; 404 missing |
+
+All success responses are `{id, deck_id, required_duration_seconds, audience, revision}`.
+Creation starts at `{required_duration_seconds:null, audience:"", revision:0}`. Duration,
+when supplied, is an integer 60–1,800 seconds; audience is a string of at most 500 Unicode
+code points without U+0000 or unpaired surrogates; valid emoji are accepted. Duration `null` and audience `""` clear requirements. Blank
+audience is still missing for readiness. Legacy target times and "Faculty panel" never
+backfill these fields. Partial requirements are valid persisted data, not a ready AI input.
+
+POST and PATCH require `application/json`, a body of at most 8,192 bytes, exact fields,
+no duplicate keys, and strictly typed values. Revisions are integers 0–2,147,483,647;
+booleans/string numbers are invalid. PATCH locks the context and requires the current
+revision even for an identical-value request. Unchanged values leave the revision intact;
+changed values advance it once. An exhausted revision cannot advance. Creation retries
+must retain the context ID and deck ID and cannot reset current requirements.
+
+Invalid requests return 400; missing identities 404; conflicts 409; unexpected database
+failures 503. Errors are fixed `{error:{code,message}}`, without source data or raw
+exceptions. These endpoints retain the existing local unauthenticated pilot boundary.
+
+Mobile helper records are separate from JJ's existing presentation/run stores and are
+scoped by API address and local presentation identity. They preserve reserved context
+IDs across failed POSTs, validate server identity, ignore older revisions, and reject
+conflicting values at the same revision. No new UI is wired in Phase 1.
+
 ## Timeline
 
 The first event is the visible slide at actual audio start (`0` ms). Preserve chronological event order, including repeated/backward visits. Each visit is `[event.at_ms, next_event.at_ms)`; the last ends at `duration_ms`. Initially assign words by their start timestamp. An exact-boundary word belongs to the new slide; for simultaneous events, the last event wins. Validate word timestamps against duration. Keep the raw events/words for evaluation and refinement.

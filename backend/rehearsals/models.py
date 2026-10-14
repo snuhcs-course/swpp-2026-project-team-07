@@ -17,6 +17,22 @@ class Deck(models.Model):
         constraints = [models.UniqueConstraint(fields=["content_hash", "preparation_version"], name="unique_prepared_pdf")]
 
 
+class PresentationContext(models.Model):
+    """User requirements are independent of the deduplicated PDF and attempts."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    deck = models.ForeignKey(Deck, on_delete=models.PROTECT, related_name='presentation_contexts')
+    required_duration_seconds = models.PositiveIntegerField(null=True, blank=True)
+    audience = models.CharField(max_length=500, blank=True, default='')
+    revision = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [models.CheckConstraint(
+            condition=models.Q(required_duration_seconds__isnull=True) |
+                      models.Q(required_duration_seconds__gte=60, required_duration_seconds__lte=1800),
+            name='presentation_duration_range'),
+            models.CheckConstraint(condition=models.Q(revision__lte=2**31 - 1), name='presentation_revision_range')]
+
+
 class Slide(models.Model):
     deck = models.ForeignKey(Deck, on_delete=models.CASCADE, related_name="slides")
     slide_index = models.PositiveIntegerField()
