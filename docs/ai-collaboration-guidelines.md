@@ -31,6 +31,13 @@ The earlier [AI-use record](history/ai-use-before-prompt-consolidation-2026-10-0
 
 Keep notes to a sentence or two per field and combine related fields where useful. Several prompts can share one task entry. Link detailed diffs, tests and PR records instead of copying them.
 
+Seoyeon confirmed on October 15, 2026 that their own prompts in every iteration
+should use exactly `Seoyeon` in the contributor field, without a requester/requestor
+suffix. Use confirmed names for other contributors. The same request identified the
+Iteration 2 entries between Injoon's README task and Seoyeon's Phase 1 task as Jaewon's;
+those contributor fields use `Jaewon`. This attribution does not assert manual
+code authorship, review or acceptance.
+
 Update the same entry when a meaningful failure, revision or decision occurs. At handoff, record the incorporated result, checks and unresolved issues. At iteration close, every member confirms their entries and supplies missing edit notes; rotate the report writer.
 
 ## Accuracy and presentation

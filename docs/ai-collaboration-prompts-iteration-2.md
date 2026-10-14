@@ -104,7 +104,7 @@ Ok that looks good. I want you to push to branch and make PR.
 
 ## OutLoud app icon, October 13–14, 2026
 
-**Contributor:** unconfirmed · **Tool:** OpenAI Codex (web read, built-in image generation, SVG/Pillow) · **Model:** not recorded
+**Contributor:** Jaewon · **Tool:** OpenAI Codex (web read, built-in image generation, SVG/Pillow) · **Model:** not recorded
 
 - **Output and use:** Created a flat slide-stack and audio-waveform mark in `mobile/assets/icon.svg`, rendered its 1024 x 1024 PNG to `mobile/assets/icon.png`. Expo already points `app.json` at `./assets/icon.png`, so no config change was needed. The site `https://notbor.ing/works` informed the simple, playful icon direction; OutLoud's navy/coral palette comes from the supplied prototype's design system.
 - **Prompts, verbatim:**
@@ -219,7 +219,7 @@ Ok that looks good. I want you to push to branch and make PR.
 
 ## Gesture prototype UI redesign, October 14, 2026
 
-**Contributor:** not recorded · **Tool:** OpenAI Codex · **Model:** not recorded
+**Contributor:** Jaewon · **Tool:** OpenAI Codex · **Model:** not recorded
 
 - **Output and use:** Began a dark, warm visual redesign in the shared UI components, hid default route headers, and changed the library landing screen into a swipeable presentation-card carousel with a per-deck icon picker. Existing import, viewer, history, recording, and saved-review handlers remain connected. The app's actual PDF/recording/transcription/feedback services were not replaced with fixture behavior.
 - **Human decision:** The requester explicitly clarified that audio recording, transcription, PDF upload and other implemented features must carry forward; only UI/UX should change. This constrains the prototype's simulated feature behavior and upload limits.
@@ -238,7 +238,7 @@ it should still support the audio record and transcription and pdf upload etc. t
 
 ### Gesture prototype UI redesign — full replacement follow-up, October 14, 2026
 
-**Contributor:** not recorded · **Tool:** OpenAI Codex · **Model:** not recorded
+**Contributor:** Jaewon · **Tool:** OpenAI Codex · **Model:** not recorded
 
 - **Requester direction, verbatim:** The user clarified that the earlier partial UI pass should be replaced completely with the supplied newer Gesture Prototype. The UI/UX change must retain existing PDF import, recording, transcription, and other implemented functions.
 - **Output and use:** Replaced the warm palette with a dark, presentation-hue ambient theme; added the prototype's presentation carousel, per-presentation icon picker, gesture add/remove/undo affordances, PDF import screen, slide-centered rehearsal screen, slide navigation ticks and three-second record countdown, and a dark saved-review hierarchy with actual duration, speaking-rate and per-slide timing. Connected the redesigned routes to existing PDF import, capture/checkpoint/recovery, saved attempt, playback, transcription and feedback services. Replaced the previous sample full-ring Home metric with a neutral ring and real transcript word count. Kept the existing sample/debug results route labeled as fixture-only. The icon cards use native React Native shapes; the static SVG icon render was removed because `react-native-svg` is not installed in the workspace and offline package installation had no cached registry entry.
@@ -259,7 +259,7 @@ scrap every single button, layout, everything that was illustrated in the folder
 
 ## Design prototype UI rebuild, October 14, 2026
 
-**Contributor:** Jaewon Choi (requester) · **Tool:** Claude (Anthropic) in the Claude app, cloud workspace linked to the requester's Mac · **Model:** claude-opus-5-5 (configured model; the serving model was not separately recorded)
+**Contributor:** Jaewon · **Tool:** Claude (Anthropic) in the Claude app, cloud workspace linked to the requester's Mac · **Model:** claude-opus-5-5 (configured model; the serving model was not separately recorded)
 
 - **Output and use:**
   - Created `Desktop/OutLoud-Redesign`, a copy of this repository with the mobile UI rebuilt from the OutLoud design prototype made earlier in the same conversation (Home carousel, Upload/analysis, Rehearse, Compare, Review, Audience Q&A).
@@ -325,7 +325,7 @@ mac is up
 
 ## Android launch, responsiveness and PDF limits, October 14, 2026
 
-**Contributor:** unconfirmed · **Tool:** OpenAI Codex · **Model:** not recorded
+**Contributor:** Jaewon · **Tool:** OpenAI Codex · **Model:** not recorded
 
 - **Output and use:** Launched the redesign app on the connected Samsung Android phone through a local Expo development server. Reduced continuous Home icon animation and animated blur/shadow work as an unverified responsiveness adjustment. Raised the PDF boundary to 50 MiB, removed the explicit ten-slide cap across import, backend preparation, review validation, feedback and Q&A, and limited the rehearsal carousel to nearby slide cards. New feedback schema versions preserve old ten-slide wire schemas for saved selections. AI code markers are in `backend/rehearsals/limits.py`, `backend/rehearsals/services/feedback_provider.py`, `mobile/src/features/presentations/importer.ts` and `mobile/src/screens/RehearseScreen.tsx`.
 - **Verification (agent-operated):** Confirmed the Home screen rendered and the app process remained active on the physical phone; smoothness and a 50 MiB/many-slide import were not established on device. `npm run typecheck`, uncached ESLint and Python syntax parsing passed. A local ARM64 release APK assembled after the PDF changes, and its bundled strings include the 50 MiB wording; it was not installed on the phone. Rebuilt historical feedback schemas matched the original schema hashes for OpenAI and Gemini. No app test suite, live backend/provider check, human testing or human approval is recorded.
@@ -348,7 +348,7 @@ remove the limit of the pdf slides having to be only 10 slides and 20mb limit to
 
 ## Home gesture responsiveness and add preview, October 14, 2026
 
-**Contributor:** not recorded · **Tool:** OpenAI Codex · **Model:** not recorded
+**Contributor:** Jaewon · **Tool:** OpenAI Codex · **Model:** not recorded
 
 - **Requester direction:** Improve lag during page transitions and especially Home spinning and vertical gestures; restore the icon while dragging to add.
 - **AI-generated changes:** Replaced the two oversized, live SVG ambient gradients per presentation with one reusable 390 × 844 alpha PNG tinted for each hue. Removed animated blur from the moving Home carousel and kept the new-presentation preview above the dimmed cards so it stays sharp. Made the preview fade in sooner and limited mounted carousel cards to the front two positions on each side. No PDF, recording or transcription behavior was changed.
@@ -368,7 +368,7 @@ its laggy when transitioning pages and especially in the main page - when i spin
 
 ## Playback, transcription and Home visual corrections, October 14, 2026
 
-**Contributor:** not recorded · **Tool:** OpenAI Codex · **Model:** not recorded
+**Contributor:** Jaewon · **Tool:** OpenAI Codex · **Model:** not recorded
 
 - **Requester direction:** Restore original-app functions in the redesign, especially transcription and recording playback; correct visible presentation numbering after deletion; make the spinning hue transition and screen background fill the display without square edges or black borders; blur the Home background for icon selection while preserving performance.
 - **AI-generated and retained work:** Kept the redesigned screens and original upload/transcription/media services. Added saved-take playback from Home and Review with audio controls, validated local/downloaded audio, slide visits, timed transcript seeking, explicit upload/transcription/retry/refresh controls, optional PDF offline tools, server take-history refresh for locally known presentations, explicit AI suggestions, slide-evidence seeking and slide-description inspection/editing. The original provider disclosure and retry acknowledgement remain in the shared prompt layer. Corrected review validation for presentations beyond ten slides and made PDF decoding lazy when opening audio. Home labels and the add preview now use visible positions after deletion. Moved the ambient glow outside the scaled content frame and removed the glow layer's horizontal movement to make hue transitions full-bleed. Added a static blur to the Home layer behind the icon picker. Updated `README.md` and `REDESIGN.md` for the new controls and limits. Code changes were in `mobile/src/design/frame.tsx`, `mobile/src/screens/{AppShell,HomeScreen,ReviewScreen,TakePlayback}.tsx`, `mobile/src/features/rehearsal/{analysis,coaching}.tsx`, and `mobile/src/features/transcription/{nativeMediaValidation,resultValidation,useReviewMedia}.ts(x)`.
@@ -427,7 +427,7 @@ add animations (that wont affect the performance of the app) of the main menu ic
 
 ## Rehearsal recording choice and transcript playback, October 14, 2026
 
-**Contributor:** unconfirmed · **Tool:** OpenAI Codex · **Model:** not recorded
+**Contributor:** Jaewon · **Tool:** OpenAI Codex · **Model:** not recorded
 
 - **Requester direction:** Remove the take row and dark-looking band between the transcript and timer. Keep playback on transcript text. After a redo, require a choice between the current recording and overwriting it; use the existing compare screen and add no new pages.
 - **AI-generated work:** Removed the saved-take row and separate playback controls. Transcript text remains the tap target for sentence audio, including timed word taps in the existing recording-details sheet. The Review slide preview opens that sheet for media recovery and slide descriptions without a new page or visible button. Interrupted recordings are reachable by tapping the existing status beneath the timer; after recovery, they enter the active run or the same keep/overwrite decision. The existing Compare screen now presents Keep current and Overwrite, without its third Try again action; system Back keeps the current version. A new recording remains pending in the compare state until the user chooses, including after reopening the presentation. Each active slide points to one selected recording. Audio referenced by other slides remains stored, and the backend has no attempt-delete endpoint, so this is an active-selection rule rather than server-media deletion.
@@ -450,7 +450,7 @@ but yeah you may leave the playback still intact. but this will be done through 
 
 ## Transcript header playback, October 14, 2026
 
-**Contributor:** unconfirmed · **Tool:** OpenAI Codex · **Model:** not recorded
+**Contributor:** Jaewon · **Tool:** OpenAI Codex · **Model:** not recorded
 
 - **Requester direction:** Add a very small playback icon on the right side of the slide transcript.
 - **AI-generated work:** Added a small play/pause icon to the current slide transcript heading. It plays the selected recording's slide segments in order, including noncontiguous visits, using the existing local audio player. It is disabled when there is no selected recording or while capturing. Existing transcript-tap playback and the single selected take per slide remain in place.
@@ -466,7 +466,7 @@ add a small playback button on the right side of the slide 1 transcript - a very
 
 ## Home idle motion removal, October 14, 2026
 
-**Contributor:** unconfirmed · **Tool:** OpenAI Codex · **Model:** not recorded
+**Contributor:** Jaewon · **Tool:** OpenAI Codex · **Model:** not recorded
 
 - **Requester direction:** Remove the static movement on the main page.
 - **AI-generated work:** Removed the repeating float clock, icon translation and synchronized ground-shadow pulse from Home presentation cards, plus the new-presentation preview's idle float. Gesture-driven carousel, pull, press and navigation animations remain.
@@ -481,7 +481,7 @@ remove the static movement in the main page.
 
 ## Transcription check and redesign branch, October 14, 2026
 
-**Contributor:** unconfirmed · **Tool:** OpenAI Codex · **Model:** not recorded
+**Contributor:** Jaewon · **Tool:** OpenAI Codex · **Model:** not recorded
 
 - **Requester direction:** Try live transcription after configuring the backend API key, then upload the separate `OutLoud-Redesign` folder to a new GitHub branch named `front-end-design-JJ` from `main`.
 - **Agent-operated transcription check:** Confirmed that `OPENAI_API_KEY` is set in the ignored redesign `backend/.env` without displaying its value. Initially the local API was unavailable and Docker returned an internal error; the branch-upload request interrupted that first check. On resuming, the agent restarted Docker Desktop, started the database/API/worker and checked API health/readiness and a Celery worker ping. A 3.698-second generated speech clip passed the project's standalone Whisper adapter with nine timestamped words. The agent then uploaded a synthetic one-page PDF and that clip to the local API, requested processing, and observed a completed `speech` result with the same nine words and one slide visit. Provenance reported OpenAI `whisper-1`, generation 1, received outcome and the Silero speech gate. This was a synthetic backend and provider check, not an in-app phone transcription check.
@@ -512,7 +512,7 @@ Keep the synthetic-only result
 
 ## Redesign branch check repairs, October 14, 2026
 
-**Contributor:** unconfirmed · **Tool:** OpenAI Codex · **Model:** not recorded
+**Contributor:** Jaewon · **Tool:** OpenAI Codex · **Model:** not recorded
 
 - **Requester direction:** Repair the reported failures of `npm run check` and `python manage.py test` on `front-end-design-JJ`.
 - **Agent-operated reproduction:** Installed the branch's locked mobile dependencies with `npm ci`. `npm run check` passed TypeScript and lint but failed 3 of 168 unit tests. The branch's Django suite, run against the existing local Compose services, failed 4 of 286 tests. The failing assertions still expected a ten-slide ceiling, the previous Gemini coaching schema, or pending take coverage to become active before the user chose which recording to keep.
@@ -528,7 +528,9 @@ when added to git (as a branch), npm run check is a failure as well as run pytho
 
 ## Phase 1 AI-feedback foundation — October 15, 2026
 
-- **Context:** Contributor not recorded. Codex desktop (GPT-6; exact model identifier not recorded), with a separate reviewer agent. Isolated branch `it2/feature/ai_feedback` from `eeb3307a431e62d80b2b2d261420963193da22c3`. The user approved the phased plan and authorized Phase 1 only; no UI, Phase 2, commit, push or merge is authorized.
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex · **Model:** GPT-6 (exact identifier not recorded)
+
+- **Context:** Codex desktop (GPT-6; exact model identifier not recorded), with a separate reviewer agent. Isolated branch `it2/feature/ai_feedback` from `eeb3307a431e62d80b2b2d261420963193da22c3`. The user approved the phased plan and authorized Phase 1 only; no UI, Phase 2, commit, push or merge is authorized.
 - **Retained AI material:** Requirements/context model and strict API, additive migration, separate mobile requirements persistence and API client, canonical selected-run analysis-scope helper, tests and contract/phase documentation. Existing screens, runs, attempts, workers and provider paths remain unchanged.
 - **Verification:** Baseline: 168 mobile tests; 286 SQLite backend tests (19 skips). Final Phase 1 after review fix: `npm run check` passed typecheck/lint and 178 mobile tests; `npm run bundle:android` passed. Backend `manage.py check`, `test`, and `makemigrations --check --dry-run` with `config.test_settings` passed (297 tests, 20 skips). Disposable PostgreSQL 16: 297 tests passed (1 packaged-VAD dependency skip), including row-lock concurrency; migration drift check passed. Migration 0006→0007→0006→0007 preserved all synthetic deck/slide/attempt fields and did not backfill requirements. No live-provider calls, Redis/worker runtime checks, or device-flow claims; no worker behavior changed.
 - **Independent review:** Initial staged snapshot SHA256 `039c7f24ef3ade7883d1bde21b93a89b869461d92ff8e3a5690d15ff9142914c`: one P3 malformed-Unicode finding. Agent added backend/mobile failing regression tests, then rejected unpaired surrogates while preserving valid emoji/code-point limits. Fix snapshot `2733b9e0c82ad07557acedfb22013810e2ff480a41f9361348abef852081d849`: reviewer independently passed 11 backend context tests (1 PostgreSQL-only skip), 10 mobile requirements tests and whitespace check, and found no additional actionable issues. Reviewer did not independently rerun full suites, PostgreSQL migration/concurrency or Android export. Final documentation-only evidence updates receive a separate accuracy/diff review; staged runtime content is unchanged from the fix snapshot. Human inspection remains pending.
@@ -640,12 +642,16 @@ This is a scope update, not authorization to begin the next phase. Preserve the 
 
 ## Phase 1 local commit — October 15, 2026
 
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex · **Model:** GPT-6 (exact identifier not recorded)
+
 - **Request — verbatim:** `commit phase 1`
 - **Tool:** Codex desktop, GPT-6 (exact model identifier not recorded).
 - **Action and verification:** Verified the staged patch SHA256 still matched independently reviewed snapshot `b0310a45634be80b6f3b98cb1cf89351604774e95d969955a80dafe3e29ce46f`. Reused unchanged-content test/review evidence, checked the staged diff and committed exactly those 13 files as `2bd6cd2ad7128bb30d59da8dae818b5bdb01d66c` (`feat(ai-feedback): add phase 1 requirements`). The committed parent-to-commit binary patch has the same SHA256; the index is empty afterward. User authorization covers this local commit, not a push or merge.
 - **Remaining:** Later UI-scope/phase-status documentation updates and this commit record remain unstaged. No Phase 2 code, new UI, push or merge. Git used its existing automatically inferred committer identity; configuration was not changed. No additional tests were run because reviewed/tested runtime content was unchanged.
 
 ## Phase 2 cached slide profiles and cues — October 15, 2026
+
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex · **Model:** GPT-6 (exact identifier not recorded)
 
 - **Context:** Codex desktop, GPT-6 (exact model identifier not recorded). Continuing the isolated `it2/feature/ai_feedback` checkout at Phase 1 commit `2bd6cd2`. The only pre-existing unstaged changes were the approved UI-scope/commit-status documentation; preserved and incorporated into this phase ledger. User authorized Phase 2 only, with inspection gates and no commit/push/merge.
 - **Actual prompt:**
@@ -665,6 +671,8 @@ start phase 2
 
 ## Phase 2 physical-phone launch — October 15, 2026
 
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex · **Model:** GPT-6 (exact identifier not recorded)
+
 - **Context:** Codex desktop, GPT-6 (exact model identifier not recorded). User requested physical-phone launch and a testing checklist. No product-code changes, commit, push, merge or later-phase work. This new device-evidence entry is unstaged; the independently reviewed Phase 2 staged snapshot remains unchanged.
 - **Actual prompt (trailing whitespace omitted):**
 
@@ -678,6 +686,8 @@ What should i test for on physical phone and run the new changes in the physical
 
 ## Phase 2 real-provider phone switch — October 15, 2026
 
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex · **Model:** GPT-6 (exact identifier not recorded)
+
 - **Actual user answers:** `Use real AI; I’ll provide project ID and RPM/TPM limits`; supplied project ID (redacted from this log); `5 rpm 20,000 tpm`.
 - **Scope:** Runtime setup and bounded physical-phone verification only, using the verify-and-stop skill. No product implementation, quota increase, commit, push, merge or later-phase work. This new evidence is unstaged; the reviewed staged patch remains unchanged.
 - **Configuration:** Replaced the temporary synthetic adapters with unmocked API/worker/Beat processes on the same isolated PostgreSQL/Redis services. Runtime reads the existing backend OpenAI key directly into process memory and uses the provided nonsecret project identity, 5 RPM, 20,000 TPM and configured/default `gpt-6-luna`. Did not change or copy the original `.env`, expose credentials, alter product code or increase limits. Services remain running for user testing.
@@ -686,6 +696,8 @@ What should i test for on physical phone and run the new changes in the physical
 - **Remaining limits:** This verifies real transport, durable normalization/cache and phone display for one bounded synthetic chart, not broad graph/mixed-language quality or human acceptance. Larger presentations remain blocked by the conservative quota estimator at 20,000; no product fix or larger application allowance has been authorized. Local API/worker/Beat/Metro and USB forwarding remain active for the phone session.
 
 ## Phase 2 phone runtime recovery and full-deck test — October 15, 2026
+
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex · **Model:** GPT-6 (exact identifier not recorded)
 
 - **Actual prompts:**
 
@@ -713,6 +725,8 @@ Cues work, transcript works what other things to check to finish phase 2
 The user confirms working cues and transcript on the physical phone. This establishes those flows only, not cue factual quality, audible playback, offline/cold-reopen persistence, long-text usability or accepted/rejected retake regressions. Remaining human checklist and final inspection are pending; no advancement or commit is authorized by this confirmation.
 
 ## Phase 2 Must Cover / Go Deeper revision — October 15, 2026
+
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex · **Model:** GPT-6 (exact identifier not recorded)
 
 - **Context:** User explicitly requests implementation and permits an in-panel category selector. This authorization covers the bounded schema/UI choices below; no additional design gate, Phase 3, held requirements sheet, commit/push/merge or new screen. Existing staged Phase 2 and unstaged device evidence are preserved.
 - **Actual pasted request (verbatim):**
@@ -956,6 +970,8 @@ Both categories must be specific, useful, non-redundant, and appropriately groun
 
 ## Phase 2 short cues and expandable details — October 15, 2026
 
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex · **Model:** GPT-6 (exact identifier not recorded)
+
 **User request:**
 
 ```text
@@ -991,3 +1007,54 @@ Aslo now some slides have no cues at all
 - **Real-provider evidence:** same two saved source inputs evaluated under v4. Small chart completed with an eight-word numerical objective. First six-slide response had one 16-word food cue and was rejected rather than silently truncated; one explicit revisioned retry completed. All five readable content slides now have one or two Must Cover points (8–15 words across the two sources), with a 12-word optional cross-slide connection and no linking rationale. Title remains empty. Details/evidence remain separate from the short text. [Quality evaluation](phase-2-cue-quality.md) records outputs, counts, paid retry and limits. Several descriptive cues still summarize visible content; semantic non-redundancy and usefulness remain for human assessment.
 - **Android evidence:** existing emulator build read the successful v4 scope. Verified short heritage cue, collapsed Details by default, explicit expansion into grounded evidence and scroll containment within the cue area; recording controls remained visible. Renderer tests verify expansion and reset on navigation. Local screenshots: `/private/tmp/phase2-concise-current.png` (collapsed) and `phase2-concise-details-expanded.png`. No recording or transcript was modified. Physical-phone/human acceptance remains pending; existing Metro/API remain available for testing.
 - **Boundary:** staged only on the isolated `it2/feature/ai_feedback` checkout. No commit, push, merge, Phase 3 work or held UI design. Prior Phase 2 observations and receipts are retained as historical evidence; v4 is the current implementation.
+
+## Phase 2 local commit and contributor correction — October 15, 2026
+
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex · **Model:** GPT-6 (exact identifier not recorded)
+
+- **Output and use:** On the user's `commit` instruction, committed the exact reviewed Phase 2 patch as `67a240a1c74ff8dbeb793394f21aa320c46e522d` (`feat(it2): add grounded presentation cue categories`). Added Seoyeon's confirmed attribution to this task's eight Phase 1/2 entries and the AI-use index. Following the subsequent name-format correction, contributor fields use exactly `Seoyeon`; twelve contributor fields between Injoon's README task and Seoyeon's Phase 1 task use the user-confirmed `Jaewon`. Saved the future-iteration naming rule in `AGENTS.md` and the reporting guide. Existing prompts and task evidence remain unchanged.
+- **Verification:** Before and after commit, the binary diff matched reviewed SHA-256 `fd02729365f6a19e9c3fba899b26d812f72afff74908b7066f080b55b18826e4`; the isolated checkout was clean afterward. Contributor/status corrections are documentation-only local edits, not part of that commit. Prior task prompts and earlier contributor records were checked for preservation; no application tests were needed for these attribution edits.
+- **Errors and revisions:** Codex omitted the requester attribution when the person's name was unconfirmed. Seoyeon explicitly supplied the name, so only the name was previously unknown; the human contribution was not unconfirmed. The AI-use index's stale “staged” status was also corrected without rewriting historical verification records.
+- **Human decisions:** Seoyeon requested the feature scope, revisions, tests and commit, supplied the contributor name, and specified the exact future naming rule and Jaewon's intervening entries. This attribution identifies the human contributor and decisions; it does not invent human code edits, teammate review or acceptance of untested flows. The subsequent `commit phase 2` instruction authorizes committing these remaining documentation corrections separately from the existing Phase 2 implementation commit; no push, merge or next-phase work is authorized.
+
+### Prompts and contributor confirmation — verbatim, in order
+
+```text
+commit
+```
+
+```text
+is ai use being updated constantly?
+```
+
+```text
+why are formats different between recrodings
+```
+
+```text
+like our format is different from past ones
+```
+
+```text
+on ai collabroation prompts
+```
+
+```text
+Why arent u recording me as contributor?
+```
+
+Answer to “What name should I use for you in the contributor field of the Iteration 2 AI-feedback entries?”:
+
+```text
+Seoyeon
+```
+
+Additional attribution instruction — verbatim:
+
+```text
+make sure from now on on any iteration when u update ai use document u put as contributor my name for my prompts and just pu t Seoyeon not Seoyeon (requestor) also update the ones between Injoon and Seoyeon as Jaewon for contributor
+```
+
+```text
+commit phase 2
+```
