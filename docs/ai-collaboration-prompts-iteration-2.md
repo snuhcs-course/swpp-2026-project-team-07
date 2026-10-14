@@ -509,3 +509,19 @@ Phone unlocked; continue
 ```text
 Keep the synthetic-only result
 ```
+
+## Redesign branch check repairs, October 14, 2026
+
+**Contributor:** unconfirmed · **Tool:** OpenAI Codex · **Model:** not recorded
+
+- **Requester direction:** Repair the reported failures of `npm run check` and `python manage.py test` on `front-end-design-JJ`.
+- **Agent-operated reproduction:** Installed the branch's locked mobile dependencies with `npm ci`. `npm run check` passed TypeScript and lint but failed 3 of 168 unit tests. The branch's Django suite, run against the existing local Compose services, failed 4 of 286 tests. The failing assertions still expected a ten-slide ceiling, the previous Gemini coaching schema, or pending take coverage to become active before the user chose which recording to keep.
+- **AI-generated revision:** Updated the affected tests to assert the current unlimited positive slide count, the current Gemini schema, and unchanged active coverage while a replacement take is pending. No app or backend runtime code was changed.
+- **Agent-operated verification:** A fresh `npm run check` passed TypeScript, Expo lint and all 168 mobile tests. The full Django suite ran against the repaired branch code in a temporary Compose container and passed all 286 tests. `git diff --check` passed. These checks do not establish an Android build or human/device acceptance. Runtime source was unchanged, so no Android build was run. The agent reviewed the focused test diff; a separate AI reviewer was unavailable for this test-only change.
+- **Publication:** Committed the six repaired test files as `083091c` and pushed them to `front-end-design-JJ` through the signed-in GitHub Desktop app. `git ls-remote` independently confirmed the remote branch at `083091c37523b3c8116640e042dd235788e4abc0`. No pull request or merge was created.
+
+### Prompt — verbatim
+
+```text
+when added to git (as a branch), npm run check is a failure as well as run python manage.py test failed
+```
