@@ -121,6 +121,90 @@ Mobile Analyze requires a recording known to the current API, established by its
 
 ## Durable slide descriptions (checkpoint 2)
 
+### Iteration 2 Phase 2 — immutable slide profiles
+
+`GET /decks/{deck_id}/profiles/` returns the same bounded `DescriptionState`
+envelope as descriptions, but in the independent current profile scope. Optional
+`description_set_id` selects a saved profile belonging to that deck; selecting an
+ordinary description set returns 400. GET never admits work. `POST
+/decks/{deck_id}/profiles/generate/` accepts the existing strict generation/retry
+body and returns 200 completed or 202 retained/active state. Failed or uncertain
+initial lookup retains its existing state without retrying. Explicit retries
+require the saved set ID and processing revision; uncertain work also requires
+`acknowledge_uncertain: true`. Stale retry revisions conflict. Quotas, receipts,
+lease fencing and broker/Beat recovery are shared with descriptions.
+
+Successful PDF upload automatically admits the current profile scope when provider
+configuration and source preparation are valid. AI admission failure does not fail
+PDF import. Repeated uploads reuse exact source/provider/project/model/prompt/schema
+scopes, including failed and uncertain jobs; no blind resubmission. Existing decks
+without profiles can use explicit generation. Requirements, recordings, selected
+takes, playback and reads neither invalidate profiles nor create jobs.
+
+Current profile prompt version is `slide-profile-v4`; schema versions are
+`slide-profile-v4` (OpenAI) and `slide-profile-gemini-v4` (Gemini). Historical
+v1 flat profiles, v2 category pilot profiles, and description scopes, payloads and
+prompt digests remain unchanged. v3 refines the pilot prompt after live evaluation;
+v2, v3 and v4 share the category structure but have different immutable job scopes.
+v4 adds concise generation and a hard maximum of 15 whitespace-separated words
+in each cue's `text` (both categories); prior versions retain their original limits.
+Profiles use
+the existing JSON persistence, with no migration. PATCH through the description
+endpoint rejects profile scopes with 409 `immutable_profile`.
+
+Each profile has the ordinary `deck_id`, `slide_index`, `source_id`, `summary`,
+`key_ideas` and `visual_facts`, plus `slide_kind` (`title`, `content`, `closing`,
+`unknown`). Historical v1 profiles retain `cues` (zero to four, ordered); current
+v2 profiles instead require `must_cover` and `go_deeper`, each zero to three ordered
+items. Must Cover expresses essential speaking objectives rather than scripts or
+bullet summaries. Each Must Cover item is
+`{text, evidence_refs}`: nonblank text up to 400 Unicode codepoints and one to
+five distinct references to existing **certain** facts (`summary`,
+`key_ideas/0..4`, `visual_facts/0..4`). Duplicate cue text, unsupported references,
+uncertain evidence, missing fields, invalid Unicode or extra model fields fail
+the entire generated profile. Existing source, fact, slide completeness and 64 KiB
+output limits apply. Gemini omits wire array bounds while local validation retains
+them. Graph axes, units, numerical values and trends are retained as visual facts;
+ambiguous readings carry uncertainty and cannot ground cues.
+
+Each Go Deeper item is `{text, kind, evidence_refs, information_needed}`. Text is
+nonblank and at most 400 codepoints; `kind` is `connection` or `question`.
+References are one to five distinct objects `{slide_index, source_id, fact_ref,
+quote}` identifying certain facts on any slide in this same complete profile
+response. `quote` must exactly equal the referenced fact's text. Unknown slide,
+source, fact, uncertain fact or mismatched quote rejects the whole response.
+`information_needed` is empty for supported connections; questions require a
+nonblank description of the missing evidence, at most 400 codepoints. Questions
+must frame unsupported answers as investigations, not established causes/results.
+Canonical exact duplicates across categories and verbatim fact restatements are
+rejected. These structural checks do not prove semantic entailment or detect all
+paraphrased redundancy; prompt rules, live evaluation and human judgment remain
+necessary. Optional suggestions never become mandatory coverage findings.
+
+Source or selection changes select a new scope and mark saved profiles stale.
+Old snapshots remain available by set ID. Mobile uses a separate
+`slide-profiles:v1:<encoded API>:<deck UUID>` cache, validates identities/evidence,
+retains successful cached cues offline and prevents reversed refreshes from
+restoring an older scope. JJ's existing cue panel shows distinct unavailable,
+pending, failed, confirmation-required, stale, insufficient-evidence and successful
+states. A compact essential/optional selector reuses the existing Rehearse area;
+empty categories remain empty. Historical v1 cues remain parseable in cache but
+are never relabeled Must Cover: the panel offers explicit updated generation.
+Reading/reopening never admits replacement jobs. No keyword heuristic is presented
+as an AI cue or confirmed omission. Server unavailable responses without a
+replacement set expose their current state while retaining the last complete
+offline payload. Confirmed absent/source-unavailable scopes or changed selection
+identity persist its stale marker. Historical v2 pilot caches also show outdated
+status under newer prompts, even offline; replacements always require explicit admission.
+Current cue text expresses one concise speaking objective; no linking rationale
+is appended. Evidence quotes and missing-information details remain stored and
+are collapsed behind an in-panel Details control, including during recording.
+Details reset on slide/category/profile changes. Content slides are encouraged
+to have meaningful central-message or contrast objectives before returning an
+empty collection; sparse or unreadable slides may still be empty without padding.
+
+### Existing description contract
+
 These separate routes preserve existing deck responses, Whisper requests, upload
 and transcription. Current attempt processing still saves legacy `feedback=[]`,
 `feedback_state=disabled`; checkpoint 3 adds independent `AttemptResult.feedback_analysis`

@@ -602,3 +602,392 @@ Stop after presenting the exact staged diff and verification evidence. Do not pr
 ```text
 Start Docker and run isolated verification
 ```
+
+## Iteration 2 UI scope update — October 15, 2026
+
+- **Context:** Codex desktop, GPT-6 (exact model identifier not recorded); contributor not recorded. Documentation-only update on `it2/feature/ai_feedback`. The preceding Phase 2 request reached inspection only before this scope update; no Phase 2 application changes have been made.
+- **Retained material:** Updated the approved phased contract to permit additional transcript correction controls in Phase 4 and a redesigned problem-summary layout within JJ's existing Review experience in Phase 5. Added Android/state/interaction acceptance checks, preserving the selected-run model and existing phase gates. The requirements sheet, other new screens and unrelated redesigns remain held.
+- **Verification:** Reviewed the documentation delta for consistency with the request and checked links/whitespace. Existing Phase 1 runtime files and staging are preserved. No app tests/builds were rerun solely for this prose change; prior verification does not establish the future UI implementations.
+- **Status:** UI scope is authorized for its respective phases; no phase advancement, UI implementation, commit, push or merge occurred in this update. Human inspection remains pending.
+
+### Preceding Phase 2 request — verbatim
+
+```text
+implement phase 2
+```
+
+### Scope-update request — verbatim
+
+```text
+Update the approved Iteration 2 phased implementation plan with the following UI scope changes.
+
+**Newly authorized UI work:**
+
+1. Phase 4 — Additional transcript correction controls may be designed and implemented. Extend JJ's existing transcript editor where practical. Support AI suggestions, replacement selection, custom corrections, and keeping the original transcript.
+2. Phase 5 — The problem-summary layout may be redesigned and implemented within JJ's existing Review experience. Display zero to four prioritized findings per recorded slide, with supporting evidence, relevant playback navigation, and distinct pending, failed, insufficient-evidence, and successful states.
+
+Keep both implementations consistent with JJ's existing visual language and selected-run architecture. Prefer modifying existing components over adding unnecessary screens.
+
+**Still held:**
+
+- Presentation requirements sheet
+- Any other new screens or unrelated UI redesigns
+
+Integrate the newly authorized UI work into Phases 4 and 5 respectively, with appropriate Android and interaction tests.
+
+This is a scope update, not authorization to begin the next phase. Preserve the existing phased approval gates, and do not commit, push, or merge without authorization.
+```
+
+## Phase 1 local commit — October 15, 2026
+
+- **Request — verbatim:** `commit phase 1`
+- **Tool:** Codex desktop, GPT-6 (exact model identifier not recorded).
+- **Action and verification:** Verified the staged patch SHA256 still matched independently reviewed snapshot `b0310a45634be80b6f3b98cb1cf89351604774e95d969955a80dafe3e29ce46f`. Reused unchanged-content test/review evidence, checked the staged diff and committed exactly those 13 files as `2bd6cd2ad7128bb30d59da8dae818b5bdb01d66c` (`feat(ai-feedback): add phase 1 requirements`). The committed parent-to-commit binary patch has the same SHA256; the index is empty afterward. User authorization covers this local commit, not a push or merge.
+- **Remaining:** Later UI-scope/phase-status documentation updates and this commit record remain unstaged. No Phase 2 code, new UI, push or merge. Git used its existing automatically inferred committer identity; configuration was not changed. No additional tests were run because reviewed/tested runtime content was unchanged.
+
+## Phase 2 cached slide profiles and cues — October 15, 2026
+
+- **Context:** Codex desktop, GPT-6 (exact model identifier not recorded). Continuing the isolated `it2/feature/ai_feedback` checkout at Phase 1 commit `2bd6cd2`. The only pre-existing unstaged changes were the approved UI-scope/commit-status documentation; preserved and incorporated into this phase ledger. User authorized Phase 2 only, with inspection gates and no commit/push/merge.
+- **Actual prompt:**
+
+```text
+start phase 2
+```
+
+- **Generated/retained work:** Independent immutable profile schemas reuse the existing image-aware description jobs, locks, quotas, receipts and recovery. Added profile API/automatic admission after PDF POST, strict zero-to-four grounded cues and profile cache/client/hook integration into JJ's existing Rehearse cue control. Historical description/coaching schemas and prompt digests remain unchanged. Added synthetic backend/API/receipt/concurrency and mobile validation/cache/order tests.
+- **Rulings:** Graph structure is retained in existing uncertain visual facts (axes/units/values/trends), rather than introducing redundant graph tables. Profiles are stored in existing DescriptionSet JSON under separate versioned scope identities; no migration. Only PDF POST auto-admits; reopening/GET/polling/retakes never generate. Legacy/configuration-delayed imports can explicitly generate from the existing cue status. Initial generation has no consent dialog; uncertain charged retries reuse the existing Dialog and revision contract. No requirements sheet or other new screen is implemented.
+- **Development verification:** New module tests first failed because the profile functionality did not exist. A reversed-response regression failed before cache request fencing and passed afterward. TypeScript and React hook lint errors were corrected before running the complete mobile gate. A receipt-recovery test was corrected to invoke the existing Beat recovery step before reclaiming its expired lease; direct duplicate task delivery does not release a live claim.
+- **Automated verification:** `mobile/npm run check` passed TypeScript, lint and 185 tests; `npm run bundle:android` passed. Backend project Python: `manage.py check --settings=config.test_settings`, `makemigrations --check --dry-run --settings=config.test_settings`, and full `test --settings=config.test_settings --noinput` passed (306 tests, 21 skips). Disposable PostgreSQL 16 full suite passed (306 tests, one existing packaged-VAD dependency skip); PostgreSQL migration drift check reported no changes. All six historical description schema/prompt hash pairs matched the pre-change baseline. New tests cover unsupported/uncertain cue evidence, bounded/sparse output, immutability, API validation, import resilience, source invalidation, PostgreSQL admission race, receipt recovery and mobile cache/hook behavior.
+- **Real worker verification:** Temporary PostgreSQL 16 and Redis 7, separate localhost API/Celery worker, synthetic three-page graph PDF and explicitly fake provider. The worker exited 75 after saving its receipt. After aging its claim and invoking the existing recovery mechanism, a restarted real worker with generation disabled and no provider key normalized that saved receipt to completed revision 1, cue counts `[0,3,0]`. Repeated PDF POST, reads, requirement contexts with different audience/duration, and duplicate Celery task delivery retained one profile set/job/request and exactly one synthetic provider call. No attempts/audio/Whisper records were created; PDF bytes were preserved. Temporary API/worker/Metro processes and containers/anonymous volumes were removed after verification. Original Metro/worktree and phone were not changed.
+- **Android verification (agent-operated):** The emulator's previously installed client lacked JJ's existing ExpoSpeech native module. Generated an ignored native project and built with the documented provisioned JDK 17: `./gradlew :app:assembleDebug -PreactNativeDevServerPort=8082 -PreactNativeArchitectures=arm64-v8a` succeeded (537 tasks); `adb install -r` preserved existing app data. From isolated Metro/API, imported only the synthetic PDF via the real document picker; verified title zero-cue state, graph's three grounded cues, existing slide selector and cue toggle. Removed API forwarding, force-stopped/reopened the app and verified persisted graph cues with the explicit offline refresh error. No recording, private media upload, phone test, TalkBack or human cue-quality assessment. Synthetic PDF remains labeled in the emulator for inspection.
+- **Independent AI review:** Separate fresh-context reviewer checked immutable staged snapshot `ef006cb09676ef8e40218dc4512855ca88be15c5cc85d5b883523c4b168e8f48` against contracts/source; no production defect found. Independently ran 9 backend profile tests (one PostgreSQL skip) and initial four mobile profile tests. Review of three added mobile tests found a test-isolation defect: the confirmation test depended on a previous test's deck mapping. Author reproduced its isolated failure, added a unique mapping inside that test, and reran the complete mobile gate. Reviewer independently verified the corrected name-filtered test (1/1) and complete profile test file (7/7), with no further actionable finding. The full PostgreSQL/worker/native results above are author-operated evidence, not independent or human testing.
+- **Outstanding limits:** No live-provider call; graph interpretation/usefulness and mixed-language quality need later controlled/human evaluation. JJ's existing explicit coaching still uses a separate legacy description scope and may make its own image scan; the Phase 5 feedback pipeline will consume profiles. The one-call result above verifies this profile scope, not all existing provider features. Android checks used synthetic successful/empty/offline states; failed/uncertain retry, stale responses and confirmation generations have automated validation/hook tests, not full rendered Android acceptance. Existing selected-run regression suites pass; no new recorded retake/device microphone test was performed. Requirement-entry UI and all later phases remain held behind their existing approval gates. No commit/push/merge or Phase 3 advancement.
+
+## Phase 2 physical-phone launch — October 15, 2026
+
+- **Context:** Codex desktop, GPT-6 (exact model identifier not recorded). User requested physical-phone launch and a testing checklist. No product-code changes, commit, push, merge or later-phase work. This new device-evidence entry is unstaged; the independently reviewed Phase 2 staged snapshot remains unchanged.
+- **Actual prompt (trailing whitespace omitted):**
+
+```text
+What should i test for on physical phone and run the new changes in the physical phone
+```
+
+- **Environment/decision:** Connected Galaxy S23 Ultra (`SM_S918N`) was authorized for USB debugging. Existing backend feedback was disabled and lacked project/quota settings; checked credential presence only, without exposing values. Asked whether to use a synthetic demo, real configured AI, or disabled AI. No answer had arrived before launch; proceeded with the stated temporary synthetic assumption. Did not modify the existing `.env`, enable real-provider credentials, or fabricate real AI results. Temporary API and worker adapters accept only the SHA-matching labeled synthetic PDF and profile schema; other AI inputs are rejected. Transcription is not configured for this temporary demo.
+- **Performed:** Reused the previously verified ARM64 development APK (`f8c2f0f479d483cecf78e07cfa899bd9daf67bd1c6bbb5df9c9e4878d7824ae5`), installed with `adb install -r`, preserving existing app data. Started separate Metro 8082, local API 58000, disposable PostgreSQL/Redis and worker; added USB forwards for the phone. Imported `phase2-synthetic.pdf` through the physical phone's real picker and opened slide 2's Cues panel. Observed all three graph cues and existing slide/record controls. API readiness reported reachable database/broker; completed job proves actual worker processing beyond readiness alone. One profile job/request/synthetic call, cue counts `[0,3,0]`, no existing recordings uploaded (`Attempt` count 0 at verification).
+- **Handoff:** Phone left on the synthetic graph cue screen with services running for human tests. Checklist in `/private/tmp/phase2-phone-test-checklist.md`; screenshot `/private/tmp/phase2-phone-graph-cues.png`. Human cue toggle/navigation/readability/scrolling, cold reopening, controlled offline refresh and local recording/playback tests remain pending. This session does not establish real AI graph quality, physical-phone offline persistence, long-cue usability, TalkBack, retake/transcription integration or human acceptance.
+
+## Phase 2 real-provider phone switch — October 15, 2026
+
+- **Actual user answers:** `Use real AI; I’ll provide project ID and RPM/TPM limits`; supplied project ID (redacted from this log); `5 rpm 20,000 tpm`.
+- **Scope:** Runtime setup and bounded physical-phone verification only, using the verify-and-stop skill. No product implementation, quota increase, commit, push, merge or later-phase work. This new evidence is unstaged; the reviewed staged patch remains unchanged.
+- **Configuration:** Replaced the temporary synthetic adapters with unmocked API/worker/Beat processes on the same isolated PostgreSQL/Redis services. Runtime reads the existing backend OpenAI key directly into process memory and uses the provided nonsecret project identity, 5 RPM, 20,000 TPM and configured/default `gpt-6-luna`. Did not change or copy the original `.env`, expose credentials, alter product code or increase limits. Services remain running for user testing.
+- **Preflight limitation:** The existing quota policy reserves UTF-8 JSON/image bytes plus output allowance, not actual provider tokens. The three-slide synthetic deck requires 66,044 units; the six-slide deck present in this isolated phone database requires 3,513,825. Both exceed 20,000 and cannot pass the guard at the supplied setting. Did not submit them to OpenAI or silently retry uncertain prior synthetic outcomes.
+- **Real verification:** Created a labeled small one-slide synthetic chart fitting the guard (14,259 reserved units). One unmocked OpenAI profile request returned HTTP 200 and completed revision 1 with one grounded cue comparing 2025:20 and 2026:40. Persisted usage: 828 input tokens, 458 output tokens, 1,286 total. Imported that PDF via the real physical-phone picker; existing scope/cache reused the same one paid request. The actual cue is visible on the Galaxy S23 Ultra. Screenshot `/private/tmp/phase2-real-phone-cue.png`, safe receipt metadata `/private/tmp/phase2-real-verification.json`; raw response/credentials are not recorded here.
+- **Remaining limits:** This verifies real transport, durable normalization/cache and phone display for one bounded synthetic chart, not broad graph/mixed-language quality or human acceptance. Larger presentations remain blocked by the conservative quota estimator at 20,000; no product fix or larger application allowance has been authorized. Local API/worker/Beat/Metro and USB forwarding remain active for the phone session.
+
+## Phase 2 phone runtime recovery and full-deck test — October 15, 2026
+
+- **Actual prompts:**
+
+```text
+Transcript and Ai cues dont work and how do you replay your recroding
+raise limits so that we can run afull tests
+```
+
+- **Actual approval reply:** `Approve full worker and recording retry`, to the question explicitly naming the full-dependency Docker worker, access to the stored backend key and isolated media/database, and retry of the saved 53-second recording through Whisper with possible charges.
+- **Diagnosis:** Host worker was missing Torch and Silero VAD. Persisted `audio_check_failed` at `checking_audio`, with zero prior transcription provider submissions. Full-deck cues failed `request_exceeds_quota`. Existing slide-header playback is independent of a successful transcript; transcript-word sentence playback requires transcript text. Used investigate-first/systematic-debugging workflows and safe state/count queries rather than logging source audio/transcript.
+- **Authorization boundary:** Automatic approval review initially rejected the worker replacement because credential/media mounts could submit existing recordings and incur charges. No workaround was used. Asked for the exact runtime/recording action and continued only after the explicit approval above.
+- **Runtime repair:** Used the existing `onloud-whisper-deps:validation` image with current backend source read-only, credential file read-only, isolated recording/media read-only, and existing isolated PostgreSQL/Redis. Packaged ONNX gate loads offline; Torch 2.10.0, Silero 6.2.0, ONNX Runtime 1.23.2, Django 5.2.17, Celery 5.6.3, Pydantic 2.13.5 and OpenAI 2.54.0 match the current locked requirements. Did not install into/change the shared host Python environment or original `.env`.
+- **Authorized limit change:** Raised only temporary application quota allowance to 4,000,000 byte-based reservation units/minute, keeping 5 RPM. OpenAI's project quota was not changed. Provider cooldown/error handling and durable receipts remain active; this is a runtime allowance change, not a product quota-estimator repair.
+- **Verified recovery:** One authorized revision-fenced recording retry completed with 105 transcript words and one actual Whisper submission. The current six-slide profile completed with cue counts `[1,2,3,3,3,3]`; one actual OpenAI submission for that full-deck profile, prior local quota failures had none. Phone visibly showed the recovered slide transcript. Focused `rehearsals.test_speech_gate` in the repaired container passed all 3 tests including the packaged model test. Safe final receipt/count evidence: `/private/tmp/phase2-full-phone-recovery.json`.
+- **Playback/handoff:** Explained Review swipe-down → slides → Cues off → triangle beside transcript heading, and transcript-word sentence playback. Phone navigation changed to Review during the attempted playback check, and Android package UID parsing failed; no successful native/audible playback is claimed. Left human navigation alone and playback listening confirmation pending. No product code/new UI/later phase changes, commits, pushes or merges. Runtime services remain active for the user's tests; this evidence is unstaged and the reviewed staged implementation remains unchanged.
+
+### Human phone confirmation — October 15, 2026
+
+Actual prompt:
+
+```text
+Cues work, transcript works what other things to check to finish phase 2
+```
+
+The user confirms working cues and transcript on the physical phone. This establishes those flows only, not cue factual quality, audible playback, offline/cold-reopen persistence, long-text usability or accepted/rejected retake regressions. Remaining human checklist and final inspection are pending; no advancement or commit is authorized by this confirmation.
+
+## Phase 2 Must Cover / Go Deeper revision — October 15, 2026
+
+- **Context:** User explicitly requests implementation and permits an in-panel category selector. This authorization covers the bounded schema/UI choices below; no additional design gate, Phase 3, held requirements sheet, commit/push/merge or new screen. Existing staged Phase 2 and unstaged device evidence are preserved.
+- **Actual pasted request (verbatim):**
+
+```text
+# OutLoud Iteration 2 — Improve AI Cues: Must Cover & Go Deeper
+
+## Objective
+
+Revise the existing Phase 2 AI cue system to provide two distinct categories of presentation guidance:
+
+1. **Must Cover:** Essential explanations that the presenter should communicate for the audience to understand the current slide.
+2. **Go Deeper:** Optional additional explanations that enrich the presentation beyond what is explicitly shown on the slide.
+
+The current implementation often generates cues that merely restate slide content. The objective is to make AI cues genuinely useful for preparing what to say, not simply summarizing the presentation.
+
+Implement this as a focused Phase 2 improvement. Do not advance to Phase 3.
+
+## 1. Must Cover — Essential explanations
+
+**Definition:** The minimum essential information that a presenter should verbally communicate for the audience to understand the slide's main message.
+
+Requirements:
+
+- Generate 0–3 Must Cover points per slide.
+- Every point must be directly grounded in the current slide's text, charts, diagrams, or other visual evidence.
+- Focus on understanding and interpretation, not simply repeating the visible content.
+- Prioritize the main argument, essential comparisons, numerical interpretations, and conclusions.
+- Do not generate a cue for every bullet point.
+- Avoid generic instructions such as "Explain this slide."
+- Do not invent missing facts or interpretations.
+- A slide may have zero Must Cover points if no meaningful verbal explanation is necessary.
+
+Example:
+
+Slide: Accuracy increased from 80% to 92%.
+
+Bad:
+- "Accuracy increased from 80% to 92%."
+- "The model has higher accuracy."
+
+Good:
+- "Clarify that the improvement is 12 percentage points, rather than a 12% relative improvement."
+- "Explain what the comparison establishes about the proposed model."
+
+Must Cover points should express essential speaking objectives rather than a script the presenter must repeat word for word.
+
+## 2. Go Deeper — Additional enriching explanations
+
+**Definition:** Optional explanations, insights, connections, or perspectives that could make the presentation more informative, convincing, or engaging.
+
+Requirements:
+
+- Generate 0–3 Go Deeper suggestions per slide.
+- Use the full presentation as context, not only the current slide.
+- Suggestions may go beyond information explicitly written on the slide.
+- Identify opportunities to explain reasoning, implications, background, limitations, practical examples, or relationships between slides.
+- Prioritize insights that add meaningful value beyond reading the slide.
+- Make suggestions specific to the presentation's actual content.
+- Avoid repeating Must Cover points.
+- Avoid generic advice such as "Provide more details" or "Discuss implications."
+- Do not fabricate external facts, causal explanations, experimental results, or research findings.
+- If a useful explanation requires information that is unavailable, frame it as a question or suggestion for the presenter to investigate or clarify.
+- Generate fewer suggestions when a slide does not offer meaningful opportunities for enrichment.
+
+Example:
+
+Slide: Accuracy increased from 80% to 92%.
+
+Good:
+- "Discuss which model changes contributed to the improvement, if supported by your experiments."
+- "Explain whether this accuracy improvement has meaningful practical consequences."
+- "Connect this improvement to the limitations of the baseline discussed earlier."
+
+The additional points are optional and must not automatically be treated as missing explanations during post-rehearsal feedback.
+
+## 3. Grounding and source references
+
+Preserve the evidence-grounding guarantees from Phase 2, while supporting the different requirements of both categories.
+
+**Must Cover:**
+- Must reference supported facts from the current slide.
+- Must not rely on uncertain visual evidence for factual claims.
+- Must not introduce unsupported conclusions.
+
+**Go Deeper:**
+- May reference the current slide or other slides in the same deck.
+- Should retain appropriate source references for factual premises.
+- May suggest questions or explanatory opportunities whose answers aren't present in the slides.
+- Must distinguish supported statements from questions requiring additional information.
+- Must not present unsupported explanations as established facts.
+
+Inspect the existing evidence-reference format and extend it as necessary for cross-slide grounding.
+
+Do not weaken validation simply to accommodate more creative suggestions.
+
+## 4. Backend and schema changes
+
+Extend the existing immutable slide-profile system.
+
+Requirements:
+
+- Introduce separate structured collections for `must_cover` and `go_deeper`.
+- Each collection supports 0–3 items.
+- Preserve slide identity, source identity, extracted facts, uncertainty, and other existing profile fields.
+- Use a new prompt version and schema version so historical cached outputs aren't silently treated as equivalent.
+- Preserve existing historical profile/description schemas and their compatibility.
+- Reuse existing `DescriptionSet` persistence, jobs, quotas, provider receipts, retry handling, and Celery recovery.
+- Do not create another independent AI-job infrastructure.
+- Do not rescan slides unnecessarily when the current profile scope is already valid.
+- Ensure the full-deck context needed by Go Deeper is available to generation.
+- Invalidate and regenerate profiles when relevant slide content, prompt, schema, or model identity changes.
+- Prevent duplicate generation for the same scope.
+
+Inspect the existing architecture before determining the exact schema changes.
+
+Document any API changes in `docs/api-contract.md`.
+
+## 5. Frontend UI changes
+
+Reuse JJ's existing Rehearse screen and Cues control.
+
+Within the existing cue area, distinguish the two categories:
+
+**Must Cover**
+- Clearly labeled as essential speaking points.
+- Presented as concise, readable guidance.
+
+**Go Deeper**
+- Clearly labeled as optional suggestions.
+- Visually distinguishable from Must Cover.
+- Focused on enriching the presentation rather than repeating its main content.
+
+Choose a compact interaction that fits JJ's existing design language. A two-category toggle or segmented control within the existing cue area is acceptable.
+
+Do not add a standalone screen or unrelated UI redesign.
+
+Retain:
+- Scrolling for longer content.
+- Offline caching.
+- Explicit pending, failed, uncertain, stale, and unavailable states.
+- Existing retry behavior.
+- Slide navigation.
+- Selected-run and recording behavior.
+
+Ensure empty categories are handled naturally without placeholder or fabricated cues.
+
+## 6. Future feedback compatibility
+
+Design the categories so Phase 5 can eventually evaluate them differently.
+
+**Must Cover:**
+May inform future content-coverage analysis, but missing a cue must not automatically count as a presentation problem.
+
+Future analysis should consider paraphrasing, audience context, adjacent-slide explanations, and whether the essential meaning was actually communicated.
+
+**Go Deeper:**
+Should inform optional improvement suggestions rather than mandatory coverage requirements.
+
+Do not implement Phase 5 feedback behavior now. Only preserve the information needed for it.
+
+## 7. Evaluation and testing
+
+Add automated tests for:
+
+- Slides with many bullet points.
+- Image-only graphs.
+- Numerical comparisons.
+- Sparse title and closing slides.
+- Ambiguous or unreadable graphs.
+- Slides with no worthwhile additional suggestions.
+- Connections between multiple slides.
+- Unsupported causal explanations.
+- Duplicate or redundant cues.
+- Category boundaries of 0–3 items.
+- Unsupported source references.
+- Cache invalidation following schema/prompt changes.
+- Historical profile compatibility.
+- Duplicate job admission and stale responses.
+- Offline caching and reopening.
+- Correct category display and navigation.
+
+Also evaluate cue quality using representative presentation slides.
+
+Compare the original Phase 2 cue behavior against the revised categories using the same input slides.
+
+Evaluate:
+1. **Specificity:** Is the suggestion relevant to this particular slide?
+2. **Non-redundancy:** Does it provide more than a paraphrase of visible text?
+3. **Usefulness:** Would this help someone prepare what to say?
+4. **Grounding:** Are factual premises supported?
+5. **Category correctness:** Is it appropriately classified as Must Cover or Go Deeper?
+
+Do not claim real-model quality is verified based only on mocked provider outputs. If live-provider testing is unavailable, report that limitation explicitly.
+
+## 8. Verification and handoff
+
+- Run `mobile/npm run check`.
+- Run `mobile/npm run bundle:android`.
+- Run backend checks and tests with `config.test_settings`.
+- Check migrations and ensure historical data remains compatible.
+- Verify new worker behavior with PostgreSQL/Redis where appropriate.
+- Test the updated cue interface on Android.
+- Obtain an independent review of the staged implementation.
+- Fix confirmed issues and rerun affected tests.
+- Record AI-use and actual verification evidence.
+
+Preserve unrelated changes.
+
+Stage only the intended modifications and present the exact staged diff, verification results, quality-evaluation evidence, and unresolved limitations for inspection.
+
+**Do not commit, push, merge, implement Phase 3, or modify the held presentation requirements sheet without explicit authorization.**
+
+## Success criterion
+
+After this change, OutLoud should no longer behave like an AI slide summarizer.
+
+The Must Cover category should help presenters identify **what they need to communicate for the slide to be understood**.
+
+The Go Deeper category should help presenters discover **what additional explanations could make the presentation stronger**.
+
+Both categories must be specific, useful, non-redundant, and appropriately grounded in the presentation.
+```
+
+- **Design:** New immutable v2 profile scope retains all existing grounded facts and identities. Must Cover: 0–3 local certain-fact objectives. Go Deeper: 0–3 optional deck-grounded suggestions, exact quoted factual premises, explicit connection/question distinction and information still needed. Strong local/cross-slide reference validation; duplicate and verbatim-fact repetition checks. Preserve v1 schemas/prompts/receipts/retries exactly, rather than reinterpreting historical cues. Existing in-panel compact selector and scrolling; no analysis/recording/requirements changes.
+- **Execution plan:** (1) Red/green schema/prompt/reference/history tests; (2) version-aware mobile validation/cache/status and category selector with renderer interactions; (3) full mobile/backend/PostgreSQL checks and real receipt/job recovery; (4) same-slide live v1/v2 evaluation and Android checks; (5) stage only intended changes, independent review, repairs/retests, exact diff/evidence handoff.
+- **Limits:** Source references prove supported premises, not arbitrary natural-language semantic truth. Real-model evaluation assesses specificity, redundancy, usefulness, grounding and category correctness; mocks alone do not prove quality.
+
+### Implementation and verification of the category revision
+
+- **Generated material incorporated:** version-aware immutable category schemas and prompts, strict local/deck fact validation, cross-slide source IDs and exact premise quotes, connection/question distinction and missing-information field; mobile parser/cache/version handling and compact essential/optional selector in existing Rehearse; synthetic schema/job/cache/renderer regression tests; API contract, phase ledger and quality evidence. No new database models, migrations, dependencies, screens, Phase 3/5 behavior or held requirements UI.
+- **Live-driven refinement:** v2's first real-model results still included descriptive restatements. Tightened speaking-objective and investigation instructions in a separate immutable v3 prompt/schema scope. Preserved v1 and v2 schemas/prompt rules for saved receipt normalization and historical compatibility. The full-deck request, quotas, leases, receipts, deduplication and explicit retry infrastructure are reused. Current scope is v3; each category is 0–3.
+- **Independent AI review:** separate fresh-context reviewer `/root/cue_categories_review` reviewed staged patch `cdf0fba4892b7fa7f48ff382c124993c0e6493f31a8a607fc373720fbc8b5ff7` and found unavailable reads could erase offline payloads and historical v2 caches could appear current. Fixed both; its follow-up on `f29f6a1220e86d8d6776b045f7305932bccfc5c1444f1dbb7972efac79fc8f2b` found a retained payload also needed a persisted stale marker after known source/selection invalidation. Fixed that with regression tests. Final code/test patch `fa54fc4dd0cdddf876cd0460680cf900b89b0e7ef50dd28723dbb5617e4d4fa4`: reviewer confirmed all three defects closed and no remaining concrete defect in changed cache/version paths. Independently ran 17 focused backend tests (one PG-only skip) and final 14 mobile profile/panel tests. This is AI review; human inspection remains pending. Reviewer did not independently operate Android or run full suites/providers/PG.
+- **Automated checks on final runtime code:** `npm run check` passed TypeScript/lint and 192 mobile tests; `npm run bundle:android` exported Android successfully. Backend `python manage.py check --settings=config.test_settings` passed; `python manage.py test --settings=config.test_settings --noinput` ran 314 tests, passed with 21 environment/PG skips; `python manage.py makemigrations --check --dry-run --settings=config.test_settings` reported no changes. Full suite using isolated `phase2_runtime_settings` ran 314 PostgreSQL tests, passed with one host-VAD dependency skip, using Django's separate disposable test database. `python manage.py migrate --plan --settings=phase2_runtime_settings` reported no planned operations; no live-data migration required. Full worker image `python manage.py test rehearsals.test_cue_guidance rehearsals.test_speech_gate --settings=config.test_settings --noinput` ran 11 tests, all passed, including actual installed VAD dependencies and mocked-provider category receipt recovery. Initial exploratory command mistakenly named nonexistent `rehearsals.test_vad`; corrected to existing `test_speech_gate` before reporting the successful run.
+- **Worker and historical verification:** actual PostgreSQL/Redis/Celery v2/v3 provider jobs completed on both evaluation PDFs. Saved v1/v2/v3 prompt digests still validate; original profile JSON hashes remain unchanged. Repeated final-scope POSTs and Android reimport of exact evaluated sources retained the same v3 set IDs, processing revision 1, one job and one received receipt each. Receipt-normalization crash recovery is also tested with mocked providers under SQLite/PostgreSQL/full worker dependencies. No private recording was reprocessed for this cue task.
+- **Real-model quality:** [same-input comparison](phase-2-cue-quality.md) records actual v1/v2/v3 outputs and five quality dimensions on two presentations/seven slides. Final real `gpt-6-luna` receipts: HTTP 200; small chart usage 1432 input/763 output/2195 total tokens, six-slide deck 10631/3589/14220. Same source fingerprints/snapshots as historical v1. Actual numerical comparisons and optional research questions improve on v1's visible-fact lists. Final full deck is conservative: only one essential and one optional point; useful cross-slide opportunities may be omitted. Human usefulness/semantic accuracy acceptance remains pending; structural references do not prove all wording true.
+- **Local verification artifacts:** `/private/tmp/phase2-guidance-mobile-check.log`, `phase2-guidance-android-bundle.log`, `phase2-guidance-backend-check.log`, `phase2-guidance-postgres-tests.log`, `phase2-guidance-pg-migrations.log`, `phase2-guidance-full-worker-tests.log`, `phase2-guidance-review-fix-tests.log`, `phase2-guidance-history-dedup.json`, `phase2-guidance-v3-comparison.json`. These are local scratch evidence, may expire, and are not committed. Credentials, original .env, installed dependencies and private recordings remain outside the staged patch.
+- **Scope and approval:** all implementation remains isolated on `it2/feature/ai_feedback`, HEAD `2bd6cd2ad7128bb30d59da8dae818b5bdb01d66c`; original checkout's unrelated local changes preserved. Review and verification do not authorize commit, push, merge or advancing phases.
+- **Android verification:** agent-operated existing development build on emulator `emulator-5554`, task Metro 8082 and isolated API 58000. Imported the labeled small chart and exact previously evaluated six-slide PDF through JJ's existing picker; confirmed the expected completed backend scope was reused. Tested Essential/Optional selection, explicit missing-information wording, empty title category, slide-strip navigation from title to chart to food, no previous-slide guidance leaking, and layout clear of the clock/record control. Force-stopped and freshly reopened with emulator API reverse removed (physical phone unaffected); cached chart guidance remained readable with explicit “Could not refresh AI cues. Saved cues are retained.” No recording, transcript, selected-run or audio data was modified. Screenshots are local `/private/tmp/phase2-guidance-{must-cover,go-deeper,empty-title,chart-navigation,food-optional,offline-chart}.png`. Physical-phone and human usefulness acceptance of the new category selector remain pending; earlier human confirmations of v1 cues/transcripts do not prove acceptance of this update.
+- **Observed runtime limit:** another existing Downloads `Guatemala.pdf` is a different source from the evaluated six-slide PDF. Its successful import admitted a new profile scope but generation failed locally with `request_exceeds_quota`; no provider submission occurred. Its failed status remains visible and its data was not replaced. The exact already-evaluated PDF was then imported as a separate labeled test, reusing its successful v3 scope. The application admission quota still bounds serialized image requests; large-input quota calibration/provider-limit estimation is an existing limitation, not established as solved by these category changes. Configuration was not raised again to conceal this failure.
+
+## Phase 2 short cues and expandable details — October 15, 2026
+
+**User request:**
+
+```text
+Make the overall cues shorter
+
+example
+
+CURRENT
+
+Distinguish the two sites’ descriptions—Maya city and temples at Tikal, former capital and Spanish colonial architecture at Antigua—while noting that both are identified as UNESCO World Heritage Sites.
+
+BETTER
+
+Contrast Tikal’s Maya heritage with Antigua’s colonial history. Both are UNESCO sites.
+
+Also dont add why linking is needed
+
+## Rules I'd enforce in AI generation
+
+1. Maximum 15 words per cue, preferably fewer.
+2. One speaking objective per cue. Split unrelated ideas.
+3. Remove unnecessary instructions like "Explain the relationship between" or "Make sure to mention."
+4. Use keywords and contrasts rather than complete explanatory paragraphs.
+5. Don't simply paraphrase the slide. State what the presenter needs to communicate.
+6. Keep detailed reasoning expandable, rather than displaying it during recording.
+
+Aslo now some slides have no cues at all
+```
+
+- **Implemented:** Current immutable v4 prompt/schema scopes supersede v3. Both backend and mobile reject cue text exceeding 15 words, with identical explicit Unicode whitespace separators. Prior v1–v3 limits and exact schemas/prompt rules remain readable/recoverable and are not truncated. v4 removes the blanket discouragement of descriptive slides and seeks supported central messages/contrasts before returning an empty content category; sparse/unreadable exceptions remain valid. Prompt requests one objective, shorter keywords/contrasts, no instruction padding or linking rationale. Existing cue cards show short text and a Details control, collapsed by default; explicit expansion reveals stored premises and missing-information details. Keys reset expansion on slide/category/profile changes. No new screen, held requirements UI or later-phase behavior was added.
+- **Independent AI review:** `/root/cue_categories_review` reviewed staged `0c2100a13f4047df984ec434f1f8b65adb17d75b5dbd513c2ffd232713f9aa64` and reproduced a word-count discrepancy between Python and ECMAScript for U+FEFF. Fixed it using a shared explicit separator policy, also covering NEL, U+001C, em space and NBSP in regression tests. Reviewer closed the defect on snapshot `ea443f9724f2cc09cf6fb40cefcfb940c7f72cdc7c5c56b701de350282ac75f6`, independently passing 10 backend guidance tests and 16 mobile profile/panel tests. No remaining concrete defect found in the reviewed delta. This is AI review, not human acceptance.
+- **Final checks:** `npm run check` passed TypeScript/lint and 194 tests; `npm run bundle:android` exported successfully. Backend full SQLite suite: 316 tests, passed with 21 environment/PG skips. Isolated PostgreSQL full suite: 316 tests, passed with one host VAD dependency skip. Django check passed and migration dry-run reported no changes; no model migration was added. Full-dependency worker guidance tests also passed before the separator-only repair; final PostgreSQL/SQLite tests exercise that repair. Logs: `/private/tmp/phase2-concise-{mobile-check,android-bundle,backend-tests,pg-tests,full-worker-tests}.log`.
+- **Real-provider evidence:** same two saved source inputs evaluated under v4. Small chart completed with an eight-word numerical objective. First six-slide response had one 16-word food cue and was rejected rather than silently truncated; one explicit revisioned retry completed. All five readable content slides now have one or two Must Cover points (8–15 words across the two sources), with a 12-word optional cross-slide connection and no linking rationale. Title remains empty. Details/evidence remain separate from the short text. [Quality evaluation](phase-2-cue-quality.md) records outputs, counts, paid retry and limits. Several descriptive cues still summarize visible content; semantic non-redundancy and usefulness remain for human assessment.
+- **Android evidence:** existing emulator build read the successful v4 scope. Verified short heritage cue, collapsed Details by default, explicit expansion into grounded evidence and scroll containment within the cue area; recording controls remained visible. Renderer tests verify expansion and reset on navigation. Local screenshots: `/private/tmp/phase2-concise-current.png` (collapsed) and `phase2-concise-details-expanded.png`. No recording or transcript was modified. Physical-phone/human acceptance remains pending; existing Metro/API remain available for testing.
+- **Boundary:** staged only on the isolated `it2/feature/ai_feedback` checkout. No commit, push, merge, Phase 3 work or held UI design. Prior Phase 2 observations and receipts are retained as historical evidence; v4 is the current implementation.

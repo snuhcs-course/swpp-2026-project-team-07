@@ -3,8 +3,11 @@
 from django.urls import path
 from . import views, description_views, feedback_views, qa_views
 from . import presentation_context_views
+from . import slide_profile_views
 
 urlpatterns = [
+    path('decks/<uuid:deck_id>/profiles/', slide_profile_views.profiles),
+    path('decks/<uuid:deck_id>/profiles/generate/', slide_profile_views.generate),
     path('presentation-contexts/', presentation_context_views.contexts),
     path('presentation-contexts/<uuid:context_id>/', presentation_context_views.context),
     path("attempts/<uuid:attempt_id>/feedback/", feedback_views.feedback),

@@ -12,6 +12,7 @@ An Android presentation rehearsal app that connects PDF slides, recordings, slid
 - **Iteration 2 is current.** Iteration 1 features were merged into `main` on October 11, 2026 (PRs #17–#21).
 - Available features include PDF import, recording with slide tracking, saved audio playback, hosted Whisper transcription, synchronized transcript review and AI feedback.
 - Local import, recording and saved-media playback work without the backend. Upload, transcription and feedback require the configured server; provider work requires internet and credentials.
+- Iteration 2 Phase 2 adds cached image-aware slide profiles with zero to three essential Must Cover points and zero to three optional Go Deeper suggestions per slide, each at most 15 words with expandable supporting details. PDF upload admits them automatically when feedback is configured; JJ's existing Cues area switches categories and displays progress and saved results. Historical description/coaching functionality remains separate. See the [phase ledger](docs/iteration-2-ai-feedback.md).
 - Feedback supports Gemini or OpenAI through backend configuration and is **disabled by default**. Suggestions link to evidence; they still require human judgment.
 - Limited agent-operated physical-phone checks are recorded in the active prompt log. Full device flow and human usefulness testing remain pending. This is a local development setup; authentication and production deployment remain separate work.
 - [Verification evidence and remaining limits](docs/verification.md) distinguish automated tests, agent-operated emulator checks and controlled provider evaluation. Sample previews remain separate from real results.
@@ -77,7 +78,7 @@ npm run android
 6. In Review, tap the existing slide preview to open recording details for upload recovery, remote media download and slide descriptions. Audio starts from transcript words; there are no separate playback controls.
 
 - Previously saved local media and cached results remain stored through network or provider failures. Download uncached remote audio from the Review slide preview when needed.
-- Browsing, refreshing, downloading and replaying do not start analysis or feedback. Feedback generation remains explicit and does not retranscribe audio.
+- Browsing, refreshing, downloading and replaying do not start analysis or feedback. PDF upload may generate the reusable AI cue profile; failed/uncertain generation requires explicit recovery. Rehearsal coaching generation remains explicit and does not retranscribe audio.
 - History covers locally known presentations for the selected API, not an account-wide archive. [Recording, playback and recovery details](docs/rehearsal-review.md).
 
 ## Configuration and limits

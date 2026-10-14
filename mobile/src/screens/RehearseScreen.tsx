@@ -12,15 +12,16 @@ import { Enter, Txt, useFrame } from '../design/frame';
 import { Glyph } from '../design/icons';
 import { PanView, type PanHandlers } from '../design/PanView';
 import { CARD_H, CARD_W, SlideCard } from '../design/SlideCard';
-import { C, EASE_SCREEN, EASE_SNAP, F, HUES, TONE } from '../design/tokens';
+import { C, EASE_SCREEN, EASE_SNAP, F, HUES } from '../design/tokens';
 import { Chip, Confetti, Dialog, HintRow, IDLE_WAVE, RecordButton, RecordRing, RoundButton, Waveform, type Hint, type RecordGlyph } from '../design/ui';
 import { paceChip } from '../domain/analysis';
 import { fmt } from '../domain/format';
 import { BACK_T, CARD_STEP, decideRelease } from '../domain/gestures';
 import { splitFlags, type Line } from '../domain/lines';
 import { runAttemptIds, takeVisits } from '../domain/run';
-import { cuesFor } from '../domain/slides';
-import { covers, scorablePoints } from '../domain/words';
+import { type ProfileState } from '../features/presentations/slideProfiles';
+import { CueGuidancePanel } from '../features/presentations/CueGuidancePanel';
+import { useSlideProfiles } from '../features/presentations/useSlideProfiles';
 import { CaptureEngine, type CaptureHandle } from '../features/rehearsal/CaptureEngine';
 import { audioOf, useWorkers, type Stage } from '../features/rehearsal/analysis';
 import { commitTake } from '../features/rehearsal/takes';
@@ -99,6 +100,8 @@ function Rehearse({ model }: { model: DeckModel }) {
   const player = useSegmentPlayer();
   const hue = HUES[deck.hue];
   const storeVersion = useStore(s => s.version);
+  const profiles = useSlideProfiles(deck.id, n);
+  const [cueRetryAsk, setCueRetryAsk] = useState<ProfileState | null>(null);
   // Only an interrupted capture is surfaced here; selected and rejected takes
   // do not become a second history row above the clock.
   const recoveryAttempts = useMemo(() => {
@@ -357,10 +360,6 @@ function Rehearse({ model }: { model: DeckModel }) {
         : [take ? { icon: 'h-hold', text: 'Hold to redo all' } : { icon: 'h-tap', text: 'Tap to record' }, { icon: 'h-dn', text: 'Swipe down to go back', nudge: 'down' }];
   const partId = run?.parts[cur]?.attemptId;
   const stage: Stage | null = partId ? model.stages.get(partId) ?? null : null;
-  const missed = useMemo(() => {
-    const text = slideLines.map(l => l.text).join(' ');
-    return new Set(model.transcribed && run?.parts[cur] ? scorablePoints(deck.slides[cur]?.points ?? []).filter(p => !covers(text, p)) : []);
-  }, [cur, deck.slides, model.transcribed, run, slideLines]);
   const recovered = (attempt: SavedAttempt) => {
     const visits = takeVisits(attempt.recording.slide_events, attempt.recording.duration_ms);
     // Checkpoints know which slides were visited, but cannot prove speech on them.
@@ -395,14 +394,12 @@ function Rehearse({ model }: { model: DeckModel }) {
               onCommit={commitEdit} onCancelEdit={() => setEdit(null)} onAlt={(l, fi) => { player.stop(); setAlt(a => (a && a.key === l.key && a.fi === fi ? null : { key: l.key, fi })); }}
               onApplyAlt={applyAlt} onKeepFlag={keepFlag} onMove={moveLine} hasRun={!!run} />
           ) : (
-            <View style={styles.cues}>
-              {cuesFor(deck.slides[cur]?.points ?? [], missed).map(c => (
-                <View key={c.text} style={[styles.cue, { backgroundColor: c.mustSay ? TONE.bad.bg : 'rgba(255, 255, 255, 0.08)' }]}>
-                  <Txt style={[styles.cueText, { color: c.mustSay ? TONE.bad.fg : C.body }]}>{c.text}</Txt>
-                </View>
-              ))}
-              {!(deck.slides[cur]?.points.length) && <Txt style={styles.noCues}>{deck.text === 'pending' ? 'Cues appear once the slide text is read' : 'No cues on this slide'}</Txt>}
-            </View>
+            <CueGuidancePanel state={profiles.value} slide={cur} error={profiles.error} busy={profiles.busy}
+              onRecover={action => {
+                if (action === 'refresh') profiles.refresh();
+                else if (action === 'confirm') setCueRetryAsk(profiles.value);
+                else void profiles.recover();
+              }} />
           )}
           <Readout live={live} phase={phase} cur={cur} take={take} deck={deck} burst={burst} error={error}
             recoveryCount={recoveryAttempts.length} recoveryNumber={recoveryAttempts.length ? recoveryCursor % recoveryAttempts.length + 1 : 0}
@@ -421,6 +418,8 @@ function Rehearse({ model }: { model: DeckModel }) {
             : 'Your recording and transcript for slide ' + (cur + 1) + ' will be replaced. You can compare the takes and keep the old one.'}
           confirm={redoAsk === 'all' ? 'Redo all' : 'Redo'} onConfirm={confirmRedo} onCancel={cancelRedo} />
       )}
+      {cueRetryAsk && <Dialog title="Retry AI cues?" body="The previous provider request has an uncertain outcome. Retrying may incur another charge."
+        confirm="Retry" onConfirm={() => { const captured = cueRetryAsk; setCueRetryAsk(null); void profiles.recover(true, captured); }} onCancel={() => setCueRetryAsk(null)} />}
       {phase === 'burst' && <Confetti />}
       {recoveryId && <TakePlayback id={recoveryId} deck={deck} initialSlide={cur}
         onClose={closeRecovery} onRecovered={recovered} />}
@@ -739,10 +738,6 @@ const styles = StyleSheet.create({
   altText: { fontFamily: F.bold, fontSize: 12 },
   edge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingBottom: 4, paddingLeft: 42 },
   edgeText: { flex: 1, fontFamily: F.semibold, fontSize: 12, color: '#FFC266' },
-  cues: { position: 'absolute', left: 16, right: 16, top: 398, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 },
-  cue: { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 14 },
-  cueText: { fontFamily: F.semibold, fontSize: 13 },
-  noCues: { fontFamily: F.regular, fontSize: 14, color: C.secondary },
   paceWrap: { position: 'absolute', left: 0, right: 0, top: 512, alignItems: 'center' },
   big: { position: 'absolute', left: 0, right: 0, top: 548, textAlign: 'center', fontFamily: F.display, fontSize: 42, lineHeight: 44, letterSpacing: -1.3, fontVariant: ['tabular-nums'] },
   line: { position: 'absolute', left: 30, right: 30, top: 596, textAlign: 'center', fontFamily: F.semibold, fontSize: 14 },

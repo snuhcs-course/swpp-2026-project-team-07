@@ -3,13 +3,15 @@ from dataclasses import dataclass
 import hashlib
 import os
 import re
+from dataclasses import replace
+from .slide_profile_schema import PROFILE_PROMPT_VERSION, PROFILE_SCHEMAS, is_profile_schema, profile_prompt_version
 
 from . import feedback_provider as provider
 from .feedback import FeedbackError, json_bytes
 
 
 def prompt_digest(name='gemini', schema_version=None):
-    return hashlib.sha256(json_bytes([provider.DESCRIPTION_RULES, provider.response_schema(name, 'descriptions', schema_version),
+    return hashlib.sha256(json_bytes([provider.description_rules(schema_version), provider.response_schema(name, 'descriptions', schema_version),
                                      provider.OUTPUT_TOKENS['descriptions']])).hexdigest()
 
 
@@ -31,6 +33,11 @@ class Selection:
     model: str
     prompt_version: str
     schema_version: str
+
+    @classmethod
+    def profiles(cls, env=None):
+        current = cls.current(env)
+        return replace(current, prompt_version=PROFILE_PROMPT_VERSION, schema_version=PROFILE_SCHEMAS[current.provider])
 
     @classmethod
     def current(cls, env=None):
@@ -61,7 +68,8 @@ class Selection:
             description_schema_version=self.schema_version, coaching_schema_version=coaching_schema_version)
 
     def check_versions(self, digest):
-        if (self.prompt_version != provider.DESCRIPTION_PROMPT_VERSION
+        expected = profile_prompt_version(self.schema_version) if is_profile_schema(self.schema_version) else provider.DESCRIPTION_PROMPT_VERSION
+        if (self.prompt_version != expected
                 or digest != prompt_digest(self.provider, self.schema_version)):
             raise FeedbackError('snapshot_unavailable')
 
