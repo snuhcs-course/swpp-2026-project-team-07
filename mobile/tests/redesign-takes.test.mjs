@@ -34,7 +34,8 @@ test('redoing one slide replaces only that slide, and keeping the old take resto
   assert.deepEqual(runTimes(run, 3), [31, 24, 32]);
   assert.equal(run.parts[1].attemptId, 'take-2');
   assert.equal(run.parts[0].attemptId, 'take-1');
-  assert.equal(getDeckState(deck.id).baselineCoverage, 50);
+  assert.equal(getDeckState(deck.id).baselineCoverage, before.baselineCoverage);
+  assert.equal(getDeckState(deck.id).compare.nextBaselineCoverage, 50);
 
   const kept = resolveCompare(deck.id, 'old');
   assert.deepEqual(kept, before.run);

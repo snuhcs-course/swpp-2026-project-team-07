@@ -63,6 +63,7 @@ class FeedbackProviderTests(TestCase):
         expected['properties']['slides'].pop('maxItems')
         for name in ('key_ideas', 'visual_facts'):
             expected['$defs']['Description']['properties'][name].pop('maxItems')
+        expected['$defs']['Description']['properties']['slide_index'].pop('maximum')
         current = json.loads(self.adapter().prepare_descriptions(self.analysis).payload)
         schema = current['generationConfig']['responseJsonSchema']
         self.assertNotIn('minItems', schema['properties']['slides'])

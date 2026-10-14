@@ -141,9 +141,12 @@ test('PDF failure is independent of successful audio; invalid page bounds and un
   const pdf = { ...spec, kind: 'pdf', durationMs: undefined, pageCount: 2 };
   const results = await Promise.allSettled([f.manager.download(spec, async () => {}, signal()), f.manager.download(pdf, async () => { throw Error('wrong page count'); }, signal())]);
   assert.deepEqual(results.map(r => r.status), ['fulfilled', 'rejected']); assert.ok(f.manager.cached(spec)); assert.equal(f.manager.cached(pdf), null);
-  for (const invalid of [{ ...pdf, pageCount: 0 }, { ...pdf, pageCount: 11 }, { ...spec, url: 'file:///secret' }, { ...spec, url: 'http://different.invalid/audio' }]) {
+  for (const invalid of [{ ...pdf, pageCount: 0 }, { ...pdf, pageCount: 1.5 }, { ...spec, url: 'file:///secret' }, { ...spec, url: 'http://different.invalid/audio' }]) {
     const before = f.network.count; await assert.rejects(f.manager.download(invalid, async () => {}, signal()), /metadata/); assert.equal(f.network.count, before);
   }
+  const largerDeck = { ...pdf, pageCount: 11 };
+  await f.manager.download(largerDeck, async () => {}, signal());
+  assert.ok(f.manager.cached(largerDeck));
 });
 
 test('interrupting the stream and rejected redirects cannot publish media', async () => {
