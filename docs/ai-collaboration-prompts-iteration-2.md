@@ -484,10 +484,11 @@ remove the static movement in the main page.
 **Contributor:** unconfirmed · **Tool:** OpenAI Codex · **Model:** not recorded
 
 - **Requester direction:** Try live transcription after configuring the backend API key, then upload the separate `OutLoud-Redesign` folder to a new GitHub branch named `front-end-design-JJ` from `main`.
-- **Agent-operated transcription check:** Confirmed that `OPENAI_API_KEY` is set in the ignored redesign `backend/.env` without displaying its value. The local API health endpoint was unavailable, and Docker Compose returned a Docker server error. The check was interrupted by the branch-upload request before any audio upload, provider request, transcript, or recovery was verified.
+- **Agent-operated transcription check:** Confirmed that `OPENAI_API_KEY` is set in the ignored redesign `backend/.env` without displaying its value. Initially the local API was unavailable and Docker returned an internal error; the branch-upload request interrupted that first check. On resuming, the agent restarted Docker Desktop, started the database/API/worker and checked API health/readiness and a Celery worker ping. A 3.698-second generated speech clip passed the project's standalone Whisper adapter with nine timestamped words. The agent then uploaded a synthetic one-page PDF and that clip to the local API, requested processing, and observed a completed `speech` result with the same nine words and one slide visit. Provenance reported OpenAI `whisper-1`, generation 1, received outcome and the Silero speech gate. This was a synthetic backend and provider check, not an in-app phone transcription check.
 - **Branch preparation:** Cloned the repository's current GitHub `main` into a temporary checkout, created `front-end-design-JJ` locally, and copied the redesign source while excluding ignored environment files, dependencies, generated native builds, media, and local tooling files. Publication and final verification are recorded at handoff below.
 - **Agent-operated branch review:** The branch starts at `f1bb282` (`main` at checkout). The staged snapshot changes 104 source, asset, documentation and test files. A filename and content scan found no staged environment file, recording, credential pattern or file over 10 MB. The remaining `git diff --check` notices are trailing spaces in verbatim historical prompt quotations, which were preserved. No app build or test suite was run for this upload; earlier checks are recorded in the entries above.
 - **Publication and recovery:** Terminal HTTPS push had no usable GitHub credential, and SSH rejected the available key. The agent added the temporary checkout to the already signed-in GitHub Desktop app and published the branch there. A separate `git ls-remote` check confirmed that GitHub's `front-end-design-JJ` head matched the redesign commit. No pull request or merge was created.
+- **Phone boundary and human decision:** The phone was unlocked and showed an existing saved take with an upload-retry message. Automatic approval review rejected the agent's attempt to retry it because that could send private audio through the backend to OpenAI without specific authorization. The requester chose to keep the synthetic-only result. No saved phone recording was uploaded during this check; the in-app upload, disclosure and transcript display remain unverified.
 
 ### Prompts — verbatim, in order
 
@@ -497,4 +498,14 @@ i pasted the api key for transcription - try out the transcription feature.
 
 ```text
 can you upload this folder to github as a new branch from main? and name it front-end-design-JJ
+```
+
+The requester answered the agent's phone and recording questions:
+
+```text
+Phone unlocked; continue
+```
+
+```text
+Keep the synthetic-only result
 ```
