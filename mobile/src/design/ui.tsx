@@ -16,16 +16,20 @@ import { C, F, HUES, TONE } from './tokens';
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 // ── Hint row (SPEC §1.2) ─────────────────────────────────────────────────────
-export type Hint = { icon: GlyphName; text: string; nudge?: 'down' | 'up' };
+export type Hint = { icon: GlyphName; text: string; nudge?: 'down' | 'up'; onPress?: () => void };
 export function HintRow({ hints, gap = 18, style }: { hints: Hint[]; gap?: number; style?: StyleProp<ViewStyle> }) {
   return (
-    <View pointerEvents="none" style={[s.hints, { gap }, style]}>
-      {hints.map(h => (
-        <View key={h.icon + h.text} style={[s.hint, { gap: gap === 16 ? 5 : 6 }]}>
+    <View pointerEvents={hints.some(h => h.onPress) ? "box-none" : "none"} style={[s.hints, { gap }, style]}>
+      {hints.map(h => {
+        const content = <>
           {h.nudge ? <Nudge dir={h.nudge}><Glyph name={h.icon} size={18} /></Nudge> : <Glyph name={h.icon} size={18} />}
           <Txt style={s.hintText}>{h.text}</Txt>
-        </View>
-      ))}
+        </>;
+        const style = [s.hint, { gap: gap === 16 ? 5 : 6 }];
+        return h.onPress ? <Pressable key={h.icon + h.text} accessibilityRole="button" accessibilityLabel={h.text}
+          onPress={h.onPress} style={[style, { minHeight: 44 }]}>{content}</Pressable>
+          : <View key={h.icon + h.text} style={style}>{content}</View>;
+      })}
     </View>
   );
 }

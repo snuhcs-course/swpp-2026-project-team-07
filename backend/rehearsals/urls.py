@@ -4,9 +4,10 @@ from django.urls import path
 from . import views, description_views, feedback_views, qa_views
 from . import presentation_context_views
 from . import slide_profile_views
-from . import correction_views
+from . import correction_views, slide_review_views
 
 urlpatterns = [
+    path('attempts/<uuid:attempt_id>/slide-review/', slide_review_views.review),
     path('attempts/<uuid:attempt_id>/corrections/', correction_views.correction),
     path('attempts/<uuid:attempt_id>/correction-suggestions/', correction_views.suggestions),
     path('decks/<uuid:deck_id>/profiles/', slide_profile_views.profiles),

@@ -26,7 +26,8 @@ import { stageOf, subscribePlaybackId, useWorkers } from '../features/rehearsal/
 import { inspectCoaching, requestCoaching, retainCoaching, useCoaches, type CoachState } from '../features/rehearsal/coaching';
 import { readFeedback } from '../features/feedback/storage';
 
-export function TakePlayback({ id, deck, initialSlide, onClose, onSlideChange, onRecovered }: {
+export function TakePlayback({ id, deck, initialSlide, onClose, onSlideChange, onRecovered, initialEvidence }: {
+  initialEvidence?: {start_ms:number;end_ms:number};
   id: string; deck: Presentation; initialSlide: number; onClose: () => void;
   onSlideChange?: (slide: number) => void; onRecovered?: (attempt: SavedAttempt) => void;
 }) {
@@ -130,6 +131,8 @@ export function TakePlayback({ id, deck, initialSlide, onClose, onSlideChange, o
           <Txt style={styles.section}>Recording</Txt>
           <Txt style={styles.time}>{fmt(position / 1000)} <Txt style={styles.sub}>/ {duration ? fmt(duration / 1000) : '—'}</Txt></Txt>
           <View style={styles.progress}><View style={[styles.progressFill, { width: duration ? `${Math.min(100, 100 * position / duration)}%` : '0%' }]} /></View>
+          {initialEvidence && <Control label="Play feedback evidence" text={playing ? 'Pause evidence' : 'Play feedback evidence'} disabled={!ready}
+            onPress={() => { if (playing) control.pause(); else void playWord(initialEvidence.start_ms); }} />}
           {!media.audio.uri && media.audioSpec && <Control label="Download audio for offline playback" text={media.audio.busy ? 'Checking audio…' : 'Download audio'} disabled={media.audio.busy} onPress={() => void media.download()} />}
           {!!media.audio.error && <Txt style={styles.notice}>{media.audio.error}</Txt>}
           {!!status.error && <Txt style={styles.notice}>Audio could not be opened. The original file is retained.</Txt>}

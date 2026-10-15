@@ -1347,3 +1347,83 @@ inspection confirmed the quiet synchronized state and heading action. No backend
 code/provider contract changed and no live provider call was made. See the
 [current ledger](phase-4-recognition-only-verification.md#contextual-transcript-controls--october-16-2026).
 Physical-phone/human acceptance remains pending. No commit/push/merge.
+
+## Phase 5 selected-slide review (October 16, 2026)
+
+Contributor: Seoyeon
+
+Tool: OpenAI Codex.
+
+User prompt (verbatim):
+
+> implement phase 5
+
+Generated material incorporated: scoped review API on existing durable workers,
+image-aware profile reuse, revision-aware evidence normalization and explicit timing,
+JJ Review summary and existing-sheet playback integration, regression/interaction
+tests and API/verification documentation. Scope is the approved Phase 5 plan and
+preceding product amendments; no custom editor, held requirements sheet or Phase 6.
+
+Verification/review: see [Phase 5 ledger](phase-5-verification.md). Initial tests and
+implementation do not establish human advice quality or physical-device acceptance.
+No commit, push or merge is authorized by this request.
+
+## Automatic first feedback and middle-school audience preview (October 16, 2026)
+
+Contributor: Seoyeon
+
+Tool: OpenAI Codex.
+
+User prompts (verbatim):
+
+> Currently it claims the side profile analysis failed, for the mean time set it as 14 year old middle school students so i can look at the type of feedback
+
+> First set of feedback should be automatic, no analyze slide button needed
+
+> Also make it so there s alimit to 1 analyze slide button if a analysis has been made just to avoid users consistently prompt apis
+
+Incorporated: once-only initial selected-recording workflow, completed-result action
+gating, automatic-work and correction regression tests; saved the current phone
+presentation's audience through existing app/API functions. Diagnosed and corrected
+the temporary isolated reservation budget, then made two explicit real profile
+retries. Both returned invalid overlong cue text; no successful live feedback is
+claimed. See [follow-up evidence](phase-5-verification.md#october-16-follow-up--automatic-first-feedback-and-audience-preview).
+No custom editing, new screen, commit, push or merge.
+
+## Purpose-aware feedback and reachable correction choices (October 16, 2026)
+
+Contributor: Seoyeon
+
+Tool: OpenAI Codex. Independent AI review: separate reviewer agent; human review
+remains pending.
+
+Representative user prompts/excerpts (verbatim):
+
+> Issues: I ran a new recording in the Guatemal_with_graph
+> screen goes blank when i want to hear recording, audio plays, cant go back to slides by sliding down from review page.
+> Also, It does flag wrong transcription choices such as transcribing Tahumulco when I said Tajumulco, but there is no way to edit it or like an autocomplete option like the ones in apple devices were for mispelled words it gives suggestions of what you meant. Also, content feedback is very slides based, nothing that adds to the presentation. It would be nice if there are anecdotes, or information not present on slides but would enrich presentation.
+
+> both
+
+> A weak AI coach can always invent additional topics. A strong coach understands what the presentation is trying to accomplish and what doesn't need to be added.
+
+> This doesn't necessarily mean you need two separate prompts or entirely different backend pipelines. A shared evaluator could first classify the presentation's purpose and select relevant evaluation criteria.
+
+> it should do both
+
+Incorporated: purpose selection in the shared evaluator (informative/descriptive,
+analytical/persuasive, mixed/uncertain); meaningful, conditional missing-explanation
+criteria; zero to two optional illustrative enrichments separate from problem
+findings; cached expansion; review-v2 stale compatibility; Review scroll/gesture
+ownership and tappable existing footer; recognition replacement popover outside
+the clipped transcript area, sentence tap/play isolation and TalkBack actions.
+No unrestricted transcript editing or new screen was added.
+
+Investigation distinguished confirmed navigation/clipped-choice problems from the
+unreproduced intermittent blank screen. Existing real recognition offers were
+present; the agent did not accept, restore or rewrite the user's transcription.
+External sourced enrichment was requested, but automatic approval review rejected
+enabling OpenAI web search without explicit destination/data-sharing approval.
+The pending approval question was left open; no search integration or workaround
+was enabled. Verification and review repairs: [follow-up ledger](phase-5-verification.md#purpose-aware-feedback-and-interaction-repairs-october-16).
+No commit, push, merge or later phase is authorized by these changes.

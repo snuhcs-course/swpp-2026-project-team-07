@@ -336,12 +336,13 @@ function Rehearse({ model }: { model: DeckModel }) {
     return (y > 326 && y < 512) || y > 652;
   };
   const back: PanHandlers = {
-    onMoveShould: (e, g) => canGoBack && g.dy > 8 && g.dy > Math.abs(g.dx) && !inExcluded(e),
+    onMoveShould: (e, g) => canGoBack && !alt && g.dy > 8 && g.dy > Math.abs(g.dx) && !inExcluded(e),
     onMove: (_e, g) => { const d = Math.max(0, g.dy / frame.s); backDy.set(d > 160 ? 160 + (d - 160) * 0.5 : d); },
     onRelease: () => { if (backDy.get() > BACK_T) leave(); else backDy.set(withTiming(0, { duration: 320, easing: EASE_SCREEN })); },
     onTerminate: () => { backDy.set(withTiming(0, { duration: 320, easing: EASE_SCREEN })); },
   };
   useBack(true, () => {
+    if (alt) { player.stop(); setAlt(null); return true; }
     if (recoveryId) { closeRecovery(); return true; }
     if (redoAsk) { cancelRedo(); return true; }
     if (phaseRef.current !== 'idle') return true;
@@ -575,6 +576,16 @@ function TranscriptPanel(p: PanelProps) {
         <Glyph name={p.slidePlaying ? 'p-pause' : 'p-play'} size={15} color={p.slidePlaying ? C.text : C.secondary} />
       </Pressable>
     </View>
+    {!p.recording && p.alt && (() => {
+      const line = lines.find(l => l.key === p.alt!.key), fi = p.alt!.fi;
+      return line?.flags[fi] ? <View style={[StyleSheet.absoluteFill, { zIndex: 30 }]} accessibilityViewIsModal pointerEvents="box-none">
+        <Pressable accessibilityRole="button" accessibilityLabel="Close transcription choices" onPress={() => p.onAlt(line, fi)} style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,.35)' }]} />
+        <View style={styles.correctionPopover}>
+          <ScrollView style={{ flexShrink: 1 }} keyboardShouldPersistTaps="handled"><CorrectionChoices {...p} line={line} altFi={fi} /></ScrollView>
+          <Pressable accessibilityRole="button" accessibilityLabel="Close transcription choices" onPress={() => p.onAlt(line, fi)} style={styles.altChip}><Txt style={styles.altText}>Close</Txt></Pressable>
+        </View>
+      </View> : null;
+    })()}
     <View style={styles.txBox}>
       <ScrollView contentContainerStyle={{ gap: 8, paddingBottom: 14, flexGrow: 1 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {!p.recording && (needsSync || !!status || !!suggestion?.dependency?.retry_action) && <View style={{ gap: 6 }}>
@@ -608,6 +619,25 @@ function TranscriptPanel(p: PanelProps) {
   </>;
 }
 
+function CorrectionChoices(p: Pick<PanelProps, 'onApplyAlt'|'onKeepFlag'|'onPlay'> & {line:Line;altFi:number}) {
+  const flag = p.line.flags[p.altFi];
+  if (!flag) return null;
+  return <View style={{ gap: 10 }}>
+    <Txt style={styles.altLead}>{'Did you say “' + flag.w + '”?'}</Txt>
+    {!!flag.reason && <Txt style={styles.txVisit}>{flag.reason}</Txt>}
+    {flag.alts.map(a => <Pressable key={a} accessibilityRole="button" accessibilityLabel={`Replace “${flag.w}” with “${a}”`}
+      onPress={() => p.onApplyAlt(p.line, p.altFi, a)} style={[styles.altChip, { minHeight: 44, justifyContent: 'center', backgroundColor: 'rgba(255,216,102,.18)' }]}>
+      <Txt style={[styles.altText, { color: '#FFE08A' }]}>{a}</Txt>
+    </Pressable>)}
+    <Pressable accessibilityRole="button" accessibilityLabel={`Keep “${flag.w}” as heard`} onPress={() => p.onKeepFlag(p.line, p.altFi)} style={[styles.altChip, { minHeight: 44, justifyContent: 'center' }]}>
+      <Txt style={styles.altText}>Keep original</Txt>
+    </Pressable>
+    <Pressable accessibilityRole="button" accessibilityLabel="Play audio for this transcription suggestion" onPress={() => p.onPlay(p.line)} style={[styles.altChip, { minHeight: 44, justifyContent: 'center' }]}>
+      <Txt style={styles.altText}>Play audio</Txt>
+    </Pressable>
+  </View>;
+}
+
 function LineRow(p: PanelProps & { line: Line; playing: boolean; altFi: number }) {
   const { line } = p;
   const frame = useFrame();
@@ -615,8 +645,8 @@ function LineRow(p: PanelProps & { line: Line; playing: boolean; altFi: number }
   const [dragX, setDragX] = useState(0);
   const g = useRef<{ axis: 'x' | 'y' | null } | null>(null);
   const responder: PanHandlers = {
-    onStartShould: () => !p.recording,
-    onGrant: () => { g.current = { axis: null }; },
+    onMoveShould: (_e, gs) => !p.recording && Math.abs(gs.dx) > 7 * frame.s && Math.abs(gs.dx) > Math.abs(gs.dy),
+    onGrant: () => { g.current = { axis: 'x' }; },
     onMove: (_e, gs) => {
       const s = g.current;
       if (!s) return;
@@ -654,48 +684,34 @@ function LineRow(p: PanelProps & { line: Line; playing: boolean; altFi: number }
         <Txt style={styles.revealText}>{dragX && canMove ? (toPrev ? '← Slide ' + (target + 1) : 'Slide ' + (target + 1) + ' →') : ''}</Txt>
       </View>
       <PanView style={[styles.lineRow, { backgroundColor: p.playing ? undefined : dragX ? '#15151B' : 'transparent' }, row]} {...responder}
-        accessible accessibilityRole="button" accessibilityLabel={(p.playing ? 'Stop playback: ' : 'Tap transcript words to play from ' + fmt(line.t) + ': ') + line.text}
-        accessibilityActions={[{ name: 'activate' },
-          ...(p.cur > 0 ? [{ name: 'movePrev', label: 'Move to slide ' + p.cur }] : []), ...(p.cur < p.n - 1 ? [{ name: 'moveNext', label: 'Move to slide ' + (p.cur + 2) }] : [])]}
-        onAccessibilityAction={e => { const a = e.nativeEvent.actionName; if (a === 'activate') p.onPlay(line); else if (a === 'movePrev') p.onMove(line, -1); else if (a === 'moveNext') p.onMove(line, 1); }}>
+        accessible={false}>
         {p.playing && (
-          <Svg style={StyleSheet.absoluteFill} preserveAspectRatio="none">
+          <Svg pointerEvents="none" style={StyleSheet.absoluteFill} preserveAspectRatio="none">
             <Rect x="0" y="0" width={`${pct}%`} height="100%" rx={10} fill="rgba(255, 255, 255, 0.14)" />
             <Rect x={`${pct}%`} y="0" width={`${100 - pct}%`} height="100%" fill="rgba(255, 255, 255, 0.05)" />
           </Svg>
         )}
-        <View style={styles.playCol}>
+        <Pressable disabled={p.recording} accessibilityRole="button" accessibilityLabel={'Play sentence at ' + fmt(line.t)} onPress={() => p.onPlay(line)} style={styles.playCol}>
           <Txt style={styles.lineTime}>{fmt(line.t)}</Txt>
-        </View>
-          <Txt style={[styles.lineText, { color: p.playing ? '#FFFFFF' : C.body }]}>
+        </Pressable>
+          <Txt disabled={p.recording} accessibilityRole="button" accessibilityLabel={'Play sentence: ' + line.text}
+            accessibilityActions={[{ name: 'activate' },
+          ...(p.cur > 0 ? [{ name: 'movePrev', label: 'Move to slide ' + p.cur }] : []), ...(p.cur < p.n - 1 ? [{ name: 'moveNext', label: 'Move to slide ' + (p.cur + 2) }] : [])]}
+            onAccessibilityAction={e => { const a = e.nativeEvent.actionName; if (a === 'activate') p.onPlay(line); else if (a === 'movePrev') p.onMove(line, -1); else if (a === 'moveNext') p.onMove(line, 1); }}
+            onPress={() => p.onPlay(line)} style={[styles.lineText, { color: p.playing ? '#FFFFFF' : C.body }]}>
             {segs.map((sg, i) => sg.fi < 0 ? <Txt key={i} style={sg.active ? { backgroundColor: p.accent, color: '#101014' } : undefined}>{sg.t}</Txt> : (
-              <Txt key={i} accessibilityRole="button" accessibilityLabel={'Possibly misheard: ' + line.flags[sg.fi].w + '. Show corrections'} onPress={() => p.onAlt(line, sg.fi)}
+              <Txt key={i} accessibilityRole="button" accessibilityLabel={'Possibly misheard: ' + line.flags[sg.fi].w + '. Show corrections'} onPress={e => { e.stopPropagation(); p.onAlt(line, sg.fi); }}
                 style={[styles.flag, sg.active && { backgroundColor: p.accent, color: '#101014' }]}>{sg.t}</Txt>
             ))}
           </Txt>
       </PanView>
+      {!p.recording && line.flags.map((flag, fi) => <Pressable key={fi} accessibilityRole="button"
+        accessibilityLabel={'Show replacements for ' + flag.w} onPress={() => p.onAlt(line, fi)} style={styles.altChip}>
+        <Txt style={styles.altText}>{'Correct “' + flag.w + '”'}</Txt>
+      </Pressable>)}
       {line.fixed && !p.recording && <Pressable accessibilityRole="button" accessibilityLabel="Restore original transcript sentence" onPress={() => p.onRestore(line)} style={styles.alts}>
         <Txt style={styles.altText}>Restore original</Txt>
       </Pressable>}
-      {p.altFi >= 0 && line.flags[p.altFi] && (
-        <View style={styles.alts}>
-          <Txt style={styles.altLead}>Did you say</Txt>
-          {!!line.flags[p.altFi].reason && <Txt style={styles.txVisit}>{line.flags[p.altFi].reason}</Txt>}
-          {line.flags[p.altFi].alts.map(a => (
-            <Pressable key={a} accessibilityRole="button" accessibilityLabel={`Replace “${line.flags[p.altFi].w}” with “${a}”`} onPress={() => p.onApplyAlt(line, p.altFi, a)}
-              style={[styles.altChip, { borderColor: 'rgba(255, 216, 102, 0.45)', backgroundColor: 'rgba(255, 216, 102, 0.18)' }]}>
-              <Txt style={[styles.altText, { color: '#FFE08A' }]}>{a}</Txt>
-            </Pressable>
-          ))}
-          <Pressable accessibilityRole="button" accessibilityLabel={`Keep “${line.flags[p.altFi].w}” as heard`} onPress={() => p.onKeepFlag(line, p.altFi)}
-            style={[styles.altChip, { borderColor: 'rgba(255, 255, 255, 0.14)', backgroundColor: 'rgba(255, 255, 255, 0.06)' }]}>
-            <Txt style={[styles.altText, { color: '#C9CBD3' }]}>{'Keep “' + line.flags[p.altFi].w + '”'}</Txt>
-          </Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel="Play audio for this transcription suggestion" onPress={() => p.onPlay(line)} style={styles.altChip}>
-            <Txt style={styles.altText}>Play audio</Txt>
-          </Pressable>
-        </View>
-      )}
       {!!line.edge && !p.recording && (
         <View style={styles.edge} pointerEvents="none">
           <Glyph name="h-spin" size={14} color="#FFC266" />
@@ -753,6 +769,7 @@ const styles = StyleSheet.create({
   txCheck: { fontFamily: F.semibold, fontSize: 11, color: C.secondary },
   txVisit: { fontFamily: F.semibold, fontSize: 11, color: C.secondary, paddingHorizontal: 8 },
   txPlay: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  correctionPopover: { position: 'absolute', left: 24, right: 24, top: 280, maxHeight: 460, padding: 18, gap: 12, borderRadius: 20, backgroundColor: '#20222E', borderWidth: 1, borderColor: 'rgba(255,255,255,.2)' },
   txBox: { position: 'absolute', left: 16, right: 16, top: 402, height: 104, overflow: 'hidden' },
   empty: { textAlign: 'center', fontFamily: F.medium, fontSize: 13, color: C.tertiary },
   reveal: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, borderRadius: 10 },

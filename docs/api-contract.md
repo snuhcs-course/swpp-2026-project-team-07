@@ -869,3 +869,64 @@ Historical STT result schemas are unusable as new candidates but do not block
 metadata refresh, explicit retry or polling. Old coaching remains retained/outdated
 locally, including offline. Accepted corrections and restore continue to invalidate
 feedback without automatic regeneration. Cues/audio-only metrics remain reusable.
+
+## Iteration 2 Phase 5 — selected-slide review
+
+`GET /api/attempts/{id}/slide-review/?scope=<JSON>` is read-only. POST to the same
+route explicitly generates/retries, using `scope` plus the existing feedback fields
+`feedback_revision`, `transcript_revision`, `expected_selection`, and
+`acknowledge_uncertain`. Initial completed/running identical scopes reuse results.
+Retries require the current feedback revision; uncertain submissions require the
+existing acknowledgement. Description dependency recovery retains its own endpoint.
+
+Scope: `{context_id: UUID|null, slides: [{slide_index, segments: [{start_ms,end_ms}]}]}`.
+Indexes are zero-based and times integer audio-relative milliseconds. A selected
+slide must include exactly all its positive-duration visits in that attempt, in
+chronological order. Invented/clipped/omitted visits, duplicate slides and contexts
+from another deck are rejected. Normal mobile calls scope one selected slide.
+Source attempt is the route identity; run labels are not analysis identity.
+
+FeedbackAnalysis uses `review_` plus 24 hexadecimal SHA256 scope characters, within
+its existing 32-character type field and existing attempt/type uniqueness constraint.
+No migration. Jobs snapshot `slide-review-v2`, explicit requirements and revision,
+original STT identity, confirmed correction revision, selected intervals, provider
+selection, image-aware profile and description revision. The review profile reuses
+cached cue work; it does not mutate cues. Legacy coaching/STT output stays separate.
+
+The response extends feedback metadata with `scope`, `review_version`, `requirements`
+and result `slides: [{slide_index,status,evaluation_mode,findings,enrichments}]`. Each slide has zero to four
+prioritized findings. Status is `successful` or `insufficient_evidence`; job pending,
+failure and outdated states remain independent. Invalid/omitted evidence never
+becomes a zero-problem successful result. Findings carry original word/visit/segment
+identity, exact speech/fact quotes and derived playback ranges. Speech-only findings
+may omit slide-fact quotes. Timing findings are deterministic, have no word range
+(`word_start/end=-1`), and navigate to the first selected visit.
+
+Context or effective transcript changes retain but invalidate dependent feedback.
+Scope changes select another durable analysis. Corrections near boundaries invalidate
+all scopes consuming that source transcript conservatively. Late receipts retain usage
+but cannot publish current output. Reopening/refresh/playback never submit jobs;
+explicit generation synchronizes accepted corrections first. Missing requirements
+are null/blank, never inferred from legacy attempt audience or suggested targets.
+
+
+Phase 5 automatic-first follow-up: completed recording/transcription marks initial
+selected-slide work eligible. The app-level host admits it once with a durable
+initial marker; completed results have no Analyze action. The POST API remains
+revision/dedup protected and reusable by explicit Update/retry. Corrections do not
+trigger that initial workflow, and no historical-deck backfill is implied.
+
+October 16 purpose-aware amendment: the shared evaluator automatically selects
+`informative_descriptive`, `analytical_persuasive`, or `mixed_or_uncertain` from
+full-deck evidence. A chart alone does not imply an analytical purpose. It applies
+only relevant criteria, checks supplied effective speech before recommending
+additions, and does not demand hypotheses or unrelated topics for an introduction.
+Each slide may include zero to two optional `enrichments: [{kind:"illustrative",idea}]`
+(maximum 500 characters each), separate from the zero-to-four problem findings.
+These are explicitly hypothetical examples/analogies or invitations to recall an
+authentic anecdote; no external factual claims or search calls are implemented.
+Opening Go deeper only expands cached content. Purpose and enrichment are in the
+same durable versioned result; no additional job or automatic retry is introduced.
+Version-1 results remain retained and display as outdated, with explicit Update
+feedback required. The mobile parser accepts a historical v1 result only if the result is marked stale (including a retained v1 result while
+a newer v2 owner is pending). Reusable cues are unaffected.

@@ -36,3 +36,17 @@ October 16 contextual transcript controls: Contributor Seoyeon requested quieter
 sync/status controls and an explicit heading action for AI transcription checks.
 [Changes, review repairs and checks](ai-collaboration-prompts-iteration-2.md#contextual-transcript-controls--october-16-2026).
 The immediately retracted custom-editor request was not implemented.
+
+## October 16, 2026 — Phase 5 selected-slide review
+
+Contributor: Seoyeon. OpenAI Codex implemented the approved Phase 5 slice; prompt,
+incorporated material and evidence are in the [active prompt log](ai-collaboration-prompts-iteration-2.md#phase-5-selected-slide-review-october-16-2026)
+and [verification ledger](phase-5-verification.md). AI independent review is distinct
+from human review. No publication or later phase is included.
+
+October 16 purpose-aware feedback and interaction repairs: Contributor Seoyeon.
+OpenAI Codex modified only the existing Phase 5 pipeline/Review and recognition
+controls, with tests and separate AI review. [Prompts and contribution](ai-collaboration-prompts-iteration-2.md#purpose-aware-feedback-and-reachable-correction-choices-october-16-2026)
+and [verification](phase-5-verification.md#purpose-aware-feedback-and-interaction-repairs-october-16).
+External-search enrichment is pending explicit data-sharing approval; the reported
+blank screen remains unreproduced. No commit, push or merge.

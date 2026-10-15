@@ -5,9 +5,9 @@ Implementation branch: `it2/feature/ai_feedback`. Phase 1 is committed locally a
 
 Phase 3 and its authorized transcript follow-ups were subsequently committed as
 `ee6233be2875739c6c9f8d2c62e9878e4ab759b7`. The user authorized the amended
-Phase 4 implementation on October 15. Phase 4 is uncommitted; its current checks
-and inspection gate are tracked in [Phase 4 verification](phase-4-verification.md).
-Phase 5 remains unstarted.
+Phase 4 implementation on October 15. Phase 4 was committed as `c99d74b` after approval. Its recognition-only contract
+is tracked in [Phase 4 verification](phase-4-recognition-only-verification.md).
+Phase 5 implementation is staged for inspection; it is not committed.
 
 ## Full implementation contract
 
@@ -125,3 +125,62 @@ Seoyeon confirmed short phone playback/transcription. A separately authorized
 follow-up now labels first/return visits within the existing transcript panel;
 see the [follow-up evidence](transcript-visits-verification.md). Physical-phone
 long-capture acceptance remains pending. The presentation requirements sheet remains held.
+
+## Phase 5 execution ledger (October 16)
+
+Authorized scope: selected-visit per-slide content/graph, audience, repetition/filler,
+evidence-based delivery and explicit-duration timing findings in JJ's existing Review.
+Base: `c99d74b`; branch `it2/feature/ai_feedback`. No Phase 6, requirements sheet,
+new screen, commit, push or merge is authorized by this execution request.
+
+- Reuse FeedbackAnalysis/FeedbackJob, provider receipts, quotas and recovery; introduce
+  `review_<scope digest>` analysis types without schema changes. Scope is context ID
+  plus ordered chosen slide visits within one source attempt. Normal UI requests one
+  selected slide at a time to avoid deck-sized output and preserve partial-run review.
+- Reuse image-aware cue profile jobs/caches as the description dependency. Keep the
+  full guidance snapshot, adapting common facts to the existing evidence adapter.
+- Capture explicit requirements revision, transcript revision, review version and
+  original source identity. Context/correction/profile changes fence stale results.
+- Saving corrections never generates review; Review opens/refreshes are GET only.
+  Analyze slide / Update feedback explicitly synchronizes before admission.
+- Ruling: retain whole-attempt transcript invalidation within each selected-visit
+  scope. A correction near a boundary can affect surrounding interpretation; a
+  narrower dependency graph would risk falsely current findings. Cost: another
+  selected slide may need an explicit refresh after an unrelated correction.
+- Ruling: use timestamp/text evidence for delivery. This pipeline does not receive
+  audio acoustics, so it must not infer voice volume, tone or eye contact. Cost:
+  acoustic delivery evaluation remains unavailable rather than fabricated.
+- Preserve all recordings, original STT, accepted recognition overlays, cue caches,
+  Keep/Overwrite and recording-details playback. Requirements-entry UI remains held.
+
+Verification and independent-review evidence will be recorded in
+`docs/phase-5-verification.md` before the inspection gate.
+
+October 16 first-feedback amendment: Seoyeon authorized automatic initial feedback
+from the completed selected-recording workflow. There is no initial Analyze slide
+button; one durable initial admission is allowed per source/selected slide. Existing
+completed/running analysis reuses its result/job. This initial workflow is the
+explicitly defined exception permitted by the Phase 4 regeneration amendment.
+Confirmed corrections/requirements changes still require Update feedback, and
+failures/uncertain submissions require explicit retry. Navigation and playback do
+not admit work; unrelated historical recordings are not backfilled automatically.
+
+## October 16 purpose-aware coaching and interaction amendment
+
+Both informative/descriptive and analytical/persuasive evaluation are supported
+in the shared Phase 5 evaluator, automatically selected from deck purpose; mixed
+or uncertain purpose uses only justified criteria. Informative presentations are
+assessed for essential explanations and audience understanding, not missing
+hypotheses or exhaustive topic coverage. Already-explained ideas must not be
+recommended again. Optional illustrative Go deeper ideas are separate from actual
+problems, expandable in Review, and never alter the transcript or verdict.
+Research-backed factual/story enrichment remains pending explicit approval of
+OpenAI web-search data sharing after automatic approval review rejected enabling
+that destination. No search tool has been enabled or workaround used.
+
+Review allows pull-down navigation from the top of its scrolling content and
+exposes tappable existing footer actions. Recognition replacements appear in a
+scrollable popover on the existing rehearsal screen, avoiding clipped choices
+below long transcript sentences. Accept, Keep original, Restore original and
+source-audio playback remain recognition-only. No custom editor, new screen,
+requirements sheet, commit, push, merge or Phase 6 is included.

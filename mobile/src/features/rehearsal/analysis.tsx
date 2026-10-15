@@ -10,6 +10,7 @@ import type { AttemptResult, Transcript } from '../../contracts';
 import { API_URL } from '../../services/api';
 import { getSavedAttempt, saveAttempt, type SavedAttempt } from '../recording/storage';
 import { uploadAttempt } from '../recording/upload';
+import { enableInitialFeedback } from '../feedback/automaticFeedback';
 import { normalizeApi, readAnalysis } from '../transcription/analysisStorage';
 import { readReview } from '../transcription/reviewStorage';
 import { existingLocalFile, reviewMedia } from '../transcription/reviewMedia';
@@ -163,7 +164,10 @@ function AttemptWorker({ id }: { id: string }) {
   }, [id, stage, detail, prompt, continuePrompt, cancelPrompt, retry, analyze, refresh, result?.retry_available, result?.retry_at, analysis.busy, uploading, upload]);
   useEffect(() => () => publish(id, null), [id]);
   // New results land in the review cache: let the screens rebuild their lines.
-  useEffect(() => { bump(); }, [result?.status, result?.processing_state, result?.transcript]);
+  useEffect(() => {
+    if (result?.status === 'completed' && result.transcript?.words.length) enableInitialFeedback(API_URL, id);
+    bump();
+  }, [id, result?.status, result?.processing_state, result?.transcript]);
   return null;
 }
 

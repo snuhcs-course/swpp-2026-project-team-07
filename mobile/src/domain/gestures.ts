@@ -63,3 +63,9 @@ export function decideRelease(o: { x: number; base: number; vel: number; step: n
   }
   return { dir: 0, ms: Math.round(Math.max(170, Math.min(280, 150 + Math.abs(x) * 0.36))) };
 }
+
+/** Let Review's body scroll normally; a pull down from its top returns to slides. */
+export function claimReviewDrag({dx,dy,startY,scrollY,modal}: {dx:number;dy:number;startY:number;scrollY:number;modal:boolean}): boolean {
+  if (modal || Math.abs(dy) <= 8 || Math.abs(dy) <= Math.abs(dx)) return false;
+  return startY < 102 || (dy > 0 && scrollY <= 1);
+}

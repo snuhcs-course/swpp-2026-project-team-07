@@ -13,6 +13,7 @@ import { mod } from '../domain/format';
 import type { HueName } from '../domain/hues';
 import { runAttemptIds } from '../domain/run';
 import { AnalysisHost, stageOf, usePlaybackIds, useWorkers } from '../features/rehearsal/analysis';
+import { InitialFeedbackHost } from '../features/feedback/InitialFeedbackHost';
 import { CoachHost, useCoaches } from '../features/rehearsal/coaching';
 import { deckById, getDeckState, loadPresentations, nextHue, useStore, visibleDecks } from '../features/presentations/store';
 import { HomeScreen } from './HomeScreen';
@@ -53,6 +54,7 @@ export function AppShell() {
       </Frame>
       <Workers />
       <CoachHost />
+      <InitialFeedbackHost />
     </ShellContext.Provider>
   );
 }
