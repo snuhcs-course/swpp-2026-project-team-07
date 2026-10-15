@@ -1897,6 +1897,10 @@ there was previously an issue where: u gotta make sure in the ai-collaboration-p
 I’ll connect GitHub in Codex
 
 just use the desktop github app. it worked last time
+
+fix and re upload
+
+try again
 ```
 
 ### AI-generated and retained work
@@ -1912,3 +1916,9 @@ just use the desktop github app. it worked last time
 - A separate AI reviewer sampled navigation, recorded-audio routing, forward-only capture, PDF setup, backend limits and launcher configuration and found no concrete high-impact runtime regression or staged secret. It flagged the missing October 12 meeting contributor, an imprecise correction count and stale `REDESIGN.md` descriptions. Codex marked that earlier requester `unconfirmed`, clarified that 57 corrections were in the copied log (11 already on the previous branch), and aligned the active redesign guide with Review, Full review and the Git checkout. This selective AI review is not teammate approval.
 - The first commit was created on `front-end-design-nakajima`, based on `front-end-design-JJ`. Its first HTTPS push attempt failed because this Mac supplied no GitHub username/credential; an SSH authentication check was also denied. After the requester chose GitHub Desktop, Codex removed this branch's accidental tracking of `front-end-design-JJ` so the app would publish the intended new branch. GitHub Desktop reported push complete, and a remote-head read confirmed `front-end-design-nakajima` at commit `268c8b0`.
 - The Desktop source's Review spec and eight reference renders changed from prototype version 108 to 110 after the initial file copy. Codex synchronized those documentation changes into the published commit; no mobile code changed in this follow-up. Contributor review and the Iteration 2 team report, Wiki/PDF and eTL submission remain pending; none is claimed as completed.
+
+### CI repair follow-up
+
+- The requester shared that the backend job's `python manage.py test` step failed while the mobile job passed. The job's package install, Django check, migration check and migration steps succeeded. GitHub's public check annotations only reported exit code 1; the job-log download endpoint was not accessible from this session.
+- Comparing the branch's edited test expectations with the prior passing redesign branch and the current backend implementation showed three stale assertions: Gemini tests expected schema versions v2/v3 instead of current v3/v4; feedback preparation expected 11 slides to fail despite no current slide-count limit; and the Gemini wire-schema expectation retained a `slide_index` maximum that the current v4 schema removes. Codex restored those checks to match the implementation. This source comparison identifies likely CI causes; the original failing assertion output was unavailable.
+- `python3 -m py_compile` passed for the three edited backend test modules, and `git diff --check` passed for the code changes. `python manage.py test` was attempted but could not start because this Mac's Python environment lacks Celery (`ModuleNotFoundError`); Docker is not running. A separate AI reviewer checked the changed expectations against the current implementation and found no concrete issue, but did not run the suite. The original GitHub test log remains unavailable, so the precise failing assertions are unconfirmed. GitHub Actions must verify the fix after push.
