@@ -16,38 +16,53 @@ import { Dialog, HintRow, IDLE_WAVE, RecordButton, RecordRing, Waveform, type Hi
 import type { IconKey } from '../domain/analysis';
 import { fmt, quote } from '../domain/format';
 import { BACK_T } from '../domain/gestures';
-import { sentences, slideText } from '../domain/lines';
+import { randomUUID } from 'expo-crypto';
+import { API_URL } from '../services/api';
+import { readReview } from '../features/transcription/reviewStorage';
+import { useDurableQa } from '../features/qa/useDurableQa';
+import { qaActive,qaHistoryJobs,qaScreenKey } from '../features/qa/state';
+import { sentences } from '../domain/lines';
 import { AnswerRecorder, type AnswerHandle } from '../features/qa/AnswerRecorder';
-import { generateQuestions, judgeAnswer, QaError, type QaResult } from '../features/qa/client';
-import { answerKey, hasQaConsent, readQa, saveQa, saveQaConsent, type QaSet, type StoredAnswer } from '../features/qa/store';
+import { reviewDurableAnswer, QaError, type QaResult } from '../features/qa/client';
+import { answerKey, readQaV2, readQaHistory, saveQaV2, saveAnswerAttempt, type QaSet, type StoredAnswer } from '../features/qa/store';
 import { useSegmentPlayer } from '../features/rehearsal/useSegmentPlayer';
 import { useDeckModel, type DeckModel } from '../features/presentations/useDeckModel';
 import { useBack, useShell } from './shared';
 
-const AUDIENCE = 'Faculty panel';
 
 export function QAScreen() {
   const { nav } = useShell();
   const model = useDeckModel(nav.deckId);
   if (!model?.state.run) return null;
-  return <QA model={model} />;
+  return <QABound key={model.state.run.id} model={model} />;
 }
 
-function QA({ model }: { model: DeckModel }) {
+function QABound({model}:{model:DeckModel}){
+  const qa=useDurableQa(model);
+  const [archivedIndex,setArchivedIndex]=useState<number|null>(null);
+  const history=qaHistoryJobs(readQaHistory(API_URL,model.deck.id),qa.state);
+  const archived=archivedIndex===null?null:history[archivedIndex]??null;
+  const nextHistory=()=>setArchivedIndex(i=>i===null?0:i+1<history.length?i+1:null);
+  return <QA key={archived?`saved-${archived.jobId??'legacy'}`:qaScreenKey(qa.state)} model={model} qa={qa}
+    archived={archived} historyAvailable={!!history.length} onHistory={nextHistory}/>;
+}
+function QA({ model,qa,archived,historyAvailable,onHistory }: { model: DeckModel;qa:ReturnType<typeof useDurableQa>;archived:QaSet|null;historyAvailable:boolean;onHistory:()=>void }) {
   const { go, nav } = useShell();
   const frame = useFrame();
-  const { deck, lines, state } = model;
+  const { deck, state } = model;
   const run = state.run!;
-  // Questions belong to a run. A newer run gets new questions; older ones stay while it transcribes.
-  const [boot] = useState(() => {
-    const stored = readQa(deck.id);
-    const kept = stored && (stored.runId === run.id || stored.questions.length) ? stored : null;
-    const need = !(kept && kept.runId === run.id) && !(kept && kept.questions.length && !model.transcribed);
-    return { kept, need, consent: hasQaConsent() };
+  const jobId=archived?.jobId??qa.state?.result?.job_id??0;
+  const questions=archived?.questions??(qa.state&&!qa.state.stale&&!qa.state.result?.stale&&qa.state.state==='completed'?qa.state.result?.questions??[]:[]);
+  const [set,setSet]=useState<QaSet|null>(()=>{
+    if(archived)return archived;
+    if(!jobId||!questions.length)return null;
+    const next=readQaV2(API_URL,deck.id,jobId)??{runId:run.id,audience:qa.state!.requirements.audience,questions,answers:{},createdAt:new Date().toISOString()};
+    saveQaV2(API_URL,deck.id,jobId,next);return next;
   });
-  const [set, setSet] = useState<QaSet | null>(boot.kept);
-  const [load, setLoad] = useState<{ kind: 'idle' | 'consent' | 'loading' | 'error'; message?: string }>(
-    () => (!boot.need ? { kind: 'idle' } : boot.consent ? { kind: 'loading' } : { kind: 'consent' }));
+  const [load,setLoad]=useState<{kind:'idle'|'loading'|'error';message?:string}>({kind:'idle'});
+  const [answerAsk,setAnswerAsk]=useState<{k:string;qi:number;p:0|1;a:StoredAnswer}|null>(null);
+  const submissions=useRef(new Map<string,AbortController>());
+  useEffect(()=>{const active=submissions.current;return()=>{active.forEach(c=>c.abort());active.clear();};},[]);
   const [i, setI] = useState(0);
   const [part, setPart] = useState<0 | 1>(0);
   const [count, setCount] = useState(0);
@@ -63,26 +78,8 @@ function QA({ model }: { model: DeckModel }) {
   const player = useSegmentPlayer();
   const hue = HUES[deck.hue];
 
-  // ── Questions ─────────────────────────────────────────────────────────────
-  /** Writes questions from the slide text and this run's transcript; they are cached per presentation. */
-  const requestQuestions = useCallback(async (): Promise<QaSet> => {
-    const slides = deck.slides.map((s, k) => ({ slide_index: k, title: s.title, transcript: slideText(lines, k) }));
-    const questions = await generateQuestions(deck, slides, AUDIENCE);
-    const next: QaSet = { runId: run.id, audience: AUDIENCE, questions, answers: {}, createdAt: new Date().toISOString() };
-    saveQa(deck.id, next);
-    return next;
-  }, [deck, lines, run.id]);
-  const showQuestions = (next: QaSet) => { setSet(next); setI(0); setPart(0); setLoad({ kind: 'idle' }); };
-  const showQaError = (e: unknown) => {
-    const qe = e instanceof QaError ? e : null;
-    setLoad({ kind: 'error', message: qe?.code === 'disabled' ? 'Audience Q&A uses the AI feedback provider, which is turned off on this server (FEEDBACK_ENABLED).'
-      : qe?.message || 'Questions could not be written. Swipe down and try again later.' });
-  };
-  // The first load starts in the loading state (see `boot`); later loads set it first.
-  useEffect(() => { if (boot.need && boot.consent) requestQuestions().then(showQuestions, showQaError); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  const regenerate = () => { setLoad({ kind: 'loading' }); requestQuestions().then(showQuestions, showQaError); };
-
-  const qs = set?.questions ?? [];
+  const regenerate=()=>{setLoad({kind:'idle'});void qa.generate();};
+  const qs = questions;
   const Q = qs[i];
   const key = answerKey(i, part);
   const ans: StoredAnswer | undefined = set?.answers[key];
@@ -105,27 +102,41 @@ function QA({ model }: { model: DeckModel }) {
   };
 
   // ── Answering ─────────────────────────────────────────────────────────────
-  const update = (k: string, a: StoredAnswer) => setSet(prev => {
-    if (!prev) return prev;
-    const next = { ...prev, answers: { ...prev.answers, [k]: a } };
-    saveQa(deck.id, next);
-    return next;
-  });
-  const judge = useCallback(async (k: string, qi: number, p: 0 | 1, a: StoredAnswer) => {
-    const q = qs[qi];
-    if (!q) return;
-    if (a.durationMs < 8000) {
-      update(k, { ...a, status: 'done', result: { transcript: { text: '', words: [] }, verdict: 'too_short', did: '', evidence: '', clarify: '', duration_ms: a.durationMs } });
-      return;
+  const update=(k:string,a:StoredAnswer)=>{
+    const target=a.questionJobId;
+    if(!target)return;
+    saveAnswerAttempt(API_URL,deck.id,a);
+    const saved=readQaV2(API_URL,deck.id,target);
+    if(!saved)return;
+    // Late responses from an older rerecording cannot replace the newer answer.
+    if(saved.answers[k]?.id&&saved.answers[k].id!==a.id)return;
+    const next={...saved,answers:{...saved.answers,[k]:a}};
+    saveQaV2(API_URL,deck.id,target,next);
+    if(target===jobId)setSet(prev=>prev?.questions[0]?.id===next.questions[0]?.id?next:prev);
+  };
+  const judge=async(k:string,qi:number,p:0|1,a:StoredAnswer,confirmed=false,retry=true)=>{
+    const q=qs[qi];if(!q||!a.id||!a.questionId||!a.questionJobId||submissions.current.has(a.id))return;
+    const anchor=qa.state?.attempt_id,deckId=anchor?readReview(API_URL,anchor)?.deck_id:null;
+    if(!deckId){update(k,{...a,status:'error',error:'Presentation is not synchronized.'});return;}
+    const controller=new AbortController();submissions.current.set(a.id,controller);
+    update(k,{...a,status:'judging',error:undefined});
+    try{
+      const result:QaResult=await reviewDurableAnswer({id:a.id,deckId,audioUri:a.audioUri,durationMs:a.durationMs,
+        questionJobId:a.questionJobId,questionId:a.questionId,part:p,slideIndex:q.slide_index},confirmed,controller.signal,retry);
+      update(k,{...a,status:'done',result});
+    }catch(e){
+      if(controller.signal.aborted)return;
+      if(e instanceof QaError&&e.code==='confirmation_required')setAnswerAsk({k,qi,p,a});
+      update(k,{...a,status:'error',error:e instanceof Error?e.message:'The answer could not be reviewed.'});
+    }finally{submissions.current.delete(a.id);}
+  };
+  const resume=useRef(judge);useEffect(()=>{resume.current=judge;});
+  useEffect(()=>{
+    if(!set||archived)return;
+    for(const [k,a]of Object.entries(set.answers))if(a.status==='judging'){
+      const [qi,p]=k.split('-').map(Number);void resume.current(k,qi,p as 0|1,a,false,false);
     }
-    update(k, { ...a, status: 'judging', error: undefined });
-    try {
-      const result: QaResult = await judgeAnswer(deck, { audioUri: a.audioUri, question: p ? q.follow_up : q.question, mainQuestion: q.question, part: p, slideIndex: q.slide_index, durationMs: a.durationMs });
-      update(k, { ...a, status: 'done', result });
-    } catch (e) {
-      update(k, { ...a, status: 'error', error: e instanceof Error ? e.message : 'The answer could not be reviewed.' });
-    }
-  }, [deck, qs]); // eslint-disable-line react-hooks/exhaustive-deps
+  },[jobId,set,archived]);
   const stopCount = () => { if (countTimer.current) { clearInterval(countTimer.current); countTimer.current = null; } };
   useEffect(() => () => stopCount(), []);
   const startRec = async () => {
@@ -146,7 +157,9 @@ function QA({ model }: { model: DeckModel }) {
     try {
       const { uri, durationMs } = await recorder.current.stop();
       setRec(false); ringV.set(withTiming(0, { duration: 200 })); setRecKey(x => x + 1);
-      const a: StoredAnswer = { audioUri: uri, durationMs, status: 'judging', at: new Date().toISOString() };
+      const a: StoredAnswer = { id:randomUUID(),questionId:Q?.id,questionJobId:jobId,audioUri: uri, durationMs, status: 'judging', at: new Date().toISOString() };
+      // Persist the new identity before any network request; retain previous attempts separately.
+      if(set){const next={...set,answers:{...set.answers,[k]:a}};saveQaV2(API_URL,deck.id,jobId,next);setSet(next);}
       update(k, a);
       void judge(k, qi, p, a);
     } catch (e) {
@@ -155,7 +168,7 @@ function QA({ model }: { model: DeckModel }) {
     }
   };
   const toggleRec = () => {
-    if (!Q) return;
+    if (!Q||archived) return;
     if (rec) { void stopRec(); return; }
     if (count) { stopCount(); setCount(0); ringV.set(withTiming(0)); return; }
     stopSpeak(); player.stop();
@@ -224,7 +237,7 @@ function QA({ model }: { model: DeckModel }) {
   const face = HUES[deck.hue].face;
   const hearing = (k: string) => hear === k;
   const glyph: RecordGlyph = count ? (count as 3 | 2 | 1) : rec ? 'stop' : phase === 'review' ? 'redo' : 'mic';
-  const btnLabel = count ? `Starting in ${count}. Tap to cancel` : rec ? 'Stop answering' : phase === 'review' ? (part ? 'Answer the follow-up again' : 'Answer the question again') : (part ? 'Answer the follow-up' : 'Answer the question');
+  const btnLabel = archived?'Saved Q&A · playback only':count ? `Starting in ${count}. Tap to cancel` : rec ? 'Stop answering' : phase === 'review' ? (part ? 'Answer the follow-up again' : 'Answer the question again') : (part ? 'Answer the follow-up' : 'Answer the question');
   const hints: Hint[] = count ? [{ icon: 'h-tap', text: 'Tap to cancel' }] : rec ? [{ icon: 'h-tap', text: 'Tap when done' }]
     : [...(last ? [] : [{ icon: 'h-spin' as const, text: 'Next' }]), { icon: 'h-dn', text: 'Back', nudge: 'down' }];
   const result = ans?.status === 'done' ? ans.result : undefined;
@@ -247,9 +260,13 @@ function QA({ model }: { model: DeckModel }) {
       <PanView style={StyleSheet.absoluteFill} {...pan}>
         <Animated.View style={[StyleSheet.absoluteFill, screen]}>
           <View style={styles.header} pointerEvents="none">
-            <Txt style={styles.title}>Audience Q&amp;A</Txt>
-            <Txt style={styles.label}>{Q ? 'Question ' + (i + 1) + ' of ' + qs.length + ' · ' + (set?.audience ?? AUDIENCE) : load.kind === 'loading' ? 'Writing questions from your slides…' : AUDIENCE}</Txt>
+            <Txt style={styles.title}>{archived?"Saved Q&A":"Audience Q&A"}</Txt>
+            <Txt numberOfLines={1} style={styles.label}>{Q ? 'Question ' + (i + 1) + ' of ' + qs.length + ' · ' + (set?.audience ?? qa.state?.requirements.audience ?? '') : qaActive(qa.state) ? 'Writing audience questions…' : (qa.state?.requirements.audience || 'Audience not set')}</Txt>
           </View>
+          {historyAvailable&&<Pressable accessibilityRole="button" accessibilityLabel={archived?'Next saved Q&A or return to current questions':'View saved Q&A'} onPress={()=>{if(rec||count)return;stopSpeak();player.stop();onHistory();}}
+            style={{position:'absolute',top:18,left:16,zIndex:10,paddingVertical:6,paddingHorizontal:10}}>
+            <Txt style={{fontSize:12,color:C.secondary}}>{archived?'Next saved / Current Q&A':'Saved Q&A'}</Txt>
+          </Pressable>}
           {Q && (
             <Animated.View style={[styles.stage, slideStyle]}>
               <View style={styles.panelist} pointerEvents="none">
@@ -301,18 +318,15 @@ function QA({ model }: { model: DeckModel }) {
                   )}
                   {rec && <View style={styles.listening}><Txt style={styles.listenText}>Listening…</Txt></View>}
                   {phase === 'review' && ans && <>
+                    <Pressable accessibilityRole="button" accessibilityLabel="Play saved answer" onPress={playAnswer} style={styles.playChip}><Glyph name={player.playingKey==='a'+key?'p-pause':'p-play'} size={14}/><Txt style={styles.playText}>{'Saved audio · '+fmt(ans.durationMs/1000)}</Txt></Pressable>
                     {ans.status === 'judging' && <Row icon="i-wave" k="Your answer" t="Transcribing and reviewing your answer…" />}
-                    {ans.status === 'error' && (
+                    {ans.status === 'error' && !archived && (
                       <Pressable accessibilityRole="button" onPress={() => void judge(key, i, part, ans)}><Row icon="i-flag" k="Couldn’t review this answer" t={(ans.error || '') + ' Tap to try again.'} /></Pressable>
                     )}
                     {verdict && (
                       <View style={styles.verdictRow}>
                         <View style={[styles.verdict, { backgroundColor: verdict.tone.bg }]}><UIIcon name={verdict.icon} size={22} /><Txt style={[styles.verdictText, { color: verdict.tone.fg }]}>{verdict.text}</Txt></View>
-                        <Pressable accessibilityRole="button" accessibilityLabel={(player.playingKey === 'a' + key ? 'Stop your answer' : 'Play your answer') + ', ' + fmt(ans.durationMs / 1000)}
-                          onPress={playAnswer} style={styles.playChip}>
-                          <Glyph name={player.playingKey === 'a' + key ? 'p-pause' : 'p-play'} size={14} color={C.body} />
-                          <Txt style={styles.playText}>{fmt(ans.durationMs / 1000)}</Txt>
-                        </Pressable>
+
                       </View>
                     )}
                     {rows.map(r => <Row key={r.k} icon={r.icon} k={r.k} t={r.t} />)}
@@ -335,11 +349,11 @@ function QA({ model }: { model: DeckModel }) {
               </View>
             </Animated.View>
           )}
-          {!Q && load.kind !== 'consent' && (
+          {!Q && (
             <View style={styles.status} pointerEvents="box-none">
               <UIIcon name={load.kind === 'error' ? 'i-flag' : 'i-bubble'} size={44} />
-              <Txt style={styles.statusText}>{load.kind === 'error' ? load.message : 'Your panel is reading the slides and your transcript…'}</Txt>
-              {load.kind === 'error' && <Pressable accessibilityRole="button" onPress={regenerate} style={styles.retry}><Txt style={styles.retryText}>Try again</Txt></Pressable>}
+              <Txt style={styles.statusText}>{load.message || qa.notice || (qa.state?.stale?'Questions outdated. Update using the selected recordings.':!qa.state?.requirements.audience?'Presentation audience is missing. Requirements entry is not available yet.':qaActive(qa.state)?'Your audience questions are being prepared…':qa.state?.dependency?.retry_action?'Slide profile analysis needs recovery.':qa.state?.state==='failed'?'Question generation failed. Your recordings are preserved.':'Audience questions are not ready.')}</Txt>
+              {!qa.busy&&!qaActive(qa.state)&&!!qa.state?.requirements.audience&&<Pressable accessibilityRole="button" onPress={regenerate} style={styles.retry}><Txt style={styles.retryText}>{qa.state?.stale?'Update questions':'Retry questions'}</Txt></Pressable>}
             </View>
           )}
           {Q && load.kind === 'error' && <Txt style={styles.inlineError}>{load.message}</Txt>}
@@ -349,15 +363,13 @@ function QA({ model }: { model: DeckModel }) {
             <Waveform bars={wave} live />
           </>}
           <RecordRing progress={ringP} visible={ringV} />
-          <RecordButton glyph={glyph} label={btnLabel} onPress={toggleRec} disabled={!Q} />
+          {!archived&&<RecordButton glyph={glyph} label={btnLabel} onPress={toggleRec} disabled={!Q} />}
           <HintRow hints={hints} />
         </Animated.View>
       </PanView>
-      {load.kind === 'consent' && (
-        <Dialog icon="i-bubble" tone="neutral" title="Practise with an AI panel?"
-          body="Audience Q&A sends your slide text and transcript through your OutLoud server to its configured AI provider to write questions. Your spoken answers are sent to OpenAI for transcription and reviewed by the same provider. Answers stay on this phone too. Requests may incur provider charges."
-          confirm="Continue" onConfirm={() => { saveQaConsent(); regenerate(); }} onCancel={() => { setLoad({ kind: 'idle' }); back(); }} />
-      )}
+      {(qa.ask||answerAsk)&&<Dialog title="Confirm retry" body="The previous request may have reached the provider and incurred a charge. Retry the same saved input?"
+        confirm="Retry" onConfirm={()=>{if(answerAsk){const a=answerAsk;setAnswerAsk(null);void judge(a.k,a.qi,a.p,a.a,true);}else void qa.confirm();}}
+        onCancel={()=>{setAnswerAsk(null);qa.cancel();}}/>}
     </Enter>
   );
 }

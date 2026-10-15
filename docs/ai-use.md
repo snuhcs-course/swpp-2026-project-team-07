@@ -50,3 +50,15 @@ controls, with tests and separate AI review. [Prompts and contribution](ai-colla
 and [verification](phase-5-verification.md#purpose-aware-feedback-and-interaction-repairs-october-16).
 External-search enrichment is pending explicit data-sharing approval; the reported
 blank screen remains unreproduced. No commit, push or merge.
+
+
+Phase 6 durable audience Q&A: Contributor Seoyeon. OpenAI Codex implemented and
+separately AI-reviewed the selected-run question/answer persistence and existing-screen
+integration. [Prompt/contribution record](ai-collaboration-prompts-iteration-2.md#phase-6-durable-audience-qa-october-16-2026),
+[verification and remaining limits](phase-6-verification.md). No commit/push/merge or
+human acceptance is implied.
+
+
+Phase 6 phone availability repair: Contributor Seoyeon. Codex diagnosed and repaired
+an overly strict scope parser after updating the older local API. [Prompts/review](ai-collaboration-prompts-iteration-2.md#phase-6-phone-qa-availability-repair-october-16-2026)
+and [physical-phone/automated evidence](phase-6-verification.md#phone-qa-availability-repair-october-16).

@@ -1427,3 +1427,47 @@ enabling OpenAI web search without explicit destination/data-sharing approval.
 The pending approval question was left open; no search integration or workaround
 was enabled. Verification and review repairs: [follow-up ledger](phase-5-verification.md#purpose-aware-feedback-and-interaction-repairs-october-16).
 No commit, push, merge or later phase is authorized by these changes.
+
+
+## Phase 6 durable audience Q&A (October 16, 2026)
+
+Contributor: Seoyeon
+
+Tool: OpenAI Codex; separate independent AI reviewer. Human inspection is pending.
+Representative user prompts (verbatim):
+
+> plan for phase 6
+
+> implment phase 6
+
+Incorporated: validated selected-run manifests, audience/purpose-aware question
+prompts, stable question generation IDs, reusable durable jobs, a small answer binding
+migration, original answer audio/STT identity preservation, explicit invalidation and
+recovery, one-time initial eligibility, existing-screen saved history/playback, tests,
+API documentation and the verification ledger. No requirements sheet or new screen.
+
+Independent review identified failed answer-profile recovery, ambiguous follow-up
+context, stale-current history exclusion and same-job storage initialization. These
+were repaired with client/state/workflow regressions and checked again. Evidence,
+actual command outcomes, Android test limits and final staged review are recorded in
+[Phase 6 verification](phase-6-verification.md). No human code review is fabricated;
+no commit, push, merge, publication, Phase 7 or real-provider quality acceptance.
+
+
+## Phase 6 phone Q&A availability repair (October 16, 2026)
+
+Contributor: Seoyeon
+
+Tool: OpenAI Codex; separate independent AI reviewer.
+Representative prompt (verbatim):
+
+> Im getting that Audience Q&A is offline or unavailable
+
+Incorporated: structural selected-run scope comparison and regression coverage for
+backend JSON field order. The old development API was migrated/restarted using its
+existing isolated settings; worker and recovery scheduler resumed. No credentials or
+original recordings changed. Verified three completed current questions through the
+physical phone; usefulness and full answer submission remain pending. All 275 mobile
+tests and Android export passed; independent review reran 15 focused tests with no
+findings. [Evidence](phase-6-verification.md#phone-qa-availability-repair-october-16).
+No commit, push or merge.

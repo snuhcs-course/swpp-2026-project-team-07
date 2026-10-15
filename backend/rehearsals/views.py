@@ -86,7 +86,7 @@ def deck_detail(request, deck_id):
 @api_view(["GET"])
 def deck_attempts(request, deck_id):
     deck = get_object_or_404(Deck, id=deck_id)
-    return Response([attempt_data(a, request) for a in deck.attempts.order_by("-created_at")])
+    return Response([attempt_data(a, request) for a in deck.attempts.filter(qa_answer__isnull=True).order_by("-created_at")])
 
 
 @api_view(["POST"])

@@ -245,3 +245,15 @@ class FeedbackReservation(models.Model):
     reserved_at = models.DateTimeField()
     submitted_at = models.DateTimeField(null=True)
     released_at = models.DateTimeField(null=True)
+
+
+class QaAnswer(models.Model):
+    """An immutable question/part binding; audio/STT lives on the original Attempt."""
+    attempt = models.OneToOneField(Attempt, on_delete=models.PROTECT, primary_key=True, related_name='qa_answer')
+    question_job = models.ForeignKey(FeedbackJob, on_delete=models.PROTECT, related_name='qa_answers')
+    question_id = models.CharField(max_length=32)
+    part = models.PositiveSmallIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.CheckConstraint(condition=models.Q(part__in=[0, 1]), name='qa_answer_part_range')]

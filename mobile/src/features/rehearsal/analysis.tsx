@@ -10,6 +10,7 @@ import type { AttemptResult, Transcript } from '../../contracts';
 import { API_URL } from '../../services/api';
 import { getSavedAttempt, saveAttempt, type SavedAttempt } from '../recording/storage';
 import { uploadAttempt } from '../recording/upload';
+import { enableInitialQa } from '../qa/automatic';
 import { enableInitialFeedback } from '../feedback/automaticFeedback';
 import { normalizeApi, readAnalysis } from '../transcription/analysisStorage';
 import { readReview } from '../transcription/reviewStorage';
@@ -135,6 +136,7 @@ function AttemptWorker({ id }: { id: string }) {
     consumed.current = true;
     try {
       saveAttempt({ ...saved, auto_process_api: undefined });
+      enableInitialQa(address,id);
       handedOff.add(id);
     } catch { handOffFailed.add(id); }
     notify();

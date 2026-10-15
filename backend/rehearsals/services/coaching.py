@@ -117,6 +117,14 @@ def _source_current(job):
         correction = corrections.snapshot(attempt)
     except FeedbackError:
         return False
+    if 'audience_qa' in job.source_snapshot:
+        from .audience_qa import current as qa_current
+        if not qa_current(attempt, job.source_snapshot['audience_qa']):
+            return False
+    if 'qa_answer' in job.source_snapshot:
+        from .audience_qa import VERSION
+        if job.source_snapshot['qa_answer']['version'] != VERSION:
+            return False
     if 'slide_review' in job.source_snapshot:
         from .slide_review import current
         if not current(attempt, job.source_snapshot['slide_review']):
@@ -158,7 +166,7 @@ def _attach(value, job):
     # Called only with set and job locks. Copy exact revision, including edits.
     if value.descriptions is not None and job.descriptions_snapshot is None:
         job.descriptions_snapshot = value.descriptions
-        if job.analysis.analysis_type.startswith('review_'):
+        if job.analysis.analysis_type.startswith(('review_', 'qa_')):
             # Profiles share descriptions' source/fact schema. Preserve guidance
             # separately while the legacy adapter validates the common facts.
             job.source_snapshot = {**job.source_snapshot, 'review_profile': value.descriptions}
@@ -175,6 +183,13 @@ def generate(attempt_id, payload, analysis_type='coaching', review_scope=None):
     if 'transcript_revision' in payload and payload['transcript_revision'] != corrections.snapshot(attempt)['revision']:
         raise Conflict('correction_conflict')
     review_input = None
+    qa_input = None
+    if analysis_type == 'qa_answer':
+        from . import audience_qa
+        qa_input = audience_qa.answer_capture(attempt)
+    elif analysis_type.startswith('qa_'):
+        from . import audience_qa
+        qa_input = audience_qa.capture(attempt, review_scope)
     if analysis_type.startswith('review_'):
         from . import slide_review
         review_input = slide_review.capture(attempt, review_scope)
@@ -208,6 +223,8 @@ def generate(attempt_id, payload, analysis_type='coaching', review_scope=None):
                 if attempt_identity(attempt) != snapshot['attempt_identity']:
                     raise Conflict('source_changed')
                 snapshot = {**snapshot, **correction_input(attempt)}
+            if qa_input is not None:
+                snapshot = {**snapshot, 'qa_answer' if analysis_type == 'qa_answer' else 'audience_qa': qa_input}
             if review_input is not None:
                 snapshot = {**snapshot, 'slide_review': review_input}
             selection = Selection.saved(value)
@@ -219,9 +236,9 @@ def generate(attempt_id, payload, analysis_type='coaching', review_scope=None):
     if set(payload) - {'expected_selection', 'transcript_revision'}:  # A retry can never create an initial analysis.
         raise Conflict('stale_revision')
     source = prepare_attempt(attempt)
-    if review_input is None:
+    if review_input is None and qa_input is None:
         assert_selection(payload, selection_descriptor(coaching=True))
-    selection = Selection.profiles() if review_input is not None else Selection.current()
+    selection = Selection.profiles() if review_input is not None or qa_input is not None else Selection.current()
     assert_selection(payload, selection_descriptor(selection, coaching=True))
     selection.credentials()
     QuotaPolicy.current(selection)
@@ -233,6 +250,8 @@ def generate(attempt_id, payload, analysis_type='coaching', review_scope=None):
                 'chronology_id': _digest([attempt.duration_ms, attempt.slide_events]), **correction_input(attempt)}
     if 'transcript_revision' in payload and payload['transcript_revision'] != captured['transcript_revision']:
         raise Conflict('correction_conflict')
+    if qa_input is not None:
+        captured['qa_answer' if analysis_type == 'qa_answer' else 'audience_qa'] = qa_input
     if review_input is not None:
         captured['slide_review'] = review_input
     # The description intent and feedback dependency commit together.
@@ -251,7 +270,9 @@ def generate(attempt_id, payload, analysis_type='coaching', review_scope=None):
             # Recheck active/completed vs failed/stale and retry requirements if
             # another caller admitted while this caller prepared its snapshots.
             return generate(attempt_id, payload, analysis_type, review_scope)
-        assert_selection(payload, selection_descriptor(Selection.profiles() if review_input is not None else Selection.current(), coaching=True))
+        assert_selection(payload, selection_descriptor(Selection.profiles() if review_input is not None or qa_input is not None else Selection.current(), coaching=True))
+        if qa_input is not None and analysis_type != 'qa_answer' and not audience_qa.current(current_attempt, qa_input):
+            raise Conflict('requirements_changed')
         if review_input is not None and not slide_review.current(current_attempt, review_input):
             raise Conflict('requirements_changed')
         value = descriptions_service.admit_prepared(selection, deck, snapshot, dependency=True, candidate=description_request)
@@ -284,7 +305,10 @@ def _prepared(value, job):
     adapter = selection.adapter(coaching_schema_version=job.schema_version)
     descriptions = adapter.edited_descriptions(analysis, job.descriptions_snapshot)
     prepared = adapter.prepare_coaching(analysis, descriptions)
-    if job.analysis.analysis_type.startswith('review_'):
+    if job.analysis.analysis_type.startswith('qa_'):
+        from .audience_qa import augment
+        prepared = augment(prepared, job.source_snapshot)
+    elif job.analysis.analysis_type.startswith('review_'):
         from .slide_review import augment
         prepared = augment(prepared, job.source_snapshot)
     elif job.source_snapshot.get('transcript_revision', 0) or job.analysis.analysis_type == 'transcription_suggestions':
@@ -430,6 +454,9 @@ def finish(value, job, result=None, error=None):
             locked_job.result = {'status': result.state, 'accepted_count': result.accepted_count,
                 'discarded_count': result.discarded_count,
                 'suggestions': [s.model_dump(mode='json') for s in result.suggestions]}
+            if hasattr(result, 'questions'):
+                locked_job.result['questions'] = result.questions
+                locked_job.result['answer'] = result.answer
             if hasattr(result, 'slides'):
                 locked_job.result['slides'] = result.slides
             if result.state == 'all_invalid':
@@ -470,7 +497,10 @@ def run_coaching(analysis_id, revision):
             except Exception:
                 logger.warning('Coaching receipt could not be saved; recovery required.')
                 return
-        if job.analysis.analysis_type.startswith('review_'):
+        if job.analysis.analysis_type.startswith('qa_'):
+            from .audience_qa import normalize
+            result = normalize(prepared, receipt, job.source_snapshot)
+        elif job.analysis.analysis_type.startswith('review_'):
             from .slide_review import normalize
             result = normalize(prepared, receipt, job.source_snapshot)
         elif job.analysis.analysis_type == 'transcription_suggestions':
@@ -563,6 +593,10 @@ def _result(value, job, current_job):
         return None
     source = job.source_snapshot['source']
     extra = {}
+    if 'audience_qa' in job.source_snapshot or 'qa_answer' in job.source_snapshot:
+        extra = {'questions':job.result.get('questions', []), 'answer':job.result.get('answer'),
+                 'qa_version':job.source_snapshot.get('audience_qa',job.source_snapshot.get('qa_answer'))['version'],
+                 'job_id':job.pk}
     if 'slide_review' in job.source_snapshot:
         extra = {'slides': job.result.get('slides', []), 'review_version': job.source_snapshot['slide_review']['version']}
     return {**extra, **{k: job.result[k] for k in ('status', 'accepted_count', 'discarded_count', 'suggestions')},

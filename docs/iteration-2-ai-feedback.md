@@ -7,7 +7,8 @@ Phase 3 and its authorized transcript follow-ups were subsequently committed as
 `ee6233be2875739c6c9f8d2c62e9878e4ab759b7`. The user authorized the amended
 Phase 4 implementation on October 15. Phase 4 was committed as `c99d74b` after approval. Its recognition-only contract
 is tracked in [Phase 4 verification](phase-4-recognition-only-verification.md).
-Phase 5 implementation is staged for inspection; it is not committed.
+Phase 5 was approved and committed locally as `6a4dfb11afdc7990759a5ca0bf150460174b25d4`.
+Phase 6 implementation is staged for inspection under separate user authorization; see [its execution ledger](phase-6-verification.md).
 
 ## Full implementation contract
 
@@ -184,3 +185,21 @@ scrollable popover on the existing rehearsal screen, avoiding clipped choices
 below long transcript sentences. Accept, Keep original, Restore original and
 source-audio playback remain recognition-only. No custom editor, new screen,
 requirements sheet, commit, push, merge or Phase 6 is included.
+
+## Phase 6 implementation decisions (October 16)
+
+Use the existing Q&A screen and preserve legacy endpoints/caches. New question
+requests submit only a selected-run manifest; the server validates complete original
+visits and captures synchronized correction revisions for every selected source.
+Question jobs reuse cached image-aware profiles and existing quota, receipt, worker
+and recovery machinery. Stable question IDs are bound to the exact job generation.
+
+`QaAnswer` links an immutable question ID/part/generation to one existing Attempt.
+Original answer audio, transcription receipts, word times and alignment stay on
+Attempt. Retry preserves identity; rerecord creates a new identity. Completed STT
+advances to evaluation through the worker/recovery workflow. GET never admits work.
+
+A separate Phase 6 initial-eligibility marker prevents installing this phase from
+backfilling old recordings. Subsequent corrections/audience/source changes invalidate
+questions without generation. Saved generations (including legacy local Q&A) remain
+read-only and playable within the current screen. No requirements sheet/new screen.

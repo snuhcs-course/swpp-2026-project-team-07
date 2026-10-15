@@ -930,3 +930,75 @@ same durable versioned result; no additional job or automatic retry is introduce
 Version-1 results remain retained and display as outdated, with explicit Update
 feedback required. The mobile parser accepts a historical v1 result only if the result is marked stale (including a retained v1 result while
 a newer v2 owner is pending). Reusable cues are unaffected.
+
+
+## Phase 6 — durable selected-run audience Q&A
+
+The synchronous legacy `/decks/{id}/qa/questions/` and `/qa/answers/` endpoints remain
+compatible for older clients. The JJ Q&A screen now uses these additional routes:
+
+- `GET /attempts/{anchor}/audience-qa/?scope=<JSON>` inspects only; no provider work.
+- `POST /attempts/{anchor}/audience-qa/` admits one durable question job or explicitly
+  retries/updates an existing generation. Return 202 while pending, 200 when complete.
+- `GET /attempts/{answer}/qa-answer/` reads the original recording's processing and
+  evaluation state; 404 `answer_not_found` when not yet bound.
+- `POST /attempts/{answer}/qa-answer/` binds an uploaded answer to a question and
+  optionally requests recording processing or explicit evaluation recovery.
+
+Question `scope` is `{context_id: UUID|null, slides:[{slide_index,attempt_id,
+segments:[{start_ms,end_ms}]}]}`. Indexes are zero-based; every positive-duration
+original visit for each selected slide must be supplied in chronological order,
+including backward/repeated visits. Different slides may use different source takes;
+all sources/context must belong to one deck. The anchor is the lexicographically
+smallest normalized source UUID. Client-selected run identity lives in this manifest;
+no claim is made that the server owns JJ's local Keep/Overwrite decision.
+
+POST includes `scope`, `source_revisions:{attemptUUID: transcriptRevision}`, and the
+existing feedback control fields `expected_selection`, optional `feedback_revision`
+and `acknowledge_uncertain`. The server also accepts omitted source_revisions for
+compatible direct callers, capturing current server revisions. Supplied maps must
+exactly match all selected sources, otherwise 409 `correction_conflict`. Admission
+uses deck then source locks. Analysis type `qa_<24 hex scope hash>` separates source
+selections. Each generation captures `audience-qa-v2`, saved context requirements,
+source identities/corrections and selected effective speech. Missing audience is
+400 `missing_audience`, never the legacy Faculty panel default. Cached profiles carry
+full-deck purpose/context; unselected transcript text is excluded from the AI payload.
+
+Question responses use existing durable feedback states, dependencies, receipts,
+retry/uncertainty/selection controls, plus `scope`, `qa_version`, `requirements` and
+`source_revisions`. `result` adds `job_id`, `qa_version`, and one to three `questions`:
+`{id,panelist,role,slide_index,topic,question,follow_up}`. IDs are stable within the
+immutable job result. Old output is retained and marked stale; current active work
+must not be hidden by its historical result. Revisions, audience or profile changes
+never automatically enqueue updates. New selected recording workflows admit their
+first eligible set once, independently of screen navigation; historical sets require
+an explicit existing-screen action. Failed/uncertain calls use explicit recovery.
+
+Answer audio first uses existing `POST /attempts/` with a new client UUID, deck,
+capture duration (1–300,000 ms), and a single question-slide event at 0. Binding POST
+uses `{question_job_id:integer,question_id:string,part:0|1,processing?:ProcessSerializer,
+feedback?:existingFeedbackControls}`. The question job must be completed, on the same
+deck and contain that ID/slide. A bound UUID cannot be rebound; conflicting question,
+part or generation is 409 `source_changed`. A rerecord has a new UUID. Binding
+persists before asynchronous processing. Repeated uploads retain existing content
+hash conflict handling; repeated processing/evaluation requests reuse saved work.
+
+Answer GET/POST responses contain `{attempt_id,question_job_id,question_id,part,
+processing:{status,processing_revision,requires_confirmation,retry_available,error},
+feedback:existingFeedbackState,result:null|{transcript,duration_ms,verdict,did,evidence,
+clarify}}`. Recording status and feedback status are distinct. Saved successful STT
+is reused after evaluation failure. Under eight seconds or fifteen words is
+`too_short`, with original transcript/audio retained and no evaluation request.
+Explicit retry retains existing cooldown/revision/charge-confirmation rules, including
+failed profile dependencies. Follow-up evaluation receives its active question,
+original main question and `is_follow_up` explicitly. Answer evaluations retain their
+original question/audience after presentation requirements change.
+
+New migration `0009_qaanswer` adds only an answer-to-Attempt/question-job binding
+and a part 0/1 constraint. It does not rewrite existing media, attempts, transcripts,
+contexts or feedback. Reversing it removes bindings, while original Attempt/media
+and question jobs remain. Rehearsal history excludes bound answer attempts.
+
+Before running this client against the development server: apply `python manage.py
+migrate`, then restart the API, worker and recovery scheduler using the existing
+development setup. No credential/env changes are required by Phase 6.
