@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from .models import Attempt, Deck, FeedbackJob, QaAnswer
 from .services import audience_qa, coaching, processing
 from .services.feedback import FeedbackError, strict_json
-from .services.feedback_config import Selection, selection_descriptor, validate_assertion
+from .services.feedback_config import selection_descriptor, validate_assertion
 from .feedback_views import _error
 from .serializers import ProcessSerializer
 
@@ -28,7 +28,7 @@ def controls(payload):
 def state_for(attempt,scope):
     state=coaching.read(attempt.pk,audience_qa.analysis_type(scope))
     if not state['feedback_revision']:
-        try:state['selection']=selection_descriptor(Selection.profiles(),coaching=True);state['availability']=coaching._availability(Selection.profiles())
+        try:state['selection']=selection_descriptor(coaching.profile_selection(attempt.deck_id),coaching=True);state['availability']=coaching._availability(coaching.profile_selection(attempt.deck_id))
         except FeedbackError:state['selection']=None
     state.update(scope=scope,qa_version=audience_qa.VERSION)
     owner=attempt.analyses.filter(analysis_type=audience_qa.analysis_type(scope)).first()

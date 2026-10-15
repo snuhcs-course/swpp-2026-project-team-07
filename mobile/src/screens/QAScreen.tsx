@@ -56,14 +56,16 @@ function QA({ model,qa,archived,historyAvailable,onHistory }: { model: DeckModel
   const [set,setSet]=useState<QaSet|null>(()=>{
     if(archived)return archived;
     if(!jobId||!questions.length)return null;
-    const next=readQaV2(API_URL,deck.id,jobId)??{runId:run.id,audience:qa.state!.requirements.audience,questions,answers:{},createdAt:new Date().toISOString()};
+    const cached=readQaV2(API_URL,deck.id,jobId);
+    // Adopt the complete validated server batch, retaining answers for this job.
+    const next={...cached,runId:run.id,audience:qa.state!.requirements.audience,questions,answers:cached?.answers??{},createdAt:cached?.createdAt??new Date().toISOString()};
     saveQaV2(API_URL,deck.id,jobId,next);return next;
   });
   const [load,setLoad]=useState<{kind:'idle'|'loading'|'error';message?:string}>({kind:'idle'});
   const [answerAsk,setAnswerAsk]=useState<{k:string;qi:number;p:0|1;a:StoredAnswer}|null>(null);
   const submissions=useRef(new Map<string,AbortController>());
   useEffect(()=>{const active=submissions.current;return()=>{active.forEach(c=>c.abort());active.clear();};},[]);
-  const [i, setI] = useState(0);
+  const [position, setI] = useState(0);
   const [part, setPart] = useState<0 | 1>(0);
   const [count, setCount] = useState(0);
   const [rec, setRec] = useState(false);
@@ -79,7 +81,8 @@ function QA({ model,qa,archived,historyAvailable,onHistory }: { model: DeckModel
   const hue = HUES[deck.hue];
 
   const regenerate=()=>{setLoad({kind:'idle'});void qa.generate();};
-  const qs = questions;
+  const qs = archived?.questions??(questions.length?set?.questions??questions:[]);
+  const i=Math.min(position,Math.max(0,qs.length-1));
   const Q = qs[i];
   const key = answerKey(i, part);
   const ans: StoredAnswer | undefined = set?.answers[key];
@@ -239,7 +242,7 @@ function QA({ model,qa,archived,historyAvailable,onHistory }: { model: DeckModel
   const glyph: RecordGlyph = count ? (count as 3 | 2 | 1) : rec ? 'stop' : phase === 'review' ? 'redo' : 'mic';
   const btnLabel = archived?'Saved Q&A · playback only':count ? `Starting in ${count}. Tap to cancel` : rec ? 'Stop answering' : phase === 'review' ? (part ? 'Answer the follow-up again' : 'Answer the question again') : (part ? 'Answer the follow-up' : 'Answer the question');
   const hints: Hint[] = count ? [{ icon: 'h-tap', text: 'Tap to cancel' }] : rec ? [{ icon: 'h-tap', text: 'Tap when done' }]
-    : [...(last ? [] : [{ icon: 'h-spin' as const, text: 'Next' }]), { icon: 'h-dn', text: 'Back', nudge: 'down' }];
+    : [...(!Q||last ? [] : [{ icon: 'h-spin' as const, text: 'Next',onPress:()=>goQ(1) }]), { icon: 'h-dn', text: 'Back', nudge: 'down' }];
   const result = ans?.status === 'done' ? ans.result : undefined;
   const short = result?.verdict === 'too_short';
   const verdict = !result ? null : short ? { text: 'Too short', tone: TONE.bad, icon: 'i-clock' as IconKey }
@@ -261,7 +264,7 @@ function QA({ model,qa,archived,historyAvailable,onHistory }: { model: DeckModel
         <Animated.View style={[StyleSheet.absoluteFill, screen]}>
           <View style={styles.header} pointerEvents="none">
             <Txt style={styles.title}>{archived?"Saved Q&A":"Audience Q&A"}</Txt>
-            <Txt numberOfLines={1} style={styles.label}>{Q ? 'Question ' + (i + 1) + ' of ' + qs.length + ' · ' + (set?.audience ?? qa.state?.requirements.audience ?? '') : qaActive(qa.state) ? 'Writing audience questions…' : (qa.state?.requirements.audience || 'Audience not set')}</Txt>
+            <Txt numberOfLines={1} style={styles.label}>{Q ? 'Question ' + (i + 1) + ' of ' + qs.length + ' · ' + ((set?.audience ?? qa.state?.requirements.audience ?? '')+(!archived&&model.deck.requirementsDefault?' (default)':'')) : qaActive(qa.state) ? 'Writing audience questions…' : (qa.state?.requirements.audience || 'Audience not set')}</Txt>
           </View>
           {historyAvailable&&<Pressable accessibilityRole="button" accessibilityLabel={archived?'Next saved Q&A or return to current questions':'View saved Q&A'} onPress={()=>{if(rec||count)return;stopSpeak();player.stop();onHistory();}}
             style={{position:'absolute',top:18,left:16,zIndex:10,paddingVertical:6,paddingHorizontal:10}}>
@@ -343,8 +346,8 @@ function QA({ model,qa,archived,historyAvailable,onHistory }: { model: DeckModel
                         {ansLines.map((l, k) => <View key={k} style={{ flexDirection: 'row', gap: 8 }}><Txt style={styles.ansTime}>{l.time}</Txt><Txt style={styles.ansText}>{l.text}</Txt></View>)}
                       </View>
                     )}
-                    {part === 1 && <Txt style={styles.end}>{last ? 'Last question · swipe down for your review' : 'Swipe for the next question'}</Txt>}
                   </>}
+                  {!rec&&<Txt style={styles.end}>{last?'Last question · swipe down for your review':'Swipe for the next question'}</Txt>}
                 </ScrollView>
               </View>
             </Animated.View>

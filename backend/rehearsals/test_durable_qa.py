@@ -52,6 +52,28 @@ class DurableQaTests(SyntheticCoaching, TestCase):
         self.scope['slides'][0]['segments'][0]['end_ms']=999
         self.assertEqual(self.submit_qa().status_code,400)
 
+    def test_panelist_name_limit_is_bounded_and_old_payload_schema_is_reconstructible(self):
+        with patch.dict('os.environ',{'FEEDBACK_PROVIDER':'openai'}):
+            from .services import coaching,qa
+            from .services.feedback import validated,FeedbackError
+            self.complete();self.submit_qa()
+            job=FeedbackJob.objects.get(analysis__analysis_type__startswith='qa_')
+            current=coaching._prepared(job.description_set,job)
+            body=json.loads(current.payload)
+            schema=body['text']['format']['schema'] if current.config.provider=='openai' else body['generationConfig']['responseJsonSchema']
+            self.assertEqual(schema['$defs']['Question']['properties']['panelist']['maxLength'],64)
+            job.source_snapshot['audience_qa'].pop('question_schema')
+            historical=coaching._prepared(job.description_set,job)
+            old=json.loads(historical.payload)
+            schema=old['text']['format']['schema'] if historical.config.provider=='openai' else old['generationConfig']['responseJsonSchema']
+            self.assertEqual(schema['$defs']['Question']['properties']['panelist']['maxLength'],8)
+            job.input_hash=historical.input_hash
+            self.assertEqual(coaching._prepared(job.description_set,job).input_hash,historical.input_hash)
+            question={'panelist':'Professor Kim','role':'Student','slide_index':0,'topic':'Meaning','question':'What does it mean?','follow_up':'For example?'}
+            self.assertEqual(validated(qa.Questions,{'questions':[question]}).questions[0].panelist,'Professor Kim')
+            question['panelist']='x'*65
+            with self.assertRaises(FeedbackError):validated(qa.Questions,{'questions':[question]})
+
     def completed_questions(self):
         self.complete();self.submit_qa()
         owner=FeedbackJob.objects.get(analysis__analysis_type__startswith='qa_').analysis

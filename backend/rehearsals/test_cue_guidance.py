@@ -79,34 +79,48 @@ class GuidanceValidationTests(SimpleTestCase):
             bad=deepcopy(self.value);mutate(bad)
             with self.assertRaises(FeedbackError):validate_profiles(bad,self.prepared)
 
-    def test_v1_identity_is_reconstructed_exactly(self):
+    def test_historical_identity_is_reconstructed_exactly(self):
         for name,version,schema,prompt in [
+            ('openai','slide-profile-v4','7bbb296717b7a0ce1d7c1bc913827ed26935b7b98eb5f7f7ea09f7b98e4742d1','fcef7329b2bec79582e715b7516e5666d7cdf0c594603d6e2004bd118c5d921a'),
+            ('gemini','slide-profile-gemini-v4','ee4d44de4d873982aeb9742c63622ee1e0bc58ed52a1b0ccccbe5a4ed9c6268b','26da8fbc0c0caef8bb5be7e6b8034ce25abd585cc0dc25a4da8be35af695a6bb'),
             ('openai','slide-profile-v1','c89b7d48d7f5705aaaf7fac01f87eb8f0e32f0cad5c4ebf2039589780f5081c5','8f85bd8263b51a62813162bbd64eb770c96f852659a4b4495f44ef1ab0b07901'),
             ('gemini','slide-profile-gemini-v1','665783e0829470ba9a066c7e42ac470c5d7557ce49d209bca9ca6f3c74b2ae2c','aadef118d5742b7c77106de99357b3fc79c7661e8cef4f2bb2164fd55018f136')]:
             self.assertEqual(hashlib.sha256(json_bytes(provider.response_schema(name,'descriptions',version))).hexdigest(),schema)
             self.assertEqual(prompt_digest(name,version),prompt)
-            selection=replace(Selection(name,'synthetic-project','synthetic-model','slide-profile-v1',version))
+            selection=replace(Selection(name,'synthetic-project','synthetic-model',
+                'slide-profile-v4' if version.endswith('-v4') else 'slide-profile-v1',version))
             selection.check_versions(prompt)
 
-    def test_current_cues_are_at_most_fifteen_words_historical_cues_remain_readable(self):
+    def test_v4_cues_retain_fifteen_word_limit_historical_cues_remain_readable(self):
         for category in ['must_cover','go_deeper']:
             value=deepcopy(self.value)
             item={'text':' '.join(['word']*15),'evidence_refs':['summary']} if category=='must_cover' else {
                 'text':' '.join(['word']*15),'kind':'question','information_needed':'Research needed.', 'evidence_refs':[reference(value['slides'][0])]}
             value['slides'][0][category]=[item]
-            validate_profiles(value,self.prepared)
+            validate_profiles(value,self.prepared,'slide-profile-v4')
             item['text']+=' extra'
-            with self.assertRaises(FeedbackError):validate_profiles(value,self.prepared)
+            with self.assertRaises(FeedbackError):validate_profiles(value,self.prepared,'slide-profile-v4')
             validate_profiles(value,self.prepared,'slide-profile-v3')
 
+
+    def test_v5_allows_twenty_five_words_and_rejects_twenty_six(self):
+        for category in ['must_cover','go_deeper']:
+            for sep in [' ', '\ufeff', '\u0085', '\u2003']:
+                value=deepcopy(self.value)
+                item={'text':sep.join(['word']*25),'evidence_refs':['summary']} if category=='must_cover' else {
+                    'text':sep.join(['word']*25),'kind':'question','information_needed':'Research needed.', 'evidence_refs':[reference(value['slides'][0])]}
+                value['slides'][0][category]=[item]
+                validate_profiles(value,self.prepared,'slide-profile-v5')
+                item['text']+=sep+'extra'
+                with self.assertRaises(FeedbackError):validate_profiles(value,self.prepared,'slide-profile-v5')
 
     def test_unicode_word_separators_match_mobile_policy(self):
         for sep in ['\ufeff','\u0085','\u001c','\u2003','\u00a0']:
             value=deepcopy(self.value)
             value['slides'][0]['must_cover'][0]['text']=sep.join(['word']*15)
-            validate_profiles(value,self.prepared)
+            validate_profiles(value,self.prepared,'slide-profile-v4')
             value['slides'][0]['must_cover'][0]['text']+=sep+'extra'
-            with self.assertRaises(FeedbackError):validate_profiles(value,self.prepared)
+            with self.assertRaises(FeedbackError):validate_profiles(value,self.prepared,'slide-profile-v4')
 
 
 class GuidanceJobTests(SyntheticDecks,TestCase):
@@ -124,9 +138,67 @@ class GuidanceJobTests(SyntheticDecks,TestCase):
             descriptions.run_description(str(v.pk),1)
         self.assertEqual(calls.call_count,1)
         v.refresh_from_db()
-        self.assertEqual(v.prompt_version,'slide-profile-v4')
+        self.assertEqual(v.prompt_version,'slide-profile-v5')
         self.assertEqual(len(v.descriptions['slides'][0]['must_cover']),1)
         self.assertEqual(slide_profiles.ensure(self.deck.pk).pk,v.pk)
+
+    def test_successful_v4_cache_is_reused_by_profiles_review_and_qa(self):
+        from .models import DescriptionJob
+        from .services import coaching
+        from .services.slide_profile_schema import STRICT_PROFILE_SCHEMAS
+        current = Selection.profiles()
+        old = replace(current, prompt_version='slide-profile-v4',
+            schema_version=STRICT_PROFILE_SCHEMAS[current.provider])
+        prepared, snapshot = descriptions.prepare_saved(self.deck.pk)
+        value = descriptions.admit_prepared(old, prepared, snapshot, dependency=True)
+        with patch.object(provider, 'request_raw', side_effect=self.receipt) as calls:
+            descriptions.run_description(str(value.pk), 1)
+        self.assertEqual(calls.call_count, 1)
+        before = DescriptionJob.objects.count()
+        with patch.object(provider, 'request_raw', side_effect=AssertionError('No rescan')):
+            self.assertEqual(slide_profiles.ensure(self.deck.pk).pk, value.pk)
+            self.assertFalse(slide_profiles.read(self.deck.pk)['stale'])
+            self.assertEqual(coaching.profile_selection(self.deck.pk), old)
+        self.assertEqual(DescriptionJob.objects.count(), before)
+        with patch.object(Selection, 'profiles', return_value=replace(current, model='changed-model')):
+            self.assertNotEqual(slide_profiles.preferred_selection(self.deck.pk), old)
+        self.deck.slides.update(extracted_text='Synthetic changed source')
+        self.assertEqual(slide_profiles.preferred_selection(self.deck.pk), current)
+
+    def test_pending_or_uncertain_v4_does_not_start_a_second_provider_scope(self):
+        from .models import DescriptionJob
+        from .services.slide_profile_schema import STRICT_PROFILE_SCHEMAS
+        current = Selection.profiles()
+        old = replace(current, prompt_version='slide-profile-v4',
+            schema_version=STRICT_PROFILE_SCHEMAS[current.provider])
+        prepared, snapshot = descriptions.prepare_saved(self.deck.pk)
+        value = descriptions.admit_prepared(old, prepared, snapshot, dependency=True)
+        for state in descriptions.ACTIVE | {'needs_confirmation'}:
+            value.jobs.update(state=state)
+            self.assertEqual(slide_profiles.ensure(self.deck.pk).pk, value.pk)
+            self.assertEqual(slide_profiles.preferred_selection(self.deck.pk), old)
+        self.assertEqual(DescriptionJob.objects.count(), 1)
+
+    def test_failed_v4_uses_new_v5_scope_without_mutating_retry_identity(self):
+        from .services.slide_profile_schema import STRICT_PROFILE_SCHEMAS
+        current = Selection.profiles()
+        old = replace(current, prompt_version='slide-profile-v4',
+            schema_version=STRICT_PROFILE_SCHEMAS[current.provider])
+        prepared, snapshot = descriptions.prepare_saved(self.deck.pk)
+        failed = descriptions.admit_prepared(old, prepared, snapshot, dependency=True)
+        def invalid_receipt(request):
+            receipt = self.receipt(request)
+            return replace(receipt, body=json_bytes(envelope(request.config.provider, {'slides': []})))
+        with patch.object(provider, 'request_raw', side_effect=invalid_receipt):
+            descriptions.run_description(str(failed.pk), 1)
+        self.assertEqual(failed.jobs.get().state, 'failed')
+        self.assertEqual(slide_profiles.preferred_selection(self.deck.pk), current)
+        new = slide_profiles.ensure(self.deck.pk)
+        self.assertNotEqual(new.pk, failed.pk)
+        self.assertEqual(slide_profiles.ensure(self.deck.pk).pk, new.pk)
+        failed.refresh_from_db()
+        self.assertEqual(failed.prompt_version, 'slide-profile-v4')
+        self.assertEqual(failed.processing_revision, 1)
 
     def test_upgrade_model_and_source_changes_are_new_scopes_without_mutating_history(self):
         from .models import DescriptionSet

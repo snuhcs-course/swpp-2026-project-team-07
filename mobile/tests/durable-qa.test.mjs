@@ -45,3 +45,10 @@ test('accepts backend scope field order without weakening selected-source identi
  const changed=structuredClone(wire);changed.slides[0].segments[0].end_ms++;
  assert.throws(()=>parseQaState({...base,scope:changed},'a',scope));
 });
+
+
+test('panelist names accept reasonable labels and reject unbounded metadata',()=>{
+ const value=structuredClone(base);value.result.questions[0].panelist='Professor Kim';
+ assert.equal(parseQaState(value,'a',scope).result.questions[0].panelist,'Professor Kim');
+ value.result.questions[0].panelist='x'.repeat(65);assert.throws(()=>parseQaState(value,'a',scope));
+});

@@ -1,3 +1,4 @@
+import {verifiedExcerpt} from '../feedback/evidence';
 // Iteration 2 Phase 2: cached profiles; GET/playback never admits provider work.
 import type { DescriptionState, SlideDescription, DescriptionGenerateRequest } from '../../contracts';
 import { parseDescriptionState, canonicalUuid } from '../feedback/validation';
@@ -24,7 +25,7 @@ const text = (v: unknown): string => typeof v === 'string' && !!v.trim() && [...
 export function parseProfileState(value: unknown, deckId: string, pages: number): ProfileState {
   const state = parseDescriptionState(value, deckId);
   for (const p of [state.provenance, state.selection]) {
-    if (p && (!['slide-profile-v1', 'slide-profile-v2', 'slide-profile-v3', 'slide-profile-v4'].includes(p.prompt_version) ||
+    if (p && (!['slide-profile-v1', 'slide-profile-v2', 'slide-profile-v3', 'slide-profile-v4', 'slide-profile-v5'].includes(p.prompt_version) ||
       p.schema_version !== `${schemas[p.provider]}-${p.prompt_version.split('-').at(-1)}`)) invalid();
   }
   if (!state.descriptions) return { ...state, descriptions: null };
@@ -33,8 +34,8 @@ export function parseProfileState(value: unknown, deckId: string, pages: number)
   if (!Array.isArray(raw.slides)) invalid();
   const rawSlides = raw.slides as unknown[];
   const historical = state.provenance?.prompt_version === 'slide-profile-v1';
-  const concise = state.provenance?.prompt_version === 'slide-profile-v4';
-  const cueText = (v: unknown) => { const t = text(v); if (concise && t.split(cueWordSeparator).filter(Boolean).length > 15) invalid(); return t; };
+  const limit = state.provenance?.prompt_version === 'slide-profile-v5'?25:state.provenance?.prompt_version==='slide-profile-v4'?15:null;
+  const cueText = (v: unknown) => { const t = text(v); if (limit!==null && t.split(cueWordSeparator).filter(Boolean).length > limit) invalid(); return t; };
   const factsFor = (s: SlideDescription) => new Map([['summary', s.summary], ...s.key_ideas.map((f, j) => [`key_ideas/${j}`, f] as const),
     ...s.visual_facts.map((f, j) => [`visual_facts/${j}`, f] as const)]);
   const slides = state.descriptions.slides.map((s, i): SlideProfile => {
@@ -61,7 +62,7 @@ export function parseProfileState(value: unknown, deckId: string, pages: number)
         const refs = (e.evidence_refs as unknown[]).map(v => {
           const ref = obj(v), other = state.descriptions!.slides.find(s=>s.slide_index===ref.slide_index);
           const fact = other && factsFor(other).get(ref.fact_ref as string);
-          if (!other || other.source_id !== ref.source_id || !fact || fact.uncertain || fact.text !== ref.quote || key === canonical(fact.text)) invalid();
+          if (!other || other.source_id !== ref.source_id || !fact || fact.uncertain || verifiedExcerpt(ref.quote as string,fact.text)===null || key === canonical(fact.text)) invalid();
           return {slide_index: ref.slide_index as number, source_id: ref.source_id as string, fact_ref: ref.fact_ref as string, quote: ref.quote as string};
         });
         if (new Set(refs.map(r=>`${r.slide_index}:${r.fact_ref}`)).size !== refs.length) invalid();
@@ -78,7 +79,7 @@ export function cueState(state: ProfileState | null, slide: number, category: Cu
   if (state.stale) return { cues: [], message: 'AI cues are out of date', action: 'generate' };
   const ready = state.state === 'completed' && state.descriptions?.slides.find(s => s.slide_index === slide);
   if (ready && state.provenance?.prompt_version === 'slide-profile-v1') return {cues:[],message:'Saved cues use the previous format · Generate updated guidance',action:'generate'};
-  if (ready && state.provenance?.prompt_version !== 'slide-profile-v4') return {cues:[],message:'AI cues are out of date',action:'generate'};
+  if (ready && !['slide-profile-v4','slide-profile-v5'].includes(state.provenance?.prompt_version??'')) return {cues:[],message:'AI cues are out of date',action:'generate'};
   if (ready) return { cues: ready[category], message: ready[category].length ? null :
     ready.summary.uncertain ? 'Not enough readable evidence for cues' : category === 'must_cover' ? 'No essential points needed on this slide' : 'No additional suggestions for this slide', action: null };
   const messages: Partial<Record<ProfileState['state'], string>> = {

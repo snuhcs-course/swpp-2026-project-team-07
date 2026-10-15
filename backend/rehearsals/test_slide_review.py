@@ -76,13 +76,13 @@ class SlideReviewTests(SyntheticCoaching, TestCase):
             return self.coaching_receipt(p, output={'slides': [{'slide_index': 0, 'status': 'successful', 'findings': [card]}]})
         with patch.object(provider, 'request_raw', side_effect=receipt): self.execute_feedback(owner)
         state = self.submit_review().json()
-        self.assertEqual(state['result']['slides'][0]['status'], 'insufficient_evidence')
+        self.assertEqual(state['result']['slides'][0]['status'], 'invalid_evidence')
         self.assertEqual(state['result']['slides'][0]['findings'], [])
     def test_valid_graph_evidence_and_prioritization(self):
         self.complete(); self.submit_review()
         owner = FeedbackJob.objects.get(analysis__analysis_type__startswith='review_').analysis
         def receipt(p):
-            cards = [self.card(p, 0, category='graph', priority=3), self.card(p, 1, category='repetition', priority=1, description_ref='', slide_quote='')]
+            cards = [self.card(p, 0, category='graph', priority=3), self.card(p, 1, category='repetition', priority=1, description_ref='', slide_quote='', observation='An unnecessary repeated phrase.',suggestion='Say the point once.')]
             return self.coaching_receipt(p, output={'slides':[{'slide_index':0,'status':'successful','findings':cards}]})
         with patch.object(provider, 'request_raw', side_effect=receipt):self.execute_feedback(owner)
         result=self.submit_review().json()['result']['slides'][0]
@@ -97,7 +97,7 @@ class SlideReviewTests(SyntheticCoaching, TestCase):
             return self.coaching_receipt(p,output={'slides':[{'slide_index':0,'status':'successful',
                 'findings':[self.card(p,category='audience',priority=1)]}]})
         with patch.object(provider,'request_raw',side_effect=receipt):self.execute_feedback(owner)
-        self.assertEqual(self.submit_review().json()['result']['slides'][0]['status'],'insufficient_evidence')
+        self.assertEqual(self.submit_review().json()['result']['slides'][0]['status'],'model_error')
 
     def test_context_change_during_provider_call_fences_late_receipt(self):
         context=PresentationContext.objects.create(deck=self.deck,audience='Researchers')
@@ -153,7 +153,7 @@ class SlideReviewTests(SyntheticCoaching, TestCase):
                 'findings':[self.card(p,category='fillers',priority=1,description_ref='',slide_quote='')]}]})
         with patch.object(provider,'request_raw',side_effect=receipt):self.execute_feedback(owner)
         summary=self.submit_review().json()['result']['slides'][0]
-        self.assertEqual(summary['status'],'insufficient_evidence');self.assertEqual(summary['findings'],[])
+        self.assertEqual(summary['status'],'invalid_evidence');self.assertEqual(summary['findings'],[])
 
     def test_four_findings_are_retained_and_five_rejected(self):
         from .services.alignment import align_words
@@ -166,7 +166,7 @@ class SlideReviewTests(SyntheticCoaching, TestCase):
         owner=FeedbackJob.objects.get(analysis__analysis_type__startswith='review_').analysis
         def receipt(p):
             return self.coaching_receipt(p,output={'slides':[{'slide_index':0,'status':'successful',
-                'findings':[self.card(p,i,category='content',priority=4-i) for i in range(4)]}]})
+                'findings':[self.card(p,i,category='content',priority=4-i,observation=f'Distinct issue {i}',suggestion=f'Distinct improvement {i}') for i in range(4)]}]})
         with patch.object(provider,'request_raw',side_effect=receipt):self.execute_feedback(owner)
         summary=self.submit_review().json()['result']['slides'][0]
         self.assertEqual(len(summary['findings']),4)
@@ -226,13 +226,78 @@ class SlideReviewTests(SyntheticCoaching, TestCase):
         self.assertTrue(response['stale'])
         self.assertTrue(response['result']['stale'])
         self.assertEqual(response['result']['review_version'], 'slide-review-v1')
-        self.assertEqual(response['review_version'], 'slide-review-v2')
+        self.assertEqual(response['review_version'], 'slide-review-v3')
         self.assertEqual(FeedbackJob.objects.filter(analysis=owner).count(), 1)
         pending = self.submit_review(feedback_revision=response['feedback_revision']).json()
         self.assertFalse(pending['stale'])
         self.assertEqual(pending['state'], 'queued')
         self.assertEqual(pending['result']['review_version'], 'slide-review-v1')
         self.assertTrue(pending['result']['stale'])
+
+    def test_expression_advice_preserves_original_transcript_and_is_evidence_linked(self):
+        from .services import slide_review
+        before = json.loads(json.dumps(self.attempt.transcript))
+        self.complete();self.submit_review()
+        owner = FeedbackJob.objects.get(analysis__analysis_type__startswith='review_').analysis
+        def receipt(p):
+            payload=provider.strict_json(p.payload)
+            rules=payload['instructions'] if p.config.provider=='openai' else payload['systemInstruction']['parts'][0]['text']
+            self.assertIn('Clearer way to express this',rules)
+            self.assertIn('preserve the same meaning',rules)
+            self.assertNotIn('Do not change grammar, rewrite the transcript',rules)
+            card=self.card(p,category='delivery',priority=1,description_ref='',slide_quote='',
+                observation='The main point appears after a disconnected explanation.',
+                suggestion='Clearer way to express this: State the point first, then its reason.')
+            return self.coaching_receipt(p,output={'slides':[{'slide_index':0,'status':'successful','findings':[card]}]})
+        with patch.object(provider,'request_raw',side_effect=receipt):self.execute_feedback(owner)
+        state=self.submit_review().json()
+        self.assertEqual(state['review_version'],'slide-review-v3')
+        self.assertEqual(len(state['result']['slides'][0]['findings']),1)
+        self.attempt.refresh_from_db();self.assertEqual(self.attempt.transcript,before)
+
+    def test_v2_prompt_remains_available_for_saved_receipt_reconstruction(self):
+        from .services import slide_review
+        self.assertTrue(hasattr(slide_review,'RULES_V2'))
+        self.assertIn('Do not change grammar, rewrite the transcript',slide_review.RULES_V2)
+
+    def test_v2_saved_payload_reconstruction_keeps_its_original_rules(self):
+        from .services import coaching,slide_review
+        self.complete();self.submit_review()
+        job=FeedbackJob.objects.get(analysis__analysis_type__startswith='review_')
+        job.source_snapshot['slide_review']['version']='slide-review-v2'
+        job.save(update_fields=['source_snapshot'])
+        prepared=coaching._prepared(job.description_set,job)
+        payload=provider.strict_json(prepared.payload)
+        actual=payload['instructions'] if prepared.config.provider=='openai' else payload['systemInstruction']['parts'][0]['text']
+        self.assertEqual(actual,slide_review.RULES_V2)
+        job.input_hash=prepared.input_hash;job.save(update_fields=['input_hash'])
+        self.assertEqual(coaching._prepared(job.description_set,job).input_hash,job.input_hash)
+
+    def test_formatting_difference_does_not_discard_feedback(self):
+        self.complete();self.submit_review()
+        owner=FeedbackJob.objects.get(analysis__analysis_type__startswith='review_').analysis
+        def receipt(p):
+            card=self.card(p,category='content',priority=1,speech_quote='echo.')
+            return self.coaching_receipt(p,output={'slides':[{'slide_index':0,'status':'successful','findings':[card]}]})
+        with patch.object(provider,'request_raw',side_effect=receipt):self.execute_feedback(owner)
+        summary=self.submit_review().json()['result']['slides'][0]
+        self.assertEqual(summary['status'],'successful')
+        self.assertEqual(summary['findings'][0]['speech_quote'],'Echo')
+
+    def test_invalid_card_does_not_remove_valid_card_with_overlapping_evidence(self):
+        self.complete();self.submit_review()
+        owner=FeedbackJob.objects.get(analysis__analysis_type__startswith='review_').analysis
+        def receipt(p):
+            good=self.card(p,category='content',priority=1)
+            distinct=self.card(p,category='delivery',priority=2,description_ref='',slide_quote='',
+                observation='The main point is buried.',suggestion='State the main point before the example.')
+            bad={**good,'priority':'not a number'}
+            return self.coaching_receipt(p,output={'slides':[{'slide_index':0,'status':'successful','findings':[good,bad,distinct]}]})
+        with patch.object(provider,'request_raw',side_effect=receipt):self.execute_feedback(owner)
+        state=self.submit_review().json()
+        self.assertEqual(state['state'],'completed')
+        self.assertEqual(state['result']['slides'][0]['status'],'partial')
+        self.assertEqual(len(state['result']['slides'][0]['findings']),2)
 
 from unittest import skipUnless
 from django.db import connection, connections

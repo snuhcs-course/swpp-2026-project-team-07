@@ -3,6 +3,7 @@ import { presentationTiming, type PresentationTiming } from '../../domain/slides
 import { partSeconds, type Run } from '../../domain/run';
 import { readStored } from '../../services/storage';
 import { normalizeApi } from '../transcription/analysisStorage';
+import { hasDefaultRequirements } from './defaultRequirements';
 import { readRequirements } from './requirementsStore';
 import type { Presentation } from './store';
 
@@ -15,7 +16,7 @@ export function timedPresentation(deck: Presentation, apiUrl: string) {
     if (candidate.contextId && candidate.deckId === serverId) requirements = candidate;
   } catch { /* Missing/corrupt context is not an explicit duration. Keep legacy defaults. */ }
   const timing = presentationTiming(deck, requirements);
-  return { ...deck, target: timing.total, targets: timing.targets, timing };
+  return { ...deck, target: timing.total, targets: timing.targets, timing, requirementsDefault: !!requirements.contextId&&hasDefaultRequirements(deck.id,apiUrl) };
 }
 
 /** JJ's full/partial-run policy with current targets, including after clearing a requirement. */

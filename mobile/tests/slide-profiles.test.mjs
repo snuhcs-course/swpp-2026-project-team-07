@@ -225,3 +225,12 @@ test('confirmation is bound to its captured generation and rapid retry taps admi
     assert.equal(calls.filter(c=>c==='POST').length,1);
   } finally {if(renderer) await act(async()=>{renderer.unmount();});globalThis.fetch=original;}
 });
+
+test('v5 accepts up to 25 words in either category and rejects 26 without truncation',()=>{
+ for(const category of ['must_cover','go_deeper'])for(const sep of [' ','\ufeff','\u0085','\u2003']){
+  const v=guidance();v.provenance.prompt_version='slide-profile-v5';v.provenance.schema_version='slide-profile-gemini-v5';
+  v.descriptions.slides[0][category][0].text=Array(25).fill('word').join(sep);
+  const parsed=parseProfileState(v,deckId,2);assert.equal(cueState(parsed,0,category).action,null);
+  v.descriptions.slides[0][category][0].text+=sep+'extra';assert.throws(()=>parseProfileState(v,deckId,2));
+ }
+});

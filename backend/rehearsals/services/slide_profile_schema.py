@@ -1,12 +1,14 @@
 """Immutable, audience-independent slide profiles for Iteration 2."""
 from typing import Annotated, Literal
 import re
+from .evidence import verified_excerpt
 from pydantic import Field
 from .feedback import (Description, Descriptions, PrivateModel, ShortText, FeedbackError,
                        MAX_OUTPUT_BYTES, validated, description_facts, validate_descriptions)
 
-PROFILE_PROMPT_VERSION = 'slide-profile-v4'
-PROFILE_SCHEMAS = {'openai': 'slide-profile-v4', 'gemini': 'slide-profile-gemini-v4'}
+PROFILE_PROMPT_VERSION = 'slide-profile-v5'
+PROFILE_SCHEMAS = {'openai': 'slide-profile-v5', 'gemini': 'slide-profile-gemini-v5'}
+STRICT_PROFILE_SCHEMAS = {'openai': 'slide-profile-v4', 'gemini': 'slide-profile-gemini-v4'}
 HISTORICAL_PROFILE_SCHEMAS = {'openai': 'slide-profile-v1', 'gemini': 'slide-profile-gemini-v1'}
 CATEGORY_PROFILE_SCHEMAS = {'openai': 'slide-profile-v2', 'gemini': 'slide-profile-gemini-v2'}
 REFINED_PROFILE_SCHEMAS = {'openai': 'slide-profile-v3', 'gemini': 'slide-profile-gemini-v3'}
@@ -58,10 +60,12 @@ class GuidanceProfiles(Descriptions):
 
 
 def is_profile_schema(version):
-    return version in (*PROFILE_SCHEMAS.values(), *HISTORICAL_PROFILE_SCHEMAS.values(), *CATEGORY_PROFILE_SCHEMAS.values(), *REFINED_PROFILE_SCHEMAS.values())
+    return version in (*PROFILE_SCHEMAS.values(), *STRICT_PROFILE_SCHEMAS.values(), *HISTORICAL_PROFILE_SCHEMAS.values(), *CATEGORY_PROFILE_SCHEMAS.values(), *REFINED_PROFILE_SCHEMAS.values())
 
 
 def profile_prompt_version(version):
+    if version in STRICT_PROFILE_SCHEMAS.values():
+        return 'slide-profile-v4'
     if version in HISTORICAL_PROFILE_SCHEMAS.values():
         return 'slide-profile-v1'
     if version in REFINED_PROFILE_SCHEMAS.values():
@@ -75,7 +79,7 @@ def canonical_guidance(text):
 
 def validate_profiles(value, prepared, schema_version=None):
     historical = schema_version in HISTORICAL_PROFILE_SCHEMAS.values()
-    concise = schema_version is None or schema_version in PROFILE_SCHEMAS.values()
+    limit = 25 if schema_version is None or schema_version in PROFILE_SCHEMAS.values() else 15 if schema_version in STRICT_PROFILE_SCHEMAS.values() else None
     profiles = validated(SlideProfiles if historical else GuidanceProfiles, value, 'invalid_descriptions', MAX_OUTPUT_BYTES)
     # Reuse strict source identities and fact/uncertainty checks without changing
     # the historical description schemas or their serialized bytes.
@@ -87,7 +91,7 @@ def validate_profiles(value, prepared, schema_version=None):
         facts = description_facts(slide)
         seen = set()
         for cue in (slide.cues if historical else slide.must_cover):
-            if concise and cue_word_count(cue.text) > 15:
+            if limit is not None and cue_word_count(cue.text) > limit:
                 raise FeedbackError('invalid_descriptions')
             key = cue.text if historical else canonical_guidance(cue.text)
             if (not key or key in seen or len(set(cue.evidence_refs)) != len(cue.evidence_refs)
@@ -99,7 +103,7 @@ def validate_profiles(value, prepared, schema_version=None):
         if historical:
             continue
         for cue in slide.go_deeper:
-            if concise and cue_word_count(cue.text) > 15:
+            if limit is not None and cue_word_count(cue.text) > limit:
                 raise FeedbackError('invalid_descriptions')
             key = canonical_guidance(cue.text)
             refs = [(r.slide_index, r.source_id, r.fact_ref) for r in cue.evidence_refs]
@@ -109,7 +113,7 @@ def validate_profiles(value, prepared, schema_version=None):
             for ref in cue.evidence_refs:
                 source, other = deck_facts.get(ref.slide_index, (None, {}))
                 fact = other.get(ref.fact_ref)
-                if source != ref.source_id or fact is None or fact.uncertain or ref.quote != fact.text:
+                if source != ref.source_id or fact is None or fact.uncertain or verified_excerpt(ref.quote,fact.text) is None:
                     raise FeedbackError('invalid_descriptions')
                 if key == canonical_guidance(fact.text):
                     raise FeedbackError('invalid_descriptions')

@@ -166,13 +166,19 @@ scopes, including failed and uncertain jobs; no blind resubmission. Existing dec
 without profiles can use explicit generation. Requirements, recordings, selected
 takes, playback and reads neither invalidate profiles nor create jobs.
 
-Current profile prompt version is `slide-profile-v4`; schema versions are
-`slide-profile-v4` (OpenAI) and `slide-profile-gemini-v4` (Gemini). Historical
-v1 flat profiles, v2 category pilot profiles, and description scopes, payloads and
-prompt digests remain unchanged. v3 refines the pilot prompt after live evaluation;
-v2, v3 and v4 share the category structure but have different immutable job scopes.
-v4 adds concise generation and a hard maximum of 15 whitespace-separated words
-in each cue's `text` (both categories); prior versions retain their original limits.
+Current profile prompt version is `slide-profile-v5`; schema versions are
+`slide-profile-v5` (OpenAI) and `slide-profile-gemini-v5` (Gemini). v5 targets
+8–16 words with a hard maximum of 25 whitespace-separated words per cue in both
+categories. Each cue has one useful speaking objective; avoid repetitive clauses,
+near-duplicate objectives and padded instructions. Supporting reasoning stays in
+expandable details. This is a generation policy, not silent truncation.
+Historical v1–v4 payloads, validation limits and prompt digests remain unchanged;
+v4 retains its 15-word limit for receipt recovery and explicit retries. Successful
+v4 profiles for the same source/provider/project/model remain reusable and current,
+including for review and audience Q&A; running or uncertain v4 jobs also retain
+their scope to avoid duplicate provider work. Reads do not admit replacement jobs. Failed
+or absent v4 profiles use v5 for new admission. An already admitted v5 scope takes
+precedence and repeated admissions reuse that scope.
 Profiles use
 the existing JSON persistence, with no migration. PATCH through the description
 endpoint rejects profile scopes with 409 `immutable_profile`.
@@ -196,8 +202,9 @@ Each Go Deeper item is `{text, kind, evidence_refs, information_needed}`. Text i
 nonblank and at most 400 codepoints; `kind` is `connection` or `question`.
 References are one to five distinct objects `{slide_index, source_id, fact_ref,
 quote}` identifying certain facts on any slide in this same complete profile
-response. `quote` must exactly equal the referenced fact's text. Unknown slide,
-source, fact, uncertain fact or mismatched quote rejects the whole response.
+response. `quote` must be a contiguous, verifiable excerpt of the referenced fact after safe
+quotation normalization (see the evidence-validation policy below). Unknown slide,
+source, fact, uncertain fact or unsupported quote rejects the whole response.
 `information_needed` is empty for supported connections; questions require a
 nonblank description of the missing evidence, at most 400 codepoints. Questions
 must frame unsupported answers as investigations, not established causes/results.
@@ -492,8 +499,8 @@ snapshots; later edits never relabel an older result. Valid empty has zero count
 `message="No supported suggestions."`; other statuses have null message.
 `all_invalid` is a **failed** generation (`unsupported_feedback`), never successful
 empty output. Malformed envelopes/refusal/truncation/NUL output fail explicitly
-and retain private raw evidence. Unsupported well-formed cards are discarded
-individually; partial results report both counts. A failed/new generation can
+and retain private raw evidence. Unsupported or malformed cards are discarded independently within a valid bounded
+envelope; partial results report both counts. Malformed envelopes still fail. A failed/new generation can
 coexist with earlier suggestions, labeled stale with their original provenance.
 
 Each suggestion has `category` (`consistency`, `clarity`, `audience`), `slide_index`,
@@ -502,8 +509,11 @@ Each suggestion has `category` (`consistency`, `clarity`, `audience`), `slide_in
 `suggestion`, and server-derived `start_ms`/`end_ms`. Observation/suggestion are
 bounded to 600/700 characters, speech quote to 1,000, slide quote to 400. All are
 plain strings. An audience card requires saved audience context. Evidence is one
-contiguous run of original transcript indexes in a ≤40-word segment of one visit.
-The entire cited description fact must match exactly and be certain. Repeated
+contiguous run of original transcript indexes within one slide visit. The segment
+ID anchors the first word; the span may cross internal 40-word chunk boundaries,
+but never the original visit boundary. A cited description must be certain; a
+contiguous safely normalized excerpt is accepted, then the full authoritative fact
+is returned to preserve qualifications and negations. Repeated
 phrases do not establish word identity. Word starts select visits; last simultaneous
 event wins. Crossing word ends are valid within authoritative audio duration; ranges
 use min(start)/max(end) without clipping. Structural evidence validity does not
@@ -888,17 +898,20 @@ Source attempt is the route identity; run labels are not analysis identity.
 
 FeedbackAnalysis uses `review_` plus 24 hexadecimal SHA256 scope characters, within
 its existing 32-character type field and existing attempt/type uniqueness constraint.
-No migration. Jobs snapshot `slide-review-v2`, explicit requirements and revision,
+No migration. Jobs snapshot `slide-review-v3`, explicit requirements and revision,
 original STT identity, confirmed correction revision, selected intervals, provider
 selection, image-aware profile and description revision. The review profile reuses
 cached cue work; it does not mutate cues. Legacy coaching/STT output stays separate.
 
 The response extends feedback metadata with `scope`, `review_version`, `requirements`
 and result `slides: [{slide_index,status,evaluation_mode,findings,enrichments}]`. Each slide has zero to four
-prioritized findings. Status is `successful` or `insufficient_evidence`; job pending,
-failure and outdated states remain independent. Invalid/omitted evidence never
-becomes a zero-problem successful result. Findings carry original word/visit/segment
-identity, exact speech/fact quotes and derived playback ranges. Speech-only findings
+prioritized findings. Status is `successful`, `insufficient_evidence`, `partial`,
+`invalid_evidence`, or `model_error`; job pending, failure and outdated states remain
+independent. Insufficient speech/model-declined assessment is distinguished from
+rejected references and malformed AI output. Valid findings survive invalid peers.
+Invalid/omitted evidence never becomes a zero-problem successful result. Findings
+carry original word/visit/segment identity, authoritative speech/fact quotes and
+derived playback ranges. Speech-only findings
 may omit slide-fact quotes. Timing findings are deterministic, have no word range
 (`word_start/end=-1`), and navigate to the first selected visit.
 
@@ -968,7 +981,9 @@ Question responses use existing durable feedback states, dependencies, receipts,
 retry/uncertainty/selection controls, plus `scope`, `qa_version`, `requirements` and
 `source_revisions`. `result` adds `job_id`, `qa_version`, and one to three `questions`:
 `{id,panelist,role,slide_index,topic,question,follow_up}`. IDs are stable within the
-immutable job result. Old output is retained and marked stale; current active work
+immutable job result. Panelist names are bounded to 64 characters. New captures
+freeze `question_schema=names-v1`; older captures reconstruct the original
+eight-character schema for receipt/hash compatibility. Old output is retained and marked stale; current active work
 must not be hidden by its historical result. Revisions, audience or profile changes
 never automatically enqueue updates. New selected recording workflows admit their
 first eligible set once, independently of screen navigation; historical sets require
@@ -1002,3 +1017,63 @@ and question jobs remain. Rehearsal history excludes bound answer attempts.
 Before running this client against the development server: apply `python manage.py
 migrate`, then restart the API, worker and recovery scheduler using the existing
 development setup. No credential/env changes are required by Phase 6.
+
+
+### October 16 — Q&A startup/navigation and expression feedback
+
+Initial Q&A continues to start at app level alongside initial selected-slide feedback
+once the selected source transcripts and saved audience are ready. Its durable
+initial marker is consumed at the POST boundary, after synchronization/preflight.
+Preflight failures can retry safely after a five-second backoff through background
+GET polling (four seconds) or app foregrounding; failed/uncertain submitted provider
+work retains explicit recovery. Consumed initial markers remain authoritative even
+when a server later reports absent. This is not automatic stale-feedback regeneration.
+Questions plus follow-ups are returned as one completed one-to-three-item batch.
+The screen adopts that entire validated batch, retains answers within its job,
+bounds navigation to actual available items and labels the last question. Pending
+states offer no Next action; swipes/reopening/playback do not submit question jobs.
+
+`slide-review-v3` retains the existing output schema and finding cap. Delivery findings
+may critique transcript-supported ordering, articulation, ambiguous references and
+connections between ideas. Their existing `suggestion` may include a concise
+"Clearer way to express this" example preserving the original meaning, qualifications
+and facts. It is optional future-rehearsal advice, never a persisted transcript edit
+or STT suggestion. Natural fragments/mixed language are not automatically faults;
+no unsupported claims or stronger conclusions may be added. Original indexed speech
+remains the evidence and playback anchor. V2 prompt bytes remain available for saved
+request reconstruction; retained v1/v2 results are outdated and require explicit
+Update feedback. No migration, incremental audio, new screen or requirements sheet.
+
+
+### Evidence-validation policy (October 16 follow-up)
+
+Server normalization revision `evidence-v1` is separate from the unchanged
+`slide-review-v3` generation prompt/schema. Python and TypeScript share a regression
+corpus. Normalize NFC, explicit Unicode whitespace, ordinary prose capitalization,
+in-word typographic apostrophes, and a single sentence-ending period only where
+unambiguous. Token count/order and meaningful punctuation remain exact. Decimal
+points, C++, negations, mathematical/programming operators, identifiers, acronyms,
+and case-sensitive quantities/units must survive. `!` and `?` remain exact because
+they may be operators. Never use fuzzy matching, word deletion, reordering, NFKC,
+or punctuation stripping. Match against the indexed original transcript, then
+return its authoritative text and original timings. Confirmed correction revisions
+remain separate input/provenance; this does not rewrite transcripts.
+
+Distinct findings may overlap evidence. Redundant normalized observation/advice
+pairs on the same slide (and same visit for legacy coaching) are deduplicated;
+shared quotes or word bags alone are not duplicates. This deliberately conservative
+comparison does not attempt general paraphrase clustering. Scope/provenance object
+comparison is structural; arrays retain order.
+
+Each new review result includes `validation_revision`; each slide adds bounded
+`validation: {rejected_count,reasons,duplicates_removed,speech_word_count,
+model_insufficient}`. Fixed diagnostic reason codes appear in server warnings and
+responses without private quotes. Invalid findings are isolated, optional malformed
+enrichment cannot erase findings, and envelope/source-selection failures remain
+strict. Raw provider receipts remain private.
+
+GET, playback and navigation do not revalidate or regenerate saved reviews. An
+explicit administrative command can revalidate one completed current receipt
+without AI work; stale source/revision/generation/hash checks remain mandatory.
+It defaults to dry run and applies idempotently only with `--apply`. See
+[evidence verification](evidence-validation-verification.md) for commands and limits.

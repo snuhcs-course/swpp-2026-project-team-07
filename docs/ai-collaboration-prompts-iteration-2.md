@@ -1471,3 +1471,90 @@ physical phone; usefulness and full answer submission remain pending. All 275 mo
 tests and Android export passed; independent review reran 15 focused tests with no
 findings. [Evidence](phase-6-verification.md#phone-qa-availability-repair-october-16).
 No commit, push or merge.
+
+## New-presentation defaults (October 16, 2026)
+
+Contributor: Seoyeon
+
+Tool: OpenAI Codex; separate independent AI reviewer.
+Representative prompt (verbatim):
+
+> Set default audience as general ppl. default duration 5 minutes
+
+Incorporated: persisted new-import initialization using existing context APIs,
+General audience/300-second defaults, stable retry identity and deduplication,
+preference-conflict preservation, initial-feedback synchronization gate and default
+labels within existing screens. No held requirements sheet or new screen. Automated
+checks, independent review and synthetic native-import evidence are recorded in
+[presentation defaults verification](presentation-defaults-verification.md).
+No commit, push or merge.
+
+
+## Cue policy v5 (October 16, 2026)
+
+Contributor: Seoyeon
+
+Tool: OpenAI Codex; separate independent AI reviewer.
+Representative prompts (verbatim):
+
+> preparing ai cues not working
+
+> I feel like 15 word limit is too harsh what should be a better limit. I just dont like when the text is too repetitive and bloated
+
+> implement this
+
+Incorporated: v5 generation target 8–16 words with maximum 25, concise distinct
+objectives and expandable reasoning; preserved evidence validation and v4 cached
+results/recovery. Updated backend/mobile validation, cache selection for Review/Q&A,
+regression tests and API documentation. A failed real deck completed generation and
+rendered cues on the physical phone. [Verification and limits](cue-policy-v5-verification.md).
+No commit, push or merge. Human usefulness acceptance remains pending.
+
+
+## Q&A navigation and clearer-expression feedback (October 16, 2026)
+
+Contributor: Seoyeon
+
+Tool: OpenAI Codex; separate independent AI reviewer.
+Representative prompts (verbatim):
+
+> Audience Questions should be generated alongside feedback. I shouldn't have to be waiting for it. Also because not all were generated creates blank screens after on equestion. I had to go back so that it regenreated. Also could AI feedback critique on the structure of the transcript like how the individual articulated their ideas. And give more coherent ways to express that same idea
+
+> Blank screen was caused after waiting for first question and then swiping for next question which was yet to be generated.
+
+> Let's just hold on incremental recording work and focus on fixign Q&A/navigation repair and clearer-expression feedback
+
+Incorporated: safe automatic Q&A preflight recovery, preserved one-time/uncertain
+submission protection, complete-batch navigation, explicit last-question/pending
+states, v3 meaning-preserving expression advice in existing Review suggestions,
+and historical v2 request reconstruction. The reviewer caught a removed consumed
+marker guard; it was restored and regression-tested before final review.
+[Checks, Android evidence and limits](qa-navigation-expression-verification.md).
+Original speech/audio, correction rules and selected-take identity remain intact.
+No incremental recording, requirements sheet, new screen, commit, push or merge.
+
+
+## Evidence-validation audit (October 16, 2026)
+
+Contributor: Seoyeon
+
+Tool: OpenAI Codex; separate independent AI reviewer.
+Representative request excerpts (verbatim):
+
+> Audit and revise OutLoud's AI feedback evidence-validation pipeline.
+
+> Prevent valid AI feedback from being discarded due to harmless formatting differences or unnecessarily restrictive validation, without weakening factual grounding or allowing fabricated evidence.
+
+> Validate each AI-generated finding independently.
+
+> Do not commit, push, or merge changes.
+
+Incorporated: shared Python/TypeScript safe quotation policy and corpus, independent
+findings, truthful partial/error states, contiguous same-visit spans and slide
+excerpts, 64-character panelist names with historical schema reconstruction,
+structural object comparison, and explicit idempotent no-provider saved-receipt
+repair. Review feedback led to conservative operator/unit handling, Unicode parity,
+full authoritative fact context, and per-finding source-length isolation.
+[Verification and limits](evidence-validation-verification.md). Tests use mocked
+providers; one current saved result was repaired and fetched by the actual phone.
+Human usefulness/visual Review acceptance remains pending. No commit, push or merge.

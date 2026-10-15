@@ -94,7 +94,7 @@ Phase 1 verification and independent-review findings are recorded in the task's 
 
 ## Phase 2 implementation decisions
 
-- Reuse `DescriptionSet`/`DescriptionJob`, the deck row lock, existing uniqueness constraint, shared quotas, durable receipts and Celery/Beat recovery. Current JSON scopes use `slide-profile-v4` / `slide-profile-gemini-v4` and prompt `slide-profile-v4`. Preserve original v1 flat profiles and v2/v3 category identities for historical normalization/recovery. No database migration or new job infrastructure. Cues have at most 15 words, one speaking objective, no linking rationale, with supporting details collapsed by default. Seek meaningful guidance on readable content slides before returning empty categories; preserve sparse/unreadable exceptions.
+- Reuse `DescriptionSet`/`DescriptionJob`, the deck row lock, existing uniqueness constraint, shared quotas, durable receipts and Celery/Beat recovery. Current JSON scopes use `slide-profile-v5` / `slide-profile-gemini-v5` and prompt `slide-profile-v5`. Preserve v1–v4 identities and validation for historical normalization/recovery; reuse successful same-source v4 caches. No database migration or new job infrastructure. Cues target 8–16 words with a maximum of 25, one speaking objective, no repetitive clauses or duplicate objectives, no linking rationale, with supporting details collapsed by default. Seek meaningful guidance on readable content slides before returning empty categories; preserve sparse/unreadable exceptions.
 - Profiles retain slide/source IDs, summary, key ideas, visual facts and uncertainty, plus slide kind, zero to three Must Cover objectives and zero to three optional Go Deeper suggestions. Local certain-fact references ground essential objectives; optional suggestions include exact quoted current/cross-slide premises and explicit missing-information questions. Graph axes, units, values and comparisons belong in visual facts. Profiles are immutable; historical descriptions and editable JJ description scopes retain their exact schemas/prompts.
 - Successful PDF POST automatically admits one current source/profile scope when configured. Repeated imports, concurrent admissions and accepted/failed/uncertain cached scopes reuse the job. A broker failure leaves the existing durable recovery mechanism responsible for delivery. Disabled or failed AI admission does not fail PDF import.
 - GET, screen reopening, polling, playback and retakes never admit jobs. Legacy decks or imports made with AI disabled can use an explicit generate action in the existing cue panel. Failure/uncertainty requires revisioned recovery; the existing Dialog is reused for acknowledging potentially charged uncertain resubmission, not for initial consent.
@@ -203,3 +203,31 @@ A separate Phase 6 initial-eligibility marker prevents installing this phase fro
 backfilling old recordings. Subsequent corrections/audience/source changes invalidate
 questions without generation. Saved generations (including legacy local Q&A) remain
 read-only and playable within the current screen. No requirements sheet/new screen.
+
+## New-presentation default policy (October 16)
+
+Seoyeon authorized `General audience` and five minutes for new imports. Save these
+through the existing context revision API; label them as defaults rather than
+silently treating legacy suggestions as entered requirements. Preserve existing
+presentation preferences and legacy missing values. This supersedes the earlier
+missing-requirement rule only for the new-import default initialization workflow;
+the separate requirements sheet remains held. [Verification](presentation-defaults-verification.md).
+
+
+### Approved follow-up — Q&A readiness and clearer expression (October 16)
+
+Repair automatic question admission after safe synchronization failures and keep
+navigation within the complete saved question set. Add meaning-preserving expression
+advice to existing Review findings under `slide-review-v3`; retained old reviews need
+explicit Update feedback. Incremental recording remains held. No unrestricted editing.
+See [verification](qa-navigation-expression-verification.md).
+
+
+### Evidence-validation follow-up (October 16)
+
+Seoyeon authorized a scoped grounding audit: safe quotation normalization, independent
+finding validation, accurate review statuses, same-visit chunk crossing, bounded Q&A
+names and structural metadata comparison. Original source/revision/word/timing checks
+remain strict. No generation prompt redesign or new screen. Completed behavior,
+regressions, independent AI review and current-device GET verification are recorded
+in [the evidence ledger](evidence-validation-verification.md). No commit/push/merge.

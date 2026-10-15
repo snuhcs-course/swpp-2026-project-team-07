@@ -8,6 +8,8 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import PdfThumbnail from 'react-native-pdf-thumbnail';
 import { pdfService, type LocalPdf } from '../pdf/service';
+import { API_URL } from '../../services/api';
+import { requestPresentationDefaults,cancelPresentationDefaults } from './defaultRequirements';
 import { serverSlides } from './serverDeck';
 import { defaultTarget, parseSlideText, slideTargets } from '../../domain/slides';
 import { deckById, forgetPresentation, nextHue, nextOrder, savePresentation, type PageImage, type Presentation } from './store';
@@ -70,6 +72,7 @@ export async function analyzePdf(pdf: LocalPdf, onProgress: (p: Progress) => voi
     target, targets: slideTargets(slides.map(s => s.text), target), createdAt: new Date().toISOString(),
   };
   check();
+  if(!deckById(deck.id))requestPresentationDefaults(deck.id,API_URL);
   savePresentation(deck);
   onProgress({ progress: 1, status: STATUS[3], pages: pages.length, textOffline: !texts });
   return deck;
@@ -77,6 +80,7 @@ export async function analyzePdf(pdf: LocalPdf, onProgress: (p: Progress) => voi
 
 /** Undo an import that was cancelled or rejected: remove the app's PDF copy and its page images. */
 export async function discardImport(pdf: LocalPdf) {
+  cancelPresentationDefaults(pdf.id,API_URL);
   forgetPresentation(pdf.id);
   try { await pdfService.removePdf(pdf.id); } catch { /* A saved rehearsal keeps its PDF. */ }
   try { await FileSystem.deleteAsync(pagesDir(pdf.id), { idempotent: true }); } catch { /* Best effort. */ }

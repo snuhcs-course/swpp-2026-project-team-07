@@ -62,3 +62,33 @@ human acceptance is implied.
 Phase 6 phone availability repair: Contributor Seoyeon. Codex diagnosed and repaired
 an overly strict scope parser after updating the older local API. [Prompts/review](ai-collaboration-prompts-iteration-2.md#phase-6-phone-qa-availability-repair-october-16-2026)
 and [physical-phone/automated evidence](phase-6-verification.md#phone-qa-availability-repair-october-16).
+
+New-presentation defaults: Contributor Seoyeon. Codex implemented General audience /
+five-minute initialization and existing-screen labels, preserving existing saved
+preferences. [Request/contribution](ai-collaboration-prompts-iteration-2.md#new-presentation-defaults-october-16-2026),
+[checks and Android evidence](presentation-defaults-verification.md).
+
+
+Cue policy v5: Contributor Seoyeon. Codex implemented the approved 8–16-word target /
+25-word maximum and stronger non-repetition guidance, with legacy-cache/recovery
+compatibility. [Requests/contribution](ai-collaboration-prompts-iteration-2.md#cue-policy-v5-october-16-2026)
+and [automated, real-provider and phone evidence](cue-policy-v5-verification.md).
+No commit, push or merge; human usefulness acceptance remains pending.
+
+
+Q&A navigation/expression follow-up: Contributor Seoyeon. Codex repaired safe
+background question startup and bounded navigation, and added versioned advice on
+clearer articulation without transcript editing. Independent review identified a
+one-time admission regression, repaired with a persisted-marker test.
+[Requests/contribution](ai-collaboration-prompts-iteration-2.md#qa-navigation-and-clearer-expression-feedback-october-16-2026),
+[verification](qa-navigation-expression-verification.md). Incremental recording held;
+no commit, push or merge authorized.
+
+
+Evidence-validation audit: Contributor Seoyeon. Codex implemented conservative shared
+quotation matching, isolated finding validation, accurate existing-screen statuses,
+same-visit word spans, bounded metadata and safe saved-receipt revalidation. Separate
+AI review identified and verified repairs for unit/operator and Unicode/length cases.
+[Request/contribution](ai-collaboration-prompts-iteration-2.md#evidence-validation-audit-october-16-2026),
+[checks, device GET and limitations](evidence-validation-verification.md). No fresh
+provider request, transcript rewrite, commit, push or merge.

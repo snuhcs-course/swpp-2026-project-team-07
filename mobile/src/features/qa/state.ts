@@ -41,7 +41,7 @@ export function parseQaState(raw:unknown,id:string,scope:QaScope):QaState {
   if(result.qa_version!==QA_VERSION||typeof result.stale!=='boolean'||!Number.isSafeInteger(result.job_id)||result.job_id<1||!Array.isArray(result.questions)||!result.questions.length||result.questions.length>3)bad();
   for(const q of result.questions){
    if(!q||!(/^[a-f0-9]{32}$/.test(q.id))||seen.has(q.id)||!scope.slides.some(x=>x.slide_index===q.slide_index)||
-   ![q.question,q.follow_up,q.role,q.panelist].every(x=>typeof x==='string'&&!!x.trim())||q.question.length>600||q.follow_up.length>600)bad();
+   ![q.question,q.follow_up,q.role,q.panelist].every(x=>typeof x==='string'&&!!x.trim())||q.question.length>600||q.follow_up.length>600||[...q.panelist].length>64)bad();
    seen.add(q.id);
   }
  }

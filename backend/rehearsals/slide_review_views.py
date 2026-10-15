@@ -3,9 +3,9 @@ from django.core.exceptions import RequestDataTooBig
 from rest_framework.decorators import api_view, parser_classes
 from rest_framework.response import Response
 from .models import Attempt, FeedbackAnalysis
-from .services import coaching, slide_review
+from .services import coaching, slide_review, slide_profiles
 from .services.feedback import strict_json, FeedbackError
-from .services.feedback_config import selection_descriptor, Selection
+from .services.feedback_config import selection_descriptor
 from .feedback_views import _error
 
 @api_view(['GET', 'POST'])
@@ -38,7 +38,7 @@ def review(request, attempt_id):
         kind = slide_review.analysis_type(scope)
         state = coaching.read(attempt_id, kind)
         if state['feedback_revision'] == 0:
-            try: state['selection'] = selection_descriptor(Selection.profiles(), coaching=True)
+            try: state['selection'] = selection_descriptor(slide_profiles.preferred_selection(attempt.deck_id), coaching=True)
             except FeedbackError: state['selection'] = None
         state['scope'] = scope
         state['review_version'] = slide_review.VERSION

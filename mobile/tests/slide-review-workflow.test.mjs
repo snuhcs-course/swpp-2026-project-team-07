@@ -11,7 +11,7 @@ const original=withFeedback();
 const scope={context_id:null,slides:[{slide_index:0,segments:[{start_ms:0,end_ms:1000}]}]};
 const other='99999999-9999-4999-8999-999999999999';
 const state=(id,extra={})=>({attempt_id:id,feedback_revision:0,transcript_revision:0,state:'absent',stale:false,result:null,
- scope,review_version:'slide-review-v2',requirements:{context_id:null,revision:null,audience:'',required_duration_seconds:null},
+ scope,review_version:'slide-review-v3',requirements:{context_id:null,revision:null,audience:'',required_duration_seconds:null},
  selection:{token:'1'.repeat(64)},retry_available:false,requires_confirmation:false,availability:{state:'available'},dependency:null,updated_at:null,...extra});
 const response=s=>new Response(JSON.stringify(s),{status:200});
 const correction=id=>({attempt_id:id,base_transcript_id:transcriptId,revision:0,edits:[],effective_text:original.transcript.text,source_changed:false});

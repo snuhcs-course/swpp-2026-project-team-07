@@ -32,6 +32,10 @@ export function SlideReviewSummary({slide,part,localDeckId,onEvidence}:{slide:nu
   <View style={styles.heading}><Txt style={styles.headingText}>What to focus on</Txt>
    <Action label="Refresh slide feedback status" text="Refresh" onPress={()=>void fb.refresh()} disabled={fb.busy}/></View>
   <Txt accessibilityRole="text" accessibilityLiveRegion="polite" style={styles.status}>{ready?(state?.state==='absent'&&!state.stale?(fb.initial==='failed'?'First feedback could not start':eligible?'Preparing first feedback…':'Feedback begins with a new recording.'):title):noSpeech?'No speech detected — insufficient evidence.':'Transcript pending — analyze this recording first.'}</Txt>
+  {summary?.status==='partial'&&<Txt style={styles.note}>Verified findings are shown below. Some other feedback could not be verified.</Txt>}
+  {summary?.status==='invalid_evidence'&&<Txt style={styles.note}>The AI’s evidence did not match the saved recording or slide. Your audio and transcript are preserved.</Txt>}
+  {summary?.status==='model_error'&&<Txt style={styles.note}>The AI returned invalid feedback data. Your recording is preserved.</Txt>}
+  {summary?.status==='insufficient_evidence'&&summary.validation&&<Txt style={styles.note}>{summary.validation.speech_word_count<2?'Not enough recorded speech for this slide.':'The AI could not assess this slide from the available evidence.'}</Txt>}
   {state?.requirements && <>
    {!state.requirements.audience.trim()&&<Txt style={styles.note}>Audience not provided; audience-specific feedback is unavailable.</Txt>}
    {state.requirements.required_duration_seconds===null&&<Txt style={styles.note}>Time limit not provided; displayed targets are suggestions.</Txt>}

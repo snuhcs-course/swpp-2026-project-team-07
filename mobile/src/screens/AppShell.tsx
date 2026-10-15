@@ -13,6 +13,7 @@ import { mod } from '../domain/format';
 import type { HueName } from '../domain/hues';
 import { runAttemptIds } from '../domain/run';
 import { AnalysisHost, stageOf, usePlaybackIds, useWorkers } from '../features/rehearsal/analysis';
+import { DefaultRequirementsHost } from '../features/presentations/DefaultRequirementsHost';
 import { InitialQaHost } from '../features/qa/InitialQaHost';
 import { InitialFeedbackHost } from '../features/feedback/InitialFeedbackHost';
 import { CoachHost, useCoaches } from '../features/rehearsal/coaching';
@@ -55,6 +56,7 @@ export function AppShell() {
       </Frame>
       <Workers />
       <CoachHost />
+      <DefaultRequirementsHost />
       <InitialFeedbackHost />
       <InitialQaHost />
     </ShellContext.Provider>

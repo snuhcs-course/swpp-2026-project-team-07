@@ -82,7 +82,7 @@ export function ReviewScreen() {
           <ScrollView onScroll={e => { scrollY.current = e.nativeEvent.contentOffset.y; }} scrollEventThrottle={16} style={styles.col} contentContainerStyle={{ gap: 12, paddingBottom: 30 }} showsVerticalScrollIndicator={false}>
             <View style={styles.bigRow} pointerEvents="none">
               <Txt style={styles.big}>{fmt(total)}</Txt>
-              <Txt style={styles.sub}>{'/ ' + fmt(targetSum) + (deck.timing.source === 'legacy_default' ? ' suggested' : '')}</Txt>
+              <Txt style={styles.sub}>{'/ ' + fmt(targetSum) + (deck.requirementsDefault?' default':deck.timing.source === 'legacy_default' ? ' suggested' : '')}</Txt>
             </View>
             <View style={styles.chips} pointerEvents="none">{reviewChips(total, targetSum, wpm, run.delta).map(c => <Chip key={c.text} chip={c} />)}</View>
             {deck.timing.source === 'required' && !!ins.tip && (

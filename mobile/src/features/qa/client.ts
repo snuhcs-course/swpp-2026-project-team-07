@@ -69,7 +69,7 @@ export async function generateQuestions(deck: Presentation, slides: { slide_inde
   const data = await response.json() as { questions?: unknown };
   if (!Array.isArray(data.questions) || !data.questions.length) throw new QaError('invalid_response', 'The server returned no questions.');
   return data.questions.slice(0, 3).map((q: Record<string, unknown>, i) => ({
-    panelist: str(q.panelist, 8) || 'P' + (i + 1), role: str(q.role, 60) || ['First', 'Second', 'Third'][i] + ' panelist',
+    panelist: str(q.panelist, 64) || 'P' + (i + 1), role: str(q.role, 60) || ['First', 'Second', 'Third'][i] + ' panelist',
     slide_index: Number.isInteger(q.slide_index) && (q.slide_index as number) >= 0 && (q.slide_index as number) < deck.pageCount ? q.slide_index as number : 0,
     topic: str(q.topic, 80), question: str(q.question, 600), follow_up: str(q.follow_up, 600),
   })).filter(q => q.question);

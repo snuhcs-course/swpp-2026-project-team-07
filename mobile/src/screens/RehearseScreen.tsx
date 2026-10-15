@@ -742,7 +742,7 @@ function Readout({ live, phase, cur, take, deck, burst, error, recoveryCount, re
   }
   const recovery = recoveryCount > 0;
   const line = recovery && phase === 'idle' ? 'Recording interrupted' + (recoveryCount > 1 ? ` ${recoveryNumber} of ${recoveryCount}` : '') + ' · tap to inspect' : error ? error : phase === 'count' ? 'Get ready…' : phase === 'burst' ? 'Run complete'
-    : take ? 'Redo slide ' + (cur + 1) : cur === 0 ? 'Full run · ' + (deck.timing.source === 'required' ? 'required ' : 'suggested ') + fmt(deck.target) : 'Record slide ' + (cur + 1);
+    : take ? 'Redo slide ' + (cur + 1) : cur === 0 ? 'Full run · ' + (deck.requirementsDefault?'default ':deck.timing.source === 'required' ? 'required ' : 'suggested ') + fmt(deck.target) : 'Record slide ' + (cur + 1);
   return <>
     <Txt style={[styles.big, { color: phase === 'burst' ? C.text : C.dim }]}>{phase === 'burst' && burst ? fmt(burst.total) : '0:00'}</Txt>
     <Txt numberOfLines={2} accessibilityRole={recovery && phase === 'idle' ? 'button' : 'text'}

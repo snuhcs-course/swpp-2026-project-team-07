@@ -30,6 +30,11 @@ logger = logging.getLogger(__name__)
 ACTIVE = {'waiting_descriptions', 'queued', 'preparing', 'submitted', 'normalizing', 'waiting_quota'}
 
 
+def profile_selection(deck_id):
+    from .slide_profiles import preferred_selection
+    return preferred_selection(deck_id)
+
+
 def safe_error(code):
     if code == 'quota_stopped':
         return {'code': code, 'message': QUOTA_STOPPED_MESSAGE}
@@ -238,7 +243,7 @@ def generate(attempt_id, payload, analysis_type='coaching', review_scope=None):
     source = prepare_attempt(attempt)
     if review_input is None and qa_input is None:
         assert_selection(payload, selection_descriptor(coaching=True))
-    selection = Selection.profiles() if review_input is not None or qa_input is not None else Selection.current()
+    selection = profile_selection(attempt.deck_id) if review_input is not None or qa_input is not None else Selection.current()
     assert_selection(payload, selection_descriptor(selection, coaching=True))
     selection.credentials()
     QuotaPolicy.current(selection)
@@ -270,7 +275,7 @@ def generate(attempt_id, payload, analysis_type='coaching', review_scope=None):
             # Recheck active/completed vs failed/stale and retry requirements if
             # another caller admitted while this caller prepared its snapshots.
             return generate(attempt_id, payload, analysis_type, review_scope)
-        assert_selection(payload, selection_descriptor(Selection.profiles() if review_input is not None or qa_input is not None else Selection.current(), coaching=True))
+        assert_selection(payload, selection_descriptor(profile_selection(attempt.deck_id) if review_input is not None or qa_input is not None else Selection.current(), coaching=True))
         if qa_input is not None and analysis_type != 'qa_answer' and not audience_qa.current(current_attempt, qa_input):
             raise Conflict('requirements_changed')
         if review_input is not None and not slide_review.current(current_attempt, review_input):
@@ -459,6 +464,8 @@ def finish(value, job, result=None, error=None):
                 locked_job.result['answer'] = result.answer
             if hasattr(result, 'slides'):
                 locked_job.result['slides'] = result.slides
+            if hasattr(result, 'validation_revision'):
+                locked_job.result['validation_revision'] = result.validation_revision
             if result.state == 'all_invalid':
                 error = FeedbackError('unsupported_feedback')
         locked_job.state = 'waiting_quota' if waiting else 'needs_confirmation' if uncertain else 'failed' if error else 'completed'
@@ -598,7 +605,8 @@ def _result(value, job, current_job):
                  'qa_version':job.source_snapshot.get('audience_qa',job.source_snapshot.get('qa_answer'))['version'],
                  'job_id':job.pk}
     if 'slide_review' in job.source_snapshot:
-        extra = {'slides': job.result.get('slides', []), 'review_version': job.source_snapshot['slide_review']['version']}
+        extra = {'slides': job.result.get('slides', []), 'review_version': job.source_snapshot['slide_review']['version'],
+                 'validation_revision':job.result.get('validation_revision','legacy')}
     return {**extra, **{k: job.result[k] for k in ('status', 'accepted_count', 'discarded_count', 'suggestions')},
         'message': 'No supported suggestions.' if job.result['status'] == 'empty' else None,
         'feedback_revision': job.generation, 'description_set_id': str(value.pk),

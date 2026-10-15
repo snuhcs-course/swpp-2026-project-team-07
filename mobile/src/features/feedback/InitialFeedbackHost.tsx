@@ -3,6 +3,7 @@ import { useSyncExternalStore } from 'react';
 import { API_URL } from '../../services/api';
 import { getDeckState, useStore, visibleDecks } from '../presentations/store';
 import { getRequirementsVersion, readRequirements, subscribeRequirements } from '../presentations/requirementsStore';
+import { defaultRequirementsPending } from '../presentations/defaultRequirements';
 import { readReview } from '../transcription/reviewStorage';
 import { reviewScope, type ReviewScope } from './slideReview';
 import { initialFeedbackEnabled } from './automaticFeedback';
@@ -16,7 +17,7 @@ export function InitialFeedbackHost() {
  for(const deck of visibleDecks()) {
   const saved=getDeckState(deck.id);
   // Pending comparisons have not yet authorized a new selected take.
-  if(saved.compare)continue;
+  if(saved.compare||defaultRequirementsPending(deck.id,API_URL))continue;
   saved.run?.parts.forEach((part,index)=>{
    if(!part||!initialFeedbackEnabled(API_URL,part.attemptId))return;
    try{

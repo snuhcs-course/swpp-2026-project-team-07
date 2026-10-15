@@ -1,3 +1,4 @@
+import { quotesEqual,verifiedExcerpt,structurallyEqual } from './evidence';
 import { MAX_RECORDING_MS } from "../recording/limits";
 /** Untrusted feedback is parsed separately from transcript/audio capabilities. */
 import type { CoachingProvenance, CoachingResult, CoachingSuggestion, DescriptionFact, DescriptionProvenance,
@@ -23,7 +24,6 @@ export const isDigest = (v: unknown): v is string => typeof v === 'string' && /^
 const digest = (v: unknown): string => isDigest(v) ? v : fail();
 const nullableUuid = (v: unknown) => v === null ? null : uuid(v);
 const nullableRevision = (v: unknown) => v === null ? null : integer(v);
-const canonicalQuote = (v: string) => v.replace(/[\s\u001c-\u001f\u0085]+/gu, ' ').trim();
 const error = (v: unknown): SafeFeedbackError | null => { if (v === null) return null; const r = object(v);
   return { code: nonblank(r.code, 80), message: nonblank(r.message, 300) }; };
 const bounded = (v: unknown) => { try { if (JSON.stringify(v).length > 1_200_000) fail(); } catch { fail(); } };
@@ -137,8 +137,8 @@ function suggestion(v: unknown, context: FeedbackEvidence): CoachingSuggestion {
   const cited = !match || !slide ? null : kind === 'summary' ? slide.summary : kind === 'key_ideas' ? slide.key_ideas[Number(ordinal)] : slide.visual_facts[Number(ordinal)];
   if (!chunk || visit.slide_index !== result.slide_index || !slide || slide.source_id !== result.source_id ||
       result.transcript_id !== context.transcript_id || result.word_start > result.word_end ||
-      !chunk.includes(result.word_start) || !chunk.includes(result.word_end) ||
-      !cited || cited.uncertain || cited.text !== result.slide_quote ||
+      !chunk.includes(result.word_start) || !Array.from({length:result.word_end-result.word_start+1},(_,i)=>result.word_start+i).every(i=>visit.word_indexes.includes(i)) ||
+      !cited || cited.uncertain || verifiedExcerpt(result.slide_quote,cited.text)===null ||
       result.start_ms > result.end_ms || (result.category === 'audience' && !context.audience_supplied)) fail();
   return result;
 }
@@ -163,15 +163,13 @@ function verifyEvidence(result: CoachingResult, context?: FeedbackContext, pages
       visit.start_ms !== context.slide_events![i].at_ms || JSON.stringify(visit.word_indexes) !== JSON.stringify(expected[i]))) return false;
   return result.suggestions.every(card => {
     const selected = words.slice(card.word_start, card.word_end + 1);
-    return canonicalQuote(card.speech_quote) === canonicalQuote(selected.map(w => w.text).join(' ')) &&
+    return quotesEqual(card.speech_quote,selected.map(w=>w.text).join(' ')) &&
       card.start_ms === Math.min(...selected.map(w => w.start_ms)) && card.end_ms === Math.max(...selected.map(w => w.end_ms));
   });
 }
 function result(v: unknown, id: string, context?: FeedbackContext, pages?: number): CoachingResult {
   const r = object(v), scope = evidence(r.evidence, id), summary = output(r);
   const cards = list(r.suggestions, 3).map(item => suggestion(item, scope));
-  const used = new Set<number>();
-  for (const card of cards) for (let i = card.word_start; i <= card.word_end; i++) { if (used.has(i)) fail(); used.add(i); }
   if (cards.length !== summary.accepted_count || !date(r.completed_at)) fail();
   const parsed: CoachingResult = { ...summary, ...transcriptRevision(r), message: r.message === null ? null : nonblank(r.message, 100), suggestions: cards, feedback_revision: integer(r.feedback_revision, 2 ** 31 - 1, 1),
     description_set_id: uuid(r.description_set_id), description_revision: integer(r.description_revision, 2 ** 31 - 1, 1),
@@ -216,7 +214,7 @@ export function parseFeedback(v: unknown, id: string, context?: FeedbackContext,
       (parsed.feedback_revision > 0 && (!parsed.description_set_id || !parsed.provenance || !parsed.stage || !parsed.updated_at)) ||
       parsed.stale !== (parsed.state === 'stale') ||
       (parsed.result && (parsed.result.feedback_revision > parsed.feedback_revision || parsed.result.description_set_id !== parsed.description_set_id ||
-        JSON.stringify(parsed.result.provenance) !== JSON.stringify(parsed.provenance) ||
+        !structurallyEqual(parsed.result.provenance,parsed.provenance) ||
         (parsed.result.feedback_revision !== parsed.feedback_revision && !parsed.result.stale))) ||
       (parsed.state === 'completed' && (!parsed.result || parsed.result.status === 'all_invalid' || parsed.result.stale)) ||
       (parsed.result && !parsed.result.stale && parsed.result.description_revision !== parsed.description_revision) ||
