@@ -1,3 +1,4 @@
+import { MAX_RECORDING_MS } from "../recording/limits";
 /** Untrusted feedback is parsed separately from transcript/audio capabilities. */
 import type { CoachingProvenance, CoachingResult, CoachingSuggestion, DescriptionFact, DescriptionProvenance,
   Descriptions, DescriptionState, FeedbackAnalysis, FeedbackDependency, FeedbackEvidence, FeedbackOutput,
@@ -97,7 +98,7 @@ function output(v: unknown): FeedbackOutput { const r = object(v);
   return result;
 }
 function evidence(v: unknown, id: string): FeedbackEvidence { const r = object(v);
-  const duration = integer(r.duration_ms, 600_000, 1), pages = integer(r.page_count, Number.MAX_SAFE_INTEGER, 1), deck = uuid(r.deck_id);
+  const duration = integer(r.duration_ms, MAX_RECORDING_MS, 1), pages = integer(r.page_count, Number.MAX_SAFE_INTEGER, 1), deck = uuid(r.deck_id);
   const scope = sources(r.sources);
   const visits = list(r.visits, 1000).map(item => { const visit = object(item); return {
     slide_index: integer(visit.slide_index, pages - 1), start_ms: integer(visit.start_ms, duration - 1),

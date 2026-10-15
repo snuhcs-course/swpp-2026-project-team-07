@@ -4,6 +4,14 @@ import { emptyRequirements, parseContext, type PresentationRequirements } from '
 import { readStored, writeStored } from '../../services/storage';
 import { normalizeApi } from '../transcription/analysisStorage';
 
+let version = 0;
+const listeners = new Set<() => void>();
+export const getRequirementsVersion = () => version;
+export function subscribeRequirements(listener: () => void) {
+  listeners.add(listener);
+  return () => { listeners.delete(listener); };
+}
+
 const key = (localId: string, apiUrl: string) => {
   if (!localId.trim()) throw new Error('Missing local presentation identity.');
   return `presentation-requirements:v1:${normalizeApi(apiUrl)}:${encodeURIComponent(localId)}`;
@@ -29,6 +37,8 @@ export function saveRequirements(localId: string, apiUrl: string, input: Present
     throw new Error('Conflicting requirements at the same revision.');
   }
   writeStored(key(localId, apiUrl), { version: 1, value });
+  version++;
+  listeners.forEach(listener => listener());
 }
 
 /** Reserve before POST so an offline retry uses the same UUID, without inventing requirements. */

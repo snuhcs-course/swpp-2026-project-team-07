@@ -2,6 +2,7 @@
 // Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
 // OutLoud redesign: slide titles, slide points and per-slide target times.
 import { keyWords } from './words';
+import { validateRequirementValues, type PresentationRequirements } from './presentationRequirements';
 
 export type SlideText = { title: string; points: string[]; text: string };
 
@@ -30,7 +31,7 @@ export function parseSlideText(raw: string, index: number): SlideText {
   return { title: title || 'Slide ' + (index + 1), points: usable, text: lines.join(' ') };
 }
 
-/** Default whole-presentation target: one minute per slide, capped at the 10-minute recording limit. */
+/** JJ's legacy suggestion: one minute per slide, capped at ten minutes; never a required duration. */
 export function defaultTarget(pageCount: number): number {
   return Math.max(30, Math.min(600, 60 * Math.max(1, pageCount)));
 }
@@ -50,6 +51,25 @@ export function slideTargets(texts: readonly string[], total: number): number[] 
   const order = raw.map((v, i) => [v - Math.floor(v), i] as const).sort((a, b) => b[0] - a[0]);
   for (let k = 0; rest > 0; k = (k + 1) % n, rest--) out[order[k][1]]++;
   return out;
+}
+
+/** Phase 3: explicit time only; never infer a requirement from JJ's saved defaults. */
+export function requiredSlideTargets(texts: readonly string[], total: number | null): number[] | null {
+  validateRequirementValues(total, '');
+  return total === null ? null : slideTargets(texts, total);
+}
+
+export type PresentationTiming = {
+  source: 'required' | 'legacy_default'; total: number; targets: number[]; requirementsRevision: number | null;
+};
+
+/** Derived on read, without overwriting presentation, selected-run or Compare snapshots. */
+export function presentationTiming(deck: { pageCount: number; slides: readonly { text: string }[]; target: number; targets: number[] },
+  requirements: PresentationRequirements): PresentationTiming {
+  const targets = requiredSlideTargets(Array.from({ length: deck.pageCount }, (_, i) => deck.slides[i]?.text ?? ''), requirements.requiredDurationSeconds);
+  return targets === null
+    ? { source: 'legacy_default', total: deck.target, targets: [...deck.targets], requirementsRevision: null }
+    : { source: 'required', total: requirements.requiredDurationSeconds!, targets, requirementsRevision: requirements.revision };
 }
 
 /** Cue chips for one slide: its points, with points missed in the last run marked "Don't skip". */

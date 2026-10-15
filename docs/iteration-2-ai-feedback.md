@@ -1,7 +1,7 @@
 # Iteration 2 AI feedback contract and phase ledger
 
 Approved base: `front-end-design-JJ` at `eeb3307a431e62d80b2b2d261420963193da22c3`.
-Implementation branch: `it2/feature/ai_feedback`. Phase 1 is committed locally as `2bd6cd2ad7128bb30d59da8dae818b5bdb01d66c`, not pushed. The user authorized Phase 2 execution on October 15. The separate UI scope update below does not authorize later phases.
+Implementation branch: `it2/feature/ai_feedback`. Phase 1 is committed locally as `2bd6cd2ad7128bb30d59da8dae818b5bdb01d66c`; Phase 2 as `67a240a1c74ff8dbeb793394f21aa320c46e522d`, followed by documentation commit `fb616d6cc80f3f9ec9561c7b89a827a399d24867`. None is pushed. The user authorized Phase 3 execution on October 15; the separate UI scope update below does not authorize later phases.
 
 ## Full implementation contract
 
@@ -65,7 +65,7 @@ Do not add standalone correction/summary screens or use these authorizations to 
 
 ## Phase 1 verification and status
 
-Baseline at the approved JJ revision: `npm run check` passed (168 tests); backend SQLite suite passed (286 tests, 19 skips). The skips do not establish PostgreSQL behavior. Current HEAD is the Phase 1 commit recorded above.
+Baseline at the approved JJ revision: `npm run check` passed (168 tests); backend SQLite suite passed (286 tests, 19 skips). The skips do not establish PostgreSQL behavior. At the Phase 1 inspection, HEAD was the Phase 1 commit recorded above.
 
 Phase 1 verification and independent-review findings are recorded in the task's entry in [the active collaboration log](ai-collaboration-prompts-iteration-2.md). Provider/profile worker behavior advances in Phase 2 below; correction synchronization, allocations, longer captures, the separately authorized Phase 4/5 UI and complete user flows remain outstanding in their assigned phases.
 
@@ -80,3 +80,25 @@ Phase 1 verification and independent-review findings are recorded in the task's 
 - The Rehearse cue toggle reads validated cached profiles with an essential/optional selector instead of keyword heuristics. Existing styling is retained with scrolling for long cues and distinct pending/failed/disabled/offline/stale/insufficient-evidence states. A separate API/deck cache preserves cues offline and fences reversed refreshes. Historical flat cues are not relabeled essential points. No requirements sheet or new screen is added.
 
 Phase 2 verification, review and outstanding limits are recorded in the active collaboration log before inspection. Agent-operated synthetic worker/Android checks do not establish real-provider cue quality or human acceptance.
+
+## Phase 3 — implementation and inspection record
+
+The user authorized Phase 3 only on October 15. Required timing reuses Phase 1's
+explicit context duration and JJ's deterministic text-weighted allocation, with
+exact whole-second sums. Missing requirements remain distinct from legacy suggested
+targets. Allocation is derived on read; duration changes do not rewrite selected
+runs, Compare snapshots, profiles or transcripts and admit no provider jobs.
+
+New capture uses mono AAC at 64 kbps. The timeline cap increases to thirty minutes
+through recording, recovery, upload, packaged VAD and result/evidence consumers;
+the 25,000,000-byte cap and source audio/attempt identities remain unchanged.
+No new UI sheet, screen, database migration or worker infrastructure is added.
+The existing timing readout labels requirements versus suggestions.
+
+[Implementation decisions, checks, live-provider evidence and remaining acceptance
+limits](phase-3-verification.md) record completed checks and independent review.
+Phase 3 is staged for user inspection and remains uncommitted. Phase 4 is unstarted.
+Seoyeon confirmed short phone playback/transcription. A separately authorized
+follow-up now labels first/return visits within the existing transcript panel;
+see the [follow-up evidence](transcript-visits-verification.md). Physical-phone
+long-capture acceptance remains pending. The presentation requirements sheet remains held.

@@ -119,6 +119,31 @@ The packaged Silero CPU gate checks a temporary PyAV-decoded waveform only. It n
 
 Mobile Analyze requires a recording known to the current API, established by its upload or validated server history. First-use disclosure has Continue/Cancel and locally persisted consent. Retry refreshes first and supplies the displayed current revision; uncertain requests require a separate charge acknowledgement. A client timeout is not server failure. Polling stops on navigation/background; stale callbacks and API-address changes cannot update another cache. SQLite result records are keyed by normalized API address and attempt UUID, separately from upload metadata. Offline refresh preserves cache and audio. Synchronized review is described below; coaching is independently generated through the explicit API below and remains disabled by default.
 
+## Iteration 2 Phase 3: required timing and thirty-minute audio
+
+There is no new wire endpoint, allocation job or migration. Existing presentation
+contexts retain their Phase 1 shape/revision contract. The mobile read model uses
+an explicitly supplied duration only when the local PDF/API/server-deck binding
+matches; it never converts a legacy suggested target into a requirement. Audience
+may remain missing for time allocation alone. Allocation reuses JJ's bounded
+text-weighted largest-remainder algorithm: nonnegative whole seconds, exact total,
+stable slide-order ties. Empty/image-only slides use base weight. Budgets can be
+zero when slide count exceeds available seconds. This is a heuristic budget,
+not an AI quality judgment. Changing duration recomputes current targets and
+selected-run Review totals without changing saved attempts, selected segments,
+Compare snapshots, profiles or transcripts. Clearing duration restores suggestions.
+Reopen, refresh and playback do not admit allocation/provider work.
+
+The attempt API now accepts 1–1,800,000 integer milliseconds, retaining the exact
+25,000,000-byte cap and existing audio/metadata identity/retry policy. New Android
+capture uses mono AAC/MPEG-4 at 64 kbps and requests normal native finalization
+at 1,799,000 ms, preserving the existing one-second stop margin. Metadata never
+extends past the authoritative cap; decoding permits only the existing one-second
+codec tail. Recovery, result/review and verified feedback playback accept the same
+timeline. Original files remain unchanged; no trimming, recompression or chunking.
+Provider prompt/schema scopes and existing timeout/receipt/recovery rules remain
+unchanged. [Phase 3 verification and remaining UI/device limits](phase-3-verification.md).
+
 ## Durable slide descriptions (checkpoint 2)
 
 ### Iteration 2 Phase 2 — immutable slide profiles
@@ -703,7 +728,7 @@ Stage 1 used a Results route carrying session-only `audioUri`, `slideEvents`, `d
 
 The prepared audio URI and initial visible slide are stored in one SQLite write before capture starts. Startup recovery must succeed before a new capture is allowed, and native audio time/events are saved at page changes and about every second. On restart, unfinished capture requires explicit recovery against playable media duration; interrupted uploads can be retried with the same ID. Unplayable or oversized files remain local. Audio exceeding 25,000,000 bytes is rejected before any upload request with an explanation to make a shorter new recording; local playback remains available. Recovery cannot reconstruct audio that Android failed to finalize.
 
-Limits: at least one slide, 50 MiB PDF, 600,000 ms recording, and exactly 25,000,000 audio bytes. Deck content/preparation hashes deduplicate PDFs. Attempt hashes include the audio and normalized metadata: identical retries return the original attempt; conflicting IDs return HTTP 409, including concurrent submissions. Added model fields are migrated without replacing old media. Audio is decoded locally to validate the audio duration against metadata (up to a 1,000 ms codec tail); container headers alone do not establish playable audio. Each submission writes to unique media paths. Failure cleanup protects the committed winner, and uncertain database outcomes retain media for later reconciliation; cleanup failures may leave unreferenced files. No automatic orphan deletion is implemented.
+Limits: at least one slide, 50 MiB PDF, 1,800,000 ms recording, and exactly 25,000,000 audio bytes. Deck content/preparation hashes deduplicate PDFs. Attempt hashes include the audio and normalized metadata: identical retries return the original attempt; conflicting IDs return HTTP 409, including concurrent submissions. Added model fields are migrated without replacing old media. Audio is decoded locally to validate the audio duration against metadata (up to a 1,000 ms codec tail); container headers alone do not establish playable audio. Each submission writes to unique media paths. Failure cleanup protects the committed winner, and uncertain database outcomes retain media for later reconciliation; cleanup failures may leave unreferenced files. No automatic orphan deletion is implemented.
 
 Attempt GET/history add `deck_id`, `duration_ms`, `slide_events`, `audience`, `created_at`, `audio_url` and `processing_state`. An uploaded unprocessed recording has status `pending`, processing_state `awaiting_analysis`, transcript `null` and no feedback. The mobile upload function does not call processing. Explicit hosted analysis is described above.
 

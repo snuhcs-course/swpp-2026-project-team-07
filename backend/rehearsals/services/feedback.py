@@ -19,6 +19,8 @@ from typing import Annotated, Literal
 from PIL import Image
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from rehearsals.limits import MAX_DURATION_MS
+
 MAX_IMAGE_BYTES = 1_048_576
 MAX_TOTAL_IMAGE_BYTES = 8_388_608
 MAX_IMAGE_EDGE = 1600
@@ -30,7 +32,7 @@ MAX_OUTPUT_BYTES = 65_536
 UUIDText = Annotated[str, Field(pattern=r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")]
 Digest = Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
 SlideIndex = Annotated[int, Field(ge=0)]
-Time = Annotated[int, Field(ge=0, le=600_000)]
+Time = Annotated[int, Field(ge=0, le=MAX_DURATION_MS)]
 Language = Annotated[str, Field(min_length=1, max_length=40)]
 ShortText = Annotated[str, Field(min_length=1, max_length=400)]
 
@@ -147,7 +149,7 @@ class Visit(PrivateModel):
 class AnalysisInput(PrivateModel):
     attempt_id: UUIDText
     deck_id: UUIDText
-    duration_ms: Annotated[int, Field(gt=0, le=600_000)]
+    duration_ms: Annotated[int, Field(gt=0, le=MAX_DURATION_MS)]
     speaker_language: Language
     audience: Annotated[str, Field(max_length=500)]
     slides: Annotated[tuple[SlideText, ...], Field(min_length=1)]

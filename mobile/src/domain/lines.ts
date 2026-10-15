@@ -3,9 +3,10 @@
 // OutLoud redesign: transcript sentences for the merged run (SPEC §5.4, §6).
 // Sentences come from hosted Whisper. Slide-change events split a sentence at
 // the first word whose timestamp belongs to the next slide.
-import type { Transcript } from '../contracts';
-import { transcriptSpans } from '../features/transcription/playback';
+import type { Transcript, TranscriptWord } from '../contracts';
+import { activeWordIndex, transcriptSpans } from '../features/transcription/playback';
 import { partSeconds, runStarts, type Run } from './run';
+import { fmt } from './format';
 
 export type Flag = { w: string; alts: string[] };
 export type Line = {
@@ -23,6 +24,9 @@ export type Line = {
   moved: boolean;
   from: number | null;
   fixed: boolean;
+  /** Original positive-duration visit within this slide's selected source take. */
+  visit: { slide: number; index: number; startMs: number };
+  words: TranscriptWord[];
   audio: { attemptId: string; startMs: number; endMs: number };
 };
 export type LineEdit = { text?: string; slide?: number; dismissed?: string[] };
@@ -90,7 +94,7 @@ export function buildLines(run: Run | null, n: number, transcripts: ReadonlyMap<
     if (!list) { list = sentences(transcript); cache.set(part.attemptId, list); }
     const words = transcript.words;
     let before = 0;
-    for (const seg of part.segments) {
+    for (const [visitIndex, seg] of part.segments.entries()) {
       list.forEach(s => {
         let first = s.first;
         while (first <= s.last && words[first].start_ms < seg.startMs) first++;
@@ -114,6 +118,8 @@ export function buildLines(run: Run | null, n: number, transcripts: ReadonlyMap<
           key, slide: Math.max(0, Math.min(n - 1, target)), t: starts[slide] + Math.min(rel, Math.max(0, times[slide] - 1)), rel, text,
           flags: misheard(text, vocab, slide).filter(f => !dismissed.has(f.w)),
           edge: 0, moved, from: moved ? slide : null, fixed: !clipped && edit.text !== undefined,
+          visit: { slide, index: visitIndex, startMs: seg.startMs },
+          words: words.slice(first, last + 1).map((w, i) => i === 0 && (clipped || !edit.text) ? { ...w, text: capitalize(w.text.trim()) } : w),
           audio: { attemptId: part.attemptId, startMs: start, endMs: Math.max(endMs, start + 300) },
         });
       });
@@ -121,6 +127,14 @@ export function buildLines(run: Run | null, n: number, transcripts: ReadonlyMap<
     }
   }
   return lines.sort((a, b) => a.slide - b.slide || a.t - b.t);
+}
+
+/** A divider for each source visit; corrections keep their original provenance. */
+export function visitHeading(line: Line, previous?: Line): string | null {
+  const v = line.visit;
+  if (previous && previous.audio.attemptId === line.audio.attemptId && previous.visit.slide === v.slide && previous.visit.index === v.index) return null;
+  const label = v.index === 0 ? 'First visit' : 'Return visit ' + v.index;
+  return label + (v.slide !== line.slide ? ' · from slide ' + (v.slide + 1) : '') + ' · ' + fmt(v.startMs / 1000) + ' in recording';
 }
 
 // ── Possibly misheard words ────────────────────────────────────────────────
@@ -210,6 +224,23 @@ export function splitFlags(text: string, flags: readonly Flag[]): { t: string; f
     segs = next;
   });
   return segs;
+}
+
+/** Layer native-position word highlighting over the existing correction ranges. */
+export function playbackPieces(line: Pick<Line, 'text' | 'words' | 'flags'>, positionMs: number | null): { t: string; fi: number; active: boolean }[] {
+  const active = positionMs === null ? -1 : activeWordIndex(line.words, positionMs);
+  let offset = 0, start = -1, end = -1;
+  for (const span of transcriptSpans({ text: line.text, words: line.words })) {
+    if (span.wordIndex === active && active >= 0) { start = offset; end = offset + span.text.length; }
+    offset += span.text.length;
+  }
+  offset = 0;
+  return splitFlags(line.text, line.flags).flatMap(piece => {
+    const at = offset;
+    offset += piece.t.length;
+    const cuts = [...new Set([at, offset, ...[start, end].filter(p => p > at && p < offset)])].sort((a, b) => a - b);
+    return cuts.slice(0, -1).map((p, i) => ({ t: line.text.slice(p, cuts[i + 1]), fi: piece.fi, active: p >= start && cuts[i + 1] <= end && start >= 0 }));
+  });
 }
 
 export function slideText(lines: readonly Line[], slide: number): string {

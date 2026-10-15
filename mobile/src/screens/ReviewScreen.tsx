@@ -57,7 +57,7 @@ export function ReviewScreen() {
   const screen = useAnimatedStyle(() => ({ opacity: gone.value ? withTiming(0, { duration: 260 }) : Math.max(0.15, 1 - Math.abs(dy.value) / 260), transform: [{ translateY: dy.value * 0.55 }] }));
 
   if (!model || !model.state.run) return null;
-  const { deck, times, total, lines, state } = model;
+  const { deck, times, total, lines, state, targetSum } = model;
   const run = state.run!;
   const targets = deck.targets;
   const maxT = Math.max(1, ...times);
@@ -66,7 +66,7 @@ export function ReviewScreen() {
   const verdict = slideVerdict(t, g);
   const rows: Row[] = [verdict.row];
   if (t > 0) rows.push(...findingsFor(s, lines, deck.slides[s]?.points ?? [], model.ai, deck.text === 'ready'));
-  const ins = reviewInsights(times, targets, total, run.targetSum);
+  const ins = reviewInsights(times, targets, total, targetSum);
   const text = lines.map(l => l.text).join(' ');
   const wpm = model.transcribed ? wpmOf(text, total) : null;
   const fillers = model.transcribed ? fillerList(text).slice(0, 5) : [];
@@ -89,9 +89,9 @@ export function ReviewScreen() {
           <View style={styles.col}>
             <View style={styles.bigRow} pointerEvents="none">
               <Txt style={styles.big}>{fmt(total)}</Txt>
-              <Txt style={styles.sub}>{'/ ' + fmt(run.targetSum)}</Txt>
+              <Txt style={styles.sub}>{'/ ' + fmt(targetSum)}</Txt>
             </View>
-            <View style={styles.chips} pointerEvents="none">{reviewChips(total, run.targetSum, wpm, run.delta).map(c => <Chip key={c.text} chip={c} />)}</View>
+            <View style={styles.chips} pointerEvents="none">{reviewChips(total, targetSum, wpm, run.delta).map(c => <Chip key={c.text} chip={c} />)}</View>
             {!!ins.tip && (
               <View style={styles.tip} pointerEvents="none">
                 <UIIcon name="i-bulb" size={26} style={{ marginTop: 1 }} />

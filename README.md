@@ -13,6 +13,7 @@ An Android presentation rehearsal app that connects PDF slides, recordings, slid
 - Available features include PDF import, recording with slide tracking, saved audio playback, hosted Whisper transcription, synchronized transcript review and AI feedback.
 - Local import, recording and saved-media playback work without the backend. Upload, transcription and feedback require the configured server; provider work requires internet and credentials.
 - Iteration 2 Phase 2 adds cached image-aware slide profiles with zero to three essential Must Cover points and zero to three optional Go Deeper suggestions per slide, each at most 15 words with expandable supporting details. PDF upload admits them automatically when feedback is configured; JJ's existing Cues area switches categories and displays progress and saved results. Historical description/coaching functionality remains separate. See the [phase ledger](docs/iteration-2-ai-feedback.md).
+- Phase 3 derives exact-sum per-slide timing from explicitly saved duration requirements and uses mono AAC at 64 kbps for new captures up to thirty minutes. Missing duration retains labeled suggested timing; duration/audience entry UI remains held. See [Phase 3 evidence](docs/phase-3-verification.md).
 - Feedback supports Gemini or OpenAI through backend configuration and is **disabled by default**. Suggestions link to evidence; they still require human judgment.
 - Limited agent-operated physical-phone checks are recorded in the active prompt log. Full device flow and human usefulness testing remain pending. This is a local development setup; authentication and production deployment remain separate work.
 - [Verification evidence and remaining limits](docs/verification.md) distinguish automated tests, agent-operated emulator checks and controlled provider evaluation. Sample previews remain separate from real results.
@@ -86,7 +87,7 @@ npm run android
 - Keep provider keys in ignored `backend/.env`; never put secrets in `EXPO_PUBLIC_*` variables.
 - Hosted transcription uses OpenAI `whisper-1`. Detected no-speech recordings produce an empty transcript without a provider request.
 - To enable feedback, set `FEEDBACK_ENABLED=true` and configure the selected provider's key, model, project identity and positive RPM/TPM allowances. `FEEDBACK_PROVIDER` defaults to `openai`; `gemini` is supported. See the [configuration reference](docs/ai-feedback.md#provider-configuration-and-operational-bounds) and [operator summary](docs/ai-feedback.md#operator-and-review-summary).
-- **Input limits:** any positive slide count, 50 MiB PDF, ten-minute recordings and 25,000,000 audio bytes. Oversized legacy audio remains playable locally; record a shorter attempt to upload.
+- **Input limits:** any positive slide count, 50 MiB PDF, thirty-minute recordings and 25,000,000 audio bytes. Oversized legacy audio remains playable locally; record a shorter attempt to upload.
 - Failed or uncertain provider submissions retain explicit recovery/confirmation controls. A retry may incur another charge; the system does not guarantee exactly-once provider execution or a spending cap.
 - [Dependency assessment](docs/whisper-transcription.md#packaged-gate-dependency-assessment-2026-10-08) records unresolved Torch advisories and their assessed scope.
 

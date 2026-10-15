@@ -37,7 +37,7 @@ def png_with_private_profile():
     return data[:33] + encoded + data[33:], marker.decode('ascii')  # After IHDR.
 
 
-def fixture(*, words=None, events=None, audience='', slides=2, text=None):
+def fixture(*, words=None, events=None, audience='', slides=2, text=None, duration_ms=3000):
     words = deepcopy(words if words is not None else [
         {'text': 'Hello,', 'start_ms': 100, 'end_ms': 500},
         {'text': '안녕!', 'start_ms': 500, 'end_ms': 1100},
@@ -46,8 +46,8 @@ def fixture(*, words=None, events=None, audience='', slides=2, text=None):
         {'text': 'Return.', 'start_ms': 2200, 'end_ms': 2500},
     ])
     events = events or [{'slide_index': 0, 'at_ms': 0}, {'slide_index': 1, 'at_ms': 1000}, {'slide_index': 0, 'at_ms': 2000}]
-    visits = align_words([{**w, 'index': i} for i, w in enumerate(words)], events, 3000)
-    value = {'attempt_id': ATTEMPT, 'deck_id': DECK, 'duration_ms': 3000, 'speaker_language': 'ko/en', 'audience': audience,
+    visits = align_words([{**w, 'index': i} for i, w in enumerate(words)], events, duration_ms)
+    value = {'attempt_id': ATTEMPT, 'deck_id': DECK, 'duration_ms': duration_ms, 'speaker_language': 'ko/en', 'audience': audience,
              'slides': [{'deck_id': DECK, 'slide_index': i, 'source_language': 'en', 'extracted_text': f'Synthetic slide {i}'} for i in range(slides)],
              'transcript': {'text': text if text is not None else ' '.join(w['text'] for w in words), 'words': words},
              'visits': [{k: v for k, v in visit.items() if k != 'words'} | {'word_indexes': [w['index'] for w in visit['words']]} for visit in visits]}
@@ -71,6 +71,16 @@ def suggestion(analysis, **changes):
 
 
 class FeedbackEvidenceTests(TestCase):
+    def test_long_recording_evidence_preserves_late_word_times(self):
+        value, images = fixture(words=[{'text': 'Finish', 'start_ms': 1799000, 'end_ms': 1799500}],
+                                events=[{'slide_index': 0, 'at_ms': 0}], text='Finish', duration_ms=1800000)
+        analysis = prepare_analysis(value, images)
+        descriptions = validate_descriptions(description_value(analysis), analysis)
+        card = suggestion(analysis, speech_quote='Finish', word_start=0, word_end=0)
+        result = validate_suggestions({'suggestions': [card]}, analysis, descriptions)
+        self.assertEqual(result.state, 'accepted')
+        self.assertEqual((result.suggestions[0].start_ms, result.suggestions[0].end_ms), (1799000, 1799500))
+
     def setUp(self):
         self.value, self.images = fixture()
         self.analysis = prepare_analysis(self.value, self.images)
@@ -164,7 +174,7 @@ class FeedbackEvidenceTests(TestCase):
 
     def test_input_types_unknown_fields_timestamps_and_bounds_fail_closed(self):
         bad = []
-        for path, values in [(['duration_ms'], [True, '3000', 0, -1, 600001, float('nan')]),
+        for path, values in [(['duration_ms'], [True, '3000', 0, -1, 1800001, float('nan')]),
                              (['slides', 0, 'slide_index'], [True, -1, 10, '0', 1]),
                              (['transcript', 'words', 0, 'end_ms'], [True, '100', 3001, -1, None, float('inf')]),
                              (['transcript', 'words', 0, 'start_ms'], [501, 3000, -1]),

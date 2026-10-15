@@ -17,7 +17,7 @@ import { Chip, Confetti, Dialog, HintRow, IDLE_WAVE, RecordButton, RecordRing, R
 import { paceChip } from '../domain/analysis';
 import { fmt } from '../domain/format';
 import { BACK_T, CARD_STEP, decideRelease } from '../domain/gestures';
-import { splitFlags, type Line } from '../domain/lines';
+import { playbackPieces, visitHeading, type Line } from '../domain/lines';
 import { runAttemptIds, takeVisits } from '../domain/run';
 import { type ProfileState } from '../features/presentations/slideProfiles';
 import { CueGuidancePanel } from '../features/presentations/CueGuidancePanel';
@@ -388,7 +388,7 @@ function Rehearse({ model }: { model: DeckModel }) {
           <TickStrip n={n} cur={cur} onPick={i => goSlide(i, 'jump')} />
           {!cues ? (
             <TranscriptPanel cur={cur} lines={slideLines} recording={recording} claimed={recording && claimed} stage={stage} partId={partId ?? null}
-              accent={hue.accent} n={n} playingKey={player.playingKey} progress={player.progress} edit={edit} alt={alt} fixNote={fixNote}
+              accent={hue.accent} n={n} playingKey={player.playingKey} progress={player.progress} positionMs={player.positionMs} playbackUri={player.uri} playbackError={player.error} edit={edit} alt={alt} fixNote={fixNote}
               canPlayback={phase === 'idle'} slidePlaying={player.playingKey === `slide:${deck.id}:${cur}` && !player.paused} onPlaySlide={playSlide}
               onPlay={playLine} onEdit={l => { player.stop(); setAlt(null); setEdit({ key: l.key, draft: l.text }); }} onDraft={d => setEdit(e => (e ? { ...e, draft: d } : e))}
               onCommit={commitEdit} onCancelEdit={() => setEdit(null)} onAlt={(l, fi) => { player.stop(); setAlt(a => (a && a.key === l.key && a.fi === fi ? null : { key: l.key, fi })); }}
@@ -515,6 +515,8 @@ function TickStrip({ n, cur, onPick }: { n: number; cur: number; onPick: (i: num
 type PanelProps = {
   cur: number; n: number; lines: Line[]; recording: boolean; claimed: boolean; stage: Stage | null; partId: string | null; accent: string; hasRun: boolean;
   canPlayback: boolean; slidePlaying: boolean; onPlaySlide: () => void;
+  positionMs: number | null; playbackUri: string | null;
+  playbackError: string | null;
   playingKey: string | null; progress: number; edit: { key: string; draft: string } | null; alt: { key: string; fi: number } | null; fixNote: string | null;
   onPlay: (l: Line) => void; onEdit: (l: Line) => void; onDraft: (d: string) => void; onCommit: () => void; onCancelEdit: () => void;
   onAlt: (l: Line, fi: number) => void; onApplyAlt: (l: Line, fi: number, v: string) => void; onKeepFlag: (l: Line, fi: number) => void; onMove: (l: Line, dir: -1 | 1) => void;
@@ -525,7 +527,7 @@ function TranscriptPanel(p: PanelProps) {
   const showLines = !(p.recording && p.claimed);
   const lines = showLines ? p.lines : [];
   const count = lines.length ? lines.length + (lines.length === 1 ? ' sentence' : ' sentences') : '';
-  const right = p.fixNote && !p.recording ? p.fixNote : lines.length && !p.recording ? 'Hold to fix · swipe to move' : count;
+  const right = p.playbackError && !p.recording ? 'Audio failed · tap Play to retry' : p.fixNote && !p.recording ? p.fixNote : lines.length && !p.recording ? 'Hold to fix · swipe to move' : count;
   let empty = '';
   let action: (() => void) | undefined;
   if (!lines.length) {
@@ -545,7 +547,10 @@ function TranscriptPanel(p: PanelProps) {
   }
   return <>
     <View style={styles.txHead}>
-      <Txt style={styles.txHeadText}>{'Slide ' + (p.cur + 1) + ' transcript'}</Txt>
+      <Pressable accessibilityRole="button" accessibilityLabel={`${p.slidePlaying ? 'Pause' : 'Play'} slide ${p.cur + 1} transcript audio`}
+        disabled={!p.canPlayback || !p.partId} onPress={p.onPlaySlide} hitSlop={8}>
+        <Txt style={styles.txHeadText}>{'Slide ' + (p.cur + 1) + ' transcript'}</Txt>
+      </Pressable>
       <View style={styles.txRule} />
       <Txt numberOfLines={1} style={[styles.txRight, { color: p.fixNote && !p.recording ? C.good : C.tertiary }]}>{right}</Txt>
       <Pressable accessibilityRole="button" accessibilityLabel={`${p.slidePlaying ? 'Pause' : 'Play'} slide ${p.cur + 1} recording`}
@@ -561,9 +566,15 @@ function TranscriptPanel(p: PanelProps) {
             <Txt style={[styles.empty, action ? { color: C.secondary } : null]}>{empty}</Txt>
           </Pressable>
         )}
-        {lines.map(l => (
-          <LineRow key={l.key} line={l} {...p} playing={p.playingKey === l.key} editing={p.edit?.key === l.key} altFi={p.alt?.key === l.key ? p.alt.fi : -1} />
-        ))}
+        {lines.map((l, i) => {
+          const heading = visitHeading(l, lines[i - 1]);
+          const inAudio = p.positionMs !== null && p.playbackUri === audioOf(l.audio.attemptId) && p.positionMs >= l.audio.startMs && p.positionMs < l.audio.endMs;
+          const playing = p.playingKey === l.key || (p.slidePlaying && inAudio);
+          return <View key={l.key} style={{ gap: 6 }}>
+            {heading && <Txt style={styles.txVisit}>{heading}</Txt>}
+            <LineRow line={l} {...p} playing={playing} editing={p.edit?.key === l.key} altFi={p.alt?.key === l.key ? p.alt.fi : -1} />
+          </View>;
+        })}
       </ScrollView>
     </View>
   </>;
@@ -613,13 +624,13 @@ function LineRow(p: PanelProps & { line: Line; playing: boolean; editing: boolea
     dx.set(withTiming(0, { duration: 220, easing: EASE_SNAP })); setDragX(0);
     if (!s || s.long || cancelled) return;
     if (s.axis === 'x') { if (Math.abs(v) > 90) p.onMove(line, v < 0 ? -1 : 1); return; }
-    // Playback is reached through the transcript words, without a separate control.
-    if (!s.axis && event && (event.nativeEvent.pageX - frame.left) / frame.s >= 60) p.onPlay(line);
+    if (!s.axis && event) p.onPlay(line);
   }
   const row = useAnimatedStyle(() => ({ transform: [{ translateX: dx.value }] }));
   const toPrev = dragX < 0, target = p.cur + (toPrev ? -1 : 1), canMove = target >= 0 && target < p.n, past = Math.abs(dragX) > 90 && canMove;
-  const segs = splitFlags(line.text, p.recording ? [] : line.flags);
-  const pct = Math.round(p.progress * 100);
+  const segs = playbackPieces(p.recording ? { ...line, flags: [] } : line, p.playing && p.playbackUri === audioOf(line.audio.attemptId) ? p.positionMs : null);
+  const progress = p.playing && p.positionMs !== null ? Math.max(0, Math.min(1, (p.positionMs - line.audio.startMs) / Math.max(1, line.audio.endMs - line.audio.startMs))) : 0;
+  const pct = Math.round(progress * 100);
   return (
     <View style={{ flexShrink: 0 }}>
       <View pointerEvents="none" style={[styles.reveal, { justifyContent: toPrev ? 'flex-end' : 'flex-start', backgroundColor: past ? p.accent : 'rgba(255, 255, 255, 0.08)', opacity: Math.min(1, Math.abs(dragX) / 50) }]}>
@@ -641,8 +652,9 @@ function LineRow(p: PanelProps & { line: Line; playing: boolean; editing: boolea
         </View>
         {!p.editing ? (
           <Txt style={[styles.lineText, { color: p.playing ? '#FFFFFF' : C.body }]}>
-            {segs.map((sg, i) => sg.fi < 0 ? <Txt key={i}>{sg.t}</Txt> : (
-              <Txt key={i} accessibilityRole="button" accessibilityLabel={'Possibly misheard: ' + sg.t + '. Show corrections'} onPress={() => p.onAlt(line, sg.fi)} style={styles.flag}>{sg.t}</Txt>
+            {segs.map((sg, i) => sg.fi < 0 ? <Txt key={i} style={sg.active ? { backgroundColor: p.accent, color: '#101014' } : undefined}>{sg.t}</Txt> : (
+              <Txt key={i} accessibilityRole="button" accessibilityLabel={'Possibly misheard: ' + line.flags[sg.fi].w + '. Show corrections'} onPress={() => p.onAlt(line, sg.fi)}
+                style={[styles.flag, sg.active && { backgroundColor: p.accent, color: '#101014' }]}>{sg.t}</Txt>
             ))}
           </Txt>
         ) : (
@@ -695,7 +707,7 @@ function Readout({ live, phase, cur, take, deck, burst, error, recoveryCount, re
   }
   const recovery = recoveryCount > 0;
   const line = recovery && phase === 'idle' ? 'Recording interrupted' + (recoveryCount > 1 ? ` ${recoveryNumber} of ${recoveryCount}` : '') + ' · tap to inspect' : error ? error : phase === 'count' ? 'Get ready…' : phase === 'burst' ? 'Run complete'
-    : take ? 'Redo slide ' + (cur + 1) : cur === 0 ? 'Full run · target ' + fmt(deck.target) : 'Record slide ' + (cur + 1);
+    : take ? 'Redo slide ' + (cur + 1) : cur === 0 ? 'Full run · ' + (deck.timing.source === 'required' ? 'required ' : 'suggested ') + fmt(deck.target) : 'Record slide ' + (cur + 1);
   return <>
     <Txt style={[styles.big, { color: phase === 'burst' ? C.text : C.dim }]}>{phase === 'burst' && burst ? fmt(burst.total) : '0:00'}</Txt>
     <Txt numberOfLines={2} accessibilityRole={recovery && phase === 'idle' ? 'button' : 'text'}
@@ -720,6 +732,7 @@ const styles = StyleSheet.create({
   txHeadText: { fontFamily: F.bold, fontSize: 11, letterSpacing: 0.6, textTransform: 'uppercase', color: C.tertiary },
   txRule: { flex: 1, height: 1, backgroundColor: 'rgba(255, 255, 255, 0.1)' },
   txRight: { fontFamily: F.semibold, fontSize: 11, maxWidth: 165, flexShrink: 1 },
+  txVisit: { fontFamily: F.semibold, fontSize: 11, color: C.secondary, paddingHorizontal: 8 },
   txPlay: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   txBox: { position: 'absolute', left: 16, right: 16, top: 402, height: 104, overflow: 'hidden' },
   empty: { textAlign: 'center', fontFamily: F.medium, fontSize: 13, color: C.tertiary },

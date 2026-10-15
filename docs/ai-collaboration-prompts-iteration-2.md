@@ -1058,3 +1058,144 @@ make sure from now on on any iteration when u update ai use document u put as co
 ```text
 commit phase 2
 ```
+
+
+## Phase 3 required timing and longer recordings — October 15, 2026
+
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex · **Model:** GPT-6 (exact identifier not recorded)
+
+**Prompt:**
+
+```text
+implement phase 3
+```
+
+Follow-up:
+
+```text
+phone is connected
+```
+
+**Output and use:** Reused the explicit requirements context, JJ timing/selected-run
+architecture and existing recording/Whisper pipeline. Added exact-sum allocation,
+required/suggested labeling, thirty-minute validation/recovery and mono 64 kbps AAC.
+No held requirements UI, new screen, new migration or later phase was implemented.
+
+**Verification:** [Phase 3 evidence](phase-3-verification.md) records baseline,
+regression checks and separate generated-speech real-Whisper results. Mobile
+checks passed (202 tests), SQLite/PostgreSQL suites passed (321 tests), full worker
+checks passed (seven tests), and independent review plus repair review passed.
+Actual native capture auto-stopped at 29:59.061, uploaded and completed no-speech
+processing; cold reopen/playback state, explicit timing, Keep current and clearing
+were verified on the emulator. Seoyeon confirmed short phone playback/transcription;
+visit identification and long physical-phone capture acceptance remain unverified.
+
+**Errors and revisions:** Initial tests exposed the ten-minute limits; the new
+upload test's response assertion was corrected to the existing `attempt_id` contract.
+Current required totals replace stale display totals without rewriting saved runs.
+Independent review found that clearing duration could retain the old required
+Review total; full/partial regressions reproduced it and passed after the repair. The emulator dev launcher needed a fresh process after a stale React
+context crash; no app data was cleared. A truncated emulator-only timing fixture
+transfer was repaired from its complete backup and verified byte-for-byte before
+reopening; all audio and unrelated database rows were preserved.
+
+**Human decisions:** Seoyeon authorized Phase 3, confirmed the phone connection and
+approved resuming the existing isolated Docker services. The real-AI test setup was
+already authorized. Requirements-entry UI remains held. Human final inspection,
+commit, push, merge and Phase 4 are not authorized by this implementation request.
+
+Runtime clarification answers (verbatim):
+
+```text
+Unpause and use isolated services
+```
+
+```text
+resumef
+```
+
+Physical-phone test feedback — verbatim:
+
+```text
+back and transcription both work but I can't diffeerentiate them whether they came from back and forth swaps or not
+```
+
+This confirms short phone playback/transcription only. JJ groups speech by slide
+without labeling first/return visits in that view. The underlying timeline keeps
+separate visits; their visual identification is an outstanding UI issue, not a
+Phase 3 implementation or a passed human alignment test.
+
+## Transcript visit labels — October 15, 2026
+
+**Contributor:** Seoyeon
+
+**Tool:** OpenAI Codex desktop; separate independent AI reviewer.
+
+**Requests (verbatim):**
+
+```text
+I think it would be nice if it shows if the recording came from one take or was it coming back from a previous slide.
+```
+
+```text
+Can we implement it so it shows return visit first visit in transcript section
+```
+
+**Incorporated material:** Transient original-visit metadata in `domain/lines.ts`,
+first/return visit dividers with source audio times in the existing Rehearse
+transcript panel, three regression tests, and user-facing/evidence documentation.
+No new screen, provider work, persistence revision or Phase 4 implementation.
+
+**Verification:** Test-first failures reproduced missing visit metadata. Final
+mobile check passed TypeScript/lint and 205 tests; Android export passed. Separate
+AI reviewer found no concrete issues and independently ran 44 focused tests.
+Connected-phone UI displayed the first-visit divider and header playback entered
+playing state, then was paused. Native return-divider and edit-gesture acceptance
+remain pending; automated tests cover return visits, silent visits, source
+boundaries, moved/corrected lines and selected retakes. Automatic approval review
+rejected a proposed phone database export due to private-content exposure; no
+export ran, and UI verification continued without it. See
+[verification details](transcript-visits-verification.md).
+
+**Human decisions/corrections:** Seoyeon authorized this narrow additional UI
+scope after requesting visit identification. Existing phase gates and held
+requirements-entry UI remain in force. Human inspection and commit/push/merge
+are pending; independent AI review is not human teammate approval.
+
+## Transcript playback and word highlighting — October 15, 2026
+
+**Contributor:** Seoyeon
+
+**Tool:** OpenAI Codex desktop; separate independent AI reviewer.
+
+**Requests (verbatim):**
+
+```text
+When I press on the slide transcript it doesnt play recording
+```
+
+```text
+1 and 2 and 3 is inconsistent. I would also want to know which word the audio is repeating so i know where to look at in the transcript.
+```
+
+The second answer referred to heading, sentence/words and triangle respectively.
+
+**Incorporated material:** Serial native playback source/seek handling, cancellation
+and end-check guards, retry feedback, tappable existing heading/timestamps, native
+audio-position word highlighting and synthetic regression tests. Source transcript,
+run selection and recording files remain unchanged. Flag correction controls remain;
+rewritten text without reliable word mapping retains sentence-level feedback.
+
+**Verification/corrections:** Test-first regressions reproduced stale-position,
+stale-source and overlapping-seek failures. TypeScript/lint, 215 tests and Android
+bundle passed. Independent review found a clipped-sentence capitalization mismatch
+that disabled highlighting with an ignored older edit; reproduced with a failing
+test and fixed. Reviewer confirmed the repair with 13 tests and no new findings.
+Phone heading playback and native-position word highlighting were observed;
+return/earlier sentence selection and heading pause were exercised. Human audible
+sync/gesture stress remains pending. No provider calls or private recording export.
+See [verification evidence](transcript-playback-verification.md).
+
+**Human decisions:** Seoyeon clarified all three playback entry points and requested
+word highlighting. This authorizes the focused fix and inline feedback, not held
+requirements-entry UI, Phase 4, commit, push or merge. Final inspection is pending.

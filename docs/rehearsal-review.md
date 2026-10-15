@@ -19,9 +19,24 @@ Detected no-speech saves an empty transcript, chronological visits with empty wo
 
 Local PDF import, capture and saved-audio playback run without backend services or provider keys. SQLite stores one UUID, the prepared audio URI and audio-relative slide checkpoints per real recording. On restart, interrupted capture requires playable-audio recovery; an unfinalized/missing native file cannot be reconstructed. Upload retries retain the UUID, source audio and slide visits. Native PDF rendering and SQLite require a rebuilt Android development client, not Expo Go.
 
-Limits are **at least one slide, 50 MiB PDF, ten minutes (600,000 ms), and 25,000,000 audio bytes**. Legacy audio above the byte limit stays local and can still be played; make a shorter new recording to upload. New captures automatically continue from upload to analysis; first-use cancellation leaves them awaiting analysis. Deck mappings are scoped to the configured API address, and confirmed missing mappings are repaired before audio upload.
+Limits are **at least one slide, 50 MiB PDF, thirty minutes (1,800,000 ms), and 25,000,000 audio bytes**. Legacy audio above the byte limit stays local and can still be played; make a shorter new recording to upload. New captures automatically continue from upload to analysis; first-use cancellation leaves them awaiting analysis. Deck mappings are scoped to the configured API address, and confirmed missing mappings are repaired before audio upload.
 
 ## Review a saved rehearsal
+
+In JJ's Rehearse transcript panel, each source visit starts with **First visit** or
+**Return visit N** and its start time in the original recording. Return counts
+include silent positive-duration visits; visits without transcript words have no
+sentence group to label. A separate retake starts its own visit count. Correcting
+or moving a sentence preserves its original visit; moved sentences also identify
+their source slide. These dividers do not alter playback or saved run selection.
+
+Tap the transcript heading or its triangle to play/pause the selected slide's
+visits. Tap a sentence or its timestamp to play that sentence; tap it again to
+stop. The current word is highlighted from native audio time during slide or
+sentence playback. Pauses between words have no word highlight. If a correction
+changes the text so it no longer maps to the original timed words, the active
+sentence remains indicated without inventing replacement-word timing. Flagged
+words retain their correction action. Playback failure shows a retry hint.
 
 Open a presentation's rehearsal history in Library, then **Open saved rehearsal**. Cached entries appear before online refresh; a failed refresh retains them with a stale notice. History covers only locally known presentation mappings for the current API, not an account-wide archive. Entries distinguish local captures from server review copies and show date, duration, upload/processing state and media availability.
 
