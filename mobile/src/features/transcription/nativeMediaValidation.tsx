@@ -59,7 +59,7 @@ export function useMediaValidators() {
         if (error) reject(error); else resolve();
       };
       const abort = () => finish(new Error('PDF validation cancelled.'));
-      const timer = setTimeout(() => finish(new Error('PDF validation timed out.')), 15_000);
+      const timer = setTimeout(() => finish(new Error('PDF validation timed out.')), 45_000);
       const request = { key, uri, pages: spec.pageCount!, finish };
       pending.current.set(key, request); signal.addEventListener('abort', abort, { once: true });
       if (!mounted.current || signal.aborted) abort(); else setRequests([...pending.current.values()]);
@@ -68,7 +68,7 @@ export function useMediaValidators() {
   const validators = <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants"
     style={{ position: 'absolute', width: 1, height: 1, opacity: 0 }}>
     {requests.map(r => <Pdf key={r.key} source={{ uri: r.uri }} style={{ width: 1, height: 1 }}
-      onLoadComplete={pages => r.finish(Number.isInteger(pages) && pages >= 1 && pages <= 10 && pages === r.pages ? undefined : new Error('PDF page count does not match this presentation.'))}
+      onLoadComplete={pages => r.finish(Number.isInteger(pages) && pages >= 1 && pages === r.pages ? undefined : new Error('PDF page count does not match this presentation.'))}
       onError={() => r.finish(new Error('The PDF could not be opened.'))} />)}
   </View>;
   return { validate, validators };

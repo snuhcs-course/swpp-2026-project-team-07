@@ -19,7 +19,9 @@ def _body(request):
         value = strict_json(request._request.read(1025), 1024)
     except (FeedbackError, RequestDataTooBig, OSError):
         raise FeedbackError('invalid_request') from None
-    if type(value) is not dict or set(value) - {'feedback_revision', 'acknowledge_uncertain', 'expected_selection'}:
+    if type(value) is not dict or set(value) - {'feedback_revision', 'acknowledge_uncertain', 'expected_selection', 'transcript_revision'}:
+        raise FeedbackError('invalid_request')
+    if 'transcript_revision' in value and (type(value['transcript_revision']) is not int or not 0 <= value['transcript_revision'] < 2**31):
         raise FeedbackError('invalid_request')
     if 'feedback_revision' in value and (type(value['feedback_revision']) is not int or not 0 <= value['feedback_revision'] <= 2**31 - 1):
         raise FeedbackError('invalid_request')

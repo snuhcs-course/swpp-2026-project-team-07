@@ -24,6 +24,7 @@
     "plugins": [
       "expo-router",
       "expo-dev-client",
+      "./plugins/withLocalBackendNetwork",
       "@config-plugins/react-native-blob-util",
       "@config-plugins/react-native-pdf",
       [
@@ -34,7 +35,8 @@
           "enableBackgroundPlayback": false
         }
       ],
-      "expo-sqlite"
+      "expo-sqlite",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true

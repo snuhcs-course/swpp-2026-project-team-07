@@ -8,6 +8,23 @@ from .test_storage import audio_file
 
 
 class ProcessingTests(TransactionTestCase):
+    def test_long_timeline_reuses_transcript_without_second_request(self):
+        self.attempt.duration_ms = 1800000
+        self.attempt.slide_events = [{'slide_index': 1, 'at_ms': 0}, {'slide_index': 0, 'at_ms': 600001},
+                                     {'slide_index': 1, 'at_ms': 1799000}]
+        self.attempt.save(update_fields=['duration_ms', 'slide_events'])
+        self.queue()
+        raw = {'text': 'Start 끝', 'language': 'english', 'words': [
+            {'word': 'Start', 'start': 0.1, 'end': 0.4}, {'word': '끝', 'start': 1799.1, 'end': 1799.5}]}
+        self.assertEqual(self.run_worker(raw=raw), 1)
+        self.assertEqual(self.run_worker(raw=raw), 0)
+        public = self.client.get(self.route.removesuffix('process/')).data
+        self.assertEqual(public['status'], 'completed')
+        self.assertEqual(public['transcript']['words'][-1]['end_ms'], 1799500)
+        self.assertEqual([v['slide_index'] for v in public['visits']], [1, 0, 1])
+        self.assertEqual(sum(v['duration_ms'] for v in public['metrics']['time_per_slide']), 1800000)
+        self.assertEqual(self.attempt.provider_requests.count(), 1)
+
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)

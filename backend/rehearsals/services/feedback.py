@@ -19,6 +19,8 @@ from typing import Annotated, Literal
 from PIL import Image
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from rehearsals.limits import MAX_DURATION_MS
+
 MAX_IMAGE_BYTES = 1_048_576
 MAX_TOTAL_IMAGE_BYTES = 8_388_608
 MAX_IMAGE_EDGE = 1600
@@ -29,8 +31,8 @@ MAX_VISITS = 1000
 MAX_OUTPUT_BYTES = 65_536
 UUIDText = Annotated[str, Field(pattern=r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")]
 Digest = Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
-SlideIndex = Annotated[int, Field(ge=0, le=9)]
-Time = Annotated[int, Field(ge=0, le=600_000)]
+SlideIndex = Annotated[int, Field(ge=0)]
+Time = Annotated[int, Field(ge=0, le=MAX_DURATION_MS)]
 Language = Annotated[str, Field(min_length=1, max_length=40)]
 ShortText = Annotated[str, Field(min_length=1, max_length=400)]
 
@@ -123,7 +125,7 @@ class DeckInput(PrivateModel):
     deck_id: UUIDText
     content_hash: Digest
     preparation_version: Annotated[str, Field(min_length=1, max_length=40)]
-    slides: Annotated[tuple[SlideText, ...], Field(min_length=1, max_length=10)]
+    slides: Annotated[tuple[SlideText, ...], Field(min_length=1)]
 
 
 class Word(PrivateModel):
@@ -147,10 +149,10 @@ class Visit(PrivateModel):
 class AnalysisInput(PrivateModel):
     attempt_id: UUIDText
     deck_id: UUIDText
-    duration_ms: Annotated[int, Field(gt=0, le=600_000)]
+    duration_ms: Annotated[int, Field(gt=0, le=MAX_DURATION_MS)]
     speaker_language: Language
     audience: Annotated[str, Field(max_length=500)]
-    slides: Annotated[tuple[SlideText, ...], Field(min_length=1, max_length=10)]
+    slides: Annotated[tuple[SlideText, ...], Field(min_length=1)]
     transcript: Transcript | None
     visits: Annotated[tuple[Visit, ...], Field(min_length=1, max_length=MAX_VISITS)]
 
@@ -352,7 +354,7 @@ class Description(PrivateModel):
 
 
 class Descriptions(PrivateModel):
-    slides: Annotated[tuple[Description, ...], Field(min_length=1, max_length=10)]
+    slides: Annotated[tuple[Description, ...], Field(min_length=1)]
 
 
 def description_facts(slide):
@@ -413,12 +415,21 @@ class FeedbackResult:
 def validate_suggestions(value, analysis, descriptions):
     # Envelope violations fail the entire response; structurally valid but
     # unsupported/duplicate cards are individually discarded, with a count.
-    candidates = validated(Suggestions, value, "invalid_suggestions", MAX_OUTPUT_BYTES)
+    from .evidence import quotes_equal,verified_excerpt,span_in_visit,same_advice,authoritative_quote
+    if type(value) is not dict or set(value) != {'suggestions'} or type(value['suggestions']) is not list or len(value['suggestions']) > 3:
+        raise FeedbackError('invalid_suggestions')
+    raw = strict_json(json_bytes(value),MAX_OUTPUT_BYTES)
+    candidates=[]
+    malformed=0
+    for item in raw['suggestions']:
+        try:candidates.append(validated(Suggestion,item,'invalid_suggestions'))
+        except FeedbackError:malformed+=1
+    if malformed and not candidates:raise FeedbackError('invalid_suggestions')
     descriptions = validate_descriptions(descriptions.model_dump(mode="json"), analysis)
     slides = {slide.slide_index: slide for slide in descriptions.slides}
     segments = {s.segment_id: s for s in analysis.segments}
-    used_words, accepted = set(), []
-    for card in candidates.suggestions:
+    seen, accepted = set(), []
+    for card in candidates:
         segment, slide = segments.get(card.segment_id), slides.get(card.slide_index)
         if not segment or not slide or segment.slide_index != card.slide_index or segment.visit_id != card.visit_id:
             continue
@@ -428,23 +439,26 @@ def validate_suggestions(value, analysis, descriptions):
             continue
         if not card.observation.strip() or not card.suggestion.strip():
             continue
-        if not card.word_start <= card.word_end or not set(range(card.word_start, card.word_end + 1)).issubset(segment.word_indexes):
-            continue
-        indexes = set(range(card.word_start, card.word_end + 1))
-        if indexes & used_words:
+        if not span_in_visit(analysis,card):
             continue
         words = analysis.source.transcript.words[card.word_start:card.word_end + 1]
-        quote = canonical_quote(" ".join(w.text for w in words))
-        if canonical_quote(card.speech_quote) != quote:
+        quote = authoritative_quote(" ".join(w.text for w in words))
+        if quote is None or not quotes_equal(card.speech_quote,quote):
             continue
         fact = description_facts(slide).get(card.description_ref)
-        if not fact or fact.uncertain or card.slide_quote != fact.text:
-            continue
+        excerpt=verified_excerpt(card.slide_quote,fact.text) if fact and not fact.uncertain else None
+        if excerpt is None:continue
+        identity=(card.visit_id,same_advice(card))
+        if identity in seen:continue
         # Overlap and unsorted source timings are legal. Cover all selected words;
         # never clip to the visit end or stretch authoritative recording duration.
         start, end = min(w.start_ms for w in words), max(w.end_ms for w in words)
-        accepted.append(VerifiedSuggestion(**card.model_dump(), start_ms=start, end_ms=end))
-        used_words.update(indexes)
-    discarded = len(candidates.suggestions) - len(accepted)
+        try:
+            verified=VerifiedSuggestion(**{**card.model_dump(),'speech_quote':quote,'slide_quote':fact.text},start_ms=start,end_ms=end)
+        except ValidationError:
+            continue
+        accepted.append(verified)
+        seen.add(identity)
+    discarded = len(candidates) + malformed - len(accepted)
     state = "partial" if accepted and discarded else "accepted" if accepted else "all_invalid" if discarded else "empty"
     return FeedbackResult(state, tuple(accepted), len(accepted), discarded)

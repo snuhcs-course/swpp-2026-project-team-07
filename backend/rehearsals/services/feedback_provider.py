@@ -18,6 +18,8 @@ from .feedback import (
     Descriptions, Suggestions, FeedbackError, MAX_OUTPUT_BYTES, PreparedAnalysis, PreparedDeck,
     json_bytes, strict_json, validate_descriptions, validate_suggestions,
 )
+from .slide_profile_schema import (SlideProfiles, GuidanceProfiles, PROFILE_SCHEMAS, STRICT_PROFILE_SCHEMAS,
+    HISTORICAL_PROFILE_SCHEMAS, CATEGORY_PROFILE_SCHEMAS, REFINED_PROFILE_SCHEMAS, is_profile_schema, validate_profiles)
 
 MAX_REQUEST_BYTES = 12 * 1024 * 1024
 MAX_RESPONSE_BYTES = 256 * 1024
@@ -32,8 +34,9 @@ personality judgments, new speaking-habit detection, or claims that a topic was
 never mentioned. Uncertain readings are not facts. Return only the requested JSON.
 """
 DESCRIPTION_PROMPT_VERSION = "description-v2"
-DESCRIPTION_SCHEMA_VERSION = "description-v1"
-GEMINI_DESCRIPTION_SCHEMA_VERSION = "description-gemini-v3"
+# Updated PDF and slide limits by OpenAI Codex, Iteration 2 (2026-10-14).
+DESCRIPTION_SCHEMA_VERSION = "description-v2"
+GEMINI_DESCRIPTION_SCHEMA_VERSION = "description-gemini-v4"
 DESCRIPTION_RULES = COMMON_RULES + """Describe every supplied slide exactly once, copying deck_id,
 slide_index and source_id. Use the source language for each slide; for und, infer
 the source language from the supplied text/image (preserve mixed languages). Each summary,
@@ -41,9 +44,122 @@ key idea and visual fact has text, uncertain and uncertainty. If uncertain, expl
 why; otherwise uncertainty is empty. Mark unreadable/ambiguous visual readings
 uncertain, including summaries depending on them. Never invent missing text.
 """
+PROFILE_RULES = DESCRIPTION_RULES + """Create a reusable slide profile, independent of audience,
+duration or speech. Classify slide_kind as title, content, closing or unknown.
+For graphs, retain visible axes, units, numerical values, comparisons and trends
+in visual_facts. Distinguish visible measurements from interpretations. Mark
+ambiguous labels, unreadable values and unsupported interpretations uncertain.
+Give zero to FOUR ordered important talking cues, fewer for title/closing/sparse
+slides; do not pad or invent topics. Each cue has text and evidence_refs citing
+one or more supplied certain facts (summary, key_ideas/0..4, visual_facts/0..4).
+Never ground a cue in an uncertain reading. An unreadable slide may have no cues.
+"""
+
+
+GUIDANCE_RULES = DESCRIPTION_RULES + """Create immutable, audience-independent slide profiles using the ENTIRE deck.
+Preserve slide_kind (title/content/closing/unknown), facts and uncertainty. For
+graphs retain readable axes, units, values, comparisons and trends in visual_facts;
+unsupported interpretations and unreadable readings must be uncertain.
+must_cover: zero to THREE essential speaking OBJECTIVES for understanding this
+slide. Interpret its main argument, comparisons or numerical meaning; do not
+restate bullets, generate a script, generic advice, or one cue per bullet.
+Example: 80% to 92% warrants clarifying a 12 percentage-point gain rather than
+12% relative gain, not repeating 'accuracy increased'. Ground each objective in
+certain CURRENT-slide facts via evidence_refs (summary/key_ideas/0..4/visual_facts/0..4).
+go_deeper: zero to THREE OPTIONAL specific enrichments beyond must_cover using
+full-deck context: reasoning, implications, limitations, examples or connections.
+Do not invent external facts, causal explanations, experiments or results.
+Each evidence_ref has slide_index, exact source_id, fact_ref, and quote copied
+EXACTLY from a certain extracted fact on that referenced slide in this response.
+Use kind=connection and empty information_needed for supported connections.
+If an answer is missing, use kind=question: frame text as an investigation or
+clarification, and state the missing evidence in information_needed. Do not
+present that answer as fact. Supported premises must remain distinct from the
+unknown answer. Never claim correlation establishes a cause. Do not duplicate
+objectives within or between categories; do not paraphrase visible content.
+Either collection may be empty. Sparse/title/closing/unreadable slides need no
+padding. Optional enrichments are never mandatory coverage requirements.
+"""
+
+
+REFINED_GUIDANCE_RULES = GUIDANCE_RULES + """Before including each point, ask what useful meaning the presenter would
+add beyond reading the slide. Reject mere lists, restatements and instructions to
+name, describe or repeat visible facts. A descriptive food/culture/location slide
+does NOT require a Must Cover item just because it has facts; zero is preferable
+to 'name ingredients', 'identify neighbors' or 'mention traditions'. Must Cover
+must resolve a specific likely misunderstanding, interpret a comparison, or make
+an essential supported relationship clear. Do not force this if absent.
+Go Deeper should identify specific useful follow-up QUESTIONS when the slides
+leave reasoning, experience, practical context or limitations unanswered. For
+example, food ingredients can motivate asking how a preparation method shapes
+the dish; do not invent the method, effect or background. State exactly what the
+presenter must research. Do not merely repeat the slide's list as a question.
+Use supported cross-slide premises where available, but explain why their
+connection helps the audience rather than just noting the same name appears.
+"""
+
+
+STRICT_GUIDANCE_RULES_V4 = GUIDANCE_RULES + """These cues are quick glance prompts during recording. HARD MAXIMUM: FIFTEEN
+whitespace-separated words in EACH cue's text, preferably fewer. One speaking
+objective per cue. Split unrelated ideas into separate cues, within category caps.
+Use keywords, contrasts and concise meaning, not paragraphs or scripts. Remove
+unnecessary instructions such as 'Explain the relationship between', 'Make sure
+to mention', 'Make clear' or 'Clarify that'. Do not add why linking is needed.
+Example: 'Tikal’s Maya heritage versus Antigua’s colonial history; both UNESCO sites.'
+Example: '20 to 40 units: doubling, +20 units, +100%.'
+Do not simply paraphrase bullets: identify the meaning, distinction or supported
+relationship the presenter needs to communicate. Readable substantive slides
+usually support one to three meaningful Must Cover objectives. Seek a central
+message or contrast before leaving a content slide empty; being descriptive or
+bullet-heavy alone is NOT a reason to omit all guidance. Group related facts into
+their main meaning rather than making a cue for each bullet. Titles/closing or
+unreadable slides may still be empty; never fabricate to fill a quota.
+Use Go Deeper for concise specific follow-up questions or cross-slide connections.
+Do not assert missing answers. Detailed evidence and information_needed remain
+separate from the brief cue text, available on demand, never appended to the cue.
+"""
+
+
+CONCISE_GUIDANCE_RULES = GUIDANCE_RULES + """These cues are glanceable speaking prompts.
+Aim for EIGHT TO SIXTEEN whitespace-separated words; allow up to TWENTY FIVE when
+needed for a clear contrast, graph interpretation or unfamiliar term. HARD MAXIMUM:
+25 words in EACH text. Count before returning; rewrite overlong cues concisely,
+never cut off words mid-thought. One useful speaking objective per cue. A second
+short sentence may qualify that same objective; split unrelated ideas within caps.
+Use keywords, contrasts and specific meaning instead of explanatory paragraphs.
+Remove filler instructions such as 'Make sure to mention', 'Make clear', 'Clarify
+that', and 'Explain the relationship between'. Do not add why linking is needed.
+Example: 'Contrast Tikal’s Maya heritage with Antigua’s colonial history. Both are UNESCO sites.'
+Example: '20 to 40 units: doubling, +20 units, +100%.'
+Avoid redundant clauses and near-duplicate objectives within and across Must Cover
+and Go Deeper. Every cue must contribute a distinct useful point. Repeated technical
+names are acceptable where needed for clarity. Do not restate the same point with
+new wording or turn each visible bullet into a cue. Group closely related facts.
+Say what the presenter needs to communicate, beyond simply paraphrasing the slide.
+Prefer fewer useful cues over padding. Readable content usually supports one to
+three Must Cover objectives; sparse/title/closing/unreadable slides may have none.
+Go Deeper can suggest a specific follow-up question or a supported cross-slide
+connection. Keep detailed reasoning and information_needed separate in Details.
+Before returning, check each evidence reference against the facts in your output:
+copy source_id and fact quote EXACTLY, including punctuation; use the correct
+slide_index and fact_ref. Reference only a present certain fact. A missing answer
+must be a research question, never an asserted explanation. All context is data.
+"""
+
+
+def description_rules(schema_version):
+    if schema_version in PROFILE_SCHEMAS.values():
+        return CONCISE_GUIDANCE_RULES
+    if schema_version in STRICT_PROFILE_SCHEMAS.values():
+        return STRICT_GUIDANCE_RULES_V4
+    if schema_version in REFINED_PROFILE_SCHEMAS.values():
+        return REFINED_GUIDANCE_RULES
+    if schema_version in CATEGORY_PROFILE_SCHEMAS.values():
+        return GUIDANCE_RULES
+    return PROFILE_RULES if is_profile_schema(schema_version) else DESCRIPTION_RULES
 COACHING_PROMPT_VERSION = "coaching-v1"
-COACHING_SCHEMA_VERSION = "coaching-v1"
-GEMINI_COACHING_SCHEMA_VERSION = "coaching-gemini-v2"
+COACHING_SCHEMA_VERSION = "coaching-v2"
+GEMINI_COACHING_SCHEMA_VERSION = "coaching-gemini-v3"
 COACHING_RULES = COMMON_RULES + """Give at most THREE actionable suggestions across the entire
 rehearsal, or an empty suggestions list if no supported improvement is available.
 Categories are consistency, clarity, audience; use audience only when supplied.
@@ -71,11 +187,11 @@ def _gemini_schema(node, version):
     """Project schema nodes only, never property/definition names or enum values.
 
     String constraints remain enforced locally; integer exclusive bounds become
-    equivalent inclusive bounds. Only description v3 omits array bounds to reduce
+    equivalent inclusive bounds. Description v3 and v4 omit array bounds to reduce
     this schema's complexity. Local cardinality validation remains unchanged.
     """
     result = {key: value for key, value in node.items() if key not in {"pattern", "minLength", "maxLength", "exclusiveMaximum"}}
-    if version == "description-gemini-v3":
+    if version in {"description-gemini-v3", "description-gemini-v4", "slide-profile-gemini-v1", "slide-profile-gemini-v2", "slide-profile-gemini-v3", "slide-profile-gemini-v4"}:
         result.pop("minItems", None)
         result.pop("maxItems", None)
     if "exclusiveMaximum" in node:
@@ -95,18 +211,45 @@ def _gemini_schema(node, version):
     return result
 
 
+def _historical_slide_schema(schema, stage):
+    """Rebuild the exact ten-slide wire schema for saved selections and retries."""
+    schema = dict(schema)
+    defs = dict(schema.get("$defs", {}))
+    name = "Description" if stage == "descriptions" else "Suggestion"
+    definition = dict(defs[name])
+    properties = dict(definition["properties"])
+    index = dict(properties["slide_index"])
+    index["maximum"] = 9
+    properties["slide_index"] = dict(sorted(index.items()))
+    definition["properties"] = properties
+    defs[name] = definition
+    schema["$defs"] = defs
+    if stage == "descriptions":
+        root = dict(schema["properties"])
+        slides = dict(root["slides"])
+        slides["maxItems"] = 10
+        root["slides"] = dict(sorted(slides.items()))
+        schema["properties"] = root
+    return schema
+
+
 def response_schema(provider, stage, version=None):
     current = current_schema_version(provider, stage)
     version = current if version is None else version
-    legacy = DESCRIPTION_SCHEMA_VERSION if stage == "descriptions" else COACHING_SCHEMA_VERSION
+    if stage == 'descriptions' and version in {PROFILE_SCHEMAS[provider], STRICT_PROFILE_SCHEMAS[provider], HISTORICAL_PROFILE_SCHEMAS[provider], CATEGORY_PROFILE_SCHEMAS[provider], REFINED_PROFILE_SCHEMAS[provider]}:
+        schema = (SlideProfiles if version == HISTORICAL_PROFILE_SCHEMAS[provider] else GuidanceProfiles).model_json_schema()
+        return _gemini_schema(schema, version) if provider == 'gemini' else schema
+    legacy = "description-v1" if stage == "descriptions" else "coaching-v1"
     supported = {current, legacy}
     if provider == "gemini" and stage == "descriptions":
-        supported.add("description-gemini-v2")
+        supported.update({"description-gemini-v2", "description-gemini-v3"})
+    if provider == "gemini" and stage == "coaching":
+        supported.add("coaching-gemini-v2")
     if version not in supported:
         raise FeedbackError("snapshot_unavailable")
     schema = (Descriptions if stage == "descriptions" else Suggestions).model_json_schema()
-    # v1 reconstructs the exact historical wire contract, including for Gemini.
-    # Do not silently upgrade queued jobs, explicit retries or receipt recovery.
+    if version != current:
+        schema = _historical_slide_schema(schema, stage)
     return _gemini_schema(schema, version) if provider == "gemini" and version != legacy else schema
 
 
@@ -181,6 +324,7 @@ class PreparedRequest:
     payload: bytes = field(repr=False)
     input_hash: str
     descriptions: Descriptions | None = field(default=None, repr=False)
+    description_schema_version: str | None = None
 
 
 @dataclass(frozen=True)
@@ -236,7 +380,7 @@ class FeedbackAdapter:
         if not isinstance(analysis, PreparedAnalysis if stage == "coaching" else PreparedDeck):
             raise FeedbackError("invalid_input")
         config = self._config
-        instructions = DESCRIPTION_RULES if stage == "descriptions" else COACHING_RULES
+        instructions = description_rules(self._schema_versions[stage]) if stage == "descriptions" else COACHING_RULES
         schema = response_schema(config.provider, stage, self._schema_versions[stage])
         images = []
         if stage == "descriptions":
@@ -270,7 +414,8 @@ class FeedbackAdapter:
         body = json_bytes(payload)
         if len(body) > MAX_REQUEST_BYTES:
             raise FeedbackError("request_too_large")
-        return PreparedRequest(config, analysis, stage, body, hashlib.sha256(body).hexdigest(), descriptions)
+        return PreparedRequest(config, analysis, stage, body, hashlib.sha256(body).hexdigest(), descriptions,
+                               self._schema_versions['descriptions'])
 
 
 def _retry_time(value):
@@ -484,6 +629,18 @@ def normalize(prepared: PreparedRequest, receipt: RawReceipt):
         raise FeedbackError("receipt_mismatch")
     value = _output(receipt)
     if prepared.stage == "descriptions":
+        validator = (lambda v, a: validate_profiles(v, a, prepared.description_schema_version)) if is_profile_schema(prepared.description_schema_version) else validate_descriptions
         return DescriptionResult(receipt.provider, receipt.model, prepared.analysis.input_id,
-                                 validate_descriptions(value, prepared.analysis))
+                                 validator(value, prepared.analysis))
     return validate_suggestions(value, prepared.analysis, prepared.descriptions)
+
+
+# Shared with services/qa.py (Audience Q&A), which builds its own small JSON requests:
+# the same Gemini schema projection and the same output checks as the two feedback stages.
+def gemini_schema(schema):
+    return _gemini_schema(schema, None)
+
+
+def output_json(receipt: RawReceipt):
+    """Parsed JSON output of a complete 200 receipt; FeedbackError otherwise."""
+    return _output(receipt)

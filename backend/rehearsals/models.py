@@ -17,6 +17,22 @@ class Deck(models.Model):
         constraints = [models.UniqueConstraint(fields=["content_hash", "preparation_version"], name="unique_prepared_pdf")]
 
 
+class PresentationContext(models.Model):
+    """User requirements are independent of the deduplicated PDF and attempts."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    deck = models.ForeignKey(Deck, on_delete=models.PROTECT, related_name='presentation_contexts')
+    required_duration_seconds = models.PositiveIntegerField(null=True, blank=True)
+    audience = models.CharField(max_length=500, blank=True, default='')
+    revision = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [models.CheckConstraint(
+            condition=models.Q(required_duration_seconds__isnull=True) |
+                      models.Q(required_duration_seconds__gte=60, required_duration_seconds__lte=1800),
+            name='presentation_duration_range'),
+            models.CheckConstraint(condition=models.Q(revision__lte=2**31 - 1), name='presentation_revision_range')]
+
+
 class Slide(models.Model):
     deck = models.ForeignKey(Deck, on_delete=models.CASCADE, related_name="slides")
     slide_index = models.PositiveIntegerField()
@@ -130,12 +146,25 @@ class DescriptionJob(models.Model):
         constraints = [models.UniqueConstraint(fields=['description_set', 'generation'], name='unique_description_generation')]
 
 
+class TranscriptCorrection(models.Model):
+    """Confirmed overlays; immutable Whisper source and audio stay on Attempt."""
+    attempt = models.OneToOneField(Attempt, on_delete=models.PROTECT, related_name='correction')
+    base_transcript_id = models.CharField(max_length=64)
+    revision = models.PositiveIntegerField(default=0)
+    edits = models.JSONField(default=list)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
 class FeedbackAnalysis(models.Model):
     """One current coaching analysis per recording; Whisper remains independent."""
-    attempt = models.OneToOneField(Attempt, on_delete=models.PROTECT, related_name='coaching')
+    attempt = models.ForeignKey(Attempt, on_delete=models.PROTECT, related_name='analyses')
+    analysis_type = models.CharField(max_length=32, default='coaching')
     feedback_revision = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['attempt', 'analysis_type'], name='unique_attempt_analysis_type')]
 
 
 class FeedbackJob(models.Model):
@@ -216,3 +245,15 @@ class FeedbackReservation(models.Model):
     reserved_at = models.DateTimeField()
     submitted_at = models.DateTimeField(null=True)
     released_at = models.DateTimeField(null=True)
+
+
+class QaAnswer(models.Model):
+    """An immutable question/part binding; audio/STT lives on the original Attempt."""
+    attempt = models.OneToOneField(Attempt, on_delete=models.PROTECT, primary_key=True, related_name='qa_answer')
+    question_job = models.ForeignKey(FeedbackJob, on_delete=models.PROTECT, related_name='qa_answers')
+    question_id = models.CharField(max_length=32)
+    part = models.PositiveSmallIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.CheckConstraint(condition=models.Q(part__in=[0, 1]), name='qa_answer_part_range')]

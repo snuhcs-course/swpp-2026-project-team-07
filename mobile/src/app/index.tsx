@@ -1,3 +1,4 @@
-// AI-generated/modified with OpenAI Codex, Iteration 1 (2026-09-26 to 2026-10-09).
-// Attribution/review scope: docs/history/ai-collaboration-validation-iteration-1-retired-2026-10-09.md#ai-code-markers
-export { LibraryScreen as default } from "../features/pdf/LibraryScreen";
+// AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
+// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+// OutLoud redesign: Home → Upload → Rehearse → Review / Compare / Audience Q&A.
+export { AppShell as default } from '../screens/AppShell';

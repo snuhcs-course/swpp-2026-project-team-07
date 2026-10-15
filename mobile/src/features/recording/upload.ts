@@ -58,8 +58,8 @@ async function resolveDeck(attempt: SavedAttempt, api: string): Promise<string> 
       const body = new FormData();
       body.append("file", new File(attempt.pdf_uri), "slides.pdf");
       body.append("title", attempt.title);
-      const response = await fetch(`${api}/decks/`, { method: "POST", body, signal: AbortSignal.timeout(120_000) });
-      if (!response.ok) throw new Error(`PDF upload failed (HTTP ${response.status}). Check the 10-slide / 20 MiB limit.`);
+      const response = await fetch(`${api}/decks/`, { method: "POST", body, signal: AbortSignal.timeout(300_000) });
+      if (!response.ok) throw new Error(`PDF upload failed (HTTP ${response.status}). Check the 50 MiB file limit.`);
       const data = await response.json();
       const deck = validateDeck(data?.deck, attempt.page_count);
       writeStored(key, deck.id);

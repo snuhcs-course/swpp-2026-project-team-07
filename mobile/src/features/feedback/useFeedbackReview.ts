@@ -7,6 +7,9 @@ import { transcriptionClientFor } from '../transcription/service';
 import { TranscriptionClientError } from '../transcription/client';
 import { preferFeedback } from '../transcription/reviewValidation';
 import { optionalFeedback, parseDescriptions, validateDescriptionRequest, type FeedbackContext } from './validation';
+import { createCorrectionClient, initializeCorrections, readCorrections } from '../presentations/correctionStore';
+import { useStore } from '../presentations/store';
+import { withCorrectionStaleness } from './storage';
 import { hasFeedbackConsent, saveFeedbackConsent, readFeedback, saveFeedback, readDescriptions, saveDescriptions,
   preferDescriptions, readPending, savePending, type PendingGeneration } from './storage';
 
@@ -39,6 +42,7 @@ export function withDescriptionStaleness(f: FeedbackAnalysis | null, d: Descript
 
 export function useFeedbackReview(id: string, address: string, review: ReviewAttempt) {
   const api = normalizeApi(address), deck = review.deck_id!;
+  const storeVersion = useStore(s => s.version);
   const client = useMemo(() => transcriptionClientFor(api), [api]);
   const context: FeedbackContext = { attempt_id: id, deck_id: deck, duration_ms: review.duration_ms,
     transcript: review.transcript, transcript_id: review.transcript_id, slide_events: review.slide_events };
@@ -126,6 +130,9 @@ export function useFeedbackReview(id: string, address: string, review: ReviewAtt
     const { op, signal } = begin(); locked.current = true; setBusy(true); setNotice('');
     let submitted = false;
     try {
+      if (intent.kind === 'feedback' && review.transcript && review.transcript_id) initializeCorrections(api, id, review.transcript_id, review.transcript);
+      const synchronized = intent.kind === 'feedback' ? await createCorrectionClient(api).synchronize(id) : null;
+      if (!current(op)) return;
       pending.current = readPending(api, id);
       const fresh = await read(op, signal);
       if (!fresh || !current(op)) return;
@@ -158,7 +165,12 @@ export function useFeedbackReview(id: string, address: string, review: ReviewAtt
       // Durable before POST: blur/crash/timeout cannot silently authorize a second charge.
       savePending(api, id, marker); pending.current = marker; submitted = true;
       if (intent.kind === 'feedback') {
+        const local = readCorrections(api, id);
+        if (local?.pending || local?.conflict || local?.server.revision !== synchronized?.server.revision) {
+          setNotice('Synchronize the latest corrections before updating feedback.'); return;
+        }
         const next = await client.generateFeedback(id, { expected_selection: selected.token,
+          transcript_revision: synchronized!.server.revision,
           ...(revision > 0 ? { feedback_revision: revision, ...(f.requires_confirmation ? { acknowledge_uncertain: acknowledged } : {}) } : {}) }, { signal }, contextRef.current);
         if (!current(op)) return; publish(next);
       } else {
@@ -246,7 +258,11 @@ export function useFeedbackReview(id: string, address: string, review: ReviewAtt
     } catch { if (current(op)) setNotice(offline); }
     finally { if (current(op)) { locked.current = false; setBusy(false); watch(op, signal); } }
   }
-  return { ...data, notice, busy, prompt, draft, conflict, refresh, continuePrompt, cancelPrompt,
+  const visibleFeedback = useMemo(() => withCorrectionStaleness(data.feedback, api, id),
+    // External SQLite edits are signaled by the shared store version.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data.feedback, api, id, storeVersion]);
+  return { ...data, feedback: visibleFeedback, notice, busy, prompt, draft, conflict, refresh, continuePrompt, cancelPrompt,
     generate: () => request('feedback'), retryDescriptions: () => request('descriptions'), edit, change, save, reloadDraft,
     cancelEdit: () => { if (!locked.current) { updateDraft(null); setConflict(false); setNotice(''); } } };
 }
