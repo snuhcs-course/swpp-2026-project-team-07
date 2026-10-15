@@ -1891,6 +1891,14 @@ check the original main folder and see if I have to update any paperwork for eac
 there was previously an issue where: u gotta make sure in the ai-collaboration-prompts-iteration: the ai is listing you as contributor because its blank right now - change it to Jaewon Choi as the contributor.
 ```
 
+### Follow-up prompts — verbatim
+
+```text
+I’ll connect GitHub in Codex
+
+just use the desktop github app. it worked last time
+```
+
 ### AI-generated and retained work
 
 - The named Desktop `swpp-2026-project-team-07-main` folder was empty, so Codex cloned current GitHub `main` there. The new branch was based on `front-end-design-JJ`, the previous redesign branch, and the current `OutLoud-Redesign` source was copied over without local environment files, dependencies, native build output or private media.
@@ -1902,5 +1910,5 @@ there was previously an issue where: u gotta make sure in the ai-collaboration-p
 - The cloned checkout was clean before copying the redesign. `npm run typecheck` and `npm run lint -- --no-cache` passed on the copied mobile source. Eight changed backend Python files parsed; relative link targets in nine changed/new Markdown files resolved. The new app icon had already been built, installed and visually checked on the connected Samsung phone in the preceding task. No new device check or app/backend test suite was run for this publication task.
 - An unscoped direct ESLint run reported five existing React-hook rule errors in `mobile/tests/helpers/recording-screen-audio.mjs` and one unused-variable warning in another test fixture; the app's supported `expo lint --no-cache` scope passed. Django `manage.py check` could not start in the new checkout because its Python environment lacks Celery. `git diff --check` is clean outside the prompt log; that log preserves trailing spaces in verbatim requests.
 - A separate AI reviewer sampled navigation, recorded-audio routing, forward-only capture, PDF setup, backend limits and launcher configuration and found no concrete high-impact runtime regression or staged secret. It flagged the missing October 12 meeting contributor, an imprecise correction count and stale `REDESIGN.md` descriptions. Codex marked that earlier requester `unconfirmed`, clarified that 57 corrections were in the copied log (11 already on the previous branch), and aligned the active redesign guide with Review, Full review and the Git checkout. This selective AI review is not teammate approval.
-- The first commit was created on `front-end-design-nakajima`, based on `front-end-design-JJ`. Its first HTTPS push attempt failed because this Mac supplied no GitHub username/credential; an SSH authentication check was also denied. The GitHub connection was suggested to the requester, who said they would connect it. No remote branch was created by these attempts.
-- The Desktop source's Review spec and eight reference renders changed from prototype version 108 to 110 after the initial file copy. Codex synchronized those documentation changes into the local branch before the next publication attempt; no mobile code changed in this follow-up. Final commit/diff and remote push verification remain pending. Contributor review and the Iteration 2 team report, Wiki/PDF and eTL submission remain pending; none is claimed as completed.
+- The first commit was created on `front-end-design-nakajima`, based on `front-end-design-JJ`. Its first HTTPS push attempt failed because this Mac supplied no GitHub username/credential; an SSH authentication check was also denied. After the requester chose GitHub Desktop, Codex removed this branch's accidental tracking of `front-end-design-JJ` so the app would publish the intended new branch. GitHub Desktop reported push complete, and a remote-head read confirmed `front-end-design-nakajima` at commit `268c8b0`.
+- The Desktop source's Review spec and eight reference renders changed from prototype version 108 to 110 after the initial file copy. Codex synchronized those documentation changes into the published commit; no mobile code changed in this follow-up. Contributor review and the Iteration 2 team report, Wiki/PDF and eTL submission remain pending; none is claimed as completed.
