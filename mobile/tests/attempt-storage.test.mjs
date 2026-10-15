@@ -28,7 +28,7 @@ test('recovery uses playable media duration, retains backwards visits and refuse
     slide_events: [{ slide_index: 2, at_ms: 0 }, { slide_index: 1, at_ms: 800 }, { slide_index: 0, at_ms: 2000 }] };
   assert.deepEqual(recoverRecording(recording, 2000).slide_events.map(e => e.slide_index), [2,1]);
   assert.equal(recording.slide_events.length, 3);
-  for (const duration of [NaN, 0, 600001]) assert.throws(() => recoverRecording(recording, duration));
+  for (const duration of [NaN, 0, 1_200_001]) assert.throws(() => recoverRecording(recording, duration));
 });
 
 test('SQLite persists checkpoint/audio and interrupted uploads through a new process', () => {

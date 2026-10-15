@@ -1,5 +1,6 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
 // Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+// OpenAI Codex slide-spill detection: docs/ai-collaboration-prompts-iteration-2.md#review-and-full-review-redesign-october-15-2026
 // OutLoud redesign: transcript sentences for the merged run (SPEC §5.4, §6).
 // Sentences come from hosted Whisper. Slide-change events split a sentence at
 // the first word whose timestamp belongs to the next slide.
@@ -110,10 +111,19 @@ export function buildLines(run: Run | null, n: number, transcripts: ReadonlyMap<
         const target = !clipped ? edit.slide ?? slide : slide;
         const moved = target !== slide;
         const dismissed = new Set(edit.dismissed || []);
+        // A sentence that crosses the saved boundary between adjacent slides
+        // carries a delivery finding. Compare word times within this attempt,
+        // so separate takes and unrelated visits cannot create false spills.
+        const nextPart = run.parts[slide + 1];
+        const prevPart = run.parts[slide - 1];
+        const intoNext = last < s.last && nextPart?.attemptId === part.attemptId &&
+          nextPart.segments.some(next => next.startMs >= seg.endMs && next.startMs <= words[s.last].start_ms);
+        const fromPrev = first > s.first && prevPart?.attemptId === part.attemptId &&
+          prevPart.segments.some(prev => prev.endMs <= seg.startMs && prev.endMs > words[s.first].start_ms);
         lines.push({
           key, slide: Math.max(0, Math.min(n - 1, target)), t: starts[slide] + Math.min(rel, Math.max(0, times[slide] - 1)), rel, text,
           flags: misheard(text, vocab, slide).filter(f => !dismissed.has(f.w)),
-          edge: 0, moved, from: moved ? slide : null, fixed: !clipped && edit.text !== undefined,
+          edge: intoNext ? 1 : fromPrev ? -1 : 0, moved, from: moved ? slide : null, fixed: !clipped && edit.text !== undefined,
           audio: { attemptId: part.attemptId, startMs: start, endMs: Math.max(endMs, start + 300) },
         });
       });

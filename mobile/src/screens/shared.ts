@@ -1,15 +1,17 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
 // Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+// OpenAI Codex Full review navigation: docs/ai-collaboration-prompts-iteration-2.md#review-and-full-review-redesign-october-15-2026
 // OpenAI Codex follow-up: docs/ai-collaboration-prompts-iteration-2.md#rehearsal-recording-choice-and-transcript-playback-october-14-2026
+// OpenAI Codex continuous Home glow and responsive navigation: docs/ai-collaboration-prompts-iteration-2.md#continuous-carousel-color-and-navigation-responsiveness-october-15-2026
 // OutLoud redesign: navigation state shared by the screens.
 import { createContext, useContext, useEffect, useRef, useSyncExternalStore } from 'react';
 import { BackHandler } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import type { EnterKind } from '../design/frame';
 
-export type ScreenName = 'home' | 'upload' | 'rehearse' | 'review' | 'compare' | 'qa';
-export type NavState = { screen: ScreenName; nav: EnterKind; deckId: string | null; slide: number; sel: number };
-export type Go = (screen: ScreenName, patch?: Partial<Omit<NavState, 'screen'>>) => void;
+export type ScreenName = 'home' | 'upload' | 'rehearse' | 'review' | 'full' | 'compare' | 'qa';
+export type NavState = { screen: ScreenName; nav: EnterKind; deckId: string | null; slide: number; sel: number; from: ScreenName | null; visit: number };
+export type Go = (screen: ScreenName, patch?: Partial<Omit<NavState, 'screen' | 'visit'>>) => void;
 
 /** Shared values the Home carousel and the Upload screen both drive (the carousel stays mounted behind Upload). */
 export type HomeShared = {
@@ -18,14 +20,22 @@ export type HomeShared = {
   uploadBlur: SharedValue<number>;
   /** Upload analysing: the new icon shrinks into the progress ring. */
   analyzing: SharedValue<number>;
+  /** PDF setup dims Home artwork beneath the blurred upload layer. */
+  setup: SharedValue<number>;
   press: SharedValue<number>;
   picker: SharedValue<number>;
 };
 
 export const ShellContext = createContext<{ go: Go; nav: NavState; home: HomeShared } | null>(null);
+export const HomeContext = createContext<{ go: Go; home: HomeShared } | null>(null);
 export function useShell() {
   const value = useContext(ShellContext);
   if (!value) throw new Error('Shell context missing');
+  return value;
+}
+export function useHomeShell() {
+  const value = useContext(HomeContext);
+  if (!value) throw new Error('Home context missing');
   return value;
 }
 

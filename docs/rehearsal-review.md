@@ -13,13 +13,13 @@ The backend coordinates a durable PostgreSQL queue, packaged Silero speech-prese
 
 [AI feedback checkpoints 1–5](ai-feedback.md) were implemented in PR #21 and merged after their dependencies on October 11, 2026. Gemini/OpenAI adapters provide durable editable slide descriptions, explicit rehearsal coaching, separate provider disclosure, revision-aware retries and API-scoped offline review. Up to three suggestions show exact evidence and seek the existing player; edits make affected feedback stale, and explicit regeneration reuses the saved transcript. Provider selection remains backend configuration and feedback defaults to disabled. Independent review and controlled live flows passed for both providers; [the evaluation](feedback-evaluation.md) records weak advice and description overstatement separately from structural validity. Human review and physical-phone checks remain pending.
 
-Detected no-speech saves an empty transcript, chronological visits with empty word lists, and timing metrics over the original recording duration, with zero provider requests. Repeated, backward and zero-duration visits remain visible in the result data.
+Detected no-speech saves an empty transcript, chronological visits with empty word lists, and timing metrics over the original recording duration, with zero provider requests. Repeated, backward and zero-duration visits remain visible in older result data. The redesigned Rehearse screen allows backward slide navigation only outside active recording; live capture proceeds forward so new transcript checkpoints stay ordered.
 
 ## Local capture and limits
 
 Local PDF import, capture and saved-audio playback run without backend services or provider keys. SQLite stores one UUID, the prepared audio URI and audio-relative slide checkpoints per real recording. On restart, interrupted capture requires playable-audio recovery; an unfinalized/missing native file cannot be reconstructed. Upload retries retain the UUID, source audio and slide visits. Native PDF rendering and SQLite require a rebuilt Android development client, not Expo Go.
 
-Limits are **at least one slide, 50 MiB PDF, ten minutes (600,000 ms), and 25,000,000 audio bytes**. Legacy audio above the byte limit stays local and can still be played; make a shorter new recording to upload. New captures automatically continue from upload to analysis; first-use cancellation leaves them awaiting analysis. Deck mappings are scoped to the configured API address, and confirmed missing mappings are repaired before audio upload.
+Limits are **at least one slide, 50 MiB PDF, twenty minutes (1,200,000 ms), and 25,000,000 audio bytes**. Audio above the byte limit stays local and can still be played; make a smaller new recording to upload. New captures automatically continue from upload to analysis; first-use cancellation leaves them awaiting analysis. Deck mappings are scoped to the configured API address, and confirmed missing mappings are repaired before audio upload.
 
 ## Review a saved rehearsal
 

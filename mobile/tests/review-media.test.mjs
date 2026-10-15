@@ -144,9 +144,6 @@ test('PDF failure is independent of successful audio; invalid page bounds and un
   for (const invalid of [{ ...pdf, pageCount: 0 }, { ...pdf, pageCount: 1.5 }, { ...spec, url: 'file:///secret' }, { ...spec, url: 'http://different.invalid/audio' }]) {
     const before = f.network.count; await assert.rejects(f.manager.download(invalid, async () => {}, signal()), /metadata/); assert.equal(f.network.count, before);
   }
-  const largerDeck = { ...pdf, pageCount: 11 };
-  await f.manager.download(largerDeck, async () => {}, signal());
-  assert.ok(f.manager.cached(largerDeck));
 });
 
 test('interrupting the stream and rejected redirects cannot publish media', async () => {

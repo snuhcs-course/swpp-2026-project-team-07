@@ -1,4 +1,5 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
+// OpenAI Codex time setup: docs/ai-collaboration-prompts-iteration-2.md#presentation-time-and-audience-setup-october-15-2026
 // Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
 // OutLoud redesign: slide titles, slide points and per-slide target times.
 import { keyWords } from './words';
@@ -30,7 +31,7 @@ export function parseSlideText(raw: string, index: number): SlideText {
   return { title: title || 'Slide ' + (index + 1), points: usable, text: lines.join(' ') };
 }
 
-/** Default whole-presentation target: one minute per slide, capped at the 10-minute recording limit. */
+/** Suggested starting target: one minute per slide, capped at ten; import setup allows up to twenty. */
 export function defaultTarget(pageCount: number): number {
   return Math.max(30, Math.min(600, 60 * Math.max(1, pageCount)));
 }

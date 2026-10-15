@@ -1,4 +1,6 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
+// OpenAI Codex finger-linked page fade: docs/ai-collaboration-prompts-iteration-2.md#finger-linked-page-fade-october-15-2026
+// OpenAI Codex stationary back crossfade: docs/ai-collaboration-prompts-iteration-2.md#stationary-back-crossfade-october-15-2026
 // Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
 // OutLoud redesign: gesture physics from the prototype (SPEC §4.1, §4.4, §8).
 // Functions marked 'worklet' also run on the UI thread inside Reanimated styles.
@@ -11,6 +13,8 @@ export const PULL_T = 90;
 export const HOLD_MS = 3000;
 export const CARD_STEP = 374;
 export const BACK_T = 110;
+/** Downward drag distance in design units at which the current page is fully faded. */
+export const BACK_FADE_Y = 240;
 
 export type FlowSlot = {
   dd: number; x: number; scale: number; rotateY: number; blur: number; brightness: number;

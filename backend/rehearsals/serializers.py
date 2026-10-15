@@ -1,6 +1,7 @@
 # AI-generated/modified with OpenAI Codex, Iteration 1 (2026-09-26 to 2026-10-09).
 # Attribution/review scope: docs/history/ai-collaboration-validation-iteration-1-retired-2026-10-09.md#ai-code-markers
 from rest_framework import serializers
+from rehearsals.limits import MAX_DURATION_MS
 
 
 class SlideEventSerializer(serializers.Serializer):
@@ -13,7 +14,7 @@ class AttemptMetadataSerializer(serializers.Serializer):
 
     id = serializers.UUIDField()
     deck_id = serializers.UUIDField()
-    duration_ms = serializers.IntegerField(min_value=1, max_value=600_000)
+    duration_ms = serializers.IntegerField(min_value=1, max_value=MAX_DURATION_MS)
     audience = serializers.CharField(max_length=500, allow_blank=True, default="")
     slide_events = SlideEventSerializer(many=True, allow_empty=False, max_length=10_000)
 

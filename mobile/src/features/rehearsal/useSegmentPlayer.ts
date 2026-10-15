@@ -1,7 +1,9 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
 // Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
 // OpenAI Codex follow-up: docs/ai-collaboration-prompts-iteration-2.md#transcript-header-playback-october-14-2026
+// OpenAI Codex faster presentation exit: docs/ai-collaboration-prompts-iteration-2.md#presentation-to-home-pause-october-15-2026
 // OutLoud redesign: play one sentence (a stretch of one take's audio).
+// OpenAI Codex Review and Full review: docs/ai-collaboration-prompts-iteration-2.md#review-and-full-review-redesign-october-15-2026
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
@@ -12,16 +14,17 @@ type Playback = { key: string; segments: Segment[]; index: number; token: number
 /** Play a sentence or a sequence of slide visits from saved local audio. */
 export function useSegmentPlayer() {
   const player = useAudioPlayer(null, { updateInterval: 50 });
-  const [state, setState] = useState<{ key: string | null; progress: number; paused: boolean }>({ key: null, progress: 0, paused: false });
+  const [state, setState] = useState<{ key: string | null; progress: number; elapsedMs: number; paused: boolean }>({ key: null, progress: 0, elapsedMs: 0, paused: false });
   const current = useRef<Playback | null>(null);
   const loadedUri = useRef<string | null>(null);
   const token = useRef(0);
 
   const stop = useCallback(() => {
+    if (!current.current) return;
     token.current++;
     current.current = null;
     try { player.pause(); } catch { /* released */ }
-    setState({ key: null, progress: 0, paused: false });
+    setState({ key: null, progress: 0, elapsedMs: 0, paused: false });
   }, [player]);
 
   const startSegment = useCallback(async (mine: number, seg: Segment) => {
@@ -46,7 +49,7 @@ export function useSegmentPlayer() {
     if (!valid.length) return;
     const mine = ++token.current;
     current.current = { key, segments: valid, index: 0, token: mine, advancing: false, paused: false };
-    setState({ key, progress: 0, paused: false });
+    setState({ key, progress: 0, elapsedMs: 0, paused: false });
     try {
       await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false }).catch(() => undefined);
       await startSegment(mine, valid[0]);
@@ -74,7 +77,8 @@ export function useSegmentPlayer() {
         return;
       }
       const previous = c.segments.slice(0, c.index).reduce((sum, item) => sum + item.endMs - item.startMs, 0);
-      setState(s => (s.key === c.key ? { key: c.key, progress: Math.max(0, Math.min(1, (previous + pos - seg.startMs) / Math.max(1, span))), paused: false } : s));
+      const elapsedMs = Math.max(0, Math.min(span, previous + Math.max(0, Math.min(seg.endMs - seg.startMs, pos - seg.startMs))));
+      setState(s => (s.key === c.key ? { key: c.key, progress: elapsedMs / Math.max(1, span), elapsedMs, paused: false } : s));
     }, 50);
     return () => clearInterval(timer);
   }, [player, startSegment, state.key, stop]);
@@ -84,5 +88,5 @@ export function useSegmentPlayer() {
     return () => { sub.remove(); };
   }, [stop]);
 
-  return { playingKey: state.key, progress: state.progress, paused: state.paused, play, playSegments, stop };
+  return { playingKey: state.key, progress: state.progress, elapsedMs: state.elapsedMs, paused: state.paused, play, playSegments, stop };
 }

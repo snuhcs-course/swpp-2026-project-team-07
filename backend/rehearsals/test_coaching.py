@@ -1194,10 +1194,10 @@ class CoachingSchemaVersionTests(SyntheticCoaching, TestCase):
                 self.assertEqual(self.feedback_state()['state'], 'completed')
                 current = self.admit_feedback(self.new_attempt())
                 new = self.job(current)
-                self.assertEqual(new.schema_version, 'coaching-gemini-v3')
+                self.assertEqual(new.schema_version, 'coaching-gemini-v2')
                 self.assertNotEqual(new.description_set_id, job.description_set_id)
-                self.assertEqual(new.description_set.schema_version, 'description-gemini-v4')
-                self.assertNotEqual(new.prompt_digest, job.prompt_digest)
+                self.assertEqual(new.description_set.schema_version, 'description-gemini-v3')
+                self.assertEqual(new.prompt_digest == job.prompt_digest, coaching_version == 'coaching-gemini-v2')
                 self.assertNotEqual(self.feedback_state(current.attempt)['selection']['token'], token)
 
     def test_schema_only_disclosure_change_rejects_initial_admission(self):

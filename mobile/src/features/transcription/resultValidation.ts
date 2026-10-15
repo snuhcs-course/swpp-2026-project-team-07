@@ -20,7 +20,7 @@ function validRecording(value: unknown, id: string): value is AttemptResult {
   if (!object(value) || value.attempt_id !== id || typeof value.status !== "string" ||
       !["pending", "processing", "completed", "failed"].includes(value.status) ||
       typeof value.processing_state !== "string" || !stages.includes(value.processing_state) ||
-      !integer(value.processing_revision) || !integer(value.duration_ms) || value.duration_ms < 1 || value.duration_ms > 600_000 ||
+      !integer(value.processing_revision) || !integer(value.duration_ms) || value.duration_ms < 1 || value.duration_ms > 1_200_000 ||
       (value.failed_stage !== null && (typeof value.failed_stage !== "string" || !activeStages.includes(value.failed_stage))) ||
       typeof value.retry_available !== "boolean" || !nullableDate(value.retry_at) || typeof value.requires_confirmation !== "boolean" ||
       (typeof value.feedback_state !== "string" || !["disabled", "legacy"].includes(value.feedback_state)) ||

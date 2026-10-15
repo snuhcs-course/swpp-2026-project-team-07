@@ -11,6 +11,11 @@
     "icon": "./assets/icon.png",
     "android": {
       "package": "com.team07.outloud",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png",
+        "backgroundColor": "#0A0A0D"
+      },
       "permissions": [
         "android.permission.RECORD_AUDIO"
       ],
@@ -19,7 +24,7 @@
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.DOWNLOAD_WITHOUT_NOTIFICATION"
       ],
-      "predictiveBackGestureEnabled": true
+      "predictiveBackGestureEnabled": false
     },
     "plugins": [
       "expo-router",

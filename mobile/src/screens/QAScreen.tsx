@@ -1,21 +1,25 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
+// OpenAI Codex finger-linked page fade: docs/ai-collaboration-prompts-iteration-2.md#finger-linked-page-fade-october-15-2026
+// OpenAI Codex audience setup: docs/ai-collaboration-prompts-iteration-2.md#presentation-time-and-audience-setup-october-15-2026
+// OpenAI Codex light-mode Q&A: docs/ai-collaboration-prompts-iteration-2.md#guide-based-light-mode-october-15-2026
 // Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
 // OutLoud redesign: Audience Q&A (SPEC §4.7, §5.7).
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, type GestureResponderEvent, type PanResponderGestureState } from 'react-native';
 import * as Speech from 'expo-speech';
 import * as Haptics from 'expo-haptics';
-import Animated, { Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, cancelAnimation, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { Enter, Txt, useFrame } from '../design/frame';
 import { Glyph, UIIcon } from '../design/icons';
 import { PanView } from '../design/PanView';
 import { MiniSlide } from '../design/SlideCard';
 import { C, EASE_SCREEN, EASE_SNAP, F, HUES, TONE } from '../design/tokens';
-import { Dialog, HintRow, IDLE_WAVE, RecordButton, RecordRing, Waveform, type Hint, type RecordGlyph } from '../design/ui';
+import { createThemedStyles, useTheme } from '../design/theme';
+import { Dialog, HintRow, IDLE_WAVE, PageSurface, RecordButton, RecordRing, Waveform, type Hint, type RecordGlyph } from '../design/ui';
 import type { IconKey } from '../domain/analysis';
 import { fmt, quote } from '../domain/format';
-import { BACK_T } from '../domain/gestures';
+import { BACK_FADE_Y, BACK_T } from '../domain/gestures';
 import { sentences, slideText } from '../domain/lines';
 import { AnswerRecorder, type AnswerHandle } from '../features/qa/AnswerRecorder';
 import { generateQuestions, judgeAnswer, QaError, type QaResult } from '../features/qa/client';
@@ -24,7 +28,7 @@ import { useSegmentPlayer } from '../features/rehearsal/useSegmentPlayer';
 import { useDeckModel, type DeckModel } from '../features/presentations/useDeckModel';
 import { useBack, useShell } from './shared';
 
-const AUDIENCE = 'Faculty panel';
+const AUDIENCE = 'General audience';
 
 export function QAScreen() {
   const { nav } = useShell();
@@ -34,6 +38,7 @@ export function QAScreen() {
 }
 
 function QA({ model }: { model: DeckModel }) {
+  const { c } = useTheme();
   const { go, nav } = useShell();
   const frame = useFrame();
   const { deck, lines, state } = model;
@@ -59,7 +64,8 @@ function QA({ model }: { model: DeckModel }) {
   const [wave, setWave] = useState<number[]>(IDLE_WAVE);
   const countTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const ringP = useSharedValue(0), ringV = useSharedValue(0);
-  const dx = useSharedValue(0), dy = useSharedValue(0), gone = useSharedValue(0);
+  const dx = useSharedValue(0), dy = useSharedValue(0);
+  const backExiting = useRef(false);
   const player = useSegmentPlayer();
   const hue = HUES[deck.hue];
 
@@ -67,8 +73,9 @@ function QA({ model }: { model: DeckModel }) {
   /** Writes questions from the slide text and this run's transcript; they are cached per presentation. */
   const requestQuestions = useCallback(async (): Promise<QaSet> => {
     const slides = deck.slides.map((s, k) => ({ slide_index: k, title: s.title, transcript: slideText(lines, k) }));
-    const questions = await generateQuestions(deck, slides, AUDIENCE);
-    const next: QaSet = { runId: run.id, audience: AUDIENCE, questions, answers: {}, createdAt: new Date().toISOString() };
+    const audience = deck.audience || AUDIENCE;
+    const questions = await generateQuestions(deck, slides, audience);
+    const next: QaSet = { runId: run.id, audience, questions, answers: {}, createdAt: new Date().toISOString() };
     saveQa(deck.id, next);
     return next;
   }, [deck, lines, run.id]);
@@ -188,14 +195,13 @@ function QA({ model }: { model: DeckModel }) {
   const back = useCallback(() => {
     if (rec || count) return;
     stopSpeak(); player.stop();
-    gone.set(1); dy.set(withTiming(520, { duration: 280 }));
-    setTimeout(() => go('review', { nav: 'fade', deckId: deck.id, sel: nav.sel }), 280);
-  }, [count, deck.id, dy, go, gone, nav.sel, player, rec, stopSpeak]);
+    go('review', { nav: null, deckId: deck.id, sel: nav.sel });
+  }, [count, deck.id, go, nav.sel, player, rec, stopSpeak]);
   const g = useRef<'x' | 'y' | null>(null);
   const busy = rec || !!count;
   const pan = {
     onMoveShould: (e: GestureResponderEvent, gs: PanResponderGestureState) => {
-      if (busy) return false;
+      if (busy || backExiting.current) return false;
       const y = (e.nativeEvent.pageY - frame.top) / frame.s;
       if (Math.abs(gs.dx) > 8 && Math.abs(gs.dx) > Math.abs(gs.dy)) { g.current = 'x'; return true; }
       if (gs.dy > 8 && gs.dy > Math.abs(gs.dx) && !(phase === 'review' && y > 158 && y < 648)) { g.current = 'y'; return true; }
@@ -205,18 +211,25 @@ function QA({ model }: { model: DeckModel }) {
       if (g.current === 'x') {
         const x = gs.dx / frame.s;
         dx.set((x > 0 && i === 0) || (x < 0 && i === qs.length - 1) ? x * 0.3 : x);
-      } else { const d = Math.max(0, gs.dy / frame.s); dy.set(d > 160 ? 160 + (d - 160) * 0.5 : d); }
+      } else { dy.set(Math.min(BACK_FADE_Y, Math.max(0, gs.dy / frame.s))); }
     },
     onRelease: () => {
       if (g.current === 'x') { if (Math.abs(dx.get()) > 60) goQ(dx.get() < 0 ? 1 : -1); else dx.set(withTiming(0, { duration: 280, easing: EASE_SNAP })); }
-      else if (dy.get() > BACK_T) back();
-      else dy.set(withTiming(0, { duration: 320, easing: EASE_SCREEN }));
+      else if (dy.get() > BACK_T) {
+        backExiting.current = true;
+        dy.set(withTiming(BACK_FADE_Y, { duration: 220, easing: EASE_SCREEN }, finished => {
+          if (finished) runOnJS(back)();
+        }));
+      } else dy.set(withTiming(0, { duration: 220, easing: EASE_SCREEN }));
       g.current = null;
     },
-    onTerminate: () => { dx.set(withTiming(0)); dy.set(withTiming(0)); g.current = null; },
+    onTerminate: () => { dx.set(withTiming(0)); if (!backExiting.current) dy.set(withTiming(0)); g.current = null; },
   };
   useBack(true, () => { back(); return true; });
-  const screen = useAnimatedStyle(() => ({ opacity: gone.value ? withTiming(0, { duration: 260 }) : Math.max(0.15, 1 - dy.value / 260), transform: [{ translateY: dy.value * 0.55 }] }));
+  const screen = useAnimatedStyle(() => ({
+    // Fade to the Review page already mounted beneath Q&A.
+    opacity: Math.max(0, 1 - dy.value / BACK_FADE_Y),
+  }));
   const slideStyle = useAnimatedStyle(() => ({ opacity: Math.max(0.2, 1 - Math.abs(dx.value) / 240), transform: [{ translateX: dx.value }] }));
   useEffect(() => () => { cancelAnimation(ringP); }, [ringP]);
 
@@ -246,6 +259,7 @@ function QA({ model }: { model: DeckModel }) {
       <AnswerRecorder key={recKey} ref={recorder} onMeter={onMeter} onMustStop={() => { void stopRec(); }} />
       <PanView style={StyleSheet.absoluteFill} {...pan}>
         <Animated.View style={[StyleSheet.absoluteFill, screen]}>
+          <PageSurface hue={deck.hue} />
           <View style={styles.header} pointerEvents="none">
             <Txt style={styles.title}>Audience Q&amp;A</Txt>
             <Txt style={styles.label}>{Q ? 'Question ' + (i + 1) + ' of ' + qs.length + ' · ' + (set?.audience ?? AUDIENCE) : load.kind === 'loading' ? 'Writing questions from your slides…' : AUDIENCE}</Txt>
@@ -281,14 +295,14 @@ function QA({ model }: { model: DeckModel }) {
                   )}
                   {phase === 'review' && part === 1 && (
                     <Pressable accessibilityRole="button" accessibilityLabel={'Hear the follow-up: ' + Q.follow_up} onPress={() => speak(Q.follow_up, 'f' + i)}>
-                      <Txt style={[styles.over, { color: '#FFC266' }]}>{'Follow-up · ' + Q.panelist}</Txt>
+                      <Txt style={[styles.over, { color: c.warn }]}>{'Follow-up · ' + Q.panelist}</Txt>
                       <Txt numberOfLines={3} style={styles.fSmall}>{quote(Q.follow_up)}</Txt>
                     </Pressable>
                   )}
                   {part === 1 && phase !== 'review' && (
                     <Pressable accessibilityRole="button" accessibilityLabel={(hearing('f' + i) ? 'Stop the follow-up: ' : 'Hear the follow-up: ') + Q.follow_up}
                       onPress={() => !rec && speak(Q.follow_up, 'f' + i)} style={{ gap: 8 }}>
-                      <Txt style={[styles.over, { color: '#FFC266' }]}>{'Follow-up · ' + Q.panelist}</Txt>
+                      <Txt style={[styles.over, { color: c.warn }]}>{'Follow-up · ' + Q.panelist}</Txt>
                       <Txt style={styles.fBig}>{quote(Q.follow_up)}</Txt>
                       {phase === 'ask' && <HearHint playing={hearing('f' + i)} />}
                     </Pressable>
@@ -310,7 +324,7 @@ function QA({ model }: { model: DeckModel }) {
                         <View style={[styles.verdict, { backgroundColor: verdict.tone.bg }]}><UIIcon name={verdict.icon} size={22} /><Txt style={[styles.verdictText, { color: verdict.tone.fg }]}>{verdict.text}</Txt></View>
                         <Pressable accessibilityRole="button" accessibilityLabel={(player.playingKey === 'a' + key ? 'Stop your answer' : 'Play your answer') + ', ' + fmt(ans.durationMs / 1000)}
                           onPress={playAnswer} style={styles.playChip}>
-                          <Glyph name={player.playingKey === 'a' + key ? 'p-pause' : 'p-play'} size={14} color={C.body} />
+                          <Glyph name={player.playingKey === 'a' + key ? 'p-pause' : 'p-play'} size={14} color={c.body} />
                           <Txt style={styles.playText}>{fmt(ans.durationMs / 1000)}</Txt>
                         </Pressable>
                       </View>
@@ -319,7 +333,7 @@ function QA({ model }: { model: DeckModel }) {
                     {part === 0 && result && !short && Q.follow_up && (
                       <Pressable accessibilityRole="button" accessibilityLabel={'Follow-up from ' + Q.panelist + ': ' + Q.follow_up}
                         onPress={() => { if (count) return; stopSpeak(); setPart(1); }} style={styles.followCard}>
-                        <Txt style={[styles.over, { color: '#FFC266' }]}>{'Follow-up · ' + Q.panelist}</Txt>
+                        <Txt style={[styles.over, { color: c.warn }]}>{'Follow-up · ' + Q.panelist}</Txt>
                         <Txt style={styles.followText}>{quote(Q.follow_up)}</Txt>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><Glyph name="h-tap" size={16} /><Txt style={styles.followHint}>{set?.answers[answerKey(i, 1)] ? 'Answered · tap to view' : 'Tap to answer'}</Txt></View>
                       </Pressable>
@@ -363,9 +377,10 @@ function QA({ model }: { model: DeckModel }) {
 }
 
 function HearHint({ playing }: { playing: boolean }) {
+  const { c } = useTheme();
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-      <Glyph name={playing ? 'p-pause' : 'p-play'} size={14} color={C.secondary} />
+      <Glyph name={playing ? 'p-pause' : 'p-play'} size={14} color={c.secondary} />
       <Txt style={styles.hear}>{playing ? 'Playing…' : 'Tap to hear'}</Txt>
     </View>
   );
@@ -382,7 +397,7 @@ function Row({ icon, k, t }: { icon: IconKey; k: string; t: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyles({
   header: { position: 'absolute', left: 40, right: 40, top: 50, alignItems: 'center' },
   title: { fontFamily: F.display, fontSize: 18, lineHeight: 21.6, letterSpacing: -0.3, color: C.text },
   label: { marginTop: 3, fontFamily: F.medium, fontSize: 13, color: C.secondary },

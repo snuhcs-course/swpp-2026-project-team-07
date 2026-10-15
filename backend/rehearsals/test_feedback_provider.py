@@ -63,7 +63,6 @@ class FeedbackProviderTests(TestCase):
         expected['properties']['slides'].pop('maxItems')
         for name in ('key_ideas', 'visual_facts'):
             expected['$defs']['Description']['properties'][name].pop('maxItems')
-        expected['$defs']['Description']['properties']['slide_index'].pop('maximum')
         current = json.loads(self.adapter().prepare_descriptions(self.analysis).payload)
         schema = current['generationConfig']['responseJsonSchema']
         self.assertNotIn('minItems', schema['properties']['slides'])
@@ -344,7 +343,7 @@ class FeedbackProviderTests(TestCase):
                 self.adapter().prepare_descriptions(analysis)
             outbound.assert_not_called()
             self.assertEqual(caught.exception.code, code)
-        self.value['duration_ms'] = 600001
+        self.value['duration_ms'] = 1_200_001
         with self.assertRaises(FeedbackError):
             prepare_analysis(self.value, self.images)
         self.network.assert_not_called()

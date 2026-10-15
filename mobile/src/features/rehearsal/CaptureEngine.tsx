@@ -1,4 +1,5 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
+// OpenAI Codex twenty-minute capture: docs/ai-collaboration-prompts-iteration-2.md#presentation-time-and-audience-setup-october-15-2026
 // Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
 // OutLoud redesign: microphone capture for one take.
 // Ported from the former RehearsalScreen without changing its rules: the recording
@@ -32,7 +33,7 @@ type Props = {
   onMeter: (db: number, elapsedMs: number) => void;
   /** Capture failed or the app went to the background; the take is kept for recovery. */
   onInterrupted: (message: string) => void;
-  /** Reached the 10-minute limit, or the app left the foreground: the screen should stop. */
+  /** Reached the 20-minute limit, or the app left the foreground: the screen should stop. */
   onMustStop: () => void;
 };
 
@@ -77,7 +78,7 @@ export const CaptureEngine = forwardRef<CaptureHandle, Props>(function CaptureEn
         const status = recorder.getStatus();
         callbacks.current.onMeter(typeof status.metering === 'number' ? status.metering : -160, status.durationMillis);
         if (status.durationMillis - lastCheckpoint.current >= 1000) checkpoint();
-        if (status.durationMillis >= 599_000) callbacks.current.onMustStop();
+        if (status.durationMillis >= 1_199_000) callbacks.current.onMustStop();
       } catch {
         callbacks.current.onMustStop();
       }
