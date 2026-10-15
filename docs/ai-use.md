@@ -12,6 +12,12 @@ This is a pointer for the requester's `docs/ai-use.md` handoff requirement; main
 
 Phase 3 timing, longer recording support and verification are recorded in [the task entry](ai-collaboration-prompts-iteration-2.md#phase-3-required-timing-and-longer-recordings--october-15-2026) and [the evidence record](phase-3-verification.md). Phase 3 remains uncommitted pending final staged review and inspection.
 
+Phase 3 was subsequently approved and committed as `ee6233be2875739c6c9f8d2c62e9878e4ab759b7`.
+Phase 4 correction persistence, separate STT suggestions, explicit feedback updates,
+review repairs and verification are recorded in [its task entry](ai-collaboration-prompts-iteration-2.md#phase-4-confirmed-transcript-corrections--october-15-2026)
+and [verification ledger](phase-4-verification.md). Contributor: Seoyeon. This does
+not authorize a Phase 4 commit, publication or Phase 5 work.
+
 The separately approved transcript first/return-visit labels are recorded in the
 [follow-up entry](ai-collaboration-prompts-iteration-2.md#transcript-visit-labels--october-15-2026)
 and [verification evidence](transcript-visits-verification.md). Contributor: Seoyeon.
@@ -19,3 +25,14 @@ and [verification evidence](transcript-visits-verification.md). Contributor: Seo
 The playback reliability/word-highlighting follow-up is recorded in
 [its task entry](ai-collaboration-prompts-iteration-2.md#transcript-playback-and-word-highlighting--october-15-2026)
 and [verification evidence](transcript-playback-verification.md). Contributor: Seoyeon.
+
+Phase 4 recognition-only amendment: removed unrestricted transcript edits and
+restricted acceptance to persisted AI recognition offers while preserving source
+media, synchronization and explicit feedback updates. Contributor: Seoyeon.
+See [verification](phase-4-recognition-only-verification.md) and the matching
+[collaboration entry](ai-collaboration-prompts-iteration-2.md#phase-4-recognition-only-amendment--october-15-2026).
+
+October 16 contextual transcript controls: Contributor Seoyeon requested quieter
+sync/status controls and an explicit heading action for AI transcription checks.
+[Changes, review repairs and checks](ai-collaboration-prompts-iteration-2.md#contextual-transcript-controls--october-16-2026).
+The immediately retracted custom-editor request was not implemented.

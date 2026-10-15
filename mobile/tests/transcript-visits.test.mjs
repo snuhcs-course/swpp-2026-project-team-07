@@ -33,12 +33,12 @@ test('sentences retain their first or return visit and exact-boundary source pla
   ]);
 });
 
-test('silent first visits still count; moving or correcting a sentence retains source provenance', () => {
+test('silent first visits still count; moving a sentence preserves provenance and ignores archived text rewrites', () => {
   const silent = { ...transcript, words: transcript.words.slice(2), text: 'Other. Back. Again. Last.' };
   const lines = buildLines(run, 2, new Map([['original', silent]]), { 'original#1': { slide: 1, text: 'Corrected.' } }, vocab);
   const moved = lines.find(l => l.key === 'original#1');
   assert.equal(moved.slide, 1);
-  assert.equal(moved.text, 'Corrected.');
+  assert.equal(moved.text, 'Back.');
   assert.deepEqual(moved.visit, { slide: 0, index: 1, startMs: 4000 });
   assert.equal(visitHeading(moved), 'Return visit 1 · from slide 1 · 0:04 in recording');
 });

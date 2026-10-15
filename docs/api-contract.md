@@ -656,7 +656,7 @@ The initial request refreshes server state first and only starts `awaiting_analy
 The mobile UI was rebuilt from the design prototype (see `REDESIGN.md`). The upload, processing, feedback and deck endpoints above are unchanged and are used as before. The mobile flow changed as follows.
 
 - **Import:** the app renders page images on the device and calls `POST /decks/` at import time to read `extracted_text`. It stores the result under the same `server-deck:<API>:<local id>` mapping that attempt uploads use. Offline imports fetch the text later.
-- **Takes:** every recording is a normal attempt with the existing `auto_process_api` handoff. A background worker per take replaces the former saved-result screen: it consumes the intent once, uploads, and requests initial processing after the first-use disclosure. A presentation's run (which take supplies each slide) and transcript corrections are client-side records in the SQLite key/value table (`pres:v1:`, `deck:v1:`). They are not sent to the server.
+- **Takes:** every recording is a normal attempt with the existing `auto_process_api` handoff. A background worker per take replaces the former saved-result screen: it consumes the intent once, uploads, and requests initial processing after the first-use disclosure. A presentation's run (which take supplies each slide), moved-sentence placement and suggestion dismissals remain client-side SQLite records (`pres:v1:`, `deck:v1:`). Phase 4 synchronizes confirmed text corrections independently, as described below; the original legacy records are retained.
 - **Coaching:** `POST /attempts/{id}/feedback/generate/` is still requested only after an explicit tap, with the existing disclosure and charge acknowledgement.
 
 The section "Mobile rehearsal review" above describes the pre-redesign review screens. Its cache and media rules remain in the mobile services; the new screens use the cached results, transcripts and local audio.
@@ -746,3 +746,126 @@ Compatible image bytes/source IDs remain unchanged; converted evidence identitie
 use the bytes actually sent to the provider. Invalid or missing saved media still
 rejects admission without provider work. The mobile rejection message identifies
 the PDF/slide source issue instead of suggesting a revision refresh will repair it.
+
+## Iteration 2 Phase 4 — confirmed transcript overlays
+
+Correction persistence, feedback invalidation and explicit regeneration are separate
+operations. No correction GET/PATCH, screen opening, navigation or audio playback
+admits AI work. Original Whisper text/words, audio, slide events/visits and attempt
+processing generation remain immutable inputs to the correction layer.
+
+| Route | Request | Behavior |
+| --- | --- | --- |
+| `GET /attempts/{id}/corrections/` | No query/body | Read source identity, current revision and confirmed overlays; no row created |
+| `PATCH /attempts/{id}/corrections/` | `{base_transcript_id, expected_revision, edits}` | Save only; 200 current snapshot, 409 stale revision/source, 400 invalid input |
+| `GET /attempts/{id}/correction-suggestions/` | No query/body | Read the independent STT-suggestion analysis; never queue |
+| `POST /attempts/{id}/correction-suggestions/` | Existing feedback admission/retry fields, plus optional `transcript_revision` | Explicitly generate/retry STT suggestions, 202 pending or 200 completed cache |
+
+Correction snapshots are `{attempt_id, base_transcript_id, revision, edits,
+effective_text, source_changed}`. `base_transcript_id` is the existing original
+transcript evidence digest. Revision starts at zero. Each edit is exactly
+`{word_start, word_end, text}` with inclusive original word indexes, nonempty
+replacement text (at most 4000 characters), no NUL, and nonoverlapping ranges.
+The complete sorted set has at most 2000 edits; PATCH is bounded to 262144 bytes
+and rejects duplicate/extra fields, noninteger/boolean revisions and ranges.
+Whitespace is normalized in replacement text. No-op effective text retains its
+revision and canonical edit representation; stale expected revisions still conflict.
+Original punctuation is preserved where source text/words map exactly; otherwise
+effective text falls back to indexed source words plus confirmed replacements.
+
+If the original transcript digest changes beneath existing corrections, reads
+retain the old database record, return `source_changed=true`, and do not apply its
+old ranges to the new source. Writes/analysis reject the stale source rather than
+silently rebasing it. Automatic source rebasing is not implemented. Normal
+processing retries retain the attempt/audio and do not rewrite successful STT.
+
+Coaching retains original indexed words/quotes for validated playback evidence.
+Its private snapshot additionally captures the synchronized correction revision,
+overlays, effective text and `recognition-v2` analysis augmentation. The provider
+is instructed to analyze the corrected text, not report confirmed STT errors as
+presentation problems. It must still quote original timed evidence; corrections
+never manufacture word timings. A whole-attempt analysis depends on its whole
+transcript, so boundary edits invalidate that attempt, including all relevant
+visits. Other attempts and immutable slide-only profiles/cues are unaffected.
+Stored original STT metrics remain original-source data; JJ's current text-based
+display estimates derive from the corrected selected-run lines.
+
+Feedback state/results add `transcript_revision`, `analysis_type` and
+`analysis_version`; older cached coaching defaults to original revision zero.
+Completed historical output is retained with `stale=true` after changed input.
+An old running job cannot publish as current after a correction; its receipt and
+usage still finalize safely. Explicit coaching POST may include
+`transcript_revision`; a mismatch returns 409. Client regeneration first refreshes
+and synchronizes pending corrections, rejects conflicts/offline failures, and
+checks again immediately before POST. Saving a correction never calls that POST.
+
+STT suggestions use a separate `FeedbackAnalysis` type
+`transcription_suggestions`, unique alongside `coaching` per attempt. They reuse
+description context and the existing durable jobs/quotas/receipts/recovery;
+transport/request stage remains `coaching` internally, but the prompt, output
+validator, result namespace and analysis identity are distinct. Suggestion output
+has at most 30 entries `{word_start, word_end, original, error_type, replacements, reason}`,
+with one to three replacements. Validation requires exact original indexed text,
+no overlapping suggestions/confirmed edits, and bounded nonempty strings. None
+is automatically applied. Failed description prerequisites retain their own
+revisioned retry and uncertainty acknowledgement. Failure is not an empty success.
+
+Repeated admissions reuse active/completed matching attempt/revision/type/version
+and description/provider scope. Failed/uncertain calls retain explicit revisioned
+retry; retry generations are not new input revisions. STT suggestions become
+unusable when their source revision changes or local edits are pending/conflicted.
+Accepting one saves a correction only, never presentation feedback.
+
+Mobile state uses separate API/attempt-scoped `transcript-corrections:v2:` and
+`transcription-suggestions:v2:` records. Old v1 correction caches and `deck:v1`
+free-text edits are archived in place, never imported or displayed as corrections. Pending saves survive reload/offline failures;
+later edits cannot be cleared by earlier responses. Server conflicts require
+Use server/Keep mine; repeated refresh does not resolve them implicitly. A
+successful no-op save accepts canonical server ranges if no newer local edit
+intervened. Dismissal is source-revision/range-specific and does not advance the
+transcript revision. Accepted replacements retain sentence playback. Display-only highlight spans
+reuse original source-range start/end timestamps (a replacement phrase is one
+range, with no invented internal timing); source words/audio/visits remain intact.
+Boundary-spanning replacements fall back to safe original mappings.
+
+Migration 0008 preserves existing rows and admits multiple analysis types. Upgrade
+the isolated API/workers together before admitting the new type; old process
+queries do not filter it. Downgrade is verified for legacy-only data, and explicitly
+refused once new correction/type records would be lost. Keep 0008 installed until
+new data is deliberately archived/reconciled; do not delete it to force rollback.
+
+
+### Phase 4 recognition-only product amendment
+
+This amendment supersedes Phase 4's earlier manual/custom editing scope. Users
+may accept an offered recognition replacement, keep the original, play its source
+audio, or restore an accepted correction. No sentence editor, arbitrary replacement,
+custom option or slide-spelling heuristic can rewrite the transcript. Substance,
+grammar, fillers, repetitions and inaccurate explanations require rerecording.
+
+The provider must identify likely malformed/unrecognized words, technical terms,
+proper nouns, acronyms or mixed-language recognition errors. `error_type` is one of
+`malformed_word`, `technical_term`, `proper_noun`, `acronym`, `mixed_language`.
+No grammar/style category is accepted. Slide disagreement alone is not recognition
+evidence. The prompt explicitly preserves grammar, fillers, repetitions and factual
+claims; uncertainty should produce no suggestion. Human audio confirmation remains
+necessary: model classification is not acoustic verification.
+
+PATCH still receives the complete three-field edit list. Unchanged accepted edits
+and removals/restores are allowed. Every new replacement must exactly match a
+current completed recognition-v2 suggestion for the same attempt/source/revision,
+with current description/analysis evidence; otherwise the request is rejected (400).
+A stale expected correction revision still returns 409. No AI call is admitted.
+The server alone persists `suggestion_job_id` and a stable `recognition_policy`
+inside overlay JSON on explicit acceptance. Clients cannot submit that metadata.
+Reads expose only three-field edits and apply only explicitly accepted, validated
+provenance. A future matching offer cannot activate an archived manual edit.
+Accepted provenance survives analysis-version changes; newer outputs still require
+current analysis-version evidence. Existing unsupported overlay rows remain stored
+but are not applied; their policy change invalidates old feedback via its analysis
+version without changing original STT or silently advancing transcript revisions.
+
+Historical STT result schemas are unusable as new candidates but do not block
+metadata refresh, explicit retry or polling. Old coaching remains retained/outdated
+locally, including offline. Accepted corrections and restore continue to invalidate
+feedback without automatic regeneration. Cues/audio-only metrics remain reusable.

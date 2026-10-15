@@ -4,7 +4,7 @@
 // OpenAI Codex follow-up: docs/ai-collaboration-prompts-iteration-2.md#transcript-header-playback-october-14-2026
 // OutLoud redesign: Rehearse (SPEC §4.4) with transcript corrections (§5.4).
 import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View, type GestureResponderEvent } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View, type GestureResponderEvent } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import Animated, { Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 import Svg, { Rect } from 'react-native-svg';
@@ -30,6 +30,10 @@ import { ensurePages, ensureSlideText } from '../features/presentations/importer
 import { bump, getDeckState, updateDeckState, useStore, visibleDecks } from '../features/presentations/store';
 import { useDeckModel, type DeckModel } from '../features/presentations/useDeckModel';
 import { savedAttempts, type SavedAttempt } from '../features/recording/storage';
+import { API_URL } from '../services/api';
+import { createCorrectionClient, restoreCorrections } from '../features/presentations/correctionStore';
+import { useTranscriptCorrections } from '../features/presentations/useTranscriptCorrections';
+import { acceptSuggestedCorrection, suggestionActive } from '../features/presentations/transcriptSuggestions';
 import { TakePlayback } from './TakePlayback';
 import { useBack, useShell } from './shared';
 
@@ -90,7 +94,6 @@ function Rehearse({ model }: { model: DeckModel }) {
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const countTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const [live] = useState(createLive);
-  const [edit, setEdit] = useState<{ key: string; draft: string } | null>(null);
   const [alt, setAlt] = useState<{ key: string; fi: number } | null>(null);
   const [fixNote, setFixNote] = useState<string | null>(null);
   const ringP = useSharedValue(0), ringV = useSharedValue(0);
@@ -100,6 +103,8 @@ function Rehearse({ model }: { model: DeckModel }) {
   const player = useSegmentPlayer();
   const hue = HUES[deck.hue];
   const storeVersion = useStore(s => s.version);
+  const selectedAttempt = run?.parts[slide]?.attemptId ?? null;
+  const corrections = useTranscriptCorrections(selectedAttempt, model);
   const profiles = useSlideProfiles(deck.id, n);
   const [cueRetryAsk, setCueRetryAsk] = useState<ProfileState | null>(null);
   // Only an interrupted capture is surfaced here; selected and rejected takes
@@ -261,30 +266,29 @@ function Rehearse({ model }: { model: DeckModel }) {
     if (noteTimer.current) clearTimeout(noteTimer.current);
     noteTimer.current = setTimeout(() => setFixNote(null), 2600);
   };
-  const applyText = (line: Line, text: string, message: string, dismissed?: string[]) => {
-    player.stop();
-    updateDeckState(deck.id, s => ({ ...s, fixes: s.fixes + 1, edits: { ...s.edits, [line.key]: { ...s.edits[line.key], text, ...(dismissed ? { dismissed } : {}) } } }));
-    setEdit(null); setAlt(null);
-    note(message);
-  };
   const applyAlt = (line: Line, fi: number, value: string) => {
     const f = line.flags[fi];
-    const at = line.text.indexOf(f.w);
-    if (at < 0) return;
-    applyText(line, line.text.slice(0, at) + value + line.text.slice(at + f.w.length), 'Fixed · feedback updated');
+    if (!lines.some(l => l.key === line.key && l.text === line.text)) { setAlt(null); note('Transcript changed. Select the word again.'); return; }
+    if (!f?.range || !f.alts.includes(value)) return;
+    try {
+      acceptSuggestedCorrection(API_URL, line.audio.attemptId, f.range.first, f.range.last, value, model.transcripts.get(line.audio.attemptId)!);
+      player.stop(); setAlt(null); note('Correction saved · feedback may be outdated');
+      void createCorrectionClient(API_URL).synchronize(line.audio.attemptId).then(() => corrections.clearSyncError(line.audio.attemptId)).catch(() => note('Saved on phone · sync pending'));
+    } catch (e) { setAlt(null); note((e as Error).message); }
+  };
+  const restoreLine = (line: Line) => {
+    if (!line.source) return;
+    try {
+      restoreCorrections(API_URL, line.audio.attemptId, line.source.first, line.source.last, model.transcripts.get(line.audio.attemptId)!);
+      player.stop(); setAlt(null); note('Original transcript restored');
+      void createCorrectionClient(API_URL).synchronize(line.audio.attemptId).then(() => corrections.clearSyncError(line.audio.attemptId)).catch(() => note('Restored on phone · sync pending'));
+    } catch (e) { note((e as Error).message); }
   };
   const keepFlag = (line: Line, fi: number) => {
-    const w = line.flags[fi]?.w;
+    const w = line.flags[fi]?.dismissal ?? line.flags[fi]?.w;
     if (!w) return;
     updateDeckState(deck.id, s => ({ ...s, edits: { ...s.edits, [line.key]: { ...s.edits[line.key], dismissed: [...(s.edits[line.key]?.dismissed || []), w] } } }));
     setAlt(null);
-  };
-  const commitEdit = () => {
-    if (!edit) return;
-    const line = lines.find(l => l.key === edit.key);
-    const t = edit.draft.replace(/\s+/g, ' ').trim();
-    if (!line || !t || t === line.text) { setEdit(null); return; }
-    applyText(line, t, 'Edited · feedback updated');
   };
   const moveLine = (line: Line, dir: -1 | 1) => {
     const target = line.slide + dir;
@@ -297,7 +301,7 @@ function Rehearse({ model }: { model: DeckModel }) {
       return { ...s, fixes: s.fixes + 1, edits: { ...s.edits, [line.key]: e } };
     });
     setAlt(null);
-    note('Moved to slide ' + (target + 1) + ' · feedback updated');
+    note('Moved to slide ' + (target + 1));
   };
   const playLine = (line: Line) => {
     if (phaseRef.current !== 'idle') return;
@@ -315,7 +319,7 @@ function Rehearse({ model }: { model: DeckModel }) {
   };
 
   // ── Back (swipe down / system Back) ───────────────────────────────────────
-  const canGoBack = phase === 'idle' && !redoAsk && !edit && !recoveryId;
+  const canGoBack = phase === 'idle' && !redoAsk && !recoveryId;
   const leave = useCallback(() => {
     gone.set(1);
     backDy.set(withTiming(520, { duration: 280 }));
@@ -340,7 +344,6 @@ function Rehearse({ model }: { model: DeckModel }) {
   useBack(true, () => {
     if (recoveryId) { closeRecovery(); return true; }
     if (redoAsk) { cancelRedo(); return true; }
-    if (edit) { setEdit(null); return true; }
     if (phaseRef.current !== 'idle') return true;
     leave(); return true;
   });
@@ -388,11 +391,11 @@ function Rehearse({ model }: { model: DeckModel }) {
           <TickStrip n={n} cur={cur} onPick={i => goSlide(i, 'jump')} />
           {!cues ? (
             <TranscriptPanel cur={cur} lines={slideLines} recording={recording} claimed={recording && claimed} stage={stage} partId={partId ?? null}
-              accent={hue.accent} n={n} playingKey={player.playingKey} progress={player.progress} positionMs={player.positionMs} playbackUri={player.uri} playbackError={player.error} edit={edit} alt={alt} fixNote={fixNote}
+              accent={hue.accent} n={n} playingKey={player.playingKey} progress={player.progress} positionMs={player.positionMs} playbackUri={player.uri} playbackError={player.error} alt={alt} fixNote={fixNote}
               canPlayback={phase === 'idle'} slidePlaying={player.playingKey === `slide:${deck.id}:${cur}` && !player.paused} onPlaySlide={playSlide}
-              onPlay={playLine} onEdit={l => { player.stop(); setAlt(null); setEdit({ key: l.key, draft: l.text }); }} onDraft={d => setEdit(e => (e ? { ...e, draft: d } : e))}
-              onCommit={commitEdit} onCancelEdit={() => setEdit(null)} onAlt={(l, fi) => { player.stop(); setAlt(a => (a && a.key === l.key && a.fi === fi ? null : { key: l.key, fi })); }}
-              onApplyAlt={applyAlt} onKeepFlag={keepFlag} onMove={moveLine} hasRun={!!run} />
+              onPlay={playLine} onAlt={(l, fi) => { player.stop(); setAlt(a => (a && a.key === l.key && a.fi === fi ? null : { key: l.key, fi })); }}
+              onApplyAlt={applyAlt} onKeepFlag={keepFlag} onMove={moveLine} hasRun={!!run} corrections={corrections}
+              onRestore={restoreLine} />
           ) : (
             <CueGuidancePanel state={profiles.value} slide={cur} error={profiles.error} busy={profiles.busy}
               onRecover={action => {
@@ -420,6 +423,8 @@ function Rehearse({ model }: { model: DeckModel }) {
       )}
       {cueRetryAsk && <Dialog title="Retry AI cues?" body="The previous provider request has an uncertain outcome. Retrying may incur another charge."
         confirm="Retry" onConfirm={() => { const captured = cueRetryAsk; setCueRetryAsk(null); void profiles.recover(true, captured); }} onCancel={() => setCueRetryAsk(null)} />}
+      {corrections.ask && <Dialog title="Retry transcription suggestions?" body="The previous request has an uncertain outcome. Retrying may incur another charge."
+        confirm="Retry" onConfirm={corrections.confirm} onCancel={corrections.cancel} />}
       {phase === 'burst' && <Confetti />}
       {recoveryId && <TakePlayback id={recoveryId} deck={deck} initialSlide={cur}
         onClose={closeRecovery} onRecovered={recovered} />}
@@ -513,12 +518,13 @@ function TickStrip({ n, cur, onPick }: { n: number; cur: number; onPick: (i: num
 
 // ── Transcript panel ─────────────────────────────────────────────────────────
 type PanelProps = {
+  corrections: ReturnType<typeof useTranscriptCorrections>; onRestore: (l: Line) => void;
   cur: number; n: number; lines: Line[]; recording: boolean; claimed: boolean; stage: Stage | null; partId: string | null; accent: string; hasRun: boolean;
   canPlayback: boolean; slidePlaying: boolean; onPlaySlide: () => void;
   positionMs: number | null; playbackUri: string | null;
   playbackError: string | null;
-  playingKey: string | null; progress: number; edit: { key: string; draft: string } | null; alt: { key: string; fi: number } | null; fixNote: string | null;
-  onPlay: (l: Line) => void; onEdit: (l: Line) => void; onDraft: (d: string) => void; onCommit: () => void; onCancelEdit: () => void;
+  playingKey: string | null; progress: number; alt: { key: string; fi: number } | null; fixNote: string | null;
+  onPlay: (l: Line) => void;
   onAlt: (l: Line, fi: number) => void; onApplyAlt: (l: Line, fi: number, v: string) => void; onKeepFlag: (l: Line, fi: number) => void; onMove: (l: Line, dir: -1 | 1) => void;
 };
 function TranscriptPanel(p: PanelProps) {
@@ -526,8 +532,15 @@ function TranscriptPanel(p: PanelProps) {
   const worker = p.partId ? workers.get(p.partId) : undefined;
   const showLines = !(p.recording && p.claimed);
   const lines = showLines ? p.lines : [];
-  const count = lines.length ? lines.length + (lines.length === 1 ? ' sentence' : ' sentences') : '';
-  const right = p.playbackError && !p.recording ? 'Audio failed · tap Play to retry' : p.fixNote && !p.recording ? p.fixNote : lines.length && !p.recording ? 'Hold to fix · swipe to move' : count;
+  const correction = p.corrections.state, suggestion = p.corrections.suggestions;
+  const syncFailure = p.corrections.syncError || correction?.error;
+  const needsSync = !!correction && (!!correction.pending || !!correction.conflict || !!syncFailure);
+  const status = correction?.conflict ? 'Correction conflict · choose a version' : syncFailure ||
+    (correction?.pending ? 'Saved on phone · sync pending' : p.corrections.notice ||
+      (suggestion?.stale ? 'Transcription suggestions outdated · check again' : suggestion?.error?.message ||
+        (p.corrections.busy || suggestionActive(suggestion) ? (suggestion?.state === 'waiting_descriptions' ? 'Preparing slide context…' : 'Checking transcription…') :
+          suggestion?.state === 'failed' ? 'Transcription check failed · try again' :
+            suggestion?.requires_confirmation ? 'Transcription retry needs confirmation' : '')));
   let empty = '';
   let action: (() => void) | undefined;
   if (!lines.length) {
@@ -552,7 +565,10 @@ function TranscriptPanel(p: PanelProps) {
         <Txt style={styles.txHeadText}>{'Slide ' + (p.cur + 1) + ' transcript'}</Txt>
       </Pressable>
       <View style={styles.txRule} />
-      <Txt numberOfLines={1} style={[styles.txRight, { color: p.fixNote && !p.recording ? C.good : C.tertiary }]}>{right}</Txt>
+      {!!correction && !p.recording && <Pressable accessibilityRole="button" accessibilityLabel="Check transcription for AI correction suggestions"
+        disabled={p.corrections.busy || !!correction.conflict || suggestionActive(suggestion)} onPress={() => void p.corrections.generate()} hitSlop={6}>
+        <Txt style={[styles.txCheck, (p.corrections.busy || correction.conflict || suggestionActive(suggestion)) && { opacity: 0.5 }]}>Check transcription</Txt>
+      </Pressable>}
       <Pressable accessibilityRole="button" accessibilityLabel={`${p.slidePlaying ? 'Pause' : 'Play'} slide ${p.cur + 1} recording`}
         disabled={!p.canPlayback || !p.partId} onPress={p.onPlaySlide}
         style={[styles.txPlay, (!p.canPlayback || !p.partId) && { opacity: 0.28 }]}>
@@ -561,6 +577,18 @@ function TranscriptPanel(p: PanelProps) {
     </View>
     <View style={styles.txBox}>
       <ScrollView contentContainerStyle={{ gap: 8, paddingBottom: 14, flexGrow: 1 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        {!p.recording && (needsSync || !!status || !!suggestion?.dependency?.retry_action) && <View style={{ gap: 6 }}>
+          {!!status && <Txt style={styles.txVisit}>{status}</Txt>}
+          {needsSync && <View style={styles.alts}>
+            {correction?.conflict ? <>
+              <Pressable accessibilityRole="button" accessibilityLabel="Use server corrections" onPress={p.corrections.keepServer}><Txt style={styles.altText}>Use server</Txt></Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel="Keep my corrections and synchronize" onPress={p.corrections.keepLocal}><Txt style={styles.altText}>Keep mine</Txt></Pressable>
+            </> : <Pressable accessibilityRole="button" accessibilityLabel="Synchronize transcript corrections" disabled={p.corrections.busy} onPress={() => void p.corrections.synchronize()}><Txt style={styles.altText}>Sync corrections</Txt></Pressable>}
+          </View>}
+          {!!suggestion?.dependency?.retry_action && <Pressable accessibilityRole="button" accessibilityLabel="Retry slide context for transcription suggestions"
+            disabled={p.corrections.busy} onPress={() => void p.corrections.retryContext()} style={styles.alts}><Txt style={styles.altText}>Retry slide context</Txt></Pressable>}
+        </View>}
+        {!p.recording && !!(p.playbackError || p.fixNote) && <Txt style={styles.txVisit}>{p.playbackError ? 'Audio failed · tap Play to retry' : p.fixNote}</Txt>}
         {!lines.length && (
           <Pressable disabled={!action} onPress={action} style={{ flexGrow: 1, justifyContent: 'center' }}>
             <Txt style={[styles.empty, action ? { color: C.secondary } : null]}>{empty}</Txt>
@@ -572,7 +600,7 @@ function TranscriptPanel(p: PanelProps) {
           const playing = p.playingKey === l.key || (p.slidePlaying && inAudio);
           return <View key={l.key} style={{ gap: 6 }}>
             {heading && <Txt style={styles.txVisit}>{heading}</Txt>}
-            <LineRow line={l} {...p} playing={playing} editing={p.edit?.key === l.key} altFi={p.alt?.key === l.key ? p.alt.fi : -1} />
+            <LineRow line={l} {...p} playing={playing} altFi={p.alt?.key === l.key ? p.alt.fi : -1} />
           </View>;
         })}
       </ScrollView>
@@ -580,31 +608,21 @@ function TranscriptPanel(p: PanelProps) {
   </>;
 }
 
-function LineRow(p: PanelProps & { line: Line; playing: boolean; editing: boolean; altFi: number }) {
+function LineRow(p: PanelProps & { line: Line; playing: boolean; altFi: number }) {
   const { line } = p;
   const frame = useFrame();
   const dx = useSharedValue(0);
   const [dragX, setDragX] = useState(0);
-  const holdT = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const g = useRef<{ axis: 'x' | 'y' | null; long: boolean } | null>(null);
-  const latest = useRef(p);
-  useEffect(() => { latest.current = p; });
-  useEffect(() => () => { if (holdT.current) clearTimeout(holdT.current); }, []);
+  const g = useRef<{ axis: 'x' | 'y' | null } | null>(null);
   const responder: PanHandlers = {
-    onStartShould: () => !p.recording && !p.editing,
-    onGrant: () => {
-      g.current = { axis: null, long: false };
-      holdT.current = setTimeout(() => {
-        if (g.current && !g.current.axis) { g.current.long = true; void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined); latest.current.onEdit(latest.current.line); }
-      }, 480);
-    },
+    onStartShould: () => !p.recording,
+    onGrant: () => { g.current = { axis: null }; },
     onMove: (_e, gs) => {
       const s = g.current;
-      if (!s || s.long) return;
+      if (!s) return;
       const x = gs.dx / frame.s, y = gs.dy / frame.s;
       if (!s.axis) {
         if (Math.abs(x) < 7 && Math.abs(y) < 7) return;
-        if (holdT.current) { clearTimeout(holdT.current); holdT.current = null; }
         s.axis = Math.abs(x) > Math.abs(y) ? 'x' : 'y';
       }
       if (s.axis !== 'x') return;
@@ -617,12 +635,11 @@ function LineRow(p: PanelProps & { line: Line; playing: boolean; editing: boolea
     onTerminationRequest: () => g.current?.axis !== 'x',
   };
   function end(cancelled: boolean, event?: GestureResponderEvent) {
-    if (holdT.current) { clearTimeout(holdT.current); holdT.current = null; }
     const s = g.current;
     g.current = null;
     const v = dx.get();
     dx.set(withTiming(0, { duration: 220, easing: EASE_SNAP })); setDragX(0);
-    if (!s || s.long || cancelled) return;
+    if (!s || cancelled) return;
     if (s.axis === 'x') { if (Math.abs(v) > 90) p.onMove(line, v < 0 ? -1 : 1); return; }
     if (!s.axis && event) p.onPlay(line);
   }
@@ -638,9 +655,9 @@ function LineRow(p: PanelProps & { line: Line; playing: boolean; editing: boolea
       </View>
       <PanView style={[styles.lineRow, { backgroundColor: p.playing ? undefined : dragX ? '#15151B' : 'transparent' }, row]} {...responder}
         accessible accessibilityRole="button" accessibilityLabel={(p.playing ? 'Stop playback: ' : 'Tap transcript words to play from ' + fmt(line.t) + ': ') + line.text}
-        accessibilityActions={[{ name: 'activate' }, { name: 'longpress', label: 'Edit sentence' },
+        accessibilityActions={[{ name: 'activate' },
           ...(p.cur > 0 ? [{ name: 'movePrev', label: 'Move to slide ' + p.cur }] : []), ...(p.cur < p.n - 1 ? [{ name: 'moveNext', label: 'Move to slide ' + (p.cur + 2) }] : [])]}
-        onAccessibilityAction={e => { const a = e.nativeEvent.actionName; if (a === 'activate') p.onPlay(line); else if (a === 'longpress') p.onEdit(line); else if (a === 'movePrev') p.onMove(line, -1); else if (a === 'moveNext') p.onMove(line, 1); }}>
+        onAccessibilityAction={e => { const a = e.nativeEvent.actionName; if (a === 'activate') p.onPlay(line); else if (a === 'movePrev') p.onMove(line, -1); else if (a === 'moveNext') p.onMove(line, 1); }}>
         {p.playing && (
           <Svg style={StyleSheet.absoluteFill} preserveAspectRatio="none">
             <Rect x="0" y="0" width={`${pct}%`} height="100%" rx={10} fill="rgba(255, 255, 255, 0.14)" />
@@ -650,21 +667,20 @@ function LineRow(p: PanelProps & { line: Line; playing: boolean; editing: boolea
         <View style={styles.playCol}>
           <Txt style={styles.lineTime}>{fmt(line.t)}</Txt>
         </View>
-        {!p.editing ? (
           <Txt style={[styles.lineText, { color: p.playing ? '#FFFFFF' : C.body }]}>
             {segs.map((sg, i) => sg.fi < 0 ? <Txt key={i} style={sg.active ? { backgroundColor: p.accent, color: '#101014' } : undefined}>{sg.t}</Txt> : (
               <Txt key={i} accessibilityRole="button" accessibilityLabel={'Possibly misheard: ' + line.flags[sg.fi].w + '. Show corrections'} onPress={() => p.onAlt(line, sg.fi)}
                 style={[styles.flag, sg.active && { backgroundColor: p.accent, color: '#101014' }]}>{sg.t}</Txt>
             ))}
           </Txt>
-        ) : (
-          <TextInput autoFocus multiline accessibilityLabel="Edit this sentence" value={p.edit?.draft ?? ''} onChangeText={p.onDraft} onBlur={p.onCommit}
-            onSubmitEditing={p.onCommit} blurOnSubmit submitBehavior="blurAndSubmit" returnKeyType="done" style={styles.editor} selectionColor={p.accent} />
-        )}
       </PanView>
+      {line.fixed && !p.recording && <Pressable accessibilityRole="button" accessibilityLabel="Restore original transcript sentence" onPress={() => p.onRestore(line)} style={styles.alts}>
+        <Txt style={styles.altText}>Restore original</Txt>
+      </Pressable>}
       {p.altFi >= 0 && line.flags[p.altFi] && (
         <View style={styles.alts}>
           <Txt style={styles.altLead}>Did you say</Txt>
+          {!!line.flags[p.altFi].reason && <Txt style={styles.txVisit}>{line.flags[p.altFi].reason}</Txt>}
           {line.flags[p.altFi].alts.map(a => (
             <Pressable key={a} accessibilityRole="button" accessibilityLabel={`Replace “${line.flags[p.altFi].w}” with “${a}”`} onPress={() => p.onApplyAlt(line, p.altFi, a)}
               style={[styles.altChip, { borderColor: 'rgba(255, 216, 102, 0.45)', backgroundColor: 'rgba(255, 216, 102, 0.18)' }]}>
@@ -675,9 +691,12 @@ function LineRow(p: PanelProps & { line: Line; playing: boolean; editing: boolea
             style={[styles.altChip, { borderColor: 'rgba(255, 255, 255, 0.14)', backgroundColor: 'rgba(255, 255, 255, 0.06)' }]}>
             <Txt style={[styles.altText, { color: '#C9CBD3' }]}>{'Keep “' + line.flags[p.altFi].w + '”'}</Txt>
           </Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="Play audio for this transcription suggestion" onPress={() => p.onPlay(line)} style={styles.altChip}>
+            <Txt style={styles.altText}>Play audio</Txt>
+          </Pressable>
         </View>
       )}
-      {!!line.edge && !p.recording && !p.editing && (
+      {!!line.edge && !p.recording && (
         <View style={styles.edge} pointerEvents="none">
           <Glyph name="h-spin" size={14} color="#FFC266" />
           <Txt style={styles.edgeText}>{line.edge < 0 ? 'Said as the slide changed · swipe ← to move to slide ' + p.cur : 'Said as the slide changed · swipe → to move to slide ' + (p.cur + 2)}</Txt>
@@ -731,7 +750,7 @@ const styles = StyleSheet.create({
   txHead: { position: 'absolute', left: 16, right: 16, top: 364, flexDirection: 'row', alignItems: 'center', gap: 8, zIndex: 2 },
   txHeadText: { fontFamily: F.bold, fontSize: 11, letterSpacing: 0.6, textTransform: 'uppercase', color: C.tertiary },
   txRule: { flex: 1, height: 1, backgroundColor: 'rgba(255, 255, 255, 0.1)' },
-  txRight: { fontFamily: F.semibold, fontSize: 11, maxWidth: 165, flexShrink: 1 },
+  txCheck: { fontFamily: F.semibold, fontSize: 11, color: C.secondary },
   txVisit: { fontFamily: F.semibold, fontSize: 11, color: C.secondary, paddingHorizontal: 8 },
   txPlay: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   txBox: { position: 'absolute', left: 16, right: 16, top: 402, height: 104, overflow: 'hidden' },
@@ -743,12 +762,10 @@ const styles = StyleSheet.create({
   lineTime: { fontFamily: F.semibold, fontSize: 11, color: C.tertiary, fontVariant: ['tabular-nums'] },
   lineText: { flex: 1, fontFamily: F.medium, fontSize: 14, lineHeight: 19.3 },
   flag: { backgroundColor: 'rgba(255, 216, 102, 0.14)', color: '#FFE08A', textDecorationLine: 'underline', textDecorationStyle: 'dotted', textDecorationColor: 'rgba(255, 216, 102, 0.85)' },
-  editor: { flex: 1, minHeight: 64, paddingVertical: 6, paddingHorizontal: 8, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.3)', borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)', fontFamily: F.medium, fontSize: 14, lineHeight: 19.3, color: C.text, textAlignVertical: 'top' },
   alts: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, paddingTop: 4, paddingBottom: 4, paddingLeft: 42 },
   altLead: { fontFamily: F.semibold, fontSize: 12, color: C.tertiary },
-  altChip: { paddingVertical: 4, paddingHorizontal: 10, borderWidth: 1, borderRadius: 999 },
-  altText: { fontFamily: F.bold, fontSize: 12 },
+  altChip: { paddingVertical: 4, paddingHorizontal: 10, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.14)', borderRadius: 999 },
+  altText: { fontFamily: F.bold, fontSize: 12, color: C.secondary },
   edge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingBottom: 4, paddingLeft: 42 },
   edgeText: { flex: 1, fontFamily: F.semibold, fontSize: 12, color: '#FFC266' },
   paceWrap: { position: 'absolute', left: 0, right: 0, top: 512, alignItems: 'center' },

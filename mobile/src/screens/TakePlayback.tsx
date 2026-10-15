@@ -151,6 +151,7 @@ export function TakePlayback({ id, deck, initialSlide, onClose, onSlideChange, o
           <Txt style={styles.sub}>Suggestions compare your delivery with the slide content and saved transcript. Check the evidence before using them.</Txt>
           {review?.deck_id ? <>
             <Txt style={styles.sub}>{coach?.label ?? (feedback?.result ? 'Suggestions saved on this phone' : 'Tap to load feedback options')}</Txt>
+            {!!feedback?.stale && <Txt style={styles.notice}>Feedback is outdated. Synchronize corrections, then request an update.</Txt>}
             <Control label={coach ? 'Refresh AI suggestion status' : 'Load AI suggestion status'}
               text={coach ? 'Refresh suggestion status' : 'Load suggestion status'} disabled={!!coach?.busy}
               onPress={() => { if (coach) void coach.details.refresh(); else inspectCoaching(id); }} />
@@ -160,8 +161,8 @@ export function TakePlayback({ id, deck, initialSlide, onClose, onSlideChange, o
                 (!!coach?.details.feedback && (coach.details.feedback.availability.state !== 'available' ||
                   (coach.details.feedback.feedback_revision > 0 && !coach.details.feedback.retry_available)))}
               onPress={() => requestCoaching(id)} />}
-            {!!coach?.details.feedback?.retry_available && <Control label="Regenerate AI suggestions"
-              text={coach.details.feedback.feedback_revision ? 'Regenerate suggestions' : 'Retry suggestions'}
+            {!!coach?.details.feedback?.retry_available && <Control label={coach.details.feedback.stale ? 'Update feedback' : 'Regenerate AI suggestions'}
+              text={coach.details.feedback.stale ? 'Update feedback' : coach.details.feedback.feedback_revision ? 'Regenerate suggestions' : 'Retry suggestions'}
               disabled={coach.busy || !!coach.prompt || !!coach.details.draft || coach.details.feedback.availability.state !== 'available'}
               onPress={() => requestCoaching(id)} />}
             {coach?.details.feedback?.dependency?.retry_action === 'generate_descriptions' && <Control label="Retry slide descriptions"

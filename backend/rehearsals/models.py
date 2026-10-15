@@ -146,12 +146,25 @@ class DescriptionJob(models.Model):
         constraints = [models.UniqueConstraint(fields=['description_set', 'generation'], name='unique_description_generation')]
 
 
+class TranscriptCorrection(models.Model):
+    """Confirmed overlays; immutable Whisper source and audio stay on Attempt."""
+    attempt = models.OneToOneField(Attempt, on_delete=models.PROTECT, related_name='correction')
+    base_transcript_id = models.CharField(max_length=64)
+    revision = models.PositiveIntegerField(default=0)
+    edits = models.JSONField(default=list)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
 class FeedbackAnalysis(models.Model):
     """One current coaching analysis per recording; Whisper remains independent."""
-    attempt = models.OneToOneField(Attempt, on_delete=models.PROTECT, related_name='coaching')
+    attempt = models.ForeignKey(Attempt, on_delete=models.PROTECT, related_name='analyses')
+    analysis_type = models.CharField(max_length=32, default='coaching')
     feedback_revision = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['attempt', 'analysis_type'], name='unique_attempt_analysis_type')]
 
 
 class FeedbackJob(models.Model):

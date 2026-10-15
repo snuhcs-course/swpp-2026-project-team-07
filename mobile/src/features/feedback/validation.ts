@@ -173,7 +173,7 @@ function result(v: unknown, id: string, context?: FeedbackContext, pages?: numbe
   const used = new Set<number>();
   for (const card of cards) for (let i = card.word_start; i <= card.word_end; i++) { if (used.has(i)) fail(); used.add(i); }
   if (cards.length !== summary.accepted_count || !date(r.completed_at)) fail();
-  const parsed: CoachingResult = { ...summary, message: r.message === null ? null : nonblank(r.message, 100), suggestions: cards, feedback_revision: integer(r.feedback_revision, 2 ** 31 - 1, 1),
+  const parsed: CoachingResult = { ...summary, ...transcriptRevision(r), message: r.message === null ? null : nonblank(r.message, 100), suggestions: cards, feedback_revision: integer(r.feedback_revision, 2 ** 31 - 1, 1),
     description_set_id: uuid(r.description_set_id), description_revision: integer(r.description_revision, 2 ** 31 - 1, 1),
     description_origin: r.description_origin === undefined ? 'unavailable' : choice(r.description_origin, ['generated', 'edited', 'unavailable']),
     provenance: coachingProvenance(r.provenance), completed_at: date(r.completed_at)!, stale: bool(r.stale), evidence: scope, evidence_verified: false };
@@ -193,10 +193,15 @@ function dependency(v: unknown): FeedbackDependency { const r = object(v); retur
   processing_revision: integer(r.processing_revision), description_revision: integer(r.description_revision),
   ...(r.updated_at !== undefined ? { updated_at: date(r.updated_at) } : {}),
   retry_action: r.retry_action === null ? null : choice(r.retry_action, ['generate_descriptions']), ...retry(r) }; }
+function transcriptRevision(r: ObjectValue) {
+  return { ...(r.transcript_revision === undefined ? {} : { transcript_revision: integer(r.transcript_revision) }),
+    ...(r.analysis_type === undefined ? {} : { analysis_type: choice(r.analysis_type, ['coaching']) }),
+    ...(r.analysis_version === undefined ? {} : { analysis_version: nonblank(r.analysis_version, 40) }) };
+}
 export function parseFeedback(v: unknown, id: string, context?: FeedbackContext, pages?: number): FeedbackAnalysis {
   bounded(v); const r = object(v), available = object(r.availability);
   if (uuid(r.attempt_id) !== id) fail();
-  const parsed: FeedbackAnalysis = { attempt_id: id, feedback_revision: integer(r.feedback_revision),
+  const parsed: FeedbackAnalysis = { ...transcriptRevision(r), attempt_id: id, feedback_revision: integer(r.feedback_revision),
     ...(r.selection !== undefined ? { selection: selection(r.selection, 'coaching') } : {}),
     state: choice(r.state, ['absent', 'disabled', 'unavailable', 'waiting_descriptions', 'queued', 'preparing', 'submitted', 'normalizing',
       'waiting_quota', 'needs_confirmation', 'failed', 'completed', 'stale']),
@@ -243,7 +248,8 @@ export function feedbackSeekTarget(value: FeedbackAnalysis, cardIndex: number, c
 /** Runtime request guards reject extra/client-selected provider fields before fetch. */
 export function validateFeedbackRequest(value: unknown) {
   const r = object(value);
-  if (Object.keys(r).some(k => !['feedback_revision', 'acknowledge_uncertain', 'expected_selection'].includes(k))) fail();
+  if (Object.keys(r).some(k => !['feedback_revision', 'acknowledge_uncertain', 'expected_selection', 'transcript_revision'].includes(k))) fail();
+  if ('transcript_revision' in r) integer(r.transcript_revision);
   if ('expected_selection' in r) digest(r.expected_selection);
   if ('feedback_revision' in r) integer(r.feedback_revision);
   if ('acknowledge_uncertain' in r) { bool(r.acknowledge_uncertain); if (!('feedback_revision' in r)) fail(); }

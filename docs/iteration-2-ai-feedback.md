@@ -3,6 +3,12 @@
 Approved base: `front-end-design-JJ` at `eeb3307a431e62d80b2b2d261420963193da22c3`.
 Implementation branch: `it2/feature/ai_feedback`. Phase 1 is committed locally as `2bd6cd2ad7128bb30d59da8dae818b5bdb01d66c`; Phase 2 as `67a240a1c74ff8dbeb793394f21aa320c46e522d`, followed by documentation commit `fb616d6cc80f3f9ec9561c7b89a827a399d24867`. None is pushed. The user authorized Phase 3 execution on October 15; the separate UI scope update below does not authorize later phases.
 
+Phase 3 and its authorized transcript follow-ups were subsequently committed as
+`ee6233be2875739c6c9f8d2c62e9878e4ab759b7`. The user authorized the amended
+Phase 4 implementation on October 15. Phase 4 is uncommitted; its current checks
+and inspection gate are tracked in [Phase 4 verification](phase-4-verification.md).
+Phase 5 remains unstarted.
+
 ## Full implementation contract
 
 1. Detect slide/speech differences, especially graph interpretation and numerical inconsistencies, using slide images and text with evidence and uncertainty.
@@ -15,6 +21,8 @@ Implementation branch: `it2/feature/ai_feedback`. Phase 1 is committed locally a
 8. Generate up to three audience-specific Q&A questions with follow-ups from slide profiles and the selected run; reuse answer recording/evaluation.
 
 Automatically generate analysis without separate consent prompts when its prerequisites are ready. Reuse immutable/versioned slide profiles across recordings. Keep every attempt and JJ's selected-run/Keep/Overwrite behavior; accept/reject retakes without mixing output identities. Changes to inputs invalidate only dependent outputs; reopening, refresh and playback do not generate requests. Failed/uncertain submitted calls retain explicit retry rather than blind automatic resubmission. Provider configuration, quotas, source validation, receipts and recovery remain required.
+
+Phase 4 amendment (October 15): saving confirmed corrections, invalidating dependent feedback, and regenerating feedback are three separate operations. Correction saves/synchronization never enqueue presentation feedback. Retain outdated results with their transcript revision and analysis version; do not present them as current. Regeneration requires an explicit request (or a separately defined and approved application workflow), uses the latest synchronized revision, and blocks unresolved synchronization/conflicts. This exception takes precedence over the general automatic-analysis rule above. Transcription suggestions are a separate pipeline and never trigger presentation feedback. Screen opening, navigation and playback admit neither pipeline.
 
 The October 15 scope update authorizes designing and implementing additional transcript correction controls in Phase 4 and redesigning the problem-summary layout within JJ's existing Review experience in Phase 5. Prefer extending existing components; preserve JJ's visual language and selected-run architecture. This authorizes their scope within those phases, not advancement into them.
 
@@ -38,12 +46,26 @@ After each phase: run relevant checks, document functionality and limits, indepe
 
 ## Authorized UI scope for Phases 4 and 5
 
-### Phase 4 — Transcript correction interactions
+### Phase 4 — Confirmed recognition corrections
+
+October 15 product amendment supersedes unrestricted manual/custom editing:
+transcripts must faithfully represent speech. Existing controls now offer only
+AI recognition replacements or Keep original, source playback and Restore original.
+Grammar/phrasing/fillers/repetitions/factual explanations must be improved through
+rerecording, not transcript rewrites. The persistence/revision/synchronization and
+explicit feedback-regeneration requirements below remain in force. Detailed current
+behavior and physical-device checklist: [recognition-only verification](phase-4-recognition-only-verification.md).
+
+Historical scope below is superseded wherever it permits manual/custom editing.
 
 - Extend JJ's existing transcript editor where practical. Support AI suggestions, selecting replacements, entering custom corrections, and keeping the original transcript; never silently apply a suggestion.
 - Preserve original transcript/audio and timestamps. Confirmed corrections belong to their source attempt and revision, and must follow the currently selected slide take without changing Keep/Overwrite behavior.
 - Add interaction tests for suggestion selection, custom-edit save/cancel, keeping the original, revision conflicts, and replacing/rejecting a take while a suggestion or draft is open.
 - Verify on Android: highlighted-word selection, replacement controls, keyboard and scrolling behavior, playback after edits, persisted corrections after reopening, and the existing rehearsal/Compare flow. Distinguish automated interaction tests, agent-operated Android checks and human acceptance.
+- Persist source-indexed correction overlays independently of original STT/audio. Increment the effective transcript revision only for changed text; identical saves and suggestion dismissal do not advance it. Preserve pending local edits through offline failures and concurrent server updates.
+- Mark dependent recording feedback outdated immediately for pending local changes and after synchronization. Retain historical output, slide-only cue caches and independent audio metrics. Conservatively invalidate a whole-attempt analysis that consumes the whole transcript, including every affected boundary visit; future per-slide dependency scopes belong to Phase 5.
+- Expose updating through existing feedback controls. Synchronize first; verify the captured revision again at admission. Deduplicate by source attempt, transcript revision, analysis type/version and other relevant dependencies. Fence late results against newer input. Keep explicit failure/uncertainty recovery.
+- Generate STT suggestions independently; require confirmation and reject stale ranges/revisions. Preserve custom sentence edits, keep-original decisions, playback and word highlighting. Test repeated occurrences, boundaries, offline/reopen, conflicts, multiple edits, in-flight saves, concurrent regeneration, duplicate requests, late responses and cue preservation.
 
 ### Phase 5 — Review problem-summary layout
 
@@ -97,7 +119,8 @@ The existing timing readout labels requirements versus suggestions.
 
 [Implementation decisions, checks, live-provider evidence and remaining acceptance
 limits](phase-3-verification.md) record completed checks and independent review.
-Phase 3 is staged for user inspection and remains uncommitted. Phase 4 is unstarted.
+Phase 3 was subsequently committed as `ee6233b`. Phase 4 implementation and its
+current inspection gate are recorded in [the Phase 4 ledger](phase-4-verification.md).
 Seoyeon confirmed short phone playback/transcription. A separately authorized
 follow-up now labels first/return visits within the existing transcript panel;
 see the [follow-up evidence](transcript-visits-verification.md). Physical-phone

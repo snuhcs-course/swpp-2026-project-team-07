@@ -1199,3 +1199,151 @@ See [verification evidence](transcript-playback-verification.md).
 **Human decisions:** Seoyeon clarified all three playback entry points and requested
 word highlighting. This authorizes the focused fix and inline feedback, not held
 requirements-entry UI, Phase 4, commit, push or merge. Final inspection is pending.
+
+## Phase 4 confirmed transcript corrections — October 15, 2026
+
+**Contributor:** Seoyeon
+
+**Tool:** OpenAI Codex, with a separate AI reviewer. AI review is not human review.
+
+**Representative user prompts (verbatim):**
+
+> implement phase 4
+
+> Core principle: Saving a transcript correction, invalidating dependent feedback, and regenerating feedback must be three separate operations.
+
+> Do not automatically regenerate presentation feedback after each correction.
+
+> Preserve JJ's existing editor functionality, including sentence editing, word highlighting, playback, and manual corrections.
+
+**Retained material:** Implemented the approved Phase 4 amendment in the isolated
+`it2/feature/ai_feedback` checkout based on `ee6233b`. Added revisioned source-word
+correction overlays/API and separate API/attempt-scoped SQLite synchronization.
+Extended JJ's existing transcript panel with explicit save/cancel, replacement,
+custom correction, restore/keep-original, conflict choice and STT-check controls.
+Reused durable feedback jobs/quotas/receipts/recovery with an independent STT
+analysis type. Confirmed overlays inform explicit coaching requests while original
+quotes, words, audio, timestamps and visits remain source evidence. Pending edits
+invalidate cached feedback immediately; saves never generate presentation feedback.
+Existing feedback controls expose an update action. No Phase 5 summary, new screen
+or requirements sheet was implemented.
+
+**Review and human corrections:** The user's amendment superseded the general
+automatic-generation rule for correction-triggered feedback. Working-diff AI review
+found conflict loss on repeated refresh, an equivalent-text save loop, a retry
+dialog that could follow a different take, missing failed-context recovery and
+lost dismissals after manual edits. Fixes include canonical save acknowledgement,
+preserved conflicts, identity-bound retry prompts, explicit dependency retries and
+source-range dismissals. Android inspection caught low-contrast controls and
+excessive transcript chrome; controls were made readable and compact within JJ's
+existing panel. Additional regressions cover JSONB key order, punctuation and
+restoring boundary-spanning corrections. Final staged review also found legacy
+edits bypassing feedback freshness and delayed suggestion responses clearing
+staleness; read-only legacy inspection and correction-aware response fences have
+reproducing regression coverage. Human usefulness/audible acceptance is
+pending; no named human reviewer approval is inferred.
+
+**Verification:** Baseline was 215 mobile/321 backend tests. Final mobile checks
+passed 232 tests plus types/lint and Android export. SQLite and PostgreSQL suites
+each ran 332 tests successfully (23 SQLite skips, one host PostgreSQL dependency
+skip). Packaged-worker and migration evidence is recorded in the ledger.
+A separate real Celery process consumed a dedicated Redis queue against a
+temporary PostgreSQL database with a synthetic provider: duplicate deliveries
+made one STT request and one feedback request, and correction persistence queued
+no feedback. Runtime migration compared original-record counts/hashes and retained
+them. Migration tests prove legacy roundtrip and guarded refusal of lossy downgrade.
+Final counts, exact commands, staged patch and review status are in
+[the verification ledger](phase-4-verification.md).
+
+**Android evidence:** Emulator checks used a newly labeled synthetic presentation,
+mock STT/suggestions and synthetic speech audio; they do not establish live AI
+quality or real STT accuracy. Verified replacement save/revision 1, custom
+correction, cancellation without revision change, further edits/reopen persistence,
+keep-original without revision change, visit labels and playback. Only new fixture
+records/catalog alias/media were added; no phone database was read/exported. The
+external emulator seeder initially needed read-only DEX and JSON string fixes;
+those were test harness repairs, not production data repair. Removing an emulator
+port-forward did not establish disconnection, so offline Android behavior is not
+claimed; offline persistence/conflicts are exercised in SQLite tests.
+
+**Limits/authorization:** Independent AI review found no actionable findings in
+the staged implementation after repairs; 17 focused tests passed in review. Final
+human inspection remains. Exact staged patch identity and review evidence are
+provided in the handoff. No commit, push, merge or Phase 5 is authorized.
+The implementation request does not authorize commit, push, merge or Phase 5.
+The temporary synthetic worker database/queue and verification artifacts are
+separate from project media and private recordings. No credentials or private
+transcripts are included in this entry.
+
+
+## Phase 4 recognition-only amendment — October 15, 2026
+
+**Contributor:** Seoyeon
+
+**Tool:** OpenAI Codex with a separate AI reviewer; this is not human review.
+
+**Representative user requests (verbatim):**
+
+> OutLoud must faithfully represent what the presenter actually said. Users must not be able to rewrite their transcript to improve their presentation without rerecording the audio.
+
+> Remove the Custom correction option from AI suggestion controls.
+
+> Remove manual sentence editing, arbitrary text replacement, and their associated Save/Cancel UI.
+
+> Preserve feedback invalidation without automatic regeneration.
+
+> Before changing code, inspect the current implementation and identify which components are dedicated to manual editing versus shared AI-correction functionality. Then implement the smallest safe change.
+
+**Retained material:** Inspected manual editor/custom/long-press/accessibility paths,
+legacy sentence adoption, slide-spelling heuristics, correction storage/API and
+provider normalization. Removed manual controls/adoption and unsupported heuristic
+rewrites, retaining viewing, playback, navigation, alignment and source evidence.
+Only explicit AI recognition offers may be accepted; Keep original and Restore
+original remain. The backend enforces exact offered replacements and saves internal
+acceptance provenance in existing JSON. New v2 caches archive old free-text state
+without deleting it. Tightened STT prompt/schema; policy/version fences invalidate
+old output without automatic regeneration. No new screen, schema migration, Phase 5
+summary, requirements-sheet edit, commit, push or merge.
+
+**Review repairs:** Independent AI review found coincidental future offers could
+activate old manual rows, historical suggestion schemas could block retry, and old
+coaching could appear current offline. Added explicit accepted job/policy provenance,
+read-only handling of old candidates, local policy staleness and reproducing tests.
+Accepted corrections remain applied across analysis-version changes. Replacement
+highlighting uses original source-range intervals, retaining original timed words.
+
+**Verification and limits:** Automated checks mock providers; Android checks use
+the existing labeled synthetic recording. Source error classification is not proof
+of what was spoken; users must listen before accepting. Physical-phone/live-model
+quality and human audible acceptance remain unverified. Commands, counts, Android
+evidence, review and the updated physical-device checklist are recorded in
+[the amendment ledger](phase-4-recognition-only-verification.md).
+
+
+## Contextual transcript controls — October 16, 2026
+
+**Contributor:** Seoyeon
+
+**Tool:** OpenAI Codex with independent AI review.
+
+**Representative requests (verbatim):**
+
+> **Sync corrections:** Hide it when everything is synchronized. Show a status/action only for pending edits, failures, or conflicts.
+
+> **Check transcription:** Keep an explicit action because it requests AI suggestions. It could be a small button beside the transcript heading.
+
+> **Status messages:** Show them only when useful—checking, failed, outdated, or awaiting synchronization.
+
+**Retained changes:** Made sync controls contextual, moved the explicit AI check to
+the heading, hid persistent successful/absent/no-candidate notices, retained failure/
+conflict/retry controls. Independent review found a successful AI-check preflight
+could leave an old sync error visible; fixed clearing across check, acceptance and
+restore with attempt-scoped safety and recovery tests. A later custom-editor request
+was immediately retracted; no custom/manual editing was implemented.
+
+**Verification:** 237 mobile tests, typecheck/lint and Android export passed; the
+existing playback cleanup-ref warning remains. Agent-operated synthetic emulator
+inspection confirmed the quiet synchronized state and heading action. No backend
+code/provider contract changed and no live provider call was made. See the
+[current ledger](phase-4-recognition-only-verification.md#contextual-transcript-controls--october-16-2026).
+Physical-phone/human acceptance remains pending. No commit/push/merge.

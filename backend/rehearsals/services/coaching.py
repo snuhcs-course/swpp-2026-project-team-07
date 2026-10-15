@@ -18,6 +18,7 @@ from django.utils import timezone
 from ..models import (Attempt, Deck, DescriptionSet, FeedbackAnalysis, FeedbackJob,
                       FeedbackRequest, FeedbackReservation)
 from . import descriptions as descriptions_service, feedback_provider as provider
+from . import corrections
 from .alignment import align_words
 from .descriptions import (Conflict, StaleClaim, LEASE_SECONDS, _private_database_logging,
                            effective_retry_at, saved_receipt)
@@ -55,6 +56,14 @@ def attempt_identity(attempt):
     return _digest([str(attempt.pk), str(attempt.deck_id), attempt.duration_ms, attempt.slide_events,
         attempt.audience, attempt.transcript, attempt.visits, attempt.processing_revision,
         (attempt.metrics or {}).get('detected_language') or 'und', attempt.audio.name, attempt.upload_hash])
+
+
+def correction_input(attempt):
+    value = corrections.snapshot(attempt)
+    if value['source_changed']:
+        raise Conflict('transcript_source_changed')
+    return {'transcript_revision': value['revision'], 'corrections': value['edits'],
+            'effective_text': value['effective_text'], 'correction_analysis_version': corrections.ANALYSIS_VERSION}
 
 
 def prepare_attempt(attempt):
@@ -104,7 +113,13 @@ def _source_current(job):
     attempt = Attempt.objects.get(pk=job.analysis.attempt_id)
     value = job.description_set
     deck = Deck.objects.get(pk=value.deck_id)
-    return (attempt_identity(attempt) == job.source_snapshot['attempt_identity'] and
+    try:
+        correction = corrections.snapshot(attempt)
+    except FeedbackError:
+        return False
+    return (job.source_snapshot.get('correction_analysis_version', corrections.ANALYSIS_VERSION) == corrections.ANALYSIS_VERSION and
+            not correction['source_changed'] and correction['revision'] == job.source_snapshot.get('transcript_revision', 0) and
+            attempt_identity(attempt) == job.source_snapshot['attempt_identity'] and
             descriptions_service.storage_identity(deck, list(deck.slides.all())) == value.source_snapshot['storage'])
 
 
@@ -146,14 +161,18 @@ def _attach(value, job):
 
 
 @_private_database_logging()
-def generate(attempt_id, payload):
+def generate(attempt_id, payload, analysis_type='coaching'):
     attempt = Attempt.objects.select_related('deck').get(pk=attempt_id)
-    existing = FeedbackAnalysis.objects.filter(attempt=attempt).first()
+    if 'transcript_revision' in payload and payload['transcript_revision'] != corrections.snapshot(attempt)['revision']:
+        raise Conflict('correction_conflict')
+    existing = FeedbackAnalysis.objects.filter(attempt=attempt, analysis_type=analysis_type).first()
     if existing:
         # Existing analysis always retries its captured selection/source. Never
         # prepare media, select the current provider or retry its dependency here.
         with transaction.atomic():
             value, analysis, old = _locked(existing.pk, existing.feedback_revision)
+            if 'transcript_revision' in payload and payload['transcript_revision'] != corrections.snapshot(attempt)['revision']:
+                raise Conflict('correction_conflict')
             if old.generation != analysis.feedback_revision:
                 raise Conflict('stale_revision')
             assert_selection(payload, selection_descriptor(value=value, job=old, coaching=True))
@@ -171,15 +190,18 @@ def generate(attempt_id, payload):
             retry_at = effective_retry_at(value, old)
             if retry_at and retry_at > timezone.now():
                 raise Conflict('retry_not_available')
+            snapshot = old.source_snapshot
             if not _source_current(old):
-                raise Conflict('source_changed')
+                if attempt_identity(attempt) != snapshot['attempt_identity']:
+                    raise Conflict('source_changed')
+                snapshot = {**snapshot, **correction_input(attempt)}
             selection = Selection.saved(value)
             selection.check_versions(value.prompt_digest)
             check_coaching_versions(old)
             selection.credentials()
             QuotaPolicy.current(selection)
-            return _queue(analysis, value, old.source_snapshot, old)
-    if set(payload) - {'expected_selection'}:  # A retry can never create an initial analysis.
+            return _queue(analysis, value, snapshot, old)
+    if set(payload) - {'expected_selection', 'transcript_revision'}:  # A retry can never create an initial analysis.
         raise Conflict('stale_revision')
     source = prepare_attempt(attempt)
     assert_selection(payload, selection_descriptor(coaching=True))
@@ -192,24 +214,28 @@ def generate(attempt_id, payload):
     description_request = selection.adapter().prepare_descriptions(deck)
     captured = {'source': source, 'attempt_identity': attempt_identity(attempt),
                 'analysis_id': prepared.input_id, 'transcript_id': prepared.transcript_id,
-                'chronology_id': _digest([attempt.duration_ms, attempt.slide_events])}
+                'chronology_id': _digest([attempt.duration_ms, attempt.slide_events]), **correction_input(attempt)}
+    if 'transcript_revision' in payload and payload['transcript_revision'] != captured['transcript_revision']:
+        raise Conflict('correction_conflict')
     # The description intent and feedback dependency commit together.
     with transaction.atomic():
         locked_deck = Deck.objects.select_for_update().get(pk=attempt.deck_id)
         current_attempt = Attempt.objects.select_for_update().get(pk=attempt_id)
         if attempt_identity(current_attempt) != captured['attempt_identity']:
             raise Conflict('source_changed')
+        if correction_input(current_attempt)['transcript_revision'] != captured['transcript_revision']:
+            raise Conflict('correction_conflict')
         descriptions_service.check_storage(locked_deck, snapshot)
         # Serializing initial admission on the deck/attempt also deduplicates a
         # second caller that observed no analysis before preparing its input.
-        current = FeedbackAnalysis.objects.filter(attempt_id=attempt_id).first()
+        current = FeedbackAnalysis.objects.filter(attempt_id=attempt_id, analysis_type=analysis_type).first()
         if current:
             # Recheck active/completed vs failed/stale and retry requirements if
             # another caller admitted while this caller prepared its snapshots.
-            return generate(attempt_id, payload)
+            return generate(attempt_id, payload, analysis_type)
         assert_selection(payload, selection_descriptor(coaching=True))
         value = descriptions_service.admit_prepared(selection, deck, snapshot, dependency=True, candidate=description_request)
-        analysis = FeedbackAnalysis.objects.create(attempt=current_attempt)
+        analysis = FeedbackAnalysis.objects.create(attempt=current_attempt, analysis_type=analysis_type)
         return _queue(analysis, value, captured)
 
 
@@ -238,6 +264,9 @@ def _prepared(value, job):
     adapter = selection.adapter(coaching_schema_version=job.schema_version)
     descriptions = adapter.edited_descriptions(analysis, job.descriptions_snapshot)
     prepared = adapter.prepare_coaching(analysis, descriptions)
+    if job.source_snapshot.get('transcript_revision', 0) or job.analysis.analysis_type == 'transcription_suggestions':
+        from .transcript_suggestions import augment_request
+        prepared = augment_request(prepared, job.source_snapshot, job.analysis.analysis_type)
     if job.input_hash and prepared.input_hash != job.input_hash:
         raise FeedbackError('snapshot_unavailable')
     return prepared
@@ -416,7 +445,11 @@ def run_coaching(analysis_id, revision):
             except Exception:
                 logger.warning('Coaching receipt could not be saved; recovery required.')
                 return
-        result = provider.normalize(prepared, receipt)
+        if job.analysis.analysis_type == 'transcription_suggestions':
+            from .transcript_suggestions import normalize_suggestions
+            result = normalize_suggestions(prepared, receipt, job.source_snapshot)
+        else:
+            result = provider.normalize(prepared, receipt)
     except StaleClaim:
         return
     except Exception as error:
@@ -507,6 +540,8 @@ def _result(value, job, current_job):
         'description_revision': job.description_revision, 'provenance': _provenance(value, job),
         'description_origin': job.source_snapshot.get('description_origin') if job.source_snapshot.get('description_origin') in {'generated', 'edited'} else 'unavailable',
         'completed_at': job.completed_at, 'stale': job.pk != current_job.pk or _stale(value, job) or not _source_current(job),
+        'transcript_revision': job.source_snapshot.get('transcript_revision', 0),
+        'analysis_type': job.analysis.analysis_type, 'analysis_version': job.source_snapshot.get('correction_analysis_version', 'legacy'),
         'evidence': {'attempt_id': source['attempt_id'], 'deck_id': source['deck_id'],
             'transcript_id': job.source_snapshot['transcript_id'], 'chronology_id': job.source_snapshot['chronology_id'],
             'duration_ms': source['duration_ms'], 'page_count': len(source['slides']),
@@ -517,9 +552,9 @@ def _result(value, job, current_job):
 
 
 @_private_database_logging()
-def read(attempt_id):
+def read(attempt_id, analysis_type='coaching'):
     Attempt.objects.only('id').get(pk=attempt_id)
-    analysis = FeedbackAnalysis.objects.filter(attempt_id=attempt_id).first()
+    analysis = FeedbackAnalysis.objects.filter(attempt_id=attempt_id, analysis_type=analysis_type).first()
     if analysis is None:
         availability = _availability()
         return {'attempt_id': str(attempt_id), 'feedback_revision': 0,
@@ -561,6 +596,8 @@ def read(attempt_id):
         if request:
             updates.extend(t for t in (request.received_at, request.completed_at) if t is not None)
         return {'attempt_id': str(attempt_id), 'feedback_revision': analysis.feedback_revision,
+            'transcript_revision': job.source_snapshot.get('transcript_revision', 0),
+            'analysis_type': analysis.analysis_type, 'analysis_version': job.source_snapshot.get('correction_analysis_version', 'legacy'),
             'state': state, 'stage': 'descriptions' if job.descriptions_snapshot is None else 'coaching',
             'selection': selection_descriptor(value=value, job=job, coaching=True),
             'availability': _availability(Selection.saved(value)), 'provenance': _provenance(value, job),

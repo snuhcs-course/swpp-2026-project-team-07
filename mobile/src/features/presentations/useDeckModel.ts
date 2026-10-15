@@ -13,6 +13,10 @@ import { API_URL } from '../../services/api';
 import { deckById, getDeckState, useStore, type DeckState, type Presentation } from './store';
 import { timedPresentation, selectedRunTarget } from './timing';
 import { getRequirementsVersion, subscribeRequirements } from './requirementsStore';
+import { readCorrections } from './correctionStore';
+import { correctionLines } from './correctionLines';
+import { readSTTSuggestions } from './transcriptSuggestions';
+import { readReview } from '../transcription/reviewStorage';
 
 export type DeckModel = {
   deck: ReturnType<typeof timedPresentation>; state: DeckState; n: number; times: number[]; total: number; lines: Line[]; vocab: Vocabulary;
@@ -55,7 +59,11 @@ export function deckModel(deck: Presentation, state: DeckState, run: Run | null 
   const ids = runAttemptIds(run);
   const { transcripts, stages } = transcriptsFor(ids);
   const vocab = buildVocabulary(deck.slides.map(s => s.text));
-  const lines = buildLines(run, n, transcripts, state.edits, vocab);
+  const lines = correctionLines(buildLines(run, n, transcripts, state.edits, vocab), transcripts, vocab,
+    id => {
+      const saved = readCorrections(API_URL, id);
+      return saved?.server.base_transcript_id === readReview(API_URL, id)?.transcript_id ? saved : null;
+    }, id => readSTTSuggestions(API_URL, id), state.edits);
   const times = runTimes(run, n);
   const transcribed = ids.length > 0 && ids.every(id => transcripts.has(id) || stages.get(id) === 'no_speech');
   const points = deck.slides.map(s => s.points);

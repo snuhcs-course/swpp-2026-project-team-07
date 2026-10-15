@@ -8,7 +8,8 @@ import { activeWordIndex, transcriptSpans } from '../features/transcription/play
 import { partSeconds, runStarts, type Run } from './run';
 import { fmt } from './format';
 
-export type Flag = { w: string; alts: string[] };
+export type Flag = { w: string; alts: string[]; at?: number; reason?: string; dismissal?: string;
+  range?: { first: number; last: number; revision: number; localVersion: number } };
 export type Line = {
   /** Stable across merges and edits: attempt id + index of the first word. */
   key: string;
@@ -27,6 +28,9 @@ export type Line = {
   /** Original positive-duration visit within this slide's selected source take. */
   visit: { slide: number; index: number; startMs: number };
   words: TranscriptWord[];
+  /** Display-only replacement spans reuse original range timing; source words stay immutable. */
+  highlightWords?: TranscriptWord[];
+  source?: { first: number; last: number; text: string };
   audio: { attemptId: string; startMs: number; endMs: number };
 };
 export type LineEdit = { text?: string; slide?: number; dismissed?: string[] };
@@ -79,7 +83,7 @@ function capitalize(s: string) { return s.charAt(0).toUpperCase() + s.slice(1); 
 
 /** Build the lines of the merged run from each attempt's transcript and the saved corrections. */
 export function buildLines(run: Run | null, n: number, transcripts: ReadonlyMap<string, Transcript>,
-  edits: Readonly<Record<string, LineEdit>>, vocab: Vocabulary): Line[] {
+  edits: Readonly<Record<string, LineEdit>>, _vocab: Vocabulary): Line[] {
   if (!run) return [];
   const times = Array.from({ length: n }, (_, i) => partSeconds(run.parts[i]));
   const starts = runStarts(times);
@@ -110,16 +114,16 @@ export function buildLines(run: Run | null, n: number, transcripts: ReadonlyMap<
         // An older full-sentence edit cannot safely be mapped onto one side of
         // a slide boundary. Retain it in storage for review, but use timed words.
         const segmentText = clipped ? words.slice(first, last + 1).map(w => w.text.trim()).join(' ') : s.text;
-        const text = !clipped && edit.text ? edit.text : capitalize(segmentText);
+        const text = capitalize(segmentText); // Legacy arbitrary edits stay archived, never applied.
         const target = !clipped ? edit.slide ?? slide : slide;
         const moved = target !== slide;
-        const dismissed = new Set(edit.dismissed || []);
         lines.push({
           key, slide: Math.max(0, Math.min(n - 1, target)), t: starts[slide] + Math.min(rel, Math.max(0, times[slide] - 1)), rel, text,
-          flags: misheard(text, vocab, slide).filter(f => !dismissed.has(f.w)),
-          edge: 0, moved, from: moved ? slide : null, fixed: !clipped && edit.text !== undefined,
+          flags: [],
+          edge: 0, moved, from: moved ? slide : null, fixed: false,
           visit: { slide, index: visitIndex, startMs: seg.startMs },
-          words: words.slice(first, last + 1).map((w, i) => i === 0 && (clipped || !edit.text) ? { ...w, text: capitalize(w.text.trim()) } : w),
+          words: words.slice(first, last + 1).map((w, i) => i === 0 ? { ...w, text: capitalize(w.text.trim()) } : w),
+          source: { first, last, text: capitalize(segmentText) },
           audio: { attemptId: part.attemptId, startMs: start, endMs: Math.max(endMs, start + 300) },
         });
       });
@@ -161,76 +165,27 @@ export function buildVocabulary(slideTexts: readonly string[]): Vocabulary {
   return { joined, terms: [...terms], perSlide };
 }
 
-export function editDistance(a: string, b: string): number {
-  const m = a.length, n = b.length;
-  if (Math.abs(m - n) > 2) return 3;
-  let prev = Array.from({ length: n + 1 }, (_, j) => j);
-  for (let i = 1; i <= m; i++) {
-    const cur = [i];
-    for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
-    prev = cur;
-  }
-  return prev[n];
-}
-
-/** Words in a sentence that look like a misheard slide term, with the slide's spelling as the fix. */
-export function misheard(text: string, vocab: Vocabulary, slide: number): Flag[] {
-  const out: Flag[] = [];
-  const seen = new Set<string>();
-  const tokens = [...String(text).matchAll(/[\p{L}\p{N}'’-]+/gu)].map(m => m[0]);
-  const add = (w: string, alt: string) => {
-    if (seen.has(w) || w === alt || out.length >= 2 || !text.includes(w)) return;
-    seen.add(w); out.push({ w, alts: [alt] });
-  };
-  // Two spoken words that join into one slide word ("out loud" → "OutLoud").
-  for (let i = 0; i + 1 < tokens.length; i++) {
-    const pair = tokens[i] + ' ' + tokens[i + 1];
-    const hit = vocab.joined.get((tokens[i] + tokens[i + 1]).toLowerCase());
-    if (hit) add(pair, hit);
-  }
-  // A single word that differs only in letter case from a product-style name.
-  for (const tok of tokens) {
-    const term = vocab.terms.find(t => /[a-z][A-Z]/.test(t) && t.toLowerCase() === tok.toLowerCase());
-    if (term && term !== tok) add(tok, term);
-  }
-  // A phrase one or two letters away from a phrase on this slide ("manual levels").
-  for (const phrase of vocab.perSlide[slide] || []) {
-    const [a, b] = phrase.split(' ');
-    if (!b) continue;
-    for (let i = 0; i + 1 < tokens.length; i++) {
-      const x = tokens[i], y = tokens[i + 1];
-      const exactA = x.toLowerCase() === a.toLowerCase(), exactB = y.toLowerCase() === b.toLowerCase();
-      if (exactA === exactB) continue;
-      const other = exactA ? [y, b] : [x, a];
-      const d = editDistance(other[0].toLowerCase(), other[1].toLowerCase());
-      if (d >= 1 && d <= 2 && other[1].length >= 5) add(x + ' ' + y, phrase);
-    }
-  }
-  return out;
-}
-
 /** Split a sentence into plain and flagged pieces for display. */
 export function splitFlags(text: string, flags: readonly Flag[]): { t: string; fi: number }[] {
-  let segs = [{ t: text, fi: -1 }];
-  flags.forEach((f, fi) => {
-    const next: { t: string; fi: number }[] = [];
-    for (const sg of segs) {
-      const at = sg.fi < 0 ? sg.t.indexOf(f.w) : -1;
-      if (at < 0) { next.push(sg); continue; }
-      if (at > 0) next.push({ t: sg.t.slice(0, at), fi: -1 });
-      next.push({ t: f.w, fi });
-      if (at + f.w.length < sg.t.length) next.push({ t: sg.t.slice(at + f.w.length), fi: -1 });
-    }
-    segs = next;
-  });
-  return segs;
+  const ranges = flags.map((f, fi) => ({ at: f.at ?? text.indexOf(f.w), end: (f.at ?? text.indexOf(f.w)) + f.w.length, fi }))
+    .filter(r => r.at >= 0 && text.slice(r.at, r.end) === flags[r.fi].w).sort((a, b) => a.at - b.at);
+  const parts: { t: string; fi: number }[] = [];
+  let cursor = 0;
+  for (const r of ranges) {
+    if (r.at < cursor) continue;
+    if (r.at > cursor) parts.push({ t: text.slice(cursor, r.at), fi: -1 });
+    parts.push({ t: text.slice(r.at, r.end), fi: r.fi }); cursor = r.end;
+  }
+  if (cursor < text.length) parts.push({ t: text.slice(cursor), fi: -1 });
+  return parts;
 }
 
 /** Layer native-position word highlighting over the existing correction ranges. */
-export function playbackPieces(line: Pick<Line, 'text' | 'words' | 'flags'>, positionMs: number | null): { t: string; fi: number; active: boolean }[] {
-  const active = positionMs === null ? -1 : activeWordIndex(line.words, positionMs);
+export function playbackPieces(line: Pick<Line, 'text' | 'words' | 'flags' | 'highlightWords'>, positionMs: number | null): { t: string; fi: number; active: boolean }[] {
+  const words = line.highlightWords ?? line.words;
+  const active = positionMs === null ? -1 : activeWordIndex(words, positionMs);
   let offset = 0, start = -1, end = -1;
-  for (const span of transcriptSpans({ text: line.text, words: line.words })) {
+  for (const span of transcriptSpans({ text: line.text, words })) {
     if (span.wordIndex === active && active >= 0) { start = offset; end = offset + span.text.length; }
     offset += span.text.length;
   }
