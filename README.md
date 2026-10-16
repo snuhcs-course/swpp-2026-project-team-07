@@ -10,7 +10,7 @@ An Android presentation rehearsal app that connects PDF slides, recordings, slid
 
 - **This copy has the redesigned mobile UI** (design prototype rebuild, October 14, 2026). See [REDESIGN.md](REDESIGN.md) for setup, the screen-to-feature map and verification limits.
 - **Iteration 2 is current.** Iteration 1 features were merged into `main` on October 11, 2026 (PRs #17–#21).
-- Available features include PDF import, recording with slide tracking, saved audio playback, hosted Whisper transcription, synchronized transcript review and AI feedback.
+- Available features include PDF import, recording with slide tracking, saved audio playback, ElevenLabs Scribe v2 transcription, synchronized transcript review and AI feedback.
 - Local import, recording and saved-media playback work without the backend. Upload, transcription and feedback require the configured server; provider work requires internet and credentials.
 - Iteration 2 Phase 2 adds cached image-aware slide profiles with zero to three essential Must Cover points and zero to three optional Go Deeper suggestions per slide, aiming for 8–16 words (maximum 25) with expandable supporting details. PDF upload admits them automatically when feedback is configured; JJ's existing Cues area switches categories and displays progress and saved results. Historical description/coaching functionality remains separate. See the [phase ledger](docs/iteration-2-ai-feedback.md).
 - Phase 3 derives exact-sum per-slide timing from explicitly saved duration requirements and uses mono AAC at 64 kbps for new captures up to thirty minutes. Missing duration retains labeled suggested timing; duration/audience entry UI remains held. See [Phase 3 evidence](docs/phase-3-verification.md).
@@ -76,7 +76,7 @@ npm run android
 
 1. On Home, pull up to add a PDF, then tap its presentation card to start a rehearsal.
 2. Record while navigating slides, then finish the recording.
-3. With the server available, the app uploads the PDF/audio and starts transcription after first-use OpenAI disclosure. If upload or transcription fails, tap its status in the slide transcript to retry.
+3. With the server available, the app uploads the PDF/audio and starts transcription after first-use ElevenLabs disclosure. If upload or transcription fails, tap its status in the slide transcript to retry.
 4. Open a presentation from Home. The transcript is limited to the current slide; tap its words to play that sentence from the selected recording, or tap the small icon on the right of the transcript heading to play or pause that slide's full recording. Retaking a recorded slide opens the existing comparison screen, where you choose **Keep current** or **Overwrite**. The new recording stays pending until you decide. If a capture is interrupted, tap the status beneath the timer to inspect and recover its audio; close the sheet and tap again to inspect another interrupted capture. A recovered redo uses the same choice.
 5. After a new selected recording is transcribed, its first feedback starts automatically. In Review, select a recorded slide. Review up to four prioritized findings, then tap **Listen at…** and **Play feedback evidence** to replay from its original source time. Use **Update feedback** after confirmed transcription corrections. Legacy take-level suggestions remain in recording details.
 6. In Review, tap the existing slide preview to open recording details for upload recovery, remote media download and slide descriptions. Audio starts from transcript words; there are no separate playback controls.
@@ -88,11 +88,11 @@ npm run android
 ## Configuration and limits
 
 - Keep provider keys in ignored `backend/.env`; never put secrets in `EXPO_PUBLIC_*` variables.
-- Hosted transcription uses OpenAI `whisper-1`. Detected no-speech recordings produce an empty transcript without a provider request.
+- Hosted transcription uses ElevenLabs `scribe_v2` with verbatim output (`no_verbatim=false`), configured through `ELEVENLABS_API_KEY`. Existing Whisper transcripts remain readable; new audio is sent only to ElevenLabs. Detected no-speech recordings produce an empty transcript without a provider request.
 - To enable feedback, set `FEEDBACK_ENABLED=true` and configure the selected provider's key, model, project identity and positive RPM/TPM allowances. `FEEDBACK_PROVIDER` defaults to `openai`; `gemini` is supported. See the [configuration reference](docs/ai-feedback.md#provider-configuration-and-operational-bounds) and [operator summary](docs/ai-feedback.md#operator-and-review-summary).
 - **Input limits:** any positive slide count, 50 MiB PDF, thirty-minute recordings and 25,000,000 audio bytes. Oversized legacy audio remains playable locally; record a shorter attempt to upload.
 - Failed or uncertain provider submissions retain explicit recovery/confirmation controls. A retry may incur another charge; the system does not guarantee exactly-once provider execution or a spending cap.
-- [Dependency assessment](docs/whisper-transcription.md#packaged-gate-dependency-assessment-2026-10-08) records unresolved Torch advisories and their assessed scope.
+- [Scribe adapter and verification](docs/scribe-transcription.md) · [Gate dependency assessment](docs/whisper-transcription.md#packaged-gate-dependency-assessment-2026-10-08) records unresolved Torch advisories and their assessed scope.
 
 ## Checks
 

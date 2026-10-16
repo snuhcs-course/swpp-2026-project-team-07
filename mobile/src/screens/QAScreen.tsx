@@ -1,3 +1,4 @@
+// Scribe migration: OpenAI Codex, Iteration 2 (2026-10-16); see active collaboration log.
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
 // Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
 // OutLoud redesign: Audience Q&A (SPEC §4.7, §5.7).
@@ -19,6 +20,7 @@ import { BACK_T } from '../domain/gestures';
 import { randomUUID } from 'expo-crypto';
 import { API_URL } from '../services/api';
 import { readReview } from '../features/transcription/reviewStorage';
+import { saveAnalysisConsent } from '../features/transcription/analysisStorage';
 import { useDurableQa } from '../features/qa/useDurableQa';
 import { qaActive,qaHistoryJobs,qaScreenKey } from '../features/qa/state';
 import { sentences } from '../domain/lines';
@@ -63,6 +65,7 @@ function QA({ model,qa,archived,historyAvailable,onHistory }: { model: DeckModel
   });
   const [load,setLoad]=useState<{kind:'idle'|'loading'|'error';message?:string}>({kind:'idle'});
   const [answerAsk,setAnswerAsk]=useState<{k:string;qi:number;p:0|1;a:StoredAnswer}|null>(null);
+  const [answerDisclosure,setAnswerDisclosure]=useState<{k:string;qi:number;p:0|1;a:StoredAnswer;confirmed:boolean;retry:boolean}|null>(null);
   const submissions=useRef(new Map<string,AbortController>());
   useEffect(()=>{const active=submissions.current;return()=>{active.forEach(c=>c.abort());active.clear();};},[]);
   const [position, setI] = useState(0);
@@ -130,6 +133,7 @@ function QA({ model,qa,archived,historyAvailable,onHistory }: { model: DeckModel
     }catch(e){
       if(controller.signal.aborted)return;
       if(e instanceof QaError&&e.code==='confirmation_required')setAnswerAsk({k,qi,p,a});
+      if(e instanceof QaError&&e.code==='transcription_consent_required')setAnswerDisclosure({k,qi,p,a,confirmed,retry});
       update(k,{...a,status:'error',error:e instanceof Error?e.message:'The answer could not be reviewed.'});
     }finally{submissions.current.delete(a.id);}
   };
@@ -370,6 +374,10 @@ function QA({ model,qa,archived,historyAvailable,onHistory }: { model: DeckModel
           <HintRow hints={hints} />
         </Animated.View>
       </PanView>
+      {answerDisclosure&&<Dialog title="Transcribe with ElevenLabs?"
+        body="Reviewing this answer sends your saved audio through your OutLoud server to ElevenLabs for Scribe v2 transcription. Continue to allow transcription after future recordings, or Cancel to keep the answer on this phone."
+        confirm="Continue" onConfirm={()=>{const a=answerDisclosure;saveAnalysisConsent();setAnswerDisclosure(null);void judge(a.k,a.qi,a.p,a.a,a.confirmed,a.retry);}}
+        onCancel={()=>setAnswerDisclosure(null)}/>}
       {(qa.ask||answerAsk)&&<Dialog title="Confirm retry" body="The previous request may have reached the provider and incurred a charge. Retry the same saved input?"
         confirm="Retry" onConfirm={()=>{if(answerAsk){const a=answerAsk;setAnswerAsk(null);void judge(a.k,a.qi,a.p,a.a,true);}else void qa.confirm();}}
         onCancel={()=>{setAnswerAsk(null);qa.cancel();}}/>}

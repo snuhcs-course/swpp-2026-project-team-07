@@ -1,3 +1,4 @@
+// Scribe migration: OpenAI Codex, Iteration 2 (2026-10-16); see active collaboration log.
 // AI-generated/modified with OpenAI Codex, Iteration 1 (2026-09-26 to 2026-10-09).
 // Attribution/review scope: docs/history/ai-collaboration-validation-iteration-1-retired-2026-10-09.md#ai-code-markers
 import type { FeedbackAnalysis } from './feedback';
@@ -58,7 +59,7 @@ export type AttemptResult = {
   metrics: TimingMetrics | null;
   analysis_outcome: "speech" | "no_speech" | "legacy" | null;
   feedback_state: "disabled" | "legacy";
-  provenance: { provider: "openai" | null; model: "whisper-1" | null; generation: number | null;
+  provenance: { provider: "openai" | "elevenlabs" | null; model: "whisper-1" | "scribe_v2" | null; generation: number | null;
     outcome: "submitted" | "received" | "rejected" | "uncertain" | null; speech_gate: "silero-vad" | null };
   status: "pending" | "processing" | "completed" | "failed";
   transcript: Transcript | null;

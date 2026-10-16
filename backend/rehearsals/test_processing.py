@@ -14,8 +14,8 @@ class ProcessingTests(TransactionTestCase):
                                      {'slide_index': 1, 'at_ms': 1799000}]
         self.attempt.save(update_fields=['duration_ms', 'slide_events'])
         self.queue()
-        raw = {'text': 'Start 끝', 'language': 'english', 'words': [
-            {'word': 'Start', 'start': 0.1, 'end': 0.4}, {'word': '끝', 'start': 1799.1, 'end': 1799.5}]}
+        raw = {'text': 'Start 끝', 'language_code': 'eng', 'words': [
+            {'type': 'word', 'text': 'Start', 'start': 0.1, 'end': 0.4}, {'type': 'word', 'text': '끝', 'start': 1799.1, 'end': 1799.5}]}
         self.assertEqual(self.run_worker(raw=raw), 1)
         self.assertEqual(self.run_worker(raw=raw), 0)
         public = self.client.get(self.route.removesuffix('process/')).data
@@ -89,10 +89,10 @@ class ProcessingTests(TransactionTestCase):
     def run_worker(self, raw=None, speech=True, failure=None):
         from .services.processing import run_attempt
         self.attempt.refresh_from_db()
-        raw = raw if raw is not None else {'text': 'Hello 안녕', 'language': 'english', 'words': [
-            {'word': 'Hello', 'start': 0.1, 'end': 0.4}, {'word': '안녕', 'start': 1, 'end': 1.5}]}
+        raw = raw if raw is not None else {'text': 'Hello 안녕', 'language_code': 'eng', 'words': [
+            {'type': 'word', 'text': 'Hello', 'start': 0.1, 'end': 0.4}, {'type': 'word', 'text': '안녕', 'start': 1, 'end': 1.5}]}
         with patch('rehearsals.services.processing.has_speech', return_value=speech), \
-             patch.dict('os.environ', {'OPENAI_API_KEY': 'synthetic-test-key'}), \
+             patch.dict('os.environ', {'ELEVENLABS_API_KEY': 'synthetic-test-key'}), \
              patch('rehearsals.services.transcription.request_raw', return_value=raw, side_effect=failure) as outbound:
             run_attempt(str(self.attempt.id), self.attempt.processing_revision)
         self.attempt.refresh_from_db()
@@ -217,7 +217,7 @@ class ProcessingTests(TransactionTestCase):
 
     def test_alignment_failure_retains_transcript_and_retry_never_retranscribes(self):
         self.queue()
-        self.assertEqual(self.run_worker(raw={'text': 'past end', 'words': [{'word': 'past', 'start': 1.9, 'end': 3}]}), 1)
+        self.assertEqual(self.run_worker(raw={'text': 'past end', 'words': [{'type': 'word', 'text': 'past', 'start': 1.9, 'end': 3}]}), 1)
         self.assertEqual(self.attempt.error['code'], 'alignment_failed')
         self.assertEqual(self.attempt.failed_stage, 'aligning')
         self.assertEqual(self.attempt.duration_ms, 2000)
@@ -270,7 +270,7 @@ class ProcessingTests(TransactionTestCase):
         from .services.processing import run_attempt
         from .services.transcription import TranscriptionError
         revision = self.queue()
-        with patch('rehearsals.services.processing.has_speech', return_value=True), patch.dict('os.environ', {'OPENAI_API_KEY': ''}):
+        with patch('rehearsals.services.processing.has_speech', return_value=True), patch.dict('os.environ', {'ELEVENLABS_API_KEY': ''}):
             run_attempt(str(self.attempt.id), revision)
         self.attempt.refresh_from_db()
         self.assertEqual(self.attempt.error['code'], 'missing_api_key')
@@ -330,6 +330,8 @@ class ProcessingTests(TransactionTestCase):
             recover_work()
         self.assertEqual(self.run_worker(), 0)
         self.assertEqual(self.attempt.transcript['text'], 'saved')
+        public = self.client.get(self.route.removesuffix('process/')).data
+        self.assertEqual((public['provenance']['provider'], public['provenance']['model']), ('openai', 'whisper-1'))
         self.assertEqual(self.attempt.status, 'completed')
 
     def test_stale_claim_cannot_write_or_submit_and_marker_failure_never_calls(self):
@@ -340,7 +342,7 @@ class ProcessingTests(TransactionTestCase):
         with self.assertRaises(StaleClaim):
             write_claim(stale, transcript={'text': 'stale', 'words': []})
         with patch('rehearsals.services.processing.has_speech', return_value=True), \
-             patch.dict('os.environ', {'OPENAI_API_KEY': 'synthetic-test-key'}), \
+             patch.dict('os.environ', {'ELEVENLABS_API_KEY': 'synthetic-test-key'}), \
              patch('rehearsals.services.processing.mark_submitted', side_effect=RuntimeError('save failed')), \
              patch('rehearsals.services.transcription.request_raw') as outbound:
             run_attempt(str(self.attempt.id), revision)
@@ -361,7 +363,7 @@ class ProcessingTests(TransactionTestCase):
         from .services.processing import run_attempt, recover_work
         revision = self.queue()
         with patch('rehearsals.services.processing.has_speech', return_value=True), \
-             patch.dict('os.environ', {'OPENAI_API_KEY': 'synthetic-test-key'}), \
+             patch.dict('os.environ', {'ELEVENLABS_API_KEY': 'synthetic-test-key'}), \
              patch('rehearsals.services.processing.save_raw', side_effect=RuntimeError('database lost')), \
              patch('rehearsals.services.transcription.request_raw', return_value={'text': '', 'words': []}) as outbound:
             run_attempt(str(self.attempt.id), revision)
@@ -418,7 +420,7 @@ class ProcessingTests(TransactionTestCase):
         from .services.transcription import _normalize
         from .services.alignment import align_words
         original = self.attempt.audio.read()
-        raw = {'text': 'hello', 'words': [{'word': 'hello', 'start': 0, 'end': 1}],
+        raw = {'text': 'hello', 'words': [{'type': 'word', 'text': 'hello', 'start': 0, 'end': 1}],
                'usage': {'seconds': 2}, 'private_extra': 'private-provider-sentinel'}
         revision = self.queue()
         def outbound(prepared):
@@ -427,17 +429,18 @@ class ProcessingTests(TransactionTestCase):
             self.assertIsNotNone(request.submitted_at)
             self.assertIsNone(request.raw_received_at)
             self.assertEqual(request.input_hash, hashlib.sha256(original).hexdigest())
+            self.assertEqual((request.provider, request.model), ('elevenlabs', 'scribe_v2'))
             self.assertEqual(prepared.audio.read(), original)
             return raw
-        def normalize(value):
+        def normalize(value, provider):
             self.assertEqual(self.attempt.provider_requests.get().raw_response, raw)
-            return _normalize(value)
+            return _normalize(value, provider)
         def align(*args):
             self.attempt.refresh_from_db()
             self.assertEqual(self.attempt.transcript['text'], 'hello')
             return align_words(*args)
         with patch('rehearsals.services.processing.has_speech', return_value=True), \
-             patch.dict('os.environ', {'OPENAI_API_KEY': 'synthetic-test-key'}), \
+             patch.dict('os.environ', {'ELEVENLABS_API_KEY': 'synthetic-test-key'}), \
              patch('rehearsals.services.transcription.request_raw', side_effect=outbound) as called, \
              patch('rehearsals.services.transcription._normalize', side_effect=normalize), \
              patch('rehearsals.services.processing.align_words', side_effect=align):
@@ -505,8 +508,8 @@ class ConcurrentProcessingTests(TransactionTestCase):
             with patch('rehearsals.tasks.process_attempt.delay'):
                 admit(self.attempt.pk, {})
             with patch('rehearsals.services.processing.has_speech', return_value=True), \
-                 patch.dict('os.environ', {'OPENAI_API_KEY': 'synthetic-test-key'}), \
-                 patch('rehearsals.services.transcription.request_raw', return_value={'text': 'hello', 'words': [{'word': 'hello', 'start': 0, 'end': 1}]}) as outbound:
+                 patch.dict('os.environ', {'ELEVENLABS_API_KEY': 'synthetic-test-key'}), \
+                 patch('rehearsals.services.transcription.request_raw', return_value={'text': 'hello', 'words': [{'type': 'word', 'text': 'hello', 'start': 0, 'end': 1}]}) as outbound:
                 self.race(lambda: run_attempt(str(self.attempt.pk), 1))
             self.assertEqual(outbound.call_count, 1)
             self.attempt.refresh_from_db()

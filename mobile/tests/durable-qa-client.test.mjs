@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {registerHooks} from 'node:module';
 import {resolve,load} from './helpers/qa-loader.mjs';
 registerHooks({resolve,load});
+const { saveAnalysisConsent } = await import('../src/features/transcription/analysisStorage.ts');
+saveAnalysisConsent();
 const {reviewDurableAnswer}=await import('../src/features/qa/client.ts');
 const {files}=await import('./helpers/upload-native.mjs');
 const input={id:'11111111-1111-4111-8111-111111111111',deckId:'22222222-2222-4222-8222-222222222222',audioUri:'file:///answer.m4a',durationMs:20000,questionJobId:12,questionId:'a'.repeat(32),part:1,slideIndex:0};
@@ -61,4 +63,22 @@ test('question generations and rerecorded answer attempts remain separated by AP
  saveAnswerAttempt('http://one/api','deck',{id:'first',audioUri:'file:///original',durationMs:10000,status:'done',at:'now'});
  saveAnswerAttempt('http://one/api','deck',{id:'second',audioUri:'file:///rerecorded',durationMs:10000,status:'judging',at:'now'});
  assert.equal(readStored('qa-answer:v2:http://one/api:deck:first').audioUri,'file:///original');
+});
+
+test('old provider consent blocks new Q&A uploads and retries; completed answers stay readable',async()=>{
+ const {writeStored}=await import('../src/services/storage.ts');
+ const old=fetch,posts=[];
+ writeStored('analysis-consent:elevenlabs:scribe-v2:v1',false);
+ writeStored('analysis-consent:openai:v1',true);
+ let saved=null;
+ globalThis.fetch=async(url,init={})=>{if(init.method==='POST'){posts.push(url);return response({});}return saved?response(saved):response({},404);};
+ try{
+  await assert.rejects(reviewDurableAnswer(input),e=>e.code==='transcription_consent_required');
+  // Cancelling the disclosure grants no consent and sends no audio.
+  await assert.rejects(reviewDurableAnswer(input),e=>e.code==='transcription_consent_required');
+  saved=state({result:null,processing:{status:'failed',processing_revision:2,requires_confirmation:false,retry_available:true}});
+  await assert.rejects(reviewDurableAnswer(input,false,undefined,true),e=>e.code==='transcription_consent_required');
+  saved=state();assert.deepEqual(await reviewDurableAnswer(input),result);
+  assert.equal(posts.length,0);
+ }finally{globalThis.fetch=old;saveAnalysisConsent();}
 });

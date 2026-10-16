@@ -8,6 +8,8 @@ import { registerHooks } from 'node:module';
 import { resolve } from './helpers/upload-loader.mjs';
 import { files, network, response } from './helpers/upload-native.mjs';
 registerHooks({ resolve });
+const { saveAnalysisConsent } = await import('../src/features/transcription/analysisStorage.ts');
+saveAnalysisConsent();
 const { API_URL } = await import('../src/services/api.ts');
 const { writeStored, readStored } = await import('../src/services/storage.ts');
 const { generateQuestions, judgeAnswer } = await import('../src/features/qa/client.ts');

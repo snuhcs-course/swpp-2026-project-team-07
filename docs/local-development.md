@@ -16,7 +16,7 @@ mobile/                         Expo + React Native + TypeScript
   src/fixtures/                 Hand-written demo content
 backend/                        Django REST + Celery
   rehearsals/models.py          Deck, slide, and attempt storage
-  rehearsals/services/          PDF, Whisper, alignment, Gemini entry points
+  rehearsals/services/          PDF, Scribe v2, alignment, feedback entry points
   rehearsals/tasks.py           Background task entry point
 compose.yaml                    Local PostgreSQL, Redis, API, worker, scheduler
 ```
@@ -50,6 +50,8 @@ export PATH="$ANDROID_HOME/platform-tools:$PATH"
 That Java command requires a macOS-registered JDK 17. If Gradle provisioned your JDK instead, point `JAVA_HOME` directly to its `Contents/Home` directory. The exact path used on the setup machine is recorded in [setup-explained.md](setup-explained.md).
 
 ## Run the backend
+
+New transcriptions require `ELEVENLABS_API_KEY` in ignored `backend/.env`. `OPENAI_API_KEY` remains available for optional OpenAI feedback; it is no longer the transcription credential. See [Scribe configuration](scribe-transcription.md).
 
 Install Docker Desktop or another Docker Compose-compatible runtime. From the repository root:
 

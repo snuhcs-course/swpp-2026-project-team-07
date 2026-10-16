@@ -4,9 +4,9 @@
 
 Explicit and synchronous: each call follows one user action in the app. It uses the same
 feedback provider selection as descriptions/coaching (FEEDBACK_ENABLED, provider, model, key,
-project id and quota settings) and hosted Whisper for the answer audio. One provider request
+project id and quota settings) and hosted Scribe v2 for the answer audio. One provider request
 per call, no retries, no provider fallback. Nothing is stored on the server: the answer audio
-is written to a temporary file for Whisper and deleted afterwards.
+is written to a temporary file for transcription and deleted afterwards.
 
 Limit: these calls are not recorded as FeedbackReservation rows (that table belongs to
 description/coaching jobs), so they do not count against the configured RPM/TPM windows.

@@ -1558,3 +1558,19 @@ full authoritative fact context, and per-finding source-length isolation.
 [Verification and limits](evidence-validation-verification.md). Tests use mocked
 providers; one current saved result was repaired and fetched by the actual phone.
 Human usefulness/visual Review acceptance remains pending. No commit, push or merge.
+
+
+## Scribe v2 transcription — October 16, 2026
+
+- Contributor: Injoon. Tool: OpenAI Codex. Model: GPT-6 (exact variant not recorded). Separate AI review will be recorded below.
+- Actual task prompt (verbatim):
+
+> I guess then we should use whisper instead. Let's make a branch (make it visible on github) to change the model to Eleven Labs Scribe v2. Make sure that we branch from the current latest branch
+
+- Human direction: explicit Scribe v2 target and publication authorization; the opening Whisper phrase is contradictory, so the agent stated its interpretation before work. No human testing, merge or deployment approval is inferred.
+- Base: newest live remote branch `it2/feature/ai_feedback`, `ff8472c`, fetched October 16. Separate worktree preserves existing edits.
+- Generated/retained work: provider adapter, persisted provider identity, historical raw-response compatibility, mobile parser and provider-specific disclosure/consent, focused regression tests and current setup/contract documentation. No new dependency; OpenAI feedback remains supported.
+- Verification: Django system/migration checks passed; 391 SQLite tests OK (25 skips: 24 PostgreSQL-specific, one packaged-VAD dependency test); final affected-backend rerun 41 OK (three PostgreSQL skips). Mobile TypeScript/lint and 298 tests passed; Android JS export passed. A real 20-second previously evaluated public presentation excerpt returned 62 timed words through the new adapter in 1.50 seconds. No listening audit, physical-device test, new PostgreSQL/worker integration or packaged-VAD run is claimed. Temporary environment uses locked backend dependencies except the uninstalled model-gate group.
+- Separate review: Codex reviewer (exact variant not recorded), two passes. First pass found Q&A could bypass the new provider consent. Codex added a client-side gate and Continue/Cancel dialog, with upgrade/cancel/retry/read-only regression tests; second pass reported no further actionable issues. AI review is not human approval.
+- Errors/revisions: first full backend invocation lacked Pillow in the temporary environment; installed the locked non-gate dependencies and reran successfully. One mobile command was invoked from the repository root and failed to find a package; rerun from `mobile/` passed. No additional provider request resulted from these setup errors.
+- Publication: authorized branch commit/push; final GitHub verification recorded at handoff. No PR, merge, Wiki edit or deployment is claimed.
