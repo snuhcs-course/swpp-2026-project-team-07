@@ -1,12 +1,12 @@
 # AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-# Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+# Attribution: docs/ai-collaboration/iteration-2/prompt-log.md#design-prototype-ui-rebuild-october-14-2026
 """Audience Q&A: panel questions from slide text and a transcript, and a review of one spoken answer.
 
 Explicit and synchronous: each call follows one user action in the app. It uses the same
 feedback provider selection as descriptions/coaching (FEEDBACK_ENABLED, provider, model, key,
-project id and quota settings) and hosted Whisper for the answer audio. One provider request
+project id and quota settings) and hosted Scribe v2 for the answer audio. One provider request
 per call, no retries, no provider fallback. Nothing is stored on the server: the answer audio
-is written to a temporary file for Whisper and deleted afterwards.
+is written to a temporary file for transcription and deleted afterwards.
 
 Limit: these calls are not recorded as FeedbackReservation rows (that table belongs to
 description/coaching jobs), so they do not count against the configured RPM/TPM windows.
@@ -26,6 +26,7 @@ from pydantic import Field
 from ..models import FeedbackQuotaBucket
 from . import feedback_provider as provider
 from . import transcription
+from .keyterms import for_recording
 from .feedback import FeedbackError, PrivateModel, json_bytes, validated
 from .feedback_config import QuotaPolicy, Selection
 from .feedback_quota import cooldown
@@ -182,7 +183,7 @@ def review_answer(deck, metadata, upload, *, _transport=None):
         raise FeedbackError("invalid_request")
     config, selection = configured()
     with _saved_audio(upload) as path:
-        heard = transcription.transcribe(path)
+        heard = transcription.transcribe(path, keyterms=for_recording(deck, [{'slide_index': request.slide_index}]))
     transcript = {"text": heard["text"], "words": [{k: w[k] for k in ("text", "start_ms", "end_ms")} for w in heard["words"]]}
     result = {"transcript": transcript, "duration_ms": request.duration_ms}
     if request.duration_ms < MIN_ANSWER_MS or len(transcript["words"]) < MIN_ANSWER_WORDS:

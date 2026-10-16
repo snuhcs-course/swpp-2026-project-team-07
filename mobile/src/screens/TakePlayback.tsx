@@ -1,12 +1,13 @@
 // AI-generated/modified with OpenAI Codex, Iteration 2 (2026-10-14).
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#playback-transcription-and-home-visual-corrections-october-14-2026
-// OpenAI Codex follow-up: docs/ai-collaboration-prompts-iteration-2.md#rehearsal-recording-choice-and-transcript-playback-october-14-2026
+// Attribution: docs/ai-collaboration/iteration-2/prompt-log.md#playback-transcription-and-home-visual-corrections-october-14-2026
+// OpenAI Codex follow-up: docs/ai-collaboration/iteration-2/prompt-log.md#rehearsal-recording-choice-and-transcript-playback-october-14-2026
 // A saved take's validated media, synchronized slide visits and transcript in the redesign UI.
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { AppState, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
 import { Txt } from '../design/frame';
 import { C, F } from '../design/tokens';
+import { createThemedStyles, useTheme } from '../design/theme';
 import { fmt } from '../domain/format';
 import type { DescriptionFact, ReviewAttempt, Transcript, Visit } from '../contracts';
 import type { Presentation } from '../features/presentations/store';
@@ -255,6 +256,7 @@ function SlideDescriptions({ coach }: { coach: CoachState | undefined }) {
 const TranscriptWords = memo(function TranscriptWords({ transcript, slide, visits, activeWord, duration, canSeek, onSeek }: {
   transcript: Transcript; slide: number; visits: Visit[]; activeWord: number; duration: number; canSeek: boolean; onSeek: (ms: number) => void;
 }) {
+  useTheme();
   const [openUnalignedSlide, setOpenUnalignedSlide] = useState<number | null>(null);
   const showUnaligned = openUnalignedSlide === slide;
   const { spans, unaligned } = useMemo(() => {
@@ -315,7 +317,7 @@ function Control({ label, text, onPress, disabled, primary }: { label: string; t
     style={[styles.button, primary && styles.primary, disabled && { opacity: 0.4 }]}><Txt style={[styles.buttonText, primary && { color: '#17131A' }]}>{text}</Txt></Pressable>;
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyles({
   root: { position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, zIndex: 40 },
   scrim: { position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, backgroundColor: 'rgba(8,7,12,0.72)' },
   sheet: { position: 'absolute', left: 0, right: 0, top: 315, bottom: 0, borderTopLeftRadius: 26, borderTopRightRadius: 26,

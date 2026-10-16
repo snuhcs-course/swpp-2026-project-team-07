@@ -1,5 +1,5 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+// Attribution: docs/ai-collaboration/iteration-2/prompt-log.md#design-prototype-ui-rebuild-october-14-2026
 // OutLoud redesign: a view that owns one PanResponder. Handlers arrive as props and
 // are read when each touch event fires, so screens pass plain closures (no ref mirrors, no
 // responder rebuilt per render). It is a class on purpose: the responder is created once per

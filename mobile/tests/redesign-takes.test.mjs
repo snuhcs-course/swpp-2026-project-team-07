@@ -1,5 +1,5 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+// Attribution: docs/ai-collaboration/iteration-2/prompt-log.md#design-prototype-ui-rebuild-october-14-2026
 // OutLoud redesign: a take joins the presentation's run; Compare keeps or restores it.
 // Synthetic attempt ids and timings only; storage is the real SQLite key/value table (Node fixture).
 import { test } from 'node:test';

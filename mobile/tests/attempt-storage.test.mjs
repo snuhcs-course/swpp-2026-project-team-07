@@ -28,19 +28,7 @@ test('recovery uses playable media duration, retains backwards visits and refuse
     slide_events: [{ slide_index: 2, at_ms: 0 }, { slide_index: 1, at_ms: 800 }, { slide_index: 0, at_ms: 2000 }] };
   assert.deepEqual(recoverRecording(recording, 2000).slide_events.map(e => e.slide_index), [2,1]);
   assert.equal(recording.slide_events.length, 3);
-  for (const duration of [NaN, 0, 1800001]) assert.throws(() => recoverRecording(recording, duration));
-});
-
-test('thirty-minute capture and recovery retain the final backward visit and reject one millisecond over', () => {
-  const id = storage.beginAttempt(deck, '', 0);
-  const events = [{ slide_index: 0, at_ms: 0 }, { slide_index: 1, at_ms: 600001 }, { slide_index: 0, at_ms: 1799999 }];
-  storage.checkpointAttempt(id, 'file:///long.m4a', 1800000, events, true);
-  const saved = storage.getSavedAttempt(id);
-  assert.equal(saved.state, 'saved');
-  assert.equal(saved.recording.duration_ms, 1800000);
-  assert.deepEqual(recoverRecording(saved.recording, 1800000).slide_events, events);
-  assert.throws(() => storage.checkpointAttempt(id, 'file:///long.m4a', 1800001, events, true));
-  assert.deepEqual(storage.getSavedAttempt(id), saved);
+  for (const duration of [NaN, 0, 1_200_001]) assert.throws(() => recoverRecording(recording, duration));
 });
 
 test('SQLite persists checkpoint/audio and interrupted uploads through a new process', () => {

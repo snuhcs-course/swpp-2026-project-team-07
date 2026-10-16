@@ -1,5 +1,7 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+// OpenAI Codex finger-linked page fade: docs/ai-collaboration/iteration-2/prompt-log.md#finger-linked-page-fade-october-15-2026
+// OpenAI Codex light-mode upload: docs/ai-collaboration/iteration-2/prompt-log.md#guide-based-light-mode-october-15-2026
+// Attribution: docs/ai-collaboration/iteration-2/prompt-log.md#design-prototype-ui-rebuild-october-14-2026
 // OutLoud redesign: Upload and analysis (SPEC §4.3). The Home carousel stays
 // behind, blurred, with the new presentation's icon sharp in the gap.
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -10,47 +12,50 @@ import { Enter, Txt, useFrame } from '../design/frame';
 import { UIIcon } from '../design/icons';
 import { PanView } from '../design/PanView';
 import { C, EASE_SCREEN, F } from '../design/tokens';
+import { createThemedStyles, useTheme } from '../design/theme';
+import { ThemeToggle } from '../design/ThemeToggle';
 import { HintRow, Pop } from '../design/ui';
-import { BACK_T } from '../domain/gestures';
+import { BACK_FADE_Y, BACK_T } from '../domain/gestures';
+import { slideTargets } from '../domain/slides';
 import { analyzePdf, discardImport, pickPdf, type Progress } from '../features/presentations/importer';
-import { visibleDecks } from '../features/presentations/store';
+import { savePresentation, visibleDecks, type Presentation } from '../features/presentations/store';
 import type { LocalPdf } from '../features/pdf/service';
+import { PresentationSetup } from './PresentationSetup';
 import { useBack, useShell } from './shared';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const RING = 653.45;
 
 export function UploadScreen() {
+  const { c } = useTheme();
   const { go, home, nav } = useShell();
   const frame = useFrame();
-  const [phase, setPhase] = useState<'pick' | 'picking' | 'analyze' | 'done'>('pick');
+  const [phase, setPhase] = useState<'pick' | 'picking' | 'analyze' | 'configure'>('pick');
+  const [readyDeck, setReadyDeck] = useState<Presentation | null>(null);
+  const [setupError, setSetupError] = useState('');
   const [error, setError] = useState('');
   const [info, setInfo] = useState<Progress & { file: string }>({ progress: 0, status: 'Rendering slides', pages: null, file: '' });
   const [pct, setPct] = useState(0);
   const prog = useSharedValue(0);
   const dy = useSharedValue(0);
   const leaving = useRef(false);
-  const gone = useSharedValue(0);
+  const backExiting = useRef(false);
   const job = useRef<{ pdf: LocalPdf; controller: AbortController } | null>(null);
 
-  useEffect(() => { home.uploadBlur.set(withTiming(1, { duration: 420 })); home.analyzing.set(0); }, [home.analyzing, home.uploadBlur]);
+  useEffect(() => { home.uploadBlur.set(withTiming(1, { duration: 420 })); home.analyzing.set(0); home.setup.set(0); }, [home.analyzing, home.setup, home.uploadBlur]);
   useAnimatedReaction(() => Math.round(prog.value * 100), (v, prev) => { if (v !== prev) runOnJS(setPct)(v); });
 
   const leave = useCallback(() => {
     if (leaving.current) return;
     leaving.current = true;
-    gone.set(1);
     const current = job.current;
     if (current) { current.controller.abort(); job.current = null; void discardImport(current.pdf); }
-    // Close the gap from wherever the drag left it, then show Home.
-    const spread = 1 - Math.min(1, dy.get() / 260);
-    home.gap.set(spread);
-    home.gap.set(withTiming(0, { duration: 520, easing: EASE_SCREEN }));
-    home.uploadBlur.set(withTiming(0, { duration: 420 }));
-    home.analyzing.set(withTiming(0, { duration: 300 }));
-    dy.set(withTiming(520, { duration: 280 }));
-    setTimeout(() => go('home', { nav: 'fade' }), 280);
-  }, [dy, go, gone, home.analyzing, home.gap, home.uploadBlur]);
+    home.gap.set(0);
+    home.uploadBlur.set(0);
+    home.analyzing.set(0);
+    home.setup.set(0);
+    go('home', { nav: null });
+  }, [go, home.analyzing, home.gap, home.setup, home.uploadBlur]);
 
   const pick = useCallback(async () => {
     if (phase !== 'pick' || leaving.current) return;
@@ -74,15 +79,11 @@ export function UploadScreen() {
         else if (p.progress >= 0.34) prog.set(withTiming(0.62, { duration: 5000, easing: Easing.out(Easing.quad) }));
       }, controller.signal);
       if (leaving.current) return;
-      job.current = null;
-      setPhase('done');
-      setTimeout(() => {
-        if (leaving.current) return;
-        const index = visibleDecks().findIndex(d => d.id === deck.id);
-        home.p.set(Math.max(0, index));
-        home.gap.set(0); home.uploadBlur.set(0); home.analyzing.set(0);
-        go('rehearse', { nav: 'fade', deckId: deck.id, slide: 0 });
-      }, 500);
+      // OpenAI Codex import setup: docs/ai-collaboration/iteration-2/prompt-log.md#presentation-time-and-audience-setup-october-15-2026
+      setSetupError('');
+      setReadyDeck(deck);
+      setPhase('configure');
+      home.setup.set(withTiming(1, { duration: 260 }));
     } catch (e) {
       if (leaving.current) return;
       job.current = null;
@@ -92,26 +93,67 @@ export function UploadScreen() {
       setError(e instanceof Error && e.message !== 'cancelled' ? e.message : 'The PDF could not be analysed.');
       setPhase('pick');
     }
-  }, [go, home.analyzing, home.gap, home.p, home.uploadBlur, phase, prog]);
+  }, [home.analyzing, home.setup, phase, prog]);
+
+  const finishSetup = useCallback((target: number, audience: string) => {
+    if (!readyDeck || leaving.current) return;
+    const deck = { ...readyDeck, target, targets: slideTargets(readyDeck.slides.map(s => s.text), target), audience };
+    try { savePresentation(deck); }
+    catch { setSetupError('Could not save these choices. Please try again.'); return; }
+    leaving.current = true;
+    job.current = null;
+    const index = visibleDecks().findIndex(d => d.id === deck.id);
+    home.p.set(Math.max(0, index));
+    home.gap.set(0); home.uploadBlur.set(0); home.analyzing.set(0); home.setup.set(0);
+    go('rehearse', { nav: 'fade', deckId: deck.id, slide: 0 });
+  }, [go, home.analyzing, home.gap, home.p, home.setup, home.uploadBlur, readyDeck]);
 
   const pan = {
-    onMoveShould: (_e: GestureResponderEvent, g: PanResponderGestureState) => g.dy > 8 && g.dy > Math.abs(g.dx),
+    onMoveShould: (_e: GestureResponderEvent, g: PanResponderGestureState) => !backExiting.current && g.dy > 8 && g.dy > Math.abs(g.dx),
     onMove: (_e: GestureResponderEvent, g: PanResponderGestureState) => {
-      const d = Math.max(0, g.dy / frame.s), v = d > 160 ? 160 + (d - 160) * 0.5 : d;
+      const v = Math.min(BACK_FADE_Y, Math.max(0, g.dy / frame.s));
+      const visible = 1 - v / BACK_FADE_Y;
       dy.set(v);
-      home.uploadBlur.set(1 - Math.min(1, v / 260));
+      home.uploadBlur.set(visible);
+      home.gap.set(visible);
+      if (phase === 'analyze' || phase === 'configure') home.analyzing.set(visible);
+      if (phase === 'configure') home.setup.set(visible);
     },
     onRelease: () => {
-      if (dy.get() > BACK_T) leave();
-      else { dy.set(withTiming(0, { duration: 320, easing: EASE_SCREEN })); home.uploadBlur.set(withTiming(1, { duration: 320 })); }
+      if (dy.get() > BACK_T) {
+        backExiting.current = true;
+        dy.set(withTiming(BACK_FADE_Y, { duration: 220, easing: EASE_SCREEN }, finished => {
+          if (finished) runOnJS(leave)();
+        }));
+        home.uploadBlur.set(withTiming(0, { duration: 220, easing: EASE_SCREEN }));
+        home.gap.set(withTiming(0, { duration: 220, easing: EASE_SCREEN }));
+        if (phase === 'analyze' || phase === 'configure') home.analyzing.set(withTiming(0, { duration: 220, easing: EASE_SCREEN }));
+        if (phase === 'configure') home.setup.set(withTiming(0, { duration: 220, easing: EASE_SCREEN }));
+      } else {
+        dy.set(withTiming(0, { duration: 220, easing: EASE_SCREEN }));
+        home.uploadBlur.set(withTiming(1, { duration: 220, easing: EASE_SCREEN }));
+        home.gap.set(withTiming(1, { duration: 220, easing: EASE_SCREEN }));
+        if (phase === 'analyze' || phase === 'configure') home.analyzing.set(withTiming(1, { duration: 220, easing: EASE_SCREEN }));
+        if (phase === 'configure') home.setup.set(withTiming(1, { duration: 220, easing: EASE_SCREEN }));
+      }
     },
-    onTerminate: () => { dy.set(withTiming(0, { duration: 320 })); home.uploadBlur.set(withTiming(1, { duration: 320 })); },
+    onTerminate: () => {
+      if (backExiting.current) return;
+      dy.set(withTiming(0, { duration: 220, easing: EASE_SCREEN }));
+      home.uploadBlur.set(withTiming(1, { duration: 220, easing: EASE_SCREEN }));
+      home.gap.set(withTiming(1, { duration: 220, easing: EASE_SCREEN }));
+      if (phase === 'analyze' || phase === 'configure') home.analyzing.set(withTiming(1, { duration: 220, easing: EASE_SCREEN }));
+      if (phase === 'configure') home.setup.set(withTiming(1, { duration: 220, easing: EASE_SCREEN }));
+    },
   };
   useBack(true, () => { leave(); return true; });
 
-  const content = useAnimatedStyle(() => ({ opacity: gone.value ? withTiming(0, { duration: 280 }) : Math.max(0.15, 1 - dy.value / 260), transform: [{ translateY: dy.value * 0.55 }] }));
+  const content = useAnimatedStyle(() => ({
+    // Home's controls and carousel emerge in place during the downward gesture.
+    opacity: Math.max(0, 1 - dy.value / BACK_FADE_Y),
+  }));
   const ring = useAnimatedProps(() => ({ strokeDashoffset: RING * (1 - prog.value) }));
-  const analyzing = phase === 'analyze' || phase === 'done';
+  const analyzing = phase === 'analyze' || phase === 'configure';
   const pr = pct / 100;
   const stages = [
     { icon: 'i-slides' as const, label: 'Slides', done: pr >= 0.33, op: 1 },
@@ -121,8 +163,10 @@ export function UploadScreen() {
 
   return (
     <Enter kind={nav.nav}>
+      <Animated.View style={[StyleSheet.absoluteFill, content]}>
+      <View pointerEvents={readyDeck && phase === 'configure' ? 'none' : 'box-none'}
+        style={[StyleSheet.absoluteFill, readyDeck && phase === 'configure' && styles.setupBlur]}>
       <PanView style={StyleSheet.absoluteFill} {...pan}>
-        <Animated.View style={[StyleSheet.absoluteFill, content]}>
           {!analyzing && <>
             <View style={styles.pickArea}>
               <Pressable accessibilityRole="button" accessibilityLabel="Choose a PDF to upload" onPress={() => void pick()} style={styles.pickButton} />
@@ -137,7 +181,7 @@ export function UploadScreen() {
             <View style={styles.ringWrap} pointerEvents="none">
               <Svg width={223} height={223} viewBox="0 0 223 223">
                 <Defs><LinearGradient id="gMultiUp" x1="0" y1="0" x2="1" y2="1"><Stop offset="0" stopColor="#7CC2FF" /><Stop offset="0.5" stopColor="#9B7CFF" /><Stop offset="1" stopColor="#FF7EB6" /></LinearGradient></Defs>
-                <Circle cx={111.5} cy={111.5} r={104} fill="none" stroke={C.track} strokeWidth={8} />
+                <Circle cx={111.5} cy={111.5} r={104} fill="none" stroke={c.track} strokeWidth={8} />
                 <AnimatedCircle cx={111.5} cy={111.5} r={104} fill="none" stroke="url(#gMultiUp)" strokeWidth={8} strokeLinecap="round" strokeDasharray={`${RING}`}
                   transform="rotate(-90 111.5 111.5)" animatedProps={ring} />
               </Svg>
@@ -161,13 +205,17 @@ export function UploadScreen() {
             </View>
           </>}
           <HintRow gap={6} hints={[{ icon: 'h-dn', text: analyzing ? 'Swipe down to cancel' : 'Swipe down to go back', nudge: 'down' }]} />
-        </Animated.View>
       </PanView>
+      <ThemeToggle />
+      </View>
+      {readyDeck && phase === 'configure' && <Enter kind="fade"><PresentationSetup deck={readyDeck} error={setupError} onConfirm={finishSetup} onBackPan={pan} /></Enter>}
+      </Animated.View>
     </Enter>
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyles({
+  setupBlur: { filter: [{ blur: 18 }] },
   pickArea: { position: 'absolute', left: 0, right: 0, top: 211, alignItems: 'center' },
   pickButton: { width: 260, height: 223 },
   text: { position: 'absolute', left: 28, right: 28, top: 547, alignItems: 'center' },

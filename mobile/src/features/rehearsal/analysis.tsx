@@ -1,9 +1,9 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+// Attribution: docs/ai-collaboration/iteration-2/prompt-log.md#design-prototype-ui-rebuild-october-14-2026
 // OutLoud redesign: background upload + hosted transcription for each take.
 // Each take that the screens need is handled by an invisible <AttemptWorker>, which reuses
 // the existing useAttemptAnalysis hook (revision-aware processing, polling, offline cache,
-// first-use OpenAI disclosure) and the existing uploadAttempt service, exactly as the
+// first-use ElevenLabs disclosure) and the existing uploadAttempt service, exactly as the
 // former saved-rehearsal screen did after a recording.
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { AttemptResult, Transcript } from '../../contracts';

@@ -1,5 +1,5 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+// Attribution: docs/ai-collaboration/iteration-2/prompt-log.md#design-prototype-ui-rebuild-october-14-2026
 // OutLoud redesign: AI coaching for a take, shown as findings on Review.
 // Reuses the existing useFeedbackReview hook (provider disclosure, revision-aware
 // generation, pending-charge acknowledgement, offline cache). Generation only starts

@@ -1,5 +1,5 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+// Attribution: docs/ai-collaboration/iteration-2/prompt-log.md#design-prototype-ui-rebuild-october-14-2026
 // OutLoud redesign: Audience Q&A (SPEC §4.7, §5.7).
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, type GestureResponderEvent, type PanResponderGestureState } from 'react-native';
@@ -242,7 +242,7 @@ function QA({ model,qa,archived,historyAvailable,onHistory }: { model: DeckModel
   const glyph: RecordGlyph = count ? (count as 3 | 2 | 1) : rec ? 'stop' : phase === 'review' ? 'redo' : 'mic';
   const btnLabel = archived?'Saved Q&A · playback only':count ? `Starting in ${count}. Tap to cancel` : rec ? 'Stop answering' : phase === 'review' ? (part ? 'Answer the follow-up again' : 'Answer the question again') : (part ? 'Answer the follow-up' : 'Answer the question');
   const hints: Hint[] = count ? [{ icon: 'h-tap', text: 'Tap to cancel' }] : rec ? [{ icon: 'h-tap', text: 'Tap when done' }]
-    : [...(!Q||last ? [] : [{ icon: 'h-spin' as const, text: 'Next',onPress:()=>goQ(1) }]), { icon: 'h-dn', text: 'Back', nudge: 'down' }];
+    : [...(!Q||last ? [] : [{ icon: 'h-spin' as const, text: 'Next' }]), { icon: 'h-dn', text: 'Back', nudge: 'down' }];
   const result = ans?.status === 'done' ? ans.result : undefined;
   const short = result?.verdict === 'too_short';
   const verdict = !result ? null : short ? { text: 'Too short', tone: TONE.bad, icon: 'i-clock' as IconKey }

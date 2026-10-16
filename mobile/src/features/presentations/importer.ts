@@ -1,5 +1,6 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+// OpenAI Codex time/audience setup: docs/ai-collaboration/iteration-2/prompt-log.md#presentation-time-and-audience-setup-october-15-2026
+// Attribution: docs/ai-collaboration/iteration-2/prompt-log.md#design-prototype-ui-rebuild-october-14-2026
 // OutLoud redesign: Upload → analysis (SPEC §4.3), made real:
 //   Rendering slides   → page images on the device (Android PdfRenderer)
 //   Reading slide text → the server's extracted text (existing POST /decks/)
@@ -69,7 +70,7 @@ export async function analyzePdf(pdf: LocalPdf, onProgress: (p: Progress) => voi
   const deck: Presentation = {
     id: pdf.id, title: pdf.title, uri: pdf.uri, order: nextOrder(), hue: nextHue(), icon: 'present',
     pageCount: pages.length, pages, slides, text: texts ? (texts.some(t => t.trim()) ? 'ready' : 'none') : 'pending',
-    target, targets: slideTargets(slides.map(s => s.text), target), createdAt: new Date().toISOString(),
+    target, targets: slideTargets(slides.map(s => s.text), target), audience: '', createdAt: new Date().toISOString(),
   };
   check();
   if(!deckById(deck.id))requestPresentationDefaults(deck.id,API_URL);

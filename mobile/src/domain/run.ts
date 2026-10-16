@@ -1,5 +1,6 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+// Attribution: docs/ai-collaboration/iteration-2/prompt-log.md#design-prototype-ui-rebuild-october-14-2026
+// OpenAI Codex run-audio position mapping: docs/ai-collaboration/iteration-2/prompt-log.md#review-and-full-review-redesign-october-15-2026
 // OutLoud redesign: the merged "run" of a presentation (SPEC §5.2).
 // Every recording stays a separate saved attempt (the existing upload/transcription
 // pipeline is unchanged). A run only records which attempt, and which stretch of
@@ -58,6 +59,19 @@ export function runStarts(times: readonly number[]): number[] {
   let acc = 0;
   for (const t of times) { out.push(acc); acc += t; }
   return out;
+}
+/** Map concatenated local audio time back to the true merged-run timeline. Missing-audio slides are absent from plan. */
+export type RunAudioPlanEntry = { slide: number; runStart: number; durMs: number };
+export function runPosition(elapsedMs: number, plan: readonly RunAudioPlanEntry[]): number {
+  if (!plan.length) return 0;
+  let remaining = Math.max(0, elapsedMs);
+  for (const entry of plan) {
+    const duration = Math.max(0, entry.durMs);
+    if (remaining < duration) return entry.runStart + remaining / 1000;
+    remaining -= duration;
+  }
+  const last = plan[plan.length - 1];
+  return last.runStart + Math.max(0, last.durMs) / 1000;
 }
 export function runAttemptIds(run: Run | null): string[] {
   return run ? [...new Set(run.parts.filter((p): p is SlidePart => !!p).map(p => p.attemptId))] : [];

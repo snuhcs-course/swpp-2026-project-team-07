@@ -32,7 +32,9 @@ approval. Check each document's status and evidence date before repeating a clai
 | Iteration 2 feedback work | [Phase contract and decision ledger](features/ai-feedback/iteration-2-plan.md) | Active Iteration 2 internal plan/decision record |
 | Recording and review | [Rehearsal review](features/rehearsal-review.md) | Current feature reference |
 | Mobile transcription | [Mobile transcription client](features/transcription/mobile-client.md) | Current client behavior with historical sections labeled |
-| Hosted speech processing | [Hosted Whisper adapter](features/transcription/hosted-whisper.md) | Current provider and dependency reference |
+| Hosted speech processing | [ElevenLabs Scribe v2](features/transcription/scribe-v2.md) | Current provider, keyterm, consent and verification reference |
+| Historical speech processing | [Hosted Whisper adapter](features/transcription/hosted-whisper.md) | Superseded provider reference; speech-gate dependency assessment remains relevant |
+| Interface behavior | [Landscape rehearsal](features/interface/landscape-rehearse.md), [light/dark theme](features/interface/light-dark-theme.md), and [Review/Full review](features/interface/review-and-full-review.md) | Current implementation specifications merged from `main` |
 
 ## Submission sources
 
@@ -65,7 +67,8 @@ Evidence is organized by the iteration in which the check or observation occurre
   first submission cycle.
 - `evidence/iteration-2/ai-feedback/`: Phase 2–6, cue, Q&A, defaults and evidence-
   validation records.
-- `evidence/iteration-2/transcription/`: transcript visit and playback checks.
+- `evidence/iteration-2/transcription/`: transcript visit/playback checks and dated
+  Scribe v2 full-flow/keyterm evidence.
 - `evidence/iteration-2/documentation/`: documentation migrations and validation.
 
 Evidence must state the date, revision when known, exact commands, result, operator

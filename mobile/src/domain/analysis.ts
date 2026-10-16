@@ -1,7 +1,8 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+// Attribution: docs/ai-collaboration/iteration-2/prompt-log.md#design-prototype-ui-rebuild-october-14-2026
 // OutLoud redesign: findings, Review insights, Compare and Home stats
 // (SPEC §4.1, §4.5, §4.6, §5.5, §5.6). Pure functions over the merged run.
+// OpenAI Codex Review and Full review: docs/ai-collaboration/iteration-2/prompt-log.md#review-and-full-review-redesign-october-15-2026
 import { fmt, listNumbers, quote } from './format';
 import { slideText, type Line } from './lines';
 import { runTimes, type Run } from './run';
@@ -13,6 +14,71 @@ export type Row = { icon: IconKey; text: string };
 export type Tone = 'good' | 'warn' | 'info' | 'bad' | 'plain';
 export type ChipModel = { icon: IconKey; text: string; tone: Tone };
 export type Suggestion = { slide: number; category: 'consistency' | 'clarity' | 'audience'; observation: string; suggestion: string };
+
+export const GRADE = {
+  green: { label: 'Strong', fill: '#3FD9A4', gradient: ['#9AF7D6', '#0EA877'] },
+  yellow: { label: 'Good', fill: '#FFD866', gradient: ['#FFF4B0', '#F5C518'] },
+  orange: { label: 'Needs work', fill: '#FF9A3D', gradient: ['#FFE58C', '#FF8A1E'] },
+  red: { label: 'Weak', fill: '#FF6B5E', gradient: ['#FF9A7C', '#EC2A35'] },
+} as const;
+export const GRADE_ORDER = ['green', 'yellow', 'orange', 'red'] as const;
+export type GradeKey = keyof typeof GRADE | 'none' | 'pending';
+export type SlideAnalysisContext = {
+  times: readonly number[]; targets: readonly number[]; lines: readonly Line[];
+  points: readonly (readonly string[])[]; ai: readonly Suggestion[]; haveText: boolean;
+  pending?: boolean; worker?: { stage?: string; detail?: string };
+};
+export type GradeResult = { key: GradeKey; percent: number | null };
+export type FeedbackRow = Row & { status: 'finding' | 'spot' | 'muted' };
+
+/** Prototype's per-slide score, using the app's merged run and real transcript. */
+export function slideGrade(slide: number, ctx: SlideAnalysisContext): GradeResult {
+  const t = ctx.times[slide] ?? 0;
+  if (t <= 0) return { key: 'none', percent: null };
+  if (ctx.pending) return { key: 'pending', percent: null };
+  const g = (ctx.targets[slide] ?? 0) > 0 ? ctx.targets[slide] : t;
+  const text = slideText(ctx.lines, slide);
+  const pts = ctx.haveText ? scorablePoints(ctx.points[slide] ?? []) : [];
+  const missed = pts.filter(p => !covers(text, p)).length;
+  const spilled = ctx.lines.some(l => l.slide === slide && l.edge === 1) ||
+    ctx.lines.some(l => l.slide === slide + 1 && l.edge === -1);
+  const notes = Number(missed > 0) + Number(spilled) + Math.min(2, ctx.ai.filter(a => a.slide === slide).length);
+  const score = 100 - Math.min(40, Math.abs(t - g) / g * 60) - Math.min(24, fillerTotal(text) * 6)
+    - (pts.length ? missed / pts.length * 30 : 0) - 8 * notes;
+  const percent = Math.max(0, Math.min(100, Math.round(score)));
+  return { key: score >= 85 ? 'green' : score >= 70 ? 'yellow' : score >= 55 ? 'orange' : 'red', percent };
+}
+
+/** Four stable feedback slots; pending data never claims a clean delivery. */
+export function feedbackRows(slide: number, ctx: SlideAnalysisContext): [FeedbackRow, FeedbackRow, FeedbackRow, FeedbackRow] {
+  const icons = ['i-clock', 'i-bubble', 'i-flag', 'i-wave'] as const;
+  const row = (icon: FeedbackRow['icon'], text: string, status: FeedbackRow['status']): FeedbackRow => ({ icon, text, status });
+  const spot = (icon: FeedbackRow['icon']) => row(icon, 'Spot On!', 'spot');
+  const t = ctx.times[slide] ?? 0;
+  if (t <= 0) return [row(icons[0], 'Not reached in this run', 'muted'),
+    row(icons[1], '—', 'muted'), row(icons[2], '—', 'muted'), row(icons[3], '—', 'muted')];
+  const g = ctx.targets[slide] ?? 0;
+  const ov = t - g;
+  const time = ov >= 15 ? row(icons[0], fmt(ov) + ' over this slide’s ' + fmt(g), 'finding')
+    : ov <= -15 ? row(icons[0], fmt(-ov) + ' under this slide’s ' + fmt(g), 'finding') : spot(icons[0]);
+  if (ctx.pending) return [time,
+    row(icons[1], ctx.worker?.stage === 'processing' ? (ctx.worker.detail || 'Transcribing') + '…' : 'Transcript pending', 'muted'),
+    row(icons[2], '—', 'muted'), row(icons[3], '—', 'muted')];
+  const text = slideText(ctx.lines, slide);
+  const counts = fillerCounts(text);
+  let top: string | null = null;
+  for (const w of Object.keys(counts)) if (!top || counts[w] > counts[top]) top = w;
+  const fillers = top && counts[top] >= 2 ? row(icons[1], quote(top) + ' ' + counts[top] + ' times on this slide', 'finding') : spot(icons[1]);
+  const missing = ctx.haveText ? scorablePoints(ctx.points[slide] ?? []).find(p => !covers(text, p)) : null;
+  const said = !ctx.haveText ? row(icons[2], 'No slide text to check', 'muted')
+    : missing ? row(icons[2], 'Not said: ' + quote(missing), 'finding') : spot(icons[2]);
+  const spilled = ctx.lines.some(l => l.slide === slide && l.edge === 1) ||
+    ctx.lines.some(l => l.slide === slide + 1 && l.edge === -1);
+  const suggestion = ctx.ai.find(a => a.slide === slide);
+  const delivery = spilled ? row(icons[3], 'Moved to slide ' + (slide + 2) + ' mid-sentence', 'finding')
+    : suggestion ? row(icons[3], suggestion.observation, 'finding') : spot(icons[3]);
+  return [time, fillers, said, delivery];
+}
 
 /** Per-slide findings, re-run on every transcript fix. */
 export function findingsFor(slide: number, lines: readonly Line[], points: readonly string[], ai: readonly Suggestion[], haveText: boolean): Row[] {

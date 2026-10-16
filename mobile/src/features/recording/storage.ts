@@ -1,4 +1,3 @@
-import { MAX_RECORDING_MS } from "./limits";
 import { randomUUID } from "expo-crypto";
 import type { AttemptResult, AttemptMetadata, SlideEvent } from "../../contracts";
 import { listStored, readStored, writeStored } from "../../services/storage";
@@ -33,7 +32,7 @@ export function checkpointAttempt(id: string, uri: string, duration: number, eve
   const attempt = getSavedAttempt(id);
   if (!attempt) throw new Error("The recording metadata could not be found.");
   if (!Number.isFinite(duration) || duration < 0) throw new Error("Invalid audio clock.");
-  if (finished && (!uri || duration < 1 || duration > MAX_RECORDING_MS)) throw new Error("Recording exceeds the thirty-minute limit or is empty. Audio is kept for recovery.");
+  if (finished && (!uri || duration < 1 || duration > 1_200_000)) throw new Error("Recording exceeds the twenty-minute limit or is empty. Audio is kept for recovery.");
   saveAttempt({ ...attempt, state: finished ? "saved" : "capturing", error: undefined,
     auto_process_api: finished ? autoProcessApi?.replace(/\/+$/, '') : attempt.auto_process_api, recording: {
     ...attempt.recording, audio_uri: uri || attempt.recording.audio_uri,

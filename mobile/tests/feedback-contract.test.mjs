@@ -15,20 +15,20 @@ const parse = v => parseFeedback(v, attemptId, withFeedback(), 2);
 const clone = v => structuredClone(v);
 const json = (value, status = 200) => new Response(JSON.stringify(value), { status });
 
-test('long-recording result, review, feedback evidence and seeking accept the same thirty-minute timeline', () => {
+test('long-recording result, review, feedback evidence and seeking accept the same twenty-minute timeline', () => {
   const stretch = value => Array.isArray(value) ? value.map(stretch) : value && typeof value === 'object'
     ? Object.fromEntries(Object.entries(value).map(([key, v]) => [key,
-      ['duration_ms', 'start_ms', 'end_ms', 'at_ms'].includes(key) ? v * 900 : stretch(v)])) : value;
+      ['duration_ms', 'start_ms', 'end_ms', 'at_ms'].includes(key) ? v * 600 : stretch(v)])) : value;
   const wire = stretch(withFeedback());
   const result = parseResult(wire, attemptId);
-  assert.equal(result.duration_ms, 1800000);
-  assert.equal(result.transcript.words[1].end_ms, 1350000);
+  assert.equal(result.duration_ms, 1200000);
+  assert.equal(result.transcript.words[1].end_ms, 900000);
   const review = parseReview(wire, attemptId, 'http://review.invalid/api');
-  assert.equal(review.duration_ms, 1800000);
+  assert.equal(review.duration_ms, 1200000);
   const feedback = parseFeedback(wire.feedback_analysis, attemptId, review, 2);
   assert.equal(feedback.result.evidence_verified, true);
-  assert.deepEqual(feedbackSeekTarget(feedback, 0, review, 2), { slide_index: 0, start_ms: 0, end_ms: 450000 });
-  wire.duration_ms = 1800001;
+  assert.deepEqual(feedbackSeekTarget(feedback, 0, review, 2), { slide_index: 0, start_ms: 0, end_ms: 300000 });
+  wire.duration_ms = 1200001;
   assert.equal(parseResult(wire, attemptId), null);
 });
 function client(responses, extra = {}) {

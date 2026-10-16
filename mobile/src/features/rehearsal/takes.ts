@@ -1,6 +1,6 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
-// OpenAI Codex follow-up: docs/ai-collaboration-prompts-iteration-2.md#rehearsal-recording-choice-and-transcript-playback-october-14-2026
+// Attribution: docs/ai-collaboration/iteration-2/prompt-log.md#design-prototype-ui-rebuild-october-14-2026
+// OpenAI Codex follow-up: docs/ai-collaboration/iteration-2/prompt-log.md#rehearsal-recording-choice-and-transcript-playback-october-14-2026
 // OutLoud redesign: commit a finished recording into the presentation's run,
 // then keep the current version or overwrite it. Each slide points to only one
 // selected recording; other audio remains stored when needed by other slides.

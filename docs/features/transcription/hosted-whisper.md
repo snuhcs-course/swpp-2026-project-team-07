@@ -1,4 +1,6 @@
-# Hosted Whisper adapter
+# Hosted Whisper adapter (historical)
+
+> Superseded for new requests on October 16, 2026 by [ElevenLabs Scribe v2](scribe-v2.md). This page preserves the earlier implementation and dated test evidence. The gate dependency assessment still applies.
 
 **Status: Current technical reference.** Dated provider and integration results belong
 under `docs/evidence/`; this file describes the maintained adapter boundary.

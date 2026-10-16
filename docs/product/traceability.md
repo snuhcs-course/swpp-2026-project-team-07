@@ -13,7 +13,7 @@ does not replace acceptance testing.
 | Delivery review (US-06) | Saved visit/word metrics plus feedback categories in backend services and mobile review models | The current UI distinguishes measured values from AI suggestions; final coverage targets remain unset. |
 | Retry, history and comparison (US-08, US-10) | `mobile/src/screens/HomeScreen.tsx`, `CompareScreen.tsx`, `TakePlayback.tsx`, and durable processing revisions in backend models/services | Recovery paths have automated checks; final device and acceptance coverage remains unset. |
 | Deletion (US-11) | Specified but not established as complete by the current source review | Must not be marked implemented without code and test evidence. |
-| Audience Q&A (US-17) | Experimental `mobile/src/features/qa/` and backend Q&A services/routes | Optional Iteration 3 feature; excluded from the Iteration 2 mandatory core. |
+| Audience Q&A (US-17) | `mobile/src/screens/QAScreen.tsx`, `mobile/src/features/qa/`, `backend/rehearsals/services/qa.py`, `backend/rehearsals/services/audience_qa.py`, and Q&A routes | Implemented Iteration 2 feature. Automated backend/mobile coverage and dated Q&A evidence exist; final team-owned acceptance coverage remains to be recorded in Testing Documentation. |
 
 ## Scope rules
 

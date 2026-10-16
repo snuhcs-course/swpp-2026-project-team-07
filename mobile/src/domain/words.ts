@@ -1,5 +1,5 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+// Attribution: docs/ai-collaboration/iteration-2/prompt-log.md#design-prototype-ui-rebuild-october-14-2026
 // OutLoud redesign: filler counts, key words and slide-point coverage.
 // Rules follow the design spec (SPEC §5.3) and extend them to Korean text,
 // because the backend's metrics already treat Hangul runs as words.

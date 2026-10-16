@@ -1,4 +1,4 @@
-// AI-assisted Phase 1; see docs/ai-collaboration-prompts-iteration-2.md.
+// AI-assisted Phase 1; see docs/ai-collaboration/iteration-2/prompt-log.md.
 import type { Run } from './run';
 
 export type PresentationRequirements = {

@@ -17,7 +17,8 @@ Version 3.0, 16 October 2026 — Iteration 2 canonical source
    - [5.5 Speaking delivery feedback](#55-speaking-delivery-feedback)
    - [5.6 Retry and comparison](#56-retry-and-comparison)
    - [5.7 History, data management and recovery](#57-history-data-management-and-recovery)
-   - [5.8 Original team stories](#58-original-team-stories)
+   - [5.8 Audience question practice](#58-audience-question-practice)
+   - [5.9 Original team stories](#59-original-team-stories)
 6. [Non-functional Requirements](#6-non-functional-requirements)
 7. [User Interface Requirements](#7-user-interface-requirements)
    - [7.1 Navigation flow](#71-navigation-flow)
@@ -30,11 +31,11 @@ Version 3.0, 16 October 2026 — Iteration 2 canonical source
 | --- | --- | --- |
 | 1.0 | 2026-09-28 | Initial specification: scope, eleven user stories with acceptance criteria, quality requirements and low-fidelity UI flows. |
 | 2.0 | 2026-10-09 | Merged closely related stories into nine mandatory stories in seven functional groups, and added the team's stories on filler words, pauses and student knowledge levels. Added failure and recovery scenarios. Separated automatic transcription from requested AI feedback. Added a competitor comparison table. Replaced text wireframes with Figma screens and navigation flow diagrams. |
-| 3.0 | 2026-10-16 | Reconciled the specification with the Iteration 2 implementation and current limits. Preserved explicit user-requested coaching and deferred unapproved defaults. |
+| 3.0 | 2026-10-16 | Reconciled the specification with the Iteration 2 implementation and current limits. Added implemented Audience Q&A and current Scribe v2 transcription while preserving explicit user-requested coaching and deferring unapproved defaults. |
 
 ## 2. Project Abstract
 
-OutLoud is an Android application that helps students, professionals, founders and educators rehearse presentations with their own PDF slides. A presenter imports a deck, optionally describes the intended audience, and records a rehearsal while moving through the slides. OutLoud connects the recording to the slides shown during practice, so the presenter can revisit each slide with its audio and transcript. After the presenter accepts a data disclosure, the recording is transcribed automatically. A separate summary of key ideas helps users review what they said without replacing their original words. On request, AI feedback points out possible inconsistencies between slides and speech, unclear explanations, and language that may be difficult for the stated audience. Each suggestion links to the relevant slide and recording interval, so users can judge the advice themselves. Delivery feedback covers speaking pace, time spent on each slide, filler words and pauses. Users can practice the full presentation or selected slides again, keep earlier attempts, and compare the same slide across attempts. Saved recordings stay available when analysis fails, so users can retry processing without recording again. OutLoud is for practice, not live presentations, and it does not fact-check claims against external sources.
+OutLoud is an Android application that helps students, professionals, founders and educators rehearse presentations with their own PDF slides. A presenter imports a deck, optionally describes the intended audience, and records a rehearsal while moving through the slides. OutLoud connects the recording to the slides shown during practice, so the presenter can revisit each slide with its audio and transcript. After the presenter accepts a data disclosure, the recording is transcribed automatically. A separate summary of key ideas helps users review what they said without replacing their original words. On request, AI feedback points out possible inconsistencies between slides and speech, unclear explanations, and language that may be difficult for the stated audience. Each suggestion links to the relevant slide and recording interval, so users can judge the advice themselves. Delivery feedback covers speaking pace, time spent on each slide, filler words and pauses. Audience Q&A generates presentation-specific practice questions and lets the presenter record, transcribe and review an answer. Users can practice the full presentation or selected slides again, keep earlier attempts, and compare the same slide across attempts. Saved recordings stay available when analysis fails, so users can retry processing without recording again. OutLoud is for practice, not live presentations, and it does not fact-check claims against external sources.
 
 ## 3. Customer
 
@@ -71,7 +72,7 @@ The table compares OutLoud with a general AI assistant and two presentation-prac
 | Feedback adapted to a described audience | – | – | – | O |
 | Re-record only selected slides as a new attempt | – | – | – | O |
 | Compare the same slide across attempts | – | – | – | O |
-| Practice answering audience questions | – | – | O | Opt. |
+| Practice answering audience questions | – | – | O | O |
 
 ¹ Learners can share their screen, such as presentation materials, while practicing.<br>
 ² Users can upload PDF or PPTX slides and audio files and ask for feedback in a conversation.<br>
@@ -84,7 +85,7 @@ Sources: [Microsoft Speaker Coach](https://support.microsoft.com/en-us/powerpoin
 
 ## 5. Functional Requirements
 
-The nine stories in this section describe the mandatory functionality of the final product. Each story uses the Connextra format. Each acceptance criterion uses Given–When–Then and is labeled **Positive** (expected success) or **Negative** (failure or input that is not allowed). Story IDs follow Version 1.0. The team will select and freeze the user acceptance test (UAT) stories by the end of Iteration 3.
+The ten stories in this section describe the mandatory functionality of the final product. Each story uses the Connextra format. Each acceptance criterion uses Given–When–Then and is labeled **Positive** (expected success) or **Negative** (failure or input that is not allowed). Story IDs follow Version 1.0. The team will select and freeze the user acceptance test (UAT) stories by the end of Iteration 3.
 
 | Functional group | Stories |
 | --- | --- |
@@ -95,6 +96,7 @@ The nine stories in this section describe the mandatory functionality of the fin
 | 5.5 Speaking delivery feedback | US-06 |
 | 5.6 Retry and comparison | US-08 |
 | 5.7 History, data management and recovery | US-10, US-11 |
+| 5.8 Audience question practice | US-17 |
 
 ### 5.1 Presentation management
 
@@ -293,7 +295,30 @@ An unavailable label is an error state; it does not satisfy AC-06e. Repetition a
   - **When** I return to history
   - **Then** the app reports the incomplete deletion and offers recovery, without claiming that all affected data was removed.
 
-### 5.8 Original team stories
+### 5.8 Audience question practice
+
+#### US-17. Practice audience questions
+
+**As a** presenter, **I want** to practise answering questions about my presentation,
+**so that** I can prepare for audience discussion.
+
+- **AC-17a. Generate relevant questions (Positive)**
+  - **Given** a saved presentation with usable slide or rehearsal context
+  - **When** I explicitly start Audience Q&A and accept the provider disclosure
+  - **Then** the app shows presentation-specific, AI-labeled questions and does not
+    invent missing source context as fact.
+- **AC-17b. Record and review an answer (Positive)**
+  - **Given** a generated question
+  - **When** I record and submit an answer
+  - **Then** the app shows the answer transcript and provider review associated with
+    that question.
+- **AC-17c. Provider or transcription failure (Negative)**
+  - **Given** a Q&A request that cannot be generated, transcribed or reviewed
+  - **When** the operation fails or its outcome is uncertain
+  - **Then** the app reports the failure and offers an eligible retry without showing
+    fabricated questions, transcript or feedback as successful output.
+
+### 5.9 Original team stories
 
 The team's user-story exercise produced the four stories below. Their original wording and acceptance criteria are kept here, and each is tested by the criterion in the last column.
 
@@ -437,10 +462,6 @@ The features below are outside the mandatory scope. The team may adopt them late
 
 - **AC-13a (proposed).** Given a saved description, When I save a valid correction, Then the slide keeps its identity and feedback based on the old description is marked out of date.
 - **AC-13b (proposed).** Given an unsaved, invalid or conflicting edit, When I cancel or try to save it, Then canceling keeps the saved version, and an unsuccessful save explains how to correct or reload the draft.
-
-**US-17. Audience questions (optional Iteration 3 scope).** As a presenter, I want to practice questions about my presentation, so that I can prepare for audience discussion. An experimental implementation exists, but it is not part of the Iteration 2 mandatory submission scope and does not establish acceptance.
-
-- **AC-17a (proposed).** Given a saved presentation with usable content, When I start question practice, Then the questions relate to that presentation and are labeled AI-generated; missing context is explained, not invented.
 
 **US-18. Script attachment.** As a presenter, I want to attach a script to a presentation, so that I can consult my intended explanation while preparing.
 

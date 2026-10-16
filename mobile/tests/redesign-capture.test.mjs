@@ -1,5 +1,5 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+// Attribution: docs/ai-collaboration/iteration-2/prompt-log.md#design-prototype-ui-rebuild-october-14-2026
 // OutLoud redesign: the Rehearse screen's capture engine keeps the former
 // recording rules: recorder-clock slide events, durable checkpoints and a saved attempt
 // that uploads and transcribes automatically. Synthetic recorder fixture (no device audio).
@@ -20,7 +20,7 @@ const { API_URL } = await import('../src/services/api.ts');
 
 const deck = { id: 'synthetic-capture-deck', title: 'Synthetic', uri: 'file:///synthetic.pdf', pageCount: 3 };
 
-test('capture uses voice AAC and stops near thirty minutes instead of ten', async t => {
+test('capture uses voice AAC and stops near twenty minutes', async t => {
   t.mock.timers.enable({ apis: ['setInterval'] });
   resetCaptureFixture();
   const { ref, calls, renderer, recorder } = await mount();
@@ -30,18 +30,18 @@ test('capture uses voice AAC and stops near thirty minutes instead of ten', asyn
   assert.equal(recorder.options.android.outputFormat, 'mpeg4');
   assert.equal(recorder.options.directory, 'document');
   await act(async () => { await ref.current.start(() => 0); });
-  for (const duration of [599000, 600001, 1798999]) {
+  for (const duration of [599000, 600001, 1198999]) {
     recorder.durationMillis = duration;
     await act(async () => { t.mock.timers.tick(70); });
     assert.equal(calls.mustStop, 0);
   }
-  recorder.durationMillis = 1799000;
+  recorder.durationMillis = 1199000;
   await act(async () => { t.mock.timers.tick(70); });
   assert.equal(calls.mustStop, 1);
   let take;
   await act(async () => { take = await ref.current.stop(); });
-  assert.equal(take.durationMs, 1799000);
-  assert.equal(getSavedAttempt(take.attemptId).recording.duration_ms, 1799000);
+  assert.equal(take.durationMs, 1199000);
+  assert.equal(getSavedAttempt(take.attemptId).recording.duration_ms, 1199000);
   await act(async () => { renderer.unmount(); });
 });
 

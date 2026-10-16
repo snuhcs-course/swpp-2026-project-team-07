@@ -1,0 +1,68 @@
+{
+  "attempt_id": "d230518e-5f9c-44ef-b73d-8a1bc3c34a73",
+  "status": "completed",
+  "provider": "elevenlabs",
+  "model": "scribe_v2",
+  "provider_requests": 1,
+  "request_options": {
+    "diarize": "false",
+    "keyterms": [
+      "Anxiety",
+      "Anxiety symptoms",
+      "Better lifestyle",
+      "Doctor instructions",
+      "Performance anxiety",
+      "Social anxiety",
+      "Test anxiety",
+      "Better",
+      "Doctor",
+      "instructions",
+      "lifestyle",
+      "Performance",
+      "Social",
+      "symptoms",
+      "Test"
+    ],
+    "model_id": "scribe_v2",
+    "no_verbatim": "false",
+    "tag_audio_events": "false",
+    "use_multi_channel": "false",
+    "timestamps_granularity": "word"
+  },
+  "word_count": 91,
+  "fillers": [
+    {
+      "text": "Um,",
+      "end_ms": 10960,
+      "start_ms": 10760
+    },
+    {
+      "text": "uh--",
+      "end_ms": 23120,
+      "start_ms": 23020
+    },
+    {
+      "text": "uh,",
+      "end_ms": 25380,
+      "start_ms": 25260
+    },
+    {
+      "text": "uh,",
+      "end_ms": 28620,
+      "start_ms": 28560
+    },
+    {
+      "text": "Uh,",
+      "end_ms": 32159,
+      "start_ms": 32020
+    },
+    {
+      "text": "um,",
+      "end_ms": 40580,
+      "start_ms": 40240
+    }
+  ],
+  "audio_hash_matches": true,
+  "raw_filler_count": 6,
+  "source": "Previously evaluated EdUHK presentation 5, 0\u201345s; synthetic text PDF"
+}

@@ -27,15 +27,15 @@ def synthetic_silence(seconds):
 class LongRecordingTests(TestCase):
     setUp = test_storage.UploadTests.setUp
     deck = test_storage.UploadTests.deck
-    def test_thirty_minute_metadata_and_decoding_preserve_identity_and_visits(self):
+    def test_twenty_minute_metadata_and_decoding_preserve_identity_and_visits(self):
         deck = self.deck()['deck']
-        metadata = {'id': str(uuid.uuid4()), 'deck_id': deck['id'], 'duration_ms': 1800000,
-                    'slide_events': [{'slide_index': 0, 'at_ms': 0}, {'slide_index': 1, 'at_ms': 600001},
-                                     {'slide_index': 0, 'at_ms': 1799999}]}
-        data = synthetic_silence(1800)
+        metadata = {'id': str(uuid.uuid4()), 'deck_id': deck['id'], 'duration_ms': 1200000,
+                    'slide_events': [{'slide_index': 0, 'at_ms': 0}, {'slide_index': 1, 'at_ms': 400001},
+                                     {'slide_index': 0, 'at_ms': 1199999}]}
+        data = synthetic_silence(1200)
         def upload():
             return self.client.post('/api/attempts/', {'metadata': json.dumps(metadata),
-                'audio': SimpleUploadedFile('synthetic-30-minute-silence.wav', data, 'audio/wav')})
+                'audio': SimpleUploadedFile('synthetic-20-minute-silence.wav', data, 'audio/wav')})
         with patch('rehearsals.tasks.process_attempt.delay') as provider_work:
             first, retry = upload(), upload()
             self.assertEqual(first.status_code, 201, first.data)
@@ -43,22 +43,22 @@ class LongRecordingTests(TestCase):
             self.assertEqual(first.data['attempt_id'], retry.data['attempt_id'])
             provider_work.assert_not_called()
         result = self.client.get(f"/api/attempts/{metadata['id']}/").data
-        self.assertEqual(result['duration_ms'], 1800000)
+        self.assertEqual(result['duration_ms'], 1200000)
         self.assertEqual(result['slide_events'], metadata['slide_events'])
 
-    def test_metadata_rejects_over_thirty_minutes_and_events_at_end(self):
-        base = {'id': str(uuid.uuid4()), 'deck_id': str(uuid.uuid4()), 'duration_ms': 1800000,
+    def test_metadata_rejects_over_twenty_minutes_and_events_at_end(self):
+        base = {'id': str(uuid.uuid4()), 'deck_id': str(uuid.uuid4()), 'duration_ms': 1200000,
                 'slide_events': [{'slide_index': 0, 'at_ms': 0}]}
         self.assertTrue(AttemptMetadataSerializer(data=base).is_valid())
-        self.assertFalse(AttemptMetadataSerializer(data={**base, 'duration_ms': 1800001}).is_valid())
+        self.assertFalse(AttemptMetadataSerializer(data={**base, 'duration_ms': 1200001}).is_valid())
         self.assertFalse(AttemptMetadataSerializer(data={**base, 'slide_events': [
-            *base['slide_events'], {'slide_index': 0, 'at_ms': 1800000}]}).is_valid())
+            *base['slide_events'], {'slide_index': 0, 'at_ms': 1200000}]}).is_valid())
 
-    def test_speech_gate_accepts_thirty_minutes_and_codec_tail_only(self):
+    def test_speech_gate_accepts_twenty_minutes_and_codec_tail_only(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'synthetic-silence.wav'
-            path.write_bytes(synthetic_silence(1801))
-            self.assertEqual(len(decode_waveform(path)), 1801 * SAMPLE_RATE)
-            path.write_bytes(synthetic_silence(1802))
+            path.write_bytes(synthetic_silence(1201))
+            self.assertEqual(len(decode_waveform(path)), 1201 * SAMPLE_RATE)
+            path.write_bytes(synthetic_silence(1202))
             with self.assertRaisesRegex(ValueError, 'exceeds limit'):
                 decode_waveform(path)

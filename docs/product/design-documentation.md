@@ -128,10 +128,14 @@ upload. Permission denial creates no recording. Save/upload failure retains the 
 local file and attempt identity for recovery.
 
 Transcription is an explicit processing operation. The worker checks audio, calls
-hosted Whisper when usable speech exists, validates timestamped words, and derives
-visits and metrics. No recognized speech produces an explicit outcome rather than
-invented text. Audio is limited to 25,000,000 downloaded bytes; accepted rehearsal
-duration is positive and at most 30 minutes.
+ElevenLabs `scribe_v2` when usable speech exists, validates timestamped words, and
+derives visits and metrics. A deterministic extractor supplies at most 100 bounded
+vocabulary keyterms from visited-slide text without another AI request. The durable
+provider record snapshots the provider, model and submitted options; historical
+Whisper results remain readable under their stored provenance. No recognized speech
+produces an explicit outcome rather than invented text. Audio is limited to
+25,000,000 downloaded bytes; accepted rehearsal duration is positive and at most
+20 minutes.
 
 ### 5.1 Alignment
 
@@ -162,6 +166,12 @@ or replaying a saved rehearsal never generates feedback. Results distinguish con
 audience and delivery suggestions from measured timing/transcript data. Empty valid
 results are allowed, and stale results cannot authorize evidence playback.
 
+Audience Q&A is an implemented companion flow. The existing Q&A screen explicitly
+requests deck-aware questions, records an answer, sends it through the same current
+speech adapter, and submits the transcript for provider review. Consent and provider
+configuration gates are reused, but question/answer operations remain separate from
+rehearsal coaching so replaying a saved result does not generate new provider work.
+
 ## 7. Frontend Organization
 
 ![Figure 6. Frontend architecture](../assets/design/svg/figure-6-frontend.svg)
@@ -177,6 +187,7 @@ components live under `mobile/src/design/`. The main flow is Home → Upload →
 | `features/recording` and `features/rehearsal` | Capture lifecycle, timeline, persistence, upload and recovery |
 | `features/transcription` | Validated review state, native-player status and seeking |
 | `features/feedback` | Profile/coaching contracts, revision-aware actions and evidence display |
+| `features/qa` and `screens/QAScreen.tsx` | Audience-question generation, answer capture/transcription and answer review |
 | `screens/TakePlayback.tsx` | Shared review/player host and editable profile presentation |
 | `screens/CompareScreen.tsx` | Side-by-side attempt comparison without a new provider call |
 
@@ -190,8 +201,8 @@ before publication and do not replace a known-good or original capture on failur
 
 The mandatory Iteration 2 design covers PDF import, recording/timeline persistence,
 durable review, transcription/alignment, slide profiles, evidence-linked feedback,
-history/retry and comparison. The [product traceability map](traceability.md) records
-where completion still requires team-owned testing.
+Audience Q&A, history/retry and comparison. The [product traceability map](traceability.md)
+records where completion still requires team-owned testing.
 
 
 Deletion, multi-user ownership and authenticated private-media delivery remain design

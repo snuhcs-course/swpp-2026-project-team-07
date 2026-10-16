@@ -1,6 +1,7 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
-// OpenAI Codex follow-up: docs/ai-collaboration-prompts-iteration-2.md#rehearsal-recording-choice-and-transcript-playback-october-14-2026
+// OpenAI Codex time/audience setup: docs/ai-collaboration/iteration-2/prompt-log.md#presentation-time-and-audience-setup-october-15-2026
+// Attribution: docs/ai-collaboration/iteration-2/prompt-log.md#design-prototype-ui-rebuild-october-14-2026
+// OpenAI Codex follow-up: docs/ai-collaboration/iteration-2/prompt-log.md#rehearsal-recording-choice-and-transcript-playback-october-14-2026
 // OutLoud redesign: presentations shown on Home, and each one's merged run.
 // PDFs, recordings, uploads and analysis results stay in the existing stores
 // (pdf catalog, saved attempts, analysis/review caches). This store only adds the
@@ -20,7 +21,7 @@ export type Presentation = {
   pageCount: number; pages: PageImage[]; slides: SlideText[];
   /** ready: slide text from the server; pending: not fetched yet (offline); none: the PDF has no text layer. */
   text: 'ready' | 'pending' | 'none';
-  target: number; targets: number[]; createdAt: string;
+  target: number; targets: number[]; audience?: string; createdAt: string;
 };
 export type DeckState = {
   run: Run | null;
@@ -73,7 +74,8 @@ function sanitize(value: unknown, pdf: LocalPdf, fallbackOrder: number, usedHues
     icon: isIcon(v.icon) ? v.icon : 'present',
     pageCount, pages: Array.isArray(v.pages) ? v.pages.filter(p => p && typeof p.uri === 'string') : [], slides,
     text: v.text === 'ready' || v.text === 'none' ? v.text : 'pending',
-    target, targets, createdAt: typeof v.createdAt === 'string' ? v.createdAt : new Date(0).toISOString(),
+    target, targets, audience: typeof v.audience === 'string' ? v.audience.slice(0, 500) : '',
+    createdAt: typeof v.createdAt === 'string' ? v.createdAt : new Date(0).toISOString(),
   };
 }
 

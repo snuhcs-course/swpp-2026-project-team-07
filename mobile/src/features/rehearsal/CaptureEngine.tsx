@@ -1,5 +1,6 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+// OpenAI Codex twenty-minute capture: docs/ai-collaboration/iteration-2/prompt-log.md#presentation-time-and-audience-setup-october-15-2026
+// Attribution: docs/ai-collaboration/iteration-2/prompt-log.md#design-prototype-ui-rebuild-october-14-2026
 // OutLoud redesign: microphone capture for one take.
 // Ported from the former RehearsalScreen without changing its rules: the recording
 // service owns the audio clock and slide events, a durable checkpoint is written every
@@ -33,7 +34,7 @@ type Props = {
   onMeter: (db: number, elapsedMs: number) => void;
   /** Capture failed or the app went to the background; the take is kept for recovery. */
   onInterrupted: (message: string) => void;
-  /** Reached the 30-minute limit, or the app left the foreground: the screen should stop. */
+  /** Reached the 20-minute limit, or the app left the foreground: the screen should stop. */
   onMustStop: () => void;
 };
 

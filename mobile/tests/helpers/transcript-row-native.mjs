@@ -1,5 +1,5 @@
 import {useState} from 'react';
-export const View='view',Pressable='pressable',ScrollView='scroll',Txt='text',Glyph='glyph',PanView='pan',Rect='rect';
+export const View='view',Pressable='pressable',ScrollView='scroll',TextInput='input',Txt='text',Glyph='glyph',PanView='pan',Rect='rect';
 export default 'svg';
 export const StyleSheet={create:x=>x,absoluteFill:{}};
 export const Easing={bezier:()=>()=>0};
@@ -10,4 +10,5 @@ export const useAnimatedStyle=()=>({});
 export const withTiming=x=>x;
 export const audioOf=()=> 'file:///synthetic.m4a';
 export const useWorkers=()=>new Map();
+export const useTheme=()=>({c:{ink08:'#111',rowDrag:'#15151B',strong:'#fff',body:'#ddd',goldText:'#ffe08a',border14:'#333',surface06:'#222',body3:'#bbb',warn:'#ffc266'}});
 export const Enter='enter';

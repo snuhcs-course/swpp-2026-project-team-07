@@ -19,8 +19,8 @@ mobile/                         Expo + React Native + TypeScript
   src/features/presentations/   Presentation identity, context and local state
   src/contracts/                Shared validated wire types
 backend/                        Django REST + Celery
-  rehearsals/models.py          Deck, attempt, context, correction and job state
-  rehearsals/services/          PDF, Whisper, alignment, profiles and coaching
+  rehearsals/models.py          Deck, attempt, context, Q&A and job state
+  rehearsals/services/          PDF, Scribe v2, alignment, Q&A and coaching
   rehearsals/tasks.py           Background task entry point
 compose.yaml                    Local PostgreSQL, Redis, API, worker, scheduler
 docs/                           Current references, evidence and archives (see docs/README.md)

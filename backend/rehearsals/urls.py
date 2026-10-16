@@ -39,7 +39,7 @@ urlpatterns = [
     ),
     path("decks/<uuid:deck_id>/", views.deck_detail),
     path("decks/<uuid:deck_id>/attempts/", views.deck_attempts),
-    # Audience Q&A (Claude, Iteration 2, 2026-10-14; see docs/api-contract.md).
+    # Audience Q&A (Claude, Iteration 2, 2026-10-14; see docs/architecture/api-contract.md).
     path("decks/<uuid:deck_id>/qa/questions/", qa_views.questions),
     path("decks/<uuid:deck_id>/qa/answers/", qa_views.answers),
 ]

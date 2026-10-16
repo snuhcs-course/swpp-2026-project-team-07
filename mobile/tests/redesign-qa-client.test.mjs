@@ -1,5 +1,5 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+// Attribution: docs/ai-collaboration/iteration-2/prompt-log.md#design-prototype-ui-rebuild-october-14-2026
 // OutLoud redesign: Audience Q&A client against synthetic server responses.
 // No real network or audio: the expo fetch/file modules are the existing upload fixtures.
 import { test, beforeEach } from 'node:test';
@@ -8,6 +8,7 @@ import { registerHooks } from 'node:module';
 import { resolve } from './helpers/upload-loader.mjs';
 import { files, network, response } from './helpers/upload-native.mjs';
 registerHooks({ resolve });
+const { saveAnalysisConsent, hasAnalysisConsent } = await import('../src/features/transcription/analysisStorage.ts');
 const { API_URL } = await import('../src/services/api.ts');
 const { writeStored, readStored } = await import('../src/services/storage.ts');
 const { generateQuestions, judgeAnswer } = await import('../src/features/qa/client.ts');
@@ -21,6 +22,7 @@ const notJson = status => ({ ok: false, status, json: async () => { throw new Sy
 const answer = { audioUri: 'file:///answer.m4a', question: 'Why now?', mainQuestion: 'Why now?', part: 0, slideIndex: 1, durationMs: 42000 };
 
 beforeEach(() => {
+  saveAnalysisConsent();
   network.requests.length = 0; network.respond = null;
   files.clear(); files.set('file:///synthetic.pdf', {}); files.set('file:///answer.m4a', { data: 'synthetic answer' });
   writeStored(key, OLD);
@@ -87,4 +89,19 @@ test('a missing answer recording is caught before any upload', async () => {
   network.respond = () => { throw new Error('should not upload'); };
   await assert.rejects(judgeAnswer(deck, answer), e => e.code === 'audio_missing');
   assert.equal(network.requests.length, 0);
+});
+
+
+test('old provider consent cannot authorize answer audio or slide hints', async () => {
+  const current = 'analysis-consent:elevenlabs:scribe-v2:keyterms:v2';
+  writeStored(current, false);
+  writeStored('analysis-consent:v1', true);
+  writeStored('analysis-consent:elevenlabs:scribe-v2:v1', true);
+  assert.equal(hasAnalysisConsent(), false);
+  await assert.rejects(judgeAnswer(deck, answer), e => e.code === 'transcription_consent_required');
+  assert.equal(network.requests.length, 0);
+  saveAnalysisConsent();
+  network.respond = () => response(200, { transcript: { text: 'Um, yes.', words: [] }, verdict: 'answered', duration_ms: 42000 });
+  assert.equal((await judgeAnswer(deck, answer)).verdict, 'answered');
+  assert.equal(network.requests.length, 1);
 });

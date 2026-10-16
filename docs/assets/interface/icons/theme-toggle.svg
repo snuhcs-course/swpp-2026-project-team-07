@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="42" height="42" viewBox="-525 -525 1050 1050">
+  <!-- OutLoud theme toggle, drawn at 0 degrees (moon left, sun right).
+       In the app it rests at 90 + 180*n degrees: 90 = dark (moon on top), 270 = light (sun on top). -->
+  <circle cx="0" cy="0" r="278.5" fill="#FFE550"/>
+  <path d="M0 -279.5 A279.5 279.5 0 0 0 0 279.5 Z" fill="#9B9A96"/>
+  <circle cx="-89" cy="-169" r="32" fill="#78777C"/>
+  <path d="M-121 -72 V-60 A57 57 0 0 1 -178 -3" fill="none" stroke="#78777C" stroke-width="38" stroke-linecap="round"/>
+  <circle cx="-110" cy="101" r="54" fill="#78777C"/>
+  <path d="M189 76 A204 204 0 0 1 80 188" fill="none" stroke="#FFD400" stroke-width="34" stroke-linecap="round"/>
+  <g fill="none" stroke="#FFE550" stroke-width="74" stroke-linecap="round">
+    <path d="M110 -410.5 L126.3 -471.4"/>
+    <path d="M300.5 -300.5 L345.1 -345.1"/>
+    <path d="M410.5 -110 L471.4 -126.3"/>
+    <path d="M410.5 110 L471.4 126.3"/>
+    <path d="M300.5 300.5 L345.1 345.1"/>
+    <path d="M110 410.5 L126.3 471.4"/>
+  </g>
+</svg>

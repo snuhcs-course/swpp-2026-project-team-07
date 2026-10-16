@@ -21,9 +21,12 @@ recording/review pipeline:
   recovery;
 - saved attempts, per-slide take selection, keep/overwrite comparison and local
   playback;
-- hosted Whisper transcription with slide visits and word-timed playback;
+- ElevenLabs Scribe v2 transcription with slide-derived vocabulary hints, slide
+  visits and word-timed playback;
 - cached slide cues and evidence-linked feedback through a configured backend
   provider;
+- implemented Audience Q&A with generated deck-aware questions, recorded answers,
+  transcription and answer feedback;
 - confirmed recognition corrections that preserve original transcript/media;
 - exact-sum per-slide timing for explicitly saved duration requirements; and
 - retry, stale-result and partial-failure states that retain usable local data.
@@ -94,6 +97,8 @@ Studio, Java, Docker, dependency and troubleshooting details.
    take remains pending until the choice is made.
 6. Review saved cues and feedback when the backend provider is enabled. Evidence
    links return to the corresponding slide and recording interval.
+7. Open **Audience Q&A** to generate presentation-specific questions, record an
+   answer, and review its transcript and provider feedback.
 
 The [rehearsal review reference](docs/features/rehearsal-review.md) describes saved
 media, recovery and playback behavior. The [API contract](docs/architecture/api-contract.md)
@@ -102,15 +107,18 @@ defines the shared client/server interfaces.
 ## Limits and configuration
 
 - PDF upload: 50 MiB, with any positive slide count.
-- New recording capture: up to 30 minutes; mono AAC at 64 kbps.
+- New recording capture: up to 20 minutes; mono AAC at 64 kbps.
 - Audio upload: at most 25,000,000 bytes.
-- Hosted transcription: OpenAI `whisper-1` after the saved disclosure flow.
+- Hosted transcription: ElevenLabs `scribe_v2` after the saved disclosure flow;
+  visited-slide text may contribute up to 100 bounded vocabulary keyterms.
 - Feedback: `FEEDBACK_ENABLED=true` plus a configured OpenAI or Gemini provider,
   model, key, project identity and positive RPM/TPM allowances.
 
 The [AI feedback reference](docs/features/ai-feedback/reference.md) documents provider
-configuration, recovery and operational bounds. The [hosted Whisper reference](docs/features/transcription/hosted-whisper.md)
-records transcription and packaged speech-gate constraints.
+configuration, Q&A, recovery and operational bounds. The [Scribe v2 reference](docs/features/transcription/scribe-v2.md)
+documents current transcription behavior; the [hosted Whisper reference](docs/features/transcription/hosted-whisper.md)
+is retained as historical implementation evidence and for the packaged speech-gate
+assessment.
 
 ## Checks
 

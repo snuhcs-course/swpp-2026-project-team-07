@@ -1,8 +1,9 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+// Attribution: docs/ai-collaboration/iteration-2/prompt-log.md#design-prototype-ui-rebuild-october-14-2026
 // OutLoud redesign: slide cards. The rendered PDF page fills the card
 // (letterboxed on the hue's slide face); the design's stand-in layout (title, rule,
 // bullets) is used only when no page image exists.
+// OpenAI Codex portrait-only correction: docs/ai-collaboration/iteration-2/prompt-log.md#portrait-only-pdf-rotation-correction-october-15-2026
 import { memo } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 import Svg, { ClipPath, Defs, G, Image as SvgImage, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
@@ -49,14 +50,14 @@ function contain(w: number, h: number, bw: number, bh: number) {
   return { x: (bw - w * k) / 2, y: (bh - h * k) / 2, width: w * k, height: h * k };
 }
 
-export const SlideCard = memo(function SlideCard({ hue, page, deckTitle, title, points, num, foldL, foldR }: {
-  hue: HueName; page?: PageImage; deckTitle: string; title: string; points: readonly string[]; num: number; foldL: boolean; foldR: boolean;
+export const SlideCard = memo(function SlideCard({ hue, page, deckTitle, title, points, num, foldL, foldR, shadow = true }: {
+  hue: HueName; page?: PageImage; deckTitle: string; title: string; points: readonly string[]; num: number; foldL: boolean; foldR: boolean; shadow?: boolean;
 }) {
   const h = HUES[hue];
   const clipKey = 'clip' + (foldL ? 'L' : '') + (foldR ? 'R' : '');
   const box = page ? contain(page.w, page.h, CARD_W, CARD_H) : null;
   return (
-    <View style={[styles.card, { boxShadow: `0px 24px 40px ${h.glow}` }]}>
+    <View style={[styles.card, shadow && { boxShadow: `0px 24px 40px ${h.glow}` }]}>
       <Svg width={CARD_W} height={CARD_H} style={StyleSheet.absoluteFill}>
         <Defs>
           <ClipPath id={clipKey}><Path d={cardClip(foldL, foldR)} /></ClipPath>

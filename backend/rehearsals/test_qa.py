@@ -1,5 +1,5 @@
 # AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-# Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+# Attribution: docs/ai-collaboration/iteration-2/prompt-log.md#design-prototype-ui-rebuild-october-14-2026
 """Audience Q&A endpoints with synthetic slides, transcripts and provider responses.
 
 Provider traffic goes through HTTPX MockTransport and the installed OpenAI SDK; Whisper is
@@ -134,8 +134,9 @@ class AudienceQaTests(TestCase):
     def test_answer_is_transcribed_reviewed_and_not_kept(self):
         seen = []
 
-        def fake(path):
+        def fake(path, *, keyterms):
             seen.append(path)
+            self.assertIsInstance(keyterms, list)
             self.assertTrue(path.exists())
             self.assertEqual(path.suffix, '.m4a')
             return {'text': ' '.join(w['text'] for w in WORDS), 'words': WORDS, 'raw_response': {'private': True}}

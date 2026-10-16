@@ -52,6 +52,30 @@ class UploadTests(TestCase):
         self.assertTrue(deck.pdf.storage.exists(deck.pdf.name))
         self.assertTrue(deck.slides.first().image.storage.exists(deck.slides.first().image.name))
 
+    def test_pdf_with_nul_in_extracted_text_uploads_without_changing_source(self):
+        # Synthetic PDF: a valid text string can decode to a NUL that PostgreSQL rejects.
+        from pypdf import PdfReader
+        from pypdf.generic import DictionaryObject, NameObject, DecodedStreamObject
+        writer = PdfWriter()
+        page = writer.add_blank_page(width=320, height=240)
+        font = DictionaryObject({NameObject('/Type'): NameObject('/Font'),
+            NameObject('/Subtype'): NameObject('/Type1'), NameObject('/BaseFont'): NameObject('/Helvetica')})
+        page[NameObject('/Resources')] = DictionaryObject({NameObject('/Font'):
+            DictionaryObject({NameObject('/F1'): writer._add_object(font)})})
+        content = DecodedStreamObject()
+        content.set_data(b'BT /F1 12 Tf 10 20 Td (Hel\\000lo world) Tj ET')
+        page[NameObject('/Contents')] = writer._add_object(content)
+        output = BytesIO(); writer.write(output)
+        original = output.getvalue()
+        self.assertIn('\x00', PdfReader(BytesIO(original)).pages[0].extract_text())
+        response = self.client.post('/api/decks/', {
+            'file': SimpleUploadedFile('synthetic-nul.pdf', original, 'application/pdf'), 'title': 'Synthetic NUL'})
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(response.data['slides'][0]['extracted_text'], 'Hello world')
+        deck = Deck.objects.get(pk=response.data['deck']['id'])
+        with deck.pdf.open('rb') as saved:
+            self.assertEqual(saved.read(), original)
+
     def test_invalid_and_oversized_decks(self):
         for upload in [SimpleUploadedFile("bad.pdf", b"not a pdf"), SimpleUploadedFile("big.pdf", b"0" * (50 * 1024 * 1024 + 1))]:
             self.assertEqual(self.client.post("/api/decks/", {"file": upload}).status_code, 400)
@@ -76,7 +100,7 @@ class UploadTests(TestCase):
         self.assertEqual(upload().status_code, 400)
         metadata["slide_events"][0]["slide_index"] = 0
         self.assertEqual(upload(SimpleUploadedFile("bad.wav", b"broken")).status_code, 400)
-        metadata["duration_ms"] = 1800001
+        metadata["duration_ms"] = 1_200_001
         self.assertEqual(upload().status_code, 400)
 
     def test_exact_decimal_audio_limit_and_awaiting_analysis(self):
