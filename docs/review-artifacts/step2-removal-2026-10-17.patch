@@ -1,0 +1,2363 @@
+--- a/backend/.env.example
++++ b/backend/.env.example
+@@ -15,9 +15,6 @@
+ # No upload/transcription-triggered calls, audio in feedback, or provider fallback.
+ # Mobile asserts the disclosed nonsecret selection; configuration races return 409.
+ FEEDBACK_ENABLED=false
+-# Enable only after migration 0010, compatible API writers/workers and clients.
+-# Admission-only: false keeps queued grouped work and saved reads available.
+-FEEDBACK_REVIEW_GROUPS_ENABLED=false
+ FEEDBACK_PROVIDER=openai
+ FEEDBACK_GEMINI_MODEL=gemini-3.1-flash-lite
+ FEEDBACK_OPENAI_MODEL=gpt-6-luna
+--- a/backend/rehearsals/models.py
++++ b/backend/rehearsals/models.py
+@@ -196,7 +196,7 @@
+ 
+ # Step 2 ownership AI-assisted by OpenAI Codex; October 16, 2026.
+ class SlideReviewMembership(models.Model):
+-    """Permanent initial-review ownership, independent of job freshness/state."""
++    """Historical Step 2 data retained for schema compatibility; no runtime writes."""
+     attempt = models.ForeignKey(Attempt, on_delete=models.PROTECT, related_name='review_memberships')
+     context_key = models.CharField(max_length=36, blank=True, default='')
+     slide_index = models.PositiveIntegerField()
+--- a/backend/rehearsals/services/coaching.py
++++ b/backend/rehearsals/services/coaching.py
+@@ -36,11 +36,10 @@
+ 
+ 
+ def safe_error(code):
+-    if code in {'review_grouping_disabled', 'review_protocol_required'}:
+-        return {'code': code, 'message': {
+-            'review_grouping_disabled': 'Grouped feedback updates are temporarily unavailable.',
+-            'review_protocol_required': 'Update the app before changing grouped feedback.',
+-        }[code]}
++    if code == 'review_grouping_removed':
++        return {'code': code, 'message': 'Grouped feedback generation is no longer supported.'}
++    if code == 'review_history_pending':
++        return {'code': code, 'message': 'Historical feedback is still active or has an uncertain outcome.'}
+     if code == 'quota_stopped':
+         return {'code': code, 'message': QUOTA_STOPPED_MESSAGE}
+     return {'code': code, 'message': f'Rehearsal feedback unavailable ({code}).'} if code else None
+@@ -192,46 +191,16 @@
+ 
+ 
+ @_private_database_logging()
+-def generate(attempt_id, payload, analysis_type='coaching', review_scope=None, *, review_group=False, review_protocol=None):
+-    from .review_groups import AdmissionChanged
+-    # A competing admission may consume one member during preparation. Unwind
+-    # its transaction before recapturing the smaller remaining scope/media.
+-    for _ in range(4):
+-        try:
+-            return _generate(attempt_id, payload, analysis_type, review_scope, review_group=review_group, review_protocol=review_protocol)
+-        except AdmissionChanged:
+-            continue
+-    raise Conflict('review_ownership_conflict')
+-
+-
+-def _generate(attempt_id, payload, analysis_type, review_scope, *, review_group, review_protocol):
++def generate(attempt_id, payload, analysis_type='coaching', review_scope=None):
+     attempt = Attempt.objects.select_related('deck').get(pk=attempt_id)
+     if analysis_type.startswith('review_'):
+-        from . import review_groups, slide_review
++        from . import slide_review, review_groups
+         review_scope = slide_review.scope_for(attempt, review_scope)
+-        with transaction.atomic():
+-            Deck.objects.select_for_update().get(pk=attempt.deck_id)
+-            Attempt.objects.select_for_update().get(pk=attempt_id)
+-            owners = review_groups.resolve(attempt, review_scope)
+-            if review_group:
+-                unowned = review_groups.remaining(review_scope, owners)
+-                if not unowned['slides']:
+-                    review_groups.resolve(attempt, review_scope, register=True)
+-                    return owners[review_scope['slides'][0]['slide_index']]
+-                review_scope = unowned
+-                analysis_type = slide_review.analysis_type(review_scope)
+-            elif len(review_scope['slides']) == 1 and owners:
+-                owner = owners[review_scope['slides'][0]['slide_index']]
+-                review_scope, analysis_type = review_groups.owner_scope(owner), owner.analysis_type
+-            elif owners and not FeedbackAnalysis.objects.filter(attempt=attempt, analysis_type=analysis_type).exists():
+-                raise Conflict('review_ownership_conflict')
+-            if not review_group and owners:
+-                # A legacy group can overlap a preferred historical singleton.
+-                # Expanding Update must not retry work owned by that other job.
+-                full_owners = review_groups.resolve(attempt, review_scope)
+-                if (len(full_owners) != len(review_scope['slides']) or
+-                        any(owner.analysis_type != analysis_type for owner in full_owners.values())):
+-                    raise Conflict('review_ownership_conflict')
++        if len(review_scope['slides']) != 1:
++            raise Conflict('review_grouping_removed')
++        if analysis_type != slide_review.analysis_type(review_scope):
++            raise FeedbackError('invalid_request')
++        review_groups.assert_independent_admission(attempt, review_scope)
+     if 'transcript_revision' in payload and payload['transcript_revision'] != corrections.snapshot(attempt)['revision']:
+         raise Conflict('correction_conflict')
+     review_input = None
+@@ -242,23 +211,14 @@
+     elif analysis_type.startswith('qa_'):
+         from . import audience_qa
+         qa_input = audience_qa.capture(attempt, review_scope)
++    if analysis_type.startswith('review_'):
++        from . import slide_review
++        review_input = slide_review.capture(attempt, review_scope)
+     existing = FeedbackAnalysis.objects.filter(attempt=attempt, analysis_type=analysis_type).first()
+-    def capture_review():
+-        from . import slide_review
+-        grouped = review_group or bool(existing and existing.jobs.filter(
+-            source_snapshot__slide_review__request_context_version=slide_review.GROUP_CONTEXT_VERSION).exists())
+-        return (slide_review.capture_group if grouped else slide_review.capture)(attempt, review_scope)
+     if existing:
+         # Existing analysis always retries its captured selection/source. Never
+         # prepare media, select the current provider or retry its dependency here.
+         with transaction.atomic():
+-            if review_scope is not None and analysis_type.startswith('review_'):
+-                Deck.objects.select_for_update().get(pk=attempt.deck_id)
+-                current_attempt = Attempt.objects.select_for_update().get(pk=attempt_id)
+-                full_owners = review_groups.resolve(current_attempt, review_scope)
+-                if (len(full_owners) != len(review_scope['slides']) or
+-                        any(owner.pk != existing.pk for owner in full_owners.values())):
+-                    raise Conflict('review_ownership_conflict')
+             value, analysis, old = _locked(existing.pk, existing.feedback_revision)
+             if 'transcript_revision' in payload and payload['transcript_revision'] != corrections.snapshot(attempt)['revision']:
+                 raise Conflict('correction_conflict')
+@@ -271,9 +231,6 @@
+             stale = _stale(value, old) or not _source_current(old)
+             if not stale and (old.state in ACTIVE or old.state == 'completed'):
+                 return analysis
+-            if analysis_type.startswith('review_'):
+-                review_groups.assert_mutation(review_scope, review_protocol)
+-                review_input = capture_review()
+             if revision is None:
+                 raise Conflict('revision_required')
+             request = FeedbackRequest.objects.filter(coaching_job=old).first()
+@@ -296,15 +253,16 @@
+             check_coaching_versions(old)
+             selection.credentials()
+             QuotaPolicy.current(selection)
+-            if review_input is not None:
+-                # Recheck immediately before queueing, under the admission locks.
+-                review_groups.assert_mutation(review_scope, review_protocol)
+-                review_groups.register(current_attempt, review_scope, analysis)
+             return _queue(analysis, value, snapshot, old)
+-    if analysis_type.startswith('review_'):
+-        review_groups.assert_mutation(review_scope, review_protocol)
+-        review_input = capture_review()
+-    if set(payload) - {'expected_selection', 'transcript_revision'}:  # A retry can never create an initial analysis.
++    initial_controls = {'expected_selection', 'transcript_revision'}
++    if review_input is not None and payload.get('acknowledge_uncertain') is True:
++        # A transport-uncertain independent initial submission may not have
++        # reached the server. Historical provider uncertainty stays fenced above;
++        # an existing singleton still requires its normal revision contract.
++        historical = review_groups.historical_owner(attempt, review_scope)
++        if historical and historical.analysis_type != analysis_type:
++            initial_controls.add('acknowledge_uncertain')
++    if set(payload) - initial_controls:  # A retry can never create an initial analysis.
+         raise Conflict('stale_revision')
+     source = prepare_attempt(attempt)
+     if review_input is None and qa_input is None:
+@@ -335,22 +293,14 @@
+             raise Conflict('correction_conflict')
+         descriptions_service.check_storage(locked_deck, snapshot)
+         if review_input is not None:
+-            owners = review_groups.resolve(current_attempt, review_scope)
+-            if owners:
+-                # The next pass resolves either the full captured owner for an
+-                # explicit singleton update or only the unowned initial members.
+-                raise review_groups.AdmissionChanged()
+-            review_groups.assert_mutation(review_scope, review_protocol)
++            review_groups.assert_independent_admission(current_attempt, review_scope)
+         # Serializing initial admission on the deck/attempt also deduplicates a
+         # second caller that observed no analysis before preparing its input.
+         current = FeedbackAnalysis.objects.filter(attempt_id=attempt_id, analysis_type=analysis_type).first()
+         if current:
+             # Recheck active/completed vs failed/stale and retry requirements if
+             # another caller admitted while this caller prepared its snapshots.
+-            if review_input is not None:
+-                raise review_groups.AdmissionChanged()
+-            return generate(attempt_id, payload, analysis_type, review_scope,
+-                review_group=review_group, review_protocol=review_protocol)
++            return generate(attempt_id, payload, analysis_type, review_scope)
+         assert_selection(payload, selection_descriptor(profile_selection(attempt.deck_id, source=deck.input_id) if review_input is not None or qa_input is not None else Selection.current(), coaching=True))
+         if qa_input is not None and analysis_type != 'qa_answer' and not audience_qa.current(current_attempt, qa_input):
+             raise Conflict('requirements_changed')
+@@ -358,10 +308,7 @@
+             raise Conflict('requirements_changed')
+         value = descriptions_service.admit_prepared(selection, deck, snapshot, dependency=True, candidate=description_request)
+         analysis = FeedbackAnalysis.objects.create(attempt=current_attempt, analysis_type=analysis_type)
+-        analysis = _queue(analysis, value, captured)
+-        if review_input is not None:
+-            review_groups.register(current_attempt, review_scope, analysis)
+-        return analysis
++        return _queue(analysis, value, captured)
+ 
+ 
+ def _queue(analysis, value, snapshot, previous=None):
+--- a/backend/rehearsals/services/review_groups.py
++++ b/backend/rehearsals/services/review_groups.py
+@@ -1,41 +1,10 @@
+-# AI-assisted by OpenAI Codex; Step 2 ownership and projection, October 16, 2026.
+-"""Permanent review ownership and read projections; never provider work.
+-
+-Admissions call resolve(register=True) only while holding deck then attempt locks.
+-GETs resolve the same historical precedence without writing memberships.
+-"""
++"""Read-only compatibility for saved grouped reviews; no admission ownership writes."""
+ from copy import deepcopy
+-import os
+ import uuid
+-
+-from ..models import FeedbackAnalysis, SlideReviewMembership
++from ..models import FeedbackAnalysis, FeedbackRequest
+ from .descriptions import Conflict
+ from .feedback import FeedbackError, validated
+ from . import slide_review
+-
+-
+-REVIEW_PROTOCOL = slide_review.GROUP_CONTEXT_VERSION
+-
+-
+-def capability():
+-    """Admission-only switch; queued compatible work and reads keep running."""
+-    return {'protocol': REVIEW_PROTOCOL,
+-            'enabled': os.environ.get('FEEDBACK_REVIEW_GROUPS_ENABLED', 'false') == 'true'}
+-
+-
+-def assert_mutation(scope, protocol):
+-    """Check effective ownership scope, including singleton Update expansion."""
+-    if len(scope['slides']) <= 1:
+-        return
+-    if not capability()['enabled']:
+-        raise Conflict('review_grouping_disabled')
+-    if protocol != REVIEW_PROTOCOL:
+-        raise Conflict('review_protocol_required')
+-
+-
+-class AdmissionChanged(Exception):
+-    """Unwind admission locks before preparing the remaining unowned scope."""
+-
+ 
+ def owner_scope(owner):
+     first = owner.jobs.order_by('generation').first()
+@@ -56,59 +25,31 @@
+     return scope['context_id'] == requested['context_id'] and all(slide in scope['slides'] for slide in requested['slides'])
+ 
+ 
+-def resolve(attempt, scope, *, register=False):
+-    """Prefer historical exact singletons; ambiguous multi owners fail closed."""
+-    key = scope['context_id'] or ''
+-    indexes = {slide['slide_index'] for slide in scope['slides']}
+-    saved = {m.slide_index: m.analysis for m in SlideReviewMembership.objects.select_related('analysis').filter(
+-        attempt=attempt, context_key=key, slide_index__in=indexes)}
+-    candidates = {index: [] for index in indexes}
++def historical_owner(attempt, scope):
++    """Exact singleton wins, regardless of obsolete membership assignments."""
++    exact = FeedbackAnalysis.objects.filter(attempt=attempt, analysis_type=slide_review.analysis_type(scope)).first()
++    if exact:
++        return exact
++    candidates = []
+     for owner in FeedbackAnalysis.objects.filter(attempt=attempt, analysis_type__startswith='review_'):
+         original = owner_scope(owner)
+-        if original['context_id'] != scope['context_id']:
+-            continue
+-        for slide in original['slides']:
+-            if slide['slide_index'] in indexes:
+-                candidates[slide['slide_index']].append((len(original['slides']), owner))
+-    owners = {}
+-    for slide in scope['slides']:
+-        index = slide['slide_index']
+-        possible = candidates[index]
+-        singletons = [owner for size, owner in possible if size == 1]
+-        preferred = singletons or [owner for _, owner in possible]
+-        if len(preferred) > 1:
+-            raise Conflict('review_ownership_conflict')
+-        historical = preferred[0] if preferred else None
+-        owner = saved.get(index) or historical
+-        if owner is None:
+-            continue
+-        if owner.attempt_id != attempt.pk:
+-            raise Conflict('review_ownership_conflict')
+-        if historical and owner.pk != historical.pk:
+-            # A durable assignment is never moved to resolve a legacy overlap.
+-            raise Conflict('review_ownership_conflict')
+-        if not contains(owner_scope(owner), {'context_id': scope['context_id'], 'slides': [slide]}):
+-            raise Conflict('review_ownership_conflict')
+-        owners[index] = owner
+-    if register:
+-        for index, owner in owners.items():
+-            SlideReviewMembership.objects.get_or_create(attempt=attempt, context_key=key, slide_index=index,
+-                defaults={'analysis': owner})
+-    return owners
++        if len(original['slides']) > 1 and contains(original, scope):
++            candidates.append(owner)
++    if len(candidates) > 1:
++        raise Conflict('review_ownership_conflict')
++    return candidates[0] if candidates else None
+ 
+ 
+-def remaining(scope, owners):
+-    return {**scope, 'slides': [slide for slide in scope['slides'] if slide['slide_index'] not in owners]}
+-
+-
+-def register(attempt, scope, owner):
+-    if owner.attempt_id != attempt.pk or not contains(owner_scope(owner), scope):
+-        raise Conflict('review_ownership_conflict')
+-    for slide in scope['slides']:
+-        membership, _ = SlideReviewMembership.objects.get_or_create(attempt=attempt,
+-            context_key=scope['context_id'] or '', slide_index=slide['slide_index'], defaults={'analysis': owner})
+-        if membership.analysis_id != owner.pk:
+-            raise Conflict('review_ownership_conflict')
++def assert_independent_admission(attempt, scope):
++    """Do not duplicate active or unresolved historical provider work."""
++    from . import coaching
++    owner = historical_owner(attempt, scope)
++    if not owner or owner.analysis_type == slide_review.analysis_type(scope):
++        return
++    job = owner.jobs.get(generation=owner.feedback_revision)
++    request = FeedbackRequest.objects.filter(coaching_job=job).first()
++    if job.state in coaching.ACTIVE or job.state == 'needs_confirmation' or coaching._uncertain(request):
++        raise Conflict('review_history_pending')
+ 
+ 
+ def read(attempt, scope):
+@@ -116,7 +57,7 @@
+     from .feedback_config import selection_descriptor
+     owner = None
+     if len(scope['slides']) == 1:
+-        owner = resolve(attempt, scope).get(scope['slides'][0]['slide_index'])
++        owner = historical_owner(attempt, scope)
+     kind = owner.analysis_type if owner else slide_review.analysis_type(scope)
+     owner = owner or FeedbackAnalysis.objects.filter(attempt=attempt, analysis_type=kind).first()
+     state = coaching.read(attempt.pk, kind)
+@@ -127,11 +68,24 @@
+             state['selection'] = None
+     state['scope'] = scope
+     state['review_version'] = slide_review.VERSION
+-    state['review_grouping'] = capability()
+     job = owner.jobs.get(generation=state['feedback_revision']) if owner else None
+     state['requirements'] = job.source_snapshot['slide_review']['requirements'] if job else slide_review.requirements(attempt, scope)
+     if owner and len(scope['slides']) == 1 and owner_scope(owner) != scope:
+         state['group_owner'] = {'analysis_id': owner.pk, 'scope': owner_scope(owner)}
++        # Saved selection describes the original receipt; new singleton work
++        # needs current provider disclosure and its own admission assertion.
++        try:
++            selection = slide_profiles.preferred_selection(attempt.deck_id)
++            state['independent_selection'] = selection_descriptor(selection, coaching=True)
++            state['independent_availability'] = coaching._availability(selection)
++            assert_independent_admission(attempt, scope)
++        except FeedbackError as error:
++            # Preserve a valid current disclosure when admission is fenced by
++            # historical activity; no descriptor is invented on config failure.
++            state.setdefault('independent_selection', None)
++            state['independent_availability'] = {
++                'state': 'disabled' if error.code == 'disabled' else 'unavailable',
++                'error': coaching.safe_error(error.code)}
+         if state['result']:
+             state['result'] = deepcopy(state['result'])
+             wanted = scope['slides'][0]['slide_index']
+--- a/backend/rehearsals/services/slide_review.py
++++ b/backend/rehearsals/services/slide_review.py
+@@ -13,6 +13,7 @@
+ # Compact-context changes AI-assisted by OpenAI Codex; see docs/ai-collaboration-prompts-iteration-2.md.
+ VERSION = 'slide-review-v3'
+ REQUEST_CONTEXT_VERSION = 'selected-review-context-v1'
++# Read/reconstruct only: existing queued jobs and private receipts retain this format.
+ GROUP_CONTEXT_VERSION = 'selected-review-group-context-v1'
+ NEARBY_WORDS = 20
+ logger = logging.getLogger(__name__)
+@@ -64,17 +65,6 @@
+ def capture(attempt, scope):
+     return {'version': VERSION, 'scope': scope, 'requirements': requirements(attempt, scope),
+             'request_context_version': REQUEST_CONTEXT_VERSION}
+-
+-def capture_group(attempt, scope):
+-    """Freeze the paired budget; a lone remaining member keeps Step 1's format."""
+-    size = len(scope['slides'])
+-    if size not in (1, 2):
+-        raise FeedbackError('invalid_request')
+-    captured = capture(attempt, scope)
+-    if size == 2:
+-        captured.update(request_context_version=GROUP_CONTEXT_VERSION, max_output_tokens=5000)
+-    return captured
+-
+ 
+ def current(attempt, captured):
+     if captured['version'] != VERSION or requirements(attempt, captured['scope']) != captured['requirements']:
+--- a/backend/rehearsals/slide_review_views.py
++++ b/backend/rehearsals/slide_review_views.py
+@@ -1,4 +1,3 @@
+-# Step 2 grouped admission AI-assisted by OpenAI Codex; see docs/ai-use.md.
+ """Read-only inspection and explicit generation for selected slide visits."""
+ from django.core.exceptions import RequestDataTooBig
+ from rest_framework.decorators import api_view, parser_classes
+@@ -34,36 +33,8 @@
+             if 'acknowledge_uncertain' in body and type(body['acknowledge_uncertain']) is not bool:
+                 raise FeedbackError('invalid_request')
+             validate_assertion(body)
+-            coaching.generate(attempt_id, body, slide_review.analysis_type(scope), scope,
+-                review_protocol=request.headers.get('X-OutLoud-Review-Protocol'))
++            coaching.generate(attempt_id, body, slide_review.analysis_type(scope), scope)
+         state = review_groups.read(attempt, scope)
+         return Response(state, status=202 if request.method == 'POST' and state['state'] != 'completed' else 200)
+     except Exception as error:
+         return _error(error)
+-
+-
+-@api_view(['POST'])
+-@parser_classes([])
+-def initial(request, attempt_id):
+-    """Admit at most two unowned slides once; existing states never retry here."""
+-    try:
+-        attempt = Attempt.objects.select_related('deck').get(pk=attempt_id)
+-        if request.query_params or request.content_type != 'application/json':
+-            raise FeedbackError('invalid_request')
+-        try:
+-            body = strict_json(request._request.read(65537), 65536)
+-        except (RequestDataTooBig, OSError):
+-            raise FeedbackError('invalid_request') from None
+-        if (type(body) is not dict or set(body) != {'scope', 'expected_selection', 'transcript_revision'} or
+-                type(body['transcript_revision']) is not int or body['transcript_revision'] != 0):
+-            raise FeedbackError('invalid_request')
+-        validate_assertion(body)
+-        scope = slide_review.scope_for(attempt, body.pop('scope'))
+-        if len(scope['slides']) > 2:
+-            raise FeedbackError('invalid_request')
+-        coaching.generate(attempt_id, body, slide_review.analysis_type(scope), scope, review_group=True,
+-            review_protocol=request.headers.get('X-OutLoud-Review-Protocol'))
+-        reviews = [review_groups.read(attempt, {**scope, 'slides': [slide]}) for slide in scope['slides']]
+-        return Response({'reviews': reviews}, status=200 if all(r['state'] == 'completed' for r in reviews) else 202)
+-    except Exception as error:
+-        return _error(error)
+--- a/backend/rehearsals/test_review_group_budget.py
++++ b/backend/rehearsals/test_review_group_budget.py
+@@ -14,7 +14,8 @@
+         prepared, snapshot = prepared_fixture(name)
+         scope = deepcopy(snapshot['slide_review']['scope'])
+         scope['slides'].append({'slide_index': 1, 'segments': [{'start_ms': 1000, 'end_ms': 2000}]})
+-        snapshot['slide_review'] = slide_review.capture_group(SimpleNamespace(), scope)
++        snapshot['slide_review'] = {**slide_review.capture(SimpleNamespace(), scope),
++            'request_context_version': slide_review.GROUP_CONTEXT_VERSION, 'max_output_tokens': 5000}
+         return prepared, snapshot
+ 
+     def test_pair_gets_own_frozen_budget_and_identity_for_both_providers(self):
+@@ -43,7 +44,7 @@
+ 
+     def test_one_remaining_slide_keeps_step1_budget_and_context(self):
+         prepared, snapshot = prepared_fixture()
+-        snapshot['slide_review'] = slide_review.capture_group(SimpleNamespace(), snapshot['slide_review']['scope'])
++        snapshot['slide_review'] = slide_review.capture(SimpleNamespace(), snapshot['slide_review']['scope'])
+         self.assertEqual(snapshot['slide_review']['request_context_version'], 'selected-review-context-v1')
+         self.assertNotIn('max_output_tokens', snapshot['slide_review'])
+         self.assertEqual(provider.output_token_limit(slide_review.augment(prepared, snapshot)), 2500)
+@@ -64,9 +65,6 @@
+         snapshot['slide_review']['scope']['slides'].pop()
+         with self.assertRaises(FeedbackError):
+             slide_review.augment(prepared, snapshot)
+-        for slides in ([], saved['slide_review']['scope']['slides'] * 2):
+-            with self.assertRaises(FeedbackError):
+-                slide_review.capture_group(SimpleNamespace(), {'context_id': None, 'slides': slides})
+ 
+     def test_quota_bound_is_actual_wire_value_and_invalid_values_fail_closed(self):
+         prepared, snapshot = self.pair()
+--- a/backend/rehearsals/test_review_group_rollout.py
++++ b/backend/rehearsals/test_review_group_rollout.py
+@@ -1,176 +1,38 @@
+-"""Synthetic, unpaid rollout-control regressions for grouped review admission."""
++"""Synthetic unpaid regressions for permanently cancelled grouped admissions."""
+ import os
+ from unittest.mock import patch
+ from django.test import TestCase
+-from .models import (DescriptionJob, DescriptionSet, FeedbackAnalysis, FeedbackJob,
+-                     FeedbackRequest, FeedbackReservation, SlideReviewMembership)
+-from .services import coaching, descriptions, feedback_provider as provider, slide_review
++from .models import FeedbackAnalysis, FeedbackJob, SlideReviewMembership
++from .services import coaching, slide_review
+ from .test_review_groups import GroupedSources
+ 
+-PROTOCOL = 'selected-review-group-context-v1'
+-HEADER = {'HTTP_X_OUTLOUD_REVIEW_PROTOCOL': PROTOCOL}
+-
+-class ReviewGroupRolloutTests(GroupedSources, TestCase):
++class ReviewGroupCancellationTests(GroupedSources, TestCase):
+     grouping_enabled = False
+ 
+-    def post_group(self, *, initial=True, headers=None, selection=None, **extra):
+-        payload = {'scope': self.scope(0, 1), **extra}
+-        if initial:
+-            payload.update(expected_selection=selection or self.read_review(0).json()['selection']['token'], transcript_revision=0)
+-        return self.client.post(self.url + ('initial/' if initial else ''), payload,
+-            content_type='application/json', **(HEADER if headers is None else headers))
++    def test_initial_route_removed_even_with_old_rollout_configuration(self):
++        with patch.dict(os.environ, {'FEEDBACK_REVIEW_GROUPS_ENABLED': 'true'}):
++            response = self.initial(0, 1)
++        self.assertEqual(response.status_code, 404)
++        self.assertFalse(FeedbackAnalysis.objects.exists())
+ 
+-    def inventory(self):
+-        return {model.__name__: list(model.objects.order_by('pk').values()) for model in
+-            (DescriptionSet, DescriptionJob, FeedbackAnalysis, FeedbackJob, FeedbackRequest,
+-             FeedbackReservation, SlideReviewMembership)}
++    def test_multi_slide_generation_permanently_refused_without_preparation(self):
++        for setting in ('false', 'true'):
++            with self.subTest(setting=setting), patch.dict(os.environ, {'FEEDBACK_REVIEW_GROUPS_ENABLED': setting}):
++                with patch.object(coaching, 'prepare_attempt') as prepare:
++                    response = self.client.post(self.url, {'scope': self.scope(0, 1)}, content_type='application/json',
++                        HTTP_X_OUTLOUD_REVIEW_PROTOCOL='selected-review-group-context-v1')
++                self.assertEqual(response.status_code, 409, response.content)
++                self.assertEqual(response.json()['error']['code'], 'review_grouping_removed')
++                prepare.assert_not_called()
++                self.assertFalse(FeedbackAnalysis.objects.exists())
++                self.assertFalse(SlideReviewMembership.objects.exists())
+ 
+-    def test_default_and_invalid_switch_values_block_before_preparation_without_side_effects(self):
+-        for setting in (None, 'false', 'TRUE', '1', 'invalid', ''):
+-            with self.subTest(setting=setting), patch.dict(os.environ):
+-                if setting is None:
+-                    os.environ.pop('FEEDBACK_REVIEW_GROUPS_ENABLED', None)
+-                else:
+-                    os.environ['FEEDBACK_REVIEW_GROUPS_ENABLED'] = setting
+-                before = self.inventory()
+-                selection = self.read_review(0).json()['selection']['token']
+-                for initial in (True, False):
+-                    with patch.object(coaching, 'prepare_attempt') as source, patch.object(descriptions, 'prepare_saved') as media:
+-                        response = self.post_group(initial=initial, selection=selection)
+-                    self.assertEqual(response.status_code, 409, response.content)
+-                    self.assertEqual(response.json()['error']['code'], 'review_grouping_disabled')
+-                    source.assert_not_called(); media.assert_not_called()
+-                    self.assertEqual(self.inventory(), before)
+-                self.assertEqual(self.read_review(0).json()['review_grouping'], {'protocol': PROTOCOL, 'enabled': False})
+-
+-    def test_enabled_group_requires_exact_protocol_at_routes_and_service(self):
+-        with patch.dict(os.environ, {'FEEDBACK_REVIEW_GROUPS_ENABLED': 'true'}):
+-            for protocol in (None, '', 'selected-review-context-v1', PROTOCOL.upper()):
+-                with self.subTest(protocol=protocol):
+-                    headers = {} if protocol is None else {'HTTP_X_OUTLOUD_REVIEW_PROTOCOL': protocol}
+-                    before = self.inventory()
+-                    for initial in (True, False):
+-                        response = self.post_group(initial=initial, headers=headers)
+-                        self.assertEqual(response.status_code, 409, response.content)
+-                        self.assertEqual(response.json()['error']['code'], 'review_protocol_required')
+-                        self.assertEqual(self.inventory(), before)
+-                    scope = self.scope(0, 1)
+-                    with self.assertRaises(coaching.Conflict) as error:
+-                        coaching.generate(self.attempt.pk, {}, slide_review.analysis_type(scope), scope,
+-                            review_protocol=protocol)
+-                    self.assertEqual(error.exception.code, 'review_protocol_required')
+-
+-    def test_exact_protocol_allows_group_and_projections_advertise_capability(self):
++    def test_singletons_admit_independent_jobs_without_protocol_or_memberships(self):
+         self.ready_profiles()
+-        with patch.dict(os.environ, {'FEEDBACK_REVIEW_GROUPS_ENABLED': 'true'}):
+-            response = self.post_group()
++        for index in (0, 1):
++            response = self.singleton(index)
+             self.assertEqual(response.status_code, 202, response.content)
+-            for state in response.json()['reviews']:
+-                self.assertEqual(state['review_grouping'], {'protocol': PROTOCOL, 'enabled': True})
+-            self.assertEqual(self.review_jobs().count(), 1)
+-        state = self.read_review(1).json()
+-        self.assertEqual(state['review_grouping'], {'protocol': PROTOCOL, 'enabled': False})
+-        self.assertIn('group_owner', state)
+-
+-    def test_singleton_remains_available_without_switch_or_header(self):
+-        self.ready_profiles()
+-        with patch.dict(os.environ, {'FEEDBACK_REVIEW_GROUPS_ENABLED': 'false'}):
+-            for index in (0, 1):
+-                response = self.initial(index) if index == 0 else self.singleton(index)
+-                self.assertEqual(response.status_code, 202, response.content)
+-            self.assertEqual(self.review_jobs().count(), 2)
+-
+-    def test_disabled_group_noop_reuse_and_queued_execution_still_work(self):
+-        self.ready_profiles()
+-        with patch.dict(os.environ, {'FEEDBACK_REVIEW_GROUPS_ENABLED': 'true'}):
+-            self.assertEqual(self.post_group().status_code, 202)
+-        before = self.inventory()
+-        with patch.dict(os.environ, {'FEEDBACK_REVIEW_GROUPS_ENABLED': 'false'}):
+-            self.assertEqual(self.post_group(headers={}).status_code, 202)
+-            self.assertEqual(self.singleton(0).status_code, 202)
+-            self.assertEqual(self.inventory(), before)
+-            output = {'evaluation_mode': 'informative_descriptive', 'slides': [
+-                {'slide_index': i, 'status': 'successful', 'findings': [], 'enrichments': []} for i in (0, 1)]}
+-            with patch.object(provider, 'request_raw', side_effect=lambda p: self.coaching_receipt(p, output=output)) as call:
+-                self.execute_feedback(self.review_jobs().get().analysis)
+-            self.assertEqual(call.call_count, 1)
+-            self.assertEqual(self.read_review(0).json()['state'], 'completed')
+-
+-    def test_projected_retry_resolves_group_before_gate_and_preserves_all_rows(self):
+-        self.ready_profiles()
+-        with patch.dict(os.environ, {'FEEDBACK_REVIEW_GROUPS_ENABLED': 'true'}):
+-            self.assertEqual(self.post_group().status_code, 202)
+-        self.review_jobs().update(state='failed', error_code='synthetic_failure')
+-        SlideReviewMembership.objects.all().delete()
+-        for enabled, headers, code in [('false', HEADER, 'review_grouping_disabled'),
+-                ('true', {}, 'review_protocol_required')]:
+-            with patch.dict(os.environ, {'FEEDBACK_REVIEW_GROUPS_ENABLED': enabled}):
+-                before = self.inventory()
+-                with patch.object(slide_review, 'capture_group') as capture, patch.object(descriptions, 'prepare_saved') as media:
+-                    response = self.client.post(self.url, {'scope': self.scope(0), 'feedback_revision': 1},
+-                        content_type='application/json', **headers)
+-                self.assertEqual(response.status_code, 409, response.content)
+-                self.assertEqual(response.json()['error']['code'], code)
+-                capture.assert_not_called(); media.assert_not_called()
+-                self.assertEqual(self.inventory(), before)
+-        with patch.dict(os.environ, {'FEEDBACK_REVIEW_GROUPS_ENABLED': 'true'}):
+-            response = self.client.post(self.url, {'scope': self.scope(0), 'feedback_revision': 1},
+-                content_type='application/json', **HEADER)
+-        self.assertEqual(response.status_code, 202, response.content)
+-        self.assertEqual(self.review_jobs().count(), 2)
+-        self.assertEqual(SlideReviewMembership.objects.count(), 2)
+-
+-    def test_switch_is_rechecked_under_admission_lock_after_preparation(self):
+-        self.ready_profiles()
+-        before = self.inventory()
+-        original = descriptions.prepare_saved
+-        def flip(deck_id):
+-            prepared = original(deck_id)
+-            os.environ['FEEDBACK_REVIEW_GROUPS_ENABLED'] = 'false'
+-            return prepared
+-        with patch.dict(os.environ, {'FEEDBACK_REVIEW_GROUPS_ENABLED': 'true'}), patch.object(descriptions, 'prepare_saved', side_effect=flip):
+-            response = self.post_group()
+-        self.assertEqual(response.status_code, 409, response.content)
+-        self.assertEqual(response.json()['error']['code'], 'review_grouping_disabled')
+-        self.assertEqual(self.inventory(), before)
+-
+-    def test_gate_uses_remaining_initial_scope_not_preowned_members(self):
+-        self.ready_profiles()
+-        self.assertEqual(self.singleton(0).status_code, 202)
+-        with patch.dict(os.environ, {'FEEDBACK_REVIEW_GROUPS_ENABLED': 'false'}):
+-            response = self.post_group(headers={})
+-        self.assertEqual(response.status_code, 202, response.content)
+-        self.assertEqual(self.review_jobs().count(), 2)
+-        self.assertTrue(all(len(j.source_snapshot['slide_review']['scope']['slides']) == 1
+-            for j in self.review_jobs()))
+-
+-    def test_legacy_larger_scope_reads_survive_but_new_mutations_are_gated(self):
+-        scope = self.scope(0, 1, 2)
+-        with patch.dict(os.environ, {'FEEDBACK_REVIEW_GROUPS_ENABLED': 'false'}):
+-            response = self.read_review(0, 1, 2)
+-            self.assertEqual(response.status_code, 200, response.content)
+-            self.assertEqual(response.json()['scope'], scope)
+-            before = self.inventory()
+-            response = self.client.post(self.url, {'scope': scope}, content_type='application/json', **HEADER)
+-            self.assertEqual(response.status_code, 409, response.content)
+-            self.assertEqual(response.json()['error']['code'], 'review_grouping_disabled')
+-            self.assertEqual(self.inventory(), before)
+-
+-    def test_retry_switch_is_rechecked_before_queue_and_membership_registration(self):
+-        self.ready_profiles()
+-        with patch.dict(os.environ, {'FEEDBACK_REVIEW_GROUPS_ENABLED': 'true'}):
+-            self.assertEqual(self.post_group().status_code, 202)
+-        self.review_jobs().update(state='failed', error_code='synthetic_failure')
+-        SlideReviewMembership.objects.all().delete()
+-        before = self.inventory()
+-        original = coaching.Selection.credentials
+-        def flip(selection, *args, **kwargs):
+-            result = original(selection, *args, **kwargs)
+-            os.environ['FEEDBACK_REVIEW_GROUPS_ENABLED'] = 'false'
+-            return result
+-        with patch.dict(os.environ, {'FEEDBACK_REVIEW_GROUPS_ENABLED': 'true'}), patch.object(coaching.Selection, 'credentials', flip):
+-            response = self.client.post(self.url, {'scope': self.scope(0), 'feedback_revision': 1},
+-                content_type='application/json', **HEADER)
+-        self.assertEqual(response.status_code, 409, response.content)
+-        self.assertEqual(response.json()['error']['code'], 'review_grouping_disabled')
+-        self.assertEqual(self.inventory(), before)
++            self.assertNotIn('review_grouping', response.json())
++            self.assertNotIn('group_owner', response.json())
++        self.assertEqual(FeedbackJob.objects.count(), 2)
++        self.assertFalse(SlideReviewMembership.objects.exists())
+--- a/backend/rehearsals/test_review_groups.py
++++ b/backend/rehearsals/test_review_groups.py
+@@ -1,31 +1,23 @@
+-# AI-assisted by OpenAI Codex: offline grouping and PostgreSQL race regressions.
+-"""Grouped review admission uses synthetic media and mocked provider receipts only."""
++# AI-assisted by OpenAI Codex: historical compatibility and cancellation regressions.
++"""Saved group fixtures use synthetic media and mocked provider receipts only."""
+ from copy import deepcopy
+-from concurrent.futures import ThreadPoolExecutor
+ import json
+-from threading import Barrier, Lock
+-from unittest import skipUnless
+ from unittest.mock import patch
+ 
+-from django.db import connection, connections
+-from django.test import TestCase, TransactionTestCase
+-
+-from .models import FeedbackAnalysis, FeedbackJob, PresentationContext, Slide, SlideReviewMembership
+-from .services import coaching, descriptions, feedback_provider as provider, slide_profiles, slide_review, review_groups
++from django.test import TestCase
++
++from .models import FeedbackAnalysis, FeedbackJob, Slide, SlideReviewMembership
++from .services import coaching, descriptions, feedback_provider as provider, slide_profiles, slide_review
+ from .services.alignment import align_words
+ from .test_coaching import SyntheticCoaching
+ from .test_descriptions import description_value
+ 
+ 
+ class GroupedSources(SyntheticCoaching):
+-    grouping_enabled = True
++    grouping_enabled = False
+ 
+     def setUp(self):
+         super().setUp()
+-        if self.grouping_enabled:
+-            switch = patch.dict('os.environ', {'FEEDBACK_REVIEW_GROUPS_ENABLED': 'true'})
+-            switch.start(); self.addCleanup(switch.stop)
+-            self.client.defaults['HTTP_X_OUTLOUD_REVIEW_PROTOCOL'] = slide_review.GROUP_CONTEXT_VERSION
+         image = self.deck.slides.get().image.name
+         self.deck.page_count = 3
+         self.deck.save(update_fields=['page_count'])
+@@ -79,275 +71,185 @@
+         return FeedbackJob.objects.create(analysis=owner, **fields)
+ 
+ 
+-class ReviewGroupTests(GroupedSources, TestCase):
+-    def test_pair_is_one_owner_and_singleton_reads_are_projections(self):
+-        self.ready_profiles()
+-        response = self.initial(1, 0)
+-        self.assertEqual(response.status_code, 202, response.content)
+-        self.assertEqual(self.review_jobs().count(), 1)
+-        owner = self.review_jobs().get().analysis
+-        reviews = response.json()['reviews']
+-        self.assertEqual([r['scope']['slides'][0]['slide_index'] for r in reviews], [0, 1])
+-        for index, state in enumerate(reviews):
+-            self.assertEqual(state['group_owner'], {'analysis_id': owner.pk, 'scope': self.scope(0, 1)})
+-            self.assertEqual(state, self.read_review(index).json())
+-        self.assertEqual(self.singleton(0).status_code, 202)
+-        self.assertEqual(self.review_jobs().count(), 1)
+-
+-    def test_initial_never_retries_failed_or_uncertain_owners(self):
+-        self.ready_profiles()
+-        self.assertEqual(self.initial(0, 1).status_code, 202)
+-        for state in ['failed', 'needs_confirmation', 'superseded']:
+-            self.review_jobs().update(state=state, error_code='synthetic_failure')
+-            before = list(self.review_jobs().values())
+-            self.assertEqual(self.initial(0, 1).status_code, 202)
+-            self.assertEqual(list(self.review_jobs().values()), before)
+-        self.assertEqual(self.review_jobs().count(), 1)
+-
+-    def test_overlap_admits_only_remaining_slide_with_singleton_budget(self):
+-        self.ready_profiles()
+-        self.assertEqual(self.initial(0, 1).status_code, 202)
+-        first = self.review_jobs().get()
+-        self.assertEqual(self.initial(1, 2).status_code, 202)
+-        jobs = list(self.review_jobs().order_by('pk'))
+-        self.assertEqual(len(jobs), 2)
+-        self.assertEqual(jobs[0].pk, first.pk)
+-        self.assertEqual(jobs[1].source_snapshot['slide_review']['scope'], self.scope(2))
+-        self.assertEqual(jobs[1].source_snapshot['slide_review']['request_context_version'], 'selected-review-context-v1')
+-
+-    def test_projection_filters_only_slides_preserves_saved_evidence_and_receipt(self):
+-        self.ready_profiles()
+-        self.assertEqual(self.initial(0, 1).status_code, 202)
+-        job = self.review_jobs().get()
+-        output = {'evaluation_mode': 'informative_descriptive', 'slides': [
+-            {'slide_index': i, 'status': 'successful', 'findings': [], 'enrichments': []} for i in [0, 1]]}
+-        with patch.object(provider, 'request_raw', side_effect=lambda p: self.coaching_receipt(p, output=output)):
+-            self.execute_feedback(job.analysis)
+-        job.refresh_from_db()
+-        snapshot, input_hash = deepcopy(job.source_snapshot), job.input_hash
+-        request_hash = job.request.input_hash
+-        full = coaching.read(self.attempt.pk, job.analysis.analysis_type)
+-        for index in [0, 1]:
+-            state = self.read_review(index).json()
+-            self.assertEqual(state['state'], 'completed', state)
+-            self.assertEqual([s['slide_index'] for s in state['result']['slides']], [index])
+-            self.assertEqual(state['result']['evidence'], full['result']['evidence'])
+-            self.assertEqual(state['feedback_revision'], full['feedback_revision'])
+-        self.assertEqual(self.initial(0, 1).status_code, 200)
+-        job.refresh_from_db()
+-        self.assertEqual(job.source_snapshot, snapshot)
+-        self.assertEqual(job.input_hash, input_hash)
+-        self.assertEqual(job.request.input_hash, request_hash)
+-        self.assertEqual(self.review_jobs().count(), 1)
+-
+-    def test_explicit_projection_update_retries_full_owner_with_group_budget(self):
+-        self.ready_profiles()
+-        self.assertEqual(self.initial(0, 1).status_code, 202)
+-        original = self.review_jobs().get()
+-        original.state = 'failed'; original.save(update_fields=['state'])
+-        response = self.singleton(0, feedback_revision=1)
+-        self.assertEqual(response.status_code, 202, response.content)
+-        retry = self.review_jobs().get(generation=2)
+-        self.assertEqual(retry.analysis_id, original.analysis_id)
+-        self.assertEqual(retry.source_snapshot['slide_review']['scope'], self.scope(0, 1))
+-        self.assertEqual(retry.source_snapshot['slide_review']['request_context_version'], 'selected-review-group-context-v1')
+-        self.assertEqual(retry.source_snapshot['slide_review']['max_output_tokens'], 5000)
+-        prepared = coaching._prepared(retry.description_set, retry)
+-        self.assertEqual(provider.strict_json(prepared.payload)['generationConfig']['maxOutputTokens'], 5000)
+-
+-    def test_initial_rejects_retry_fields_and_missing_or_nonzero_revision(self):
+-        for extra in [{'feedback_revision': 1}, {'acknowledge_uncertain': False}, {'transcript_revision': 1}]:
+-            self.assertEqual(self.initial(0, 1, **extra).status_code, 400)
+-        self.assertEqual(self.initial(0, 1, 2).status_code, 400)
+-        for missing in ['expected_selection', 'transcript_revision']:
+-            payload = {'scope': self.scope(0, 1), 'expected_selection': 'a' * 64, 'transcript_revision': 0}
+-            payload.pop(missing)
+-            self.assertEqual(self.client.post(self.url + 'initial/', payload, content_type='application/json').status_code, 400)
+-        self.assertFalse(self.review_jobs().exists())
+-
+-    def test_historical_singleton_precedes_overlapping_multi_without_rewriting_jobs(self):
+-        self.ready_profiles()
+-        coaching.generate(self.attempt.pk, {}, slide_review.analysis_type(self.scope(0, 1)), self.scope(0, 1),
+-            review_protocol=slide_review.GROUP_CONTEXT_VERSION)
+-        multi = self.review_jobs().get()
+-        singleton = self.historical_copy(multi, self.scope(0))
+-        SlideReviewMembership.objects.all().delete()  # Simulate rows predating ownership migration.
+-        before = list(self.review_jobs().order_by('pk').values())
+-        self.assertNotIn('group_owner', self.read_review(0).json())
+-        self.assertEqual(self.read_review(1).json()['group_owner']['analysis_id'], multi.analysis_id)
+-        self.assertFalse(SlideReviewMembership.objects.exists())  # GET stays read-only.
+-        response = self.initial(0, 1)
+-        self.assertEqual(response.status_code, 202, response.content)
+-        self.assertEqual(list(self.review_jobs().order_by('pk').values()), before)
+-        self.assertEqual(dict(SlideReviewMembership.objects.values_list('slide_index', 'analysis_id')),
+-            {0: singleton.analysis_id, 1: multi.analysis_id})
+-
+-    def uncertain_legacy_overlap(self):
+-        self.ready_profiles()
+-        scope = self.scope(0, 1)
+-        coaching.generate(self.attempt.pk, {}, slide_review.analysis_type(scope), scope, review_protocol=slide_review.GROUP_CONTEXT_VERSION)
+-        pair = self.review_jobs().get()
+-        single = self.historical_copy(pair, self.scope(0))
+-        SlideReviewMembership.objects.all().delete()
+-        _, job, _, request = self.submit_only(single.analysis)
+-        request.outcome = 'uncertain'; request.save(update_fields=['outcome'])
+-        job.state = 'needs_confirmation'; job.save(update_fields=['state'])
+-        pair.state = 'failed'; pair.save(update_fields=['state'])
+-        self.assertTrue(self.read_review(0).json()['requires_confirmation'])
+-        self.assertEqual(self.read_review(1).json()['group_owner']['analysis_id'], pair.analysis_id)
+-        return list(self.review_jobs().order_by('pk').values())
+-
+-    def test_projected_update_cannot_cover_another_uncertain_historical_owner(self):
+-        before = self.uncertain_legacy_overlap()
+-        response = self.singleton(1, feedback_revision=1)
+-        self.assertEqual(response.status_code, 409, response.content)
+-        self.assertEqual(list(self.review_jobs().order_by('pk').values()), before)
+-        self.assertFalse(SlideReviewMembership.objects.exists())
+-
+-    def test_exact_multi_update_cannot_cover_another_uncertain_historical_owner(self):
+-        before = self.uncertain_legacy_overlap()
+-        response = self.client.post(self.url, {'scope': self.scope(0, 1),
+-            'feedback_revision': 1}, content_type='application/json')
+-        self.assertEqual(response.status_code, 409, response.content)
+-        self.assertEqual(list(self.review_jobs().order_by('pk').values()), before)
+-        self.assertFalse(SlideReviewMembership.objects.exists())
+-
+-    def test_ambiguous_historical_multi_owners_fail_closed_without_admission(self):
+-        self.ready_profiles()
+-        self.assertEqual(self.initial(0, 1).status_code, 202)
+-        self.historical_copy(self.review_jobs().get(), self.scope(1, 2))
+-        SlideReviewMembership.objects.all().delete()
+-        before = list(self.review_jobs().order_by('pk').values())
+-        self.assertEqual(self.read_review(1).status_code, 409)
+-        self.assertEqual(self.initial(0, 1).status_code, 409)
+-        self.assertEqual(list(self.review_jobs().order_by('pk').values()), before)
+-        self.assertFalse(SlideReviewMembership.objects.exists())
+-
+-    def test_legacy_multi_get_remains_exact_and_does_not_synthesize_singletons(self):
++class HistoricalReviewTests(GroupedSources, TestCase):
++    def saved_pair(self, state='queued'):
+         self.ready_profiles()
+         self.assertEqual(self.singleton(0).status_code, 202)
+-        self.assertEqual(self.singleton(1).status_code, 202)
+-        response = self.read_review(0, 1)
+-        self.assertEqual(response.status_code, 200)
+-        self.assertEqual(response.json()['feedback_revision'], 0)
+-        self.assertEqual(response.json()['scope'], self.scope(0, 1))
++        singleton = self.review_jobs().get()
++        pair = self.historical_copy(singleton, self.scope(0, 1))
++        pair.source_snapshot['slide_review'].update(
++            request_context_version=slide_review.GROUP_CONTEXT_VERSION, max_output_tokens=5000)
++        pair.state = state
++        pair.save(update_fields=['source_snapshot', 'state'])
++        singleton.delete()
++        singleton.analysis.delete()
++        return pair
++
++    def test_saved_queued_pair_executes_with_frozen_budget_and_read_only_projection(self):
++        pair = self.saved_pair()
++        output = {'evaluation_mode': 'informative_descriptive', 'slides': [
++            {'slide_index': i, 'status': 'successful', 'findings': [], 'enrichments': []} for i in (0, 1)]}
++        def receipt(prepared):
++            self.assertEqual(provider.output_token_limit(prepared), 5000)
++            return self.coaching_receipt(prepared, output=output)
++        with patch.object(provider, 'request_raw', side_effect=receipt) as call:
++            self.execute_feedback(pair.analysis)
++        self.assertEqual(call.call_count, 1)
++        pair.refresh_from_db()
++        saved = deepcopy(pair.source_snapshot)
++        request_hash = pair.request.input_hash
++        for index in (0, 1):
++            response = self.read_review(index)
++            self.assertEqual(response.status_code, 200, response.content)
++            state = response.json()
++            self.assertEqual(state['state'], 'completed')
++            self.assertEqual(state['feedback_revision'], 1)
++            self.assertEqual(state['group_owner']['scope'], self.scope(0, 1))
++            self.assertEqual([s['slide_index'] for s in state['result']['slides']], [index])
++            self.assertNotIn('review_grouping', state)
++        pair.refresh_from_db()
++        self.assertEqual(pair.source_snapshot, saved)
++        self.assertEqual(pair.request.input_hash, request_hash)
++        self.assertFalse(SlideReviewMembership.objects.exists())
++
++    def test_failed_group_allows_explicit_independent_singleton_without_rebinding_membership(self):
++        pair = self.saved_pair(state='failed')
++        membership = SlideReviewMembership.objects.create(attempt=self.attempt, context_key='',
++            slide_index=0, analysis=pair.analysis)
++        before = deepcopy(pair.source_snapshot)
++        self.assertEqual(self.singleton(0, feedback_revision=1).status_code, 409)
++        response = self.singleton(0, transcript_revision=0,
++            expected_selection=self.read_review(0).json()['selection']['token'])
++        self.assertEqual(response.status_code, 202, response.content)
+         self.assertNotIn('group_owner', response.json())
+         self.assertEqual(self.review_jobs().count(), 2)
+-
+-    def test_stale_owner_is_reused_after_requirements_change(self):
+-        self.ready_profiles()
+-        context = PresentationContext.objects.create(deck=self.deck, audience='Researchers')
+-        scope = self.scope(0, 1, context_id=str(context.pk))
+-        token = self.read_review(0).json()['selection']['token']
+-        payload = {'scope': scope, 'expected_selection': token, 'transcript_revision': 0}
+-        self.assertEqual(self.client.post(self.url + 'initial/', payload, content_type='application/json').status_code, 202)
+-        before = list(self.review_jobs().values())
+-        context.revision += 1; context.audience = 'Children'; context.save()
+-        response = self.client.post(self.url + 'initial/', payload, content_type='application/json')
++        current = self.review_jobs().exclude(pk=pair.pk).get()
++        self.assertEqual(current.source_snapshot['slide_review']['scope'], self.scope(0))
++        self.assertEqual(current.source_snapshot['slide_review']['request_context_version'], slide_review.REQUEST_CONTEXT_VERSION)
++        membership.refresh_from_db(); pair.refresh_from_db()
++        self.assertEqual(membership.analysis_id, pair.analysis_id)
++        self.assertEqual(pair.source_snapshot, before)
++        self.assertIn('group_owner', self.read_review(1).json())
++        self.assertNotIn('group_owner', self.read_review(0).json())
++
++    def test_active_or_uncertain_history_cannot_admit_duplicate_singleton(self):
++        pair = self.saved_pair()
++        for state in ('queued', 'submitted', 'needs_confirmation'):
++            pair.state = state; pair.save(update_fields=['state'])
++            before = self.review_jobs().count()
++            response = self.singleton(0)
++            self.assertEqual(response.status_code, 409, response.content)
++            self.assertEqual(response.json()['error']['code'], 'review_history_pending')
++            self.assertEqual(self.review_jobs().count(), before)
++
++    def test_saved_group_retry_and_direct_service_multi_scope_are_permanently_refused(self):
++        pair = self.saved_pair(state='failed')
++        response = self.client.post(self.url, {'scope': self.scope(0, 1), 'feedback_revision': 1},
++            content_type='application/json')
++        self.assertEqual(response.status_code, 409)
++        self.assertEqual(response.json()['error']['code'], 'review_grouping_removed')
++        with self.assertRaises(coaching.Conflict) as error:
++            coaching.generate(self.attempt.pk, {}, pair.analysis.analysis_type, self.scope(0, 1))
++        self.assertEqual(error.exception.code, 'review_grouping_removed')
++        self.assertEqual(self.review_jobs().count(), 1)
++
++
++    def test_uncertain_receipt_blocks_even_when_historical_state_is_failed(self):
++        pair = self.saved_pair()
++        _, job, _, request = self.submit_only(pair.analysis)
++        request.outcome = 'uncertain'; request.save(update_fields=['outcome'])
++        job.state = 'failed'; job.save(update_fields=['state'])
++        response = self.singleton(0)
++        self.assertEqual(response.status_code, 409, response.content)
++        self.assertEqual(response.json()['error']['code'], 'review_history_pending')
++        self.assertEqual(self.review_jobs().count(), 1)
++
++    def test_independent_create_preserves_selection_and_correction_assertions(self):
++        self.saved_pair(state='failed')
++        for payload, expected in [({'transcript_revision': 1}, 'correction_conflict'),
++                                  ({'expected_selection': '0' * 64}, 'selection_mismatch')]:
++            response = self.singleton(0, **payload)
++            self.assertEqual(response.status_code, 409, response.content)
++            self.assertEqual(response.json()['error']['code'], expected)
++            self.assertEqual(self.review_jobs().count(), 1)
++
++    def test_legacy_activity_rechecked_under_final_admission_lock(self):
++        pair = self.saved_pair(state='failed')
++        original = descriptions.prepare_saved
++        def activate(deck_id):
++            pair.state = 'queued'; pair.save(update_fields=['state'])
++            return original(deck_id)
++        with patch.object(descriptions, 'prepare_saved', side_effect=activate):
++            response = self.singleton(0)
++        self.assertEqual(response.status_code, 409, response.content)
++        self.assertEqual(response.json()['error']['code'], 'review_history_pending')
++        self.assertEqual(self.review_jobs().count(), 1)
++
++
++    def test_historical_projection_discloses_current_independent_selection_after_model_change(self):
++        self.saved_pair(state='failed')
++        historical = self.read_review(0).json()
++        with patch.dict('os.environ', {'FEEDBACK_GEMINI_MODEL': 'synthetic-new-model'}):
++            state = self.read_review(0).json()
++            self.assertEqual(state['selection'], historical['selection'])
++            self.assertEqual(state['provenance'], historical['provenance'])
++            self.assertEqual(state['independent_selection']['model'], 'synthetic-new-model')
++            self.assertNotEqual(state['independent_selection']['token'], state['selection']['token'])
++            response = self.singleton(0, expected_selection=state['selection']['token'])
++            self.assertEqual(response.status_code, 409)
++            self.assertEqual(response.json()['error']['code'], 'selection_mismatch')
++            response = self.singleton(0, expected_selection=state['independent_selection']['token'])
++            self.assertEqual(response.status_code, 202, response.content)
++            self.assertNotIn('group_owner', response.json())
++            self.assertNotIn('independent_selection', response.json())
++            self.assertEqual(response.json()['selection']['model'], 'synthetic-new-model')
++
++    def test_historical_projection_preserves_saved_identity_when_current_selection_unavailable(self):
++        self.saved_pair(state='failed')
++        historical = self.read_review(0).json()
++        with patch.dict('os.environ', {'FEEDBACK_PROVIDER': 'unsupported'}):
++            response = self.read_review(0)
++        self.assertEqual(response.status_code, 200, response.content)
++        self.assertEqual(response.json()['selection'], historical['selection'])
++        self.assertIsNone(response.json()['independent_selection'])
++
++
++    def test_retired_historical_project_does_not_hide_available_current_singleton(self):
++        self.saved_pair(state='failed')
++        with patch.dict('os.environ', {'FEEDBACK_GEMINI_PROJECT_ID': 'synthetic-new-project'}):
++            response = self.read_review(0)
++            self.assertEqual(response.status_code, 200, response.content)
++            state = response.json()
++            self.assertEqual(state['availability']['state'], 'unavailable')
++            self.assertEqual(state['availability']['error']['code'], 'project_changed')
++            self.assertEqual(state['independent_availability'], {'state': 'available', 'error': None})
++            self.assertEqual(state['independent_selection']['project_id'], 'synthetic-new-project')
++            response = self.singleton(0, expected_selection=state['independent_selection']['token'])
++            self.assertEqual(response.status_code, 202, response.content)
++
++    def test_historical_active_and_uncertain_block_explained_by_independent_availability(self):
++        pair = self.saved_pair()
++        for status in ('queued', 'needs_confirmation'):
++            pair.state = status; pair.save(update_fields=['state'])
++            state = self.read_review(0).json()
++            self.assertEqual(state['independent_availability']['state'], 'unavailable')
++            self.assertEqual(state['independent_availability']['error']['code'], 'review_history_pending')
++
++
++    def test_acknowledged_transport_retry_can_create_only_safe_independent_singleton(self):
++        pair = self.saved_pair(state='failed')
++        state = self.read_review(0).json()
++        response = self.singleton(0, acknowledge_uncertain=True,
++            expected_selection=state['independent_selection']['token'])
+         self.assertEqual(response.status_code, 202, response.content)
+-        self.assertTrue(all(state['stale'] for state in response.json()['reviews']))
+-        self.assertEqual(list(self.review_jobs().values()), before)
+-
+-    def test_uncertain_projection_requires_ack_and_keeps_same_owner(self):
+-        self.ready_profiles()
+-        self.assertEqual(self.initial(0, 1).status_code, 202)
+-        owner = self.review_jobs().get().analysis
+-        _, job, _, request = self.submit_only(owner)
+-        request.outcome = 'uncertain'; request.save(update_fields=['outcome'])
+-        job.state = 'needs_confirmation'; job.save(update_fields=['state'])
+-        self.assertEqual(self.initial(0, 1).status_code, 202)
+-        self.assertEqual(self.singleton(1, feedback_revision=1).status_code, 409)
+-        self.assertEqual(self.singleton(1, feedback_revision=1, acknowledge_uncertain=True).status_code, 202)
++        self.assertNotIn('group_owner', response.json())
++        pair.refresh_from_db()
++        self.assertEqual(pair.state, 'failed')
+         self.assertEqual(self.review_jobs().count(), 2)
+-        self.assertEqual(set(self.review_jobs().values_list('analysis_id', flat=True)), {owner.pk})
+-        self.assertEqual(SlideReviewMembership.objects.count(), 2)
+-
+-    def test_reservation_uses_actual_group_output_bound(self):
+-        self.ready_profiles()
+-        self.assertEqual(self.initial(0, 1).status_code, 202)
+-        owner = self.review_jobs().get().analysis
+-        _, _, prepared, request = self.submit_only(owner)
+-        self.assertEqual(request.reservation.units, len(prepared.payload) + 5000)
+-
+-    def test_overlap_during_preparation_recaptures_remaining_outside_locks(self):
+-        self.ready_profiles()
+-        original = descriptions.prepare_saved
+-        entered = []
+-        depth = len(connection.atomic_blocks)
+-        token = self.read_review(0).json()['selection']['token']
+-        def prepare(deck_id):
+-            self.assertEqual(len(connection.atomic_blocks), depth)
+-            entered.append(True)
+-            if len(entered) == 1:
+-                self.assertEqual(self.singleton(0).status_code, 202)
+-            return original(deck_id)
+-        with patch.object(descriptions, 'prepare_saved', side_effect=prepare):
+-            response = self.client.post(self.url + 'initial/', {'scope': self.scope(0, 1),
+-                'expected_selection': token, 'transcript_revision': 0}, content_type='application/json')
+-        self.assertEqual(response.status_code, 202, response.content)
+-        self.assertEqual(self.review_jobs().count(), 2)
+-        self.assertEqual(sorted(len(job.source_snapshot['slide_review']['scope']['slides']) for job in self.review_jobs()), [1, 1])
+-        self.assertEqual(SlideReviewMembership.objects.count(), 2)
+-
+-    def test_cross_attempt_membership_is_rejected_before_projection(self):
+-        self.ready_profiles()
+-        self.assertEqual(self.singleton(0).status_code, 202)
+-        owner = self.review_jobs().get().analysis
+-        other = self.new_attempt()
+-        owner.attempt = other; owner.save(update_fields=['attempt'])
+-        with self.assertRaises(coaching.Conflict):
+-            review_groups.resolve(self.attempt, self.scope(0))
+-        self.assertEqual(self.read_review(0).status_code, 409)
+-
+-    def test_register_rejects_owner_from_other_context_or_attempt(self):
+-        self.ready_profiles()
+-        self.assertEqual(self.singleton(0).status_code, 202)
+-        owner = self.review_jobs().get().analysis
+-        context = PresentationContext.objects.create(deck=self.deck)
+-        with self.assertRaises(coaching.Conflict):
+-            review_groups.register(self.attempt, self.scope(0, context_id=str(context.pk)), owner)
+-        with self.assertRaises(coaching.Conflict):
+-            review_groups.register(self.new_attempt(), self.scope(0), owner)
+-
+-
+-@skipUnless(connection.vendor == 'postgresql', 'Requires real PostgreSQL row locks; SQLite is not concurrency evidence')
+-class ConcurrentReviewGroups(GroupedSources, TransactionTestCase):
+-    def race(self, scopes):
+-        barrier, counter_lock = Barrier(2), Lock()
+-        entered = 0
+-        original = descriptions.prepare_saved
+-        def prepare(deck_id):
+-            nonlocal entered
+-            self.assertFalse(connection.in_atomic_block)
+-            with counter_lock:
+-                entered += 1
+-                first = entered <= 2
+-            if first:
+-                barrier.wait(timeout=15)
+-            return original(deck_id)
+-        def invoke(item):
+-            scope, grouped = item
+-            try:
+-                return coaching.generate(self.attempt.pk, {'transcript_revision': 0},
+-                    slide_review.analysis_type(scope), scope, review_group=grouped, review_protocol=slide_review.GROUP_CONTEXT_VERSION).pk
+-            finally:
+-                connections.close_all()
+-        with patch.object(descriptions, 'prepare_saved', side_effect=prepare), ThreadPoolExecutor(max_workers=2) as pool:
+-            return list(pool.map(invoke, scopes))
+-
+-    def test_pair_and_singleton_race_never_duplicate_membership(self):
+-        self.ready_profiles()
+-        self.race([(self.scope(0, 1), True), (self.scope(1), False)])
+-        memberships = list(SlideReviewMembership.objects.order_by('slide_index'))
+-        self.assertEqual([m.slide_index for m in memberships], [0, 1])
+-        jobs = list(self.review_jobs())
+-        self.assertIn(len(jobs), [1, 2])
+-        self.assertEqual(sum(len(job.source_snapshot['slide_review']['scope']['slides']) for job in jobs), 2)
+-
+-    def test_overlapping_pair_race_admits_one_pair_and_only_remaining_singleton(self):
+-        self.ready_profiles()
+-        self.race([(self.scope(0, 1), True), (self.scope(1, 2), True)])
+-        self.assertEqual(list(SlideReviewMembership.objects.order_by('slide_index').values_list('slide_index', flat=True)), [0, 1, 2])
+-        jobs = list(self.review_jobs())
+-        self.assertEqual(len(jobs), 2)
+-        self.assertEqual(sorted(len(job.source_snapshot['slide_review']['scope']['slides']) for job in jobs), [1, 2])
++
++    def test_acknowledgement_cannot_bypass_uncertain_historical_owner(self):
++        self.saved_pair(state='needs_confirmation')
++        response = self.singleton(0, acknowledge_uncertain=True)
++        self.assertEqual(response.status_code, 409, response.content)
++        self.assertEqual(response.json()['error']['code'], 'review_history_pending')
++        self.assertEqual(self.review_jobs().count(), 1)
+--- a/backend/rehearsals/urls.py
++++ b/backend/rehearsals/urls.py
+@@ -11,7 +11,6 @@
+     path('attempts/<uuid:attempt_id>/audience-qa/', durable_qa_views.questions),
+     path('attempts/<uuid:attempt_id>/qa-answer/', durable_qa_views.answer),
+     path('attempts/<uuid:attempt_id>/slide-review/', slide_review_views.review),
+-    path('attempts/<uuid:attempt_id>/slide-review/initial/', slide_review_views.initial),
+     path('attempts/<uuid:attempt_id>/corrections/', correction_views.correction),
+     path('attempts/<uuid:attempt_id>/correction-suggestions/', correction_views.suggestions),
+     path('decks/<uuid:deck_id>/profiles/', slide_profile_views.profiles),
+--- a/docs/ai-collaboration-prompts-iteration-2.md
++++ b/docs/ai-collaboration-prompts-iteration-2.md
+@@ -4952,3 +4952,13 @@
+ ````
+ 
+ Retained/generated work and verification: implementation in progress; see [shared v2 contract](presentation-score-v2.md) and [progress](presentation-score-progress.md). No paid inference or publication authorized.
++
++
++## October 17, 2026 — remove cancelled Step 2 dependencies from scoring
++
++- Tool/request: OpenAI Codex, backend/mobile implementer agents and an independent reviewer; user requested singleton feedback restoration while preserving the existing unfinished scoring work, Step 1, evidence/playback/correction/saved-review behavior, and no branch/worktree cleanup or publication.
++- Incorporated material: scoped backend/mobile singleton admission changes, cancellation and historical-compatibility regressions, API contract and [task verification](step2-removal-verification.md). Existing staged scoring snapshot and unrelated navigation/reliability code are preserved.
++- Verification: mocked-provider backend SQLite/PostgreSQL and mobile checks are recorded in the task report; no live AI calls. The baseline already lacks two v2 scoring implementation modules, so full scoring correctness remains unverified.
++- Review: independent AI review found historical/current provider-selection drift blocking independent conversion; the fix exposes a separate current singleton selection without rewriting saved provenance. Final repair checks/review are recorded in the report. Human final inspection remains pending. No commit, push, merge, branch deletion, worktree removal, migration rollback or deployment.
++
++Final task verification: focused SQLite 133 run (8 skips), PostgreSQL 111/111, mobile 467/467 and Android export passed. Full SQLite has the exact same 26 pre-existing scoring errors/failures as the frozen baseline; no overall/per-slide v2 end-to-end success is claimed. Independent repair review has no remaining actionable findings. Task-only diff and exact commands/limits are linked in the verification report. Original index and protected scoring/navigation/reliability/migration source hashes remain unchanged.
+--- a/docs/ai-use.md
++++ b/docs/ai-use.md
+@@ -245,3 +245,13 @@
+ ### Local integration commit approval — October 17, 2026
+ 
+ Contributor: Seoyeon. The user requested, “Finalize and commit the integration.” OpenAI Codex verified the unchanged reviewed 48-file staged snapshot before adding only this authorization/finalization evidence. This authorizes the local integration commit on `codex/feedback-grouping-integration`; it supersedes the earlier pending commit gate without claiming human functional acceptance. Application/test bytes remain unchanged, so prior source review and verification are reused with fresh staged hash/manifest checks. See the [local authorization record](feedback-grouping-integration-verification.md#local-integration-commit-authorization--october-17-2026). No push, production integration branch change, deployment or paid benchmark is authorized.
++
++
++## October 17, 2026 — remove cancelled Step 2 dependencies from scoring
++
++- Tool/request: OpenAI Codex, backend/mobile implementer agents and an independent reviewer; user requested singleton feedback restoration while preserving the existing unfinished scoring work, Step 1, evidence/playback/correction/saved-review behavior, and no branch/worktree cleanup or publication.
++- Incorporated material: scoped backend/mobile singleton admission changes, cancellation and historical-compatibility regressions, API contract and [task verification](step2-removal-verification.md). Existing staged scoring snapshot and unrelated navigation/reliability code are preserved.
++- Verification: mocked-provider backend SQLite/PostgreSQL and mobile checks are recorded in the task report; no live AI calls. The baseline already lacks two v2 scoring implementation modules, so full scoring correctness remains unverified.
++- Review: independent AI review found historical/current provider-selection drift blocking independent conversion; the fix exposes a separate current singleton selection without rewriting saved provenance. Final repair checks/review are recorded in the report. Human final inspection remains pending. No commit, push, merge, branch deletion, worktree removal, migration rollback or deployment.
++
++Final task verification: focused SQLite 133 run (8 skips), PostgreSQL 111/111, mobile 467/467 and Android export passed. Full SQLite has the exact same 26 pre-existing scoring errors/failures as the frozen baseline; no overall/per-slide v2 end-to-end success is claimed. Independent repair review has no remaining actionable findings. Task-only diff and exact commands/limits are linked in the verification report. Original index and protected scoring/navigation/reliability/migration source hashes remain unchanged.
+--- a/docs/api-contract.md
++++ b/docs/api-contract.md
+@@ -1101,105 +1101,43 @@
+ Upload continues to admit cached profile preparation once; reads/navigation do not admit work. Mobile cue reads reconnect after 2.5, 5, 10 and then 30 seconds, cancel when the rehearsal is covered or the app backgrounds, and read immediately on return. Current validated cues remain visible through transport errors. Failed-first-read feedback also reconnects through GET only.
+ 
+ Review, Full Review and Home use the same active-stage messages, including quota retry time and an overdue-retry explanation. Active states unchanged for at least two minutes according to server `updated_at` show a longer-than-expected notice without being reclassified as failed or resubmitted. A missing result for a completed slide is a recovery problem, not insufficient evidence. Word-count insufficiency, model-declined assessment, invalid evidence and malformed responses remain distinct. Display labels use **Further Insight**; wire keys such as `go_deeper` and `enrichments` retain their existing meaning.
+-### Experimental initial review grouping (Step 2)
+-
+-The isolated Step 2 implementation retains public `slide-review-v3`, existing
+-singleton scopes and frozen historical requests. New initial work can group at most
+-two selected slides from one attempt and context; recording sources are never mixed.
+-
+-`POST /api/attempts/{id}/slide-review/initial/` accepts exactly
+-`{scope, expected_selection, transcript_revision: 0}`. Scope contains one or two
+-slides, each with all positive-duration original visits. It admits only members
+-without an existing owner. Existing active, completed, failed, stale and uncertain
+-owners are returned without retrying or replacing them. The response is
+-`{reviews: [<singleton SlideReview states>]}` in canonical slide order, with HTTP 200
+-when all are completed and 202 otherwise. No inference runs inside this endpoint.
+-
+-A durable membership keyed by attempt, non-null context key and slide index points
+-to the existing owning FeedbackAnalysis. Ownership is reserved together with job
+-admission under deck/attempt locks. Historical owners are resolved without writes
+-on GET and registered lazily during admission. Initial singleton and group requests
+-participate in the same guard; a race cannot create another overlapping owner.
+-Ambiguous legacy ownership fails closed. A legacy group that overlaps a preferred
+-singleton remains readable, but an Update fails closed if any member of its full
+-owning scope belongs to another owner. No receipt is copied to another input hash.
+-
+-Existing singleton GET/POST routes retain their requested `scope` and only that
+-slide's result summary. If a group owns it, the response adds optional
+-`group_owner: {analysis_id: positive integer, scope: <full owning scope>}`. This is a
+-read projection of the same group job/revision, with unchanged source evidence.
+-Explicit Update/retry uses that owner's full scope, revision, captured provider and
+-uncertainty acknowledgement; Android identifies the other affected group members.
+-The owning scope must contain the requested scope with exactly matching visits and
+-context. Legacy manually-created larger scopes remain readable; new initial groups
+-are capped at two. Existing caches and histories are not rewritten.
+-
+-A new pair snapshots `selected-review-group-context-v1` and
+-`max_output_tokens: 5000`. A lone remaining member keeps Step 1's context format and
+-2,500-token limit. Invalid frozen group budgets fail closed. Group retries retain
+-the group format. Submission quota reservation uses the actual frozen outbound
+-output limit; other tasks and historic limits remain unchanged. The output schema,
+-evidence validator and Must Cover/Go Deeper profile generation remain unchanged.
+-
+-Android initial admission keeps durable per-slide claims, synchronizes corrections
+-once per admitted batch, verifies singleton server state/selection, and groups only
+-compatible new tasks. Unsupported, failed or uncertain group requests do not
+-silently fall back to repeated singleton submissions. Normal detail/overview reads,
+-navigation, reopen, rotation and theme changes do not authorize new generation.
+-Migration 0010 and compatible API writers, workers/model adapters and Android clients
+-are required before grouped admissions. The isolated integration candidate adds the
+-default-off controls below. Old API writers can still bypass ownership handling,
+-so deployment order without homogeneous replacement is insufficient. There is no
+-deployment or live-request approval; see the [original Step 2 record](feedback-grouping-verification.md)
+-and [integration correctness evidence](feedback-grouping-integration-verification.md).
+-
+-
+-### Step 2 integration rollout controls (October 17, 2026)
+-
+-Every selected-slide state returned by the compatible API (including `/initial/`
+-projections) adds `review_grouping: {protocol: "selected-review-group-context-v1",
+-enabled: boolean}`. It describes admission compatibility at read time, not frozen
+-model context, authentication or worker health. Historical cached responses may
+-omit it; an unknown protocol remains readable but does not authorize mutation by
+-the compatible Android client. Capability changes do not change saved receipt,
+-request, cache, schema or selection-token identities.
+-
+-`FEEDBACK_REVIEW_GROUPS_ENABLED` defaults to false; only exact `true` enables it.
+-Any **new multi-slide work or actual group retry/Update** requires both this flag
+-and `X-OutLoud-Review-Protocol: selected-review-group-context-v1`. Checks apply at
+-the shared service layer after resolving the effective owning scope, covering the
+-new initial endpoint, legacy multi-slide POST and a singleton Update whose owner
+-is a group. Denials return HTTP 409 with safe `review_grouping_disabled` or
+-`review_protocol_required` error codes, without new feedback jobs, requests, quota
+-reservations or denied ownership writes. The flag is rechecked under final
+-admission/retry locks. Ordinary singleton work does not require this assertion.
+-
+-GET/projections and no-op reuse of existing owners remain available with grouping
+-off or the assertion absent. Already queued compatible jobs continue processing;
+-this per-process environment flag neither cancels nor pauses workers. Coordinate
+-configuration/restarts while traffic is quiesced; it is not a centralized hot switch. Historical larger scopes retain
+-their existing readability; the two-slide bound remains on new initial batches.
+-
+-Android reads recognized capability **before** consuming a durable initial claim
+-or submitting feedback. A modern server advertising grouping off receives only
+-singleton initial batches chosen before submission. This is not a fallback after
+-a group failure. Missing/unknown capability leaves results readable and does not
+-automatically submit or consume the claim. A failed, unsupported (including HTTP
+-404) or uncertain submitted request never silently falls back or automatically
+-retries. Explicit group Update checks capability again and sends the assertion;
+-the server's locked check is authoritative if configuration changes meanwhile.
+-
+-When a singleton projection reveals a newer shared owner generation/state, sibling
+-projections are marked as needing refresh separately from their saved receipts.
+-Bounded GET-only reads reconcile each original singleton identity. Detail/overview
+-views must not present the old sibling verdict as current while that reconciliation
+-is pending, and transport reconnect does not authorize generation.
+-
+-All API writers, workers/model adapters and recovery schedulers must be compatible
+-before enabling groups. `b94d233` workers can reconstruct unsubmitted new contexts
+-using an incompatible legacy layout/cap; Step 1 workers reject the group marker.
+-Old writers ignore membership and can create overlapping work regardless of this
+-new flag. Use a quiesced stop/drain homogeneous replacement. Migration 0010 precedes
+-new readers as well as writers; keep its ownership data and compatible code during
+-rollback. Full deployment sequence, limits and release gates are recorded in the
+-[integration verification report](feedback-grouping-integration-verification.md#compatibility-and-rollout-requirements).
++### Cancelled Step 2: singleton admission and historical reads — October 17, 2026
++
++Step 2 grouped slide feedback is permanently cancelled. New slide feedback uses
++independent singleton `POST /api/attempts/{id}/slide-review/` requests and Step 1
++`selected-review-context-v1`. Multi-slide mutations are rejected at the shared
++service boundary, regardless of environment variables or protocol headers. The
++experimental `/slide-review/initial/` endpoint and grouping feature flag are removed.
++There is no grouping dependency in whole-presentation `score_` admission.
++
++Each automatic initial request retains its per-slide durable claim, current-source
++and correction checks, shared submission lock, and uncertain-outcome recovery.
++Navigation, reopening, saved reads and correction staleness do not authorize retries
++or score generation. Existing independent reviews keep their revision, selection,
++transcript and explicit retry/uncertainty controls.
++
++Historical grouped feedback remains readable through a singleton GET projection.
++Exact saved singleton analyses take precedence over a legacy group. A projection
++may retain optional `group_owner` metadata identifying its original owner; this
++never authorizes group expansion or coupled updates. An explicit independent
++Update from that projection omits the old group's `feedback_revision`, retains
++current selection/transcript assertions, and creates a distinct singleton owner.
++Historical projections add nullable `independent_selection` and
++`independent_availability` for that new singleton operation. Saved `selection` and
++`availability` continue to describe the original owner; they are not overwritten
++when provider configuration changes. Missing/invalid independent metadata fails
++closed until a fresh compatible GET.
++Active or unresolved historical work blocks this handoff with
++`review_history_pending`; it is not silently retried. Once the singleton exists,
++late historical projections cannot overwrite it in the client cache.
++
++Migration `0010_slide_review_membership` and its model remain as historical schema;
++no new admission reads or writes membership rows. Keep frozen group-context parsing,
++strict evidence validation and the original wire/output budget solely for existing
++queued work, saved receipts and recovery. Do not reinterpret old receipts as
++singleton requests or rubric scores. No migration rollback, database mutation or
++queue cancellation is part of this change.
++
++The prior [Step 2 implementation](feedback-grouping-verification.md) and
++[integration evidence](feedback-grouping-integration-verification.md) are historical
++records, not rollout instructions. See [removal scope and verification](step2-removal-verification.md).
+--- a/docs/feedback-grouping-integration-verification.md
++++ b/docs/feedback-grouping-integration-verification.md
+@@ -1,4 +1,8 @@
+ # Step 2 integration correctness — October 17, 2026
++
++> Historical record: Step 2 was permanently cancelled on October 17, 2026.
++> Do not follow the rollout/admission instructions below. Only saved-read and
++> frozen-receipt compatibility is retained; see [removal evidence](step2-removal-verification.md).
+ 
+ ## Scope and isolation
+ 
+--- a/docs/feedback-grouping-verification.md
++++ b/docs/feedback-grouping-verification.md
+@@ -1,4 +1,8 @@
+ # Two-slide initial feedback grouping — Step 2 verification
++
++> Historical record: Step 2 was permanently cancelled on October 17, 2026.
++> Do not follow the rollout/admission instructions below. Only saved-read and
++> frozen-receipt compatibility is retained; see [removal evidence](step2-removal-verification.md).
+ 
+ October 16, 2026 historical inspection snapshot. Subsequently committed locally as `efd4cf7`; no deployment. See the [October 17 integration correctness record](feedback-grouping-integration-verification.md) for the combined candidate and superseding rollout controls.
+ 
+--- a/docs/presentation-score-progress.md
++++ b/docs/presentation-score-progress.md
+@@ -2,9 +2,9 @@
+ 
+ October 17: user approved and requested implementation of [presentation-score-v2](presentation-score-v2.md). Current scope supersedes the former experiment-only integration gate. v1 arithmetic and experiment artifacts remain historical.
+ 
+-Tasks: compatibility reconciliation complete; shared contract complete; scorer, durable API/jobs and Android work running in separate owned files; integration/tests/emulator/review pending.
++Tasks: scoring remains incomplete and paused. The October 17 Step 2 removal preserves the existing scorer, transport and Android work; it does not restart or complete scoring. See [dependency removal evidence](step2-removal-verification.md).
+ 
+-Ruling: reuse the isolated presentation-score checkout and apply reviewed grouped-feedback/current navigation patches without changing source worktrees or Git history. Existing staged snapshot remains intact.
++Current ruling: Step 2 is permanently cancelled. Restore independent singleton slide feedback in this checkout; preserve Step 1, scoring and unrelated current navigation. Historical grouped records retain read/recovery compatibility only. The original staged snapshot remains unchanged.
+ 
+ Ruling: v2 uses equal eligible slides and four equal whole dimensions; missing applicable evidence suppresses total. Legacy one-second speech eligibility remains diagnostic, not a v2 quality threshold.
+ 
+--- /dev/null
++++ b/docs/step2-removal-verification.md
+@@ -0,0 +1,147 @@
++# Step 2 removal from presentation scoring — October 17, 2026
++
++## Decision and scope
++
++Step 2 grouped slide feedback is permanently cancelled. This task changes only
++`codex/presentation-score` at existing HEAD `c5c370d`, preserving its unfinished
++scoring implementation. No commit, push, merge, branch deletion, worktree removal,
++paid inference or live-provider check is authorized or performed.
++
++The complete pre-task source snapshot, index/working diffs, manifest and validation
++logs are private at `/tmp/outloud-step2-removal-20261017/`. The index is deliberately
++unchanged: the large earlier staged scoring snapshot is not this task's delta.
++The task-only diff is generated separately for inspection.
++
++## Complete dependency inventory and disposition
++
++| Dependency | Disposition |
++| --- | --- |
++| `services/coaching.py` grouped admission wrapper, effective-owner scope expansion, membership writes, pair recapture and group retry controls | Removed; restore existing singleton generation and duplicate/revision locks. Preserve pre-task `score_` hooks and source-selection changes. Reject all new multi-slide mutations. |
++| `slide_review_views.py` grouped `initial` handler | Removed; existing singleton GET/POST remains. |
++| `urls.py` `/slide-review/initial/` route | Removed; scoring and singleton routes remain. |
++| `services/review_groups.py` capability, flag, protocol assertion, write ownership/registration/remaining helpers | Removed. File now serves read-only historical owner lookup/projection and an active/uncertain historical-request admission guard. No membership read/write dependency. |
++| `services/slide_review.py` `capture_group` | Removed. New independent reviews use Step 1 compact context. |
++| `backend/.env.example` `FEEDBACK_REVIEW_GROUPS_ENABLED` | Removed; old environment values/headers cannot enable new groups. |
++| Mobile `InitialFeedbackHost.tsx` batch planner/admission effects | Removed; each selected slide uses the existing guarded singleton workflow. |
++| Mobile `initialSlideReview.ts` batch planning/submission helper | Removed executable implementation; retain only the shared task type. |
++| Mobile `useSlideReview.ts` group capability checks, grouped protocol header and coupled retry behavior | Removed; singleton POST keeps source, correction, requirements, selection and uncertainty fences. |
++| Mobile `slideReview.ts` group protocol constant/mutation gate | Removed; historical metadata parsing remains for saved reviews. |
++| Mobile `SlideReviewSummary.tsx` coupled-update wording | Replaced with independent-update wording for historical grouped projections. |
++| Mobile `slideReviewStore.ts` cached-owner transitions | Preserve historical freshness reconciliation; independent singleton supersedes old grouped projection even at lower revision, and late grouped reads cannot restore the old owner. |
++| Backend `test_review_groups.py`, `test_review_group_rollout.py`, `test_review_group_budget.py` | Replace new-group admission/rollout assertions with permanent cancellation, singleton generation, historical read/recovery and frozen-budget regressions. |
++| Mobile `initial-feedback-group`, `initial-feedback-reactive`, `initial-feedback-host`, `slide-review-owner`, `slide-review-workflow`, `slide-review-panel` tests | Replace Step 2 generation expectations with singleton lifecycle, correction races, independent update and historical restoration checks. |
++| API contract and scoring progress | Replace active Step 2 rollout contract with cancellation/singleton/historical-read contract. Mark scoring incomplete and paused. |
++| Both grouping verification documents | Retained as historical engineering evidence with prominent cancellation notices; no active rollout dependency. |
++| Existing prompt/AI-use histories | Retained; append current task evidence rather than rewriting prior claims. |
++
++## Retained compatibility and preservation
++
++- Migration `0010_slide_review_membership` and `SlideReviewMembership` remain as
++  historical schema, with no new ownership reads/writes. Read-only inspection found
++  the existing phone database at `0009` without membership; the isolated scoring
++  database had no schema. These checks do not establish all experimental database
++  states. No migration was reversed, edited or applied to existing data.
++- Frozen `selected-review-group-context-v1` parsing, exact wire reconstruction and
++  actual outbound budget helper remain for queued historical jobs, private receipts
++  and recovery. Historical results are not rebound to singleton/scoring identities.
++- Saved grouped reviews retain their source/evidence and group provenance. Exact
++  singleton analyses take precedence. Active/uncertain historical work blocks an
++  overlapping independent admission instead of silently duplicating provider work.
++- Explicit conversion to independent review omits the historical group's revision;
++  subsequent singleton updates retain normal revision checks. Current independent
++  selection and availability are separate from historical saved provenance after
++  model/credential drift (`independent_selection`, `independent_availability`).
++  Tests reproduce old-token rejection and independently usable current credentials.
++- Standalone scoring modules, score transport/client modules, rubric arithmetic,
++  strengths/weaknesses/improvement parsing, playback, navigation, reliability and
++  correction implementation are preserved. Source hashes verify unchanged scoring
++  modules; only admission wiring shared with feedback is changed.
++- Step 1 context and existing evidence validation remain intact. Profiles, cached
++  results, original audio/timestamps, repeated visits and correction revisions are
++  not rewritten. No private recording or provider credential is included here.
++
++## Verification
++
++Validation is offline/synthetic with mocked provider transports. No API inference
++calls or GPU/model downloads were used. Final results and review are recorded below.
++
++Before-task full backend suite: 576 collected, 524 passed, 26 skipped, 22 errors and
++4 failures. All 26 failures are from unfinished scoring: missing
++`services/presentation_score_v2.py` and `services/presentation_visit_evidence.py`,
++and the resulting scoring-route 503 responses. Both source files were absent in the
++pre-task snapshot. This task preserves that partial implementation; it does not
++recreate the missing modules or claim overall/per-slide v2 scoring works end to end.
++
++The original v1 scoring tests and existing mobile score parser/cache tests are kept
++and exercised. User-facing numeric score integration was already incomplete before
++this task, and remains a separate completion task.
++
++## Cleanup readiness
++
++No branch or worktree is deleted. Branch history and saved engineering evidence
++remain separate from active runtime dependencies. The current dependency tree uses
++`integration-ai-nakajima/mobile/node_modules`; no source/runtime link to either
++grouping worktree was found. The plain export initially had stale Metro context;
++an explicit current-worktree router root with cache clearing exports this source.
++
++The grouping commits `efd4cf7` and `4edd3c2` remain unmerged/local-only. Cancellation
++and source independence do not satisfy `git branch -d`'s merged-history check.
++A future cleanup must preserve any desired unique history explicitly and honor the
++user's no-force-delete constraint; do not manufacture a merge/upstream to bypass it.
++
++## Final checks and independent review
++
++Backend commands used the existing interpreter at
++`/Users/seoyeonpark/.codex/worktrees/ai-feedback/OnLoud/backend/.venv/bin/python`
++with `-B` and `PYTHONDONTWRITEBYTECODE=1`; no dependencies were installed.
++
++| Check | Final result |
++| --- | --- |
++| `python -B manage.py check --settings=config.test_settings` | Passed, no issues |
++| `python -B manage.py makemigrations --check --dry-run --settings=config.test_settings` | Passed, no new changes |
++| Focused SQLite: `test_review_group_rollout`, `test_review_groups`, `test_review_group_budget`, `test_slide_review`, `test_slide_review_context`, `test_coaching`, `test_durable_qa`, `test_qa` | 133 run: 125 passed, 8 PostgreSQL-only skips |
++| Focused PostgreSQL: same review/context/coaching modules, excluding QA | 111 passed, zero skips; disposable `test_step2_removal_20261017` database created/destroyed in existing isolated PostgreSQL container |
++| Full SQLite `python -B manage.py test --settings=config.test_settings --noinput` | 563 collected: 513 passed, 24 skipped, 22 errors and 4 failures; exact same 26 failure identities as before-task snapshot |
++| Mobile `npm run check` | Passed: TypeScript, lint zero errors, all 467 tests; one pre-existing cleanup-ref warning at `useSegmentPlayer.ts:108` |
++| `EXPO_ROUTER_APP_ROOT="$PWD/src/app" npm run bundle:android -- --clear` | Passed from scoring `mobile/`; original plain export hit stale Metro router context. No config/dependency/symlink changes. |
++| `git diff --check` | Passed |
++| Independent AI review of task-only source delta and repairs | Selection/availability drift and profile-dependency retry issues identified and fixed; repair review found no remaining actionable findings |
++| Preservation | 57 protected scoring/navigation/reliability/migration source files byte-identical to task snapshot; original staged binary diff byte-identical |
++
++The exported current-source Hermes entry is
++`entry-288ce7e76a59aa60d9b53bd3ea689fa4.hbc` (5,344,515 bytes). It includes current
++singleton wording and `independent_selection`; it excludes the removed grouped
++initial route and protocol literal. This is an Android-targeted JS export and
++mocked-native component verification, not a fresh emulator/device, microphone,
++audible playback or human-usefulness check. No new real Redis/Celery worker exercise
++is claimed; historical recovery is tested through existing mocked-provider job
++execution and real PostgreSQL admission paths.
++
++Red/green evidence: cancellation tests failed before the singleton restoration;
++legitimate model drift lacked a current singleton descriptor; tests also exposed
++retired historical credential gating, legacy revision-zero uncertain request
++handling, and historical profile dependency retry gating. Final regressions cover
++these repairs, independent duplicate admission, correction/settings races, repeated
++visits, stale-source evidence, saved review restoration and exact singleton cache
++precedence. No expected scoring failures were hidden or skipped to obtain a pass.
++
++An uncertain independent handoff keeps its confirmation until an exact singleton
++receipt appears; an old grouped projection cannot clear it based on its larger
++revision. Confirmations recheck current selection. Historical profile-dependency
++retry uses saved dependency recovery metadata rather than the unrelated independent
++admission availability. Grouped generation/update remains permanently disabled.
++
++Reviewable artifacts: `/tmp/outloud-step2-removal-20261017/step2-removal.diff` is the
++complete task-only diff; its adjacent `manifest-after.json` records exact file
++hashes. Full before/after backend logs and PostgreSQL logs are in that directory;
++mobile logs are `/tmp/mobile-singleton-check-reviewed.txt` and
++`/tmp/mobile-singleton-bundle-reviewed.txt`. These are local temporary review
++artifacts, not committed or published evidence.
++
++Cleanup assessment: both grouping checkouts have no active source/dependency links
++from scoring. Their unique implementation/evidence is either deliberately cancelled
++or retained locally as frozen-read compatibility and historical documentation.
++Worktree checkout removal can be considered after human inspection. Their local
++branches still contain unmerged commits, so branch deletion is **not ready under
++the no-force rule**. Keep them until an explicitly approved history-retention and
++non-force cleanup decision. This task deletes neither checkout nor branch.
+--- a/mobile/src/features/feedback/InitialFeedbackHost.tsx
++++ b/mobile/src/features/feedback/InitialFeedbackHost.tsx
+@@ -1,7 +1,5 @@
+-// Step 2 grouped admission AI-assisted by OpenAI Codex; see docs/ai-use.md.
+ /** Selected-run initial feedback workflow; independent of which screen is open. */
+-import { useEffect, useLayoutEffect, useRef, useSyncExternalStore } from 'react';
+-import { AppState } from 'react-native';
++import { useSyncExternalStore } from 'react';
+ import { API_URL } from '../../services/api';
+ import { getDeckState, useStore, visibleDecks } from '../presentations/store';
+ import { getRequirementsVersion, readRequirements, subscribeRequirements } from '../presentations/requirementsStore';
+@@ -11,11 +9,11 @@
+ import { reviewScope } from './slideReview';
+ import { initialFeedbackEnabled } from './automaticFeedback';
+ import { useSlideReview } from './useSlideReview';
+-import { admitInitialReview, initialReviewGroups, initialTaskIdentity, type InitialReviewTask } from './initialSlideReview';
++import type { InitialReviewTask } from './initialSlideReview';
+ 
+ export function InitialFeedbackHost() {
+- const version=useStore(s=>s.version);
+- const requirementsVersion=useSyncExternalStore(subscribeRequirements,getRequirementsVersion);
++ useStore(s=>s.version);
++ useSyncExternalStore(subscribeRequirements,getRequirementsVersion);
+  const tasks:InitialReviewTask[]=[];
+  for(const deck of visibleDecks()) {
+   const saved=getDeckState(deck.id);
+@@ -32,20 +30,9 @@
+    }catch{/* Local recording and playback remain usable without feedback data. */}
+   });
+  }
+- const current=useRef(tasks),identity=JSON.stringify(tasks.map(initialTaskIdentity));
+- useLayoutEffect(()=>{current.current=tasks;});
+- useEffect(()=>()=>{current.current=[];},[]);
+- useEffect(()=>{
+-  const isCurrent=(task:InitialReviewTask)=>AppState.currentState==='active'&&current.current.some(candidate=>initialTaskIdentity(candidate)===initialTaskIdentity(task));
+-  const admit=()=>{for(const group of initialReviewGroups(API_URL,current.current))void admitInitialReview(API_URL,group,isCurrent);};
+-  admit();
+-  const subscription=AppState.addEventListener('change',state=>{if(state==='active')admit();});
+-  return()=>subscription.remove();
+- // Existing cache/correction publications can reveal newly eligible work without screen navigation.
+- },[identity,version,requirementsVersion]);
+  return <>{tasks.map(task=><InitialWorker key={JSON.stringify([task.id,task.scope])} {...task}/>)}</>;
+ }
+ function InitialWorker({id,scope,review,revision,localDeckId}:InitialReviewTask) {
+- useSlideReview(id,scope,review,revision,false,localDeckId);
++ useSlideReview(id,scope,review,revision,true,localDeckId);
+  return null;
+ }
+--- a/mobile/src/features/feedback/SlideReviewSummary.tsx
++++ b/mobile/src/features/feedback/SlideReviewSummary.tsx
+@@ -11,7 +11,7 @@
+ import { requirementsDirty } from '../presentations/requirementsDraft';
+ import { readReview } from '../transcription/reviewStorage';
+ import { useStore } from '../presentations/store';
+-import { reviewScope, reviewStatus, type Finding } from './slideReview';
++import { reviewScope, reviewStatus, reviewUpdateAvailability, type Finding } from './slideReview';
+ import { initialFeedbackEnabled } from './automaticFeedback';
+ import { useSlideReview } from './useSlideReview';
+ 
+@@ -31,13 +31,13 @@
+  const ready=!!review?.transcript?.words.length;
+  const eligible=initialFeedbackEnabled(API_URL,part.attemptId);
+  const noSpeech=review?.processing_result?.analysis_outcome==='no_speech';
+- const disabled=dirty || fb.busy || !ready || state?.availability.state==='disabled' || state?.availability.state==='unavailable' ||
++ const disabled=dirty || fb.busy || !ready || !!state&&reviewUpdateAvailability(state)!=='available' ||
+    (!!state?.feedback_revision&&!state.retry_available&&!state.dependency?.retry_available&&!state.stale&&state.state!=='completed');
+  return <View style={styles.root}>
+   <View style={styles.heading}><Txt style={styles.headingText}>AI feedback</Txt>
+    <Action label="Refresh slide feedback status" text="Refresh" onPress={()=>void fb.refresh()} disabled={fb.busy}/></View>
+   <Txt accessibilityRole="text" accessibilityLiveRegion="polite" style={styles.status}>{ready?(state?.state==='absent'&&!state.stale?(fb.initial==='failed'?'First feedback could not start':eligible?'Preparing first feedback…':'Feedback begins with a new recording.'):title):noSpeech?'No speech detected — insufficient evidence.':'Transcript pending — analyze this recording first.'}</Txt>
+-  {state?.group_owner&&state.group_owner.scope.slides.length>1&&<Txt style={styles.note}>{`Updating feedback affects slides ${state.group_owner.scope.slides.map(s=>s.slide_index+1).join(' and ')} together.`}</Txt>}
++  {state?.group_owner&&state.group_owner.scope.slides.length>1&&<Txt style={styles.note}>{`Saved feedback was generated with slides ${state.group_owner.scope.slides.map(s=>s.slide_index+1).join(' and ')}. Updating creates feedback for this slide.`}</Txt>}
+   {dirty&&<Txt style={styles.note}>Presentation settings saved on phone · synchronize before updating AI feedback.</Txt>}
+   {summary?.status==='partial'&&<Txt style={styles.note}>Verified findings are shown below. Some other feedback could not be verified.</Txt>}
+   {summary?.status==='invalid_evidence'&&<Txt style={styles.note}>The AI’s evidence did not match the saved recording or slide. Your audio and transcript are preserved.</Txt>}
+--- a/mobile/src/features/feedback/initialSlideReview.ts
++++ b/mobile/src/features/feedback/initialSlideReview.ts
+@@ -1,98 +1,4 @@
+-// Step 2 grouped admission AI-assisted by OpenAI Codex; see docs/ai-use.md.
+-/** Initial admission only. Durable per-slide claims survive failures and never authorize retries. */
++/** Each selected slide admits its own initial review through useSlideReview. */
+ import type { ReviewAttempt } from '../../contracts';
+-import { readStored, writeStored } from '../../services/storage';
+-import { bump } from '../presentations/store';
+-import { createCorrectionClient, initializeCorrections, readCorrections } from '../presentations/correctionStore';
+-import { requirementsPending } from '../presentations/requirementsDraft';
+-import { defaultRequirementsPending } from '../presentations/defaultRequirements';
+-import { readRequirements } from '../presentations/requirementsStore';
+-import { normalizeApi } from '../transcription/analysisStorage';
+-import { initialFeedbackEnabled } from './automaticFeedback';
+-import { parseSlideReview, REVIEW_GROUP_PROTOCOL, reviewProtocolSupported, type ReviewScope, type SlideReview } from './slideReview';
+-import { createSlideReviewReader, publishSlideReview, readSlideReview, slideReviewInitialClaims, slideReviewInitialKey, slideReviewKey, slideReviewInitialPreflights, slideReviewPreflightObservation } from './slideReviewStore';
+-
++import type { ReviewScope } from './slideReview';
+ export type InitialReviewTask={id:string;scope:ReviewScope;review:ReviewAttempt;revision:number|null;localDeckId:string};
+-export const initialTaskIdentity=(task:InitialReviewTask)=>JSON.stringify([task.id,task.scope,task.review.transcript_id,task.revision,task.localDeckId]);
+-function correctionClean(api:string,task:InitialReviewTask){
+- const c=readCorrections(api,task.id);
+- return !c||!c.pending&&!c.conflict&&!c.server.source_changed&&c.server.revision===0&&c.server.base_transcript_id===task.review.transcript_id;
+-}
+-function settingsCurrent(api:string,task:InitialReviewTask){
+- if(requirementsPending(task.localDeckId,api)||defaultRequirementsPending(task.localDeckId,api))return false;
+- const r=readRequirements(task.localDeckId,api),context=r.deckId===task.review.deck_id?r.contextId:null;
+- return context===task.scope.context_id&&(context?r.revision:null)===task.revision;
+-}
+-const absent=(s:SlideReview)=>s.state==='absent'&&!s.feedback_revision&&!s.stale&&!s.group_owner&&!s.requires_confirmation&&!s.dependency?.requires_confirmation&&!s.dependency?.retry_action;
+-function eligible(api:string,task:InitialReviewTask){
+- if(!initialFeedbackEnabled(api,task.id)||!task.review.transcript_id||!task.review.transcript?.words.length||task.scope.slides.length!==1||
+-    readStored(slideReviewInitialKey(api,task.id,task.scope))||readStored(`${slideReviewKey(api,task.id,task.scope)}:uncertain`)||
+-    !correctionClean(api,task)||!settingsCurrent(api,task))return false;
+- const saved=readSlideReview(api,task.id,task.scope,task.review);
+- return !saved||absent(saved);
+-}
+-export function initialReviewGroups(api:string,tasks:InitialReviewTask[]):InitialReviewTask[][]{
+- const groups=new Map<string,InitialReviewTask[][]>();
+- const seen=new Set<string>();
+- for(const task of tasks){
+-  const identity=initialTaskIdentity(task);
+-  if(seen.has(identity)||!eligible(api,task))continue;seen.add(identity);
+-  const key=JSON.stringify([task.id,task.scope.context_id,task.review.transcript_id,task.revision,task.localDeckId]);
+-  const batches=groups.get(key)??[];let batch=batches.at(-1);
+-  if(!batch||batch.length===2){batch=[];batches.push(batch);}batch.push(task);groups.set(key,batches);
+- }
+- return [...groups.values()].flat().map(batch=>batch.sort((a,b)=>a.scope.slides[0].slide_index-b.scope.slides[0].slide_index));
+-}
+-export async function admitInitialReview(apiUrl:string,tasks:InitialReviewTask[],isCurrent:(task:InitialReviewTask)=>boolean){
+- const api=normalizeApi(apiUrl),claimed=tasks.filter(task=>{
+-  const key=slideReviewInitialKey(api,task.id,task.scope),previous=slideReviewInitialPreflights.get(key);
+-  return isCurrent(task)&&eligible(api,task)&&!slideReviewInitialClaims.has(key)&&
+-   !(previous?.identity===initialTaskIdentity(task)&&(!previous.recheck||previous.observation===slideReviewPreflightObservation(api,task.id,task.scope,task.review)));
+- });
+- if(!claimed.length)return;
+- // Ephemeral preflight guard only. Unsupported servers must not consume durable admission claims.
+- for(const task of claimed){const key=slideReviewInitialKey(api,task.id,task.scope);slideReviewInitialClaims.add(key);
+-  slideReviewInitialPreflights.set(key,{identity:initialTaskIdentity(task),observation:slideReviewPreflightObservation(api,task.id,task.scope,task.review),status:'running',notice:'',recheck:false});}
+- const current=(task:InitialReviewTask)=>isCurrent(task)&&settingsCurrent(api,task)&&correctionClean(api,task)&&
+-  !readStored(`${slideReviewKey(api,task.id,task.scope)}:uncertain`);
+- const submitted:InitialReviewTask[]=[];let preflightRead=false;
+- try{
+-  const first=claimed[0],client=createCorrectionClient(api);
+-  initializeCorrections(api,first.id,first.review.transcript_id!,first.review.transcript!);
+-  await client.refresh(first.id);await client.synchronize(first.id);
+-  if(!claimed.every(current))return;
+-  const reader=createSlideReviewReader(api),fresh=await Promise.all(claimed.map(task=>reader.read(task)));preflightRead=true;
+-  const remaining=claimed.filter((task,i)=>current(task)&&absent(fresh[i])&&fresh[i].requirements.revision===task.revision&&fresh[i].availability.state==='available'&&!!fresh[i].selection&&reviewProtocolSupported(fresh[i]));
+-  if(!remaining.length)return;
+-  const groups=remaining.every(task=>fresh[claimed.indexOf(task)].review_grouping!.enabled)?[remaining]:remaining.map(task=>[task]);
+-  for(const group of groups){
+-   const selections=group.map(task=>fresh[claimed.indexOf(task)].selection!.token);
+-   if(selections.some(token=>token!==selections[0])||!group.every(current))continue;
+-   const scope:ReviewScope={context_id:first.scope.context_id,slides:group.map(task=>task.scope.slides[0])};
+-   // Freeze durable claims only after capability/source fences, immediately before the one POST.
+-   for(const task of group){submitted.push(task);writeStored(slideReviewInitialKey(api,task.id,task.scope),'starting');
+-    writeStored(`${slideReviewKey(api,task.id,task.scope)}:uncertain`,{revision:0});}bump();
+-   const response=await fetch(`${api}/attempts/${first.id}/slide-review/initial/`,{method:'POST',headers:{'Content-Type':'application/json','X-OutLoud-Review-Protocol':REVIEW_GROUP_PROTOCOL},
+-    body:JSON.stringify({scope,expected_selection:selections[0],transcript_revision:0}),signal:AbortSignal.timeout(15000)});
+-   if(!response.ok){
+-    if(response.status>=400&&response.status<500&&response.status!==408)for(const task of group)writeStored(`${slideReviewKey(api,task.id,task.scope)}:uncertain`,false);
+-    throw new Error('Initial feedback could not start. Use the explicit feedback recovery control.');
+-   }
+-   const raw=await response.json() as {reviews?:unknown[]};
+-   if(!Array.isArray(raw.reviews)||raw.reviews.length!==group.length)throw new Error('Invalid initial feedback response.');
+-   const parsed=raw.reviews.map((value,i)=>parseSlideReview(value,group[i].id,group[i].scope,group[i].review));
+-   for(let i=0;i<parsed.length;i++){const task=group[i];publishSlideReview(api,parsed[i],task.review);writeStored(`${slideReviewKey(api,task.id,task.scope)}:uncertain`,false);}
+-  }
+- }catch{/* Only submitted claims become durable; no uncertain request is automatically retried. */}
+- finally{
+-  for(const task of claimed){
+-   const key=slideReviewInitialKey(api,task.id,task.scope),saved=readSlideReview(api,task.id,task.scope,task.review);
+-   slideReviewInitialClaims.delete(key);
+-   if(submitted.includes(task)||saved?.feedback_revision)slideReviewInitialPreflights.delete(key);
+-   else slideReviewInitialPreflights.set(key,{identity:initialTaskIdentity(task),observation:slideReviewPreflightObservation(api,task.id,task.scope,task.review),status:'failed',recheck:preflightRead,
+-    notice:saved&&!reviewProtocolSupported(saved)?'Feedback generation requires a compatible server review protocol. Update the server and refresh status.':'Initial feedback could not start. Use Retry feedback to try explicitly.'});
+-  }
+-  for(const task of submitted){const saved=readSlideReview(api,task.id,task.scope,task.review);writeStored(slideReviewInitialKey(api,task.id,task.scope),saved?.feedback_revision?'started':'failed');}
+-  bump();
+- }
+-}
+--- a/mobile/src/features/feedback/slideReview.ts
++++ b/mobile/src/features/feedback/slideReview.ts
+@@ -1,9 +1,9 @@
+ // OpenAI Codex reliability fixes: docs/ai-collaboration-prompts-iteration-2.md#cue-and-feedback-reliability-october-16-2026
++import { selection as parseFeedbackSelection } from './validation';
+ import { quotesEqual,verifiedExcerpt,structurallyEqual } from './evidence';
+-import type { ReviewAttempt, FeedbackEvidence, DescriptionFact } from '../../contracts';
++import type { ReviewAttempt, FeedbackEvidence, DescriptionFact, FeedbackSelection } from '../../contracts';
+ import type { SlidePart } from '../../domain/run';
+ export const REVIEW_VERSION = 'slide-review-v3';
+-export const REVIEW_GROUP_PROTOCOL = 'selected-review-group-context-v1';
+ export type ReviewScope = { context_id: string | null; slides: {slide_index: number; segments: {start_ms: number; end_ms: number}[]}[] };
+ export type Finding = {category: 'content'|'graph'|'audience'|'fillers'|'repetition'|'delivery'|'timing'; priority: number;
+  slide_index: number; source_id: string; transcript_id: string; visit_id: number; segment_id: string; word_start: number; word_end: number;
+@@ -14,6 +14,7 @@
+  review_grouping?: {protocol:string;enabled:boolean};
+  review_version: string; scope: ReviewScope; group_owner?: {analysis_id:number;scope:ReviewScope}; updated_at: string|null;
+  requirements: {context_id: string|null; revision: number|null; audience: string; required_duration_seconds: number|null};
++ independent_selection?:FeedbackSelection|null; independent_availability?:{state:string;error?:{code:string;message:string}|null};
+  selection: {token: string}|null; retry_available: boolean; requires_confirmation: boolean; retry_at: string|null;
+  availability: {state: string}; error: {message:string}|null;
+  dependency: {state?:string; retry_action: string|null; retry_available: boolean; description_set_id: string; processing_revision: number; requires_confirmation:boolean}|null;
+@@ -21,9 +22,9 @@
+ export function reviewScope(slide: number, part: SlidePart, context: string|null): ReviewScope {
+  return {context_id:context,slides:[{slide_index:slide,segments:part.segments.map(s=>({start_ms:s.startMs,end_ms:s.endMs}))}]};
+ }
+-export const reviewProtocolSupported = (s: SlideReview|null) => s?.review_grouping?.protocol === REVIEW_GROUP_PROTOCOL;
+-export const reviewMutationAllowed = (s: SlideReview) => reviewProtocolSupported(s) &&
+- ((s.group_owner?.scope.slides.length ?? s.scope.slides.length) <= 1 || s.review_grouping!.enabled);
++export const independentReviewUpdate=(s:SlideReview|null)=>!!s?.group_owner&&s.group_owner.scope.slides.length>1;
++export const reviewUpdateSelection=(s:SlideReview)=>independentReviewUpdate(s)&&!s.dependency?.retry_action?s.independent_selection??null:s.selection;
++export const reviewUpdateAvailability=(s:SlideReview)=>independentReviewUpdate(s)&&!s.dependency?.retry_action?s.independent_availability?.state??'unavailable':s.availability.state;
+ export const reviewActive = (s: SlideReview|null) => !!s && !s.stale && !s.dependency?.retry_action && ['queued','waiting_descriptions','preparing','submitted','normalizing','waiting_quota'].includes(s.state);
+ export function reviewStatus(s: SlideReview|null, slide:number, now = Date.now()) {
+  if (!s) return 'Not analyzed';
+@@ -65,6 +66,8 @@
+    !(s.requirements.required_duration_seconds===null || integer(s.requirements.required_duration_seconds)&&s.requirements.required_duration_seconds>=60&&s.requirements.required_duration_seconds<=1800) ||
+    !(s.requirements.revision===null||integer(s.requirements.revision)&&s.requirements.revision>=0) ||
+    (s.selection!=null&&!/^[a-f0-9]{64}$/.test(s.selection.token))) bad();
++ if(s.independent_selection!==undefined)s.independent_selection=parseFeedbackSelection(s.independent_selection,'coaching');
++ if(s.independent_availability!==undefined&&(!s.independent_availability||!['available','disabled','unavailable'].includes(s.independent_availability.state)))bad();
+  if(s.review_grouping!==undefined && (!s.review_grouping || typeof s.review_grouping.protocol!=='string' ||
+     !/^[a-z0-9-]{1,100}$/.test(s.review_grouping.protocol) || typeof s.review_grouping.enabled!=='boolean'))bad();
+  if(s.group_owner!==undefined){
+--- a/mobile/src/features/feedback/slideReviewStore.ts
++++ b/mobile/src/features/feedback/slideReviewStore.ts
+@@ -41,7 +41,12 @@
+ export function publishSlideReview(api: string, value: SlideReview, review: ReviewAttempt | null): SlideReview {
+   const next = parseSlideReview(value, value.attempt_id, value.scope, review);
+   const previous = readSlideReview(api, next.attempt_id, next.scope, review);
+-  if (previous && !atLeast(next, {...previous,analysis_id:previous.group_owner?.analysis_id??0})) return previous;
++  const grouped=(value:SlideReview)=>!!value.group_owner&&value.group_owner.scope.slides.length>1;
++  // Independent singleton receipts supersede historical grouped projections, even at revision 1.
++  // A late grouped response must never restore the replaced owner.
++  if(previous?.feedback_revision&&!grouped(previous)&&grouped(next))return previous;
++  const replacesGroup=!!previous&&grouped(previous)&&!grouped(next)&&next.feedback_revision>0;
++  if (previous && !replacesGroup && !atLeast(next, {...previous,analysis_id:previous.group_owner?.analysis_id??0})) return previous;
+   let changed=JSON.stringify(previous)!==JSON.stringify(next);
+   if(changed)writeStored(slideReviewKey(api,next.attempt_id,next.scope),next);
+   const ownKey=refreshKey(api,next.attempt_id,next.scope), wanted=readStored<OwnerRefresh>(ownKey);
+--- a/mobile/src/features/feedback/useSlideReview.ts
++++ b/mobile/src/features/feedback/useSlideReview.ts
+@@ -8,10 +8,11 @@
+ import { createCorrectionClient, initializeCorrections, readCorrections } from '../presentations/correctionStore';
+ import { bump, useStore } from '../presentations/store';
+ import { normalizeApi } from '../transcription/analysisStorage';
+-import { requirementsDirty } from '../presentations/requirementsDraft';
+-import { getRequirementsVersion, subscribeRequirements } from '../presentations/requirementsStore';
++import { requirementsDirty, requirementsPending } from '../presentations/requirementsDraft';
++import { defaultRequirementsPending } from '../presentations/defaultRequirements';
++import { getRequirementsVersion, subscribeRequirements, readRequirements } from '../presentations/requirementsStore';
+ import { createSlideReviewReader, effectiveSlideReview, publishSlideReview, readSlideReview, slideReviewIdentity, slideReviewInitialClaims as initialClaims, slideReviewInitialKey, slideReviewKey, slideReviewRefreshPending, slideReviewInitialPreflights, slideReviewPreflightObservation } from './slideReviewStore';
+-import { parseSlideReview, REVIEW_GROUP_PROTOCOL, reviewMutationAllowed, reviewActive, type ReviewScope, type SlideReview } from './slideReview';
++import { parseSlideReview, reviewActive, reviewUpdateSelection, reviewUpdateAvailability, independentReviewUpdate, type ReviewScope, type SlideReview } from './slideReview';
+ 
+ export function useSlideReview(id:string,scope:ReviewScope,review:ReviewAttempt|null,requirementsRevision:number|null, automatic=false, localDeckId?:string) {
+  const api=String(normalizeApi(API_URL)), identity=String(slideReviewIdentity(api,id,scope)), scopeKey=JSON.stringify(scope);
+@@ -44,7 +45,7 @@
+   let parsed:SlideReview;
+   if(!body) parsed=await createSlideReviewReader(api).read({id,scope:JSON.parse(scopeKey),review:reviewRef.current});
+   else {
+-   const response=await fetch(`${api}/attempts/${id}/slide-review/`,{method:'POST',headers:{'Content-Type':'application/json','X-OutLoud-Review-Protocol':REVIEW_GROUP_PROTOCOL},body:JSON.stringify({scope:JSON.parse(scopeKey),...body}),signal:AbortSignal.timeout(15000)});
++   const response=await fetch(`${api}/attempts/${id}/slide-review/`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scope:JSON.parse(scopeKey),...body}),signal:AbortSignal.timeout(15000)});
+    if(!response.ok){const e=new Error('Could not update feedback. Refresh before retrying.') as Error & {definite?:boolean};e.definite=response.status>=400&&response.status<500&&response.status!==408;throw e;}
+    parsed=parseSlideReview(await response.json(),id,JSON.parse(scopeKey),reviewRef.current);
+   }
+@@ -52,7 +53,7 @@
+    writeStored(initialKey,parsed.feedback_revision?'started':'failed');
+   }
+   const pending=readStored<{revision:number;dependency?:number}|boolean>(pendingKey);
+-  if(pending&&typeof pending==='object'&&(parsed.feedback_revision>pending.revision ||
++  if(pending&&typeof pending==='object'&&(parsed.feedback_revision>pending.revision&&(pending.revision!==0||!independentReviewUpdate(parsed)) ||
+       pending.dependency!==undefined&&parsed.dependency&&parsed.dependency.processing_revision>pending.dependency))writeStored(pendingKey,false);
+   return parsed;
+  },[api,id,initialKey,pendingKey,scopeKey]);
+@@ -91,20 +92,23 @@
+    const original=reviewRef.current;
+    if(!original?.transcript||!original.transcript_id)throw new Error('Transcribe this recording first.');
+    initializeCorrections(api,id,original.transcript_id,original.transcript);
+-   const synced=await createCorrectionClient(api).synchronize(id);
++   const corrections=createCorrectionClient(api);
++   if(automatic)await corrections.refresh(id);
++   const synced=await corrections.synchronize(id);
+    if(!valid(op))return;
+    if(automatic && !confirmed && synced.server.revision>0)throw new Error('Corrections changed. Request Update feedback explicitly.');
+    const fresh=await request();if(!valid(op))return;
+    if(fresh.feedback_revision&&slideReviewInitialPreflights.delete(initialKey))bump();
+    publish(fresh);
+    if(localDeckId&&requirementsDirty(localDeckId,api))throw new Error('Synchronize presentation settings before updating feedback.');
+-   if(automatic && (fresh.feedback_revision>0||fresh.state!=='absent'||fresh.stale))return;
+-   if(confirmed&&(fresh.feedback_revision!==confirmed.revision||fresh.selection?.token!==confirmed.token))throw new Error('Feedback status changed. Review it before retrying.');
++   if(automatic && (fresh.feedback_revision>0||fresh.state!=='absent'||fresh.stale||fresh.group_owner||readStored(pendingKey)||fresh.requires_confirmation||fresh.dependency?.requires_confirmation||fresh.dependency?.retry_action))return;
++   if(scope.slides.length!==1)throw new Error('Select one slide before updating feedback.');
++   const selected=reviewUpdateSelection(fresh);
++   if(confirmed&&(fresh.feedback_revision!==confirmed.revision||selected?.token!==confirmed.token))throw new Error('Feedback status changed. Review it before retrying.');
+    if(reviewActive(fresh)||(fresh.state==='completed'&&!fresh.stale))return;
+-   if(!reviewMutationAllowed(fresh))throw new Error('Feedback updates are disabled until this client and server support the same review protocol.');
+-   if(fresh.availability.state!=='available'||!fresh.selection)throw new Error('Feedback is unavailable on this server.');
++   if(reviewUpdateAvailability(fresh)!=='available'||!selected)throw new Error('Feedback is unavailable on this server.');
+    const uncertain=readStored<{revision:number;dependency?:number}|boolean>(pendingKey)||fresh.requires_confirmation||fresh.dependency?.requires_confirmation;
+-   if(uncertain&&!confirmed){setAsk({identity,revision:fresh.feedback_revision,token:fresh.selection.token});return;}
++   if(uncertain&&!confirmed){setAsk({identity,revision:fresh.feedback_revision,token:selected.token});return;}
+    if(fresh.dependency?.retry_action){
+     if(!fresh.dependency.retry_available)throw new Error('Slide profile retry is not available yet.');
+     // Explicit dependency recovery uses its own generation and receipt protocol.
+@@ -117,14 +121,19 @@
+    }else{
+     if(fresh.feedback_revision>0&&!fresh.retry_available)throw new Error('Retry is not available yet.');
+     const local=readCorrections(api,id);
+-    if(local?.pending||local?.conflict||local?.server.revision!==synced.server.revision)throw new Error('Synchronize the latest corrections first.');
++    if(local?.pending||local?.conflict||local?.server.source_changed||local?.server.revision!==synced.server.revision||reviewRef.current?.transcript_id!==original.transcript_id)throw new Error('Synchronize the latest corrections first.');
++    if(localDeckId){
++     const settings=readRequirements(localDeckId,api),context=settings.deckId===original.deck_id?settings.contextId:null;
++     if(requirementsPending(localDeckId,api)||defaultRequirementsPending(localDeckId,api)||context!==scope.context_id||(context?settings.revision:null)!==requirementsRevision)throw new Error('Presentation settings changed. Refresh before updating feedback.');
++    }
+     if(automatic&&!confirmed){
+      if(readStored<string>(initialKey))return;
+      writeStored(initialKey,'starting');bump();
+     }
+-    submitted=true;writeStored(pendingKey,{revision:fresh.feedback_revision});
+-    const next=await request({expected_selection:fresh.selection.token,transcript_revision:synced.server.revision,
+-      ...(fresh.feedback_revision?{feedback_revision:fresh.feedback_revision}:{}),...(confirmed?{acknowledge_uncertain:true}:{})});
++    const feedbackRevision=fresh.group_owner&&fresh.group_owner.scope.slides.length>1?0:fresh.feedback_revision;
++    submitted=true;writeStored(pendingKey,{revision:feedbackRevision});
++    const next=await request({expected_selection:selected.token,transcript_revision:synced.server.revision,
++      ...(feedbackRevision?{feedback_revision:feedbackRevision}:{}),...(confirmed?{acknowledge_uncertain:true}:{})});
+     if(!valid(op))return;publish(next);
+    }
+    writeStored(pendingKey,false);submitted=false;
+@@ -138,9 +147,9 @@
+  useLayoutEffect(()=>{startInitial.current=async()=>{await generate();};});
+  useEffect(()=>{
+   if(!automatic||!raw||raw.state!=='absent'||stale||raw.stale||raw.feedback_revision||raw.availability.state!=='available'||
+-     !reviewMutationAllowed(raw)||!review?.transcript?.words.length||dirty||initial||correction?.pending||correction?.conflict||correction?.server.source_changed||
++     raw.group_owner||scope.slides.length!==1||readStored(pendingKey)||raw.requires_confirmation||raw.dependency?.requires_confirmation||raw.dependency?.retry_action||!review?.transcript?.words.length||dirty||initial||correction?.pending||correction?.conflict||correction?.server.source_changed||
+      (correction?.server.revision??0)>0||!enabled.current)return;
+-  // The server capability is rechecked before a durable claim at the POST boundary.
++  // Claim once per source slide; fresh GET and correction checks fence the POST boundary.
+   if(readStored<string>(initialKey)||initialClaims.has(initialKey))return;
+   const observation=slideReviewPreflightObservation(api,id,scope,review);
+   const previous=slideReviewInitialPreflights.get(initialKey);
+@@ -160,7 +169,7 @@
+     writeStored(initialKey,saved?.feedback_revision?'started':'failed');bump();
+    }
+   });
+- },[automatic,raw,stale,review,initial,initialKey,correction,key,dirty,api,id,scope,preflightIdentity]);
++ },[automatic,raw,stale,review,initial,initialKey,correction,key,dirty,api,id,scope,preflightIdentity,pendingKey]);
+  return {state,busy,initial,notice:message.identity===identity&&message.text?message.text:preflight?.notice??'',refresh,generate:()=>generate(),
+   ask:ask?.identity===identity,confirm:()=>{if(ask?.identity===identity)void generate(ask);},cancel:()=>setAsk(null)};
+ }
+--- a/mobile/src/features/feedback/validation.ts
++++ b/mobile/src/features/feedback/validation.ts
+@@ -40,7 +40,7 @@
+ }
+ function coachingProvenance(v: unknown): CoachingProvenance { const r = object(v); return { ...provenance(r),
+   coaching_prompt_version: nonblank(r.coaching_prompt_version, 40), coaching_schema_version: nonblank(r.coaching_schema_version, 40) }; }
+-function selection(v: unknown, stage: 'descriptions' | 'coaching'): FeedbackSelection | null {
++export function selection(v: unknown, stage: 'descriptions' | 'coaching'): FeedbackSelection | null {
+   if (v == null) return null; // Old caches are readable, never generation authority.
+   const r = object(v);
+   if (r.stage !== stage) fail();
+--- a/mobile/tests/initial-feedback-group.test.mjs
++++ b/mobile/tests/initial-feedback-group.test.mjs
+@@ -1,4 +1,4 @@
+-// Synthetic offline tests exercise the app-level host and real admission/cache logic.
++// Synthetic offline tests verify cancellation of grouped admission and independent slide recovery.
+ import {test} from 'node:test';import assert from 'node:assert/strict';import {registerHooks} from 'node:module';
+ import {resolve,load} from './helpers/initial-feedback-loader.mjs';import {withFeedback,transcriptId} from './helpers/feedback-fixtures.mjs';
+ registerHooks({resolve,load});
+@@ -28,7 +28,7 @@
+   const id=ids.find(id=>url.includes(id));
+   if(url.endsWith('/corrections/'))return response({attempt_id:id,base_transcript_id:transcriptId,revision:0,edits:[],effective_text:'Hello World',source_changed:false});
+   if(init.method==='POST'){
+-   const body=JSON.parse(init.body);onPost(url,body);if(postStatus!==200)return response({},postStatus);
++   const body=JSON.parse(init.body);assert.equal(init.headers['X-OutLoud-Review-Protocol'],undefined);assert.ok(!url.endsWith('/initial/'));onPost(url,body);if(postStatus!==200)return response({},postStatus);
+    const reviews=body.scope.slides.map(s=>state(id,s.slide_index,{feedback_revision:1,state:'queued',group_owner:{analysis_id:71,scope:body.scope}}));
+    return response(url.endsWith('/initial/')?{reviews}:reviews[0]);
+   }
+@@ -36,15 +36,15 @@
+   return response(state(id,i,preflight(id,i)));
+  };
+ }
+-test('two new same-source selected slides admit one initial request and publish singleton cache projections',async()=>{
++test('two new same-source selected slides independently admit singleton requests',async()=>{
+  const {id,ids,review}=setup();const old=globalThis.fetch;let tree;const posts=[];
+  globalThis.fetch=transport(ids,{onPost:(url,body)=>{for(const s of body.scope.slides)assert.equal(readStored(slideReviewInitialKey(API_URL,id,scope(s.slide_index))),'starting');posts.push({url,body});}});
+  try{await act(async()=>{tree=create(React.createElement(InitialFeedbackHost));await tick();});await act(tick);
+-  assert.equal(posts.length,1);assert.match(posts[0].url,/slide-review\/initial\/$/);assert.deepEqual(posts[0].body.scope.slides,[...scope(0).slides,...scope(1).slides]);
++  assert.equal(posts.length,2);for(const post of posts){assert.match(post.url,/slide-review\/$/);assert.equal(post.body.scope.slides.length,1);}
+   assert.equal(posts[0].body.transcript_revision,0);assert.equal(posts[0].body.expected_selection,'1'.repeat(64));
+   for(const i of [0,1]){const saved=readSlideReview(API_URL,id,scope(i),review);assert.equal(saved.feedback_revision,1);assert.deepEqual(saved.scope,scope(i));}
+-  await act(async()=>tree.update(React.createElement(InitialFeedbackHost)));await act(tick);assert.equal(posts.length,1);
+-  await act(async()=>tree.unmount());tree=null;await act(async()=>{tree=create(React.createElement(InitialFeedbackHost));await tick();});assert.equal(posts.length,1);
++  await act(async()=>tree.update(React.createElement(InitialFeedbackHost)));await act(tick);assert.equal(posts.length,2);
++  await act(async()=>tree.unmount());tree=null;await act(async()=>{tree=create(React.createElement(InitialFeedbackHost));await tick();});assert.equal(posts.length,2);
+  }finally{if(tree)await act(async()=>tree.unmount());globalThis.fetch=old;}
+ });
+ test('different source attempts are never grouped',async()=>{
+@@ -54,20 +54,20 @@
+   assert.equal(posts.length,2);for(const p of posts)assert.equal(p.body.scope.slides.length,1);
+  }finally{if(tree)await act(async()=>tree.unmount());globalThis.fetch=old;}
+ });
+-test('unsupported grouped endpoint consumes initial claims without automatic singleton fallback or remount retry',async()=>{
++test('failed singleton requests consume per-slide claims without automatic remount retry',async()=>{
+  const {id,ids}=setup();const old=globalThis.fetch;let tree;const posts=[];
+  globalThis.fetch=transport(ids,{postStatus:404,onPost:(url,body)=>posts.push({url,body})});
+  try{await act(async()=>{tree=create(React.createElement(InitialFeedbackHost));await tick();});await act(tick);
+-  assert.equal(posts.length,1);assert.match(posts[0].url,/initial\/$/);for(const i of [0,1])assert.equal(readStored(slideReviewInitialKey(API_URL,id,scope(i))),'failed');
+-  await act(async()=>tree.unmount());tree=null;await act(async()=>{tree=create(React.createElement(InitialFeedbackHost));await tick();});assert.equal(posts.length,1);
++  assert.equal(posts.length,2);assert.match(posts[0].url,/slide-review\/$/);for(const i of [0,1])assert.equal(readStored(slideReviewInitialKey(API_URL,id,scope(i))),'failed');
++  await act(async()=>tree.unmount());tree=null;await act(async()=>{tree=create(React.createElement(InitialFeedbackHost));await tick();});assert.equal(posts.length,2);
+  }finally{if(tree)await act(async()=>tree.unmount());globalThis.fetch=old;}
+ });
+ 
+-test('saved owners, active work, uncertainty and durable initial history are excluded before grouping',async()=>{
++test('saved owners, active work, uncertainty and durable initial history are excluded from automatic singleton admission',async()=>{
+  for(const exclude of [
+   (id)=>writeStored(slideReviewKey(API_URL,id,scope(0)),state(id,0,{state:'queued',feedback_revision:1})),
+   (id)=>writeStored(slideReviewKey(API_URL,id,scope(0)),state(id,0,{state:'failed',feedback_revision:1,retry_available:true})),
+-  (id)=>writeStored(slideReviewKey(API_URL,id,scope(0)),state(id,0,{group_owner:{analysis_id:71,scope:scope(0)}})),
++  (id)=>writeStored(slideReviewKey(API_URL,id,scope(0)),state(id,0,{feedback_revision:1,group_owner:{analysis_id:71,scope:scope(0)}})),
+   (id)=>writeStored(`${slideReviewKey(API_URL,id,scope(0))}:uncertain`,{revision:0}),
+   (id)=>writeStored(slideReviewInitialKey(API_URL,id,scope(0)),'started'),
+   (id)=>writeStored(slideReviewInitialKey(API_URL,id,scope(0)),'failed'),
+@@ -86,35 +86,35 @@
+   assert.equal(posts.length,1);assert.deepEqual(posts[0].body.scope.slides,scope(1).slides);assert.equal(posts[0].body.feedback_revision,undefined);
+  }finally{if(tree)await act(async()=>tree.unmount());globalThis.fetch=old;}
+ });
+-test('one server correction read is shared; a server correction revision blocks the entire pair',async()=>{
++test('server corrections are refreshed before either singleton admission',async()=>{
+  const {id,ids}=setup();const old=globalThis.fetch;let tree,correctionGets=0,posts=0;const base=transport(ids,{onPost:()=>posts++});
+  globalThis.fetch=async(url,init={})=>{
+   if(url.endsWith('/corrections/')){correctionGets++;return response({attempt_id:id,base_transcript_id:transcriptId,revision:1,edits:[],effective_text:'Hello World',source_changed:false});}
+   return base(url,init);
+  };
+  try{await act(async()=>{tree=create(React.createElement(InitialFeedbackHost));await tick();});await act(tick);
+-  assert.equal(correctionGets,1);assert.equal(posts,0);
++  assert.equal(correctionGets,2);assert.equal(posts,0);
+  }finally{if(tree)await act(async()=>tree.unmount());globalThis.fetch=old;}
+ });
+-test('local correction accepted while singleton preflight is in flight fences grouped admission',async()=>{
++test('local correction accepted while singleton preflight is in flight fences singleton admission',async()=>{
+  const {initializeCorrections,confirmCorrection}=await import('../src/features/presentations/correctionStore.ts');
+  const {id,ids,review}=setup();const old=globalThis.fetch;let tree,posts=0,changed=false;
+  globalThis.fetch=transport(ids,{onGet:()=>{if(!changed){changed=true;initializeCorrections(API_URL,id,transcriptId,review.transcript);confirmCorrection(API_URL,id,0,0,'Recognition',review.transcript);}},onPost:()=>posts++});
+  try{await act(async()=>{tree=create(React.createElement(InitialFeedbackHost));await tick();});await act(tick);assert.equal(posts,0);}
+  finally{if(tree)await act(async()=>tree.unmount());globalThis.fetch=old;}
+ });
+-test('different provider selection tokens never share an initial owner',async()=>{
++test('different provider selection tokens each admit an independent singleton',async()=>{
+  const {ids}=setup();const old=globalThis.fetch;let tree,posts=0;
+  globalThis.fetch=transport(ids,{preflight:(_id,i)=>({selection:{token:String(i+1).repeat(64)}}),onPost:()=>posts++});
+- try{await act(async()=>{tree=create(React.createElement(InitialFeedbackHost));await tick();});await act(tick);assert.equal(posts,0);}
++ try{await act(async()=>{tree=create(React.createElement(InitialFeedbackHost));await tick();});await act(tick);assert.equal(posts,2);}
+  finally{if(tree)await act(async()=>tree.unmount());globalThis.fetch=old;}
+ });
+ test('unknown submitted outcome retains per-slide uncertainty and never retries on remount',async()=>{
+  const {id,ids}=setup();const old=globalThis.fetch;let tree,posts=0;const base=transport(ids);
+  globalThis.fetch=async(url,init={})=>{if(init.method==='POST'){posts++;throw new Error('connection lost after submission');}return base(url,init);};
+- try{await act(async()=>{tree=create(React.createElement(InitialFeedbackHost));await tick();});await act(tick);assert.equal(posts,1);
++ try{await act(async()=>{tree=create(React.createElement(InitialFeedbackHost));await tick();});await act(tick);assert.equal(posts,2);
+   for(const i of [0,1])assert.deepEqual(readStored(`${slideReviewKey(API_URL,id,scope(i))}:uncertain`),{revision:0});
+-  await act(async()=>tree.unmount());tree=null;await act(async()=>{tree=create(React.createElement(InitialFeedbackHost));await tick();});assert.equal(posts,1);
++  await act(async()=>tree.unmount());tree=null;await act(async()=>{tree=create(React.createElement(InitialFeedbackHost));await tick();});assert.equal(posts,2);
+  }finally{if(tree)await act(async()=>tree.unmount());globalThis.fetch=old;}
+ });
+ 
+@@ -122,21 +122,21 @@
+  const {backgroundApp}=await import('./helpers/recording-screen-ui.mjs');
+  const {ids}=setup();const old=globalThis.fetch;let tree,posts=0;globalThis.fetch=transport(ids,{onPost:()=>posts++});
+  try{backgroundApp('background');await act(async()=>{tree=create(React.createElement(InitialFeedbackHost));await tick();});await act(tick);assert.equal(posts,0);
+-  await act(async()=>{backgroundApp('active');await tick();});await act(tick);assert.equal(posts,1);
++  await act(async()=>{backgroundApp('active');await tick();});await act(tick);assert.equal(posts,2);
+  }finally{if(tree)await act(async()=>tree.unmount());globalThis.fetch=old;backgroundApp('active');}
+ });
+ 
+ 
+-test('old or unknown servers are read-only without consuming durable initial claims',async()=>{
++test('singleton admission does not depend on cancelled grouping capability metadata',async()=>{
+  for(const capability of [undefined,{protocol:'future-review-protocol',enabled:true}]){
+   const {id,ids}=setup();const old=globalThis.fetch;let tree,posts=0;
+   globalThis.fetch=transport(ids,{preflight:()=>({review_grouping:capability}),onPost:()=>posts++});
+   try{await act(async()=>{tree=create(React.createElement(InitialFeedbackHost));await tick();});await act(tick);
+-   assert.equal(posts,0);for(const i of [0,1])assert.equal(readStored(slideReviewInitialKey(API_URL,id,scope(i))),null);
++   assert.equal(posts,2);for(const i of [0,1])assert.equal(readStored(slideReviewInitialKey(API_URL,id,scope(i))),'started');
+   }finally{if(tree)await act(async()=>tree.unmount());globalThis.fetch=old;}
+  }
+ });
+-test('recognized disabled grouping selects singleton initial requests before submission',async()=>{
++test('disabled grouping metadata also permits ordinary singleton feedback',async()=>{
+  const {ids}=setup();const old=globalThis.fetch;let tree;const posts=[];
+  globalThis.fetch=transport(ids,{preflight:()=>({review_grouping:{protocol:'selected-review-group-context-v1',enabled:false}}),onPost:(url,body)=>posts.push({url,body})});
+  try{await act(async()=>{tree=create(React.createElement(InitialFeedbackHost));await tick();});await act(tick);
+--- a/mobile/tests/initial-feedback-host.test.mjs
++++ b/mobile/tests/initial-feedback-host.test.mjs
+@@ -11,7 +11,7 @@
+  globalThis.hostReviews=Object.fromEntries(['selected','old','pending'].map(id=>[id,{attempt_id:id,deck_id:'server',transcript:{words:[{text:'synthetic'}]}}]));
+  enableInitialFeedback(API_URL,'selected');enableInitialFeedback(API_URL,'pending');
+  let renderer;try{await act(async()=>{renderer=create(React.createElement(InitialFeedbackHost));});
+- assert.equal(globalThis.hostCalls.length,1);assert.equal(globalThis.hostCalls[0][0],'selected');assert.equal(globalThis.hostCalls[0][4],false);
++ assert.equal(globalThis.hostCalls.length,1);assert.equal(globalThis.hostCalls[0][0],'selected');assert.equal(globalThis.hostCalls[0][4],true);
+  }finally{if(renderer)await act(async()=>renderer.unmount());}
+ });
+ 
+--- a/mobile/tests/initial-feedback-reactive.test.mjs
++++ b/mobile/tests/initial-feedback-reactive.test.mjs
+@@ -8,7 +8,7 @@
+ const {API_URL}=await import('../src/services/api.ts');const {readStored,writeStored}=await import('../src/services/storage.ts');
+ const {reviewKey}=await import('../src/features/transcription/reviewStorage.ts');
+ const {enableInitialFeedback}=await import('../src/features/feedback/automaticFeedback.ts');
+-const {slideReviewInitialKey,createSlideReviewReader}=await import('../src/features/feedback/slideReviewStore.ts');
++const {slideReviewInitialKey}=await import('../src/features/feedback/slideReviewStore.ts');
+ globalThis.IS_REACT_ACT_ENVIRONMENT=true;
+ const scope=i=>({context_id:null,slides:[{slide_index:i,segments:[{start_ms:i*1000,end_ms:(i+1)*1000}]}]});
+ const response=value=>new Response(JSON.stringify(value));
+@@ -21,39 +21,29 @@
+  globalThis.runtimeDecks=[{id:local}];globalThis.runtimeDeckStates={[local]:{run:{parts:Array.from({length:count},(_,i)=>({attemptId:id,segments:[{startMs:i*1000,endMs:(i+1)*1000}]}))}}};
+  writeStored(reviewKey(API_URL,'attempt',id),review);enableInitialFeedback(API_URL,id);return {id,review,local};}
+ const tick=()=>new Promise(resolve=>setTimeout(resolve,15));
+-test('reactive correction publications do not loop unsupported, mismatched-token or failed preflights',async()=>{
+- for(const mode of ['missing','unknown','mismatched-tokens','correction-read-failure']){
+-  const {id}=setup(mode==='mismatched-tokens'?2:1),old=globalThis.fetch;let tree,correctionGets=0,reviewGets=0,posts=0;
+-  globalThis.fetch=async(url,init={})=>{
+-   if(init.method==='POST'){posts++;return response({});}
+-   if(url.endsWith('/corrections/')){
+-    correctionGets++;if(correctionGets>4)return new Promise(()=>{}); // Bound the known broken implementation without starving the test process.
+-    if(mode==='correction-read-failure')throw Error('offline');
+-    return response({attempt_id:id,base_transcript_id:transcriptId,revision:0,edits:[],effective_text:'Hello World',source_changed:false});
+-   }
+-   reviewGets++;const i=JSON.parse(new URL(url).searchParams.get('scope')).slides[0].slide_index;
+-   return response(state(id,i,mode==='missing'?undefined:mode==='unknown'?{protocol:'next-review-protocol',enabled:true}:modern,
+-    mode==='mismatched-tokens'?{selection:{token:String(i+1).repeat(64)}}:{}));
+-  };
+-  try{await act(async()=>{tree=create(React.createElement(InitialFeedbackHost));await tick();});await act(tick);
+-   assert.equal(correctionGets,1,`${mode} must make one preflight, not restart on its own publication`);assert.equal(posts,0);
+-   assert.ok(reviewGets<=4);for(const i of mode==='mismatched-tokens'?[0,1]:[0])assert.equal(readStored(slideReviewInitialKey(API_URL,id,scope(i))),null);
+-  }finally{if(tree)await act(async()=>tree.unmount());globalThis.fetch=old;globalThis.runtimeDecks=[];globalThis.runtimeDeckStates={};}
+- }
+-});
+-test('a later capability refresh can re-evaluate an unsupported preflight without remounting',async()=>{
+- const {id,review}=setup(),old=globalThis.fetch;let tree,capability,correctionGets=0,posts=0;
++test('reactive publications do not retry failed correction preflights',async()=>{
++ const {id}=setup(),old=globalThis.fetch;let tree,correctionGets=0,reviewGets=0,posts=0;
+  globalThis.fetch=async(url,init={})=>{
+-  if(url.endsWith('/corrections/')){correctionGets++;if(correctionGets>4)return new Promise(()=>{});return response({attempt_id:id,base_transcript_id:transcriptId,revision:0,edits:[],effective_text:'Hello World',source_changed:false});}
+-  if(init.method==='POST'){posts++;return response({reviews:[state(id,0,capability,{feedback_revision:1,state:'queued'})]});}
+-  return response(state(id,0,capability));
++  if(init.method==='POST'){posts++;return response({});}
++  if(url.endsWith('/corrections/')){correctionGets++;throw Error('offline');}
++  reviewGets++;return response(state(id,0,undefined));
+  };
+- try{await act(async()=>{tree=create(React.createElement(InitialFeedbackHost));await tick();});await act(tick);assert.equal(correctionGets,1);assert.equal(posts,0);
+-  capability=modern;await act(async()=>{await createSlideReviewReader(API_URL).read({id,scope:scope(0),review});await tick();});await act(tick);
+-  assert.equal(posts,1);assert.equal(correctionGets,2);assert.equal(readStored(slideReviewInitialKey(API_URL,id,scope(0))),'started');
++ try{await act(async()=>{tree=create(React.createElement(InitialFeedbackHost));await tick();});await act(tick);
++  assert.equal(correctionGets,1);assert.equal(posts,0);assert.ok(reviewGets<=2);
++  assert.equal(readStored(slideReviewInitialKey(API_URL,id,scope(0))),null);
+  }finally{if(tree)await act(async()=>tree.unmount());globalThis.fetch=old;globalThis.runtimeDecks=[];globalThis.runtimeDeckStates={};}
+ });
+-
++test('singleton response without grouping capabilities admits once across reactive publications',async()=>{
++ const {id}=setup(),old=globalThis.fetch;let tree,correctionGets=0,posts=0;
++ globalThis.fetch=async(url,init={})=>{
++  if(url.endsWith('/corrections/')){correctionGets++;return response({attempt_id:id,base_transcript_id:transcriptId,revision:0,edits:[],effective_text:'Hello World',source_changed:false});}
++  if(init.method==='POST'){posts++;assert.match(url,/slide-review\/$/);return response(state(id,0,undefined,{feedback_revision:1,state:'queued'}));}
++  return response(state(id,0,undefined,posts?{feedback_revision:1,state:'queued'}:{}));
++ };
++ try{await act(async()=>{tree=create(React.createElement(InitialFeedbackHost));await tick();});await act(tick);
++  assert.equal(posts,1);assert.equal(correctionGets,1);assert.equal(readStored(slideReviewInitialKey(API_URL,id,scope(0))),'started');
++ }finally{if(tree)await act(async()=>tree.unmount());globalThis.fetch=old;globalThis.runtimeDecks=[];globalThis.runtimeDeckStates={};}
++});
+ 
+ test('a failed session preflight exposes existing explicit Retry recovery without consuming the initial claim',async()=>{
+  const {id,review,local}=setup(),old=globalThis.fetch;let tree,value,offline=true,posts=0,correctionGets=0;
+@@ -82,7 +72,7 @@
+   };
+   function Automatic(){value=useSlideReview(id,scope(0),review,null,true,local);return null;}
+   try{await act(async()=>{tree=create(React.createElement(Automatic));await tick();});await act(tick);
+-   assert.equal(correctionGets,0,'clean initialized corrections need no GET');assert.equal(reviewGets,2);assert.equal(posts,0);assert.equal(value.initial,'failed');assert.equal(readStored(slideReviewInitialKey(API_URL,id,scope(0))),null);
++   assert.equal(correctionGets,1,'automatic admission checks authoritative server corrections');assert.equal(reviewGets,2);assert.equal(posts,0);assert.equal(value.initial,'failed');assert.equal(readStored(slideReviewInitialKey(API_URL,id,scope(0))),null);
+    failed=false;await act(async()=>{await value.generate();await tick();});await act(tick);assert.equal(posts,1);assert.equal(value.state.feedback_revision,1);
+   }finally{if(tree)await act(async()=>tree.unmount());globalThis.fetch=old;}
+  }
+--- a/mobile/tests/slide-review-owner.test.mjs
++++ b/mobile/tests/slide-review-owner.test.mjs
+@@ -1,6 +1,6 @@
+ // Synthetic integration regressions; all provider-facing work is stubbed.
+ import {test} from 'node:test';import assert from 'node:assert/strict';import {registerHooks} from 'node:module';
+-import {resolve,load} from './helpers/slide-review-runtime-loader.mjs';import {withFeedback,transcriptId} from './helpers/feedback-fixtures.mjs';
++import {resolve,load} from './helpers/slide-review-runtime-loader.mjs';import {withFeedback,transcriptId,selection as providerSelection} from './helpers/feedback-fixtures.mjs';
+ registerHooks({resolve,load});
+ const React=await import('react');const {act,create}=await import('react-test-renderer');
+ const store=await import('../src/features/feedback/slideReviewStore.ts');
+@@ -18,7 +18,7 @@
+ function state(id,i,revision=1,phase='failed',extra={}){return {attempt_id:id,scope:scope(i),feedback_revision:revision,transcript_revision:0,state:phase,stale:false,review_version:'slide-review-v3',
+  group_owner:{analysis_id:71,scope:full},updated_at:`2026-10-17T00:00:0${revision}.000000Z`,requirements:{context_id:null,revision:null,audience:'',required_duration_seconds:null},
+  selection:{token:'1'.repeat(64)},retry_available:phase==='failed'||phase==='stale',requires_confirmation:false,retry_at:null,availability:{state:'available'},dependency:null,error:null,
+- review_grouping:{protocol:'selected-review-group-context-v1',enabled:true},result:null,...extra};}
++ independent_availability:{state:'available'},independent_selection:{...providerSelection,token:'2'.repeat(64)},review_grouping:{protocol:'selected-review-group-context-v1',enabled:true},result:null,...extra};}
+ const tick=()=>new Promise(resolve=>setTimeout(resolve,15));
+ test('advancing one owner invalidates sibling without rebinding its receipt and refreshes through bounded GET-only reader',async()=>{
+  const {id,review}=fixture(),old=globalThis.fetch;const calls=[];
+@@ -32,29 +32,26 @@
+   assert.equal(store.slideReviewRefreshPending(API_URL,id,scope(1)),false);assert.ok(calls.length>=1);assert.ok(calls.every(method=>method==='GET'));
+  }finally{globalThis.fetch=old;}
+ });
+-test('mounted failed members follow one explicit retry to completion without navigation or extra admissions',async()=>{
+- const {id,review}=fixture(),old=globalThis.fetch,oldInterval=globalThis.setInterval,oldClear=globalThis.clearInterval;let tree,posts=0;
+- const timers=new Set(),hooks=[];let revision=1,phase='failed';
+- globalThis.setInterval=fn=>{timers.add(fn);return fn;};globalThis.clearInterval=fn=>timers.delete(fn);
++test('explicit Update replaces only one legacy projection with a new independent singleton',async()=>{
++ const {id,review}=fixture(),old=globalThis.fetch;let tree,posts=0,independent=false;const hooks=[];
+  globalThis.fetch=async(url,init={})=>{
+   if(url.endsWith('/corrections/'))return response({attempt_id:id,base_transcript_id:transcriptId,revision:0,edits:[],effective_text:'Hello World',source_changed:false});
+   const i=init.method==='POST'?JSON.parse(init.body).scope.slides[0].slide_index:JSON.parse(new URL(url).searchParams.get('scope')).slides[0].slide_index;
+-  if(init.method==='POST'){posts++;revision=2;phase='queued';assert.equal(init.headers['X-OutLoud-Review-Protocol'],'selected-review-group-context-v1');}
+-  const complete=phase==='completed'?{result:{...review.feedback_analysis.result,review_version:'slide-review-v3',transcript_revision:0,stale:false,slides:[{slide_index:i,status:'successful',evaluation_mode:'informative_descriptive',findings:[],enrichments:[]}]}}:{};
+-  return response(state(id,i,revision,phase,complete));
++  if(init.method==='POST'){posts++;const body=JSON.parse(init.body);assert.equal(body.feedback_revision,undefined);assert.equal(body.expected_selection,'2'.repeat(64));assert.equal(body.scope.slides.length,1);assert.equal(init.headers['X-OutLoud-Review-Protocol'],undefined);independent=true;}
++  return response(independent&&i===0?state(id,0,1,'queued',{group_owner:undefined}):state(id,i,3,'failed',{availability:{state:'disabled'}}));
+  };
+  function Pair(){hooks[0]=useSlideReview(id,scope(0),review,null);hooks[1]=useSlideReview(id,scope(1),review,null);return null;}
+  try{
+   await act(async()=>{tree=create(React.createElement(Pair));await tick();});await act(tick);
+-  assert.equal(hooks[1].state.state,'failed');await act(async()=>{await hooks[0].generate();await tick();});await act(tick);
+-  assert.equal(posts,1);assert.equal(hooks[1].state.feedback_revision,2);assert.equal(hooks[1].state.state,'queued');
+-  phase='completed';await act(async()=>{for(const timer of [...timers])timer();await tick();});await act(tick);
+-  assert.equal(hooks[0].state.state,'completed');assert.equal(hooks[1].state.state,'completed');assert.equal(posts,1);
+- }finally{if(tree)await act(async()=>tree.unmount());globalThis.fetch=old;globalThis.setInterval=oldInterval;globalThis.clearInterval=oldClear;}
++  assert.equal(hooks[0].state.feedback_revision,3);await act(async()=>{await hooks[0].generate();await tick();});await act(tick);
++  assert.equal(posts,1);assert.equal(hooks[0].state.feedback_revision,1);assert.equal(hooks[0].state.state,'queued');
++  assert.equal(hooks[1].state.feedback_revision,3);assert.equal(hooks[1].state.state,'failed');
++  store.publishSlideReview(API_URL,state(id,0,4,'completed'),review);
++  assert.equal(store.readSlideReview(API_URL,id,scope(0),review).state,'queued','late legacy responses cannot replace the singleton owner');
++ }finally{if(tree)await act(async()=>tree.unmount());globalThis.fetch=old;}
+ });
+ 
+-
+-test('retained completed sibling becomes outdated and reconnects after an Update GET failure, including overview counts',async()=>{
++test('saved grouped siblings retain truthful receipts and reconnect after a GET failure, including overview counts',async()=>{
+  const {id,review}=fixture(),old=globalThis.fetch,oldInterval=globalThis.setInterval,oldClear=globalThis.clearInterval;
+  const timers=new Set(),hooks=[];let tree,posts=0,revision=1,phase='completed',failSibling=false,overview;
+  const oldResult=i=>({...review.feedback_analysis.result,review_version:'slide-review-v3',transcript_revision:0,stale:revision===1,
+@@ -74,42 +71,36 @@
+  try{
+   await act(async()=>{tree=create(React.createElement(Pair));await tick();});await act(tick);assert.equal(overview.aggregate.outdated,2);
+   const priorSibling=store.readSlideReview(API_URL,id,scope(1),review);
+-  await act(async()=>{await hooks[0].generate();await tick();});await act(tick);
+-  assert.equal(posts,1);assert.equal(hooks[1].state.stale,true);assert.equal(hooks[1].state.feedback_revision,1);
++  revision=2;phase='queued';failSibling=true;
++  await act(async()=>{await hooks[0].refresh();await tick();});await act(tick);
++  assert.equal(posts,0);assert.equal(hooks[1].state.stale,true);assert.equal(hooks[1].state.feedback_revision,1);
+   assert.deepEqual(store.readSlideReview(API_URL,id,scope(1),review),priorSibling,'failed read preserves the exact historical receipt');
+   assert.equal(overview.items[1].status,'outdated');assert.equal(overview.aggregate.assessed,0);
+   await act(async()=>{for(const timer of [...timers])timer();await tick();});await act(tick);
+-  assert.equal(hooks[1].state.feedback_revision,2);assert.equal(hooks[1].state.state,'queued');assert.equal(overview.aggregate.pending,2);assert.equal(posts,1);
++  assert.equal(hooks[1].state.feedback_revision,2);assert.equal(hooks[1].state.state,'queued');assert.equal(overview.aggregate.pending,2);assert.equal(posts,0);
+   phase='completed';await act(async()=>{for(const timer of [...timers])timer();await tick();});await act(tick);
+-  assert.equal(overview.aggregate.assessed,2);assert.equal(hooks[1].state.stale,false);assert.equal(posts,1);
++  assert.equal(overview.aggregate.assessed,2);assert.equal(hooks[1].state.stale,false);assert.equal(posts,0);
+  }finally{if(tree)await act(async()=>tree.unmount());globalThis.fetch=old;globalThis.setInterval=oldInterval;globalThis.clearInterval=oldClear;}
+ });
+ 
+-test('simultaneous member updates and a lost reply retain one server admission and recover through reads only',async()=>{
+- const {id,review}=fixture(),old=globalThis.fetch;let tree,posts=0,admissions=0,revision=1,phase='failed',gated=false;
+- const waiting=[],hooks=[];
++test('two independent singleton updates recover lost replies through reads without repeat admission',async()=>{
++ const {id,review}=fixture(),old=globalThis.fetch;let tree,posts=0;const admitted=new Set(),hooks=[];
+  globalThis.fetch=async(url,init={})=>{
+   if(url.endsWith('/corrections/'))return response({attempt_id:id,base_transcript_id:transcriptId,revision:0,edits:[],effective_text:'Hello World',source_changed:false});
+   const i=init.method==='POST'?JSON.parse(init.body).scope.slides[0].slide_index:JSON.parse(new URL(url).searchParams.get('scope')).slides[0].slide_index;
+-  if(init.method==='POST'){
+-   posts++;const body=JSON.parse(init.body);
+-   if(body.feedback_revision!==revision)return new Response('{}',{status:409});
+-   admissions++;revision++;phase='queued';throw Error('lost reply after server admission');
+-  }
+-  if(gated&&revision===1)return new Promise(resolve=>{waiting.push(()=>resolve(response(state(id,i,1,'failed'))));if(waiting.length===2)waiting.splice(0).forEach(done=>done());});
+-  return response(state(id,i,revision,phase));
++  if(init.method==='POST'){posts++;assert.equal(JSON.parse(init.body).feedback_revision,undefined);admitted.add(i);throw Error('lost reply after independent server admission');}
++  return response(admitted.has(i)?state(id,i,1,'queued',{group_owner:undefined}):state(id,i,3,'failed'));
+  };
+  function Pair(){hooks[0]=useSlideReview(id,scope(0),review,null);hooks[1]=useSlideReview(id,scope(1),review,null);return null;}
+  try{
+-  await act(async()=>{tree=create(React.createElement(Pair));await tick();});await act(tick);gated=true;
+-  await act(async()=>{await Promise.all(hooks.map(hook=>hook.generate()));await tick();});assert.equal(admissions,1);assert.equal(posts,2);
+-  gated=false;await act(async()=>{await hooks[0].refresh();await tick();});await act(tick);
+-  assert.equal(hooks[0].state.feedback_revision,2);assert.equal(hooks[1].state.feedback_revision,2);
+-  await act(async()=>{await hooks[0].generate();await hooks[1].generate();});assert.equal(posts,2,'active owner recovery never admits another generation');
+-  assert.equal(readStored(`${store.slideReviewKey(API_URL,id,scope(0))}:uncertain`),false);
++  await act(async()=>{tree=create(React.createElement(Pair));await tick();});await act(tick);
++  await act(async()=>{await Promise.all(hooks.map(h=>h.generate()));await tick();});assert.equal(posts,2);assert.equal(admitted.size,2);
++  await act(async()=>{await Promise.all(hooks.map(h=>h.refresh()));await tick();});await act(tick);
++  for(const hook of hooks){assert.equal(hook.state.feedback_revision,1);assert.equal(hook.state.state,'queued');}
++  await act(async()=>{await hooks[0].generate();await hooks[1].generate();});assert.equal(posts,2);
++  for(const i of [0,1])assert.equal(readStored(`${store.slideReviewKey(API_URL,id,scope(i))}:uncertain`),false);
+  }finally{if(tree)await act(async()=>tree.unmount());globalThis.fetch=old;}
+ });
+-
+ 
+ test('historical exact singleton ownership wins over a legacy overlapping group in either read order',async()=>{
+  const old=globalThis.fetch;globalThis.fetch=async()=>new Promise(()=>{});
+@@ -129,3 +120,23 @@
+  store.publishSlideReview(API_URL,state(id,0,0,'absent',{group_owner:undefined}),review);
+  assert.equal(store.slideReviewRefreshPending(API_URL,id,scope(0)),true);await tick();}finally{globalThis.fetch=old;}
+ });
++
++test('historical Update requires a current independent selection and refences its confirmation after drift',async()=>{
++ const {id,review}=fixture(),old=globalThis.fetch;let tree,hook,posts=0,current=null;
++ globalThis.fetch=async(url,init={})=>{
++  if(url.endsWith('/corrections/'))return response({attempt_id:id,base_transcript_id:transcriptId,revision:0,edits:[],effective_text:'Hello World',source_changed:false});
++  if(init.method==='POST'){posts++;const body=JSON.parse(init.body);assert.equal(body.expected_selection,'3'.repeat(64));assert.equal(body.feedback_revision,undefined);assert.equal(body.acknowledge_uncertain,true);return response(state(id,0,1,'queued',{group_owner:undefined}));}
++  return response(state(id,0,3,'failed',{independent_selection:current}));
++ };
++ function Detail(){hook=useSlideReview(id,scope(0),review,null);return null;}
++ try{
++  await act(async()=>{tree=create(React.createElement(Detail));await tick();});await act(tick);
++  await act(async()=>hook.generate());assert.equal(posts,0);assert.match(hook.notice,/selection|server|refresh/i);
++  current={...providerSelection,token:'2'.repeat(64)};writeStored(`${store.slideReviewKey(API_URL,id,scope(0))}:uncertain`,{revision:0});
++  await act(async()=>hook.generate());assert.equal(hook.ask,true);assert.equal(posts,0);
++  current={...providerSelection,token:'3'.repeat(64)};
++  await act(async()=>{hook.confirm();await tick();});assert.equal(posts,0);assert.match(hook.notice,/changed/);
++  await act(async()=>hook.generate());assert.equal(hook.ask,true);
++  await act(async()=>{hook.confirm();await tick();});assert.equal(posts,1);
++ }finally{if(tree)await act(async()=>tree.unmount());globalThis.fetch=old;}
++});
+--- a/mobile/tests/slide-review-panel.test.mjs
++++ b/mobile/tests/slide-review-panel.test.mjs
+@@ -52,11 +52,11 @@
+  }finally{if(tree)await act(async()=>tree.unmount());}
+ });
+ 
+-test('grouped feedback update warns that both owning slides are affected',async()=>{
++test('saved grouped feedback explains independent per-slide Update',async()=>{
+  let tree;
+  globalThis.phase5Panel={state:state({stale:true,group_owner:{analysis_id:71,scope:{context_id:null,slides:[{slide_index:0,segments:[]},{slide_index:2,segments:[]}]}}}),busy:false,notice:'',ask:false,refresh(){},generate(){}};
+  try{await act(async()=>{tree=create(React.createElement(SlideReviewSummary,props));});
+-  assert.match(texts(tree),/Updating feedback affects slides 1 and 3/);
++  assert.match(texts(tree),/Saved feedback was generated with slides 1 and 3\. Updating creates feedback for this slide/);
+  }finally{if(tree)await act(async()=>tree.unmount());}
+ });
+ 
+@@ -70,3 +70,17 @@
+   await act(async()=>retry.props.onPress());assert.equal(generated,1);
+  }finally{if(tree)await act(async()=>tree.unmount());}
+ });
++
++test('historical Update uses independent availability while profile recovery retains its saved availability',async()=>{
++ let tree;const historical={stale:true,availability:{state:'disabled'},independent_availability:{state:'available'},group_owner:{analysis_id:71,scope:{context_id:null,slides:[{slide_index:0,segments:[]},{slide_index:2,segments:[]}]}}};
++ globalThis.phase5Panel={state:state(historical),busy:false,notice:'',ask:false,refresh(){},generate(){}};
++ try{
++  await act(async()=>{tree=create(React.createElement(SlideReviewSummary,props));});
++  const update=()=>tree.root.findAllByType('pressable').find(n=>n.props.accessibilityLabel==='Update feedback');
++  assert.equal(update().props.disabled,false);
++  globalThis.phase5Panel.state=state({...historical,independent_availability:{state:'unavailable'}});
++  await act(async()=>tree.update(React.createElement(SlideReviewSummary,props)));assert.equal(update().props.disabled,true);
++  globalThis.phase5Panel.state=state({...historical,availability:{state:'available'},independent_availability:{state:'unavailable'},dependency:{retry_action:'generate_descriptions',retry_available:true}});
++  await act(async()=>tree.update(React.createElement(SlideReviewSummary,props)));assert.equal(update().props.disabled,false);assert.match(texts(tree),/Retry slide profiles/);
++ }finally{if(tree)await act(async()=>tree.unmount());}
++});
+--- a/mobile/tests/slide-review-workflow.test.mjs
++++ b/mobile/tests/slide-review-workflow.test.mjs
+@@ -214,24 +214,29 @@
+ });
+ 
+ 
+-test('old and unknown review protocols block explicit and automatic mutations without durable claims',async()=>{
+- const {readStored}=await import('../src/services/storage.ts');
+- const {slideReviewInitialKey}=await import('../src/features/feedback/slideReviewStore.ts');
+- for(const [index,capability]of[undefined,{protocol:'next-review-version',enabled:true}].entries()){
+-  const id=`7474747${index}-7474-4474-8474-747474747474`,old=globalThis.fetch;let renderer,posts=0;
+-  globalThis.fetch=async(url,init={})=>{if(init.method==='POST')posts++;if(url.endsWith('/corrections/'))return response(correction(id));return response(state(id,{review_grouping:capability}));};
+-  function Automatic(){value=useSlideReview(id,scope,{...original,attempt_id:id},null,true);return null;}
+-  try{await act(async()=>{renderer=create(React.createElement(Automatic));await new Promise(r=>setTimeout(r,20));});
+-   assert.equal(posts,0);assert.equal(readStored(slideReviewInitialKey(API_URL,id,scope)),null);
+-   await act(async()=>value.generate());assert.equal(posts,0);assert.match(value.notice,/protocol/);
+-  }finally{if(renderer)await act(async()=>renderer.unmount());globalThis.fetch=old;}
+- }
+-});
+-test('capability loss during automatic preflight does not consume the durable claim',async()=>{
+- const {readStored}=await import('../src/services/storage.ts');const {slideReviewInitialKey}=await import('../src/features/feedback/slideReviewStore.ts');
+- const id='75757575-7575-4575-8575-757575757575',old=globalThis.fetch;let renderer,gets=0,posts=0;
+- globalThis.fetch=async(url,init={})=>{if(init.method==='POST')posts++;if(url.endsWith('/corrections/'))return response(correction(id));gets++;return response(state(id,{review_grouping:gets===1?{protocol:'selected-review-group-context-v1',enabled:true}:undefined}));};
+- function Automatic(){value=useSlideReview(id,scope,{...original,attempt_id:id},null,true);return null;}
+- try{await act(async()=>{renderer=create(React.createElement(Automatic));await new Promise(r=>setTimeout(r,20));});assert.equal(posts,0);assert.equal(readStored(slideReviewInitialKey(API_URL,id,scope)),null);}
+- finally{if(renderer)await act(async()=>renderer.unmount());globalThis.fetch=old;}
+-});
++test('singleton feedback works without grouping capability or protocol headers',async()=>{
++ const id='74747470-7474-4474-8474-747474747474',old=globalThis.fetch;let renderer,posts=0;
++ globalThis.fetch=async(url,init={})=>{
++  if(url.endsWith('/corrections/'))return response(correction(id));
++  if(init.method==='POST'){posts++;assert.equal(init.headers['X-OutLoud-Review-Protocol'],undefined);assert.equal(JSON.parse(init.body).scope.slides.length,1);return response(state(id,{review_grouping:undefined,feedback_revision:1,state:'queued'}));}
++  return response(state(id,{review_grouping:undefined}));
++ };
++ function Automatic(){value=useSlideReview(id,scope,{...original,attempt_id:id},null,true);return null;}
++ try{await act(async()=>{renderer=create(React.createElement(Automatic));await new Promise(r=>setTimeout(r,20));});assert.equal(posts,1);}
++ finally{if(renderer)await act(async()=>renderer.unmount());globalThis.fetch=old;}
++});
++
++test('historical failed profile recovery uses saved availability despite unavailable independent admission',async()=>{
++ const id='75757575-7575-4575-8575-757575757575',old=globalThis.fetch;let renderer;const posts=[];
++ const full={context_id:null,slides:[...scope.slides,{slide_index:1,segments:[{start_ms:1000,end_ms:2000}]}]};
++ const dependency={state:'failed',retry_action:'generate_descriptions',retry_available:true,description_set_id:'33333333-3333-4333-8333-333333333333',processing_revision:3,requires_confirmation:false};
++ globalThis.fetch=async(url,init={})=>{
++  if(url.endsWith('/corrections/'))return response(correction(id));
++  if(init.method==='POST'){posts.push(url);return response({});}
++  return response(state(id,{feedback_revision:2,state:'waiting_descriptions',dependency,group_owner:{analysis_id:71,scope:full},independent_selection:null,independent_availability:{state:'unavailable'}}));
++ };
++ try{
++  await act(async()=>{renderer=create(React.createElement(Probe,{id}));});assert.equal(posts.length,0);
++  await act(async()=>value.generate());assert.equal(posts.length,1);assert.match(posts[0],/descriptions\/generate/);
++ }finally{if(renderer)await act(async()=>renderer.unmount());globalThis.fetch=old;}
++});
+--- a/mobile/tests/slide-review.test.mjs
++++ b/mobile/tests/slide-review.test.mjs
+@@ -124,3 +124,15 @@
+  const full={context_id:null,slides:[...scope.slides,...[1,2].map(i=>({slide_index:i,segments:[{start_ms:i*3000,end_ms:(i+1)*3000}]}))]};
+  assert.deepEqual(parseSlideReview({...base,group_owner:{analysis_id:8,scope:full}},'take-1',scope,null).group_owner.scope,full);
+ });
++
++test('independent selection retains saved provenance and validates the current provider disclosure',async()=>{
++ const {selection}=await import('./helpers/feedback-fixtures.mjs');
++ const full={context_id:null,slides:[...scope.slides,{slide_index:1,segments:[{start_ms:1000,end_ms:2000}]}]};
++ const historical={...base,group_owner:{analysis_id:7,scope:full},selection:{token:'1'.repeat(64)},independent_selection:{...selection,token:'2'.repeat(64)}};
++ const parsed=parseSlideReview(historical,'take-1',scope,null);
++ assert.equal(parsed.selection.token,'1'.repeat(64));assert.equal(parsed.independent_selection.token,'2'.repeat(64));
++ for(const change of [{token:'invalid'},{provider:'unknown'},{stage:'descriptions'},{disclosure_version:''},{coaching_prompt_digest:'invalid'},{model:'unsafe/model'}]){
++  assert.throws(()=>parseSlideReview({...historical,independent_selection:{...historical.independent_selection,...change}},'take-1',scope,null));
++ }
++ assert.equal(parseSlideReview({...historical,independent_selection:null},'take-1',scope,null).independent_selection,null);
++});
