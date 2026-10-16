@@ -1,0 +1,142 @@
+{
+  "revision": "Rev.3.0",
+  "figures": [
+    {
+      "id": "figure-1-system-short",
+      "alt": "Figure 1. System architecture",
+      "path": "../assets/design/svg/figure-1-system-short.svg",
+      "paper": "A4",
+      "max_scale": 1,
+      "sources": [
+        "docs/assets/design/sources/figure-1-system-short.svg"
+      ],
+      "sha256": {
+        "docs/assets/design/sources/figure-1-system-short.svg": "c9e44262a263c2443129840cecba3ea0484c58e6f554b44e058485e15102337c",
+        "docs/assets/design/svg/figure-1-system-short.svg": "c9e44262a263c2443129840cecba3ea0484c58e6f554b44e058485e15102337c",
+        "docs/assets/design/png/figure-1-system-short.png": "992629373bb0489019645b3180b6a25b858cedc21d2abe2a16bf3bb8362f5b90"
+      }
+    },
+    {
+      "id": "figure-2-core-short",
+      "alt": "Figure 2. Core rehearsal data",
+      "path": "../assets/design/svg/figure-2-core-short.svg",
+      "paper": "A4",
+      "max_scale": 1,
+      "sources": [
+        "docs/assets/design/sources/figure-2-core-short.svg"
+      ],
+      "sha256": {
+        "docs/assets/design/sources/figure-2-core-short.svg": "594d163d82d4b22d741ba8a4cf1c21a3db7b0246dadbe8bc78f9499b96d43770",
+        "docs/assets/design/svg/figure-2-core-short.svg": "594d163d82d4b22d741ba8a4cf1c21a3db7b0246dadbe8bc78f9499b96d43770",
+        "docs/assets/design/png/figure-2-core-short.png": "97df3766fd95a28b047b782674f55906af5b1b4b3297eecc69dc251e30a5ca44"
+      }
+    },
+    {
+      "id": "figure-3-feedback-short",
+      "alt": "Figure 3. Feedback data",
+      "path": "../assets/design/svg/figure-3-feedback-short.svg",
+      "paper": "A4",
+      "max_scale": 1,
+      "sources": [
+        "docs/assets/design/sources/figure-3-feedback-short.svg"
+      ],
+      "sha256": {
+        "docs/assets/design/sources/figure-3-feedback-short.svg": "c139455e919d4487c98d65fe1b8bde7812b1a2b75e3b5408ddf3a3fa67b81015",
+        "docs/assets/design/svg/figure-3-feedback-short.svg": "c139455e919d4487c98d65fe1b8bde7812b1a2b75e3b5408ddf3a3fa67b81015",
+        "docs/assets/design/png/figure-3-feedback-short.png": "03d9c400da98b0769c4a8aadbe98234cb5078cc2416efea4556301787d36f79c"
+      }
+    },
+    {
+      "id": "figure-4-processing-short",
+      "alt": "Figure 4. Recording and transcription",
+      "path": "../assets/design/svg/figure-4-processing-short.svg",
+      "paper": "A4",
+      "max_scale": 1,
+      "sources": [
+        "docs/assets/design/sources/figure-4-processing-short.svg"
+      ],
+      "sha256": {
+        "docs/assets/design/sources/figure-4-processing-short.svg": "3be8eba39e24fdbb33e187079c69e3475767001770dcf4e21953395711640a3d",
+        "docs/assets/design/svg/figure-4-processing-short.svg": "3be8eba39e24fdbb33e187079c69e3475767001770dcf4e21953395711640a3d",
+        "docs/assets/design/png/figure-4-processing-short.png": "e456a34cd2d3379773ca2d9f90e04588fc0a7de69ef95c2d592ec1aff5a93bce"
+      }
+    },
+    {
+      "id": "figure-5-coaching-short",
+      "alt": "Figure 5. Coaching and recovery",
+      "path": "../assets/design/svg/figure-5-coaching-short.svg",
+      "paper": "A4",
+      "max_scale": 1,
+      "sources": [
+        "docs/assets/design/sources/figure-5-coaching-short.svg"
+      ],
+      "sha256": {
+        "docs/assets/design/sources/figure-5-coaching-short.svg": "10acdd5d6c33c8b0cc9709bf2c73d4f72b8323e69008b9cb9f61e95ca135e6e5",
+        "docs/assets/design/svg/figure-5-coaching-short.svg": "10acdd5d6c33c8b0cc9709bf2c73d4f72b8323e69008b9cb9f61e95ca135e6e5",
+        "docs/assets/design/png/figure-5-coaching-short.png": "cd481839938b16e63c47bcfcf93884da2db6556a5dbd7cf2fdbd860c3a71c2f6"
+      }
+    },
+    {
+      "id": "figure-6-frontend",
+      "alt": "Figure 6. Frontend architecture",
+      "path": "../assets/design/svg/figure-6-frontend.svg",
+      "paper": "A4",
+      "max_scale": 1,
+      "sources": [
+        "docs/assets/design/sources/figure-6-frontend.drawio",
+        "docs/assets/design/sources/figure-6-frontend.svg"
+      ],
+      "sha256": {
+        "docs/assets/design/sources/figure-6-frontend.drawio": "a4137e066289f53e27955555978554120bbe93b48806aed6d3a83458259a9d48",
+        "docs/assets/design/svg/figure-6-frontend.svg": "6deeb3a695e28f8487849b2f3a0b807d0b026cad617924b25ca295a59c67563b",
+        "docs/assets/design/png/figure-6-frontend.png": "5cfab3218a9452aaa546f7f06b54e24fcd90133027dfefcfc564580fbb4000f0",
+        "docs/assets/design/sources/figure-6-frontend.svg": "6deeb3a695e28f8487849b2f3a0b807d0b026cad617924b25ca295a59c67563b"
+      },
+      "panels": [
+        [
+          0,
+          618
+        ],
+        [
+          618,
+          1238
+        ]
+      ]
+    }
+  ],
+  "retained_schema_baseline": {
+    "revision": "Rev.4.2",
+    "git_revision": "fdebc34ab02028380ce8fece04a758cbd603aa30",
+    "sha256": {
+      "docs/assets/design/sources/figure-2-core.drawio": "6e9f87d8e5656ce9582e0f0eaaf1750f0db5596bbb6450f8122cf163e4627001",
+      "docs/assets/design/sources/figure-2-core.dbml": "43949c7a8cf4e04d72ec7b703f7bb15af034a8816ffe851d1e474d336415858a",
+      "docs/assets/design/svg/figure-2-core.svg": "ddd8a15c76a1f523504a17da07e4db011a6b7082b5b4f695e00455ae0e9ff08d",
+      "docs/assets/design/png/figure-2-core.png": "f7b670657b6a14ac3acb00f4645444cbec09bf855bd06adb4db382b267d9dcd7",
+      "docs/assets/design/sources/figure-3-feedback.drawio": "00a8a09dabda584d39e13baa446abedf68ea917b2aeb239c0b3a08badcc89e24",
+      "docs/assets/design/sources/figure-3-feedback.dbml": "5f0aeadd184f5d9da0fc18631812005c8322817a7bdac4c4dc6f606d1b0bbd43",
+      "docs/assets/design/svg/figure-3-feedback.svg": "f46b6609ef6ca08f3230a9be1c8fef063b7b7c693a96b20889afec48f0c7b9fb",
+      "docs/assets/design/png/figure-3-feedback.png": "087a6c4d45804ae0340231fc095409bcdd575f783d5614fdb2270c094b3d738c"
+    }
+  },
+  "short_pdf_source": {
+    "short_pdf": "short.pdf (user-supplied; archived locally)",
+    "short_pdf_sha256": "e5aad1b8b695c1e5f3f4d6ff97c57a45873b48d89c8f783120f223928df3e3c8",
+    "short_diagram_pages": [
+      2,
+      4,
+      6,
+      8,
+      10
+    ],
+    "method": "PDF vector paths and positioned Arial text transcribed to SVG; no architecture changes.",
+    "long_revision": "23725b476ac83bf67098c815f8643eb208d291a6",
+    "latest_pr_commit": "aa2195f12b60bf71b44a29f3d175ddf71a9ec743",
+    "frontend_status": "Local prototype; no PR as of 2026-10-09; document labels Planned."
+  },
+  "formatting": {
+    "paper": "A4 portrait",
+    "body_font": "Arial 11 pt",
+    "panel_layouts": "docs/tools/design/reflow_a4_figures.py",
+    "original_design_sources": "Existing draw.io/Mermaid sources preserved; paired SVG sources contain A4 reflow."
+  }
+}

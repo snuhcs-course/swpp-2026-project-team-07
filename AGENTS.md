@@ -7,7 +7,7 @@ These rules apply across project tasks; read detailed guides only when relevant.
 ## Current iteration and prompt logging
 
 **Current iteration: 2.** The active log is
-[docs/ai-collaboration-prompts-iteration-2.md](docs/ai-collaboration-prompts-iteration-2.md).
+[docs/ai-collaboration/iteration-2/prompt-log.md](docs/ai-collaboration/iteration-2/prompt-log.md).
 
 - Record each actual project-task prompt and follow-up verbatim in that log during
   work, under the contributor/task, with date, tool and model. Group related prompts
@@ -19,11 +19,11 @@ These rules apply across project tasks; read detailed guides only when relevant.
 - Update the same entry with generated/retained work, meaningful results, errors,
   revisions, human decisions and actual verification before handoff. Distinguish
   AI work and agent-operated checks from human edits, testing and approval.
-- Follow the [AI collaboration reporting guide](docs/ai-collaboration-guidelines.md)
+- Follow the [AI collaboration reporting guide](docs/process/ai-collaboration-guidelines.md)
   for entry fields, accuracy, code attribution and report/submission requirements.
-  Preserve earlier iteration logs and frozen `docs/history/` evidence; do not put
-  current prompts there or create a second diary. Logging is an agent responsibility,
-  not a background capture service.
+  Preserve earlier iteration logs and frozen evidence under `docs/archive/` and
+  `docs/evidence/`; do not put current prompts there or create a second diary.
+  Logging is an agent responsibility, not a background capture service.
 - At an iteration transition, update this marker, active-log link and related guide
   references together based on a confirmed transition. Do not infer it from a branch
   name, date or old document.
@@ -35,11 +35,13 @@ These rules apply across project tasks; read detailed guides only when relevant.
 - Check the branch, working tree and applicable instructions. Preserve unrelated
   changes. Continue an existing task on its branch; choose a suitable base for new
   work without switching, resetting or rebasing the user's checkout merely for freshness.
-- Start with [README.md](README.md). For implementation, read the relevant
-  [API contract](docs/api-contract.md), [handoff](docs/iteration-1-handoff.md),
-  [ownership context](docs/team-work-division.md) and directory instructions.
+- Start with [README.md](README.md) and the
+  [documentation index](docs/README.md). For implementation, read the current
+  [traceability document](docs/product/traceability.md), relevant
+  [API contract](docs/architecture/api-contract.md), feature reference and directory
+  instructions. Iteration 1 handoffs and ownership plans are historical context only.
   For meeting-note or meeting-log tasks, follow the
-  [meeting-log workflow](docs/meeting-log-workflow.md).
+  [meeting-log workflow](docs/process/meeting-log-workflow.md).
 - Verify claims against the relevant source, code and evidence. Plans, mock screens,
   branch names and task ownership do not establish implementation, approval or completion.
   Keep proposals and unresolved questions separate from confirmed decisions.
@@ -58,6 +60,8 @@ These rules apply across project tasks; read detailed guides only when relevant.
   diff checks, without app builds or a separate code reviewer solely for prose.
 - Rerun affected checks after relevant fixes; reuse unchanged evidence. Report skipped
   checks and limits, including the difference between exports, device checks and human tests.
+- Put new Iteration 2 evidence under `docs/evidence/iteration-2/<area>/` and follow
+  [docs/AGENTS.md](docs/AGENTS.md) when adding or relocating documentation.
 
 ## Review and publish within authorization
 

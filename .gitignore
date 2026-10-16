@@ -21,4 +21,7 @@ local.properties
 /mobile/android/
 /mobile/ios/
 /tmp/
-/output/
+/output/*
+!/output/archive/
+/output/archive/*
+!/output/archive/iteration-1/
