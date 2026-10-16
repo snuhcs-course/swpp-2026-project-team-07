@@ -52,6 +52,36 @@ class ProcessingTests(TransactionTestCase):
         self.assertEqual(self.attempt.processing_state, 'queued')
         self.assertIsNotNone(self.attempt.queued_at)
 
+    def test_visited_slide_hints_are_sent_and_snapshotted_before_submission(self):
+        from .models import Slide
+        from .services.processing import run_attempt
+        Slide.objects.create(deck=self.attempt.deck, slide_index=0, extracted_text='SNU Buddy\nOutLoud', image='synthetic.png')
+        Slide.objects.create(deck=self.attempt.deck, slide_index=1, extracted_text='SecretUnvisited', image='synthetic.png')
+        self.attempt.slide_events = [{'slide_index': 0, 'at_ms': 0}]
+        self.attempt.save(update_fields=['slide_events'])
+        revision = self.queue()
+
+        def received(prepared):
+            request = self.attempt.provider_requests.get()
+            self.assertEqual(request.request_options, prepared.options)
+            self.assertIn('SNU Buddy', prepared.options['keyterms'])
+            self.assertNotIn('SecretUnvisited', prepared.options['keyterms'])
+            self.assertEqual(prepared.options['no_verbatim'], 'false')
+            return {'text': 'Um, OutLoud', 'words': [
+                {'type': 'word', 'text': 'Um,', 'start': .1, 'end': .3},
+                {'type': 'word', 'text': 'OutLoud', 'start': .4, 'end': 1.5}]}
+
+        with patch('rehearsals.services.processing.has_speech', return_value=True), \
+             patch.dict('os.environ', {'ELEVENLABS_API_KEY': 'synthetic-test-key'}), \
+             patch('rehearsals.services.transcription.request_raw', side_effect=received) as outbound:
+            run_attempt(str(self.attempt.id), revision)
+            run_attempt(str(self.attempt.id), revision)
+        self.assertEqual(outbound.call_count, 1)
+        self.attempt.refresh_from_db()
+        self.assertEqual(self.attempt.status, 'completed')
+        self.assertEqual(self.attempt.transcript['words'][0]['text'], 'Um,')
+        self.assertNotIn('request_options', self.client.get(self.route.removesuffix('process/')).data)
+
     def test_standalone_feedback_settings_cannot_affect_speech_or_silence(self):
         configs = [
             {'FEEDBACK_ENABLED': 'true', 'FEEDBACK_PROVIDER': 'gemini', 'GEMINI_API_KEY': ''},

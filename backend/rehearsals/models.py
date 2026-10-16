@@ -92,6 +92,7 @@ class ProviderRequest(models.Model):
     provider = models.CharField(max_length=32, default='openai')
     model = models.CharField(max_length=32, default='whisper-1')
     input_hash = models.CharField(max_length=64)
+    request_options = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     submitted_at = models.DateTimeField(null=True)
     finished_at = models.DateTimeField(null=True)

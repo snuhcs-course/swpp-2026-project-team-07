@@ -220,10 +220,11 @@ test('Scribe results and legacy Whisper caches parse; mismatched provider/model 
   const value = result(); value.provenance.provider = 'elevenlabs';
   assert.equal(parseResult(value, id), null);
 });
-test('old OpenAI consent does not authorize ElevenLabs audio submission', async () => {
+test('old OpenAI and audio-only Scribe consent do not authorize slide-keyterm submission', async () => {
   const { writeStored } = await import('../src/services/storage.ts');
   const { hasAnalysisConsent, saveAnalysisConsent } = await import('../src/features/transcription/analysisStorage.ts');
   writeStored('analysis-consent:openai:v1', true);
+  writeStored('analysis-consent:elevenlabs:scribe-v2:v1', true);
   assert.equal(hasAnalysisConsent(), false);
   saveAnalysisConsent();
   assert.equal(hasAnalysisConsent(), true);

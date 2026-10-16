@@ -1,6 +1,8 @@
+> October 16 keyterms follow-up: new Scribe requests include up to 100 validated vocabulary hints extracted from visited-slide text when available, with `no_verbatim=false`. Private `ProviderRequest.request_options` snapshots exact submitted options (migration 0010); public transcript/provenance shape is unchanged. Updated mobile consent discloses audio plus slide-derived hints and replaces audio-only consent. [Behavior, cost and verification](scribe-transcription.md#automatic-slide-keyterms--implemented-october-16-2026).
+
 # Initial API contract
 
-> Provider update, October 16, 2026: new transcription requests use ElevenLabs Scribe v2. Older phase descriptions mentioning Whisper describe the previous provider; saved Whisper responses and results are still supported. See [current adapter](scribe-transcription.md).
+> Provider update, October 16, 2026: new transcription requests use ElevenLabs Scribe v2 with up to 100 keyterms derived from recorded slides when text is available. `no_verbatim=false` preserves recognized fillers. Migration 0010 privately snapshots submitted request options; the public transcript schema is unchanged. The updated client requests consent for audio plus slide-derived hints. Older phase descriptions mentioning Whisper describe the previous provider; saved Whisper responses and results are still supported. See [current adapter](scribe-transcription.md).
 
 
 Base path `/api/`. JSON uses `snake_case`, UUID strings and integer milliseconds. Mobile types: `src/contracts/index.ts`. Health/readiness, deck upload/retrieval/history, attempt upload/retrieval, and explicit hosted processing are implemented. Upload alone leaves a recording awaiting analysis.

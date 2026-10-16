@@ -375,7 +375,7 @@ function QA({ model,qa,archived,historyAvailable,onHistory }: { model: DeckModel
         </Animated.View>
       </PanView>
       {answerDisclosure&&<Dialog title="Transcribe with ElevenLabs?"
-        body="Reviewing this answer sends your saved audio through your OutLoud server to ElevenLabs for Scribe v2 transcription. Continue to allow transcription after future recordings, or Cancel to keep the answer on this phone."
+        body="Reviewing this answer sends your saved audio and vocabulary hints extracted from its slides through your OutLoud server to ElevenLabs for Scribe v2 transcription. Continue to allow transcription after future recordings, or Cancel to keep the answer on this phone."
         confirm="Continue" onConfirm={()=>{const a=answerDisclosure;saveAnalysisConsent();setAnswerDisclosure(null);void judge(a.k,a.qi,a.p,a.a,a.confirmed,a.retry);}}
         onCancel={()=>setAnswerDisclosure(null)}/>}
       {(qa.ask||answerAsk)&&<Dialog title="Confirm retry" body="The previous request may have reached the provider and incurred a charge. Retry the same saved input?"

@@ -11,6 +11,7 @@ from django.db import transaction
 from django.utils import timezone
 from ..models import Attempt, ProviderRequest
 from . import transcription
+from .keyterms import for_recording
 from .alignment import align_words
 from .metrics import timing_metrics
 from .speech_gate import has_speech
@@ -93,12 +94,13 @@ def write_claim(claim, **values):
         attempt.save(update_fields=list(values))
 
 
-def mark_submitted(claim, input_hash):
+def mark_submitted(claim, input_hash, request_options=None):
     with transaction.atomic():
         locked_claim(claim)
         return ProviderRequest.objects.create(attempt_id=claim.pk, generation=claim.processing_revision,
             claim_token=claim.claim_token, input_hash=input_hash, submitted_at=timezone.now(),
-            provider=transcription.PROVIDER, model=transcription.MODEL)
+            provider=transcription.PROVIDER, model=transcription.MODEL,
+            request_options=request_options or {})
 
 
 def save_raw(claim, request_id, raw):
@@ -151,8 +153,9 @@ def run_attempt(attempt_id, revision):
                 else:
                     write_claim(claim, processing_state='transcribing')
                     # Validated original descriptor and configured SDK exist before submission.
-                    with transcription.prepare_request(claim.audio.path) as prepared:
-                        request = mark_submitted(claim, prepared.input_hash)
+                    terms = for_recording(claim.deck, claim.slide_events)
+                    with transcription.prepare_request(claim.audio.path, keyterms=terms) as prepared:
+                        request = mark_submitted(claim, prepared.input_hash, prepared.options)
                         raw = transcription.request_raw(prepared)
                         save_raw(claim, request.pk, raw)
             else:

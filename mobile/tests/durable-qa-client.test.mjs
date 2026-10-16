@@ -68,7 +68,8 @@ test('question generations and rerecorded answer attempts remain separated by AP
 test('old provider consent blocks new Q&A uploads and retries; completed answers stay readable',async()=>{
  const {writeStored}=await import('../src/services/storage.ts');
  const old=fetch,posts=[];
- writeStored('analysis-consent:elevenlabs:scribe-v2:v1',false);
+ writeStored('analysis-consent:elevenlabs:scribe-v2:keyterms:v2',false);
+ writeStored('analysis-consent:elevenlabs:scribe-v2:v1',true);
  writeStored('analysis-consent:openai:v1',true);
  let saved=null;
  globalThis.fetch=async(url,init={})=>{if(init.method==='POST'){posts.push(url);return response({});}return saved?response(saved):response({},404);};

@@ -25,7 +25,7 @@ class TranscriptionTests(TestCase):
         env.start()
         self.addCleanup(env.stop)
 
-    def request(self, status=200, failure=None):
+    def request(self, status=200, failure=None, keyterms=()):
         self.calls = []
         def handler(request):
             self.calls.append(request)
@@ -37,7 +37,31 @@ class TranscriptionTests(TestCase):
             self.assertFalse(kwargs["follow_redirects"])
             return HttpClient(**kwargs, transport=httpx.MockTransport(handler))
         with patch("rehearsals.services.transcription.httpx.Client", side_effect=client):
-            return transcribe(self.path)
+            return transcribe(self.path, keyterms=keyterms)
+
+    def test_keyterms_are_repeated_multipart_fields_and_fillers_remain(self):
+        self.raw = {'text': 'Uh, SNU Buddy', 'words': [
+            {'type': 'word', 'text': 'Uh,', 'start': 0, 'end': .2},
+            {'type': 'word', 'text': 'SNU', 'start': .3, 'end': .5},
+            {'type': 'word', 'text': 'Buddy', 'start': .5, 'end': 1}]}
+        result = self.request(keyterms=['SNU Buddy', 'OutLoud'])
+        body = self.calls[0].content
+        self.assertEqual(body.count(b'name="keyterms"'), 2)
+        self.assertIn(b'SNU Buddy', body)
+        self.assertIn(b'OutLoud', body)
+        self.assertIn(b'name="no_verbatim"\r\n\r\nfalse', body)
+        self.assertEqual(result['words'][0]['text'], 'Uh,')
+
+    def test_empty_keyterms_are_omitted_and_invalid_terms_fail_before_network(self):
+        self.request()
+        self.assertNotIn(b'name="keyterms"', self.calls[0].content)
+        for terms in ['text', ['a' * 50], ['one two three four five six'], ['one-two-three-four-five-six'],
+                      ['  '], ['bad\\term'], ['word'] * 101, [42]]:
+            with self.subTest(terms=terms), patch('rehearsals.services.transcription.httpx.Client') as client:
+                with self.assertRaises(TranscriptionError) as caught:
+                    transcribe(self.path, keyterms=terms)
+                self.assertEqual(caught.exception.code, 'invalid_keyterms')
+                client.assert_not_called()
 
     def test_scribe_request_normalization_and_alignment(self):
         result = self.request()

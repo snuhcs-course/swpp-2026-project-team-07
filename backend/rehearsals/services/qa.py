@@ -26,6 +26,7 @@ from pydantic import Field
 from ..models import FeedbackQuotaBucket
 from . import feedback_provider as provider
 from . import transcription
+from .keyterms import for_recording
 from .feedback import FeedbackError, PrivateModel, json_bytes, validated
 from .feedback_config import QuotaPolicy, Selection
 from .feedback_quota import cooldown
@@ -182,7 +183,7 @@ def review_answer(deck, metadata, upload, *, _transport=None):
         raise FeedbackError("invalid_request")
     config, selection = configured()
     with _saved_audio(upload) as path:
-        heard = transcription.transcribe(path)
+        heard = transcription.transcribe(path, keyterms=for_recording(deck, [{'slide_index': request.slide_index}]))
     transcript = {"text": heard["text"], "words": [{k: w[k] for k in ("text", "start_ms", "end_ms")} for w in heard["words"]]}
     result = {"transcript": transcript, "duration_ms": request.duration_ms}
     if request.duration_ms < MIN_ANSWER_MS or len(transcript["words"]) < MIN_ANSWER_WORDS:

@@ -97,7 +97,7 @@ function Prompts() {
     return (
       <Dialog icon="i-mic" tone="neutral" title={disclosure ? 'Transcribe with ElevenLabs?' : 'Retry may charge again'}
         body={disclosure
-          ? 'Transcription sends your saved audio through your OutLoud server to ElevenLabs for Scribe v2 transcription. Audio and results stay available on this phone. Continue to allow automatic transcription after future recordings, or Cancel.'
+          ? 'Transcription sends your saved audio and vocabulary hints extracted from the recorded slides through your OutLoud server to ElevenLabs for Scribe v2 transcription. Audio and results stay available on this phone. Continue to allow automatic transcription after future recordings, or Cancel.'
           : 'The previous transcription request may already have been charged. Retrying may send the audio again and incur another charge. There is no guarantee of exactly one provider request.'}
         confirm="Continue" onConfirm={continueAll} onCancel={() => analysis.cancelPrompt?.()} />
     );

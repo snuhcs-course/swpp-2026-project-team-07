@@ -15,6 +15,7 @@ import hashlib
 from pathlib import Path
 
 import httpx
+from .keyterms import MAX_KEYTERMS, valid_keyterm
 
 PROVIDER = "elevenlabs"
 MODEL = "scribe_v2"
@@ -82,12 +83,20 @@ class PreparedRequest:
     audio: object
     client: object
     input_hash: str
+    options: dict
 
 
 @contextmanager
-def prepare_request(audio_path):
+def prepare_request(audio_path, *, keyterms=()):
     """All local validation/configuration before the durable submitted marker."""
     path = Path(audio_path)
+    if (not isinstance(keyterms, (list, tuple)) or len(keyterms) > MAX_KEYTERMS or
+            any(not valid_keyterm(term) for term in keyterms)):
+        raise TranscriptionError('invalid_keyterms', 'Invalid transcription vocabulary hints.')
+    options = {"model_id": MODEL, "timestamps_granularity": "word", "no_verbatim": "false",
+               "tag_audio_events": "false", "diarize": "false", "use_multi_channel": "false"}
+    if keyterms:
+        options['keyterms'] = list(keyterms)
     if path.suffix.lower() not in SUPPORTED_SUFFIXES:
         raise TranscriptionError("unsupported_audio", "Unsupported audio file extension.")
     try:
@@ -103,7 +112,7 @@ def prepare_request(audio_path):
         digest = hashlib.file_digest(audio, 'sha256').hexdigest()
         audio.seek(0)
         with httpx.Client(headers={"xi-api-key": key}, timeout=120.0, follow_redirects=False) as client:
-            yield PreparedRequest(audio, client, digest)
+            yield PreparedRequest(audio, client, digest, options)
 
 
 def retry_time(headers):
@@ -125,8 +134,7 @@ def request_raw(prepared):
         response = prepared.client.post(
             "https://api.elevenlabs.io/v1/speech-to-text",
             files={"file": (Path(prepared.audio.name).name, prepared.audio)},
-            data={"model_id": MODEL, "timestamps_granularity": "word", "no_verbatim": "false",
-                  "tag_audio_events": "false", "diarize": "false", "use_multi_channel": "false"},
+            data=prepared.options,
         )
         response.raise_for_status()
         try:
@@ -150,8 +158,8 @@ def request_raw(prepared):
         raise TranscriptionError("provider_error", "Transcription response could not be read. The request may have been charged.", uncertain=True) from None
 
 
-def transcribe(audio_path: Path) -> dict:
+def transcribe(audio_path: Path, *, keyterms=()) -> dict:
     """Compatible standalone adapter. Worker uses prepare/request/normalize for durability."""
-    with prepare_request(audio_path) as prepared:
+    with prepare_request(audio_path, keyterms=keyterms) as prepared:
         raw = request_raw(prepared)
     return _normalize(raw)

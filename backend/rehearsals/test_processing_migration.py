@@ -113,6 +113,8 @@ class ProcessingMigrationTests(TransactionTestCase):
             )
         expected_attempts = list(model.objects.exclude(pk=legacy.pk).order_by('id').values())
         expected_requests = list(requests.objects.order_by('id').values())
+        for row in expected_requests:
+            row['request_options'] = {}
         for replay in (False, True):
             with self.subTest(replay=replay):
                 current = self.migrate_to(self.latest)
