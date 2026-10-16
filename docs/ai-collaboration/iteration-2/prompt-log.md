@@ -3393,6 +3393,10 @@ implemented files and the linked evidence record rather than reconstructed here.
   `documentation-cleanup.md`, commit the tracked documentation update, and push the
   local branch to `origin/it2/documentation/cleanup`. Preserve the unrelated untracked
   `sites/` directory.
+- **Result:** The rename was committed as `de6c8c1`. The authorized push succeeded
+  and advanced `origin/it2/documentation/cleanup` from `79752a5` through the main
+  integration commit to `de6c8c1`. The documentation checker passed 510 local links
+  in 60 Markdown files before publication; `sites/` remained untracked and untouched.
 
 - Created the documentation index and routing policy, moved current references,
   evidence, AI records, design assets/tools and historical material into the approved
