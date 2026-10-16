@@ -2,7 +2,7 @@
 // Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
 // OpenAI Codex slide-spill detection: docs/ai-collaboration-prompts-iteration-2.md#review-and-full-review-redesign-october-15-2026
 // OutLoud redesign: transcript sentences for the merged run (SPEC §5.4, §6).
-// Sentences come from hosted Whisper. Slide-change events split a sentence at
+// Sentences come from hosted Scribe v2. Slide-change events split a sentence at
 // the first word whose timestamp belongs to the next slide.
 import type { Transcript } from '../contracts';
 import { transcriptSpans } from '../features/transcription/playback';
@@ -29,7 +29,7 @@ export type Line = {
 export type LineEdit = { text?: string; slide?: number; dismissed?: string[] };
 export type Sentence = { first: number; last: number; text: string };
 
-/** Split a transcript into sentences, keeping Whisper's punctuation; long or paused stretches are split too. */
+/** Split a transcript into sentences, keeping the provider's punctuation; long or paused stretches are split too. */
 export function sentences(transcript: Transcript): Sentence[] {
   const words = transcript.words;
   if (!words.length) return [];

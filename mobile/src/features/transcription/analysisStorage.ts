@@ -1,3 +1,4 @@
+// Scribe migration: OpenAI Codex, Iteration 2 (2026-10-16); see active collaboration log.
 import type { AttemptResult } from '../../contracts';
 import { readStored, writeStored } from '../../services/storage';
 import { parseResult } from './resultValidation';
@@ -16,5 +17,5 @@ export function saveAnalysis(api: string, result: AttemptResult, source: 'detail
   writeStored(resultKey(api, result.attempt_id), accepted);
   return accepted;
 }
-export function hasAnalysisConsent() { return readStored<boolean>('analysis-consent:openai:v1') === true; }
-export function saveAnalysisConsent() { writeStored('analysis-consent:openai:v1', true); }
+export function hasAnalysisConsent() { return readStored<boolean>('analysis-consent:elevenlabs:scribe-v2:keyterms:v2') === true; }
+export function saveAnalysisConsent() { writeStored('analysis-consent:elevenlabs:scribe-v2:keyterms:v2', true); }

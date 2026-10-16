@@ -1,7 +1,9 @@
 # AI-generated/modified with OpenAI Codex, Iteration 1 (2026-09-26 to 2026-10-09).
 # Attribution/review scope: docs/history/ai-collaboration-validation-iteration-1-retired-2026-10-09.md#ai-code-markers
 # Historical review: Injoon reviewed the PR #3 version; later integrated changes are not covered.
-"""Hosted Whisper adapter; raw_response is backend-only evidence."""
+# Scribe v2 migration: OpenAI Codex, Iteration 2 (2026-10-16).
+# See docs/ai-collaboration-prompts-iteration-2.md#scribe-v2-transcription-october-16-2026
+"""Hosted Scribe v2 adapter, with read compatibility for saved Whisper evidence."""
 import os
 import json
 from contextlib import contextmanager
@@ -12,7 +14,11 @@ from email.utils import parsedate_to_datetime
 import hashlib
 from pathlib import Path
 
-from openai import APIConnectionError, APIError, APIStatusError, APITimeoutError, OpenAI
+import httpx
+from .keyterms import MAX_KEYTERMS, valid_keyterm
+
+PROVIDER = "elevenlabs"
+MODEL = "scribe_v2"
 
 MAX_AUDIO_BYTES = 25_000_000
 SUPPORTED_SUFFIXES = {".mp3", ".mp4", ".mpeg", ".mpga", ".m4a", ".wav", ".webm"}
@@ -39,24 +45,36 @@ def _seconds(value):
     return result
 
 
-def _normalize(raw):
+def _normalize(raw, provider=PROVIDER):
     if not isinstance(raw, dict) or not isinstance(raw.get("text"), str):
         raise _invalid()
     words = raw.get("words")
     if not isinstance(words, list) or (raw["text"].strip() and not words):
         raise _invalid()
+    if provider not in {PROVIDER, "openai"}:
+        raise _invalid()
     normalized = []
+    field = "word" if provider == "openai" else "text"
     for item in words:
-        if not isinstance(item, dict) or not isinstance(item.get("word"), str):
+        if not isinstance(item, dict):
+            raise _invalid()
+        if provider == PROVIDER:
+            if item.get("type") in {"spacing", "audio_event"}:
+                continue
+            if item.get("type") != "word":
+                raise _invalid()
+        if not isinstance(item.get(field), str) or not item[field].strip():
             raise _invalid()
         start, end = _seconds(item.get("start")), _seconds(item.get("end"))
         if end < start:
             raise _invalid()
         normalized.append({
-            "text": item["word"],
+            "text": item[field],
             "start_ms": int((start * 1000).quantize(Decimal("1"), rounding=ROUND_HALF_UP)),
             "end_ms": int((end * 1000).quantize(Decimal("1"), rounding=ROUND_HALF_UP)),
         })
+    if raw["text"].strip() and not normalized:
+        raise _invalid()
     return {"text": raw["text"], "words": normalized, "raw_response": raw}
 
 
@@ -65,12 +83,20 @@ class PreparedRequest:
     audio: object
     client: object
     input_hash: str
+    options: dict
 
 
 @contextmanager
-def prepare_request(audio_path):
+def prepare_request(audio_path, *, keyterms=()):
     """All local validation/configuration before the durable submitted marker."""
     path = Path(audio_path)
+    if (not isinstance(keyterms, (list, tuple)) or len(keyterms) > MAX_KEYTERMS or
+            any(not valid_keyterm(term) for term in keyterms)):
+        raise TranscriptionError('invalid_keyterms', 'Invalid transcription vocabulary hints.')
+    options = {"model_id": MODEL, "timestamps_granularity": "word", "no_verbatim": "false",
+               "tag_audio_events": "false", "diarize": "false", "use_multi_channel": "false"}
+    if keyterms:
+        options['keyterms'] = list(keyterms)
     if path.suffix.lower() not in SUPPORTED_SUFFIXES:
         raise TranscriptionError("unsupported_audio", "Unsupported audio file extension.")
     try:
@@ -80,13 +106,13 @@ def prepare_request(audio_path):
     with audio:
         if not 0 < os.fstat(audio.fileno()).st_size <= MAX_AUDIO_BYTES:
             raise TranscriptionError("invalid_audio_size", "Audio must contain 1 to 25,000,000 bytes.")
-        key = os.getenv("OPENAI_API_KEY", "").strip()
+        key = os.getenv("ELEVENLABS_API_KEY", "").strip()
         if not key:
-            raise TranscriptionError("missing_api_key", "OPENAI_API_KEY is not configured on the backend.")
+            raise TranscriptionError("missing_api_key", "ELEVENLABS_API_KEY is not configured on the backend.")
         digest = hashlib.file_digest(audio, 'sha256').hexdigest()
         audio.seek(0)
-        with OpenAI(api_key=key, base_url="https://api.openai.com/v1", timeout=120.0, max_retries=0) as client:
-            yield PreparedRequest(audio, client, digest)
+        with httpx.Client(headers={"xi-api-key": key}, timeout=120.0, follow_redirects=False) as client:
+            yield PreparedRequest(audio, client, digest, options)
 
 
 def retry_time(headers):
@@ -105,33 +131,35 @@ def retry_time(headers):
 def request_raw(prepared):
     """One outbound request, no SDK retries. Caller persists raw before normalizing."""
     try:
-        response = prepared.client.audio.transcriptions.with_raw_response.create(
-            file=prepared.audio, model="whisper-1", response_format="verbose_json",
-            timestamp_granularities=["word"],
+        response = prepared.client.post(
+            "https://api.elevenlabs.io/v1/speech-to-text",
+            files={"file": (Path(prepared.audio.name).name, prepared.audio)},
+            data=prepared.options,
         )
+        response.raise_for_status()
         try:
-            raw = response.http_response.json()
+            raw = response.json()
             json.dumps(raw, allow_nan=False)  # Invalid JSON numbers must remain persistable evidence.
             return raw
         except ValueError:
             # Preserve a malformed received body privately too; normalization fails closed.
-            return response.http_response.text
-    except APITimeoutError:
+            return response.text
+    except httpx.TimeoutException:
         raise TranscriptionError("provider_timeout", "Transcription timed out. The request may have been charged.", uncertain=True) from None
-    except APIConnectionError:
+    except httpx.RequestError:
         raise TranscriptionError("provider_connection", "The provider connection ended without a confirmed outcome. The request may have been charged.", uncertain=True) from None
-    except APIStatusError as error:
+    except httpx.HTTPStatusError as error:
         code = {401: "provider_auth", 403: "provider_auth", 429: "provider_rate_limit"}.get(
-            error.status_code, "provider_error" if error.status_code >= 500 else "provider_rejected")
+            error.response.status_code, "provider_error" if error.response.status_code >= 500 else "provider_rejected")
         raise TranscriptionError(code, "The transcription provider rejected the request.",
-            uncertain=error.status_code >= 500 or error.status_code == 408,
+            uncertain=error.response.status_code >= 500 or error.response.status_code == 408,
             retry_at=retry_time(error.response.headers)) from None
-    except (APIError, ValueError):
+    except ValueError:
         raise TranscriptionError("provider_error", "Transcription response could not be read. The request may have been charged.", uncertain=True) from None
 
 
-def transcribe(audio_path: Path) -> dict:
+def transcribe(audio_path: Path, *, keyterms=()) -> dict:
     """Compatible standalone adapter. Worker uses prepare/request/normalize for durability."""
-    with prepare_request(audio_path) as prepared:
+    with prepare_request(audio_path, keyterms=keyterms) as prepared:
         raw = request_raw(prepared)
     return _normalize(raw)

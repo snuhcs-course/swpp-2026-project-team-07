@@ -1,3 +1,4 @@
+# Scribe migration: OpenAI Codex, Iteration 2 (2026-10-16); see active collaboration log.
 """Durable queue and fenced processing. Database intent precedes broker publication.
 
 Every writer locks the attempt and checks generation/token. Network and CPU work
@@ -10,6 +11,7 @@ from django.db import transaction
 from django.utils import timezone
 from ..models import Attempt, ProviderRequest
 from . import transcription
+from .keyterms import for_recording
 from .alignment import align_words
 from .metrics import timing_metrics
 from .speech_gate import has_speech
@@ -92,11 +94,13 @@ def write_claim(claim, **values):
         attempt.save(update_fields=list(values))
 
 
-def mark_submitted(claim, input_hash):
+def mark_submitted(claim, input_hash, request_options=None):
     with transaction.atomic():
         locked_claim(claim)
         return ProviderRequest.objects.create(attempt_id=claim.pk, generation=claim.processing_revision,
-            claim_token=claim.claim_token, input_hash=input_hash, submitted_at=timezone.now())
+            claim_token=claim.claim_token, input_hash=input_hash, submitted_at=timezone.now(),
+            provider=transcription.PROVIDER, model=transcription.MODEL,
+            request_options=request_options or {})
 
 
 def save_raw(claim, request_id, raw):
@@ -149,15 +153,16 @@ def run_attempt(attempt_id, revision):
                 else:
                     write_claim(claim, processing_state='transcribing')
                     # Validated original descriptor and configured SDK exist before submission.
-                    with transcription.prepare_request(claim.audio.path) as prepared:
-                        request = mark_submitted(claim, prepared.input_hash)
+                    terms = for_recording(claim.deck, claim.slide_events)
+                    with transcription.prepare_request(claim.audio.path, keyterms=terms) as prepared:
+                        request = mark_submitted(claim, prepared.input_hash, prepared.options)
                         raw = transcription.request_raw(prepared)
                         save_raw(claim, request.pk, raw)
             else:
                 write_claim(claim, processing_state='transcribing')
                 raw = saved.raw_response
             if claim.transcript is None:
-                normalized = transcription._normalize(raw)
+                normalized = transcription._normalize(raw, saved.provider if saved else transcription.PROVIDER)
                 write_claim(claim, transcript={'text': normalized['text'], 'words': normalized['words']})
         write_claim(claim, processing_state='aligning')
         try:
@@ -168,7 +173,9 @@ def run_attempt(attempt_id, revision):
                 'retry reuses this transcript. Check recording timestamps before retrying.') from None
         saved = claim.provider_requests.filter(raw_received_at__isnull=False).order_by('-generation').first()
         raw = saved.raw_response if saved and isinstance(saved.raw_response, dict) else {}
-        language = raw.get('language') if isinstance(raw.get('language'), str) else 'und'
+        language = raw.get('language_code', raw.get('language', 'und'))
+        if not isinstance(language, str):
+            language = 'und'
         metrics = timing_metrics(visits, claim.duration_ms, claim.transcript['text'], language)
         write_claim(claim, visits=visits, metrics=metrics,
             analysis_outcome='no_speech' if claim.analysis_outcome == 'no_speech' else 'speech',

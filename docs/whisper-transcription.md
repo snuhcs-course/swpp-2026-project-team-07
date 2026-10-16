@@ -1,4 +1,6 @@
-# Hosted Whisper adapter
+# Hosted Whisper adapter (historical)
+
+> Superseded for new requests on October 16, 2026 by [ElevenLabs Scribe v2](scribe-transcription.md). This page preserves the earlier implementation and dated test evidence. The gate dependency assessment still applies.
 
 `backend/rehearsals/services/transcription.py` implements `transcribe(Path)` using
 OpenAI's Python SDK and hosted `whisper-1`. It requests `verbose_json` with

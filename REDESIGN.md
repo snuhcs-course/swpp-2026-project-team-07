@@ -2,6 +2,8 @@
 
 This branch carries the mobile UI rebuilt from the OutLoud design prototype (`OutLoud — Android App Prototype`) and its later gesture, Review and icon revisions. Every earlier screen, component and gesture layer was removed, including the Iteration 2 gesture redesign. The app's functions were kept: PDF import, capture, local storage, upload, hosted transcription, AI feedback and the backend. The new screens are wired to those functions.
 
+> October 16 integration: new transcription uses ElevenLabs Scribe v2 with slide-derived vocabulary hints. Apply migration `0007_provider_request_options` and configure the updated API/worker and mobile consent together. [Configuration and evidence](docs/scribe-transcription.md).
+
 ## Run it
 
 ```bash
@@ -32,7 +34,7 @@ The sun and moon switch beside the OutLoud wordmark changes the whole app betwee
 |---|---|---|
 | Home | Cover-flow carousel with stationary icons at rest, stats panel, dots. Tap fades into the presentation; hold picks an icon; pull up adds; pull down and hold 3 s deletes, with undo. Presentations are numbered by their visible position. | `pdfService` catalog, `savedAttempts` (a PDF that saved takes still need is kept), presentation store (`features/presentations/store.ts`) |
 | Upload | Gap in the blurred carousel with the new icon kept sharp, three-stage progress ring, swipe down to cancel. | `pdfService.importPdf`; pages are rendered on the device with Android PdfRenderer; slide text comes from the server's extraction (existing `POST /decks/`); per-slide targets are set from the amount of text |
-| Rehearse | The phone and controls stay in portrait. Rotate turns and enlarges only the PDF preview; swipe vertically to change slides in that view, then Rotate again to return to the slide transcript. The right circle shows elapsed time in the rotated view and Review in the normal view. Tapping transcript words in the normal view plays the selected sentence. | `CaptureEngine` (recorder-clock slide events and 1 s checkpoints), `uploadAttempt`, `useAttemptAnalysis` (Whisper), `transcriptSpans` |
+| Rehearse | The phone and controls stay in portrait. Rotate turns and enlarges only the PDF preview; swipe vertically to change slides in that view, then Rotate again to return to the slide transcript. The right circle shows elapsed time in the rotated view and Review in the normal view. Tapping transcript words in the normal view plays the selected sentence. | `CaptureEngine` (recorder-clock slide events and 1 s checkpoints), `uploadAttempt`, `useAttemptAnalysis` (Scribe v2), `transcriptSpans` |
 | Compare | Current and new recordings side by side; select **Keep current** or **Overwrite**, then confirm. | Run composition (`domain/run.ts`). The new recording remains pending until the choice; the active run points to one recording per slide. |
 | Review | Slide score ring, unchanged times-per-slide bars, a fixed slide card with PDF preview, playback strip and four feedback rows, plus Full review. The slide preview is display-only. | Slide-aligned transcript, timings and recorded audio; local playback uses the selected run parts |
 | Full review | Whole-run score ring and audio player, section bar, playback-following transcript and sideways slide strip. Home's coverage ring opens this screen too. | Merged run and recorded audio; slide tiles return to the matching Review slide |
@@ -44,7 +46,7 @@ Each recording is a normal saved attempt, which is uploaded and transcribed as b
 
 ## Where the app differs from the prototype
 
-- Transcript lines appear when hosted Whisper finishes, not live while you speak. During recording the panel shows the timer, pace and waveform.
+- Transcript lines appear when hosted Scribe v2 finishes, not live while you speak. During recording the panel shows the timer, pace and waveform.
 - A merged run can use different recordings on different slides. One selected recording supplies each slide; the transcript plays its matching audio sentence. Backing audio can remain stored when another slide still needs it. Unselected uploads are not deleted from the server because this API has no attempt-delete endpoint.
 - Slide titles, cues and key-point coverage need the slide text. The server reads it, so a PDF imported offline gets it the next time the server is reachable.
 - Audience Q&A and AI suggestions use the server's feedback provider. When `FEEDBACK_ENABLED` is off, the app says so instead of showing sample questions.
@@ -55,7 +57,7 @@ The backend adds two endpoints. There are no model or migration changes; details
 - `POST /api/decks/{id}/qa/questions/`
 - `POST /api/decks/{id}/qa/answers/`
 
-They reuse the feedback provider settings: `FEEDBACK_ENABLED`, provider, model, key, project id and RPM/TPM. Answer audio goes to hosted Whisper. Nothing is stored on the server.
+They reuse the feedback provider settings: `FEEDBACK_ENABLED`, provider, model, key, project id and RPM/TPM. Answer audio goes to hosted Scribe v2. Nothing is stored on the server.
 
 Known limit: these calls do not create quota reservations, so they are not counted in the RPM/TPM windows. They do respect and set the provider cooldown.
 

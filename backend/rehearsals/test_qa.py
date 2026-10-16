@@ -134,8 +134,9 @@ class AudienceQaTests(TestCase):
     def test_answer_is_transcribed_reviewed_and_not_kept(self):
         seen = []
 
-        def fake(path):
+        def fake(path, *, keyterms):
             seen.append(path)
+            self.assertIsInstance(keyterms, list)
             self.assertTrue(path.exists())
             self.assertEqual(path.suffix, '.m4a')
             return {'text': ' '.join(w['text'] for w in WORDS), 'words': WORDS, 'raw_response': {'private': True}}

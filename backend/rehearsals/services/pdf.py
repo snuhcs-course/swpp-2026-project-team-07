@@ -1,5 +1,6 @@
 # AI-generated/modified with OpenAI Codex, Iteration 1 (2026-09-26 to 2026-10-09).
 # Attribution/review scope: docs/history/ai-collaboration-validation-iteration-1-retired-2026-10-09.md#ai-code-markers
+# PDF NUL normalization: OpenAI Codex, Iteration 2 (2026-10-16); see active collaboration log.
 from pathlib import Path
 from io import BytesIO
 from threading import Lock
@@ -34,7 +35,7 @@ def prepare_slides(pdf_path: Path) -> list[dict]:
                 finally:
                     page.close()
                 slides.append({"slide_index": index, "image": output.getvalue(),
-                               "extracted_text": page_text.extract_text() or ""})
+                               "extracted_text": (page_text.extract_text() or "").replace("\x00", "")})
         return slides
     except ValueError:
         raise

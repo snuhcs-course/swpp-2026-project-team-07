@@ -5,9 +5,11 @@ from unittest import TestCase
 from unittest.mock import patch
 
 import httpx
-from openai import OpenAI
 from .services.alignment import align_words
 from .services.transcription import MAX_AUDIO_BYTES, TranscriptionError, transcribe, _normalize
+
+
+HttpClient = httpx.Client
 
 
 class TranscriptionTests(TestCase):
@@ -16,14 +18,14 @@ class TranscriptionTests(TestCase):
         self.addCleanup(temp.cleanup)
         self.path = Path(temp.name) / "sample.wav"
         self.path.write_bytes(b"synthetic mocked audio")
-        self.raw = {"text": " Hello, world!", "language": "english", "duration": 2.0,
-                    "words": [{"word": "Hello,", "start": 0.0005, "end": 0.9995},
-                              {"word": "world!", "start": 1.0, "end": 2.0}]}
-        env = patch.dict("os.environ", {"OPENAI_API_KEY": "test-only-key"})
+        self.raw = {"text": " Hello, world!", "language_code": "eng", "duration": 2.0,
+                    "words": [{"type": "word", "text": "Hello,", "start": 0.0005, "end": 0.9995},
+                              {"type": "word", "text": "world!", "start": 1.0, "end": 2.0}]}
+        env = patch.dict("os.environ", {"ELEVENLABS_API_KEY": "test-only-key"})
         env.start()
         self.addCleanup(env.stop)
 
-    def request(self, status=200, failure=None):
+    def request(self, status=200, failure=None, keyterms=()):
         self.calls = []
         def handler(request):
             self.calls.append(request)
@@ -31,22 +33,46 @@ class TranscriptionTests(TestCase):
                 raise failure("private provider detail", request=request)
             return httpx.Response(status, json=self.raw)
         def client(**kwargs):
-            self.assertEqual(kwargs["max_retries"], 0)
             self.assertEqual(kwargs["timeout"], 120.0)
-            return OpenAI(**kwargs, http_client=httpx.Client(transport=httpx.MockTransport(handler)))
-        with patch("rehearsals.services.transcription.OpenAI", side_effect=client):
-            return transcribe(self.path)
+            self.assertFalse(kwargs["follow_redirects"])
+            return HttpClient(**kwargs, transport=httpx.MockTransport(handler))
+        with patch("rehearsals.services.transcription.httpx.Client", side_effect=client):
+            return transcribe(self.path, keyterms=keyterms)
 
-    def test_sdk_request_normalization_and_alignment(self):
+    def test_keyterms_are_repeated_multipart_fields_and_fillers_remain(self):
+        self.raw = {'text': 'Uh, SNU Buddy', 'words': [
+            {'type': 'word', 'text': 'Uh,', 'start': 0, 'end': .2},
+            {'type': 'word', 'text': 'SNU', 'start': .3, 'end': .5},
+            {'type': 'word', 'text': 'Buddy', 'start': .5, 'end': 1}]}
+        result = self.request(keyterms=['SNU Buddy', 'OutLoud'])
+        body = self.calls[0].content
+        self.assertEqual(body.count(b'name="keyterms"'), 2)
+        self.assertIn(b'SNU Buddy', body)
+        self.assertIn(b'OutLoud', body)
+        self.assertIn(b'name="no_verbatim"\r\n\r\nfalse', body)
+        self.assertEqual(result['words'][0]['text'], 'Uh,')
+
+    def test_empty_keyterms_are_omitted_and_invalid_terms_fail_before_network(self):
+        self.request()
+        self.assertNotIn(b'name="keyterms"', self.calls[0].content)
+        for terms in ['text', ['a' * 50], ['one two three four five six'], ['one-two-three-four-five-six'],
+                      ['  '], ['bad\\term'], ['word'] * 101, [42]]:
+            with self.subTest(terms=terms), patch('rehearsals.services.transcription.httpx.Client') as client:
+                with self.assertRaises(TranscriptionError) as caught:
+                    transcribe(self.path, keyterms=terms)
+                self.assertEqual(caught.exception.code, 'invalid_keyterms')
+                client.assert_not_called()
+
+    def test_scribe_request_normalization_and_alignment(self):
         result = self.request()
         self.assertEqual(len(self.calls), 1)
-        self.assertEqual(str(self.calls[0].url), "https://api.openai.com/v1/audio/transcriptions")
-        for value in [b'whisper-1', b'verbose_json', b'timestamp_granularities[]',
+        self.assertEqual(str(self.calls[0].url), "https://api.elevenlabs.io/v1/speech-to-text")
+        for value in [b'scribe_v2', b'timestamps_granularity', b'no_verbatim', b'false',
                       b'word', b'filename="sample.wav"', self.path.read_bytes()]:
             self.assertIn(value, self.calls[0].content)
         self.assertEqual(result["text"], self.raw["text"])
         self.assertEqual(result["raw_response"]["words"], self.raw["words"])
-        self.assertEqual(result["raw_response"]["language"], "english")
+        self.assertEqual(result["raw_response"]["language_code"], "eng")
         self.assertEqual(result["words"], [
             {"text": "Hello,", "start_ms": 1, "end_ms": 1000},
             {"text": "world!", "start_ms": 1000, "end_ms": 2000}])
@@ -61,7 +87,7 @@ class TranscriptionTests(TestCase):
     def test_invalid_normalized_responses(self):
         bad = [{"text": "speech"}, {"text": "speech", "words": []}, {"text": 42, "words": []}]
         for field, value in [("start", -1), ("start", 3), ("start", "0"),
-                             ("end", None), ("start", True), ("word", None),
+                             ("end", None), ("start", True), ("text", None),
                              ("start", float("nan")), ("end", float("inf"))]:
             raw = deepcopy(self.raw)
             raw["words"][0][field] = value
@@ -107,15 +133,15 @@ class TranscriptionTests(TestCase):
             self.assertEqual(len(self.calls), 1)
 
     def test_missing_key(self):
-        with patch.dict("os.environ", {"OPENAI_API_KEY": ""}), \
-             patch("rehearsals.services.transcription.OpenAI") as client:
+        with patch.dict("os.environ", {"ELEVENLABS_API_KEY": ""}), \
+             patch("rehearsals.services.transcription.httpx.Client") as client:
             with self.assertRaises(TranscriptionError) as caught:
                 transcribe(self.path)
             self.assertEqual(caught.exception.code, "missing_api_key")
             client.assert_not_called()
 
     def test_invalid_files_before_network(self):
-        with patch("rehearsals.services.transcription.OpenAI") as client:
+        with patch("rehearsals.services.transcription.httpx.Client") as client:
             for path, code in [(self.path.with_suffix(".txt"), "unsupported_audio"),
                                (self.path.with_name("missing.wav"), "audio_unavailable")]:
                 with self.assertRaises(TranscriptionError) as caught:
@@ -150,12 +176,35 @@ class TranscriptionTests(TestCase):
 
     def test_nonfinite_json_is_retained_as_private_text_before_normalization(self):
         from .services.transcription import prepare_request, request_raw
-        body = '{"text":"invalid", "words":[{"word":"invalid", "start":NaN,"end":1}]}'
+        body = '{"text":"invalid", "words":[{"type": "word", "text":"invalid", "start":NaN,"end":1}]}'
         def client(**kwargs):
-            return OpenAI(**kwargs, http_client=httpx.Client(transport=httpx.MockTransport(
-                lambda request: httpx.Response(200, content=body, headers={'content-type': 'application/json'}))))
-        with patch('rehearsals.services.transcription.OpenAI', side_effect=client), prepare_request(self.path) as prepared:
+            return HttpClient(**kwargs, transport=httpx.MockTransport(
+                lambda request: httpx.Response(200, content=body, headers={'content-type': 'application/json'})))
+        with patch('rehearsals.services.transcription.httpx.Client', side_effect=client), prepare_request(self.path) as prepared:
             raw = request_raw(prepared)
         self.assertEqual(raw, body)
         with self.assertRaises(TranscriptionError):
             _normalize(raw)
+
+    def test_scribe_keeps_fillers_and_ignores_spacing_and_audio_event_tokens(self):
+        self.raw = {"text": "Um, hello", "words": [
+            {"type": "word", "text": "Um,", "start": 0, "end": .2},
+            {"type": "spacing", "text": " ", "start": .2, "end": .3},
+            {"type": "audio_event", "text": "(laugh)", "start": .3, "end": .4},
+            {"type": "word", "text": "hello", "start": .4, "end": 1}]}
+        result = self.request()
+        self.assertEqual([w["text"] for w in result["words"]], ["Um,", "hello"])
+        self.assertEqual(self.calls[0].headers["xi-api-key"], "test-only-key")
+        self.assertNotIn("authorization", self.calls[0].headers)
+        self.assertEqual(len(result["raw_response"]["words"]), 4)
+
+    def test_legacy_whisper_raw_remains_readable_only_as_legacy(self):
+        raw = {"text": "hello", "words": [{"word": "hello", "start": 0, "end": 1}]}
+        self.assertEqual(_normalize(raw, "openai")["words"][0]["text"], "hello")
+        with self.assertRaises(TranscriptionError):
+            _normalize(raw)
+
+    def test_spacing_only_and_unknown_token_types_fail_closed(self):
+        for kind in ["spacing", "audio_event", "unknown", None]:
+            with self.subTest(kind=kind), self.assertRaises(TranscriptionError):
+                _normalize({"text": "speech", "words": [{"type": kind, "text": "speech", "start": 0, "end": 1}]})

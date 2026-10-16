@@ -1,3 +1,4 @@
+// Scribe integration: OpenAI Codex, 2026-10-16; see active collaboration log.
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
 // OpenAI Codex finger-linked page fade: docs/ai-collaboration-prompts-iteration-2.md#finger-linked-page-fade-october-15-2026
 // OpenAI Codex audience setup: docs/ai-collaboration-prompts-iteration-2.md#presentation-time-and-audience-setup-october-15-2026
@@ -21,6 +22,7 @@ import type { IconKey } from '../domain/analysis';
 import { fmt, quote } from '../domain/format';
 import { BACK_FADE_Y, BACK_T } from '../domain/gestures';
 import { sentences, slideText } from '../domain/lines';
+import { hasAnalysisConsent, saveAnalysisConsent } from '../features/transcription/analysisStorage';
 import { AnswerRecorder, type AnswerHandle } from '../features/qa/AnswerRecorder';
 import { generateQuestions, judgeAnswer, QaError, type QaResult } from '../features/qa/client';
 import { answerKey, hasQaConsent, readQa, saveQa, saveQaConsent, type QaSet, type StoredAnswer } from '../features/qa/store';
@@ -54,6 +56,7 @@ function QA({ model }: { model: DeckModel }) {
   const [load, setLoad] = useState<{ kind: 'idle' | 'consent' | 'loading' | 'error'; message?: string }>(
     () => (!boot.need ? { kind: 'idle' } : boot.consent ? { kind: 'loading' } : { kind: 'consent' }));
   const [i, setI] = useState(0);
+  const [answerDisclosure, setAnswerDisclosure] = useState<{ k: string; qi: number; p: 0 | 1; a: StoredAnswer } | null>(null);
   const [part, setPart] = useState<0 | 1>(0);
   const [count, setCount] = useState(0);
   const [rec, setRec] = useState(false);
@@ -123,6 +126,11 @@ function QA({ model }: { model: DeckModel }) {
     if (!q) return;
     if (a.durationMs < 8000) {
       update(k, { ...a, status: 'done', result: { transcript: { text: '', words: [] }, verdict: 'too_short', did: '', evidence: '', clarify: '', duration_ms: a.durationMs } });
+      return;
+    }
+    if (!hasAnalysisConsent()) {
+      update(k, { ...a, status: 'error', error: 'Allow ElevenLabs transcription to review this saved answer.' });
+      setAnswerDisclosure({ k, qi, p, a });
       return;
     }
     update(k, { ...a, status: 'judging', error: undefined });
@@ -367,9 +375,14 @@ function QA({ model }: { model: DeckModel }) {
           <HintRow hints={hints} />
         </Animated.View>
       </PanView>
+        {answerDisclosure && <Dialog icon="i-mic" tone="neutral" title="Transcribe with ElevenLabs?"
+          body="Your saved answer audio and vocabulary hints extracted from its slide go through your OutLoud server to ElevenLabs for Scribe v2 transcription. Hints incur a 20% transcription surcharge when available. Continue to allow future recordings and answers, or Cancel to keep the audio without sending it."
+          cancel="Cancel" confirm="Continue"
+          onCancel={() => setAnswerDisclosure(null)}
+          onConfirm={() => { const a = answerDisclosure; saveAnalysisConsent(); setAnswerDisclosure(null); void judge(a.k, a.qi, a.p, a.a); }} />}
       {load.kind === 'consent' && (
         <Dialog icon="i-bubble" tone="neutral" title="Practise with an AI panel?"
-          body="Audience Q&A sends your slide text and transcript through your OutLoud server to its configured AI provider to write questions. Your spoken answers are sent to OpenAI for transcription and reviewed by the same provider. Answers stay on this phone too. Requests may incur provider charges."
+          body="Audience Q&A sends your slide text and transcript through your OutLoud server to its configured AI provider to write questions. Your spoken answers and slide-derived vocabulary hints are sent to ElevenLabs for Scribe v2 transcription and reviewed by the same provider. Answers stay on this phone too. Requests may incur provider charges."
           confirm="Continue" onConfirm={() => { saveQaConsent(); regenerate(); }} onCancel={() => { setLoad({ kind: 'idle' }); back(); }} />
       )}
     </Enter>
