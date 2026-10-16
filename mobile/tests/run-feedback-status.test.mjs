@@ -27,3 +27,16 @@ test('one active-only overview timer reads exact singleton status and never gene
  }finally{if(tree)await act(async()=>tree.unmount());globalThis.fetch=oldFetch;globalThis.setInterval=oldInterval;globalThis.clearInterval=oldClear;}
  assert.equal(timers.size,0);
 });
+
+
+test('overview reconnects after an uncached first read fails, using GET only',async t=>{
+ t.mock.timers.enable({apis:['setInterval']});
+ const {removeStored}=await import('../src/services/storage.ts');const {slideReviewKey}=await import('../src/features/feedback/slideReviewStore.ts');
+ removeStored(slideReviewKey(API_URL,attemptId,scope));writeStored(reviewKey(API_URL,'attempt',attemptId),review);
+ const old=globalThis.fetch;let r,reads=0;
+ globalThis.fetch=async(_url,init)=>{assert.equal(init.method,'GET');reads++;if(reads===1)throw Error('offline');return new Response(JSON.stringify(state()));};
+ try{
+  await act(async()=>{r=create(React.createElement(Probe,{active:true}));});assert.equal(value.offline,true);
+  await act(async()=>t.mock.timers.tick(5000));assert.equal(value.offline,false);assert.equal(value.items[0].status,'pending');
+ }finally{if(r)await act(async()=>r.unmount());globalThis.fetch=old;t.mock.timers.reset();}
+});

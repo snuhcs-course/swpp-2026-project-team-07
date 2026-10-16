@@ -305,6 +305,7 @@ class PresentationScoreTests(TestCase):
         self.assertFalse('Legacy invented target' in request.payload.decode())
 
 
+
 from django.test import TestCase as DatabaseTestCase
 from .test_coaching import SyntheticCoaching
 

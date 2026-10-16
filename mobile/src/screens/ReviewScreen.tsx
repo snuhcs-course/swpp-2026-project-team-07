@@ -1,9 +1,10 @@
+// OpenAI Codex review routing: docs/ai-collaboration-prompts-iteration-2.md#first-recording-review-navigation-october-16-2026
 // AI-assisted Nakajima integration: verified selected-slide feedback in the normal Review page.
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, type GestureResponderEvent, type PanResponderGestureState } from 'react-native';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Enter, Txt, useFrame } from '../design/frame';
-import { UIIcon } from '../design/icons';
+import { Glyph, UIIcon } from '../design/icons';
 import { PanView } from '../design/PanView';
 import { EASE_SCREEN, F } from '../design/tokens';
 import { useTheme } from '../design/theme';
@@ -44,6 +45,7 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
  useLayoutEffect(()=>{scoreSource.current={item:scoreItem,target:scores.target,part:scorePart,active};return()=>{scoreSource.current.active=false;};},[scoreItem,scores.target,scorePart,active]);
  const player=useSegmentPlayer(),stopPlayback=player.stop;
  const dy=useSharedValue(0),backExiting=useRef(false),scrollY=useRef(0),scroll=useRef<ScrollView>(null);
+ const [headerBottom,setHeaderBottom]=useState(176);
  const [evidence,setEvidence]=useState<{finding:ReviewEvidence;request:number;scoreIdentity?:string}|null>(null);
  const [scoreAudioNote,setScoreAudioNote]=useState('');
  const currentEvidence=evidence?.scoreIdentity&&(!scoreItem.state||scoreItem.state.stale||scoreItem.state.state!=='completed'||scoreItem.state.source_identity!==evidence.scoreIdentity)?null:evidence;
@@ -52,15 +54,15 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
  const showEvidence=useCallback((y:number)=>scroll.current?.scrollTo({y,animated:true}),[]);
  useEffect(()=>{if(!active){dy.set(0);stopPlayback();}},[active,dy,stopPlayback]);
  useEffect(()=>()=>stopPlayback(),[stopPlayback]);
- const toBack=useCallback(()=>{stopPlayback();if(nav.from==='full')go('full',{deckId:nav.deckId});else go('rehearse',{nav:null,deckId:nav.deckId,slide:s});},[go,nav.deckId,nav.from,s,stopPlayback]);
+ const toBack=useCallback(()=>{stopPlayback();if(nav.from==='full')go('full',{deckId:nav.deckId,sel:s});else go('rehearse',{nav:null,deckId:nav.deckId,slide:s});},[go,nav.deckId,nav.from,s,stopPlayback]);
  const toQA=useCallback(()=>{stopPlayback();go('qa',{nav:'fade',deckId:nav.deckId,sel:s});},[go,nav.deckId,s,stopPlayback]);
- const toFull=useCallback(()=>{stopPlayback();go('full',{nav:nav.from==='full'?null:'fade',deckId:nav.deckId,from:nav.from==='full'?null:'review'});},[go,nav.deckId,nav.from,stopPlayback]);
+ const toFull=useCallback(()=>{stopPlayback();go('full',nav.from==='full'?{deckId:nav.deckId,sel:s}:{nav:'fade',deckId:nav.deckId,sel:s,from:'review'});},[go,nav.deckId,nav.from,s,stopPlayback]);
  useBack(active,()=>{toBack();return true;});
  const pan={
   onMoveShould:(e:GestureResponderEvent,g:PanResponderGestureState)=>{
    const y=(e.nativeEvent.pageY-frame.top)/frame.s;
    return !backExiting.current&&Math.abs(g.dy)>8&&Math.abs(g.dy)>Math.abs(g.dx)&&
-    (g.dy>0&&scrollY.current<=0 || g.dy<0&&(y<106||y>777));
+    (g.dy>0&&scrollY.current<=0 || g.dy<0&&(y<headerBottom||y>777));
   },
   onMove:(_e:GestureResponderEvent,g:PanResponderGestureState)=>dy.set(Math.max(-BACK_FADE_Y,Math.min(BACK_FADE_Y,g.dy/frame.s))),
   onRelease:()=>{if(dy.get()>BACK_T){backExiting.current=true;dy.set(withTiming(BACK_FADE_Y,{duration:220,easing:EASE_SCREEN},done=>{if(done)runOnJS(toBack)();}));}else if(dy.get() < -BACK_T)toQA();else dy.set(withTiming(0,{duration:220,easing:EASE_SCREEN}));},
@@ -87,8 +89,14 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
 
  return <Enter kind={nav.nav}><PanView style={StyleSheet.absoluteFill} {...pan}>
   <Animated.View style={[StyleSheet.absoluteFill,screen]}><PageSurface hue={deck.hue}/>
-   <View style={styles.header}><Txt numberOfLines={1} style={[styles.title,{color:c.text}]}>{deck.title}</Txt><Txt style={[styles.label,{color:c.secondary}]}>{runLabel(run,now,relativeDay)}</Txt></View>
-   <ScrollView ref={scroll} style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator
+   <View style={styles.header} onLayout={e=>setHeaderBottom(e.nativeEvent.layout.y+e.nativeEvent.layout.height+12)}>
+    <Txt numberOfLines={1} style={[styles.title,{color:c.text}]}>{deck.title}</Txt><Txt style={[styles.label,{color:c.secondary}]}>{runLabel(run,now,relativeDay)}</Txt>
+    <Pressable accessibilityRole="button" accessibilityLabel="Full review" accessibilityHint="Review all slides in this presentation" onPress={toFull} style={[styles.fullReview,{backgroundColor:c.strong}]}>
+     <View style={styles.fullReviewTitle}><Glyph name="h-review-bars" size={18} color={c.bg}/><Txt style={[styles.actionText,{color:c.bg}]}>Full Review</Txt></View>
+     <Txt style={[styles.fullReviewSummary,{color:c.bg}]}>{`All slides · ${a.assessed}/${a.recorded} assessed · ${a.findings} findings`}</Txt>
+    </Pressable>
+   </View>
+   <ScrollView ref={scroll} style={[styles.scroll,{top:headerBottom}]} contentContainerStyle={styles.content} showsVerticalScrollIndicator
     onScroll={e=>{scrollY.current=e.nativeEvent.contentOffset.y;}} scrollEventThrottle={16}>
     <View style={styles.ringRow}>
      <PresentationScoreRing id="gSlideStatus" label="Slide score" item={scoreItem}/>
@@ -112,7 +120,6 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
     {active&&partId&&part?<SlideReviewSummary key={`${partId}:${s}:${JSON.stringify(part.segments)}`} slide={s} part={part} localDeckId={deck.id}
       onEvidence={finding=>{stopPlayback();setEvidence(previous=>({finding,request:(previous?.request??0)+1}));}}/>:
      <Txt style={[styles.note,{color:c.secondary}]}>Record this slide to receive AI feedback.</Txt>}
-    <Pressable accessibilityRole="button" accessibilityLabel="Full review" onPress={toFull} style={[styles.action,{borderColor:c.hair,borderWidth:1}]}><Txt style={[styles.actionText,{color:c.text}]}>Full review</Txt><Txt style={[styles.note,{color:c.secondary}]}>{`${a.assessed}/${a.recorded} recorded slides assessed · ${a.findings} verified findings`}</Txt></Pressable>
    </ScrollView>
    <HintRow hints={[{icon:'h-dn',text:nav.from==='full'?'Full review':'Back to slides',nudge:'down',onPress:toBack},{icon:'h-up',text:'Audience Q&A',nudge:'up',onPress:toQA}]}/>
   </Animated.View></PanView>
@@ -127,5 +134,5 @@ const styles=StyleSheet.create({
  ringRow:{flexDirection:'row',alignItems:'center',gap:18,paddingHorizontal:8},ringRight:{flex:1,minWidth:0,gap:10},slideLabel:{fontFamily:F.semibold,fontSize:13},
  stat:{flexDirection:'row',alignItems:'center',gap:7},statValue:{fontFamily:F.display,fontSize:18,fontVariant:['tabular-nums']},statUnit:{flexShrink:1,fontFamily:F.medium,fontSize:12,lineHeight:16},
  row:{flexDirection:'row',justifyContent:'space-between',alignItems:'baseline'},section:{fontFamily:F.bold,fontSize:14},bars:{height:78,marginTop:10,flexDirection:'row',alignItems:'flex-end',gap:3},nums:{flexDirection:'row',gap:3,marginTop:5},number:{flex:1,minWidth:0,textAlign:'center',fontFamily:F.bold,fontSize:10},
- action:{minHeight:48,borderRadius:18,padding:14,gap:4},actionText:{fontFamily:F.semibold,fontSize:14},note:{fontFamily:F.medium,fontSize:12,lineHeight:18},
+ fullReview:{alignSelf:'stretch',minHeight:56,borderRadius:16,paddingHorizontal:14,paddingVertical:10,marginTop:12,gap:3,alignItems:'center'},fullReviewTitle:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8},fullReviewSummary:{fontFamily:F.medium,fontSize:11,lineHeight:16,opacity:.8,textAlign:'center'},actionText:{fontFamily:F.semibold,fontSize:14},note:{fontFamily:F.medium,fontSize:12,lineHeight:18},
 });

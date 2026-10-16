@@ -1,3 +1,4 @@
+// OpenAI Codex reliability fixes: docs/ai-collaboration-prompts-iteration-2.md#cue-and-feedback-reliability-october-16-2026
 // AI-assisted integration: one validated feedback overview, separate from measured delivery metrics.
 import { View } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
@@ -35,7 +36,7 @@ export function HomeFeedbackStats({deckId,home,active}:{deckId:string|null;home:
    <Txt numberOfLines={1} style={styles.label}>{run?'Last run · '+(relativeDay(run.createdAt)||'Earlier'):'No runs yet'}</Txt>
    {rows.map(row=><View key={row.icon} style={styles.row}><UIIcon name={row.icon} size={21}/><Txt style={styles.value}>{row.value}</Txt><Txt style={styles.unit}>{row.unit}</Txt></View>)}
    <Txt numberOfLines={2} accessibilityLiveRegion="polite" style={styles.notice}>{feedback.notice||[
-    a.pending?`${a.pending} analyzing`:null,a.outdated?`${a.outdated} outdated`:null,
+    a.pending?feedback.items.find(item=>item.status==='pending'||item.status==='transcribing')?.label:null,a.outdated?`${a.outdated} outdated`:null,
     a.recoveryNeeded?`${a.recoveryNeeded} need retry`:null,a.partial?`${a.partial} partial`:null,
     a.insufficient?`${a.insufficient} insufficient evidence`:null,a.notAnalyzed?`${a.notAnalyzed} not analyzed`:null,
    ].filter(Boolean).join(' · ')}</Txt>

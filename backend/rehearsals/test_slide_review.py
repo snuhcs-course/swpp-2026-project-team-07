@@ -265,6 +265,7 @@ class SlideReviewTests(SyntheticCoaching, TestCase):
         self.complete();self.submit_review()
         job=FeedbackJob.objects.get(analysis__analysis_type__startswith='review_')
         job.source_snapshot['slide_review']['version']='slide-review-v2'
+        job.source_snapshot['slide_review'].pop('request_context_version', None)
         job.save(update_fields=['source_snapshot'])
         prepared=coaching._prepared(job.description_set,job)
         payload=provider.strict_json(prepared.payload)
@@ -272,6 +273,48 @@ class SlideReviewTests(SyntheticCoaching, TestCase):
         self.assertEqual(actual,slide_review.RULES_V2)
         job.input_hash=prepared.input_hash;job.save(update_fields=['input_hash'])
         self.assertEqual(coaching._prepared(job.description_set,job).input_hash,job.input_hash)
+
+    # Step 1 lifecycle regression AI-assisted by OpenAI Codex; see the active prompt log.
+    def test_legacy_jobs_replay_and_reuse_until_explicit_stale_update(self):
+        from .services import coaching, slide_review
+        context = PresentationContext.objects.create(deck=self.deck, audience='Researchers')
+        self.scope['context_id'] = str(context.pk)
+        self.complete()
+        self.assertEqual(self.submit_review().status_code, 202)
+        job = FeedbackJob.objects.get(analysis__analysis_type__startswith='review_')
+        self.assertEqual(job.source_snapshot['slide_review']['request_context_version'],
+                         slide_review.REQUEST_CONTEXT_VERSION)
+        # Model an existing queued job captured before this change.
+        job.source_snapshot['slide_review'].pop('request_context_version')
+        job.save(update_fields=['source_snapshot'])
+        legacy = coaching._prepared(job.description_set, job)
+        job.input_hash = legacy.input_hash
+        job.save(update_fields=['input_hash'])
+        def receipt(prepared):
+            self.assertEqual(prepared.input_hash, legacy.input_hash)
+            return self.coaching_receipt(prepared, output={'slides': [
+                {'slide_index': 0, 'status': 'successful', 'findings': []}]})
+        with patch.object(provider, 'request_raw', side_effect=receipt) as call:
+            self.execute_feedback(job.analysis)
+            self.assertEqual(self.submit_review().json()['state'], 'completed')
+            self.assertEqual(call.call_count, 1)
+        self.assertEqual(FeedbackJob.objects.filter(analysis=job.analysis).count(), 1)
+        context.revision += 1
+        context.audience = 'Schoolchildren'
+        context.save()
+        state = self.client.get(self.url, {'scope': json.dumps(self.scope)}).json()
+        self.assertTrue(state['stale'])
+        self.assertEqual(FeedbackJob.objects.filter(analysis=job.analysis).count(), 1)
+        with patch.object(provider, 'request_raw', side_effect=AssertionError('No inline model call')):
+            response = self.submit_review(feedback_revision=state['feedback_revision'])
+        self.assertEqual(response.status_code, 202)
+        fresh = FeedbackJob.objects.get(analysis=job.analysis, generation=response.json()['feedback_revision'])
+        self.assertEqual(fresh.source_snapshot['slide_review']['request_context_version'],
+                         slide_review.REQUEST_CONTEXT_VERSION)
+        self.assertNotEqual(coaching._prepared(fresh.description_set, fresh).input_hash, legacy.input_hash)
+        job.refresh_from_db()
+        self.assertNotIn('request_context_version', job.source_snapshot['slide_review'])
+        self.assertEqual(coaching._prepared(job.description_set, job).input_hash, legacy.input_hash)
 
     def test_formatting_difference_does_not_discard_feedback(self):
         self.complete();self.submit_review()

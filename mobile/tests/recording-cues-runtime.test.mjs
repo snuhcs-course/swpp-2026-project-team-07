@@ -28,14 +28,14 @@ function setup({saved=true,slide=0,audio=true,state=profiles()}={}){
  const id='synthetic-recording-cues-'+ ++serial;
  const deck={id,title:'Synthetic cue fixture',hue:'blue',target:120,targets:[60,60],pageCount:2,slides:[{title:'Measured change',points:[],text:'Synthetic first slide'},{title:'Conclusion',points:[],text:'Synthetic second slide'}],pages:[]};
  const run=saved?{id:'selected-run',sel:0,parts:[{attemptId:'saved-take',segments:[{startMs:0,endMs:1000},{startMs:2000,endMs:3500}]},{attemptId:'saved-take',segments:[{startMs:1000,endMs:2000}]}]}:null;
- runtime.reset({deck,n:2,state:{run,compare:null,discarded:[]},stats:null},slide);if(audio)runtime.audio.set('saved-take','file:///synthetic-saved-take.m4a');
+ runtime.reset({deck,n:2,state:{run,takes:saved?2:0,compare:null,discarded:[]},stats:null},slide);if(audio)runtime.audio.set('saved-take','file:///synthetic-saved-take.m4a');
  requests=[];writeStored(`server-deck:${api}:${id}`,deckId);writeStored(`slide-profiles:v1:${encodeURIComponent(api)}:${deckId}`,state);removeStored('settings.theme');
  globalThis.fetch=async(url,options={})=>{requests.push({url,method:options.method??'GET'});assert.equal(options.method??'GET','GET','screen lifecycle must not admit provider work');return new Response(JSON.stringify(state));};}
 function ThemeToggle(){const t=useTheme();return React.createElement('theme-toggle',{onPress:t.toggle});}
 async function mount(active=true){await act(async()=>{renderer=create(React.createElement(ThemeProvider,null,React.createElement(ThemeToggle),React.createElement(RehearseScreen,{active})));});return renderer;}
 async function tap(n){assert.ok(n,'expected accessible control');await act(async()=>n.props.onPress());}
 async function navigate(r,direction){await tap(r.root.findAllByType('pressable').find(n=>n.props.accessibilityLabel?.startsWith(direction+' slide,')));}
-function assertFirst(r){assert.match(text(r),/Cues/);assert.match(text(r),/Must Cover/);assert.match(text(r),/Go Deeper/);assert.match(text(r),/Explain how measured growth/);assert.match(text(r),/Connect the measured change/);assert.equal(r.root.findAllByType('scroll').length,1);assert.equal(r.root.findAllByProps({accessibilityRole:'tab'}).length,0);}
+function assertFirst(r){assert.match(text(r),/Cues/);assert.match(text(r),/Must Cover/);assert.match(text(r),/Further Insight/);assert.match(text(r),/Explain how measured growth/);assert.match(text(r),/Connect the measured change/);assert.equal(r.root.findAllByType('scroll').length,1);assert.equal(r.root.findAllByProps({accessibilityRole:'tab'}).length,0);}
 afterEach(async()=>{if(renderer)await act(async()=>renderer.unmount());renderer=null;globalThis.fetch=fetchBefore;});
 
 test('normal recording screen preserves both saved cue categories and repeated-visit Play/Pause across forward/backward navigation',async()=>{
@@ -58,7 +58,7 @@ test('countdown/capture keep Cues visible, disable Play and update both slide di
 
 test('rotation removes Cues and Play from accessibility/interactions, retains PDF navigation and restores the selected slide',async()=>{
  setup();const r=await mount();await tap(round(r,'Rotate only the PDF for a bigger view'));
- assert.equal(r.root.findAllByType('scroll').length,0);assert.equal(r.root.findAllByType('pressable').filter(n=>/^(Play|Pause) slide/.test(n.props.accessibilityLabel??'')).length,0);assert.doesNotMatch(text(r),/Must Cover|Go Deeper|Explain how measured growth/);assert.ok(r.root.findByType('record-button'));
+ assert.equal(r.root.findAllByType('scroll').length,0);assert.equal(r.root.findAllByType('pressable').filter(n=>/^(Play|Pause) slide/.test(n.props.accessibilityLabel??'')).length,0);assert.doesNotMatch(text(r),/Must Cover|Further Insight|Explain how measured growth/);assert.ok(r.root.findByType('record-button'));
  await navigate(r,'Next');assert.match(text(r),/Slide 2 of 2/);await tap(round(r,'Return the PDF to normal view'));assert.match(text(r),/Recap how the final result/);assert.match(text(r),/Connect the conclusion/);assert.ok(button(r,'Play slide 2 recording'));await navigate(r,'Previous');assertFirst(r);assert.equal(requests.length,1);
 });
 
@@ -72,12 +72,60 @@ test('theme changes and reopening retain selected-slide cues without generating;
 test('interrupted recovery preserves the current slide cues through the existing recovery interface',async()=>{
  setup({slide:1});const recovered={id:'interrupted-take',state:'interrupted',recording:{duration_ms:3000,slide_events:[{slide_index:1,at_ms:0}]}};runtime.recoveries.push(recovered);const r=await mount();
  await tap(r.root.findAllByType('text').find(n=>n.props.accessibilityLabel==='Open interrupted recording for recovery'));assert.equal(r.root.findByType('take-playback').props.initialSlide,1);assert.match(text(r),/Recap how the final result/);
- await act(async()=>r.root.findByType('take-playback').props.onRecovered(recovered));assert.equal(r.root.findAllByType('take-playback').length,0);assert.match(text(r),/Slide 2 of 2/);assert.match(text(r),/Recap how the final result/);assert.deepEqual(runtime.routes[0],['review',{nav:'fade',deckId:runtime.model.deck.id,sel:1,from:null}]);assert.equal(requests.length,1);
+ await act(async()=>r.root.findByType('take-playback').props.onRecovered(recovered));assert.equal(r.root.findAllByType('take-playback').length,0);assert.match(text(r),/Slide 2 of 2/);assert.match(text(r),/Recap how the final result/);assert.deepEqual(runtime.routes[0],['review',{nav:'fade',deckId:runtime.model.deck.id,sel:1,slide:1,from:null}]);assert.equal(requests.length,1);
 });
 test('existing presentation opens the shared setup without changing the selected slide or cue set',async()=>{
  setup({slide:1});const r=await mount();const edit=button(r,'Edit presentation time and audience');assert.ok(edit);assert.equal(edit.findByType('text').props.children,'Edit time & audience');assert.ok(edit.findByType('text').props.style.color);await tap(edit);assert.ok(button(r,'Other audience'));assert.match(text(r),/Slide 2 of 2/);assert.ok(runtime.stops>0);assert.equal(requests.filter(q=>q.method==='POST').length,0);
 });
 
-test('Review opens the currently selected slide while automatic completion keeps its own initial review',async()=>{setup({slide:1});const r=await mount();const control=round(r,'Review current slide');assert.ok(control);await tap(control);assert.deepEqual(runtime.routes.at(-1),['review',{nav:'rise',deckId:runtime.model.deck.id,sel:1}]);assert.equal(requests.length,1);});
+test('Review opens the currently selected slide while automatic completion keeps its own initial review',async()=>{setup({slide:1});const r=await mount();const control=round(r,'Review current slide');assert.ok(control);await tap(control);assert.deepEqual(runtime.routes.at(-1),['review',{nav:'rise',deckId:runtime.model.deck.id,sel:1,slide:1,from:null}]);assert.equal(requests.length,1);});
 
 test('covered rehearsal does not expose the edit requirements action',async()=>{setup();const r=await mount(false);assert.equal(!!button(r,'Edit presentation time and audience'),false);assert.doesNotMatch(text(r),/Edit time & audience/);});
+
+
+test('covered rehearsal stops cue reconnects and reopening reads immediately without generation',async t=>{
+ t.mock.timers.enable({apis:['setTimeout']});setup();let reads=0;
+ globalThis.fetch=async(_url,init)=>{assert.equal(init.method,'GET');reads++;throw Error('offline');};
+ try{
+  const r=await mount();assert.equal(reads,1);
+  const screen=active=>React.createElement(ThemeProvider,null,React.createElement(ThemeToggle),React.createElement(RehearseScreen,{active}));
+  await act(async()=>r.update(screen(false)));await act(async()=>t.mock.timers.tick(10000));assert.equal(reads,1);
+  await act(async()=>r.update(screen(true)));assert.equal(reads,2);
+ }finally{if(renderer)await act(async()=>renderer.unmount());renderer=null;t.mock.timers.reset();}
+});
+
+
+test('first saved recording Review opens Full Review repeatedly; a later take opens the current slide',async()=>{
+ setup({slide:1});runtime.model.state.takes=1;const r=await mount();
+ await tap(round(r,'Review full presentation'));assert.equal(runtime.routes.at(-1)[0],'full');assert.equal(runtime.routes.at(-1)[1].from,'rehearse');
+ await tap(round(r,'Review full presentation'));assert.equal(runtime.routes.at(-1)[0],'full');
+ await act(async()=>r.unmount());renderer=null;await mount();await tap(round(renderer,'Review full presentation'));assert.equal(runtime.routes.at(-1)[0],'full');
+ await act(async()=>{runtime.model.state.takes=2;runtime.emit();});await tap(round(renderer,'Review current slide'));assert.equal(runtime.routes.at(-1)[0],'review');assert.equal(runtime.routes.at(-1)[1].sel,1);
+});
+test('stopping a first partial recording opens Full Review without analysis',async t=>{
+ t.mock.timers.enable({apis:['setInterval','Date']});setup();runtime.model.state={...runtime.model.state,takes:0,run:null};const r=await mount();
+ try{
+  await tap(r.root.findByType('record-button'));await act(async()=>t.mock.timers.tick(3000));assert.equal(runtime.captures[0].started,1);
+  await tap(r.root.findByType('record-button'));assert.equal(runtime.routes.at(-1)[0],'full');assert.equal(runtime.routes.at(-1)[1].from,'rehearse');
+ }finally{if(renderer)await act(async()=>renderer.unmount());renderer=null;t.mock.timers.reset();}
+});
+
+
+test('a later recording automatically opens its slide review using the post-save count',async t=>{
+ t.mock.timers.enable({apis:['setInterval','Date']});setup({slide:1});runtime.model.state.takes=1;const r=await mount();
+ try{
+  await tap(r.root.findByType('record-button'));await act(async()=>r.root.findByType('dialog').props.onConfirm());
+  await act(async()=>t.mock.timers.tick(3000));await tap(r.root.findByType('record-button'));
+  assert.equal(runtime.routes.at(-1)[0],'review');assert.equal(runtime.routes.at(-1)[1].sel,1);assert.equal(runtime.model.state.takes,2);
+ }finally{if(renderer)await act(async()=>renderer.unmount());renderer=null;t.mock.timers.reset();}
+});
+test('recovering the first interrupted recording opens Full Review without waiting for analysis',async()=>{
+ setup({saved:false,slide:1});const a={id:'first-recovery',state:'interrupted',recording:{duration_ms:3000,slide_events:[{slide_index:1,at_ms:0}]}};runtime.recoveries.push(a);const r=await mount();
+ await tap(r.root.findAllByType('text').find(n=>n.props.accessibilityLabel==='Open interrupted recording for recovery'));
+ await act(async()=>r.root.findByType('take-playback').props.onRecovered(a));assert.equal(runtime.routes.at(-1)[0],'full');assert.equal(runtime.routes.at(-1)[1].sel,1);
+});
+
+
+test('reopening a saved pending comparison carries the candidate review slide',async()=>{
+ setup();runtime.model.state.compare={slides:[1],next:{sel:1}};await mount();assert.equal(runtime.routes[0][0],'compare');assert.equal(runtime.routes[0][1].sel,1);
+});

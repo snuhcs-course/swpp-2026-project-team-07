@@ -5,9 +5,9 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { resolve } from './helpers/storage-native-loader.mjs';
+import { resolve, load } from './helpers/cue-panel-loader.mjs';
 import { descriptionState, descriptionSelection, deckId } from './helpers/feedback-fixtures.mjs';
-registerHooks({ resolve });
+registerHooks({ resolve, load });
 const { parseProfileState, cueState, createProfileClient, readProfiles } = await import('../src/features/presentations/slideProfiles.ts');
 const api = 'http://profiles.invalid/api';
 function state() {

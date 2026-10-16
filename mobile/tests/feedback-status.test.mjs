@@ -99,3 +99,28 @@ test('retained evidence source identity is checked even without a correction sna
  const correctionAtNewSource={...correction,server:{...correction.server,base_transcript_id:'f'.repeat(64)}};
  assert.equal(store.effectiveSlideReview(current,{requirementsRevision:null,correction:correctionAtNewSource,transcriptId:'f'.repeat(64)}).stale,true);
 });
+
+
+test('missing slide output is a recovery problem and not insufficient speech',()=>{
+ const s=state();s.result.slides=[];
+ assert.equal(derive(s).status,'recovery_needed');assert.match(derive(s).label,/missing/i);
+});
+test('all feedback surfaces explain active stages and long waits using server time',()=>{
+ const now=Date.now();
+ for(const [stage,label] of [['queued','Queued'],['waiting_descriptions','Preparing slide context'],['preparing','Preparing AI feedback'],['submitted','AI is reviewing'],['normalizing','Verifying feedback'],['waiting_quota','Waiting for AI capacity']]){
+  const s=state({state:stage,result:null,updated_at:new Date(now).toISOString(),retry_at:stage==='waiting_quota'?new Date(now+60000).toISOString():null});
+  assert.match(derive(s).label,new RegExp(label));
+  s.updated_at=new Date(now-121000).toISOString();assert.match(derive(s).label,/Taking longer than expected/);
+ }
+});
+test('insufficient speech and model-declined assessment have different explanations',()=>{
+ const s=state();s.result.slides[0].status='insufficient_evidence';
+ s.result.slides[0].validation={speech_word_count:1,model_insufficient:false};assert.match(derive(s).label,/Not enough recorded speech/);
+ s.result.slides[0].validation={speech_word_count:70,model_insufficient:true};assert.match(derive(s).label,/AI could not assess/);
+});
+
+
+test('quota waits with an elapsed retry time explain that recovery is overdue',()=>{
+ const s=state({state:'waiting_quota',result:null,retry_at:new Date(Date.now()-60000).toISOString()});
+ assert.match(derive(s).label,/Waiting for AI capacity/);assert.match(derive(s).label,/Scheduled retry is overdue/);
+});

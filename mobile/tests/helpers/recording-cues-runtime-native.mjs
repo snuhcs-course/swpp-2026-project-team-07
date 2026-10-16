@@ -27,7 +27,7 @@ export const useStore=select=>select({version:React.useSyncExternalStore(subscri
 export const getDeckState=()=>runtime.model.state,visibleDecks=()=>[runtime.model.deck],bump=()=>runtime.emit();
 export function updateDeckState(_id,f){runtime.model.state=f(runtime.model.state);runtime.emit();}
 export const savedAttempts=()=>runtime.recoveries,audioOf=id=>runtime.audio.get(id)??null;
-export function commitTake(_deck,take){const run={id:'recovered-run',sel:0,parts:[{attemptId:take.attemptId,segments:[{startMs:0,endMs:take.durationMs}]},null]};runtime.model.state={...runtime.model.state,run};runtime.emit();return{run,compare:null};}
+export function commitTake(_deck,take){const takes=(runtime.model.state.takes??0)+1,sel=take.events[0].slide_index;const run={id:'recovered-run',sel,takeNo:takes,parts:Array.from({length:runtime.model.n},(_,i)=>i===sel?{attemptId:take.attemptId,segments:[{startMs:0,endMs:take.durationMs}]}:null)};runtime.model.state={...runtime.model.state,run,takes};runtime.emit();return{run,compare:null};}
 export const CaptureEngine=React.forwardRef(function SyntheticCapture(props,ref){
  const[capture]=React.useState(()=>{const c={started:0,slides:[],props,async start(current){this.started++;this.slides.push(current());if(runtime.startWait)await runtime.startWait;},slideChanged(i){this.slides.push(i);},async stop(){return{attemptId:'synthetic-capture',durationMs:5000,events:[{slide_index:this.slides[0],at_ms:0}]};}};runtime.captures.push(c);return c;});
  capture.props=props;React.useImperativeHandle(ref,()=>capture,[capture]);return null;});
@@ -35,3 +35,5 @@ export function useSegmentPlayer(){const[,render]=React.useState(0);const[p]=Rea
  stop(){runtime.stops++;this.playingKey=null;this.paused=false;render(n=>n+1);},async playSegments(key,segments){runtime.played.push({key,segments});if(this.playingKey===key)this.paused=!this.paused;else{this.playingKey=key;this.paused=false;}render(n=>n+1);}}));
  const[bound]=React.useState(()=>{p.stop=p.stop.bind(p);return p;});return bound;}
 export function TakePlayback(props){return React.createElement('take-playback',props);}
+
+export { AppState } from './recording-screen-ui.mjs';

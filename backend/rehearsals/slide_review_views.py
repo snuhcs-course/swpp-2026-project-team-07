@@ -5,8 +5,16 @@ from rest_framework.response import Response
 from .models import Attempt, FeedbackAnalysis
 from .services import coaching, slide_review, slide_profiles
 from .services.feedback import strict_json, FeedbackError
-from .services.feedback_config import selection_descriptor
+from .services.feedback_config import selection_descriptor, validate_assertion
+from .services.descriptions import Conflict
 from .feedback_views import _error
+
+def _singleton_scope(attempt, raw):
+    scope = slide_review.scope_for(attempt, raw)
+    if len(scope['slides']) != 1:
+        raise Conflict('review_grouping_removed')
+    return scope
+
 
 @api_view(['GET', 'POST'])
 @parser_classes([])
@@ -16,7 +24,7 @@ def review(request, attempt_id):
         if request.method == 'GET':
             if set(request.query_params) != {'scope'}:
                 raise FeedbackError('invalid_request')
-            scope = slide_review.scope_for(attempt, strict_json(request.query_params['scope'].encode(), 65536))
+            scope = _singleton_scope(attempt, strict_json(request.query_params['scope'].encode(), 65536))
         else:
             if request.query_params or request.content_type != 'application/json':
                 raise FeedbackError('invalid_request')
@@ -26,13 +34,12 @@ def review(request, attempt_id):
                 raise FeedbackError('invalid_request') from None
             if type(body) is not dict or 'scope' not in body or set(body) - {'scope', 'feedback_revision', 'transcript_revision', 'acknowledge_uncertain', 'expected_selection'}:
                 raise FeedbackError('invalid_request')
-            scope = slide_review.scope_for(attempt, body.pop('scope'))
+            scope = _singleton_scope(attempt, body.pop('scope'))
             for name in ('feedback_revision', 'transcript_revision'):
                 if name in body and (type(body[name]) is not int or not 0 <= body[name] < 2**31):
                     raise FeedbackError('invalid_request')
             if 'acknowledge_uncertain' in body and type(body['acknowledge_uncertain']) is not bool:
                 raise FeedbackError('invalid_request')
-            from .services.feedback_config import validate_assertion
             validate_assertion(body)
             coaching.generate(attempt_id, body, slide_review.analysis_type(scope), scope)
         kind = slide_review.analysis_type(scope)

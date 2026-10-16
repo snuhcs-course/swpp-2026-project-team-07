@@ -10,7 +10,10 @@ from .feedback import (PrivateModel, FeedbackError, validated, json_bytes, Sugge
                        canonical_quote, description_facts)
 from . import feedback_provider as provider
 
+# Compact-context changes AI-assisted by OpenAI Codex; see docs/ai-collaboration-prompts-iteration-2.md.
 VERSION = 'slide-review-v3'
+REQUEST_CONTEXT_VERSION = 'selected-review-context-v1'
+NEARBY_WORDS = 20
 logger = logging.getLogger(__name__)
 
 class Segment(PrivateModel):
@@ -57,8 +60,20 @@ def requirements(attempt, scope):
     return {'context_id': str(value.pk), 'revision': value.revision, 'audience': value.audience,
             'required_duration_seconds': value.required_duration_seconds}
 
+def check_snapshot(review):
+    """Only singleton review snapshots can prepare or submit provider work."""
+    if len(review['scope']['slides']) != 1:
+        raise FeedbackError('review_grouping_removed')
+    if ('request_context_version' in review and
+            review['request_context_version'] != REQUEST_CONTEXT_VERSION) or 'max_output_tokens' in review:
+        raise FeedbackError('snapshot_unavailable')
+
+
 def capture(attempt, scope):
-    return {'version': VERSION, 'scope': scope, 'requirements': requirements(attempt, scope)}
+    review = {'version': VERSION, 'scope': scope, 'requirements': requirements(attempt, scope),
+              'request_context_version': REQUEST_CONTEXT_VERSION}
+    check_snapshot(review)
+    return review
 
 def current(attempt, captured):
     if captured['version'] != VERSION or requirements(attempt, captured['scope']) != captured['requirements']:
@@ -173,18 +188,87 @@ Evidence must quote original indexed words exactly, even when the illustrative
 rephrasing differs; never use the clearer version as the speech quote.""",
 )
 
+# Layout instructions are versioned separately so historical rules/hashes stay intact.
+COMPACT_CONTEXT_RULES = '''
+The request contains one compact context. slide_profiles supplies authoritative
+full-deck facts and available slide-based guidance once. original_evidence.segments contains words
+encoded as rows in the exact order named by original_evidence.word_columns:
+[word_index, start_ms, end_ms, text]. Word indexes, segment_id and visit_id are
+original identities, never positions in the filtered list. selected_evidence
+segments contain all original words for every selected slide visit; nearby_context
+segments contain at most 20 neighboring words on each side of a selected visit.
+Cite only selected_evidence segments for findings. Nearby rows are context only.
+whole_attempt_effective_text is the complete corrected speech for interpretation,
+including distant explanations: check it before claiming something was omitted.
+It is background, not quotable evidence. confirmed_corrections maps accepted edits
+to original inclusive word ranges. Interpret corrected meaning, but quote only
+original selected evidence rows with their original identities and timestamps.
+'''
+
+
+def _compact_context(prepared, snapshot):
+    analysis = prepared.analysis
+    selected = {s['slide_index'] for s in snapshot['slide_review']['scope']['slides']}
+    words = analysis.source.transcript.words
+    nearby = set()
+    for visit in analysis.source.visits:
+        if visit.slide_index in selected and visit.word_indexes:
+            first, last = visit.word_indexes[0], visit.word_indexes[-1]
+            nearby.update(range(max(0, first - NEARBY_WORDS), first))
+            nearby.update(range(last + 1, min(len(words), last + 1 + NEARBY_WORDS)))
+    segments = []
+    for segment in analysis.segments:
+        is_selected = segment.slide_index in selected
+        indexes = segment.word_indexes if is_selected else [i for i in segment.word_indexes if i in nearby]
+        if indexes:
+            segments.append({'segment_id': segment.segment_id, 'visit_id': segment.visit_id,
+                'slide_index': segment.slide_index,
+                'role': 'selected_evidence' if is_selected else 'nearby_context',
+                'words': [[i, words[i].start_ms, words[i].end_ms, words[i].text] for i in indexes]})
+    # Common facts are the same validated descriptions used by the evidence validator.
+    # Cached profiles add guidance only, never a second competing copy of those facts.
+    profiles = prepared.descriptions.model_dump(mode='json')
+    guidance = {s['slide_index']: s for s in (snapshot.get('review_profile') or {}).get('slides', [])}
+    for slide in profiles['slides']:
+        saved = guidance.get(slide['slide_index'], {})
+        slide.update({key: saved[key] for key in ('slide_kind', 'must_cover', 'go_deeper') if key in saved})
+    return {'review_scope': snapshot['slide_review'], 'slide_profiles': profiles,
+        'speaker_language': analysis.source.speaker_language, 'transcript_id': analysis.transcript_id,
+        'duration_ms': analysis.source.duration_ms,
+        'original_evidence': {'word_columns': ['word_index', 'start_ms', 'end_ms', 'text'], 'segments': segments},
+        'whole_attempt_effective_text': snapshot['effective_text'],
+        'confirmed_corrections': snapshot['corrections'], 'transcript_revision': snapshot['transcript_revision']}
+
+
 def augment(prepared, snapshot):
-    payload = provider.strict_json(prepared.payload)
+    review = snapshot['slide_review']
+    check_snapshot(review)
+    compact = 'request_context_version' in review
+    payload = (provider.strict_json(prepared.payload, provider.MAX_REQUEST_BYTES)
+               if compact else provider.strict_json(prepared.payload))
     context = {'review_scope': snapshot['slide_review'], 'slide_profiles': snapshot.get('review_profile'), 'effective_corrected_text': snapshot['effective_text'],
                'confirmed_corrections': snapshot['corrections'], 'transcript_revision': snapshot['transcript_revision']}
+    if compact:
+        context = _compact_context(prepared, snapshot)
+    rules = RULES_V2 if review['version'] == 'slide-review-v2' else RULES
+    if compact:
+        rules += COMPACT_CONTEXT_RULES
     schema = Output.model_json_schema()
     if prepared.config.provider == 'openai':
-        payload['instructions'] = RULES_V2 if snapshot['slide_review']['version'] == 'slide-review-v2' else RULES
-        payload['input'][0]['content'].append({'type': 'input_text', 'text': json_bytes(context).decode()})
+        payload['instructions'] = rules
+        part = {'type': 'input_text', 'text': json_bytes(context).decode()}
+        if compact:
+            payload['input'] = [{'role': 'user', 'content': [part]}]
+        else:
+            payload['input'][0]['content'].append(part)
         payload['text']['format']['schema'] = schema
     else:
-        payload['systemInstruction']['parts'] = [{'text': RULES_V2 if snapshot['slide_review']['version'] == 'slide-review-v2' else RULES}]
-        payload['contents'][0]['parts'].append({'text': json_bytes(context).decode()})
+        payload['systemInstruction']['parts'] = [{'text': rules}]
+        part = {'text': json_bytes(context).decode()}
+        if compact:
+            payload['contents'] = [{'role': 'user', 'parts': [part]}]
+        else:
+            payload['contents'][0]['parts'].append(part)
         payload['generationConfig']['responseJsonSchema'] = provider.gemini_schema(schema)
     body = json_bytes(payload)
     if len(body) > provider.MAX_REQUEST_BYTES:

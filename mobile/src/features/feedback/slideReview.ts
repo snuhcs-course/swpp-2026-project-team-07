@@ -1,3 +1,4 @@
+// OpenAI Codex reliability fixes: docs/ai-collaboration-prompts-iteration-2.md#cue-and-feedback-reliability-october-16-2026
 import { quotesEqual,verifiedExcerpt,structurallyEqual } from './evidence';
 import type { ReviewAttempt, FeedbackEvidence, DescriptionFact } from '../../contracts';
 import type { SlidePart } from '../../domain/run';
@@ -19,17 +20,26 @@ export function reviewScope(slide: number, part: SlidePart, context: string|null
  return {context_id:context,slides:[{slide_index:slide,segments:part.segments.map(s=>({start_ms:s.startMs,end_ms:s.endMs}))}]};
 }
 export const reviewActive = (s: SlideReview|null) => !!s && !s.stale && !s.dependency?.retry_action && ['queued','waiting_descriptions','preparing','submitted','normalizing','waiting_quota'].includes(s.state);
-export function reviewStatus(s: SlideReview|null, slide:number) {
+export function reviewStatus(s: SlideReview|null, slide:number, now = Date.now()) {
  if (!s) return 'Not analyzed';
  if (s.stale || s.state==='stale') return 'Feedback outdated';
  if (s.dependency?.retry_action) return s.dependency.requires_confirmation?'Profile retry needs confirmation':'Slide profile analysis failed';
- if (reviewActive(s)) return 'Analyzing…';
+ if (reviewActive(s)) {
+  const stages: Record<string, string> = {queued:'Queued for AI feedback',waiting_descriptions:'Preparing slide context…',
+   preparing:'Preparing AI feedback…',submitted:'AI is reviewing this slide…',normalizing:'Verifying feedback…',waiting_quota:'Waiting for AI capacity'};
+  const retry = s.state==='waiting_quota' && s.retry_at && Number.isFinite(Date.parse(s.retry_at)) ? Date.parse(s.retry_at)<=now ? ` · Scheduled retry is overdue (${new Date(s.retry_at).toLocaleString()}) · Refresh status` : ` · Retry scheduled ${new Date(s.retry_at).toLocaleString()}` : '';
+  const label = stages[s.state] + retry;
+  const updated = Date.parse(s.updated_at ?? '');
+  return Number.isFinite(updated) && now-updated>=120000 ? `Taking longer than expected · ${label}` : label;
+ }
  if (s.result?.stale && s.state==='completed') return 'Feedback outdated';
  if (s.state==='failed') return 'Analysis failed';
  if (s.state==='needs_confirmation') return 'Retry needs confirmation';
  if (s.state==='completed') {
   const summary=s.result?.slides.find(x=>x.slide_index===slide);
-  if (!summary || summary.status==='insufficient_evidence') return 'Insufficient evidence';
+  if (!summary) return 'Slide feedback is missing · Refresh status';
+  if (summary.status==='insufficient_evidence') return summary.validation && summary.validation.speech_word_count<2
+   ? 'Not enough recorded speech for this slide' : 'The AI could not assess this slide from the available evidence';
   if(summary.status==='invalid_evidence')return 'Feedback couldn’t be verified';
   if(summary.status==='model_error')return 'AI response couldn’t be processed';
   if(summary.status==='partial')return 'Some feedback couldn’t be verified';

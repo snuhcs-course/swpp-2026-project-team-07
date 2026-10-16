@@ -19,7 +19,7 @@ async function mounted(props,run){let r;try{await act(async()=>{r=create(React.c
 test('permanent Cues panel displays both generated categories with selected-slide playback',async()=>{
   let played=0;
   await mounted({onPlaySlide:()=>played++},async r=>{
-    assert.match(json(r),/Cues/);assert.match(json(r),/Must Cover/);assert.match(json(r),/Go Deeper/);
+    assert.match(json(r),/Cues/);assert.match(json(r),/Must Cover/);assert.match(json(r),/Further Insight/);
     assert.match(json(r),/Explain the change in measured growth/);assert.match(json(r),/Connect the result to a practical example/);
     assert.equal(r.root.findAllByProps({accessibilityRole:'tab'}).length,0);
     assert.equal(r.root.findAllByType('scroll').length,1);
@@ -116,13 +116,13 @@ test('long accepted cues remain complete and reachable in the shared scroll pane
   });
 });
 
-// Layout regression: JSON membership alone previously passed while Go Deeper was offscreen.
+// Layout regression: JSON membership alone previously passed while Further Insight was offscreen.
 test('both category labels stay above a shared scroll and actual cues start side by side',async()=>{
   const raw=profileResponse();raw.descriptions.slides[0].must_cover.push({...raw.descriptions.slides[0].must_cover[0],text:'Explain the assumptions behind the measurement'});
   await mounted({state:parseProfileState(raw,deckId,3)},async r=>{
     const scroll=r.root.findByType('scroll');
     const label=title=>r.root.findAllByType('text').find(t=>t.props.children===title);
-    const must=label('Must Cover'),deeper=label('Go Deeper');
+    const must=label('Must Cover'),deeper=label('Further Insight');
     assert.ok(must.parent===deeper.parent,'both labels share the same initial row');
     assert.equal(must.parent.props.style.flexDirection,'row');
     const ancestors=node=>{const result=[];for(let p=node.parent;p;p=p.parent)result.push(p);return result;};

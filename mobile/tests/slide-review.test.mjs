@@ -14,9 +14,9 @@ const base = {attempt_id: 'take-1', feedback_revision: 0, state: 'absent', stale
 test('missing, failed, insufficient, outdated and successful are distinct', () => {
  assert.equal(reviewStatus(base, 0), 'Not analyzed');
  assert.equal(reviewStatus({...base,state:'failed'},0), 'Analysis failed');
- assert.equal(reviewStatus({...base,state:'queued'},0), 'Analyzing…');
+ assert.equal(reviewStatus({...base,state:'queued'},0), 'Queued for AI feedback');
  const done={...base,state:'completed',result:{stale:false,slides:[{slide_index:0,status:'insufficient_evidence',findings:[],enrichments:[]}]}};
- assert.equal(reviewStatus(done,0),'Insufficient evidence');
+ assert.equal(reviewStatus(done,0),'The AI could not assess this slide from the available evidence');
  done.result.slides[0].status='successful'; assert.equal(reviewStatus(done,0),'Looks good!');
  assert.equal(reviewStatus({...done,stale:true},0),'Feedback outdated');
 });
@@ -69,7 +69,7 @@ test('optional enrichment and purpose are validated; v1 results survive only as 
  assert.equal(reviewStatus(historical,0),'Feedback outdated');
  const updating={...historical,state:'queued',stale:false,feedback_revision:2};
  assert.equal(parseSlideReview(updating,review.attempt_id,selected,review).state,'queued');
- assert.equal(reviewStatus(updating,0),'Analyzing…');
+ assert.equal(reviewStatus(updating,0),'Queued for AI feedback');
 });
 
 

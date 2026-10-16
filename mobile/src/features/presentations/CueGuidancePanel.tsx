@@ -1,3 +1,4 @@
+// OpenAI Codex reliability fixes: docs/ai-collaboration-prompts-iteration-2.md#cue-and-feedback-reliability-october-16-2026
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Glyph } from '../../design/icons';
@@ -39,7 +40,7 @@ export function CueGuidancePanel({ state, slide, error, busy, onRecover,
     <View style={styles.categoryLabels}>
       {(['must_cover', 'go_deeper'] as const).map(category => <Text key={category} accessibilityRole="header"
         style={[styles.label, styles.columnLabel, { color: category === 'must_cover' ? c.warn : c.info }]}>
-        {category === 'must_cover' ? 'Must Cover' : 'Go Deeper'}
+        {category === 'must_cover' ? 'Must Cover' : 'Further Insight'}
       </Text>)}
     </View>
     <ScrollView key={`${state?.description_set_id ?? 'unavailable'}:${slide}`} style={styles.scroll}

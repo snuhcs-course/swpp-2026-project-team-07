@@ -72,4 +72,79 @@ test('each evidence selection scrolls to inline controls, including the same fin
  await act(async()=>runtime.players[0].playSegments('evidence:a:2000:2400',[{uri:'file://a.m4a',startMs:2000,endMs:2400}]));assert.equal(runtime.scrolls.length,2,'player updates leave page scrolling alone');
  });});
 
+
+test('Full Review action stays outside the scrolling transcript and reserves measured header space',async()=>{
+ setup();await render(ReviewScreen,{},async r=>{
+  const action=button(r,'Full review');assert.ok(action);let parent=action.parent;while(parent){assert.notEqual(parent.type,'scroll');parent=parent.parent;}
+  const flatten=style=>Array.isArray(style)?Object.assign({},...style.map(flatten)):style??{};
+  assert.ok(flatten(action.props.style).minHeight>=48);
+  const header=r.root.findAllByType('view').find(n=>n.props.onLayout);assert.ok(header,'header must measure its height for large text');
+  await act(async()=>header.props.onLayout({nativeEvent:{layout:{y:46,height:170}}}));
+  const body=r.root.findAllByType('scroll').find(n=>!n.props.horizontal);assert.ok(flatten(body.props.style).top>=216);
+  await act(async()=>body.props.onScroll({nativeEvent:{contentOffset:{y:1000}}}));assert.ok(button(r,'Full review'));
+  await act(async()=>action.props.onPress());assert.equal(runtime.routes.at(-1)[0],'full');assert.equal(runtime.routes.at(-1)[1].sel,0);assert.ok(runtime.stops>0);
+ });
+});
+test('Full Review entered from rehearsal returns to the selected rehearsal slide',async()=>{
+ setup();runtime.nav={...runtime.nav,from:'rehearse',slide:0,sel:1};await render(FullReviewScreen,{},async r=>{
+  await act(async()=>button(r,'Back to slides').props.onPress());assert.deepEqual(runtime.routes.at(-1),['rehearse',{nav:null,deckId:'deck',slide:1}]);
+ });
+});
+
+
+test('comparison confirmation reviews the selected slide; Back keeps old audio and returns to rehearsal',async()=>{
+ const {CompareScreen}=await import('../src/screens/CompareScreen.tsx');
+ for(const choice of ['old','new','back']){
+  setup();runtime.choices=[];runtime.nav.sel=1;runtime.model.state.takes=2;
+  const prev=runtime.model.state.run,next={...prev,id:'new',takeNo:2};runtime.model.state.compare={slides:[1],whole:false,prev,next};
+  await render(CompareScreen,{},async r=>{
+   if(choice==='back')await act(async()=>runtime.back());else{
+    if(choice==='new')await act(async()=>r.root.findAllByType('pressable').find(n=>n.props.accessibilityLabel?.startsWith('Overwrite with new recording,')).props.onPress());
+    await act(async()=>r.root.findByType('record-button').props.onPress());
+   }
+   assert.deepEqual(runtime.choices,[choice==='new'?'new':'old']);assert.equal(runtime.routes.at(-1)[0],choice==='back'?'rehearse':'review');assert.equal(runtime.routes.at(-1)[1].sel,1);
+  });
+ }
+});
+
+
+test('returning from slide review retains the Full Review origin and selected slide',async()=>{
+ setup();runtime.nav={...runtime.nav,from:'full',sel:1};await render(ReviewScreen,{},async r=>{
+  await act(async()=>button(r,'Full review').props.onPress());assert.equal(runtime.routes.at(-1)[0],'full');assert.equal(runtime.routes.at(-1)[1].sel,1);assert.equal(Object.hasOwn(runtime.routes.at(-1)[1],'from'),false);
+ });
+ setup();runtime.nav={...runtime.nav,from:'review',sel:1};await render(FullReviewScreen,{},async r=>{
+  await act(async()=>button(r,'Back to review').props.onPress());assert.equal(runtime.routes.at(-1)[0],'review');assert.equal(runtime.routes.at(-1)[1].sel,1);
+ });
+});
+
+
+test('Android Back from slide review carries the selected slide back through Full Review',async()=>{
+ setup();runtime.nav={...runtime.nav,from:'full',sel:1};await render(ReviewScreen,{},async()=>{
+  await act(async()=>runtime.back());assert.equal(runtime.routes.at(-1)[0],'full');assert.equal(runtime.routes.at(-1)[1].sel,1);
+ });
+});
+
+
+test('Keep current reviews retained audio when a mixed retake selects a newly recorded slide',async()=>{
+ const {mergeTake}=await import('../src/domain/run.ts'),{CompareScreen}=await import('../src/screens/CompareScreen.tsx');
+ const ctx={n:3,targets:[60,60,60],deckTarget:180,lastFullTotal:null,takeNo:1,id:'old'};
+ const first=mergeTake(null,{attemptId:'old',visits:[{slide:0,startMs:0,endMs:2000}],spoken:[true,false,false],whole:false,createdAt:'2026-10-16T00:00:00Z'},ctx).run;
+ const candidate=mergeTake(first,{attemptId:'new',visits:[{slide:0,startMs:0,endMs:1000},{slide:1,startMs:1000,endMs:10000}],spoken:[true,true,false],whole:false,createdAt:'2026-10-16T00:01:00Z'},{...ctx,takeNo:2,id:'new'});
+ assert.equal(candidate.run.sel,1);assert.deepEqual(candidate.compare.slides,[0]);
+ for(const which of ['old','new']){
+  setup();runtime.model.state={...runtime.model.state,takes:2,run:first,compare:candidate.compare};runtime.nav.sel=1;
+  await render(CompareScreen,{},async r=>{
+   if(which==='new')await act(async()=>r.root.findAllByType('pressable').find(n=>n.props.accessibilityLabel?.startsWith('Overwrite with new recording,')).props.onPress());
+   await act(async()=>r.root.findByType('record-button').props.onPress());
+   const selected=runtime.routes.at(-1)[1].sel;assert.equal(selected,which==='old'?0:1);assert.ok(runtime.model.state.run.parts[selected]);
+  });
+ }
+});
+test('restored comparison ignores an unrelated inherited slide selection',async()=>{
+ setup();const {CompareScreen}=await import('../src/screens/CompareScreen.tsx');const prev=runtime.model.state.run;
+ runtime.nav.sel=0;runtime.model.state.takes=2;runtime.model.state.compare={slides:[1],whole:false,prev,next:{...prev,sel:1,takeNo:2}};
+ await render(CompareScreen,{},async r=>{await act(async()=>r.root.findByType('record-button').props.onPress());assert.equal(runtime.routes.at(-1)[1].sel,1);});
+});
+
 test('Home restores the same verified overall score and level as Full Review while retaining findings and duration',async()=>{for(const theme of ['dark','light']){setup();runtime.theme=theme;runtime.scores={overall:{score:67,level:'competent',status:'Graded',state:null,result:null,target:null}};await render(HomeFeedbackStats,{deckId:'deck',active:true,home:{p:{value:0},vy:{value:0}}},async r=>{const ring=r.root.findByType('score-ring');assert.equal(ring.props.value,'67');assert.deepEqual(ring.props.gradient,[runtime.palettes[theme].good,runtime.palettes[theme].good]);assert.match(ring.props.label,/Overall score\nCompetent/);assert.match(text(r),/4/);assert.match(text(r),/total findings/);assert.match(text(r),/0:04/);assert.match(text(r),/130/);});}});
+test('Home retains pending and partial findings notices without inventing a composed overall score',async()=>{setup();runtime.feedback.aggregate.pending=1;runtime.feedback.aggregate.partial=1;runtime.feedback.items[0]={...runtime.feedback.items[0],status:'pending',label:'Feedback pending'};await render(HomeFeedbackStats,{deckId:'deck',active:true,home:{p:{value:0},vy:{value:0}}},async r=>{assert.equal(r.root.findByType('score-ring').props.value,'—');assert.match(text(r),/Feedback pending/);assert.match(text(r),/1 partial/);});});

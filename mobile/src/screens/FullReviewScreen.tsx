@@ -1,3 +1,4 @@
+// OpenAI Codex review routing: docs/ai-collaboration-prompts-iteration-2.md#first-recording-review-navigation-october-16-2026
 // OpenAI Codex Review and Full review: docs/ai-collaboration-prompts-iteration-2.md#review-and-full-review-redesign-october-15-2026
 // Real merged-run audio, timed transcript and verified AI assessment status.
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -64,9 +65,10 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
   useEffect(() => () => { if (noteTimer.current) clearTimeout(noteTimer.current); stopPlayback(); }, [stopPlayback]);
   const toBack = useCallback(() => {
     stopPlayback();
-    if (nav.from === 'review') go('review', { deckId: nav.deckId });
+    if (nav.from === 'review') go('review', { deckId: nav.deckId, sel: nav.sel });
+    else if (nav.from === 'rehearse') go('rehearse', { nav: null, deckId: nav.deckId, slide: nav.sel });
     else go('home');
-  }, [go, nav.deckId, nav.from, stopPlayback]);
+  }, [go, nav.deckId, nav.from, nav.sel, stopPlayback]);
   const openSlide = useCallback((i: number) => {
     stopPlayback();
     if (nav.from === 'review') go('review', { deckId: nav.deckId, sel: i });
@@ -275,7 +277,7 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
             })}
           </ScrollView>
         </View>
-        <HintRow hints={[{ icon: 'h-dn', text: nav.from === 'review' ? 'Back to review' : 'Back', nudge: 'down', onPress:toBack },
+        <HintRow hints={[{ icon: 'h-dn', text: nav.from === 'review' ? 'Back to review' : nav.from === 'rehearse' ? 'Back to slides' : 'Back', nudge: 'down', onPress:toBack },
           { icon: 'h-tap', text: 'Tap a slide to review it' }]} />
       </Animated.View>
     </PanView>

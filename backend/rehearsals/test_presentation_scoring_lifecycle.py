@@ -5,7 +5,7 @@ import json
 from unittest.mock import patch
 from django.test import TestCase
 from django.utils import timezone
-from .models import FeedbackAnalysis, FeedbackJob, FeedbackRequest, PresentationContext
+from .models import FeedbackAnalysis, FeedbackJob, FeedbackRequest, PresentationContext, SlideReviewMembership
 from .services import coaching, feedback_provider as provider, presentation_scoring as scoring
 from .services.feedback import FeedbackError
 from .test_coaching import SyntheticCoaching
@@ -102,7 +102,7 @@ class PresentationScoreLifecycleTests(SyntheticCoaching, TestCase):
         self.assertEqual(request.outcome, 'completed')
         self.assertEqual(FeedbackRequest.objects.filter(coaching_job=job).count(), 1)
 
-    def test_singleton_and_scoring_owners_stay_independent(self):
+    def test_singleton_and_scoring_owners_stay_independent_with_no_memberships(self):
         self.complete()
         scope = {'context_id': None, 'slides': [{'slide_index': 0, 'segments': [
             {'start_ms': v['start_ms'], 'end_ms': v['end_ms']} for v in self.attempt.visits
@@ -117,6 +117,7 @@ class PresentationScoreLifecycleTests(SyntheticCoaching, TestCase):
         self.assertEqual(first.json()['feedback_revision'], repeated.json()['feedback_revision'])
         self.assertEqual(FeedbackAnalysis.objects.filter(analysis_type__startswith='review_').count(), 1)
         self.assertEqual(FeedbackAnalysis.objects.filter(analysis_type__startswith='score_').count(), 1)
+        self.assertFalse(SlideReviewMembership.objects.exists())
         self.assertEqual(FeedbackJob.objects.count(), 2)
 
     def test_pending_update_does_not_present_previous_generation_as_current_score(self):

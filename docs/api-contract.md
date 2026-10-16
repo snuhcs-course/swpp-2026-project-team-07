@@ -905,6 +905,15 @@ original STT identity, confirmed correction revision, selected intervals, provid
 selection, image-aware profile and description revision. The review profile reuses
 cached cue work; it does not mutate cues. Legacy coaching/STT output stays separate.
 
+New independent selected-slide review captures freeze internal
+`request_context_version=selected-review-context-v1`. Compact JSON carries full-deck
+facts/guidance once, original indexed rows for selected visits, at most twenty
+neighboring words per side as non-citable context, and corrected full speech once
+as background. Original evidence IDs/times, strict validation, public schema and
+model/output limits are unchanged. Old singleton snapshots reconstruct their old
+request hashes exactly. Unknown or discontinued grouped protocols fail closed.
+See [compact-context contract](feedback-compact-context.md).
+
 The response extends feedback metadata with `scope`, `review_version`, `requirements`
 and result `slides: [{slide_index,status,evaluation_mode,findings,enrichments}]`. Each slide has zero to four
 prioritized findings. Status is `successful`, `insufficient_evidence`, `partial`,
@@ -940,7 +949,7 @@ Each slide may include zero to two optional `enrichments: [{kind:"illustrative",
 (maximum 500 characters each), separate from the zero-to-four problem findings.
 These are explicitly hypothetical examples/analogies or invitations to recall an
 authentic anecdote; no external factual claims or search calls are implemented.
-Opening Go deeper only expands cached content. Purpose and enrichment are in the
+Opening Further Insight only expands cached content. Purpose and enrichment are in the
 same durable versioned result; no additional job or automatic retry is introduced.
 Version-1 results remain retained and display as outdated, with explicit Update
 feedback required. The mobile parser accepts a historical v1 result only if the result is marked stale (including a retained v1 result while
@@ -1112,3 +1121,28 @@ The Android app-level scoring host admits first assessments for new selected rec
 The scoring prompt is now `presentation-score-prompt-v2.1`; public schema, rubric, exact arithmetic and evidence validation remain v2. Assessed delivery must directly cite supporting original speech plus an eligible non-signal measurement. Measurements/requirements alone remain rejected. A completed `invalid_evidence` assessment exposes cooldown-aware `retry_available`; its Retry POST must include the matching `feedback_revision`. Current non-stale active/completed duplicate POSTs remain no-ops unless a rejected assessment receives an explicit revision-fenced Retry; failed/stale requests without a revision return a conflict. A fresh generation may replace the exact recognized previous v2 protocol, but old receipts cannot normalize under the replacement prompt; unsupported protocol snapshots remain unavailable. Stored JSON key ordering does not change protocol identity.
 
 Home, Full Review and slide reviews share validated score projection and level colors: Beginning red, Emerging amber, Competent green, Advanced blue; unavailable/stale/pending results remain neutral. Criteria and weights stay in this contract and backend validation but are hidden in product screens. Direct summaries, strengths, weaknesses, improvements and supporting playback remain available. Home displays the same selected-run overall score as Full Review, plus total current verified findings once, selected-run duration and WPM. Composite/incomplete sources cannot borrow another recording's overall score.
+
+
+## Retained navigation, cue reliability and singleton feedback
+
+The first saved recording routes to Full Review; later recordings route to the
+selected slide. Compare Keep/Overwrite and review return paths retain source/slide
+identity. Cue GETs reconnect at 2.5/5/10/30-second capped backoff, retain validated
+cache through failure, stop while covered/backgrounded and restart on return.
+Failed-first feedback reads reconnect with GET only. Active job stages, elapsed
+quota waits, missing completed output, inadequate words, declined assessment and
+invalid evidence remain distinct. UI labels say Further Insight; existing wire
+keys remain unchanged.
+
+New slide feedback always uses independent singleton scope. Repeated visits,
+correction synchronization, durable initial claims, cooldowns, submission locks and
+uncertain-outcome confirmation remain enforced. Multi-slide review admission and
+the retired grouped protocol are rejected before provider submission. There is no
+group-owner projection, paired admission or coupled Update workflow. Existing
+singleton reviews remain readable; no saved job, receipt or recording is deleted.
+
+Migration `0010_slide_review_membership` and its inert model remain only because
+that migration has already been applied to the current local phone database.
+Read-only checks found zero membership rows and zero grouped-review snapshots in
+both known local phone datasets. No active code uses that table; no database
+rollback/deletion or live configuration change accompanies this source cleanup.

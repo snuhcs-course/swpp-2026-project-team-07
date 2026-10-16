@@ -1,3 +1,4 @@
+// OpenAI Codex reliability fixes: docs/ai-collaboration-prompts-iteration-2.md#cue-and-feedback-reliability-october-16-2026
 import { useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Txt } from '../../design/frame';
@@ -30,7 +31,7 @@ export function SlideReviewSummary({slide,part,localDeckId,onEvidence}:{slide:nu
  const ready=!!review?.transcript?.words.length;
  const eligible=initialFeedbackEnabled(API_URL,part.attemptId);
  const noSpeech=review?.processing_result?.analysis_outcome==='no_speech';
- const disabled=dirty || fb.busy || !ready || state?.availability.state==='disabled' || state?.availability.state==='unavailable' ||
+ const disabled=dirty || fb.busy || !ready || !!state&&state.availability.state!=='available' ||
    (!!state?.feedback_revision&&!state.retry_available&&!state.dependency?.retry_available&&!state.stale&&state.state!=='completed');
  return <View style={styles.root}>
   <View style={styles.heading}><Txt style={styles.headingText}>AI feedback</Txt>
@@ -40,14 +41,14 @@ export function SlideReviewSummary({slide,part,localDeckId,onEvidence}:{slide:nu
   {summary?.status==='partial'&&<Txt style={styles.note}>Verified findings are shown below. Some other feedback could not be verified.</Txt>}
   {summary?.status==='invalid_evidence'&&<Txt style={styles.note}>The AI’s evidence did not match the saved recording or slide. Your audio and transcript are preserved.</Txt>}
   {summary?.status==='model_error'&&<Txt style={styles.note}>The AI returned invalid feedback data. Your recording is preserved.</Txt>}
-  {summary?.status==='insufficient_evidence'&&summary.validation&&<Txt style={styles.note}>{summary.validation.speech_word_count<2?'Not enough recorded speech for this slide.':'The AI could not assess this slide from the available evidence.'}</Txt>}
+  {summary?.status==='insufficient_evidence'&&<Txt style={styles.note}>{summary.validation&&summary.validation.speech_word_count<2?'Try recording a fuller explanation for this slide.':'Your recording is preserved. This does not mean that no speech was recorded or that no improvements are possible.'}</Txt>}
   {state?.requirements && <>
    {!state.requirements.audience.trim()&&<Txt style={styles.note}>Audience not provided; audience-specific feedback is unavailable.</Txt>}
    {state.requirements.required_duration_seconds===null&&<Txt style={styles.note}>Time limit not provided; displayed targets are suggestions.</Txt>}
   </>}
   {summary?.findings.map((f,i)=><FindingCard key={`${f.category}:${f.word_start}:${i}`} finding={f} onEvidence={()=>onEvidence(f)}/>)}
   {!!summary?.enrichments?.length&&<View style={styles.card}>
-   <Action label={enrichmentOpen?'Hide optional enrichment':'Show optional enrichment'} text={enrichmentOpen?'Hide Go deeper':'Go deeper · optional'} onPress={()=>setEnrichmentOpen(x=>!x)}/>
+   <Action label={enrichmentOpen?'Hide Further Insight':'Show Further Insight'} text={enrichmentOpen?'Hide Further Insight':'Further Insight · optional'} onPress={()=>setEnrichmentOpen(x=>!x)}/>
    {enrichmentOpen&&summary.enrichments.map((idea,i)=><View key={i} style={{gap:6}}>
     <Txt style={styles.category}>ILLUSTRATIVE IDEA</Txt><Txt style={styles.advice}>{idea.idea}</Txt>
    </View>)}

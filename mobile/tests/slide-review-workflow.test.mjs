@@ -165,7 +165,7 @@ test('automatic preflight never retries a generation admitted by another client'
   gets++;return response(state(id,gets>1?{feedback_revision:1,state:'failed',retry_available:true}:{}));
  };
  function Automatic(){value=useSlideReview(id,scope,{...original,attempt_id:id},null,true);return null;}
- try{await act(async()=>{renderer=create(React.createElement(Automatic));await new Promise(r=>setTimeout(r,20));});assert.equal(posts,0);assert.equal(value.state.state,'failed');}
+ try{await act(async()=>{renderer=create(React.createElement(Automatic));await new Promise(r=>setTimeout(r,20));});assert.equal(posts,0);assert.equal(value.state.state,'failed');assert.notEqual(value.initial,'failed');assert.equal(value.notice,'');}
  finally{if(renderer)await act(async()=>renderer.unmount());globalThis.fetch=old;}
 });
 
@@ -199,5 +199,89 @@ test('mounted feedback becomes outdated when the source transcript changes or di
   assert.equal(value.state.result.stale,true);assert.equal(posts,0);
   await act(async()=>renderer.update(React.createElement(SourceProbe,{review:null})));
   assert.equal(value.state.stale,true,'missing source cannot verify retained in-memory findings');
+ }finally{if(renderer)await act(async()=>renderer.unmount());globalThis.fetch=old;}
+});
+
+
+test('a failed first feedback read recovers without navigation or generation',async t=>{
+ t.mock.timers.enable({apis:['setInterval']});
+ const id='61616161-6161-4161-8161-616161616161';const old=globalThis.fetch;let r,reads=0,posts=0;
+ globalThis.fetch=async(_url,init={})=>{if(init.method==='POST')posts++;reads++;if(reads===1)throw Error('offline');return response(state(id,{feedback_revision:1,state:'queued'}));};
+ try{
+  await act(async()=>{r=create(React.createElement(Probe,{id}));});assert.equal(value.state,null);
+  await act(async()=>t.mock.timers.tick(5000));assert.equal(value.state?.state,'queued');assert.equal(value.notice,'');assert.equal(posts,0);
+ }finally{if(r)await act(async()=>r.unmount());globalThis.fetch=old;t.mock.timers.reset();}
+});
+
+
+test('automatic feedback uses the ordinary singleton route and request shape',async()=>{
+ const id='74747470-7474-4474-8474-747474747474',old=globalThis.fetch;let renderer,posts=0;
+ globalThis.fetch=async(url,init={})=>{
+  if(url.endsWith('/corrections/'))return response(correction(id));
+  if(init.method==='POST'){posts++;assert.equal(init.headers['X-OutLoud-Review-Protocol'],undefined);assert.equal(JSON.parse(init.body).scope.slides.length,1);return response(state(id,{feedback_revision:1,state:'queued'}));}
+  return response(state(id));
+ };
+ function Automatic(){value=useSlideReview(id,scope,{...original,attempt_id:id},null,true);return null;}
+ try{await act(async()=>{renderer=create(React.createElement(Automatic));await new Promise(r=>setTimeout(r,20));});assert.equal(posts,1);}
+ finally{if(renderer)await act(async()=>renderer.unmount());globalThis.fetch=old;}
+});
+
+for(const [label,id,extra,notice] of [
+ ['singleton cooldown','78787878-7878-4878-8878-787878787878',{},/Retry is not available yet/],
+ ['slide profile dependency cooldown','79797979-7979-4979-8979-797979797979',{
+  dependency:{state:'failed',retry_action:'generate_descriptions',retry_available:false,description_set_id:'33333333-3333-4333-8333-333333333333',processing_revision:3,requires_confirmation:false}
+ },/Slide profile retry is not available yet/],
+])test(`${label} blocks explicit generation`,async()=>{
+ const old=globalThis.fetch;let renderer,posts=0;
+ globalThis.fetch=async(url,init={})=>{
+  if(url.endsWith('/corrections/'))return response(correction(id));
+  if(init.method==='POST')posts++;
+  return response(state(id,{feedback_revision:3,state:'failed',retry_available:false,retry_at:'2099-01-01T00:00:00Z',...extra}));
+ };
+ try{
+  await act(async()=>{renderer=create(React.createElement(Probe,{id}));});
+  await act(async()=>value.generate());assert.equal(posts,0);assert.match(value.notice,notice);
+ }finally{if(renderer)await act(async()=>renderer.unmount());globalThis.fetch=old;}
+});
+
+test('singleton retry preserves its current revision and selection then reconciles a lost reply through GET only',async()=>{
+ const id='80808080-8080-4080-8080-808080808080',old=globalThis.fetch;let renderer,admitted=false,posts=0;
+ const failed=state(id,{feedback_revision:3,state:'failed',retry_available:true});
+ globalThis.fetch=async(url,init={})=>{
+  if(url.endsWith('/corrections/'))return response(correction(id));
+  if(init.method==='POST'){
+   posts++;assert.deepEqual(JSON.parse(init.body),{scope,expected_selection:'1'.repeat(64),transcript_revision:0,feedback_revision:3});
+   admitted=true;throw Error('lost reply after admission');
+  }
+  return response(admitted?state(id,{feedback_revision:4,state:'queued'}):failed);
+ };
+ const {readStored}=await import('../src/services/storage.ts');const {slideReviewKey}=await import('../src/features/feedback/slideReviewStore.ts');
+ try{
+  await act(async()=>{renderer=create(React.createElement(Probe,{id}));});
+  await act(async()=>value.generate());assert.equal(posts,1);assert.match(value.notice,/uncertain/);
+  assert.deepEqual(readStored(`${slideReviewKey(API_URL,id,scope)}:uncertain`),{revision:3});
+  await act(async()=>value.refresh());assert.equal(value.state.feedback_revision,4);assert.equal(value.state.state,'queued');
+  assert.equal(readStored(`${slideReviewKey(API_URL,id,scope)}:uncertain`),false);
+  await act(async()=>value.generate());assert.equal(posts,1);
+ }finally{if(renderer)await act(async()=>renderer.unmount());globalThis.fetch=old;}
+});
+
+test('singleton uncertain retry requires a new confirmation when its selection token changes',async()=>{
+ const id='81818181-8181-4181-8181-818181818181',old=globalThis.fetch;let renderer,posts=0,token='2'.repeat(64);
+ globalThis.fetch=async(url,init={})=>{
+  if(url.endsWith('/corrections/'))return response(correction(id));
+  if(init.method==='POST'){
+   posts++;assert.deepEqual(JSON.parse(init.body),{scope,expected_selection:'3'.repeat(64),transcript_revision:0,feedback_revision:3,acknowledge_uncertain:true});
+   return response(state(id,{feedback_revision:4,state:'queued'}));
+  }
+  return response(state(id,{feedback_revision:3,state:'needs_confirmation',retry_available:true,requires_confirmation:true,selection:{token}}));
+ };
+ try{
+  await act(async()=>{renderer=create(React.createElement(Probe,{id}));});
+  await act(async()=>value.generate());assert.equal(value.ask,true);assert.equal(posts,0);
+  token='3'.repeat(64);await act(async()=>{value.confirm();await new Promise(r=>setTimeout(r,10));});
+  assert.equal(posts,0);assert.match(value.notice,/changed/);assert.equal(value.ask,false);
+  await act(async()=>value.generate());assert.equal(value.ask,true);
+  await act(async()=>{value.confirm();await new Promise(r=>setTimeout(r,10));});assert.equal(posts,1);assert.equal(value.state.feedback_revision,4);
  }finally{if(renderer)await act(async()=>renderer.unmount());globalThis.fetch=old;}
 });

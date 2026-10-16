@@ -36,6 +36,8 @@ def profile_selection(deck_id, *, source=None):
 
 
 def safe_error(code):
+    if code == 'review_grouping_removed':
+        return {'code': code, 'message': 'Grouped feedback generation is no longer supported.'}
     if code == 'quota_stopped':
         return {'code': code, 'message': QUOTA_STOPPED_MESSAGE}
     return {'code': code, 'message': f'Rehearsal feedback unavailable ({code}).'} if code else None
@@ -189,6 +191,13 @@ def _attach(value, job):
 @_private_database_logging()
 def generate(attempt_id, payload, analysis_type='coaching', review_scope=None):
     attempt = Attempt.objects.select_related('deck').get(pk=attempt_id)
+    if analysis_type.startswith('review_'):
+        from . import slide_review
+        review_scope = slide_review.scope_for(attempt, review_scope)
+        if len(review_scope['slides']) != 1:
+            raise Conflict('review_grouping_removed')
+        if analysis_type != slide_review.analysis_type(review_scope):
+            raise FeedbackError('invalid_request')
     if 'transcript_revision' in payload and payload['transcript_revision'] != corrections.snapshot(attempt)['revision']:
         raise Conflict('correction_conflict')
     review_input = None
@@ -242,7 +251,12 @@ def generate(attempt_id, payload, analysis_type='coaching', review_scope=None):
             selection.credentials()
             QuotaPolicy.current(selection)
             return _queue(analysis, value, snapshot, old)
-    if set(payload) - {'expected_selection', 'transcript_revision'}:  # A retry can never create an initial analysis.
+    initial_controls = {'expected_selection', 'transcript_revision'}
+    if review_input is not None and payload.get('acknowledge_uncertain') is True:
+        # A lost initial reply can reconcile to no server owner. Confirmation
+        # permits that singleton admission; existing-owner retry fences stay above.
+        initial_controls.add('acknowledge_uncertain')
+    if set(payload) - initial_controls:  # Revision controls never create an initial analysis.
         raise Conflict('stale_revision')
     source = prepare_attempt(attempt)
     if review_input is None and qa_input is None:
@@ -279,7 +293,7 @@ def generate(attempt_id, payload, analysis_type='coaching', review_scope=None):
             # Recheck active/completed vs failed/stale and retry requirements if
             # another caller admitted while this caller prepared its snapshots.
             return generate(attempt_id, payload, analysis_type, review_scope)
-        assert_selection(payload, selection_descriptor(profile_selection(attempt.deck_id) if review_input is not None or qa_input is not None else Selection.current(), coaching=True))
+        assert_selection(payload, selection_descriptor(profile_selection(attempt.deck_id, source=deck.input_id) if review_input is not None or qa_input is not None else Selection.current(), coaching=True))
         if qa_input is not None and analysis_type != 'qa_answer' and not audience_qa.current(current_attempt, qa_input):
             raise Conflict('requirements_changed')
         if review_input is not None and not slide_review.current(current_attempt, review_input):
@@ -368,6 +382,9 @@ def submit(value, job, prepared):
     with transaction.atomic():
         current, analysis, locked_job = _locked(job.analysis_id, job.generation)
         _fresh(current, analysis, locked_job, job.claim_token)
+        if 'slide_review' in locked_job.source_snapshot:
+            from .slide_review import check_snapshot
+            check_snapshot(locked_job.source_snapshot['slide_review'])
         selection = Selection.saved(current)
         bucket = locked_bucket(selection)
         selection.check_versions(current.prompt_digest)

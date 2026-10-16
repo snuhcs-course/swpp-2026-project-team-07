@@ -1,3 +1,5 @@
+// OpenAI Codex review routing: docs/ai-collaboration-prompts-iteration-2.md#first-recording-review-navigation-october-16-2026
+// OpenAI Codex reliability fixes: docs/ai-collaboration-prompts-iteration-2.md#cue-and-feedback-reliability-october-16-2026
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
 // OpenAI Codex finger-linked page fade: docs/ai-collaboration-prompts-iteration-2.md#finger-linked-page-fade-october-15-2026
 // OpenAI Codex time/audience setup: docs/ai-collaboration-prompts-iteration-2.md#presentation-time-and-audience-setup-october-15-2026
@@ -41,7 +43,7 @@ import { Chip, Confetti, Dialog, HintRow, IDLE_WAVE, OrbitalCaption, PageSurface
 import { paceChip } from '../domain/analysis';
 import { fmt } from '../domain/format';
 import { BACK_FADE_Y, BACK_T, CARD_STEP, decideRelease } from '../domain/gestures';
-import { runAttemptIds, takeVisits } from '../domain/run';
+import { reviewDestination, runAttemptIds, takeVisits } from '../domain/run';
 import { CaptureEngine, type CaptureHandle } from '../features/rehearsal/CaptureEngine';
 import { audioOf } from '../features/rehearsal/analysis';
 import { commitTake } from '../features/rehearsal/takes';
@@ -89,8 +91,9 @@ export const RehearseScreen = memo(function RehearseScreen({ active = true }: { 
   useEffect(() => {
     if (!nav.deckId) return;
     // A pending redo requires an explicit keep-or-overwrite decision.
-    if (getDeckState(nav.deckId).compare) {
-      go('compare', { nav: 'fade', deckId: nav.deckId });
+    const pending = getDeckState(nav.deckId).compare;
+    if (pending) {
+      go('compare', { nav: 'fade', deckId: nav.deckId, sel: pending.next.sel });
       return;
     }
     void ensurePages(nav.deckId).catch(() => undefined);
@@ -137,7 +140,7 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
   useEffect(() => () => { if (holdTimer.current) clearTimeout(holdTimer.current); }, []);
   const [live] = useState(createLive);
   const [playbackNotice, setPlaybackNotice] = useState<string | null>(null);
-  const profiles = useSlideProfiles(deck.id, n);
+  const profiles = useSlideProfiles(deck.id, n, active);
   const [cueRetryAsk, setCueRetryAsk] = useState<ProfileState | null>(null);
   const ringP = useSharedValue(0), ringV = useSharedValue(0);
   const trackX = useSharedValue(-slide * CARD_STEP);
@@ -149,6 +152,12 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
   const backExiting = useRef(false);
   const player = useSegmentPlayer();
   const stopPlayback = player.stop;
+  const openReview = useCallback((takes: number, selected: number, comparing: boolean, transition: 'fade' | 'rise') => {
+    stopPlayback();
+    const destination = comparing ? 'compare' : reviewDestination(takes);
+    go(destination, { nav: transition, deckId: deck.id, sel: selected, slide: selected,
+      from: destination === 'full' ? 'rehearse' : null });
+  }, [deck.id, go, stopPlayback]);
   const openSetup = useCallback(() => { if (active && phaseRef.current === 'idle') { stopPlayback(); setSetupOpen(true); } }, [active, stopPlayback]);
   useEffect(() => {
     if (active && nav.editRequirements && phaseRef.current === 'idle') {
@@ -269,8 +278,7 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
       hideRing();
       setBurst({ total: take.durationMs / 1000, compare: !!compare });
       setPhase('burst');
-      if (compare) go('compare', { nav: 'rise', deckId: deck.id });
-      else go('review', { nav: 'fade', deckId: deck.id, sel: next.sel, from: null });
+      openReview(next.takeNo, next.sel, !!compare, compare ? 'rise' : 'fade');
     } catch (e) {
       fullRedo.current = false;
       hideRing();
@@ -279,7 +287,7 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
       setEngineKey(k => k + 1);
       setPhase('idle');
     }
-  }, [deck, go, live, model.stats?.coverage]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [deck, live, model.stats?.coverage, openReview]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onMeter = useCallback((db: number, ms: number) => {
     const L = live.get(), now = Date.now();
@@ -429,12 +437,11 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
     // Keep the normal capture's start-slide rule and preserve existing audio on
     // other visited slides unless they had no source yet.
     const spoken = Array.from({ length: n }, (_, i) => i === visits[0]?.slide);
-    const { compare } = commitTake(deck, {
+    const { run: next, compare } = commitTake(deck, {
       attemptId: attempt.id, durationMs: attempt.recording.duration_ms, events: attempt.recording.slide_events,
     }, spoken, false, model.stats?.coverage ?? null);
     setRecoveryId(null);
-    if (compare) go('compare', { nav: 'fade', deckId: deck.id });
-    else go('review', { nav: 'fade', deckId: deck.id, sel: slideRef.current, from: null });
+    openReview(next.takeNo, next.sel, !!compare, 'fade');
   };
 
   return (
@@ -485,9 +492,9 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
             caption="Rotate" captionRotation={controlSwap} onPress={rotate} style={{ left: 49 }} />
           <Animated.View pointerEvents={pdfRotated ? 'none' : 'box-none'} accessibilityElementsHidden={pdfRotated}
             importantForAccessibility={pdfRotated ? 'no-hide-descendants' : 'auto'} style={[styles.rightControlLayer, reviewMotion]}>
-            <RoundButton glyph="h-review-bars" label="Review current slide" caption="Review" captionRotation={controlSwap}
+            <RoundButton glyph="h-review-bars" label={reviewDestination(state.takes) === 'full' ? 'Review full presentation' : 'Review current slide'} caption="Review" captionRotation={controlSwap}
               disabled={!run || recording || phase === 'count'}
-              onPress={() => run && go(state.compare ? 'compare' : 'review', { nav: 'rise', deckId: deck.id, sel: cur })}
+              onPress={() => run && openReview(state.takes, cur, !!state.compare, 'rise')}
               style={{ left: 0, top: 0 }} />
           </Animated.View>
           <Animated.View pointerEvents="none" accessibilityElementsHidden={!pdfRotated}

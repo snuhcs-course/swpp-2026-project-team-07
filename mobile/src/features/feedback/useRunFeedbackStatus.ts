@@ -1,3 +1,4 @@
+// OpenAI Codex reliability fixes: docs/ai-collaboration-prompts-iteration-2.md#cue-and-feedback-reliability-october-16-2026
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { AppState } from 'react-native';
 import { API_URL } from '../../services/api';
@@ -38,10 +39,11 @@ export function useRunFeedbackStatus(model: DeckModel | null, active = true) {
   }, []);
   useEffect(() => { if (active && foreground) void refresh(); }, [active, foreground, identity, refresh]);
   useEffect(() => {
-    if (!active || !foreground || !activeIdentity || activeIdentity === '[]') return;
-    const timer = setInterval(() => { void read(snapshot.current.activeTargets); }, 2500);
+    if (!active || !foreground || (activeIdentity === '[]' && !offline)) return;
+    const timer = setInterval(() => { void read(offline ? snapshot.current.targets : snapshot.current.activeTargets); }, offline ? 5000 : 2500);
     return () => clearInterval(timer);
-  }, [active, activeIdentity, foreground, read]);
+  }, [active, activeIdentity, foreground, offline, read]);
+  const pending = derived.items.find(item => item.status === 'pending' || item.status === 'transcribing');
   return { items: derived.items, aggregate: derived.aggregate, refresh, offline,
-    notice: offline ? 'Offline or unavailable. Saved AI feedback is retained.' : '' };
+    notice: offline ? 'Connection interrupted. Saved AI feedback is retained. Reconnecting…' : pending ? `Slide ${pending.slide + 1} · ${pending.label}` : '' };
 }

@@ -1,4 +1,8 @@
-"""Experiment-only index selection. Original citations/validator remain authoritative."""
+"""Frozen evidence reconstruction shared by the active v2 visit-local scorer.
+
+The historical selection protocol remains frozen; paid experiment runners are
+removed. Reconstruction validates original citations without provider execution.
+"""
 from collections import Counter
 from copy import deepcopy
 import hashlib

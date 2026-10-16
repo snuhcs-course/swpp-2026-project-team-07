@@ -3271,3 +3271,31 @@ User request:
 > Before committing: identify all scoring-related source files and dependencies; preserve unrelated changes and the original staging state; verify completeness and tests; commit only verified scoring and required dependencies; report the hash, included files, results and remaining changes. Do not push, merge, deploy, or modify unrelated work.
 
 OpenAI Codex used the existing implementation rather than redesigning it, selected scoring-only hunks from mixed files, and tested the proposed source snapshot independently of unrelated local changes. Required earlier v1 helpers are retained for v2 evidence/measurement validation; experimental evaluation tools and grouped-feedback models are excluded. Verification and independent review are recorded in [the source-snapshot report](presentation-scoring-source-verification.md).
+
+
+## Retained features integration October 17, 2026
+
+User request:
+
+> Step 2 and older scoring experiments are discontinued. No longer needed. Can even delete from history. Step 1, navigation and layout changes and cue and feedback reliability should be applied to app and committed as well.
+
+Codex preserved the completed scoring implementation, integrated the retained work,
+removed obsolete runners and grouping runtime, and used ordinary commits rather
+than rewriting history. No new grouping, experiment, paid inference or deployment
+was introduced. [Verification and scope](retained-features-verification.md).
+
+## First-recording review navigation October 16, 2026
+
+Retained behavior: the first saved take opens Full Review; subsequent takes use
+slide review. Keep/Overwrite, selected-slide return routing, the persistent Full
+Review button and header-aware scrolling preserve the existing recording source.
+The navigation fixes and their regression tests are integrated in the retained
+feature task above, rather than replaced by the scoring implementation.
+
+## Cue and feedback reliability October 16, 2026
+
+Retained behavior: GET-only reconnect with cached cues, foreground/visibility
+fences, capped retry backoff, detailed stage/quota/recovery notices, and Further
+Insight labels. Independent singleton feedback retains durable duplicate,
+correction, cooldown and uncertain-submission protection. Group admission and
+historical group handoff code are discontinued. [Current contract](api-contract.md).

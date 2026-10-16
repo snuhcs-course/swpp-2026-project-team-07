@@ -1,8 +1,9 @@
-"""AI-assisted standalone scoring seam. No job admission, database writes or network.
+"""Shared frozen evidence and source-identity helpers used by the active v2 scorer.
 
 capture() accepts trusted server evidence, never a client-authored transcript.
-Saved-attempt callers must obtain corrections through corrections.snapshot().
-Production job/API integration is gated on model-comparison findings review.
+Saved-attempt callers obtain recognition-only corrections through corrections.snapshot().
+The historical v1 protocol stays frozen for identity validation; experiment runners
+are discontinued. Admission and provider execution belong to presentation_scoring.
 """
 from copy import deepcopy
 from dataclasses import dataclass, field, replace

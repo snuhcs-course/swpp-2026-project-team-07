@@ -94,3 +94,46 @@ test('stale saved content is hidden and generation occurs only after an explicit
     assert.match(json(renderer),/Recap the final result/);
   }finally{if(renderer)await act(async()=>renderer.unmount());globalThis.fetch=original;}
 });
+
+
+test('transient cue reads retry with bounded backoff and clear the notice on recovery',async t=>{
+ t.mock.timers.enable({apis:['setTimeout']});setup('cue-backoff');
+ const old=globalThis.fetch;let r,calls=0;
+ globalThis.fetch=async()=>{calls++;if(calls<5)throw Error('offline');return new Response(JSON.stringify(profileResponse()));};
+ try{
+  await act(async()=>{r=create(tree({localId:'cue-backoff'}));});
+  for(const delay of [2500,5000,10000,30000])await act(async()=>t.mock.timers.tick(delay));
+  assert.equal(calls,5);assert.match(json(r),/Explain the change/);assert.equal(current.error,'');
+  await act(async()=>t.mock.timers.tick(30000));assert.equal(calls,5);
+ }finally{if(r)await act(async()=>r.unmount());globalThis.fetch=old;t.mock.timers.reset();}
+});
+
+
+test('foreground and screen focus resume cue reads; a superseded read cannot replace another deck',async t=>{
+ t.mock.timers.enable({apis:['setTimeout']});setup('cue-focus');
+ const {backgroundApp,setFocused}=await import('./helpers/recording-screen-ui.mjs');
+ const old=globalThis.fetch;let r,calls=0,late;
+ globalThis.fetch=async()=>{calls++;if(calls===1)return new Promise(resolve=>{late=()=>resolve(new Response(JSON.stringify(profileResponse())));});return new Response(JSON.stringify(profileResponse()));};
+ try{
+  await act(async()=>{r=create(tree({localId:'cue-focus'}));});
+  await act(async()=>backgroundApp('background'));
+  await act(async()=>t.mock.timers.tick(30000));assert.equal(calls,1);
+  await act(async()=>backgroundApp('active'));assert.equal(calls,2);
+  await act(async()=>setFocused(false));await act(async()=>setFocused(true));assert.equal(calls,3);
+  await act(async()=>r.update(tree({localId:'unmapped-deck'})));
+  await act(async()=>late());assert.equal(current.value,null);assert.doesNotMatch(json(r),/Explain the change/);
+ }finally{if(r)await act(async()=>r.unmount());globalThis.fetch=old;backgroundApp('active');setFocused(true);t.mock.timers.reset();}
+});
+
+
+test('current cached cues remain visible through a failed read and successful same-screen reconnect',async t=>{
+ t.mock.timers.enable({apis:['setTimeout']});setup('cue-cache-reconnect');
+ const {createProfileClient}=await import('../src/features/presentations/slideProfiles');
+ const old=globalThis.fetch;let r,reads=0;
+ await createProfileClient(API_URL,async()=>new Response(JSON.stringify(profileResponse()))).read(deckId,3);
+ globalThis.fetch=async()=>{if(++reads===1)throw Error('offline');return new Response(JSON.stringify(profileResponse()));};
+ try{
+  await act(async()=>{r=create(tree({localId:'cue-cache-reconnect'}));});assert.match(json(r),/Explain the change/);assert.match(json(r),/Saved cues are retained/);
+  await act(async()=>t.mock.timers.tick(2500));assert.match(json(r),/Explain the change/);assert.equal(current.error,'');
+ }finally{if(r)await act(async()=>r.unmount());globalThis.fetch=old;t.mock.timers.reset();}
+});

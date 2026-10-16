@@ -1,3 +1,4 @@
+// OpenAI Codex reliability fixes: docs/ai-collaboration-prompts-iteration-2.md#cue-and-feedback-reliability-october-16-2026
 /** Status and counts from verified AI feedback for the exact selected recordings. No heuristic quality score. */
 import type { DeckModel } from '../presentations/useDeckModel';
 import { readRequirements } from '../presentations/requirementsStore';
@@ -5,7 +6,7 @@ import { requirementsDirty } from '../presentations/requirementsDraft';
 import { readCorrections } from '../presentations/correctionStore';
 import { readReview } from '../transcription/reviewStorage';
 import { readStored } from '../../services/storage';
-import { reviewActive, reviewScope, type SlideReview } from './slideReview';
+import { reviewActive, reviewScope, reviewStatus, type SlideReview } from './slideReview';
 import { effectiveSlideReview, readSlideReview, slideReviewInitialKey, type SlideReviewTarget } from './slideReviewStore';
 
 export type FeedbackStatus = 'not_recorded' | 'transcribing' | 'not_analyzed' | 'pending' | 'outdated' | 'recovery_needed' | 'insufficient' | 'partial' | 'reviewed' | 'unavailable';
@@ -23,12 +24,13 @@ export function feedbackStatusItem(slide: number, recorded: boolean, stage: stri
   if (!state) return item('not_analyzed', 'Not analyzed', 'muted');
   if (state.stale || state.state === 'stale') return item('outdated', 'Feedback outdated', 'warn');
   if (state.dependency?.retry_action) return item('recovery_needed', state.dependency.requires_confirmation ? 'Retry needs confirmation' : 'Slide context needs recovery', 'bad');
-  if (reviewActive(state)) return item('pending', 'Analyzing…', 'info');
+  if (reviewActive(state)) return item('pending', reviewStatus(state, slide), 'info');
   if (state.state === 'failed' || state.state === 'needs_confirmation') return item('recovery_needed', state.state === 'failed' ? 'Analysis failed' : 'Retry needs confirmation', 'bad');
   if (state.result?.stale) return item('outdated', 'Feedback outdated', 'warn');
   if (state.state === 'completed') {
     const summary = state.result?.slides.find(value => value.slide_index === slide);
-    if (!summary || summary.status === 'insufficient_evidence') return item('insufficient', 'Insufficient evidence', 'muted');
+    if (!summary) return item('recovery_needed', reviewStatus(state, slide), 'bad');
+    if (summary.status === 'insufficient_evidence') return item('insufficient', reviewStatus(state, slide), 'muted');
     if (summary.status === 'invalid_evidence' || summary.status === 'model_error') return item('recovery_needed', summary.status === 'invalid_evidence' ? 'Feedback could not be verified' : 'AI response could not be processed', 'bad');
     if (summary.status === 'partial') return item('partial', 'Partially assessed', 'warn', summary.findings.length);
     const count = summary.findings.length;

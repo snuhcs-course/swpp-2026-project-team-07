@@ -6,15 +6,18 @@ import { getRequirementsVersion, readRequirements, subscribeRequirements } from 
 import { requirementsPending } from '../presentations/requirementsDraft';
 import { defaultRequirementsPending } from '../presentations/defaultRequirements';
 import { readReview } from '../transcription/reviewStorage';
-import { reviewScope, type ReviewScope } from './slideReview';
+import { reviewScope } from './slideReview';
 import { initialFeedbackEnabled } from './automaticFeedback';
 import { useSlideReview } from './useSlideReview';
 import type { ReviewAttempt } from '../../contracts';
+import type { ReviewScope } from './slideReview';
+
+type InitialReviewTask={id:string;scope:ReviewScope;review:ReviewAttempt;revision:number|null;localDeckId:string};
 
 export function InitialFeedbackHost() {
  useStore(s=>s.version);
  useSyncExternalStore(subscribeRequirements,getRequirementsVersion);
- const tasks:{id:string;scope:ReviewScope;review:ReviewAttempt;revision:number|null}[]=[];
+ const tasks:InitialReviewTask[]=[];
  for(const deck of visibleDecks()) {
   const saved=getDeckState(deck.id);
   // Pending comparisons have not yet authorized a new selected take.
@@ -26,13 +29,13 @@ export function InitialFeedbackHost() {
     if(!review?.transcript?.words.length||!review.deck_id)return;
     const r=readRequirements(deck.id,API_URL);
     const context=r.deckId===review.deck_id?r.contextId:null;
-    tasks.push({id:part.attemptId,scope:reviewScope(index,part,context),review,revision:context?r.revision:null});
+    tasks.push({id:part.attemptId,scope:reviewScope(index,part,context),review,revision:context?r.revision:null,localDeckId:deck.id});
    }catch{/* Local recording and playback remain usable without feedback data. */}
   });
  }
  return <>{tasks.map(task=><InitialWorker key={JSON.stringify([task.id,task.scope])} {...task}/>)}</>;
 }
-function InitialWorker({id,scope,review,revision}:{id:string;scope:ReviewScope;review:ReviewAttempt;revision:number|null}) {
- useSlideReview(id,scope,review,revision,true);
+function InitialWorker({id,scope,review,revision,localDeckId}:InitialReviewTask) {
+ useSlideReview(id,scope,review,revision,true,localDeckId);
  return null;
 }

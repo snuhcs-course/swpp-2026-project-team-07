@@ -194,6 +194,18 @@ class FeedbackJob(models.Model):
         constraints = [models.UniqueConstraint(fields=['analysis', 'generation'], name='unique_coaching_generation')]
 
 
+# Historical schema compatibility, AI-assisted by OpenAI Codex; October 16, 2026.
+class SlideReviewMembership(models.Model):
+    """Historical Step 2 data retained for schema compatibility; no runtime writes."""
+    attempt = models.ForeignKey(Attempt, on_delete=models.PROTECT, related_name='review_memberships')
+    context_key = models.CharField(max_length=36, blank=True, default='')
+    slide_index = models.PositiveIntegerField()
+    analysis = models.ForeignKey(FeedbackAnalysis, on_delete=models.PROTECT, related_name='review_memberships')
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['attempt', 'context_key', 'slide_index'], name='unique_slide_review_owner')]
+
+
 class FeedbackQuotaBucket(models.Model):
     # Model bucket deliberately excludes stage, to share description and coaching limits.
     provider = models.CharField(max_length=16)
