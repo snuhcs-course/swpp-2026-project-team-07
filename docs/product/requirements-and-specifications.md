@@ -30,7 +30,7 @@ Version 3.0, 16 October 2026 — Iteration 2 canonical source
 | --- | --- | --- |
 | 1.0 | 2026-09-28 | Initial specification: scope, eleven user stories with acceptance criteria, quality requirements and low-fidelity UI flows. |
 | 2.0 | 2026-10-09 | Merged closely related stories into nine mandatory stories in seven functional groups, and added the team's stories on filler words, pauses and student knowledge levels. Added failure and recovery scenarios. Separated automatic transcription from requested AI feedback. Added a competitor comparison table. Replaced text wireframes with Figma screens and navigation flow diagrams. |
-| 3.0 | 2026-10-16 | Reconciled the specification with the Iteration 2 implementation and current limits. Kept Audience Q&A outside the mandatory core as an optional Iteration 3 feature. Preserved explicit user-requested coaching and deferred unapproved defaults. |
+| 3.0 | 2026-10-16 | Reconciled the specification with the Iteration 2 implementation and current limits. Preserved explicit user-requested coaching and deferred unapproved defaults. |
 
 ## 2. Project Abstract
 

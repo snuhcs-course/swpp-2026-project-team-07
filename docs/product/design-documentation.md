@@ -15,7 +15,7 @@ transcription, slide profiling and evidence-linked coaching.
 | --- | --- | --- |
 | 1.0 | 2026-09-28 | Initial design. |
 | 2.0 | 2026-10-09 | Iteration 1 design and proposed Iteration 2 roadmap. |
-| 3.0 | 2026-10-16 | Replaced roadmap language with the current Iteration 2 architecture, state models, APIs, caching, concurrency, recovery and frontend organization. Audience Q&A remains experimental and optional for Iteration 3. |
+| 3.0 | 2026-10-16 | Replaced roadmap language with the current Iteration 2 architecture, state models, APIs, caching, concurrency, recovery and frontend organization.  |
 
 ## 2. System Architecture
 
@@ -76,9 +76,6 @@ generation. `FeedbackAnalysis` separates analysis types for an attempt, while
 `FeedbackRequest`, quota buckets and reservations record admission and provider
 outcomes without exposing raw receipts to clients.
 
-`QaAnswer` binds an answer attempt to an immutable generated question and part. This
-model supports the experimental Audience Q&A path only; it is not mandatory Iteration
-2 scope.
 
 ### 3.1 Core invariants
 
@@ -196,11 +193,6 @@ durable review, transcription/alignment, slide profiles, evidence-linked feedbac
 history/retry and comparison. The [product traceability map](traceability.md) records
 where completion still requires team-owned testing.
 
-Audience Q&A routes and mobile UI exist as an **experimental implementation**. The
-feature remains optional Iteration 3 scope and is not evidence that the Iteration 2
-mandatory requirements changed. General-audience/five-minute defaults and automatic
-first-feedback behavior are intentionally absent from this submission-facing design
-until the team approves them.
 
 Deletion, multi-user ownership and authenticated private-media delivery remain design
 risks. They must not be represented as complete without implementation and test

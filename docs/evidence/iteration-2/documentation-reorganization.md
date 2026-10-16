@@ -80,7 +80,6 @@ output/
 ## Submission decisions
 
 - Requirements and Design are refreshed Iteration 2 canonical Markdown sources.
-- Audience Q&A remains optional Iteration 3 scope despite experimental code.
 - General-audience/five-minute defaults and automatic-first-feedback behavior are not
   included in the submission-facing Requirements or Design pending team approval.
 - The AI Collaboration Report is a pre-close draft following the six required topics
