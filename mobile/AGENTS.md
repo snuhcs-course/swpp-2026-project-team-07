@@ -2,7 +2,7 @@
 
 Follow the [shared agent instructions](../AGENTS.md). This is the Android-only
 Expo / React Native / TypeScript client; use the architecture mapped in
-[the source-alignment document](../docs/source-alignment.md).
+[the current traceability document](../docs/product/traceability.md).
 
 ## Check versions before using APIs
 
@@ -47,7 +47,11 @@ not lint, typechecking or a rebuild solely because the file is under `mobile/`.
 
 ## Feature boundaries
 
-Read the [handoff](../docs/iteration-1-handoff.md) and
-[API contract](../docs/api-contract.md) when changing feature boundaries. Inspect
-this branch to determine which flows are real and which use fixtures; preserve their
-labels. Coordinate shared contract changes and keep provider credentials on the backend.
+Start with the [documentation index](../docs/README.md), then read the current
+[traceability document](../docs/product/traceability.md), relevant feature reference
+and [API contract](../docs/architecture/api-contract.md) when changing feature
+boundaries. Iteration 1 handoffs are archived context, not current instructions.
+Inspect this branch to determine which flows are real and which use fixtures; preserve
+their labels. Coordinate shared contract changes and keep provider credentials on the
+backend. Store new verification evidence under the appropriate
+`docs/evidence/iteration-2/<area>/` directory.
