@@ -14,6 +14,7 @@ type On = (e: GestureResponderEvent, g: PanResponderGestureState) => void;
 export type PanHandlers = {
   onStartShould?: Ask;
   onMoveShould?: Ask;
+  onMoveShouldCapture?: Ask;
   onGrant?: On;
   onMove?: On;
   onRelease?: On;
@@ -24,7 +25,7 @@ export type PanHandlers = {
   disabled?: boolean;
 };
 
-const PAN_KEYS = ['onStartShould', 'onMoveShould', 'onGrant', 'onMove', 'onRelease', 'onTerminate', 'onTerminationRequest', 'disabled'] as const;
+const PAN_KEYS = ['onStartShould', 'onMoveShould', 'onMoveShouldCapture', 'onGrant', 'onMove', 'onRelease', 'onTerminate', 'onTerminationRequest', 'disabled'] as const;
 
 type Props = PanHandlers & Omit<ComponentProps<typeof Animated.View>, keyof PanHandlers>;
 
@@ -32,6 +33,7 @@ export class PanView extends Component<Props> {
   private readonly pan = PanResponder.create({
     onStartShouldSetPanResponder: (e, g) => !this.props.disabled && (this.props.onStartShould?.(e, g) ?? false),
     onMoveShouldSetPanResponder: (e, g) => !this.props.disabled && (this.props.onMoveShould?.(e, g) ?? false),
+    onMoveShouldSetPanResponderCapture: (e, g) => !this.props.disabled && (this.props.onMoveShouldCapture?.(e, g) ?? false),
     onPanResponderGrant: (e, g) => this.props.onGrant?.(e, g),
     onPanResponderMove: (e, g) => this.props.onMove?.(e, g),
     onPanResponderRelease: (e, g) => this.props.onRelease?.(e, g),

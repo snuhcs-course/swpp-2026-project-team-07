@@ -2,7 +2,7 @@
 // Attribution: docs/ai-collaboration-prompts-iteration-2.md#playback-transcription-and-home-visual-corrections-october-14-2026
 // OpenAI Codex follow-up: docs/ai-collaboration-prompts-iteration-2.md#rehearsal-recording-choice-and-transcript-playback-october-14-2026
 // A saved take's validated media, synchronized slide visits and transcript in the redesign UI.
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
 import { Txt } from '../design/frame';
@@ -25,20 +25,29 @@ import { validEvents, validVisits } from '../features/transcription/reviewValida
 import { localUri } from '../features/transcription/reviewMedia';
 import { stageOf, subscribePlaybackId, useWorkers } from '../features/rehearsal/analysis';
 import { inspectCoaching, requestCoaching, retainCoaching, useCoaches, type CoachState } from '../features/rehearsal/coaching';
+import { useDeckModel } from '../features/presentations/useDeckModel';
+import { useSegmentPlayer } from '../features/rehearsal/useSegmentPlayer';
+import { TranscriptCorrections } from './TranscriptCorrections';
 import { readFeedback } from '../features/feedback/storage';
 
-export function TakePlayback({ id, deck, initialSlide, onClose, onSlideChange, onRecovered }: {
+export function TakePlayback({ id, deck, initialSlide, onClose, onSlideChange, onRecovered, initialEvidence }: {
+  initialEvidence?: { start_ms: number; end_ms: number; speech_quote?: string; observation?: string; slide_quote?: string };
   id: string; deck: Presentation; initialSlide: number; onClose: () => void;
   onSlideChange?: (slide: number) => void; onRecovered?: (attempt: SavedAttempt) => void;
 }) {
+  useTheme();
+  const model = useDeckModel(deck.id);
+  const correctionPlayer = useSegmentPlayer();
+  const evidencePlayer = useSegmentPlayer();
+  const [recordingToolsOpen, setRecordingToolsOpen] = useState(false);
   useEffect(() => subscribePlaybackId(id), [id]);
   const version = useStore(s => s.version);
   const saved = useMemo(() => { void version; try { return getSavedAttempt(id); } catch { return null; } }, [id, version]);
   const review = useMemo(() => { void version; try { return readReview(API_URL, id); } catch { return null; } }, [id, version]);
   useEffect(() => {
-    const release = retainCoaching(id);
-    return release;
-  }, [id]);
+    if (!recordingToolsOpen) return;
+    return retainCoaching(id);
+  }, [id, recordingToolsOpen]);
   const workers = useWorkers();
   const worker = workers.get(id);
   const coaches = useCoaches();
@@ -49,10 +58,12 @@ export function TakePlayback({ id, deck, initialSlide, onClose, onSlideChange, o
   const { status, hasLoaded } = useReviewPlayerStatus(player);
   const [playing, setPlaying] = useState(false);
   const lastWordMs = useRef<number | null>(null);
+  const playbackIntent = useRef(0);
+  const invalidateWordPlayback = useCallback(() => { playbackIntent.current++; }, []);
   const recoveryBusy = useRef(false);
   const [notice, setNotice] = useState('');
   const [pdfTools, setPdfTools] = useState(false);
-  const [descriptionsOpen, setDescriptionsOpen] = useState(false);
+  const [wordPlaybackSlide, setWordPlaybackSlide] = useState<number | null>(null);
   const control = useMemo(() => createPlaybackController(player, setPlaying,
     () => setNotice('Could not seek this recording. Its file is still saved.')), [player]);
   const audioUri = media.audio.uri;
@@ -60,20 +71,32 @@ export function TakePlayback({ id, deck, initialSlide, onClose, onSlideChange, o
 
   useEffect(() => {
     control.activate();
-    const sub = AppState.addEventListener('change', app => { if (app === 'active') control.activate(); else control.deactivate(); });
-    return () => { sub.remove(); control.dispose(); };
-  }, [control]);
+    const sub = AppState.addEventListener('change', app => {
+      if (app === 'active') control.activate();
+      else { invalidateWordPlayback(); control.deactivate(); }
+    });
+    return () => { invalidateWordPlayback(); sub.remove(); control.dispose(); };
+  }, [control, invalidateWordPlayback]);
   useEffect(() => {
     const current = player.currentStatus;
     if (status.didJustFinish) control.finished(current.currentTime * 1000, current.duration * 1000);
     else if (!status.playing && status.isLoaded && !status.isBuffering && !status.error &&
       !current.playing && current.isLoaded && !current.isBuffering && !current.didJustFinish && !current.error) control.nativePaused();
   }, [control, player, status]);
-  useEffect(() => { if (status.error && audioUri) { control.pause(); audioFailed(); } }, [control, audioUri, audioFailed, status.error]);
+  useEffect(() => { if (status.error && audioUri) { invalidateWordPlayback(); control.pause(); audioFailed(); } }, [control, audioUri, audioFailed, invalidateWordPlayback, status.error]);
 
   const interrupted = saved?.state === 'capturing' || saved?.state === 'interrupted';
   const duration = saved?.recording.duration_ms || review?.duration_ms || (hasLoaded ? Math.round(status.duration * 1000) : 0);
-  const position = Number.isFinite(status.currentTime) ? Math.max(0, Math.round(status.currentTime * 1000)) : 0;
+  const nativePosition = Number.isFinite(status.currentTime) ? Math.max(0, Math.round(status.currentTime * 1000)) : 0;
+  const evidenceKey = initialEvidence ? `evidence:${id}:${initialEvidence.start_ms}:${initialEvidence.end_ms}` : null;
+  const evidenceSelected = !!evidenceKey && evidencePlayer.playingKey === evidenceKey;
+  const evidencePlaying = evidenceSelected && !evidencePlayer.paused;
+  const position = evidenceSelected ? evidencePlayer.positionMs ?? initialEvidence!.start_ms : nativePosition;
+  const validEvidence = !!initialEvidence && Number.isSafeInteger(initialEvidence.start_ms) && Number.isSafeInteger(initialEvidence.end_ms)
+    && initialEvidence.start_ms >= 0 && initialEvidence.end_ms > initialEvidence.start_ms && initialEvidence.end_ms <= duration;
+  const stopEvidence = evidencePlayer.stop;
+  useEffect(() => () => stopEvidence(), [evidenceKey, audioUri, stopEvidence]);
+  useEffect(() => () => { invalidateWordPlayback(); control.pause(); }, [id, evidenceKey, audioUri, control, invalidateWordPlayback]);
   const ready = !!media.audio.uri && status.isLoaded && !status.error && duration > 0;
   const canSeek = !!media.audio.uri && hasLoaded && (status.isLoaded || status.isBuffering) && !status.error && duration > 0;
   const events = useMemo(() => saved && validEvents(saved.recording.slide_events, duration, deck.pageCount)
@@ -83,20 +106,40 @@ export function TakePlayback({ id, deck, initialSlide, onClose, onSlideChange, o
     return aligned || recordedVisits(events, duration);
   }, [review, duration, deck.pageCount, events]);
   const visit = activeVisitIndex(visits, position);
-  const slide = position === 0 && !playing ? initialSlide : visit >= 0 ? visits[visit].slide_index : initialSlide;
+  const slide = evidenceSelected ? initialSlide : position === 0 && !playing ? initialSlide : visit >= 0 ? visits[visit].slide_index : initialSlide;
   useEffect(() => { onSlideChange?.(slide); }, [onSlideChange, slide]);
   const transcript = review?.transcript;
+  const selectedSource = model?.state.run?.parts[slide]?.attemptId === id;
+  const unalignedTranscript = !!transcript && (!visits.length || !transcriptSpans(transcript).some(span => span.wordIndex !== null));
   const activeWord = transcript ? activeWordIndex(transcript.words, position, duration) : -1;
   const stage = worker?.stage ?? (review?.transcript ? 'done' : stageOf(id));
   const canRecover = interrupted && ready && media.audio.uri === localUri(saved?.recording.audio_uri);
 
   const playWord = async (ms: number) => {
     if (!ready) return;
+    const intent = ++playbackIntent.current;
+    correctionPlayer.stop();
+    evidencePlayer.stop();
     if (control.isPlaying() && lastWordMs.current === ms) { control.pause(); return; }
     lastWordMs.current = ms;
     await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false }).catch(() => undefined);
+    if (intent !== playbackIntent.current) return;
     control.seek(ms, duration);
     control.play(ms, duration);
+  };
+  const toggleEvidence = () => {
+    if (!ready || !validEvidence || !initialEvidence || !evidenceKey || !media.audio.uri) return;
+    invalidateWordPlayback();
+    control.pause();
+    correctionPlayer.stop();
+    void evidencePlayer.playSegments(evidenceKey, [{ uri: media.audio.uri, startMs: initialEvidence.start_ms, endMs: initialEvidence.end_ms }]);
+  };
+  const close = () => {
+    invalidateWordPlayback();
+    control.pause();
+    correctionPlayer.stop();
+    evidencePlayer.stop();
+    onClose();
   };
   const recover = () => {
     if (recoveryBusy.current || !saved || !canRecover || !media.audio.uri) return;
@@ -118,19 +161,31 @@ export function TakePlayback({ id, deck, initialSlide, onClose, onSlideChange, o
       : stage === 'awaiting' && !worker?.prompt ? { label: 'Transcribe recording', press: worker?.analyze } : null;
   return (
     <View style={styles.root} accessibilityViewIsModal>
-      <Pressable accessibilityLabel="Close recording details" onPress={onClose} style={styles.scrim} />
+      <Pressable accessibilityLabel="Close recording details" onPress={close} style={styles.scrim} />
       <View style={styles.sheet}>
       {media.validators}
       <View style={styles.header}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Close recording details" onPress={onClose} style={styles.close}><Txt style={styles.closeText}>×</Txt></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="Close recording details" onPress={close} style={styles.close}><Txt style={styles.closeText}>×</Txt></Pressable>
         <View style={{ flex: 1, minWidth: 0 }}><Txt style={styles.eyebrow}>RECORDING DETAILS</Txt><Txt numberOfLines={1} style={styles.title}>{deck.title}</Txt></View>
       </View>
-      <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.scrollBody} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
         <Txt style={styles.slideLabel}>{'Slide ' + (slide + 1) + ' of ' + deck.pageCount}</Txt>
         <View style={styles.card}>
           <Txt style={styles.section}>Recording</Txt>
           <Txt style={styles.time}>{fmt(position / 1000)} <Txt style={styles.sub}>/ {duration ? fmt(duration / 1000) : '—'}</Txt></Txt>
           <View style={styles.progress}><View style={[styles.progressFill, { width: duration ? `${Math.min(100, 100 * position / duration)}%` : '0%' }]} /></View>
+          {initialEvidence && <View style={styles.evidence}>
+            <Txt style={styles.section}>Feedback evidence</Txt>
+            {!!initialEvidence.observation && <Txt style={styles.transcript}>{initialEvidence.observation}</Txt>}
+            {!!initialEvidence.speech_quote && <Txt style={styles.sub}>{'Speech: “' + initialEvidence.speech_quote + '”'}</Txt>}
+            {!!initialEvidence.slide_quote && <Txt style={styles.sub}>{'Slide: ' + initialEvidence.slide_quote}</Txt>}
+            <Txt style={styles.sub}>{'Source recording · ' + sourceTimestamp(initialEvidence.start_ms) + '–' + sourceTimestamp(initialEvidence.end_ms)}</Txt>
+            <Control label={evidencePlaying ? 'Pause feedback evidence' : evidenceSelected ? 'Resume feedback evidence' : 'Play feedback evidence'}
+              text={evidencePlaying ? 'Pause evidence' : evidenceSelected ? 'Resume evidence' : 'Play feedback evidence'} disabled={!ready || !validEvidence}
+              onPress={toggleEvidence} />
+            {!validEvidence && <Txt style={styles.notice}>Evidence interval is unavailable for this recording. The original audio is retained.</Txt>}
+            {!!evidencePlayer.error && <Txt accessibilityRole="alert" style={styles.notice}>{evidencePlayer.error}</Txt>}
+          </View>}
           {!media.audio.uri && media.audioSpec && <Control label="Download audio for offline playback" text={media.audio.busy ? 'Checking audio…' : 'Download audio'} disabled={media.audio.busy} onPress={() => void media.download()} />}
           {!!media.audio.error && <Txt style={styles.notice}>{media.audio.error}</Txt>}
           {!!status.error && <Txt style={styles.notice}>Audio could not be opened. The original file is retained.</Txt>}
@@ -145,13 +200,45 @@ export function TakePlayback({ id, deck, initialSlide, onClose, onSlideChange, o
           {stage === 'failed' && worker?.retryAt && <Txt style={styles.sub}>{'Retry available after ' + new Date(worker.retryAt).toLocaleString()}</Txt>}
           {worker && stage !== 'local' && <Control label="Refresh transcription status" text={worker.busy ? 'Checking…' : 'Refresh status'} disabled={worker.busy} onPress={() => worker.refresh?.()} />}
           {worker?.prompt && <Txt style={styles.sub}>Complete the permission or retry dialog to continue.</Txt>}
-          {!!transcript && <TranscriptWords transcript={transcript} slide={slide} visits={visits} activeWord={activeWord} duration={duration} canSeek={canSeek} onSeek={ms => { void playWord(ms); }} />}
+          {selectedSource && model && <TranscriptCorrections key={`${id}:${slide}`} model={model} id={id} slide={slide}
+            player={correctionPlayer} onBeforePlay={() => { invalidateWordPlayback(); control.pause(); evidencePlayer.stop(); }} nativePlayback={{ positionMs: position, uri: media.audio.uri, playing: playing || evidencePlaying }} />}
+          {!!transcript && (!selectedSource || unalignedTranscript) && <TranscriptWords transcript={transcript} slide={slide} visits={visits} activeWord={activeWord} duration={duration} canSeek={canSeek} onSeek={ms => { void playWord(ms); }} />}
+          {!!transcript && selectedSource && !unalignedTranscript && <>
+            <Control label={wordPlaybackSlide === slide ? 'Hide original transcript and word playback' : 'Show original transcript and word playback'}
+              text={wordPlaybackSlide === slide ? 'Hide original transcript' : 'Original transcript · word playback'}
+              onPress={() => setWordPlaybackSlide(current => current === slide ? null : slide)} />
+            {wordPlaybackSlide === slide && <>
+              <Txt style={styles.sub}>Original transcript · tap a word to listen.</Txt>
+              <TranscriptWords transcript={transcript} slide={slide} visits={visits} activeWord={activeWord} duration={duration} canSeek={canSeek} onSeek={ms => { void playWord(ms); }} />
+            </>}
+          </>}
         </View>
-        {!!transcript && <View style={styles.card}>
-          <Txt style={styles.section}>AI suggestions</Txt>
-          <Txt style={styles.sub}>Suggestions compare your delivery with the slide content and saved transcript. Check the evidence before using them.</Txt>
+        {!!transcript && <Control label={recordingToolsOpen ? 'Hide recording tools' : 'Show recording tools'}
+          text={recordingToolsOpen ? 'Hide recording tools' : 'Recording tools'} onPress={() => setRecordingToolsOpen(open => !open)} />}
+        {!!transcript && recordingToolsOpen && <RecordingWideSuggestions id={id} review={review} coach={coach} feedback={feedback} />}
+        <Control label="Show PDF offline tools" text={pdfTools ? 'Hide PDF tools' : 'PDF offline tools'} onPress={() => setPdfTools(x => !x)} />
+        {pdfTools && <PdfTools id={id} saved={saved} review={review} />}
+        {!!notice && <Txt accessibilityRole="alert" style={styles.notice}>{notice}</Txt>}
+      </ScrollView>
+      </View>
+    </View>
+  );
+}
+
+export function sourceTimestamp(ms: number) {
+  return Number.isSafeInteger(ms) && ms >= 0 ? `${fmt(Math.floor(ms / 1000))}.${String(ms % 1000).padStart(3, '0')}` : '—';
+}
+
+export function RecordingWideSuggestions({ id, review, coach, feedback }: {
+  id: string; review: ReviewAttempt | null; coach: CoachState | undefined; feedback: ReturnType<typeof readFeedback>;
+}) {
+  const [descriptionsOpen, setDescriptionsOpen] = useState(false);
+  return <View style={styles.card}>
+          <Txt style={styles.section}>Recording-wide suggestions</Txt>
+          <Txt style={styles.sub}>These suggestions cover the original recording. Selected-slide feedback is shown in Review.</Txt>
           {review?.deck_id ? <>
             <Txt style={styles.sub}>{coach?.label ?? (feedback?.result ? 'Suggestions saved on this phone' : 'Tap to load feedback options')}</Txt>
+            {!!feedback?.stale && <Txt style={styles.notice}>Feedback is outdated. Synchronize corrections, then request an update.</Txt>}
             <Control label={coach ? 'Refresh AI suggestion status' : 'Load AI suggestion status'}
               text={coach ? 'Refresh suggestion status' : 'Load suggestion status'} disabled={!!coach?.busy}
               onPress={() => { if (coach) void coach.details.refresh(); else inspectCoaching(id); }} />
@@ -161,8 +248,8 @@ export function TakePlayback({ id, deck, initialSlide, onClose, onSlideChange, o
                 (!!coach?.details.feedback && (coach.details.feedback.availability.state !== 'available' ||
                   (coach.details.feedback.feedback_revision > 0 && !coach.details.feedback.retry_available)))}
               onPress={() => requestCoaching(id)} />}
-            {!!coach?.details.feedback?.retry_available && <Control label="Regenerate AI suggestions"
-              text={coach.details.feedback.feedback_revision ? 'Regenerate suggestions' : 'Retry suggestions'}
+            {!!coach?.details.feedback?.retry_available && <Control label={coach.details.feedback.stale ? 'Update feedback' : 'Regenerate AI suggestions'}
+              text={coach.details.feedback.stale ? 'Update feedback' : coach.details.feedback.feedback_revision ? 'Regenerate suggestions' : 'Retry suggestions'}
               disabled={coach.busy || !!coach.prompt || !!coach.details.draft || coach.details.feedback.availability.state !== 'available'}
               onPress={() => requestCoaching(id)} />}
             {coach?.details.feedback?.dependency?.retry_action === 'generate_descriptions' && <Control label="Retry slide descriptions"
@@ -185,14 +272,7 @@ export function TakePlayback({ id, deck, initialSlide, onClose, onSlideChange, o
               <Txt style={styles.sub}>{'Speech evidence: ' + item.speech_quote}</Txt>
             </View>)}
           </>}
-        </View>}
-        <Control label="Show PDF offline tools" text={pdfTools ? 'Hide PDF tools' : 'PDF offline tools'} onPress={() => setPdfTools(x => !x)} />
-        {pdfTools && <PdfTools id={id} saved={saved} review={review} />}
-        {!!notice && <Txt accessibilityRole="alert" style={styles.notice}>{notice}</Txt>}
-      </ScrollView>
-      </View>
-    </View>
-  );
+        </View>;
 }
 
 function SlideDescriptions({ coach }: { coach: CoachState | undefined }) {
@@ -249,7 +329,7 @@ function SlideDescriptions({ coach }: { coach: CoachState | undefined }) {
   </View>;
 }
 
-const TranscriptWords = memo(function TranscriptWords({ transcript, slide, visits, activeWord, duration, canSeek, onSeek }: {
+export const TranscriptWords = memo(function TranscriptWords({ transcript, slide, visits, activeWord, duration, canSeek, onSeek }: {
   transcript: Transcript; slide: number; visits: Visit[]; activeWord: number; duration: number; canSeek: boolean; onSeek: (ms: number) => void;
 }) {
   useTheme();
@@ -292,7 +372,7 @@ const TranscriptWords = memo(function TranscriptWords({ transcript, slide, visit
   })}</Txt>;
 });
 
-function PdfTools({ id, saved, review }: { id: string; saved: SavedAttempt | null; review: ReviewAttempt | null }) {
+export function PdfTools({ id, saved, review }: { id: string; saved: SavedAttempt | null; review: ReviewAttempt | null }) {
   const serverDeckId = review?.deck_id || (saved?.state === 'submitted' ? saved.recording.deck_id : undefined) || null;
   const deckState = useReviewDeck(API_URL, serverDeckId, saved?.page_count);
   const knownPdfs = useReviewPdf(API_URL, serverDeckId);
@@ -323,7 +403,8 @@ const styles = createThemedStyles({
   closeText: { fontFamily: F.medium, fontSize: 28, lineHeight: 32, color: C.text },
   eyebrow: { fontFamily: F.bold, fontSize: 10, letterSpacing: 1.5, color: C.secondary },
   title: { fontFamily: F.display, fontSize: 18, color: C.text },
-  body: { paddingTop: 88, paddingHorizontal: 24, paddingBottom: 100, gap: 14 },
+  scrollBody: { position: 'absolute', left: 0, right: 0, top: 88, bottom: 0, overflow: 'hidden' },
+  body: { paddingTop: 0, paddingHorizontal: 24, paddingBottom: 100, gap: 14 },
   slideLabel: { fontFamily: F.semibold, fontSize: 13, color: C.secondary },
   card: { borderRadius: 20, borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, padding: 16, gap: 12, backgroundColor: 'rgba(255,255,255,0.05)' },
   section: { fontFamily: F.display, fontSize: 17, color: C.text },
@@ -337,6 +418,7 @@ const styles = createThemedStyles({
   buttonText: { fontFamily: F.semibold, fontSize: 13, color: C.text },
   transcript: { fontFamily: F.medium, fontSize: 15, lineHeight: 24, color: C.body },
   activeWord: { color: '#FFC791', backgroundColor: 'rgba(255,199,145,0.18)' },
+  evidence: { gap: 10, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)', paddingTop: 12 },
   suggestion: { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)', paddingTop: 10, gap: 7 },
   notice: { fontFamily: F.medium, fontSize: 13, lineHeight: 19, color: '#FFB7A7' },
   fact: { gap: 8, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)', paddingTop: 10 },

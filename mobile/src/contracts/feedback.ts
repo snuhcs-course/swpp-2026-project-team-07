@@ -23,7 +23,7 @@ export type DescriptionState = FeedbackTimes & FeedbackRetry & {
 };
 export type DescriptionGenerateRequest = { expected_selection?: string; description_set_id?: string; processing_revision?: number; acknowledge_uncertain?: boolean };
 export type DescriptionEditRequest = { description_set_id: string; description_revision: number; descriptions: Descriptions };
-export type FeedbackGenerateRequest = { expected_selection?: string; feedback_revision?: number; acknowledge_uncertain?: boolean };
+export type FeedbackGenerateRequest = { expected_selection?: string; feedback_revision?: number; acknowledge_uncertain?: boolean; transcript_revision?: number };
 export type SlideSource = { slide_index: number; source_id: string };
 export type EvidenceVisit = { slide_index: number; start_ms: number; end_ms: number; word_indexes: number[] };
 export type FeedbackEvidence = { attempt_id: string; deck_id: string; transcript_id: string; chronology_id: string;
@@ -35,6 +35,7 @@ export type CoachingSuggestion = { category: 'consistency' | 'clarity' | 'audien
   start_ms: number; end_ms: number };
 export type FeedbackOutput = { status: 'accepted' | 'partial' | 'empty' | 'all_invalid'; accepted_count: number; discarded_count: number };
 export type CoachingResult = FeedbackOutput & { message: string | null; suggestions: CoachingSuggestion[]; feedback_revision: number;
+  transcript_revision?: number; analysis_type?: string; analysis_version?: string;
   description_set_id: string; description_revision: number; provenance: CoachingProvenance; completed_at: string;
   stale: boolean; description_origin?: 'generated' | 'edited' | 'unavailable'; evidence: FeedbackEvidence;
   /** Derived locally on every parse. Never trust this bit from the server/cache. */
@@ -44,6 +45,7 @@ export type FeedbackDependency = FeedbackRetry & { deck_id: string; description_
   /** Latest dependency transition; optional for older cached metadata. */
   updated_at?: string | null };
 export type FeedbackAnalysis = FeedbackTimes & FeedbackRetry & { selection?: FeedbackSelection | null; attempt_id: string; feedback_revision: number;
+  transcript_revision?: number; analysis_type?: string; analysis_version?: string;
   state: 'absent' | 'disabled' | 'unavailable' | 'waiting_descriptions' | 'queued' | 'preparing' | 'submitted' | 'normalizing' |
     'waiting_quota' | 'needs_confirmation' | 'failed' | 'completed' | 'stale'; stage: 'descriptions' | 'coaching' | null;
   availability: { state: 'available' | 'disabled' | 'unavailable'; error: SafeFeedbackError | null };

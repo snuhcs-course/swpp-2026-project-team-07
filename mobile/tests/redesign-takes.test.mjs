@@ -63,3 +63,17 @@ test('a whole redo replaces every slide and compares all of them', () => {
   assert.ok(run.parts.slice(0, 2).every(p => p.attemptId === 'take-4'));
   assert.equal(resolveCompare(deck.id, 'old').parts[2].attemptId, 'take-3');
 });
+
+
+test('review destination follows durable take count, including partial first recordings and rejected retakes',async()=>{
+ const {reviewDestination}=await import('../src/domain/run.ts');assert.equal(typeof reviewDestination,'function');
+ const d={...deck,id:'routing-sequence'};
+ const first=commitTake(d,take('first-partial',[{slide_index:1,at_ms:0}],3000),[false,true,false],false,null);
+ assert.equal(first.run.full,false);assert.equal(reviewDestination(getDeckState(d.id).takes),'full');
+ assert.equal(reviewDestination(getDeckState(d.id).takes),'full','reopening must not consume first-recording routing');
+ const saved=JSON.parse(JSON.stringify(getDeckState(d.id)));assert.equal(reviewDestination(saved.takes),'full','persisted/reopened state keeps the rule');
+ commitTake(d,take('second',[{slide_index:1,at_ms:0}],4000),[false,true,false],false,null);resolveCompare(d.id,'old');
+ assert.equal(getDeckState(d.id).run.takeNo,1);assert.equal(reviewDestination(getDeckState(d.id).takes),'review','keeping the older run must not reset routing');
+ commitTake(d,take('redo-all',[{slide_index:0,at_ms:0}],5000),[true,false,false],true,null);resolveCompare(d.id,'new');
+ assert.equal(reviewDestination(getDeckState(d.id).takes),'review');
+});

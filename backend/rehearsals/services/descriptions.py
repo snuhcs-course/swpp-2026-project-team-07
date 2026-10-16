@@ -215,6 +215,9 @@ def admit_prepared(selection, prepared, snapshot, *, dependency=False, candidate
 @_private_database_logging()
 def edit(deck_id, payload):
     existing = DescriptionSet.objects.get(pk=payload['description_set_id'], deck_id=deck_id)
+    from .slide_profile_schema import is_profile_schema
+    if is_profile_schema(existing.schema_version):
+        raise Conflict('immutable_profile')
     prepared, snapshot = prepare_saved(deck_id)
     if prepared.input_id != existing.source_fingerprint:
         raise Conflict('source_changed')
@@ -249,7 +252,7 @@ def effective_retry_at(value, job):
 
 @_private_database_logging()
 @transaction.atomic
-def public_state(deck_id, value=None, *, absent='absent', source=None):
+def public_state(deck_id, value=None, *, absent='absent', source=None, current_selection=None):
     """Explicit allowlist. Never serialize model __dict__, snapshot or request."""
     now = timezone.now()
     if value is None:
@@ -267,7 +270,7 @@ def public_state(deck_id, value=None, *, absent='absent', source=None):
     state = 'completed' if value.descriptions is not None else job.state if job else 'failed'
     retry_at = effective_retry_at(value, job)
     try:
-        selection = Selection.current()
+        selection = current_selection or Selection.current()
         current_scope = selection.scope() == Selection.saved(value).scope()
     except FeedbackError:
         current_scope = False
@@ -520,7 +523,8 @@ def run_description(set_id, revision):
         if request.received_at:
             # No media/key/enable requirement for receipt recovery; no provider call.
             prepared = provider.PreparedRequest(provider.ProviderConfig(value.provider, value.model, ''),
-                snapshot_deck(value), 'descriptions', b'', value.input_hash)
+                snapshot_deck(value), 'descriptions', b'', value.input_hash,
+                description_schema_version=value.schema_version)
             receipt = saved_receipt(request)
         else:
             selection.credentials()

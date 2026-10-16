@@ -20,6 +20,31 @@ const { API_URL } = await import('../src/services/api.ts');
 
 const deck = { id: 'synthetic-capture-deck', title: 'Synthetic', uri: 'file:///synthetic.pdf', pageCount: 3 };
 
+test('capture uses voice AAC and stops near thirty minutes instead of ten', async t => {
+  t.mock.timers.enable({ apis: ['setInterval'] });
+  resetCaptureFixture();
+  const { ref, calls, renderer, recorder } = await mount();
+  assert.equal(recorder.options.bitRate, 64000);
+  assert.equal(recorder.options.numberOfChannels, 1);
+  assert.equal(recorder.options.android.audioEncoder, 'aac');
+  assert.equal(recorder.options.android.outputFormat, 'mpeg4');
+  assert.equal(recorder.options.directory, 'document');
+  await act(async () => { await ref.current.start(() => 0); });
+  for (const duration of [599000, 600001, 1798999]) {
+    recorder.durationMillis = duration;
+    await act(async () => { t.mock.timers.tick(70); });
+    assert.equal(calls.mustStop, 0);
+  }
+  recorder.durationMillis = 1799000;
+  await act(async () => { t.mock.timers.tick(70); });
+  assert.equal(calls.mustStop, 1);
+  let take;
+  await act(async () => { take = await ref.current.stop(); });
+  assert.equal(take.durationMs, 1799000);
+  assert.equal(getSavedAttempt(take.attemptId).recording.duration_ms, 1799000);
+  await act(async () => { renderer.unmount(); });
+});
+
 async function mount(props = {}) {
   const ref = React.createRef();
   const calls = { meter: 0, mustStop: 0, interrupted: [] };

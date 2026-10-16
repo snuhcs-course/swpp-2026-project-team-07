@@ -8,6 +8,23 @@ from .test_storage import audio_file
 
 
 class ProcessingTests(TransactionTestCase):
+    def test_long_timeline_reuses_transcript_without_second_request(self):
+        self.attempt.duration_ms = 1800000
+        self.attempt.slide_events = [{'slide_index': 1, 'at_ms': 0}, {'slide_index': 0, 'at_ms': 600001},
+                                     {'slide_index': 1, 'at_ms': 1799000}]
+        self.attempt.save(update_fields=['duration_ms', 'slide_events'])
+        self.queue()
+        raw = {'text': 'Start 끝', 'language_code': 'eng', 'words': [
+            {'type':'word','text': 'Start', 'start': 0.1, 'end': 0.4}, {'type':'word','text': '끝', 'start': 1799.1, 'end': 1799.5}]}
+        self.assertEqual(self.run_worker(raw=raw), 1)
+        self.assertEqual(self.run_worker(raw=raw), 0)
+        public = self.client.get(self.route.removesuffix('process/')).data
+        self.assertEqual(public['status'], 'completed')
+        self.assertEqual(public['transcript']['words'][-1]['end_ms'], 1799500)
+        self.assertEqual([v['slide_index'] for v in public['visits']], [1, 0, 1])
+        self.assertEqual(sum(v['duration_ms'] for v in public['metrics']['time_per_slide']), 1800000)
+        self.assertEqual(self.attempt.provider_requests.count(), 1)
+
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
@@ -337,14 +354,14 @@ class ProcessingTests(TransactionTestCase):
         claimed = claim_attempt(str(self.attempt.id), revision)
         ProviderRequest.objects.create(attempt=self.attempt, generation=revision, claim_token=claimed.claim_token,
             input_hash='0' * 64, submitted_at=timezone.now(), raw_received_at=timezone.now(), outcome='received',
-            raw_response={'text': 'saved', 'words': [{'word': 'saved', 'start': 0, 'end': 1}]})
+            raw_response={'text': 'saved', 'language_code': 'eng', 'words': [{'type':'word','text': 'saved', 'start': 0, 'end': 1}]})
         Attempt.objects.filter(pk=self.attempt.pk).update(claimed_at=timezone.now() - timedelta(seconds=361))
         with patch('rehearsals.tasks.process_attempt.delay'):
             recover_work()
         self.assertEqual(self.run_worker(), 0)
         self.assertEqual(self.attempt.transcript['text'], 'saved')
         public = self.client.get(self.route.removesuffix('process/')).data
-        self.assertEqual((public['provenance']['provider'], public['provenance']['model']), ('openai', 'whisper-1'))
+        self.assertEqual((public['provenance']['provider'], public['provenance']['model']), ('elevenlabs', 'scribe_v2'))
         self.assertEqual(self.attempt.status, 'completed')
 
     def test_stale_claim_cannot_write_or_submit_and_marker_failure_never_calls(self):
@@ -445,9 +462,9 @@ class ProcessingTests(TransactionTestCase):
             self.assertEqual((request.provider, request.model), ('elevenlabs', 'scribe_v2'))
             self.assertEqual(prepared.audio.read(), original)
             return raw
-        def normalize(value, provider):
+        def normalize(value):
             self.assertEqual(self.attempt.provider_requests.get().raw_response, raw)
-            return _normalize(value, provider)
+            return _normalize(value)
         def align(*args):
             self.attempt.refresh_from_db()
             self.assertEqual(self.attempt.transcript['text'], 'hello')

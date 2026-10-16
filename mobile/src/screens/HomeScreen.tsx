@@ -18,7 +18,7 @@
 // OpenAI Codex stable import hue: docs/ai-collaboration-prompts-iteration-2.md#stable-presentation-import-colour-october-15-2026
 // OpenAI Codex supplied stopwatch brand: docs/ai-collaboration-prompts-iteration-2.md#stopwatch-brand-icon-october-16-2026
 // The carousel stays mounted behind Upload, which blurs it and opens a gap for the new item.
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { GestureDetector, useLongPressGesture, usePanGesture, useSimultaneousGestures, useTapGesture } from 'react-native-gesture-handler';
@@ -26,17 +26,16 @@ import Animated, { Easing, runOnJS, useAnimatedReaction, useAnimatedStyle, useSh
   withTiming, cancelAnimation, useAnimatedProps, useDerivedValue, useReducedMotion, withRepeat, type SharedValue } from 'react-native-reanimated';
 import Svg, { Circle, Defs, Ellipse, G, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { Txt, useFrame } from '../design/frame';
-import { PresentationIcon, UIIcon } from '../design/icons';
+import { PresentationIcon } from '../design/icons';
 import { PanView, type PanHandlers } from '../design/PanView';
 import { C, F } from '../design/tokens';
 import { createThemedStyles, useTheme } from '../design/theme';
 import { ThemeToggle } from '../design/ThemeToggle';
-import { ScoreRing } from '../design/ScoreRing';
 import { HintRow, UndoToast } from '../design/ui';
 import { coverFlow, HOLD_MS, PULL_T, PX_PER_CARD, rubber } from '../domain/gestures';
 import { ICONS, type HueName, type IconId } from '../domain/hues';
-import { mod, nearestSlot, pad2, relativeDay } from '../domain/format';
-import { deckModel, type DeckModel } from '../features/presentations/useDeckModel';
+import { mod, nearestSlot, pad2 } from '../domain/format';
+import { HomeFeedbackStats } from './HomeFeedbackStats';
 import { getDeckState, nextHue, setHidden, setIcon, useStore, visibleDecks, type Presentation } from '../features/presentations/store';
 import { savedAttempts } from '../features/recording/storage';
 import { pdfService } from '../features/pdf/service';
@@ -257,7 +256,7 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode:
   function closePicker() { home.picker.set(withTiming(0, { duration: 220 })); setPickerFor(null); }
 
   const frontDeck = n ? decks[shown] : null;
-  const frontModel = frontDeck ? cachedHomeModel(frontDeck, storeVersion) : null;
+  void storeVersion;
   const openFullReview = () => {
     if (mode !== 'home' || pickerFor || creditsOpen || Math.abs(home.p.value - Math.round(home.p.value)) >= 0.2 || home.vy.value !== 0) return;
     const deck = decks[mod(Math.round(home.p.value), Math.max(1, n))];
@@ -306,9 +305,9 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode:
       </View>
       <Animated.View pointerEvents={mode === 'home' ? 'box-none' : 'none'} style={[StyleSheet.absoluteFill, homeControls]}>
         <PullIndicator home={home} label={pullLabel} />
-        <StatsPanel deck={frontDeck} home={home} />
-        {frontDeck && frontModel?.state.run && <Pressable accessibilityRole="button"
-          accessibilityLabel={`Full review of ${frontDeck.title}${frontModel.stats?.coverage == null ? '' : `: ${frontModel.stats.coverage}% of slide points said`}`}
+        <HomeFeedbackStats deckId={frontDeck?.id ?? null} home={home} active={mode === 'home'} />
+        {frontDeck && getDeckState(frontDeck.id).run && <Pressable accessibilityRole="button"
+          accessibilityLabel={`Full review and AI assessment of ${frontDeck.title}`}
           onPress={openFullReview} style={styles.fullReviewRingTarget} />}
         <Dots n={n} front={shown} />
         <HomeHints home={home} empty={!n} />
@@ -494,73 +493,6 @@ function PullIndicator({ home, label }: { home: import('./shared').HomeShared; l
 }
 
 // ── Stats panel for the front presentation ───────────────────────────────────
-const homeModelCache = new Map<string, { deck: Presentation; version: number; model: DeckModel }>();
-function cachedHomeModel(deck: Presentation, version: number): DeckModel {
-  const cached = homeModelCache.get(deck.id);
-  if (cached?.deck === deck && cached.version === version) return cached.model;
-  const model = deckModel(deck, getDeckState(deck.id));
-  homeModelCache.delete(deck.id);
-  homeModelCache.set(deck.id, { deck, version, model });
-  if (homeModelCache.size > 8) homeModelCache.delete(homeModelCache.keys().next().value!);
-  return model;
-}
-const StatsPanel = memo(function StatsPanel({ deck, home }: { deck: Presentation | null; home: import('./shared').HomeShared }) {
-  const { c } = useTheme();
-  const version = useStore(s => s.version);
-  const model = useMemo(() => (deck ? cachedHomeModel(deck, version) : null), [deck, version]);
-  const style = useAnimatedStyle(() => {
-    const addOp = Math.min(1, Math.abs(home.vy.value) / PULL_T);
-    const frac = Math.abs(home.p.value - Math.round(home.p.value));
-    return { opacity: (home.vy.value < 0 ? 1 - Math.min(1, addOp * 1.6) * 0.9 : 1) * Math.max(0, 1 - frac * 2.4) };
-  });
-  if (!deck || !model) return null;
-  const st = model.stats, run = model.state.run;
-  let pct = '—', unit = 'No runs yet', unitColor = c.secondary, grad: [string, string] = ['#9AF7D6', '#0EA877'], label = 'Not rehearsed yet';
-  let delta: { text: string; up: boolean } | null = null;
-  const rows: { icon: 'i-slides' | 'i-bubble' | 'i-gauge'; val: string; unit: string; op: number }[] = [];
-  const totalPts = model.points.reduce((a, p) => a + p.length, 0);
-  if (run && st) {
-    label = 'Last run · ' + (relativeDay(run.createdAt) || 'Earlier');
-    if (st.coverage != null) {
-      pct = st.coverage + '%';
-      unit = st.coverage >= 90 ? 'On point' : st.coverage >= 75 ? 'Almost there' : 'Needs work';
-      unitColor = st.coverage >= 90 ? c.good : st.coverage >= 75 ? c.warnAlt : c.badAlt;
-      grad = st.coverage >= 90 ? ['#9AF7D6', '#0EA877'] : st.coverage >= 75 ? ['#FFE58C', '#FF8A1E'] : ['#FF9A7C', '#EC2A35'];
-      const base = model.state.baselineCoverage;
-      if (base != null && base !== st.coverage) delta = { text: (st.coverage > base ? '+' : '−') + Math.abs(st.coverage - base) + '%', up: st.coverage > base };
-    } else {
-      pct = model.pending ? '…' : '—';
-      unit = model.pending ? 'Transcribing' : deck.text === 'ready' ? 'No speech' : 'No slide text';
-    }
-    rows.push({ icon: 'i-slides', val: st.coverage != null ? st.said + '/' + st.total : '—/' + (totalPts || '—'), unit: 'slide points said', op: st.coverage != null ? 1 : 0.45 });
-    rows.push({ icon: 'i-bubble', val: st.fpm != null ? st.fpm.toFixed(1) : '—', unit: 'fillers / min', op: st.fpm != null ? 1 : 0.45 });
-    rows.push({ icon: 'i-gauge', val: st.wpm != null ? String(st.wpm) : '—', unit: st.pace ? 'wpm · ' + st.pace : 'wpm', op: st.wpm != null ? 1 : 0.45 });
-  } else {
-    rows.push({ icon: 'i-slides', val: '—/' + (totalPts || '—'), unit: 'slide points said', op: 0.45 });
-    rows.push({ icon: 'i-bubble', val: '—', unit: 'fillers / min', op: 0.45 });
-    rows.push({ icon: 'i-gauge', val: '—', unit: 'wpm', op: 0.45 });
-  }
-  return (
-    <Animated.View pointerEvents="none" style={[styles.stats, style]}>
-      <ScoreRing id="gHomeScore" percent={st?.coverage ?? null} value={pct} label={unit} labelColor={unitColor} gradient={grad} />
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <View style={styles.statHead}>
-          <Txt numberOfLines={1} style={styles.statLabel}>{label}</Txt>
-          {delta && <View style={styles.delta}><UIIcon name={delta.up ? 'i-faster' : 'i-slower'} size={18} /><Txt style={[styles.deltaText, { color: delta.up ? c.good : c.warnAlt }]}>{delta.text}</Txt></View>}
-        </View>
-        <View style={{ gap: 10, marginTop: 14 }}>
-          {rows.map(r => (
-            <View key={r.icon} style={[styles.statRow, { opacity: r.op }]}>
-              <UIIcon name={r.icon} size={22} />
-              <Txt style={styles.statVal}>{r.val}</Txt>
-              <Txt numberOfLines={1} style={styles.statUnit}>{r.unit}</Txt>
-            </View>
-          ))}
-        </View>
-      </View>
-    </Animated.View>
-  );
-});
 
 function Dots({ n, front }: { n: number; front: number }) {
   const { c } = useTheme();

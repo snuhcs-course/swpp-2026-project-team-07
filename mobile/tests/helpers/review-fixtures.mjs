@@ -11,6 +11,6 @@ export function wireResult(extra = {}) {
     metrics: { duration_ms: 2000, time_per_slide: [{ slide_index: 0, duration_ms: 1000 }, { slide_index: 1, duration_ms: 1000 }], detected_language: 'en',
       speaking_rates: [{ language: 'en', unit: 'words/min', count: 1, per_minute: 30 }, { language: 'ko', unit: 'Hangul runs/min', count: 1, per_minute: 30 }], rate_note: 'Total rehearsal minutes including silence.' },
     analysis_outcome: 'speech', feedback_state: 'disabled', feedback: [], error: null,
-    provenance: { provider: 'openai', model: 'whisper-1', generation: 1, outcome: 'received', speech_gate: 'silero-vad' }, ...extra };
+    provenance: { provider: 'elevenlabs', model: 'scribe_v2', generation: 1, outcome: 'received', speech_gate: 'silero-vad' }, ...extra };
 }
 export const deckWire = { id: deckId, title: 'Synthetic presentation', page_count: 2, pdf_url: 'http://review.invalid/decks/synthetic.pdf', slides: [] };
