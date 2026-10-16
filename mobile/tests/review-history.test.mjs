@@ -67,7 +67,8 @@ test('legacy and partial transcripts degrade independently from malformed media,
   const bad = parseReview(wireResult({ slide_events: [{ slide_index: 3, at_ms: 0 }], visits: [{ slide_index: 3, start_ms: 0, end_ms: 2000, words: [] }] }), attemptId, api, deck);
   assert.deepEqual(bad.slide_events, []); assert.equal(bad.visits, null);
   assert.throws(() => parseReview(wireResult({ deck_id: attemptId }), attemptId, api, deck), /presentation/);
-  assert.throws(() => parseDeck({ ...deckWire, page_count: 11 }, deckId, api));
+  assert.equal(parseDeck({ ...deckWire, page_count: 11 }, deckId, api).page_count, 11);
+  assert.throws(() => parseDeck({ ...deckWire, page_count: 0 }, deckId, api));
   for (const url of ['http://user:pass@review.invalid/a', 'https://review.invalid/a', 'http://other.invalid/a', 'file:///a', 'http://review.invalid/a#fragment']) assert.equal(mediaUrl(url, api), null);
   assert.equal(mediaUrl('http://review.invalid/recordings/a.wav', api), 'http://review.invalid/recordings/a.wav');
 });

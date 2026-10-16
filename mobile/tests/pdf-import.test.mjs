@@ -66,8 +66,8 @@ test('removing an imported PDF deletes only its app copy and catalog entry', asy
 
 test('oversize PDF is rejected using actual file size even when the picker omits it', async () => {
   await pick('%PDF-1.7\n', { size: undefined });
-  await fs.truncate(original, 20 * 1024 * 1024 + 1);
-  await assert.rejects(pdfService.importPdf(), /20 MiB/);
+  await fs.truncate(original, 50 * 1024 * 1024 + 1);
+  await assert.rejects(pdfService.importPdf(), /50 MiB/);
   assert.deepEqual(await getImportedPdfs(), []);
 });
 

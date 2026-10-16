@@ -70,7 +70,7 @@ export const pdfService = {
     const info = await FileSystem.getInfoAsync(asset.uri);
     if (!info.exists || info.isDirectory) throw new Error("That PDF file is unavailable.");
     if (info.size === 0) throw new Error("That PDF file is empty.");
-    if (info.size > 20 * 1024 * 1024) throw new Error("Choose a PDF no larger than 20 MiB.");
+    if (info.size > 50 * 1024 * 1024) throw new Error("Choose a PDF no larger than 50 MiB.");
     const signature = await FileSystem.readAsStringAsync(asset.uri, {
       encoding: FileSystem.EncodingType.Base64,
       position: 0,

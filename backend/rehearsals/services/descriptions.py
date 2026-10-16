@@ -17,6 +17,8 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
+from rehearsals.limits import MAX_PDF_BYTES
+
 from ..models import Deck, DescriptionSet, DescriptionJob, FeedbackRequest, FeedbackReservation, FeedbackQuotaBucket, FeedbackJob
 from . import feedback_provider as provider
 from .feedback import (DeckInput, PreparedDeck, FeedbackError, deck_identity,
@@ -87,9 +89,9 @@ def storage_identity(deck, slides):
 def prepare_saved(deck_id):
     deck = Deck.objects.get(pk=deck_id)
     slides = list(deck.slides.all())
-    if not 1 <= deck.page_count <= 10 or len(slides) != deck.page_count:
+    if deck.page_count < 1 or len(slides) != deck.page_count:
         raise FeedbackError('invalid_slides')
-    pdf = _read(deck.pdf, 20 * 1024 * 1024)
+    pdf = _read(deck.pdf, MAX_PDF_BYTES)
     digest = hashlib.sha256(pdf).hexdigest()
     if not pdf.startswith(b'%PDF-') or (deck.content_hash and deck.content_hash != digest):
         raise FeedbackError('invalid_source')

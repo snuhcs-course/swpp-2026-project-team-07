@@ -32,8 +32,9 @@ personality judgments, new speaking-habit detection, or claims that a topic was
 never mentioned. Uncertain readings are not facts. Return only the requested JSON.
 """
 DESCRIPTION_PROMPT_VERSION = "description-v2"
-DESCRIPTION_SCHEMA_VERSION = "description-v1"
-GEMINI_DESCRIPTION_SCHEMA_VERSION = "description-gemini-v3"
+# Updated PDF and slide limits by OpenAI Codex, Iteration 2 (2026-10-14).
+DESCRIPTION_SCHEMA_VERSION = "description-v2"
+GEMINI_DESCRIPTION_SCHEMA_VERSION = "description-gemini-v4"
 DESCRIPTION_RULES = COMMON_RULES + """Describe every supplied slide exactly once, copying deck_id,
 slide_index and source_id. Use the source language for each slide; for und, infer
 the source language from the supplied text/image (preserve mixed languages). Each summary,
@@ -42,8 +43,8 @@ why; otherwise uncertainty is empty. Mark unreadable/ambiguous visual readings
 uncertain, including summaries depending on them. Never invent missing text.
 """
 COACHING_PROMPT_VERSION = "coaching-v1"
-COACHING_SCHEMA_VERSION = "coaching-v1"
-GEMINI_COACHING_SCHEMA_VERSION = "coaching-gemini-v2"
+COACHING_SCHEMA_VERSION = "coaching-v2"
+GEMINI_COACHING_SCHEMA_VERSION = "coaching-gemini-v3"
 COACHING_RULES = COMMON_RULES + """Give at most THREE actionable suggestions across the entire
 rehearsal, or an empty suggestions list if no supported improvement is available.
 Categories are consistency, clarity, audience; use audience only when supplied.
@@ -71,11 +72,11 @@ def _gemini_schema(node, version):
     """Project schema nodes only, never property/definition names or enum values.
 
     String constraints remain enforced locally; integer exclusive bounds become
-    equivalent inclusive bounds. Only description v3 omits array bounds to reduce
+    equivalent inclusive bounds. Description v3 and v4 omit array bounds to reduce
     this schema's complexity. Local cardinality validation remains unchanged.
     """
     result = {key: value for key, value in node.items() if key not in {"pattern", "minLength", "maxLength", "exclusiveMaximum"}}
-    if version == "description-gemini-v3":
+    if version in {"description-gemini-v3", "description-gemini-v4"}:
         result.pop("minItems", None)
         result.pop("maxItems", None)
     if "exclusiveMaximum" in node:
@@ -95,18 +96,42 @@ def _gemini_schema(node, version):
     return result
 
 
+def _historical_slide_schema(schema, stage):
+    """Rebuild the exact ten-slide wire schema for saved selections and retries."""
+    schema = dict(schema)
+    defs = dict(schema.get("$defs", {}))
+    name = "Description" if stage == "descriptions" else "Suggestion"
+    definition = dict(defs[name])
+    properties = dict(definition["properties"])
+    index = dict(properties["slide_index"])
+    index["maximum"] = 9
+    properties["slide_index"] = dict(sorted(index.items()))
+    definition["properties"] = properties
+    defs[name] = definition
+    schema["$defs"] = defs
+    if stage == "descriptions":
+        root = dict(schema["properties"])
+        slides = dict(root["slides"])
+        slides["maxItems"] = 10
+        root["slides"] = dict(sorted(slides.items()))
+        schema["properties"] = root
+    return schema
+
+
 def response_schema(provider, stage, version=None):
     current = current_schema_version(provider, stage)
     version = current if version is None else version
-    legacy = DESCRIPTION_SCHEMA_VERSION if stage == "descriptions" else COACHING_SCHEMA_VERSION
+    legacy = "description-v1" if stage == "descriptions" else "coaching-v1"
     supported = {current, legacy}
     if provider == "gemini" and stage == "descriptions":
-        supported.add("description-gemini-v2")
+        supported.update({"description-gemini-v2", "description-gemini-v3"})
+    if provider == "gemini" and stage == "coaching":
+        supported.add("coaching-gemini-v2")
     if version not in supported:
         raise FeedbackError("snapshot_unavailable")
     schema = (Descriptions if stage == "descriptions" else Suggestions).model_json_schema()
-    # v1 reconstructs the exact historical wire contract, including for Gemini.
-    # Do not silently upgrade queued jobs, explicit retries or receipt recovery.
+    if version != current:
+        schema = _historical_slide_schema(schema, stage)
     return _gemini_schema(schema, version) if provider == "gemini" and version != legacy else schema
 
 
@@ -487,3 +512,14 @@ def normalize(prepared: PreparedRequest, receipt: RawReceipt):
         return DescriptionResult(receipt.provider, receipt.model, prepared.analysis.input_id,
                                  validate_descriptions(value, prepared.analysis))
     return validate_suggestions(value, prepared.analysis, prepared.descriptions)
+
+
+# Shared with services/qa.py (Audience Q&A), which builds its own small JSON requests:
+# the same Gemini schema projection and the same output checks as the two feedback stages.
+def gemini_schema(schema):
+    return _gemini_schema(schema, None)
+
+
+def output_json(receipt: RawReceipt):
+    """Parsed JSON output of a complete 200 receipt; FeedbackError otherwise."""
+    return _output(receipt)

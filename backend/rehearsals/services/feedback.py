@@ -29,8 +29,8 @@ MAX_VISITS = 1000
 MAX_OUTPUT_BYTES = 65_536
 UUIDText = Annotated[str, Field(pattern=r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")]
 Digest = Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
-SlideIndex = Annotated[int, Field(ge=0, le=9)]
-Time = Annotated[int, Field(ge=0, le=600_000)]
+SlideIndex = Annotated[int, Field(ge=0)]
+Time = Annotated[int, Field(ge=0, le=1_200_000)]
 Language = Annotated[str, Field(min_length=1, max_length=40)]
 ShortText = Annotated[str, Field(min_length=1, max_length=400)]
 
@@ -123,7 +123,7 @@ class DeckInput(PrivateModel):
     deck_id: UUIDText
     content_hash: Digest
     preparation_version: Annotated[str, Field(min_length=1, max_length=40)]
-    slides: Annotated[tuple[SlideText, ...], Field(min_length=1, max_length=10)]
+    slides: Annotated[tuple[SlideText, ...], Field(min_length=1)]
 
 
 class Word(PrivateModel):
@@ -147,10 +147,10 @@ class Visit(PrivateModel):
 class AnalysisInput(PrivateModel):
     attempt_id: UUIDText
     deck_id: UUIDText
-    duration_ms: Annotated[int, Field(gt=0, le=600_000)]
+    duration_ms: Annotated[int, Field(gt=0, le=1_200_000)]
     speaker_language: Language
     audience: Annotated[str, Field(max_length=500)]
-    slides: Annotated[tuple[SlideText, ...], Field(min_length=1, max_length=10)]
+    slides: Annotated[tuple[SlideText, ...], Field(min_length=1)]
     transcript: Transcript | None
     visits: Annotated[tuple[Visit, ...], Field(min_length=1, max_length=MAX_VISITS)]
 
@@ -352,7 +352,7 @@ class Description(PrivateModel):
 
 
 class Descriptions(PrivateModel):
-    slides: Annotated[tuple[Description, ...], Field(min_length=1, max_length=10)]
+    slides: Annotated[tuple[Description, ...], Field(min_length=1)]
 
 
 def description_facts(slide):

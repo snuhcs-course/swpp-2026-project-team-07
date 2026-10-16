@@ -1403,7 +1403,7 @@ class DescriptionSelectionTests(SyntheticDecks, TestCase):
 class DescriptionSchemaVersionTests(SyntheticDecks, TestCase):
     def test_new_schema_has_separate_cache_and_rejects_old_initial_disclosure(self):
         current = selection_descriptor()
-        self.assertEqual(current['schema_version'], 'description-gemini-v3')
+        self.assertEqual(current['schema_version'], 'description-gemini-v4')
         versions = ['description-v1', 'description-gemini-v2']
         for version in versions:
             old_token = selection_descriptor(self.legacy_selection(version))['token']

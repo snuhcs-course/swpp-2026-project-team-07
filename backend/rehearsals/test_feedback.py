@@ -164,7 +164,7 @@ class FeedbackEvidenceTests(TestCase):
 
     def test_input_types_unknown_fields_timestamps_and_bounds_fail_closed(self):
         bad = []
-        for path, values in [(['duration_ms'], [True, '3000', 0, -1, 600001, float('nan')]),
+        for path, values in [(['duration_ms'], [True, '3000', 0, -1, 1_200_001, float('nan')]),
                              (['slides', 0, 'slide_index'], [True, -1, 10, '0', 1]),
                              (['transcript', 'words', 0, 'end_ms'], [True, '100', 3001, -1, None, float('inf')]),
                              (['transcript', 'words', 0, 'start_ms'], [501, 3000, -1]),
@@ -259,12 +259,11 @@ class FeedbackEvidenceTests(TestCase):
         self.assertNotIn('SYNTHETIC_PRIVATE_DECODE', output)
         self.assertNotIn(marker, output)
 
-    def test_ten_slide_and_aggregate_context_bound(self):
+    def test_more_than_ten_slides_and_aggregate_context_bound(self):
         value, images = fixture(slides=10)
         self.assertEqual(len(prepare_analysis(value, images).images), 10)
         value['slides'].append({**value['slides'][0], 'slide_index': 10})
-        with self.assertRaises(FeedbackError):
-            prepare_analysis(value, images + (images[0],))
+        self.assertEqual(len(prepare_analysis(value, images + (images[0],)).images), 11)
         with patch('rehearsals.services.feedback.json_bytes', return_value=b' ' * (MAX_CONTEXT_BYTES + 1)), self.assertRaises(FeedbackError):
             prepare_analysis(self.value, self.images)
 

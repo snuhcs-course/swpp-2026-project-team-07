@@ -168,7 +168,7 @@ rendered or executed. No provider audio is sent.
 
 | Bound | Value |
 | --- | --- |
-| Deck / authoritative recording | 1–10 slides / 1–600,000 integer ms |
+| Deck / authoritative recording | one or more slides / 1–1,200,000 integer ms |
 | Audience / language label | 500 / 40 characters |
 | Slide extracted text / transcript text / word text | 8,000 / 60,000 / 200 characters |
 | Original transcript words / chronological visits | 6,000 / 1,000 (excess fails; no truncation) |
@@ -698,29 +698,31 @@ substitution is introduced.
 
 | Contract | Description prompt / schema | Coaching prompt / schema |
 | --- | --- | --- |
-| New Gemini selections | `description-v2` / `description-gemini-v3` | `coaching-v1` / `coaching-gemini-v2` |
+| New Gemini selections | `description-v2` / `description-gemini-v4` | `coaching-v1` / `coaching-gemini-v3` |
+| Saved Gemini v3 selections | `description-v2` / `description-gemini-v3` | `coaching-v1` / `coaching-gemini-v2` |
 | Saved Gemini v2 selections | `description-v2` / `description-gemini-v2` | `coaching-v1` / `coaching-gemini-v2` |
 | Saved Gemini selections from checkpoints 1–4 | `description-v2` / `description-v1` | `coaching-v1` / `coaching-v1` |
-| OpenAI, unchanged | `description-v2` / `description-v1` | `coaching-v1` / `coaching-v1` |
+| New OpenAI selections | `description-v2` / `description-v2` | `coaching-v1` / `coaching-v2` |
+| Saved OpenAI selections | `description-v2` / `description-v1` | `coaching-v1` / `coaching-v1` |
 
-Description v3 equals the v2 wire schema with only schema-node `minItems` and
-`maxItems` removed. Schema traversal preserves property/definition names (even
+Description v4 removes the ten-slide bound and keeps v3’s omission of
+schema-node `minItems` and `maxItems`. Schema traversal preserves property/definition names (even
 names literally `minItems`/`maxItems`), references, required fields, strict objects,
-types, enums and all other v2 constraints. Coaching v2 retains array bounds and
+types, enums and all other v2 constraints. The prior coaching v2 retains array bounds and
 equivalent inclusive maxima (`visit_id ≤ 999`, `word_start/word_end ≤ 5999`).
-Local Pydantic/source validation still enforces 1–10 slides, complete unique source
+Local Pydantic/source validation still enforces one or more slides, complete unique source
 coverage and at most five key ideas and five visual facts per slide. Invalid
 outputs fail without repair calls. Fixed prompts, image/request/response bounds,
-OpenAI's strict schemas and coaching-v2/OpenAI serialized payloads are unchanged.
+Older saved selections retain their original serialized schemas and payloads.
 
 Effective schemas participate in prompt digests, request hashes, selection tokens
-and description cache scope. Saved description-v1 and description-gemini-v2 work,
+and description cache scope. Saved description-v1 and description-gemini-v2/v3 work,
 explicit retries and receipts reconstruct their exact old schemas, payloads, hashes
 and digests; coaching uses its saved version even while
 waiting for descriptions with no request hash yet. Unknown versions fail locally.
 No stored rows/results/provenance are rewritten. Explicit retries of legacy Gemini
 rejections retain their historical contract; they do not adopt the
-repair. New description initial admission creates a separate v3 scope; an existing
+repair. New description initial admission creates a separate v4 scope; an existing
 feedback analysis remains bound to its saved set and versions. Coordinator live verification used a new disposable selection/analysis with identical saved transcription, preserving both earlier failed scopes instead of silently converting an old generation.
 
 Defaults stay `gemini-3.1-flash-lite` / `gpt-6-luna`, configurable and disabled until

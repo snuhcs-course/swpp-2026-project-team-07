@@ -53,14 +53,14 @@ function fact(v: unknown): DescriptionFact { const r = object(v);
   if (result.uncertain !== !!result.uncertainty.trim()) fail();
   return result;
 }
-function sources(v: unknown): SlideSource[] { const result = list(v, 10).map(item => { const r = object(item);
-  return { slide_index: integer(r.slide_index, 9), source_id: digest(r.source_id) }; });
+function sources(v: unknown): SlideSource[] { const result = list(v, Number.MAX_SAFE_INTEGER).map(item => { const r = object(item);
+  return { slide_index: integer(r.slide_index), source_id: digest(r.source_id) }; });
   if (!result.length || result.some((s, i) => s.slide_index !== i)) fail();
   return result;
 }
 export function parseDescriptions(v: unknown, deckId: string, scope?: SlideSource[]): Descriptions {
-  const result = { slides: list(object(v).slides, 10).map(item => { const r = object(item); return {
-    deck_id: uuid(r.deck_id), slide_index: integer(r.slide_index, 9), source_id: digest(r.source_id), summary: fact(r.summary),
+  const result = { slides: list(object(v).slides, Number.MAX_SAFE_INTEGER).map(item => { const r = object(item); return {
+    deck_id: uuid(r.deck_id), slide_index: integer(r.slide_index), source_id: digest(r.source_id), summary: fact(r.summary),
     key_ideas: list(r.key_ideas, 5).map(fact), visual_facts: list(r.visual_facts, 5).map(fact),
   }; }) };
   if (!result.slides.length || (scope && result.slides.length !== scope.length)) fail();
@@ -97,7 +97,7 @@ function output(v: unknown): FeedbackOutput { const r = object(v);
   return result;
 }
 function evidence(v: unknown, id: string): FeedbackEvidence { const r = object(v);
-  const duration = integer(r.duration_ms, 600_000, 1), pages = integer(r.page_count, 10, 1), deck = uuid(r.deck_id);
+  const duration = integer(r.duration_ms, 1_200_000, 1), pages = integer(r.page_count, Number.MAX_SAFE_INTEGER, 1), deck = uuid(r.deck_id);
   const scope = sources(r.sources);
   const visits = list(r.visits, 1000).map(item => { const visit = object(item); return {
     slide_index: integer(visit.slide_index, pages - 1), start_ms: integer(visit.start_ms, duration - 1),

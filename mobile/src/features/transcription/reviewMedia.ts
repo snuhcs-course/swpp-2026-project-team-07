@@ -6,7 +6,7 @@ import { normalizeApi } from './analysisStorage';
 import { reviewKey } from './reviewStorage';
 import { isUuid, mediaUrl, validDuration } from './reviewValidation';
 
-export const MEDIA_LIMITS = { audio: 25_000_000, pdf: 20 * 1024 * 1024 };
+export const MEDIA_LIMITS = { audio: 25_000_000, pdf: 50 * 1024 * 1024 };
 export type MediaSpec = { api: string; id: string; kind: 'audio' | 'pdf'; url: string; durationMs?: number; pageCount?: number };
 export type MediaRecord = MediaSpec & { uri: string; bytes: number; md5: string; validated: true };
 export type Validator = (uri: string, spec: MediaSpec, signal: AbortSignal) => Promise<void>;
@@ -26,7 +26,7 @@ export function localUri(value: unknown): string | null {
 export function mediaIdentity(spec: MediaSpec) { return reviewKey(spec.api, `media-${spec.kind}`, spec.id); }
 function validSpec(spec: MediaSpec) {
   if (!isUuid(spec.id) || !mediaUrl(spec.url, spec.api) ||
-      (spec.kind === 'audio' ? !validDuration(spec.durationMs) : !Number.isInteger(spec.pageCount) || spec.pageCount! < 1 || spec.pageCount! > 10)) {
+      (spec.kind === 'audio' ? !validDuration(spec.durationMs) : !Number.isInteger(spec.pageCount) || spec.pageCount! < 1)) {
     throw new Error('Validated media metadata is unavailable. Refresh this rehearsal first.');
   }
 }
@@ -131,7 +131,7 @@ export function createMediaManager(deps: Dependencies) {
     let job = jobs.get(key);
     if (!job || job.controller.signal.aborted) {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 120_000);
+      const timer = setTimeout(() => controller.abort(), spec.kind === 'pdf' ? 300_000 : 120_000);
       const entry = { controller, consumers: new Set([consumer]), task: Promise.resolve(null as unknown as MediaRecord) };
       entry.task = run(spec, (uri, currentSpec, currentSignal) => validateForConsumers(uri, currentSpec, currentSignal, entry.consumers), controller.signal)
         .finally(() => { clearTimeout(timer); if (jobs.get(key) === entry) jobs.delete(key); });
