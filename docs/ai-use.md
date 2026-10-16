@@ -92,3 +92,46 @@ AI review identified and verified repairs for unit/operator and Unicode/length c
 [Request/contribution](ai-collaboration-prompts-iteration-2.md#evidence-validation-audit-october-16-2026),
 [checks, device GET and limitations](evidence-validation-verification.md). No fresh
 provider request, transcript rewrite, commit, push or merge.
+
+
+## Permanent recording cues with Play — October 16, 2026
+
+Contributor: Seoyeon. OpenAI Codex implemented the approved permanent Cues panel
+within an isolated, uncommitted AI/Nakajima integration, retained Play/Pause and
+relocated transcript correction controls to Review. Existing cue generation/cache,
+AI provider contracts and durable workflows are reused. Independent AI review found
+correction/boundary and playback edge cases; all confirmed findings were repaired.
+Final checks passed (331 mobile tests, Android export, 388 SQLite tests with 25 skips);
+independent re-review passed. Evidence and remaining limitations are tracked in [recording cues verification](recording-cues-verification.md).
+The [verbatim request and attribution](ai-collaboration-prompts-iteration-2.md#permanent-recording-cues-with-play-preserved--october-16-2026)
+record the scope and discarded setup-plan boundary. Automated tests, emulator checks,
+synthetic-media limitations and pending human/physical-phone checks are distinguished
+in that verification record. No commit or push performed; final inspection pending.
+
+Physical-phone preview follow-up (October 16): Contributor Seoyeon. Codex traced the
+old preview to a different Nakajima checkout and opened the integration Metro bundle
+on the connected phone through USB port 8091. Actual phone screenshot confirmed Cues
+and retained Play; saved presentations remained. Backend offline state was shown,
+with no fresh provider generation or recording. [Evidence and limits](recording-cues-verification.md#physical-phone-preview-correction--october-16-2026).
+
+
+### October 16, 2026 — Complete AI feedback integration into Nakajima UI
+
+Contributor: Seoyeon. OpenAI Codex implemented the approved requirements synchronization, shared verified-feedback status, Review/Full Review/Home bindings, Q&A access and bounded evidence playback. The exact task prompts and human choices are in the [active prompt log](ai-collaboration-prompts-iteration-2.md#complete-ai-feedback-integration-into-nakajima-ui--october-16-2026). No backend contract, cue prompt, native dependency or generation-scope change was made.
+
+Checks, independent review repairs, physical-device observations and limits are recorded in [the integration verification record](recording-cues-verification.md#complete-ai-feedback-integration-october-16-2026). User final inspection is pending. No commit, push or PR was performed.
+
+
+### October 16, 2026 — Inline synchronized Review transcript
+
+Contributor: Seoyeon. OpenAI Codex implemented the requested replacement of Review's separate black transcript window with an inline transcript below Play and above AI feedback. Existing source-owned corrections, timed highlighting, bounded evidence, original-word playback, saved-media download and recording tools were reused. The [verbatim prompt](ai-collaboration-prompts-iteration-2.md#inline-review-transcript--october-16-2026) and [verification record](recording-cues-verification.md#inline-review-transcript-october-16-2026) identify the generated material, checks and remaining human inspection. No commit, push or PR is implied.
+
+
+### October 16, 2026 — Both cue categories visible
+
+Contributor: Seoyeon. OpenAI Codex fixed Go Deeper being hidden below Must Cover by showing both as adjacent columns with persistent category labels in the existing Cues panel. Reused the same cached content, details, shared scroll and recovery actions. [Verbatim request](ai-collaboration-prompts-iteration-2.md#both-cue-categories-visible--october-16-2026) and [verification](recording-cues-verification.md#both-cue-categories-visible-october-16-2026). Human final inspection remains pending; no commit or push.
+
+
+### October 16, 2026 — Integration commit and push authorization
+
+Contributor: Seoyeon. The user explicitly requested [commit and push](ai-collaboration-prompts-iteration-2.md#integration-publication--october-16-2026) after the final staged handoffs. OpenAI Codex checked the integration branch, merge parents, exact staged source against the recorded AI reviews, existing 406-test/Android-export evidence, outgoing scope and live remote destination. The final application source is unchanged from tree `5e9306cc1bb950c3912765c1cce170c6e0715906`; only this publication record was added. This authorization supersedes the earlier final-inspection-pending state for committing and pushing this integration. It does not claim human functional acceptance, teammate approval, PR creation or merge into another branch. The resulting Git commit/ref and remote verification are reported in the task handoff.

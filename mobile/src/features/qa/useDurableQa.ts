@@ -7,14 +7,19 @@ import {readReview} from '../transcription/reviewStorage';
 import {bump,useStore} from '../presentations/store';
 import {readRequirements,getRequirementsVersion,subscribeRequirements} from '../presentations/requirementsStore';
 import {createCorrectionClient,initializeCorrections,readCorrections} from '../presentations/correctionStore';
+import {requirementsDirty} from '../presentations/requirementsDraft';
 import {initialQaEnabled} from './automatic';
 import type {DeckModel} from '../presentations/useDeckModel';
 import {qaScope,qaAnchor,qaOutdated,parseQaState,qaActive,type QaState} from './state';
+class QaRequestError extends Error {
+ constructor(status:number){super(status===400?'Q&A could not read the selected run. Review its recordings, then refresh.':status===409?'Q&A inputs changed. Refresh before retrying.':status>=500?'Q&A service is unavailable. Saved Q&A is retained.':'Q&A is unavailable on this server. Your recordings are preserved.');}
+}
 const locks=new Set<string>();
 const api=()=>normalizeApi(API_URL);
-export function useDurableQa(model:DeckModel,automatic=false){
+export function useDurableQa(model:DeckModel,automatic=false,visible=true){
  useStore(s=>s.version);useSyncExternalStore(subscribeRequirements,getRequirementsVersion);
  const requirements=readRequirements(model.deck.id,API_URL);
+ const dirty=requirementsDirty(model.deck.id,API_URL);
  const scope=qaScope(model.state.run??{parts:[]},requirements.contextId),scopeJson=String(JSON.stringify(scope)),id=String(qaAnchor(scope)??'');
  const identity=JSON.stringify([api(),id,scope]),key=`qa-state:v2:${identity}`;
  const initialKey=`qa-initial:v2:${JSON.stringify([api(),model.deck.id,scope.slides])}`;
@@ -22,9 +27,9 @@ export function useDurableQa(model:DeckModel,automatic=false){
  const sources=Object.fromEntries([...new Set(scope.slides.map(s=>s.attempt_id))].map(sid=>{
   const c=readCorrections(API_URL,sid);return [sid,{revision:c?.server.revision??0,pending:c?.pending,conflict:!!c?.conflict,sourceChanged:c?.server.source_changed}];
  }));
- const outdated=!!raw&&qaOutdated(raw,requirements.revision,sources);
+ const outdated=!!raw&&(dirty||qaOutdated(raw,requirements.revision,sources));
  const state=raw&&outdated?{...raw,stale:true,state:'stale',result:raw.result?{...raw.result,stale:true}:null}:raw;
- const fence=JSON.stringify([identity,requirements.revision]);
+ const fence=JSON.stringify([identity,requirements.revision,dirty,visible]);
  const live=useRef(fence);useLayoutEffect(()=>{live.current=fence;},[fence]);
  const save=useCallback((next:QaState)=>{
   const prior=readStored<QaState>(key);
@@ -34,28 +39,29 @@ export function useDurableQa(model:DeckModel,automatic=false){
  const request=useCallback(async(body?:object)=>{
   const response=await fetch(`${api()}/attempts/${id}/audience-qa/${body?'':`?scope=${encodeURIComponent(scopeJson)}`}`,{
    method:body?'POST':'GET',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify({scope:JSON.parse(scopeJson),...body}):undefined,signal:AbortSignal.timeout(15000)});
-  if(!response.ok)throw new Error(response.status===409?'Q&A inputs changed. Refresh before retrying.':'Q&A is unavailable. Your recordings are preserved.');
+  if(!response.ok)throw new QaRequestError(response.status);
   const next=parseQaState(await response.json(),id!,JSON.parse(scopeJson));save(next);return next;
  },[id,save,scopeJson]);
  const notice=readStored<string>(`${key}:notice`)??'';
  const message=useCallback((text:string)=>{writeStored(`${key}:notice`,text);bump();},[key]);
  const refresh=useCallback(async()=>{
-  if(!id||locks.has(key)||AppState.currentState!=='active')return;
+  if(!visible||!id||locks.has(key)||AppState.currentState!=='active')return;
   locks.add(key);
   try{const s=await request();const pending=readStored<number>(`${key}:uncertain`);if(pending!==null&&s.feedback_revision>pending)writeStored(`${key}:uncertain`,null);message('');}
-  catch{message('Offline or unavailable. Saved Q&A is retained.');}finally{locks.delete(key);}
- },[id,key,message,request]);
+  catch(error){message(error instanceof QaRequestError?error.message:'Offline or unavailable. Saved Q&A is retained.');}finally{locks.delete(key);}
+ },[visible,id,key,message,request]);
  useEffect(()=>{void refresh();const sub=AppState.addEventListener('change',s=>{if(s==='active')void refresh();});return()=>sub.remove();},[refresh]);
- const eligible=automatic&&!!id&&!!requirements.audience.trim()&&!!requirements.deckId&&model.transcribed&&!model.state.compare&&scope.slides.some(s=>initialQaEnabled(API_URL,s.attempt_id));
+ const eligible=visible&&!dirty&&automatic&&!!id&&!!requirements.audience.trim()&&!!requirements.deckId&&model.transcribed&&!model.state.compare&&scope.slides.some(s=>initialQaEnabled(API_URL,s.attempt_id));
  const active=qaActive(raw)||eligible&&!readStored(initialKey)&&readStored<number>(`${key}:uncertain`)===null&&(!raw||raw.state==='absent');
- useEffect(()=>{if(!active)return;const timer=setInterval(()=>void refresh(),4000);return()=>clearInterval(timer);},[active,refresh]);
+ useEffect(()=>{if(!visible||!active)return;const timer=setInterval(()=>void refresh(),4000);return()=>clearInterval(timer);},[visible,active,refresh]);
  const generate=useCallback(async(confirmed=false,initial=false)=>{
-  if(!id||locks.has(key))return;
+  if(!visible||!id||locks.has(key))return;
   locks.add(key);bump();
   try{
+   if(requirementsDirty(model.deck.id,API_URL))throw new Error('Synchronize presentation choices before updating Q&A.');
    if(model.state.compare)throw new Error('Choose Keep or Overwrite before updating Q&A.');
    if(!model.transcribed)throw new Error('Wait for the selected recordings to finish transcription.');
-   if(!requirements.audience.trim())throw new Error('Presentation audience is missing. Requirements entry is not available yet.');
+   if(!requirements.audience.trim())throw new Error('Presentation audience is missing. Edit presentation time and audience to add it.');
    const revisions:Record<string,number>={};
    for(const sid of [...new Set(JSON.parse(scopeJson).slides.map((s:{attempt_id:string})=>s.attempt_id))] as string[]){
     const review=readReview(API_URL,sid);
@@ -80,6 +86,7 @@ export function useDurableQa(model:DeckModel,automatic=false){
    for(const [sid,rev]of Object.entries(revisions)){
     const c=readCorrections(API_URL,sid);if(c?.pending||c?.conflict||c?.server.revision!==rev)throw new Error('Corrections changed. Synchronize before updating Q&A.');
    }
+   if(live.current!==fence||AppState.currentState!=='active'||requirementsDirty(model.deck.id,API_URL))return;
    if(fresh.dependency?.retry_action){
     if(!fresh.dependency.retry_available)throw new Error('Profile retry is not available yet.');
     writeStored(`${key}:uncertain`,fresh.feedback_revision);
@@ -94,14 +101,14 @@ export function useDurableQa(model:DeckModel,automatic=false){
    writeStored(`${key}:uncertain`,null);writeStored(`${key}:confirm`,false);message('');
   }catch(e){if(initial)writeStored(`${initialKey}:retry-at`,Date.now()+5000);message(e instanceof Error?e.message:'Q&A unavailable.');}
   finally{locks.delete(key);bump();}
- },[id,key,model.state.compare,model.transcribed,requirements.audience,requirements.deckId,scopeJson,fence,request,message,initialKey]);
+ },[visible,model.deck.id,id,key,model.state.compare,model.transcribed,requirements.audience,requirements.deckId,scopeJson,fence,request,message,initialKey]);
  const autoRef=useRef(generate);useLayoutEffect(()=>{autoRef.current=generate;});
  useEffect(()=>{
-  if(!automatic||!id||!raw||raw.state!=='absent'||raw.feedback_revision||outdated||!requirements.audience.trim()||!model.transcribed||model.state.compare||!requirements.deckId||readStored(initialKey)||readStored<number>(`${key}:uncertain`)!==null||(readStored<number>(`${initialKey}:retry-at`)??0)>Date.now())return;
+  if(!visible||dirty||!automatic||!id||!raw||raw.state!=='absent'||raw.feedback_revision||outdated||!requirements.audience.trim()||!model.transcribed||model.state.compare||!requirements.deckId||readStored(initialKey)||readStored<number>(`${key}:uncertain`)!==null||(readStored<number>(`${initialKey}:retry-at`)??0)>Date.now())return;
   if(!scope.slides.some(s=>initialQaEnabled(API_URL,s.attempt_id))||Object.values(sources).some(s=>s.pending||s.conflict||s.sourceChanged||s.revision>0))return;
   if(locks.has(key))return;
   void autoRef.current(false,true);
- },[automatic,id,raw,outdated,requirements.audience,requirements.deckId,model.transcribed,model.state.compare,initialKey,key,scope.slides,sources]);
- return {state,identity,notice,busy:locks.has(key),refresh,generate:()=>generate(),ask:!!readStored(`${key}:confirm`),
+ },[visible,dirty,automatic,id,raw,outdated,requirements.audience,requirements.deckId,model.transcribed,model.state.compare,initialKey,key,scope.slides,sources]);
+ return {state,identity,requirements,requirementsDirty:dirty,notice,busy:locks.has(key),refresh,generate:()=>generate(),ask:!!readStored(`${key}:confirm`),
  confirm:()=>generate(true),cancel:()=>{writeStored(`${key}:confirm`,false);bump();}};
 }

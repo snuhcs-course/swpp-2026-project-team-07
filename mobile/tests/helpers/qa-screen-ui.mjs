@@ -5,7 +5,7 @@ export const Enter=({children})=>React.createElement('enter',null,children),Txt=
 export const useFrame=()=>({top:0,s:1});
 export const Glyph='glyph',UIIcon='icon',MiniSlide='mini-slide',PanView='pan';
 export const Dialog='dialog',HintRow='hints',RecordButton='record-button',RecordRing='ring',Waveform='waveform',IDLE_WAVE=[];
-export const useShell=()=>({nav:{deckId:'deck',nav:null,sel:0},go:()=>{}}),useBack=()=>{};
+export const useShell=()=>({nav:{deckId:'deck',nav:null,sel:0},go:(...args)=>{(globalThis.qaScreenRoutes??=[]).push(args);}}),useBack=()=>{};
 export const useDeckModel=()=>globalThis.qaScreenModel;
 export const useDurableQa=()=>globalThis.qaScreenValue;
 export const AnswerRecorder=React.forwardRef(function AnswerRecorder(_props,ref){React.useImperativeHandle(ref,()=>({recording:()=>false}));return null;});
@@ -17,3 +17,8 @@ export const useAnimatedStyle=()=>({});
 const Animated=Object.assign(({children})=>React.createElement('svg',null,children),{View:'animated'});export default Animated;
 export const Defs='defs',LinearGradient='gradient',Rect='rect',Stop='stop';
 export const stop=()=>{},speak=()=>{},selectionAsync=async()=>{};
+
+export const PageSurface='page-surface';
+export const createThemedStyles=x=>x;
+export const useTheme=()=>({mode:'dark',c:{text:'#F5F5F7',body:'#E6E7EC',secondary:'#A7A9B4',tertiary:'#8A8D99'}});
+export const runOnJS=f=>f;

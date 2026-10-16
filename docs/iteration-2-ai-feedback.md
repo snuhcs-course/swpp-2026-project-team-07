@@ -231,3 +231,8 @@ names and structural metadata comparison. Original source/revision/word/timing c
 remain strict. No generation prompt redesign or new screen. Completed behavior,
 regressions, independent AI review and current-device GET verification are recorded
 in [the evidence ledger](evidence-validation-verification.md). No commit/push/merge.
+
+
+## Nakajima UI integration amendment — October 16
+
+Seoyeon approved connecting the existing setup overlay to saved context requirements (including existing presentations), replacing heuristic quality indicators with verified AI status/counts, and making selected-slide findings first-class Review content. This supersedes the earlier held requirements-entry restriction for this existing overlay only. The permanent recording Cues panel and selected-slide Play remain; slide-only profiles remain independent of audience/duration. Existing source/revision, explicit update/retry and uncertain-request rules remain in force. See [implementation and verification](recording-cues-verification.md#complete-ai-feedback-integration-october-16-2026) and the [exact approved plan](ai-collaboration-prompts-iteration-2.md#complete-ai-feedback-integration-into-nakajima-ui--october-16-2026).

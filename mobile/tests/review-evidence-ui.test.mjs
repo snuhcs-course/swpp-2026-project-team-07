@@ -13,7 +13,7 @@ test('validation failure statuses never blame insufficient recorded speech and v
   setup(status);let renderer,played=0;
   try{await act(async()=>{renderer=create(React.createElement(SlideReviewSummary,{slide:0,part:{attemptId:review.attempt_id,segments:[{startMs:0,endMs:1000}]},localDeckId:'evidence-ui',onEvidence:()=>played++}));});
    const text=JSON.stringify(renderer.toJSON());assert.ok(text.includes(label));assert.ok(!text.includes('Insufficient evidence'));
-   if(status==='partial'){const listen=renderer.root.findAllByType('pressable').find(n=>n.props.accessibilityLabel?.startsWith('Review content evidence'));assert.ok(listen);await act(async()=>listen.props.onPress());assert.equal(played,1);}
+   if(status==='partial'){const details=renderer.root.findAllByType('pressable').find(n=>n.props.accessibilityLabel==='Show content feedback details');assert.ok(details);await act(async()=>details.props.onPress());const listen=renderer.root.findAllByType('pressable').find(n=>n.props.accessibilityLabel?.startsWith('Review content evidence'));assert.ok(listen);await act(async()=>listen.props.onPress());assert.equal(played,1);}
   }finally{if(renderer)await act(async()=>renderer.unmount());}
  }
 });

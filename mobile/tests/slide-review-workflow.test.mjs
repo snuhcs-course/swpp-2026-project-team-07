@@ -68,15 +68,16 @@ test('offline correction synchronization blocks generation and keeps saved feedb
 });
 
 test('background during submitted generation releases UI lock and refreshes on foreground',async()=>{
+ const id='14141414-1414-4414-8414-141414141414';
  const {backgroundApp}=await import('./helpers/recording-screen-ui.mjs');
  const old=globalThis.fetch;let renderer,finish,gets=0;
  globalThis.fetch=async(url,init={})=>{
-  if(url.endsWith('/corrections/'))return response(correction(attemptId));
-  if(init.method==='POST')return new Promise(resolve=>{finish=()=>resolve(response(state(attemptId,{feedback_revision:2,state:'queued'})));});
-  gets++;return response(state(attemptId));
+  if(url.endsWith('/corrections/'))return response(correction(id));
+  if(init.method==='POST')return new Promise(resolve=>{finish=()=>resolve(response(state(id,{feedback_revision:2,state:'queued'})));});
+  gets++;return response(state(id));
  };
  try{
-  await act(async()=>{renderer=create(React.createElement(Probe,{id:attemptId}));});
+  await act(async()=>{renderer=create(React.createElement(Probe,{id}));});
   let request;await act(async()=>{request=value.generate();});assert.equal(value.busy,true);
   await act(async()=>backgroundApp('background'));
   await act(async()=>{finish();await request;});
@@ -85,15 +86,16 @@ test('background during submitted generation releases UI lock and refreshes on f
  }finally{if(renderer)await act(async()=>renderer.unmount());globalThis.fetch=old;backgroundApp('active');}
 });
 test('failed profile dependency retries only on explicit action, with its own revision',async()=>{
+ const id='15151515-1515-4515-8515-151515151515';
  const old=globalThis.fetch;let renderer;const posts=[];
  const dependency={state:'failed',retry_action:'generate_descriptions',retry_available:true,description_set_id:'33333333-3333-4333-8333-333333333333',processing_revision:3,requires_confirmation:false};
  globalThis.fetch=async(url,init={})=>{
-  if(url.endsWith('/corrections/'))return response(correction(attemptId));
+  if(url.endsWith('/corrections/'))return response(correction(id));
   if(init.method==='POST'){posts.push({url,body:JSON.parse(init.body)});return response({});}
-  return response(state(attemptId,{feedback_revision:2,state:'waiting_descriptions',dependency}));
+  return response(state(id,{feedback_revision:2,state:'waiting_descriptions',dependency}));
  };
  try{
-  await act(async()=>{renderer=create(React.createElement(Probe,{id:attemptId}));});assert.equal(posts.length,0);
+  await act(async()=>{renderer=create(React.createElement(Probe,{id}));});assert.equal(posts.length,0);
   await act(async()=>{await value.generate();});assert.equal(posts.length,1);
   assert.match(posts[0].url,/descriptions\/generate/);assert.equal(posts[0].body.processing_revision,3);
  }finally{if(renderer)await act(async()=>renderer.unmount());globalThis.fetch=old;}
@@ -165,4 +167,37 @@ test('automatic preflight never retries a generation admitted by another client'
  function Automatic(){value=useSlideReview(id,scope,{...original,attempt_id:id},null,true);return null;}
  try{await act(async()=>{renderer=create(React.createElement(Automatic));await new Promise(r=>setTimeout(r,20));});assert.equal(posts,0);assert.equal(value.state.state,'failed');}
  finally{if(renderer)await act(async()=>renderer.unmount());globalThis.fetch=old;}
+});
+
+test('confirmed unsynchronized presentation choices invalidate feedback and block explicit generation',async()=>{
+ const {confirmRequirements,acceptServerRequirements}=await import('../src/features/presentations/requirementsDraft.ts');
+ const id='12121212-1212-4212-8212-121212121212',local='dirty-feedback-synthetic';
+ const old=globalThis.fetch;let renderer,posts=0;
+ globalThis.fetch=async(_url,init={})=>{if(init.method==='POST')posts++;return response(state(id));};
+ function DirtyProbe(){value=useSlideReview(id,scope,{...original,attempt_id:id},null,false,local);return null;}
+ try{await act(async()=>{renderer=create(React.createElement(DirtyProbe));});
+  await act(async()=>confirmRequirements(local,API_URL,{audience:'Students',requiredDurationSeconds:600}));
+  assert.equal(value.state.stale,true,'pending user choices invalidate current feedback immediately');
+  await act(async()=>value.generate());assert.equal(posts,0);assert.match(value.notice,/save|synchroniz|settings/i);
+ }finally{if(renderer)await act(async()=>renderer.unmount());acceptServerRequirements(local,API_URL);globalThis.fetch=old;}
+});
+
+test('mounted feedback becomes outdated when the source transcript changes or disappears without a correction record',async()=>{
+ const id='16161616-1616-4616-8616-161616161616',source={...original,attempt_id:id};
+ const result={...original.feedback_analysis.result,review_version:'slide-review-v3',transcript_revision:0,
+  evidence:{...original.feedback_analysis.result.evidence,attempt_id:id},
+  slides:[{slide_index:0,status:'successful',evaluation_mode:'informative_descriptive',findings:[],enrichments:[]}]};
+ const completed=state(id,{feedback_revision:1,state:'completed',result});
+ const old=globalThis.fetch;let renderer,posts=0;
+ globalThis.fetch=async(_url,init={})=>{if(init.method==='POST')posts++;return response(completed);};
+ function SourceProbe({review}){value=useSlideReview(id,scope,review,null);return null;}
+ try{
+  await act(async()=>{renderer=create(React.createElement(SourceProbe,{review:source}));});
+  assert.equal(value.state.state,'completed');assert.equal(value.state.stale,false);
+  await act(async()=>renderer.update(React.createElement(SourceProbe,{review:{...source,transcript_id:'f'.repeat(64)}})));
+  assert.equal(value.state.stale,true,'same-attempt feedback must not remain current for a replacement transcript');
+  assert.equal(value.state.result.stale,true);assert.equal(posts,0);
+  await act(async()=>renderer.update(React.createElement(SourceProbe,{review:null})));
+  assert.equal(value.state.stale,true,'missing source cannot verify retained in-memory findings');
+ }finally{if(renderer)await act(async()=>renderer.unmount());globalThis.fetch=old;}
 });

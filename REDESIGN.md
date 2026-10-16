@@ -1,6 +1,6 @@
-# OutLoud redesign (October 14, 2026)
+# OutLoud redesign (October 14–16, 2026)
 
-This folder is a copy of the team repository with the mobile UI rebuilt from the OutLoud design prototype (`OutLoud — Android App Prototype`). Every earlier screen, component and gesture layer was removed, including the Iteration 2 gesture redesign. The app's functions were kept: PDF import, capture, local storage, upload, hosted transcription, AI feedback and the backend. The new screens are wired to those functions.
+This branch carries the mobile UI rebuilt from the OutLoud design prototype (`OutLoud — Android App Prototype`) and its later gesture, Review and icon revisions. Every earlier screen, component and gesture layer was removed, including the Iteration 2 gesture redesign. The app's functions were kept: PDF import, capture, local storage, upload, hosted transcription, AI feedback and the backend. The new screens are wired to those functions.
 
 ## Run it
 
@@ -20,6 +20,10 @@ The redesign adds these native modules, so an existing dev client will not load 
 
 Fonts are Bricolage Grotesque and Figtree, bundled through `@expo-google-fonts`.
 
+## Appearance
+
+The sun and moon switch beside the OutLoud wordmark changes the whole app between dark and light themes. The choice is saved locally and restored before the first screen appears. Light mode uses a `#F6F6F9` base and dark neutral text and controls; the presentation colors and ambient hue glow remain. The switch rotates 180° clockwise on each tap and respects reduced motion. The phone remains portrait while Rotate turns only the PDF preview in Rehearse. The launcher and Home credits trigger use the white and orange stopwatch mark.
+
 `npm run check` runs typecheck, lint and the Node tests.
 
 ## Screens and what they use
@@ -28,9 +32,10 @@ Fonts are Bricolage Grotesque and Figtree, bundled through `@expo-google-fonts`.
 |---|---|---|
 | Home | Cover-flow carousel with stationary icons at rest, stats panel, dots. Tap fades into the presentation; hold picks an icon; pull up adds; pull down and hold 3 s deletes, with undo. Presentations are numbered by their visible position. | `pdfService` catalog, `savedAttempts` (a PDF that saved takes still need is kept), presentation store (`features/presentations/store.ts`) |
 | Upload | Gap in the blurred carousel with the new icon kept sharp, three-stage progress ring, swipe down to cancel. | `pdfService.importPdf`; pages are rendered on the device with Android PdfRenderer; slide text comes from the server's extraction (existing `POST /decks/`); per-slide targets are set from the amount of text |
-| Rehearse | Slide track with folded corners, tick strip, red record button with 3-2-1, long-press to redo all, pace chip, waveform, cues, and slide-specific transcript panel. Tapping transcript words plays the selected sentence without a separate take control. | `CaptureEngine` (recorder-clock slide events and 1 s checkpoints), `uploadAttempt`, `useAttemptAnalysis` (Whisper), `transcriptSpans` |
+| Rehearse | The phone and controls stay in portrait. Rotate turns and enlarges only the PDF preview; swipe vertically to change slides in that view, then Rotate again to return to the slide transcript. The right circle shows elapsed time in the rotated view and Review in the normal view. Tapping transcript words in the normal view plays the selected sentence. | `CaptureEngine` (recorder-clock slide events and 1 s checkpoints), `uploadAttempt`, `useAttemptAnalysis` (Whisper), `transcriptSpans` |
 | Compare | Current and new recordings side by side; select **Keep current** or **Overwrite**, then confirm. | Run composition (`domain/run.ts`). The new recording remains pending until the choice; the active run points to one recording per slide. |
-| Review | Total vs target, chips, tip, per-slide bars, findings, strongest and weakest slide, fillers, and explicit AI suggestions. Tapping the existing slide preview opens recording details for recovery and slide descriptions. | Merged transcript and timing; validated media recovery; AI suggestions through `useFeedbackReview`, with generation requested only when tapped |
+| Review | Slide score ring, unchanged times-per-slide bars, a fixed slide card with PDF preview, playback strip and four feedback rows, plus Full review. The slide preview is display-only. | Slide-aligned transcript, timings and recorded audio; local playback uses the selected run parts |
+| Full review | Whole-run score ring and audio player, section bar, playback-following transcript and sideways slide strip. Home's coverage ring opens this screen too. | Merged run and recorded audio; slide tiles return to the matching Review slide |
 | Audience Q&A | Panel questions read aloud, answer, verdict, follow-up. | New backend endpoints (below); text-to-speech via `expo-speech` on the phone |
 
 ## How takes become a run
@@ -64,8 +69,9 @@ Files:
 ## Code map (mobile)
 
 - `src/design/`: tokens, icons (generated from the design bundle), the scaled 390 × 844 frame, slide cards, shared controls, `PanView`
+- `src/design/frame.tsx` keeps the portrait 390 × 844 canvas for every screen, including Rehearse.
 - `src/domain/`: pure rules from the spec (formatting, hues, filler words, coverage, slide targets, run merging, transcript lines, findings, gestures), all unit-tested
-- `src/screens/`: the six screens and the shell that keeps the carousel and ambient glow mounted
+- `src/screens/`: the Home, Upload, Rehearse, Compare, Review, Full review and Q&A screens, plus the shell that keeps the carousel and ambient glow mounted
 - `src/features/presentations`, `rehearsal`, `qa`: the new glue between screens and the existing services
 
 The original services and storage are unchanged apart from these additions.
@@ -79,28 +85,28 @@ Checks performed during the initial redesign build (before the later device work
   - The torch/Silero speech-gate packages were not installed for this run.
   - The PostgreSQL-only tests were skipped.
 
-Not done:
-- A device build and on-device check of the visuals and gestures. Do that first after `npm run android`.
+Not done in the initial October 14 build:
+- A device build and on-device check of the visuals and gestures. Later dated checks are in the [Iteration 2 collaboration log](docs/ai-collaboration-prompts-iteration-2.md); they do not establish full human testing.
 - Live provider calls for Audience Q&A. The tests use synthetic provider responses and a fake Whisper.
 - A run on CI's PostgreSQL/Python 3.12 setup.
 
-This folder has no `.git` metadata. To publish it, copy the changes into a clone of the repository on a new branch and open a pull request.
+The separate Desktop source folder originally had no `.git` metadata. The current changes were copied into a Git checkout for the `front-end-design-nakajima` branch. A pull request, team review, Wiki publication and coursework submission are separate steps.
 
 ### Playback and full-screen update, October 14
 
-The redesign now exposes the original recording-review functions in its own Home and Review flow: saved-take playback with transcript and slide-visit seeking, upload/transcription recovery, explicit AI feedback, slide-description editing, and server history for presentations already known on this phone. Opening playback validates audio first; PDF validation runs only when PDF offline tools are opened. The visible Home position supplies presentation numbers after deletion. The ambient glow renders behind the scaled screen frame and crossfades without moving a rectangular layer. The icon picker applies a static blur to the underlying Home layer.
+The redesign includes saved-take playback from the slide transcript, upload/transcription status, explicit AI feedback, and server history for presentations already known on this phone. Review's slide preview is display-only; it no longer opens recording details or PDF offline tools. An interrupted recording can still be inspected and recovered from the status beneath the Rehearse timer. The visible Home position supplies presentation numbers after deletion. The ambient glow renders behind the scaled screen frame and crossfades without moving a rectangular layer. The icon picker applies a static blur to the underlying Home layer.
 
 Agent-operated checks: TypeScript and uncached ESLint on the changed mobile files passed; `app:assembleRelease --offline` passed and included the final JavaScript bundle. An intermediate release on the connected Android phone visibly filled the previous dark side and system-bar margins with the ambient glow. The requester authorized interrupting a recording, and the final APK installed in place successfully. Its process launched, but the phone was locked during the first screenshot; icon-picker blur, end-to-end playback/transcription, server history, live provider calls and the final-build gesture smoothness have not yet been checked on device. No app tests were run for this update.
 
 ### Presentation-screen follow-up, October 14
 
-The Home saved-recordings shortcut was removed. Each presentation now shows local saved takes and cached server takes in a horizontal row below the slide and transcript, above Record/Redo. Opening a take reveals playback and recovery controls as a sheet over the same presentation. Both the presentation transcript and saved-take transcript are scoped to the selected slide. The recording service already stores recorder-clock slide-change events; transcript sentences are now split at the first word whose timestamp falls after each saved slide-change boundary. Older manual sentence edits that cross a new slide boundary remain stored, but need review on the resulting slide fragments. Home icons use a small UI-thread vertical float that pauses off Home and respects reduced-motion preferences. Opening a presentation fades in; the add flow blurs existing carousel cards while keeping the new icon sharp.
+The Home saved-recordings shortcut was removed. Each presentation now shows local saved takes and cached server takes in a horizontal row below the slide and transcript, above Record/Redo. Opening a take reveals playback and recovery controls as a sheet over the same presentation. Both the presentation transcript and saved-take transcript are scoped to the selected slide. The recording service already stores recorder-clock slide-change events; transcript sentences are now split at the first word whose timestamp falls after each saved slide-change boundary. Older manual sentence edits that cross a new slide boundary remain stored, but need review on the resulting slide fragments. Home icons use a small UI-thread vertical float that pauses off Home and respects reduced-motion preferences. Page entrances now use a 260 ms UI-thread opacity fade without scaling the screen; the add flow keeps its carousel blur and swipe motion while fading in the upload content.
 
 The phone's API target was corrected from the emulator-only address to USB-forwarded loopback. A release network policy permits only local development HTTP hosts; debug resources retain Metro LAN HTTP access. The local backend was offline during device checks, so upload reached `127.0.0.1` but transcription could not complete. After the final release APK was installed, the phone showed the saved-take row on the presentation and a saved take played from its sheet while the visible slide advanced to the recorded visit. A brief extra take was saved during device interaction and left intact; the app is no longer recording. TypeScript, uncached ESLint, plugin syntax/JSON checks and `app:assembleRelease --offline --quiet` passed after the changes. Live transcription, add-page blur and human smoothness remain unverified.
 
 ### Recording-choice follow-up, October 14
 
-The take row between the transcript and timer has been removed. Tapping transcript text plays the selected sentence's audio without an extra playback button. The existing Compare screen offers Keep current or Overwrite; a retake remains pending until one is chosen, including after reopening the presentation. The active run keeps one selected audio source per slide. Underlying recordings needed by other slides remain stored, and already uploaded recordings cannot be deleted through the current backend API. In Review, the existing slide preview opens recording details for media recovery and slide descriptions; this sheet no longer has separate playback buttons or slide-visit controls, and its timed transcript words start playback directly. If a capture is interrupted, the existing status beneath the timer opens those details for recovery. A recovered capture joins the active run or goes through the same keep/overwrite choice.
+The take row between the transcript and timer has been removed. Tapping transcript text plays the selected sentence's audio without an extra playback button. The existing Compare screen offers Keep current or Overwrite; a retake remains pending until one is chosen, including after reopening the presentation. The active run keeps one selected audio source per slide. Underlying recordings needed by other slides remain stored, and already uploaded recordings cannot be deleted through the current backend API. In Review, the slide preview no longer opens recording details. If a capture is interrupted, the existing status beneath the Rehearse timer opens its details for recovery. A recovered capture joins the active run or goes through the same keep/overwrite choice.
 
 Final agent-operated checks for this follow-up: TypeScript, uncached ESLint on affected mobile source and the offline Android release build passed. The release APK installed in place on the connected Samsung phone, and the presentation screen visibly had no takes row or dark strip between the transcript and timer. The app process stayed running, with no fatal or JavaScript error in the inspected recent Android log window. The backend remained offline, so timed-word playback, interrupted capture recovery and the keep/overwrite choice were not checked end to end on the phone. No app test suite or human test was performed for this follow-up.
 
@@ -115,3 +121,11 @@ TypeScript, uncached ESLint and the offline Android release build passed after t
 The repeating Home icon float, its synchronized shadow pulse and the new-presentation preview float were removed. Cards remain still at rest. Spin, pull, press, add and delete interactions retain their gesture-driven motion; the existing fade into a presentation remains.
 
 TypeScript, uncached ESLint and the offline Android release build passed. The release APK installed on the connected Samsung phone; two Home screenshots taken several seconds apart showed the icon and shadow in the same position. Gesture flows were not rechecked on device, and no app test suite or human test was run for this update.
+
+### Downward back gesture, October 15
+
+Dragging down from Rehearse, Review or Audience Q&A now fades the current page in place to reveal the already-mounted page beneath it. The same treatment covers Upload and its PDF setup overlay. Releasing a completed swipe finishes the fade before switching the active page; releasing a short swipe restores the current page. Pages underneath remain inactive until navigation completes. Horizontal slide gestures retain their existing motion.
+
+### Opening pages, October 15
+
+Opening a presentation, Upload, Review, Compare, Audience Q&A or PDF setup fades the new page over the existing screen without moving either page. Home credits and the icon picker also fade in place. The upward Review-to-Q&A gesture keeps Review fixed until Q&A opens. Rotate and same-page Home carousel interactions keep their existing behavior. These entrances use a 220 ms UI-thread opacity animation.

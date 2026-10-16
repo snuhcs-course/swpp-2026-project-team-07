@@ -11,3 +11,7 @@ export const withTiming=x=>x;
 export const audioOf=()=> 'file:///synthetic.m4a';
 export const useWorkers=()=>new Map();
 export const Enter='enter';
+
+export const useTheme=()=>({c:{text:'#fff',body:'#ddd',surface06:'#222',surface08:'#222',ink14:'#333',goldText:'#ffe',bg:'#111'}});
+
+export const suggestionActive = state => !!state && new Set(['queued','preparing','submitted','normalizing','waiting_descriptions']).has(state.state);

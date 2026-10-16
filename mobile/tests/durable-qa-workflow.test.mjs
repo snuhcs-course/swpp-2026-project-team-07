@@ -12,7 +12,7 @@ const {initializeCorrections,confirmCorrection}=await import('../src/features/pr
 const {enableInitialQa}=await import('../src/features/qa/automatic.ts');
 const {qaScope}=await import('../src/features/qa/state.ts');
 const original=withFeedback(),context='33333333-3333-4333-8333-333333333333';
-let value;function Probe({model,automatic=false}){value=useDurableQa(model,automatic);return null;}
+let value;function Probe({model,automatic=false,visible=true}){value=useDurableQa(model,automatic,visible);return null;}
 const modelFor=(name)=>({deck:{id:name},state:{run:{parts:[{attemptId,segments:[{startMs:0,endMs:1000}]}]},compare:null},transcribed:true});
 function setup(name){saveRequirements(name,API_URL,{contextId:context,deckId:original.deck_id,revision:1,audience:'Students',requiredDurationSeconds:null});globalThis.qaReviews={[attemptId]:original};return modelFor(name);}
 const response=v=>new Response(JSON.stringify(v),{status:200});
@@ -107,4 +107,25 @@ test('a persisted consumed initial scope is not backfilled when the server repor
  globalThis.fetch=async(_url,init={})=>{if(init.method==='POST')posts++;return response({...current(model),attempt_id:id});};
  try{await act(async()=>{renderer=create(React.createElement(Probe,{model,automatic:true}));});await act(async()=>value.refresh());assert.equal(posts,0);}
  finally{if(renderer)await act(async()=>renderer.unmount());globalThis.fetch=old;}
+});
+test('confirmed pending requirements immediately invalidate saved questions and block admission',async()=>{
+ const {confirmRequirements}=await import('../src/features/presentations/requirementsDraft.ts');const old=fetch,model=setup('qa-pending-requirements');let renderer,posts=0;
+ globalThis.fetch=async(url,init={})=>{if(init.method==='POST')posts++;return response(current(model,{state:'queued',feedback_revision:1}));};
+ try{await act(async()=>{renderer=create(React.createElement(Probe,{model}));});await act(async()=>confirmRequirements(model.deck.id,API_URL,{requiredDurationSeconds:600,audience:'Clients'}));assert.equal(value.state.stale,true);await act(async()=>value.generate());assert.equal(posts,0);assert.match(value.notice,/presentation|synchron/i);}finally{if(renderer)await act(async()=>renderer.unmount());globalThis.fetch=old;}
+});
+
+test('covering Q&A during preflight prevents the delayed provider admission',async()=>{
+ const old=fetch,model=setup('qa-covered-preflight');let renderer,posts=0,release,entered;
+ const waiting=new Promise(r=>release=r),started=new Promise(r=>entered=r);
+ globalThis.fetch=async(url,init={})=>{if(url.endsWith('/corrections/')){entered();await waiting;return response({attempt_id:attemptId,base_transcript_id:transcriptId,revision:0,edits:[],effective_text:original.transcript.text,source_changed:false});}if(init.method==='POST')posts++;return response(current(model));};
+ try{await act(async()=>{renderer=create(React.createElement(Probe,{model}));});let generation;await act(async()=>{generation=value.generate();await started;});await act(async()=>renderer.update(React.createElement(Probe,{model,visible:false})));await act(async()=>{release();await generation;});assert.equal(posts,0);}finally{if(renderer)await act(async()=>renderer.unmount());globalThis.fetch=old;}
+});
+
+test('HTTP 400 read failure retains current accepted requirements and is not reported as offline',async()=>{
+ const old=fetch,model=setup('qa-http400-audience');model.state.run.parts[0].attemptId='99999999-9999-4999-8999-999999999997';let renderer,requests=[];globalThis.fetch=async(_url,init={})=>{requests.push(init.method??'GET');return Response.json({error:{code:'invalid_request'}},{status:400});};
+ try{await act(async()=>{renderer=create(React.createElement(Probe,{model}));});assert.equal(value.requirements?.audience,'Students');assert.equal(value.state,null);assert.doesNotMatch(value.notice,/offline/i);assert.match(value.notice,/selected run|recordings/i);await act(async()=>value.refresh());assert.deepEqual(requests,['GET','GET']);globalThis.fetch=async()=>{throw new Error('synthetic offline');};await act(async()=>value.refresh());assert.match(value.notice,/Offline/);assert.equal(value.requirements.audience,'Students');}finally{if(renderer)await act(async()=>renderer.unmount());globalThis.fetch=old;}
+});
+test('covering an active cached question job clears the polling timer without losing its state',async()=>{
+ const old=fetch,oldSet=setInterval,oldClear=clearInterval,model=setup('qa-hidden-poll-timer');let renderer,next=0;const timers=new Set();globalThis.setInterval=()=>{const id=++next;timers.add(id);return id;};globalThis.clearInterval=id=>timers.delete(id);globalThis.fetch=async()=>response(current(model,{state:'submitted',feedback_revision:1}));
+ try{await act(async()=>{renderer=create(React.createElement(Probe,{model}));});assert.equal(timers.size,1);await act(async()=>renderer.update(React.createElement(Probe,{model,visible:false})));assert.equal(timers.size,0);assert.equal(value.state.state,'submitted');await act(async()=>renderer.update(React.createElement(Probe,{model,visible:true})));assert.equal(timers.size,1);}finally{if(renderer)await act(async()=>renderer.unmount());globalThis.fetch=old;globalThis.setInterval=oldSet;globalThis.clearInterval=oldClear;}
 });

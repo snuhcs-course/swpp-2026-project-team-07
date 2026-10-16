@@ -13,7 +13,7 @@ The backend coordinates a durable PostgreSQL queue, packaged Silero speech-prese
 
 [AI feedback checkpoints 1–5](ai-feedback.md) were implemented in PR #21 and merged after their dependencies on October 11, 2026. Gemini/OpenAI adapters provide durable editable slide descriptions, explicit rehearsal coaching, separate provider disclosure, revision-aware retries and API-scoped offline review. Up to three suggestions show exact evidence and seek the existing player; edits make affected feedback stale, and explicit regeneration reuses the saved transcript. Provider selection remains backend configuration and feedback defaults to disabled. Independent review and controlled live flows passed for both providers; [the evaluation](feedback-evaluation.md) records weak advice and description overstatement separately from structural validity. Human review and physical-phone checks remain pending.
 
-Detected no-speech saves an empty transcript, chronological visits with empty word lists, and timing metrics over the original recording duration, with zero provider requests. Repeated, backward and zero-duration visits remain visible in the result data.
+Detected no-speech saves an empty transcript, chronological visits with empty word lists, and timing metrics over the original recording duration, with zero provider requests. Repeated, backward and zero-duration visits remain visible in result data. Capture preserves forward and backward slide visits against the original audio clock.
 
 ## Local capture and limits
 
@@ -23,15 +23,16 @@ Limits are **at least one slide, 50 MiB PDF, thirty minutes (1,800,000 ms), and 
 
 ## Review a saved rehearsal
 
-In JJ's Rehearse transcript panel, each source visit starts with **First visit** or
+The normal Rehearse layout permanently displays Cues with Must Cover and Go Deeper, plus the selected slide's Play/Pause button. It does not display a transcript body. Rotated mode prioritizes the PDF and capture controls; returning restores Cues for the current slide.
+
+In Review, open **Transcript & corrections** for transcript corrections and playback. Each source visit starts with **First visit** or
 **Return visit N** and its start time in the original recording. Return counts
 include silent positive-duration visits; visits without transcript words have no
 sentence group to label. A separate retake starts its own visit count. Correcting
 or moving a sentence preserves its original visit; moved sentences also identify
 their source slide. These dividers do not alter playback or saved run selection.
 
-Tap the transcript heading or its triangle to play/pause the selected slide's
-visits. Tap a sentence or its timestamp to play that sentence; tap it again to
+Play beside Cues plays/pauses the selected slide's saved visits outside active capture. Review's playback controls retain saved slide audio, and Full Review exposes the whole run's transcript/audio and selected-slide Review navigation. Tap a sentence or its timestamp to play that sentence; tap it again to
 stop. The current word is highlighted from native audio time during slide or
 sentence playback. Pauses between words have no word highlight. If a correction
 changes the text so it no longer maps to the original timed words, the active

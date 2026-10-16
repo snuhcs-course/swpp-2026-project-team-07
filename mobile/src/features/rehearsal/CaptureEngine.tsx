@@ -1,4 +1,5 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
+// OpenAI Codex historical twenty-minute capture: docs/ai-collaboration-prompts-iteration-2.md#presentation-time-and-audience-setup-october-15-2026
 // Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
 // OutLoud redesign: microphone capture for one take.
 // Ported from the former RehearsalScreen without changing its rules: the recording

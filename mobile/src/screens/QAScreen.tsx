@@ -1,21 +1,25 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
+// OpenAI Codex finger-linked page fade: docs/ai-collaboration-prompts-iteration-2.md#finger-linked-page-fade-october-15-2026
+// OpenAI Codex audience setup: docs/ai-collaboration-prompts-iteration-2.md#presentation-time-and-audience-setup-october-15-2026
+// OpenAI Codex light-mode Q&A: docs/ai-collaboration-prompts-iteration-2.md#guide-based-light-mode-october-15-2026
 // Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
 // OutLoud redesign: Audience Q&A (SPEC §4.7, §5.7).
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, type GestureResponderEvent, type PanResponderGestureState } from 'react-native';
 import * as Speech from 'expo-speech';
 import * as Haptics from 'expo-haptics';
-import Animated, { Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, cancelAnimation, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { Enter, Txt, useFrame } from '../design/frame';
 import { Glyph, UIIcon } from '../design/icons';
 import { PanView } from '../design/PanView';
 import { MiniSlide } from '../design/SlideCard';
 import { C, EASE_SCREEN, EASE_SNAP, F, HUES, TONE } from '../design/tokens';
-import { Dialog, HintRow, IDLE_WAVE, RecordButton, RecordRing, Waveform, type Hint, type RecordGlyph } from '../design/ui';
+import { createThemedStyles, useTheme } from '../design/theme';
+import { Dialog, HintRow, IDLE_WAVE, PageSurface, RecordButton, RecordRing, Waveform, type Hint, type RecordGlyph } from '../design/ui';
 import type { IconKey } from '../domain/analysis';
 import { fmt, quote } from '../domain/format';
-import { BACK_T } from '../domain/gestures';
+import { BACK_FADE_Y, BACK_T } from '../domain/gestures';
 import { randomUUID } from 'expo-crypto';
 import { API_URL } from '../services/api';
 import { readReview } from '../features/transcription/reviewStorage';
@@ -30,23 +34,24 @@ import { useDeckModel, type DeckModel } from '../features/presentations/useDeckM
 import { useBack, useShell } from './shared';
 
 
-export function QAScreen() {
+export function QAScreen({ active = true }: { active?: boolean }) {
   const { nav } = useShell();
   const model = useDeckModel(nav.deckId);
   if (!model?.state.run) return null;
-  return <QABound key={model.state.run.id} model={model} />;
+  return <QABound key={model.state.run.id} model={model} active={active} />;
 }
 
-function QABound({model}:{model:DeckModel}){
-  const qa=useDurableQa(model);
+function QABound({model,active}:{model:DeckModel;active:boolean}){
+  const qa=useDurableQa(model,false,active);
   const [archivedIndex,setArchivedIndex]=useState<number|null>(null);
   const history=qaHistoryJobs(readQaHistory(API_URL,model.deck.id),qa.state);
   const archived=archivedIndex===null?null:history[archivedIndex]??null;
   const nextHistory=()=>setArchivedIndex(i=>i===null?0:i+1<history.length?i+1:null);
   return <QA key={archived?`saved-${archived.jobId??'legacy'}`:qaScreenKey(qa.state)} model={model} qa={qa}
-    archived={archived} historyAvailable={!!history.length} onHistory={nextHistory}/>;
+    archived={archived} historyAvailable={!!history.length} onHistory={nextHistory} active={active}/>;
 }
-function QA({ model,qa,archived,historyAvailable,onHistory }: { model: DeckModel;qa:ReturnType<typeof useDurableQa>;archived:QaSet|null;historyAvailable:boolean;onHistory:()=>void }) {
+function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: DeckModel;qa:ReturnType<typeof useDurableQa>;archived:QaSet|null;historyAvailable:boolean;onHistory:()=>void;active:boolean }) {
+  const { c } = useTheme();
   const { go, nav } = useShell();
   const frame = useFrame();
   const { deck, state } = model;
@@ -76,7 +81,8 @@ function QA({ model,qa,archived,historyAvailable,onHistory }: { model: DeckModel
   const [wave, setWave] = useState<number[]>(IDLE_WAVE);
   const countTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const ringP = useSharedValue(0), ringV = useSharedValue(0);
-  const dx = useSharedValue(0), dy = useSharedValue(0), gone = useSharedValue(0);
+  const dx = useSharedValue(0), dy = useSharedValue(0);
+  const backExiting = useRef(false);
   const player = useSegmentPlayer();
   const hue = HUES[deck.hue];
 
@@ -86,6 +92,11 @@ function QA({ model,qa,archived,historyAvailable,onHistory }: { model: DeckModel
   const Q = qs[i];
   const key = answerKey(i, part);
   const ans: StoredAnswer | undefined = set?.answers[key];
+  const currentAudience=qa.requirements.audience;
+  const sourcesPending=!model.transcribed;
+  const recoverySlide=run.parts.findIndex(part=>!!part&&!model.transcripts.has(part.attemptId)&&model.stages.get(part.attemptId)!=='no_speech');
+  const readinessMessage=qa.requirementsDirty?'Presentation choices are saved on this phone. Synchronize them before preparing questions.':sourcesPending?'Finish uploading and transcribing the selected recordings before preparing audience questions.':'';
+  const statusMessage=load.message||readinessMessage||qa.notice||(qa.state?.stale?'Questions outdated. Update using the selected recordings.':!currentAudience.trim()?'Presentation audience is missing. Edit presentation time and audience to add it.':qaActive(qa.state)?'Your audience questions are being prepared…':qa.state?.dependency?.retry_action?'Slide profile analysis needs recovery.':qa.state?.state==='failed'?'Question generation failed. Your recordings are preserved.':'Audience questions are not ready.');
   const phase: 'ask' | 'rec' | 'review' = rec ? 'rec' : ans ? 'review' : 'ask';
   const last = i === qs.length - 1;
 
@@ -98,6 +109,7 @@ function QA({ model,qa,archived,historyAvailable,onHistory }: { model: DeckModel
     Speech.speak(text, { onDone: () => setHear(h => (h === k ? null : h)), onStopped: () => setHear(h => (h === k ? null : h)), onError: () => setHear(null) });
   }, [hear, player, stopSpeak]);
   useEffect(() => () => { Speech.stop(); }, []);
+  useEffect(() => { if (!active) { Speech.stop(); player.stop(); } }, [active, player]);
   const playAnswer = () => {
     if (!ans) return;
     stopSpeak();
@@ -204,14 +216,13 @@ function QA({ model,qa,archived,historyAvailable,onHistory }: { model: DeckModel
   const back = useCallback(() => {
     if (rec || count) return;
     stopSpeak(); player.stop();
-    gone.set(1); dy.set(withTiming(520, { duration: 280 }));
-    setTimeout(() => go('review', { nav: 'fade', deckId: deck.id, sel: nav.sel }), 280);
-  }, [count, deck.id, dy, go, gone, nav.sel, player, rec, stopSpeak]);
+    go('review', { nav: null, deckId: deck.id, sel: nav.sel });
+  }, [count, deck.id, go, nav.sel, player, rec, stopSpeak]);
   const g = useRef<'x' | 'y' | null>(null);
   const busy = rec || !!count;
   const pan = {
     onMoveShould: (e: GestureResponderEvent, gs: PanResponderGestureState) => {
-      if (busy) return false;
+      if (busy || backExiting.current) return false;
       const y = (e.nativeEvent.pageY - frame.top) / frame.s;
       if (Math.abs(gs.dx) > 8 && Math.abs(gs.dx) > Math.abs(gs.dy)) { g.current = 'x'; return true; }
       if (gs.dy > 8 && gs.dy > Math.abs(gs.dx) && !(phase === 'review' && y > 158 && y < 648)) { g.current = 'y'; return true; }
@@ -221,18 +232,25 @@ function QA({ model,qa,archived,historyAvailable,onHistory }: { model: DeckModel
       if (g.current === 'x') {
         const x = gs.dx / frame.s;
         dx.set((x > 0 && i === 0) || (x < 0 && i === qs.length - 1) ? x * 0.3 : x);
-      } else { const d = Math.max(0, gs.dy / frame.s); dy.set(d > 160 ? 160 + (d - 160) * 0.5 : d); }
+      } else { dy.set(Math.min(BACK_FADE_Y, Math.max(0, gs.dy / frame.s))); }
     },
     onRelease: () => {
       if (g.current === 'x') { if (Math.abs(dx.get()) > 60) goQ(dx.get() < 0 ? 1 : -1); else dx.set(withTiming(0, { duration: 280, easing: EASE_SNAP })); }
-      else if (dy.get() > BACK_T) back();
-      else dy.set(withTiming(0, { duration: 320, easing: EASE_SCREEN }));
+      else if (dy.get() > BACK_T) {
+        backExiting.current = true;
+        dy.set(withTiming(BACK_FADE_Y, { duration: 220, easing: EASE_SCREEN }, finished => {
+          if (finished) runOnJS(back)();
+        }));
+      } else dy.set(withTiming(0, { duration: 220, easing: EASE_SCREEN }));
       g.current = null;
     },
-    onTerminate: () => { dx.set(withTiming(0)); dy.set(withTiming(0)); g.current = null; },
+    onTerminate: () => { dx.set(withTiming(0)); if (!backExiting.current) dy.set(withTiming(0)); g.current = null; },
   };
   useBack(true, () => { back(); return true; });
-  const screen = useAnimatedStyle(() => ({ opacity: gone.value ? withTiming(0, { duration: 260 }) : Math.max(0.15, 1 - dy.value / 260), transform: [{ translateY: dy.value * 0.55 }] }));
+  const screen = useAnimatedStyle(() => ({
+    // Fade to the Review page already mounted beneath Q&A.
+    opacity: Math.max(0, 1 - dy.value / BACK_FADE_Y),
+  }));
   const slideStyle = useAnimatedStyle(() => ({ opacity: Math.max(0.2, 1 - Math.abs(dx.value) / 240), transform: [{ translateX: dx.value }] }));
   useEffect(() => () => { cancelAnimation(ringP); }, [ringP]);
 
@@ -242,7 +260,7 @@ function QA({ model,qa,archived,historyAvailable,onHistory }: { model: DeckModel
   const glyph: RecordGlyph = count ? (count as 3 | 2 | 1) : rec ? 'stop' : phase === 'review' ? 'redo' : 'mic';
   const btnLabel = archived?'Saved Q&A · playback only':count ? `Starting in ${count}. Tap to cancel` : rec ? 'Stop answering' : phase === 'review' ? (part ? 'Answer the follow-up again' : 'Answer the question again') : (part ? 'Answer the follow-up' : 'Answer the question');
   const hints: Hint[] = count ? [{ icon: 'h-tap', text: 'Tap to cancel' }] : rec ? [{ icon: 'h-tap', text: 'Tap when done' }]
-    : [...(!Q||last ? [] : [{ icon: 'h-spin' as const, text: 'Next',onPress:()=>goQ(1) }]), { icon: 'h-dn', text: 'Back', nudge: 'down' }];
+    : [...(!Q||last ? [] : [{ icon: 'h-spin' as const, text: 'Next',onPress:()=>goQ(1) }]), { icon: 'h-dn', text: 'Back', nudge: 'down', onPress: back }];
   const result = ans?.status === 'done' ? ans.result : undefined;
   const short = result?.verdict === 'too_short';
   const verdict = !result ? null : short ? { text: 'Too short', tone: TONE.bad, icon: 'i-clock' as IconKey }
@@ -262,13 +280,14 @@ function QA({ model,qa,archived,historyAvailable,onHistory }: { model: DeckModel
       <AnswerRecorder key={recKey} ref={recorder} onMeter={onMeter} onMustStop={() => { void stopRec(); }} />
       <PanView style={StyleSheet.absoluteFill} {...pan}>
         <Animated.View style={[StyleSheet.absoluteFill, screen]}>
+          <PageSurface hue={deck.hue} />
           <View style={styles.header} pointerEvents="none">
             <Txt style={styles.title}>{archived?"Saved Q&A":"Audience Q&A"}</Txt>
-            <Txt numberOfLines={1} style={styles.label}>{Q ? 'Question ' + (i + 1) + ' of ' + qs.length + ' · ' + ((set?.audience ?? qa.state?.requirements.audience ?? '')+(!archived&&model.deck.requirementsDefault?' (default)':'')) : qaActive(qa.state) ? 'Writing audience questions…' : (qa.state?.requirements.audience || 'Audience not set')}</Txt>
+            <Txt numberOfLines={1} style={styles.label}>{Q ? 'Question ' + (i + 1) + ' of ' + qs.length + ' · ' + ((set?.audience ?? qa.state?.requirements.audience ?? '')+(!archived&&model.deck.requirementsDefault?' (default)':'')) : (qaActive(qa.state)?'Writing audience questions… · ':'') + (currentAudience || 'Audience not set')}</Txt>
           </View>
           {historyAvailable&&<Pressable accessibilityRole="button" accessibilityLabel={archived?'Next saved Q&A or return to current questions':'View saved Q&A'} onPress={()=>{if(rec||count)return;stopSpeak();player.stop();onHistory();}}
             style={{position:'absolute',top:18,left:16,zIndex:10,paddingVertical:6,paddingHorizontal:10}}>
-            <Txt style={{fontSize:12,color:C.secondary}}>{archived?'Next saved / Current Q&A':'Saved Q&A'}</Txt>
+            <Txt style={{fontSize:12,color:c.secondary}}>{archived?'Next saved / Current Q&A':'Saved Q&A'}</Txt>
           </Pressable>}
           {Q && (
             <Animated.View style={[styles.stage, slideStyle]}>
@@ -301,14 +320,14 @@ function QA({ model,qa,archived,historyAvailable,onHistory }: { model: DeckModel
                   )}
                   {phase === 'review' && part === 1 && (
                     <Pressable accessibilityRole="button" accessibilityLabel={'Hear the follow-up: ' + Q.follow_up} onPress={() => speak(Q.follow_up, 'f' + i)}>
-                      <Txt style={[styles.over, { color: '#FFC266' }]}>{'Follow-up · ' + Q.panelist}</Txt>
+                      <Txt style={[styles.over, { color: c.warn }]}>{'Follow-up · ' + Q.panelist}</Txt>
                       <Txt numberOfLines={3} style={styles.fSmall}>{quote(Q.follow_up)}</Txt>
                     </Pressable>
                   )}
                   {part === 1 && phase !== 'review' && (
                     <Pressable accessibilityRole="button" accessibilityLabel={(hearing('f' + i) ? 'Stop the follow-up: ' : 'Hear the follow-up: ') + Q.follow_up}
                       onPress={() => !rec && speak(Q.follow_up, 'f' + i)} style={{ gap: 8 }}>
-                      <Txt style={[styles.over, { color: '#FFC266' }]}>{'Follow-up · ' + Q.panelist}</Txt>
+                      <Txt style={[styles.over, { color: c.warn }]}>{'Follow-up · ' + Q.panelist}</Txt>
                       <Txt style={styles.fBig}>{quote(Q.follow_up)}</Txt>
                       {phase === 'ask' && <HearHint playing={hearing('f' + i)} />}
                     </Pressable>
@@ -336,7 +355,7 @@ function QA({ model,qa,archived,historyAvailable,onHistory }: { model: DeckModel
                     {part === 0 && result && !short && Q.follow_up && (
                       <Pressable accessibilityRole="button" accessibilityLabel={'Follow-up from ' + Q.panelist + ': ' + Q.follow_up}
                         onPress={() => { if (count) return; stopSpeak(); setPart(1); }} style={styles.followCard}>
-                        <Txt style={[styles.over, { color: '#FFC266' }]}>{'Follow-up · ' + Q.panelist}</Txt>
+                        <Txt style={[styles.over, { color: c.warn }]}>{'Follow-up · ' + Q.panelist}</Txt>
                         <Txt style={styles.followText}>{quote(Q.follow_up)}</Txt>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><Glyph name="h-tap" size={16} /><Txt style={styles.followHint}>{set?.answers[answerKey(i, 1)] ? 'Answered · tap to view' : 'Tap to answer'}</Txt></View>
                       </Pressable>
@@ -355,8 +374,11 @@ function QA({ model,qa,archived,historyAvailable,onHistory }: { model: DeckModel
           {!Q && (
             <View style={styles.status} pointerEvents="box-none">
               <UIIcon name={load.kind === 'error' ? 'i-flag' : 'i-bubble'} size={44} />
-              <Txt style={styles.statusText}>{load.message || qa.notice || (qa.state?.stale?'Questions outdated. Update using the selected recordings.':!qa.state?.requirements.audience?'Presentation audience is missing. Requirements entry is not available yet.':qaActive(qa.state)?'Your audience questions are being prepared…':qa.state?.dependency?.retry_action?'Slide profile analysis needs recovery.':qa.state?.state==='failed'?'Question generation failed. Your recordings are preserved.':'Audience questions are not ready.')}</Txt>
-              {!qa.busy&&!qaActive(qa.state)&&!!qa.state?.requirements.audience&&<Pressable accessibilityRole="button" onPress={regenerate} style={styles.retry}><Txt style={styles.retryText}>{qa.state?.stale?'Update questions':'Retry questions'}</Txt></Pressable>}
+              <Txt style={styles.statusText}>{statusMessage}</Txt>
+              {(!currentAudience.trim() || qa.requirementsDirty) && <Pressable accessibilityRole="button" accessibilityLabel="Edit presentation time and audience" onPress={() => { stopSpeak(); player.stop(); go('rehearse', { deckId: deck.id, editRequirements: true }); }} style={styles.retry}><Txt style={styles.retryText}>Edit time and audience</Txt></Pressable>}
+              {sourcesPending && <Pressable accessibilityRole="button" accessibilityLabel="Review selected recordings" onPress={() => { stopSpeak(); player.stop(); go('review', { nav: null, deckId: deck.id, sel: recoverySlide >= 0 ? recoverySlide : run.sel ?? nav.sel }); }} style={styles.retry}><Txt style={styles.retryText}>Review selected recordings</Txt></Pressable>}
+              <Pressable accessibilityRole="button" accessibilityLabel="Refresh audience questions status" disabled={!active || qa.busy} onPress={() => void qa.refresh()} style={styles.retry}><Txt style={styles.retryText}>Refresh status</Txt></Pressable>
+              {!sourcesPending&&!qa.busy&&!qa.requirementsDirty&&!qaActive(qa.state)&&!!qa.state?.requirements.audience&&<Pressable accessibilityRole="button" onPress={regenerate} style={styles.retry}><Txt style={styles.retryText}>{qa.state?.stale?'Update questions':'Retry questions'}</Txt></Pressable>}
             </View>
           )}
           {Q && load.kind === 'error' && <Txt style={styles.inlineError}>{load.message}</Txt>}
@@ -378,9 +400,10 @@ function QA({ model,qa,archived,historyAvailable,onHistory }: { model: DeckModel
 }
 
 function HearHint({ playing }: { playing: boolean }) {
+  const { c } = useTheme();
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-      <Glyph name={playing ? 'p-pause' : 'p-play'} size={14} color={C.secondary} />
+      <Glyph name={playing ? 'p-pause' : 'p-play'} size={14} color={c.secondary} />
       <Txt style={styles.hear}>{playing ? 'Playing…' : 'Tap to hear'}</Txt>
     </View>
   );
@@ -397,7 +420,7 @@ function Row({ icon, k, t }: { icon: IconKey; k: string; t: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyles({
   header: { position: 'absolute', left: 40, right: 40, top: 50, alignItems: 'center' },
   title: { fontFamily: F.display, fontSize: 18, lineHeight: 21.6, letterSpacing: -0.3, color: C.text },
   label: { marginTop: 3, fontFamily: F.medium, fontSize: 13, color: C.secondary },

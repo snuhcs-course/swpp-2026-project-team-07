@@ -68,7 +68,7 @@ class FeedbackProviderTests(TestCase):
         schema = current['generationConfig']['responseJsonSchema']
         self.assertNotIn('minItems', schema['properties']['slides'])
         self.assertEqual(json_bytes(schema), json_bytes(expected))
-        # Projecting v3 must not contaminate later reconstruction of v2.
+        # Projecting v4 must not contaminate later reconstruction of v2.
         self.assertEqual(response_schema('gemini', 'descriptions', 'description-gemini-v2'), previous)
 
     def test_current_gemini_wire_schema_uses_documented_subset_for_both_stages(self):

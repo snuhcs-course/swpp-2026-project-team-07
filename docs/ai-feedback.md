@@ -168,7 +168,7 @@ rendered or executed. No provider audio is sent.
 
 | Bound | Value |
 | --- | --- |
-| Deck / authoritative recording | one or more slides / 1–600,000 integer ms |
+| Deck / authoritative recording | one or more slides / 1–1,200,000 integer ms |
 | Audience / language label | 500 / 40 characters |
 | Slide extracted text / transcript text / word text | 8,000 / 60,000 / 200 characters |
 | Original transcript words / chronological visits | 6,000 / 1,000 (excess fails; no truncation) |

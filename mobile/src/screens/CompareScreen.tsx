@@ -1,14 +1,16 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
+// OpenAI Codex light-mode compare: docs/ai-collaboration-prompts-iteration-2.md#guide-based-light-mode-october-15-2026
 // Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
 // OpenAI Codex follow-up: docs/ai-collaboration-prompts-iteration-2.md#rehearsal-recording-choice-and-transcript-playback-october-14-2026
 // OutLoud redesign: Compare takes (SPEC §4.5). No swipes on this screen.
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { Enter, Txt } from '../design/frame';
 import { UIIcon } from '../design/icons';
 import { C, F, HUES } from '../design/tokens';
-import { Chip, IconRow, Pop, RecordButton } from '../design/ui';
+import { createThemedStyles, useTheme } from '../design/theme';
+import { Chip, IconRow, PageSurface, Pop, RecordButton } from '../design/ui';
 import { compareChips, compareRows, summarizeTake, type TakeSummary } from '../domain/analysis';
 import { fmt, quote } from '../domain/format';
 import { buildLines } from '../domain/lines';
@@ -19,6 +21,7 @@ import { transcriptsFor, useDeckModel } from '../features/presentations/useDeckM
 import { useBack, useShell } from './shared';
 
 export function CompareScreen() {
+  const { c: palette } = useTheme();
   const { go, nav } = useShell();
   const model = useDeckModel(nav.deckId);
   const [keep, setKeep] = useState<'old' | 'new'>('old');
@@ -55,20 +58,21 @@ export function CompareScreen() {
 
   if (!model || !view) return null;
   const glow = HUES[model.deck.hue].glow;
-  const tone = (a: number | null, b: number | null, lowerBetter: boolean) => (a == null || b == null || a === b ? C.text : (lowerBetter ? b < a : b > a) ? '#3FD9A4' : '#FF9C90');
+  const tone = (a: number | null, b: number | null, lowerBetter: boolean) => (a == null || b == null || a === b ? palette.text : (lowerBetter ? b < a : b > a) ? palette.good : palette.bad);
   const card = (kind: 'old' | 'new', T: TakeSummary, O: TakeSummary) => {
     const isNew = kind === 'new', kept = keep === kind;
     const rows = [
-      { k: 'Fillers', v: T.ready ? String(T.ft) : '…', c: isNew && T.ready && O.ready ? tone(O.ft, T.ft, true) : C.text },
-      { k: 'Points', v: view.points.length ? (T.ready ? T.said.length + ' / ' + view.points.length : '…') : '—', c: isNew && T.ready && O.ready && view.points.length ? tone(O.said.length, T.said.length, false) : C.text },
-      { k: 'Pace', v: T.wpm != null ? T.wpm + ' wpm' : T.ready ? '—' : '…', c: C.text },
+      { k: 'Fillers', v: T.ready ? String(T.ft) : '…', c: isNew && T.ready && O.ready ? tone(O.ft, T.ft, true) : palette.text },
+      { k: 'Points', v: view.points.length ? (T.ready ? T.said.length + ' / ' + view.points.length : '…') : '—', c: isNew && T.ready && O.ready && view.points.length ? tone(O.said.length, T.said.length, false) : palette.text },
+      { k: 'Pace', v: T.wpm != null ? T.wpm + ' wpm' : T.ready ? '—' : '…', c: palette.text },
     ];
     const open = !T.ready ? 'Transcribing…' : T.open ? quote(T.open) : 'Nothing said';
     return (
       <Pressable key={kind} accessibilityRole="button" accessibilityState={{ selected: kept }}
         accessibilityLabel={(isNew ? 'Overwrite with new recording' : 'Keep current recording') + ', ' + fmt(T.time) + (T.ready ? ', ' + T.ft + ' filler words' : '') + (T.wpm ? ', ' + T.wpm + ' words per minute' : '') + '. ' + (kept ? 'Selected' : 'Tap to select')}
         onPress={() => setKeep(kind)}
-        style={[styles.card, { borderColor: kept ? 'rgba(255, 255, 255, 0.5)' : 'rgba(255, 255, 255, 0.1)', backgroundColor: kept ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.04)',
+        style={[styles.card, { borderColor: kept ? palette.border50 : palette.hair,
+          backgroundColor: kept ? palette.surface10 : palette.surface04,
           opacity: kept ? 1 : 0.6, boxShadow: kept ? `0px 18px 36px ${glow}` : undefined }]}>
         <View style={styles.cardHead}>
           <Txt style={styles.cardLabel}>{isNew ? 'Overwrite' : 'Keep current'}</Txt>
@@ -89,6 +93,7 @@ export function CompareScreen() {
   };
   return (
     <Enter kind={nav.nav}>
+      <PageSurface hue={model.deck.hue} />
       <View style={styles.header} pointerEvents="none">
         <Txt numberOfLines={1} style={styles.title}>{view.title}</Txt>
         <Txt style={styles.label}>{view.label}</Txt>
@@ -104,13 +109,13 @@ export function CompareScreen() {
           {compareRows(view.A, view.B, view.points).map(r => <IconRow key={r.text} icon={r.icon} text={r.text} />)}
         </View>
       </View>
-      <Svg width={112} height={112} viewBox="0 0 112 112" style={styles.ring} pointerEvents="none"><Circle cx={56} cy={56} r={52} fill="none" stroke={C.track} strokeWidth={4} /></Svg>
+      <Svg width={112} height={112} viewBox="0 0 112 112" style={styles.ring} pointerEvents="none"><Circle cx={56} cy={56} r={52} fill="none" stroke={palette.track} strokeWidth={4} /></Svg>
       <RecordButton green glyph="check" label={keep === 'old' ? 'Keep current recording' : 'Overwrite with new recording'} onPress={() => finish(keep)} />
     </Enter>
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyles({
   header: { position: 'absolute', left: 40, right: 40, top: 50, alignItems: 'center' },
   title: { fontFamily: F.display, fontSize: 18, lineHeight: 21.6, letterSpacing: -0.3, color: C.text },
   label: { marginTop: 3, fontFamily: F.medium, fontSize: 13, color: C.secondary },

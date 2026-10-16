@@ -3,12 +3,21 @@ import { parseContext, validateRequirementValues } from '../../domain/presentati
 import { normalizeApi } from '../transcription/analysisStorage';
 import { readRequirements, reserveContext, saveRequirements } from './requirementsStore';
 
+export class PresentationContextError extends Error {
+  status: number; code: string;
+  constructor(status: number, code: string) { super(`Presentation requirements request failed (HTTP ${status}).`); this.status = status; this.code = code; }
+}
+
 export function createPresentationContextClient(apiUrl: string, transport: typeof globalThis.fetch = globalThis.fetch) {
   const api = normalizeApi(apiUrl);
   async function request(localId: string, path: string, options: RequestInit) {
     const expected = readRequirements(localId, api);
     const response = await transport(`${api}/presentation-contexts/${path}`, options);
-    if (!response.ok) throw new Error(`Presentation requirements request failed (HTTP ${response.status}).`);
+    if (!response.ok) {
+      const body = await response.json().catch(() => null);
+      const allowed = ['invalid_request', 'not_found', 'context_conflict', 'stale_revision', 'revision_exhausted', 'temporarily_unavailable'];
+      throw new PresentationContextError(response.status, allowed.includes(body?.error?.code) ? body.error.code : 'unavailable');
+    }
     const value = parseContext(await response.json());
     if (value.contextId !== expected.contextId || value.deckId !== expected.deckId) {
       throw new Error('The server returned a different presentation context.');
