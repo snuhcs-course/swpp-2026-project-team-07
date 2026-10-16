@@ -3382,8 +3382,17 @@ implemented files and the linked evidence record rather than reconstructed here.
   PostgreSQL-specific skips; `makemigrations --check --dry-run` reported no changes.
   The documentation checker passed 509 links across 59 Markdown files, and diff and
   merge-marker checks passed. Detailed commands and limitations are in the
-  [main-integration evidence](../../evidence/iteration-2/documentation/2026-10-17-main-integration.md).
+  [documentation-cleanup evidence](../../evidence/iteration-2/documentation/documentation-cleanup.md).
   No push, Wiki publication or eTL submission is implied by this local integration.
+
+### Evidence rename and publication authorization — verbatim
+
+> rename evidence for this session to documentation-cleanup. commit and push changes to it2/documentation/cleanup branch
+
+- **Human decision and authorization:** Rename this session's evidence record to
+  `documentation-cleanup.md`, commit the tracked documentation update, and push the
+  local branch to `origin/it2/documentation/cleanup`. Preserve the unrelated untracked
+  `sites/` directory.
 
 - Created the documentation index and routing policy, moved current references,
   evidence, AI records, design assets/tools and historical material into the approved
