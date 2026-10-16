@@ -12,6 +12,7 @@ import { getSavedAttempt, saveAttempt, type SavedAttempt } from '../recording/st
 import { uploadAttempt } from '../recording/upload';
 import { enableInitialQa } from '../qa/automatic';
 import { enableInitialFeedback } from '../feedback/automaticFeedback';
+import { enableAutomaticScore } from '../feedback/automaticPresentationScore';
 import { normalizeApi, readAnalysis } from '../transcription/analysisStorage';
 import { readReview } from '../transcription/reviewStorage';
 import { existingLocalFile, reviewMedia } from '../transcription/reviewMedia';
@@ -137,6 +138,7 @@ function AttemptWorker({ id }: { id: string }) {
     try {
       saveAttempt({ ...saved, auto_process_api: undefined });
       enableInitialQa(address,id);
+      enableAutomaticScore(address,id);
       handedOff.add(id);
     } catch { handOffFailed.add(id); }
     notify();

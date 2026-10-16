@@ -10,6 +10,8 @@ Base path `/api/`. JSON uses `snake_case`, UUID strings and integer milliseconds
 | `POST /attempts/` | Multipart `audio`, `metadata` JSON string | 201: `{attempt_id}` after durable storage |
 | `POST /attempts/{id}/process/` | Strict JSON process request below | 202: accepted/active `AttemptResult`; 200: completed `AttemptResult`; 409: retry conflict |
 | `GET /attempts/{id}/` | None | 200: `AttemptResult` |
+| `GET /attempts/{id}/presentation-score/` | Optional `context_id` query UUID | 200: v2 scoring state; read-only |
+| `POST /attempts/{id}/presentation-score/` | Optional `context_id`, selection/revision/acknowledgement controls | 202 active; 200 completed; existing retry conflicts |
 | `GET /attempts/{id}/feedback/` | None | 200: independent feedback state; read-only |
 | `POST /attempts/{id}/feedback/generate/` | Strict JSON feedback request below | 202: active; 200: current completed; 409: selection/revision/confirmation/cooldown conflict |
 | `POST /decks/{id}/qa/questions/` | Strict JSON Audience Q&A question request below | 200: `{questions, provider, model}`; 404 `deck_not_found`; 503 configuration; 429 cooldown; 502 provider |
@@ -1077,3 +1079,36 @@ explicit administrative command can revalidate one completed current receipt
 without AI work; stale source/revision/generation/hash checks remain mandatory.
 It defaults to dry run and applies idempotently only with `--apply`. See
 [evidence verification](evidence-validation-verification.md) for commands and limits.
+
+
+## Presentation scoring v2
+
+The [frozen scoring contract](presentation-score-v2.md) defines criteria, exact
+weights, statuses and public evidence. A response includes `schema_version` and
+`rubric_version` equal to `presentation-score-v2`, `source_identity`,
+`assessment_status`, the existing durable-job state, `requirements`, and nullable
+`result`. Requirements are `{context_id, revision, audience,
+required_duration_seconds}`; active/saved generations expose their captured
+requirements, while an absent score exposes current requirements. Projection stays
+bound to the generation read, even if another request advances the owner.
+
+GET never creates a job or calls a provider. Explicit POST uses the existing durable
+transport: selection assertions, revision fences, cooldowns, uncertain-submission
+acknowledgement and saved-receipt recovery. Singleton slide review owns separate
+jobs; scoring does not require grouped review admission or memberships.
+
+A stale result or an older completed generation is retained privately but withheld
+from the current numeric response. Invalid score-critical evidence suppresses the
+affected component and any dependent total; malformed optional advice is filtered
+individually. Original visits, including empty/zero-duration rows, retain their
+original IDs. Playback's positive-duration filtering must not renumber citations.
+Private receipts, model selections and reconstruction audits are never public.
+
+
+### Automatic scoring and rejected-total recovery — October 17, 2026
+
+The Android app-level scoring host admits first assessments for new selected recordings and selected saved recordings after opening their presentation. It reuses the existing POST shape after transcripts and confirmed settings/corrections synchronize. Later synchronized input changes coalesce for one second. Persistent per-input intent and shared submission locks prevent repeated navigation, cache publications, concurrent screens and remounts from admitting duplicate work. GET remains read-only. Unresolved POST intent reconciles through foreground GET polling; failures and uncertain outcomes require explicit recovery rather than automatic same-input paid retries. Singleton feedback and Q&A remain independent.
+
+The scoring prompt is now `presentation-score-prompt-v2.1`; public schema, rubric, exact arithmetic and evidence validation remain v2. Assessed delivery must directly cite supporting original speech plus an eligible non-signal measurement. Measurements/requirements alone remain rejected. A completed `invalid_evidence` assessment exposes cooldown-aware `retry_available`; its Retry POST must include the matching `feedback_revision`. Current non-stale active/completed duplicate POSTs remain no-ops unless a rejected assessment receives an explicit revision-fenced Retry; failed/stale requests without a revision return a conflict. A fresh generation may replace the exact recognized previous v2 protocol, but old receipts cannot normalize under the replacement prompt; unsupported protocol snapshots remain unavailable. Stored JSON key ordering does not change protocol identity.
+
+Home, Full Review and slide reviews share validated score projection and level colors: Beginning red, Emerging amber, Competent green, Advanced blue; unavailable/stale/pending results remain neutral. Criteria and weights stay in this contract and backend validation but are hidden in product screens. Direct summaries, strengths, weaknesses, improvements and supporting playback remain available. Home displays the same selected-run overall score as Full Review, plus total current verified findings once, selected-run duration and WPM. Composite/incomplete sources cannot borrow another recording's overall score.

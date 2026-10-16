@@ -26,6 +26,7 @@ import { AnalysisHost, stageOf, usePlaybackIds, useWorkers } from '../features/r
 import { DefaultRequirementsHost } from '../features/presentations/DefaultRequirementsHost';
 import { InitialQaHost } from '../features/qa/InitialQaHost';
 import { InitialFeedbackHost } from '../features/feedback/InitialFeedbackHost';
+import { InitialPresentationScoreHost } from '../features/feedback/InitialPresentationScoreHost';
 import { CoachHost, useCoaches } from '../features/rehearsal/coaching';
 import { deckById, getDeckState, loadPresentations, nextHue, useStore, visibleDecks } from '../features/presentations/store';
 import { HomeScreen } from './HomeScreen';
@@ -125,6 +126,7 @@ export function AppShell() {
       <CoachHost />
       <DefaultRequirementsHost />
       <InitialFeedbackHost />
+      <InitialPresentationScoreHost openedDeckId={['rehearse','review','full'].includes(s)?nav.deckId:null} />
       <InitialQaHost />
       </HomeContext.Provider>
     </ShellContext.Provider>

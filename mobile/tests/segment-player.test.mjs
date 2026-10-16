@@ -117,3 +117,24 @@ test('slide playback sequences visits; pause/resume and sentence tap-again still
   assert.equal(h.value.playingKey, null);
   await h.unmount();
 });
+
+
+test('zero-duration evidence never creates a native seek or fabricated playback interval',async()=>{
+ const h=await mount();
+ try{
+  await act(async()=>{await h.value.play('point-evidence',seg(1500,1500));});
+  assert.equal(h.value.playingKey,null);assert.equal(h.player.playing,false);
+  assert.deepEqual(h.player.seeks,[]);assert.deepEqual(h.player.replacements,[]);
+ }finally{await h.unmount();}
+});
+test('playback skips empty visits while retaining repeated positive-duration visits in order',async t=>{
+ t.mock.timers.enable({apis:['setInterval']});const h=await mount();
+ try{
+  await act(async()=>{await h.value.playSegments('repeated-evidence',[seg(0,0),seg(0,1000),seg(1000,1000),seg(1500,2000)]);});
+  assert.deepEqual(h.player.seeks,[0]);
+  h.player.currentTime=1;await act(async()=>t.mock.timers.tick(50));
+  assert.deepEqual(h.player.seeks,[0,1.5]);
+  h.player.currentTime=2;await act(async()=>t.mock.timers.tick(50));
+  assert.equal(h.value.playingKey,null);assert.equal(h.player.playing,false);
+ }finally{await h.unmount();}
+});

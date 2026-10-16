@@ -1,12 +1,15 @@
 // OpenAI Codex Review and Full review: docs/ai-collaboration-prompts-iteration-2.md#review-and-full-review-redesign-october-15-2026
 // Real merged-run audio, timed transcript and verified AI assessment status.
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, type GestureResponderEvent, type PanResponderGestureState } from 'react-native';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Enter, Txt, useFrame } from '../design/frame';
 import { Glyph, UIIcon } from '../design/icons';
 import { PanView } from '../design/PanView';
-import { ScoreRing } from '../design/ScoreRing';
+import { PresentationScorePanel, PresentationScoreRing } from '../features/feedback/PresentationScorePanel';
+import { useRunPresentationScores } from '../features/feedback/useRunPresentationScores';
+import { currentScoreEvidence, scoreAudioEvidence, scoreLevelColor, scoreLevelLabel, scorePlaybackSource } from '../features/feedback/presentationScoreDisplay';
+import type { ScoreEvidence } from '../features/feedback/presentationScore';
 import { EASE_SCREEN, F } from '../design/tokens';
 import { useTheme } from '../design/theme';
 import { Dialog, HintRow, PageSurface } from '../design/ui';
@@ -31,10 +34,16 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
   const model = useDeckModel(nav.deckId);
   const run = model?.state.run ?? null;
   const feedback = useRunFeedbackStatus(model, active);
+  const scores = useRunPresentationScores(model, active);
+  const scoreSource = useRef({item:scores.overall,target:scores.target,active});
+  useLayoutEffect(()=>{scoreSource.current={item:scores.overall,target:scores.target,active};return()=>{scoreSource.current.active=false;};},[scores.overall,scores.target,active]);
   const [missingAudio, setMissingAudio] = useState<{slides:number[];signature:string}|null>(null);
   const now = useNow();
   const player = useSegmentPlayer();
   const stopPlayback = player.stop;
+  const scoreEvidenceSource=useRef<string|null>(null);
+  const scorePlaybackIdentity=scorePlaybackSource(scores.overall.state,scores.target);
+  useEffect(()=>{if(player.playingKey?.startsWith('score-evidence:')&&scoreEvidenceSource.current!==scorePlaybackIdentity)stopPlayback();},[scorePlaybackIdentity,player.playingKey,stopPlayback]);
   const sourceIdentity=JSON.stringify(run?.parts??[]);
   useEffect(()=>{stopPlayback();},[sourceIdentity,stopPlayback]);
   const dy = useSharedValue(0);
@@ -115,6 +124,19 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
     if (noteTimer.current) clearTimeout(noteTimer.current);
     noteTimer.current = setTimeout(() => setAudioNote(''), 3000);
   };
+  const onScoreEvidence = (refs: ScoreEvidence[]) => {
+    const current=scoreSource.current;
+    if(!current.active||!currentScoreEvidence(current.item.state,current.target,refs))return;
+    const fact=refs.find(ref=>ref.kind==='slide');
+    if(fact?.kind==='slide'){openSlide(fact.slide_index);return;}
+    const audio=scoreAudioEvidence(refs),duration=current.target!.review?.duration_ms??0;
+    if(!audio.length||audio.some(ref=>ref.attempt_id!==current.target!.id||ref.end_ms>duration))return;
+    const uri=audioOf(current.target!.id);
+    if(!uri){note('Original recording audio is not on this phone. Open its slide review to download it.');return;}
+    scoreEvidenceSource.current=scorePlaybackSource(current.item.state,current.target);
+    setAudioNote('Playing cited intervals from the original recording');setMode(null);setPlan([]);
+    void player.playSegments(`score-evidence:${current.target!.id}:${audio.map(ref=>`${ref.start_ms}:${ref.end_ms}`).join(',')}`,audio.map(ref=>({uri,startMs:ref.start_ms,endMs:ref.end_ms})));
+  };
   const wholeAudio = (): { segments: Segment[]; entries: RunAudioPlanEntry[]; missing:number[] } => {
     const segments: Segment[] = [], entries: RunAudioPlanEntry[] = [], missing: number[] = [];
     times.forEach((t, i) => {
@@ -168,8 +190,7 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
           <Txt numberOfLines={1} style={[styles.label, { color: c.secondary }]}>{'Full review · ' + runLabel(run, now, relativeDay)}</Txt>
         </View>
         <View style={styles.ringRow}>
-          <ScoreRing id="gFullAssessment" percent={a.recorded?100*a.assessed/a.recorded:null} value={`${a.assessed}/${a.recorded}`}
-            label="slides assessed" labelColor={c.secondary} gradient={['#9AF7D6','#0EA877']} />
+          <PresentationScoreRing id="gFullAssessment" label="Overall score" item={scores.overall}/>
           <View style={styles.ringStats}>
             <Stat icon="i-clock" value={fmt(total)}
               unit={`${over>3?fmt(over)+' over':over < -3?fmt(-over)+' under':'on target'} · ${source}`}
@@ -212,6 +233,7 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
           }} onScrollBeginDrag={() => { transcriptDrag.current = true; }}
           onScrollEndDrag={() => { transcriptDrag.current = false; }} onMomentumScrollBegin={() => { transcriptDrag.current = true; }}
           onMomentumScrollEnd={() => { transcriptDrag.current = false; }} showsVerticalScrollIndicator={false}>
+          <PresentationScorePanel key={`${scores.target?.id??'composed'}:${scores.target?.contextId??''}`} item={scores.overall} controller={scores.controller} target={scores.target} overall active={active} notice={scores.notice} refresh={scores.refresh} onEvidence={onScoreEvidence}/>
           <View style={styles.assessmentSummary} accessibilityLabel="AI assessment summary">
             <Txt style={[styles.slidesTitle,{color:c.text}]}>{`${a.assessed} of ${a.recorded} recorded slides assessed`}</Txt>
             <View style={styles.assessmentCounts}>{assessmentCounts.map(([label,count])=><Txt key={label} style={[styles.assessmentCount,{color:c.secondary}]}>{`${count} ${label.toLowerCase()}`}</Txt>)}</View>
@@ -228,7 +250,7 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
         </ScrollView>
         <View style={styles.slidesHeader}>
           <Txt style={[styles.slidesTitle, { color: c.text }]}>Slides</Txt>
-          <Txt style={[styles.legendName,{color:c.secondary}]}>AI status · tap to review</Txt>
+          <Txt style={[styles.legendName,{color:c.secondary}]}>Slide scores · tap to review</Txt>
         </View>
         <View style={[styles.stripCard, { borderColor: c.hair, backgroundColor: c.surface06 }]}>
           <ScrollView ref={stripRef} horizontal showsHorizontalScrollIndicator={false}
@@ -236,13 +258,13 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
             onScrollBeginDrag={() => { stripDrag.current = true; }} onScrollEndDrag={() => { stripDrag.current = false; }}
             onMomentumScrollBegin={() => { stripDrag.current = true; }} onMomentumScrollEnd={() => { stripDrag.current = false; }}>
             {times.map((t, i) => {
-              const item=feedback.items[i];
-              const fill=item?.tone==='good'?c.good:item?.tone==='warn'?c.warnAlt:item?.tone==='bad'?c.badAlt:item?.tone==='info'?c.info:c.ink08;
-              const tileInk=item?.tone==='muted'?c.secondary:themeMode==='dark'?'#14161D':'#FFFFFF';
-              const badge=item?.status==='reviewed'?(item.findingCount?String(item.findingCount):'✓'):item?.status==='pending'||item?.status==='transcribing'?'…':item?.status==='outdated'?'↻':item?.status==='partial'?'*':item?.status==='not_recorded'?'—':'!';
+              const item=feedback.items[i],score=scores.items[i];
+              const fill=score?.score!=null?scoreLevelColor(score.level,c):c.ink08;
+              const tileInk=score?.score==null?c.secondary:themeMode==='dark'?'#14161D':'#FFFFFF';
+              const badge=score?.score!=null?String(score.score):score?.status.includes('…')?'…':score?.status.toLowerCase().includes('outdated')?'↻':'—';
               const selected = (runPlaying || slidePlaying) && playbackSlide === i;
               return <Pressable key={i} accessibilityRole="button"
-                accessibilityLabel={`Slide ${i + 1}, ${deck.slides[i]?.title ?? 'Slide ' + (i + 1)}, ${t > 0 ? fmt(t) : 'not reached'}, ${item?.label??'Not analyzed'}. Open its review`}
+                accessibilityLabel={`Slide ${i + 1}, ${deck.slides[i]?.title ?? 'Slide ' + (i + 1)}, ${t > 0 ? fmt(t) : 'not reached'}, ${score?.score!=null?`${score.score} points, ${scoreLevelLabel(score.level)}`:score?.status??'Not graded'}, ${item?.label??'Not analyzed'}. Open its review`}
                 onPress={() => openSlide(i)} style={styles.tileWrap}>
                 {selected && <View style={[styles.tileOutline, { borderColor: c.strong }]} />}
                 <View style={[styles.tile, { backgroundColor: fill }]}>

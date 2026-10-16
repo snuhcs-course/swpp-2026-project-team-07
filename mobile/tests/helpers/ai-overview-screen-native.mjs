@@ -6,6 +6,7 @@ export const Enter=({children})=>React.createElement('enter',null,children),PanV
 export const runtime={model:null,feedback:null,nav:null,routes:[],audio:new Map(),plays:[],stops:0,players:[],scrolls:[]};
 export function useDeckModel(){return runtime.model;}
 export function useRunFeedbackStatus(_model,active){return {...runtime.feedback,active};}
+export function useRunPresentationScores(model,active,slide){runtime.scoreSelections??=[];runtime.scoreSelections.push(slide);if(runtime.scores)return runtime.scores;const empty={score:null,level:null,status:'Not graded',state:null,result:null,target:null};return {items:Array.from({length:model?.n??0},(_,slide)=>({...empty,slide})),overall:empty,target:null,controller:{state:null,busy:false,notice:'',ask:false,refresh:async()=>{},generate:async()=>{},confirm:()=>{},cancel:()=>{}},notice:'',refresh:async()=>{}};}
 export function FeedbackStatusRing({id,item}){return React.createElement('score-ring',{id,value:item?.findingCount??'—',label:item?.label??'Not analyzed',percent:null});}
 export const SlideReviewSummary='slide-feedback',TakePlayback='take-playback',TranscriptCorrections='inline-transcript',ReviewRecordingTools='recording-tools';
 export const subscribePlaybackId=()=>()=>{};
@@ -23,7 +24,7 @@ export const Easing={bezier:()=>v=>v},withTiming=v=>v,runOnJS=f=>f;
 export const useSharedValue=value=>{const r=React.useRef({value,get(){return this.value},set(v){this.value=v}});return r.current;};
 export const useAnimatedStyle=()=>({}),useAnimatedProps=()=>({}),useReducedMotion=()=>true;
 export const createThemedStyles=x=>x;
-export const useTheme=()=>({mode:runtime.theme??'dark',c:{text:'#fff',body:'#ddd',secondary:'#aaa',tertiary:'#888',good:'#0a0',warn:'#fa0',bad:'#f44',info:'#88f',strong:'#fff'}});
+export const useTheme=()=>({mode:runtime.theme??'dark',c:runtime.palettes?.[runtime.theme??'dark']??{text:'#fff',body:'#ddd',secondary:'#aaa',tertiary:'#888',good:'#0a0',warn:'#fa0',bad:'#f44',info:'#88f',strong:'#fff'}});
 export const Defs='defs',LinearGradient='gradient',Path='path',Rect='rect',Stop='stop',Circle='circle';
 export function HintRow({hints}){return React.createElement('hints',null,hints.map(h=>h.onPress?React.createElement('pressable',{key:h.text,accessibilityRole:'button',accessibilityLabel:h.text,onPress:h.onPress},React.createElement('text',null,h.text)):h.text));}
 const Animated=Object.assign(({children})=>React.createElement('svg',null,children),{View:'animated'});export default Animated;

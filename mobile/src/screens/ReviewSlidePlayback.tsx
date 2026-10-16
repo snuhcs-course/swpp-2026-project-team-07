@@ -7,7 +7,6 @@ import { MiniSlide } from '../design/SlideCard';
 import { F } from '../design/tokens';
 import { useTheme } from '../design/theme';
 import { fmt } from '../domain/format';
-import type { Finding } from '../features/feedback/slideReview';
 import { useStore } from '../features/presentations/store';
 import type { DeckModel } from '../features/presentations/useDeckModel';
 import { getSavedAttempt } from '../features/recording/storage';
@@ -17,12 +16,12 @@ import { readReview } from '../features/transcription/reviewStorage';
 import { useReviewAudio } from '../features/transcription/useReviewMedia';
 import { API_URL } from '../services/api';
 import { TranscriptCorrections } from './TranscriptCorrections';
-import { ReviewRecordingTools } from './ReviewRecordingTools';
+import { ReviewRecordingTools, type ReviewEvidence } from './ReviewRecordingTools';
 
 const beforePlay = () => {};
 export function ReviewSlidePlayback({ model, id, slide, player, evidence, evidenceRequest, onCloseEvidence, onEvidenceShown }: {
  model: DeckModel; id: string; slide: number; player: ReturnType<typeof useSegmentPlayer>;
- evidence: Finding | null; evidenceRequest: number; onCloseEvidence: () => void; onEvidenceShown?: (y: number) => void;
+ evidence: ReviewEvidence | null; evidenceRequest: number; onCloseEvidence: () => void; onEvidenceShown?: (y: number) => void;
 }) {
  const { c } = useTheme(), { deck } = model;
  const version = useStore(state => state.version);

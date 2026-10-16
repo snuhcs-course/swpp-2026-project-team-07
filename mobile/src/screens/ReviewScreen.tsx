@@ -1,5 +1,5 @@
 // AI-assisted Nakajima integration: verified selected-slide feedback in the normal Review page.
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, type GestureResponderEvent, type PanResponderGestureState } from 'react-native';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Enter, Txt, useFrame } from '../design/frame';
@@ -16,11 +16,17 @@ import { fillerTotal } from '../domain/words';
 import { useSegmentPlayer } from '../features/rehearsal/useSegmentPlayer';
 import { useDeckModel, type DeckModel } from '../features/presentations/useDeckModel';
 import { SlideReviewSummary } from '../features/feedback/SlideReviewSummary';
-import { FeedbackStatusRing } from '../features/feedback/FeedbackStatusRing';
+import { PresentationScorePanel, PresentationScoreRing, type ScoreDisplay } from '../features/feedback/PresentationScorePanel';
+import { useRunPresentationScores } from '../features/feedback/useRunPresentationScores';
+import { currentScoreEvidence, scoreAudioEvidence } from '../features/feedback/presentationScoreDisplay';
+import type { ScoreEvidence } from '../features/feedback/presentationScore';
+import type { ReviewEvidence } from './ReviewRecordingTools';
+import { audioOf } from '../features/rehearsal/analysis';
 import { useRunFeedbackStatus } from '../features/feedback/useRunFeedbackStatus';
-import type { Finding } from '../features/feedback/slideReview';
 import { ReviewSlidePlayback, ReviewSlidePreview } from './ReviewSlidePlayback';
 import { useBack, useNow, useShell } from './shared';
+
+const EMPTY_SCORE:ScoreDisplay={score:null,level:null,status:'Not graded',state:null,result:null,target:null};
 
 export function ReviewScreen({active=true}:{active?:boolean}) {
  const {nav}=useShell();const model=useDeckModel(nav.deckId);
@@ -32,9 +38,16 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
  const n=model?.n??0;
  const s=Math.max(0,Math.min(Math.max(0,n-1),nav.sel));
  const feedback=useRunFeedbackStatus(model,active),item=feedback.items[s];
+ const scores=useRunPresentationScores(model,active,s),scoreItem=scores.items[s]??EMPTY_SCORE;
+ const scoreSource=useRef({item:scoreItem,target:scores.target,part:model?.state.run?.parts[s],active});
+ const scorePart=model?.state.run?.parts[s];
+ useLayoutEffect(()=>{scoreSource.current={item:scoreItem,target:scores.target,part:scorePart,active};return()=>{scoreSource.current.active=false;};},[scoreItem,scores.target,scorePart,active]);
  const player=useSegmentPlayer(),stopPlayback=player.stop;
  const dy=useSharedValue(0),backExiting=useRef(false),scrollY=useRef(0),scroll=useRef<ScrollView>(null);
- const [evidence,setEvidence]=useState<{finding:Finding;request:number}|null>(null);
+ const [evidence,setEvidence]=useState<{finding:ReviewEvidence;request:number;scoreIdentity?:string}|null>(null);
+ const [scoreAudioNote,setScoreAudioNote]=useState('');
+ const currentEvidence=evidence?.scoreIdentity&&(!scoreItem.state||scoreItem.state.stale||scoreItem.state.state!=='completed'||scoreItem.state.source_identity!==evidence.scoreIdentity)?null:evidence;
+ useEffect(()=>{if(evidence&&!currentEvidence)stopPlayback();},[evidence,currentEvidence,stopPlayback]);
  const now=useNow();
  const showEvidence=useCallback((y:number)=>scroll.current?.scrollTo({y,animated:true}),[]);
  useEffect(()=>{if(!active){dy.set(0);stopPlayback();}},[active,dy,stopPlayback]);
@@ -59,13 +72,26 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
  const t=times[s]??0,target=deck.targets[s]??0,source=deck.requirementsDefault?'default':deck.timing.source==='required'?'required':'suggested';
  const pending=!!partId&&!model.transcripts.has(partId)&&model.stages.get(partId)!=='no_speech';
  const maxT=Math.max(1,...times),a=feedback.aggregate;
+ const onScoreEvidence=(refs:ScoreEvidence[])=>{
+  const current=scoreSource.current,sourceTarget=current.target;
+  if(!current.active||!sourceTarget||!currentScoreEvidence(current.item.state,sourceTarget,refs)||current.part?.attemptId!==sourceTarget.id)return;
+  const fact=refs.find(ref=>ref.kind==='slide');
+  if(fact?.kind==='slide'){stopPlayback();go('review',{deckId:deck.id,sel:fact.slide_index});return;}
+  const audio=scoreAudioEvidence(refs),duration=sourceTarget.review?.duration_ms??0;
+  if(!audio.length||audio.some(ref=>ref.attempt_id!==sourceTarget.id||ref.end_ms>duration))return;
+  stopPlayback();setScoreAudioNote('');
+  const first=audio[0];
+  setEvidence(previous=>({finding:{start_ms:first.start_ms,end_ms:first.end_ms,speech_quote:first.kind==='speech'?first.quote:undefined,observation:first.kind==='measurement'?first.measurement_id:first.kind==='full_attempt'?'Full original recording':undefined},request:(previous?.request??0)+1,scoreIdentity:current.item.state!.source_identity!}));
+  if(audio.length>1){const uri=audioOf(sourceTarget.id);if(!uri){setScoreAudioNote('Original recording audio is not on this phone. Download it with the recording tools.');return;}void player.playSegments(`score-evidence:${sourceTarget.id}:${audio.map(ref=>`${ref.start_ms}:${ref.end_ms}`).join(',')}`,audio.map(ref=>({uri,startMs:ref.start_ms,endMs:ref.end_ms})));}
+ };
+
  return <Enter kind={nav.nav}><PanView style={StyleSheet.absoluteFill} {...pan}>
   <Animated.View style={[StyleSheet.absoluteFill,screen]}><PageSurface hue={deck.hue}/>
    <View style={styles.header}><Txt numberOfLines={1} style={[styles.title,{color:c.text}]}>{deck.title}</Txt><Txt style={[styles.label,{color:c.secondary}]}>{runLabel(run,now,relativeDay)}</Txt></View>
    <ScrollView ref={scroll} style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator
     onScroll={e=>{scrollY.current=e.nativeEvent.contentOffset.y;}} scrollEventThrottle={16}>
     <View style={styles.ringRow}>
-     <FeedbackStatusRing id="gSlideStatus" item={item}/>
+     <PresentationScoreRing id="gSlideStatus" label="Slide score" item={scoreItem}/>
      <View style={styles.ringRight}><Txt style={[styles.slideLabel,{color:c.secondary}]}>{`Slide ${s+1} of ${n}`}</Txt>
       <Stat icon="i-clock" value={t>0?fmt(t):'—'} unit={`${fmt(target)} ${source} target`}/>
       <Stat icon="i-bubble" value={pending||t<=0?'—':String(fillerTotal(slideText(model.lines,s)))} unit="fillers"/>
@@ -74,12 +100,14 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
     </View>
     <View><View style={styles.row}><Txt style={[styles.section,{color:c.text}]}>Times per slide</Txt><Txt style={[styles.label,{color:c.secondary}]}>Tap a bar</Txt></View>
      <View style={styles.bars}>{times.map((value,i)=><Pressable key={i} accessibilityRole="button" accessibilityState={{selected:i===s}}
-      accessibilityLabel={`Slide ${i+1}, ${value>0?fmt(value):'not recorded'}`} onPress={()=>{stopPlayback();go('review',{sel:i});}}
+      accessibilityLabel={`Slide ${i+1}, ${value>0?fmt(value):'not recorded'}, ${scores.items[i]?.score??scores.items[i]?.status??'Not graded'}${scores.items[i]?.score!=null?' points':''}`} onPress={()=>{stopPlayback();go('review',{sel:i});}}
       style={{flex:1,minWidth:0,height:value?Math.max(6,78*value/maxT):4,borderRadius:4,backgroundColor:i===s?c.strong:c.ink28}}/>)}</View>
-     <View style={styles.nums}>{times.map((_,i)=><Txt key={i} style={[styles.number,{color:i===s?c.text:c.secondary}]}>{i+1}</Txt>)}</View>
+     <View style={styles.nums}>{times.map((_,i)=><Txt key={i} style={[styles.number,{color:i===s?c.text:c.secondary}]}>{`${i+1} · ${scores.items[i]?.score??'—'}`}</Txt>)}</View>
     </View>
-    {active&&partId&&<ReviewSlidePlayback model={model} id={partId} slide={s} player={player} evidence={evidence?.finding??null} evidenceRequest={evidence?.request??0} onCloseEvidence={()=>setEvidence(null)} onEvidenceShown={showEvidence}/>}
+    {active&&partId&&<ReviewSlidePlayback model={model} id={partId} slide={s} player={player} evidence={currentEvidence?.finding??null} evidenceRequest={currentEvidence?.request??0} onCloseEvidence={()=>setEvidence(null)} onEvidenceShown={showEvidence}/>}
     {!partId&&<View style={{borderWidth:1,borderRadius:20,padding:14,gap:12,borderColor:c.hair,backgroundColor:c.surface06}}><ReviewSlidePreview model={model} slide={s}/><Txt style={[styles.note,{color:c.secondary}]}>No saved audio for this slide.</Txt></View>}
+    {!!scoreAudioNote&&<Txt accessibilityRole="alert" style={[styles.note,{color:c.secondary}]}>{scoreAudioNote}</Txt>}
+    <PresentationScorePanel key={`${partId}:${s}:${scores.target?.contextId??''}`} item={scoreItem} controller={scores.controller} target={scores.target} active={active} notice={scores.notice} refresh={scores.refresh} onEvidence={onScoreEvidence}/>
     {!!feedback.notice&&<Txt accessibilityLiveRegion="polite" style={[styles.note,{color:c.secondary}]}>{feedback.notice}</Txt>}
     {active&&partId&&part?<SlideReviewSummary key={`${partId}:${s}:${JSON.stringify(part.segments)}`} slide={s} part={part} localDeckId={deck.id}
       onEvidence={finding=>{stopPlayback();setEvidence(previous=>({finding,request:(previous?.request??0)+1}));}}/>:

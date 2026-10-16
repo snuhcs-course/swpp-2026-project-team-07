@@ -327,6 +327,19 @@ class PreparedRequest:
     description_schema_version: str | None = None
 
 
+def output_token_limit(prepared):
+    """AI-assisted by OpenAI Codex: quota reserves the exact frozen wire budget."""
+    payload = strict_json(prepared.payload, MAX_REQUEST_BYTES)
+    try:
+        limit = (payload['max_output_tokens'] if prepared.config.provider == 'openai'
+                 else payload['generationConfig']['maxOutputTokens'])
+    except (KeyError, TypeError):
+        raise FeedbackError('snapshot_unavailable') from None
+    if type(limit) is not int or not 0 < limit < 2**31:
+        raise FeedbackError('snapshot_unavailable')
+    return limit
+
+
 @dataclass(frozen=True)
 class RawReceipt:
     """Private persistable evidence. Never return this from a public endpoint."""

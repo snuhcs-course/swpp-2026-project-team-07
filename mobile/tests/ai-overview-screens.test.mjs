@@ -3,12 +3,13 @@ import {test} from 'node:test';import assert from 'node:assert/strict';import {r
 import {resolve,load} from './helpers/ai-overview-screen-loader.mjs';registerHooks({resolve,load});
 const React=await import('react');const {act,create}=await import('react-test-renderer');
 const {runtime}=await import('./helpers/ai-overview-screen-native.mjs');
+const {DARK_PALETTE,LIGHT_PALETTE}=await import('../src/design/tokens.ts');runtime.palettes={dark:DARK_PALETTE,light:LIGHT_PALETTE};
 const {ReviewScreen}=await import('../src/screens/ReviewScreen.tsx');
 const {FullReviewScreen}=await import('../src/screens/FullReviewScreen.tsx');
 const {HomeFeedbackStats}=await import('../src/screens/HomeFeedbackStats.tsx');
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;
 function setup(){
- runtime.routes=[];runtime.plays=[];runtime.players=[];runtime.scrolls=[];runtime.audio=new Map([['a','file://a.m4a']]);runtime.theme='dark';
+ runtime.scores=null;runtime.scoreSelections=[];runtime.routes=[];runtime.plays=[];runtime.players=[];runtime.scrolls=[];runtime.audio=new Map([['a','file://a.m4a']]);runtime.theme='dark';
  runtime.nav={deckId:'deck',sel:0,slide:0,from:null,nav:null};
  const parts=[{attemptId:'a',segments:[{startMs:0,endMs:1000},{startMs:2000,endMs:3000}]},{attemptId:'b',segments:[{startMs:0,endMs:2000}]},null];
  runtime.model={deck:{id:'deck',title:'Synthetic deck',hue:'blue',pages:[],slides:[{title:'First'},{title:'Second'},{title:'Third'}],targets:[60,60,60],text:'ready',timing:{source:'suggested'},requirementsDefault:false},n:3,state:{run:{id:'run',parts,createdAt:new Date().toISOString(),sel:0,targetSum:180},fixes:0},times:[2,2,0],total:4,targetSum:180,lines:[],points:[[],[],[]],ai:[],transcripts:new Map([['a',{}],['b',{}]]),stages:new Map(),stats:{coverage:100,said:2,total:2,fpm:0,wpm:130,pace:'steady'}};
@@ -17,8 +18,8 @@ function setup(){
 const text=r=>JSON.stringify(r.toJSON());
 const button=(r,label)=>r.root.findAllByType('pressable').find(x=>x.props.accessibilityLabel===label);
 async function render(Component,props,f){let r;try{await act(async()=>{r=create(React.createElement(Component,props));});await f(r);}finally{if(r)await act(async()=>r.unmount());}}
-test('Review uses AI count, page scroll, selected-source evidence and tappable navigation',async()=>{setup();await render(ReviewScreen,{},async r=>{
- assert.equal(r.root.findByType('score-ring').props.value,4);assert.equal(r.root.findByType('score-ring').props.percent,null);
+test('Review keeps findings separate from ungraded performance, page scroll, selected-source evidence and tappable navigation',async()=>{setup();await render(ReviewScreen,{},async r=>{
+ assert.equal(r.root.findByType('score-ring').props.value,'—');assert.equal(r.root.findByType('score-ring').props.percent,null);
  assert.doesNotMatch(text(r),/Strong|Spot On!|100%/);
  assert.equal(r.root.findAllByType('scroll').filter(x=>!x.props.horizontal).length,1);
  await act(async()=>button(r,'Audience Q&A').props.onPress());assert.equal(runtime.routes.at(-1)[0],'qa');
@@ -31,8 +32,8 @@ test('Review uses AI count, page scroll, selected-source evidence and tappable n
  assert.equal(r.root.findByType('inline-transcript').props.inline,true);
  assert.equal(runtime.players.length,1,'Review has one playback owner');
  });});
-test('Full Review uses assessment completion/status tiles and discloses partial audio before playing',async()=>{setup();await render(FullReviewScreen,{},async r=>{
- const ring=r.root.findByType('score-ring');assert.equal(ring.props.value,'1/2');assert.match(ring.props.label,/assessed/i);assert.doesNotMatch(text(r),/Strong|Weak|points said/);
+test('Full Review keeps ungraded score/status tiles and discloses partial audio before playing',async()=>{setup();await render(FullReviewScreen,{},async r=>{
+ const ring=r.root.findByType('score-ring');assert.equal(ring.props.value,'—');assert.match(ring.props.label,/Overall score/i);assert.doesNotMatch(text(r),/Strong|Weak|points said/);
  assert.match(text(r),/Insufficient evidence/);assert.match(text(r),/4 findings/);
  await act(async()=>r.root.findAllByType('pressable').find(x=>x.props.accessibilityLabel?.startsWith('Play the whole run')).props.onPress());
  assert.equal(runtime.plays.length,0);assert.match(text(r),/missing|unavailable|on this phone/i);
@@ -41,7 +42,7 @@ test('Full Review uses assessment completion/status tiles and discloses partial 
  await act(async()=>r.root.findAllByType('pressable').find(x=>x.props.accessibilityLabel?.startsWith('Slide 2,')).props.onPress());assert.equal(runtime.routes.at(-1)[1].sel,1);
  });});
 test('Home presents the same AI counts in both themes, with measured pace kept separate',async()=>{for(const theme of ['light','dark']){setup();runtime.theme=theme;
- await render(HomeFeedbackStats,{deckId:'deck',active:true,home:{p:{value:0},vy:{value:0}}},async r=>{const ring=r.root.findByType('score-ring');assert.equal(ring.props.value,'1/2');assert.match(ring.props.label,/assessed/i);assert.match(text(r),/4/);assert.match(text(r),/findings/);assert.doesNotMatch(text(r),/100%|On point|slide points said/);});
+ await render(HomeFeedbackStats,{deckId:'deck',active:true,home:{p:{value:0},vy:{value:0}}},async r=>{const ring=r.root.findByType('score-ring');assert.equal(ring.props.value,'—');assert.match(ring.props.label,/Overall score/i);assert.match(text(r),/0:04/);assert.match(text(r),/duration/);assert.doesNotMatch(text(r),/fillers \/ min|slides assessed/);assert.match(text(r),/4/);assert.match(text(r),/findings/);assert.doesNotMatch(text(r),/100%|On point|slide points said/);});
 }});
 
 test('Review retains Q&A swipe outside its page scroll',async()=>{setup();await render(ReviewScreen,{},async r=>{const pan=r.root.findByType('pan');assert.equal(pan.props.onMoveShould({nativeEvent:{pageY:800}},{dx:0,dy:-150}),true);await act(async()=>{pan.props.onMove({}, {dx:0,dy:-150});pan.props.onRelease();});assert.equal(runtime.routes.at(-1)[0],'qa');});});
@@ -70,3 +71,5 @@ test('each evidence selection scrolls to inline controls, including the same fin
  await act(async()=>select());assert.equal(runtime.scrolls.length,2,'same finding opens evidence again without a layout change');
  await act(async()=>runtime.players[0].playSegments('evidence:a:2000:2400',[{uri:'file://a.m4a',startMs:2000,endMs:2400}]));assert.equal(runtime.scrolls.length,2,'player updates leave page scrolling alone');
  });});
+
+test('Home restores the same verified overall score and level as Full Review while retaining findings and duration',async()=>{for(const theme of ['dark','light']){setup();runtime.theme=theme;runtime.scores={overall:{score:67,level:'competent',status:'Graded',state:null,result:null,target:null}};await render(HomeFeedbackStats,{deckId:'deck',active:true,home:{p:{value:0},vy:{value:0}}},async r=>{const ring=r.root.findByType('score-ring');assert.equal(ring.props.value,'67');assert.deepEqual(ring.props.gradient,[runtime.palettes[theme].good,runtime.palettes[theme].good]);assert.match(ring.props.label,/Overall score\nCompetent/);assert.match(text(r),/4/);assert.match(text(r),/total findings/);assert.match(text(r),/0:04/);assert.match(text(r),/130/);});}});

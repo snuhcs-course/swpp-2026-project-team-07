@@ -3,19 +3,21 @@ import { View } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { Txt } from '../design/frame';
 import { UIIcon } from '../design/icons';
-import { ScoreRing } from '../design/ScoreRing';
+import { PresentationScoreRing } from '../features/feedback/PresentationScorePanel';
+import { useRunPresentationScores } from '../features/feedback/useRunPresentationScores';
 import { createThemedStyles, useTheme } from '../design/theme';
 import { C, F } from '../design/tokens';
 import { PULL_T } from '../domain/gestures';
-import { relativeDay } from '../domain/format';
+import { fmt, relativeDay } from '../domain/format';
 import { useDeckModel } from '../features/presentations/useDeckModel';
 import { useRunFeedbackStatus } from '../features/feedback/useRunFeedbackStatus';
 import type { HomeShared } from './shared';
 
 export function HomeFeedbackStats({deckId,home,active}:{deckId:string|null;home:HomeShared;active:boolean}) {
- const {c}=useTheme();
+ useTheme();
  const model=useDeckModel(deckId);
  const feedback=useRunFeedbackStatus(model,active);
+ const scores=useRunPresentationScores(model,active);
  const style=useAnimatedStyle(()=>{
   const pull=Math.min(1,Math.abs(home.vy.value)/PULL_T),fraction=Math.abs(home.p.value-Math.round(home.p.value));
   return {opacity:(home.vy.value<0?1-Math.min(1,pull*1.6)*.9:1)*Math.max(0,1-fraction*2.4)};
@@ -23,13 +25,12 @@ export function HomeFeedbackStats({deckId,home,active}:{deckId:string|null;home:
  if(!model)return null;
  const {aggregate:a}=feedback,stats=model.stats,run=model.state.run;
  const rows=[
-  {icon:'i-flag' as const,value:String(a.findings),unit:'verified findings'},
-  {icon:'i-bubble' as const,value:stats?.fpm==null?'—':stats.fpm.toFixed(1),unit:'fillers / min'},
+  {icon:'i-flag' as const,value:String(a.findings),unit:'total findings'},
+  {icon:'i-clock' as const,value:run?fmt(model.total):'—',unit:'duration'},
   {icon:'i-gauge' as const,value:stats?.wpm==null?'—':String(stats.wpm),unit:stats?.pace?'wpm · '+stats.pace:'wpm'},
  ];
  return <Animated.View pointerEvents="none" style={[styles.root,style]}>
-  <ScoreRing id="gHomeAssessment" percent={a.recorded?100*a.assessed/a.recorded:null}
-   value={a.recorded?`${a.assessed}/${a.recorded}`:'—'} label="slides assessed" labelColor={c.secondary} gradient={['#9AF7D6','#0EA877']}/>
+  <PresentationScoreRing id="gHomeAssessment" label="Overall score" item={scores.overall}/>
   <View style={{flex:1,minWidth:0,gap:9}}>
    <Txt numberOfLines={1} style={styles.label}>{run?'Last run · '+(relativeDay(run.createdAt)||'Earlier'):'No runs yet'}</Txt>
    {rows.map(row=><View key={row.icon} style={styles.row}><UIIcon name={row.icon} size={21}/><Txt style={styles.value}>{row.value}</Txt><Txt style={styles.unit}>{row.unit}</Txt></View>)}

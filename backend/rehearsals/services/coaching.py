@@ -30,9 +30,9 @@ logger = logging.getLogger(__name__)
 ACTIVE = {'waiting_descriptions', 'queued', 'preparing', 'submitted', 'normalizing', 'waiting_quota'}
 
 
-def profile_selection(deck_id):
+def profile_selection(deck_id, *, source=None):
     from .slide_profiles import preferred_selection
-    return preferred_selection(deck_id)
+    return preferred_selection(deck_id, source=source)
 
 
 def safe_error(code):
@@ -130,6 +130,10 @@ def _source_current(job):
         from .audience_qa import VERSION
         if job.source_snapshot['qa_answer']['version'] != VERSION:
             return False
+    if job.analysis.analysis_type.startswith('score_'):
+        from .presentation_scoring import current
+        if not current(attempt, job):
+            return False
     if 'slide_review' in job.source_snapshot:
         from .slide_review import current
         if not current(attempt, job.source_snapshot['slide_review']):
@@ -171,7 +175,7 @@ def _attach(value, job):
     # Called only with set and job locks. Copy exact revision, including edits.
     if value.descriptions is not None and job.descriptions_snapshot is None:
         job.descriptions_snapshot = value.descriptions
-        if job.analysis.analysis_type.startswith(('review_', 'qa_')):
+        if job.analysis.analysis_type.startswith(('review_', 'qa_', 'score_')):
             # Profiles share descriptions' source/fact schema. Preserve guidance
             # separately while the legacy adapter validates the common facts.
             job.source_snapshot = {**job.source_snapshot, 'review_profile': value.descriptions}
@@ -299,6 +303,9 @@ def _queue(analysis, value, snapshot, previous=None):
 
 
 def _prepared(value, job):
+    if job.analysis.analysis_type.startswith('score_'):
+        from .presentation_scoring import prepared
+        return prepared(value, job)
     selection = Selection.saved(value)
     selection.check_versions(value.prompt_digest)
     check_coaching_versions(job)
@@ -378,7 +385,7 @@ def submit(value, job, prepared):
         if request.submitted_at or request.claim_token != job.claim_token or request.input_hash != prepared.input_hash:
             raise StaleClaim()
         _fresh(current, analysis, locked_job, job.claim_token)
-        reserve(bucket, request, len(prepared.payload) + provider.OUTPUT_TOKENS['coaching'], policy)
+        reserve(bucket, request, len(prepared.payload) + provider.output_token_limit(prepared), policy)
         request.submitted_at, request.outcome = timezone.now(), 'submitted'
         request.save(update_fields=['submitted_at', 'outcome'])
         locked_job.input_hash, locked_job.state = prepared.input_hash, 'submitted'
@@ -459,6 +466,9 @@ def finish(value, job, result=None, error=None):
             locked_job.result = {'status': result.state, 'accepted_count': result.accepted_count,
                 'discarded_count': result.discarded_count,
                 'suggestions': [s.model_dump(mode='json') for s in result.suggestions]}
+            if hasattr(result, 'presentation_score'):
+                locked_job.result['presentation_score'] = result.presentation_score
+                locked_job.result['private_audit'] = result.private_audit
             if hasattr(result, 'questions'):
                 locked_job.result['questions'] = result.questions
                 locked_job.result['answer'] = result.answer
@@ -504,7 +514,10 @@ def run_coaching(analysis_id, revision):
             except Exception:
                 logger.warning('Coaching receipt could not be saved; recovery required.')
                 return
-        if job.analysis.analysis_type.startswith('qa_'):
+        if job.analysis.analysis_type.startswith('score_'):
+            from .presentation_scoring import normalize
+            result = normalize(value, job, prepared, receipt)
+        elif job.analysis.analysis_type.startswith('qa_'):
             from .audience_qa import normalize
             result = normalize(prepared, receipt, job.source_snapshot)
         elif job.analysis.analysis_type.startswith('review_'):
@@ -598,6 +611,9 @@ def _provenance(value, job):
 def _result(value, job, current_job):
     if not job or job.result is None:
         return None
+    if job.analysis.analysis_type.startswith('score_'):
+        from .presentation_scoring import public_result
+        return public_result(value, job, current_job)
     source = job.source_snapshot['source']
     extra = {}
     if 'audience_qa' in job.source_snapshot or 'qa_answer' in job.source_snapshot:

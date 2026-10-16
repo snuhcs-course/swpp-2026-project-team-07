@@ -3260,3 +3260,14 @@ commit and push
 ### Authorized handoff
 
 The user authorized committing and pushing `it2/integration-ai-nakajima` after the staged integration, inline Review transcript and cue-visibility handoffs. The final application source is unchanged from the reviewed and tested tree `5e9306cc1bb950c3912765c1cce170c6e0715906`; this follow-up adds only publication evidence. Prior 406-test, Android-export and physical-phone results apply to the unchanged source. The commit retains the AI and Nakajima merge parents. No PR creation or merge into another remote branch was requested.
+
+
+## Complete automatic scoring source commit — October 17, 2026
+
+User request:
+
+> Prepare and commit the complete automatic presentation-scoring implementation, including its required earlier uncommitted scoring dependencies.
+>
+> Before committing: identify all scoring-related source files and dependencies; preserve unrelated changes and the original staging state; verify completeness and tests; commit only verified scoring and required dependencies; report the hash, included files, results and remaining changes. Do not push, merge, deploy, or modify unrelated work.
+
+OpenAI Codex used the existing implementation rather than redesigning it, selected scoring-only hunks from mixed files, and tested the proposed source snapshot independently of unrelated local changes. Required earlier v1 helpers are retained for v2 evidence/measurement validation; experimental evaluation tools and grouped-feedback models are excluded. Verification and independent review are recorded in [the source-snapshot report](presentation-scoring-source-verification.md).

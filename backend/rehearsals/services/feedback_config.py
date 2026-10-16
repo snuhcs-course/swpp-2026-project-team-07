@@ -21,6 +21,9 @@ def coaching_digest(name='gemini', schema_version=None):
 
 
 def check_coaching_versions(job):
+    if job.analysis.analysis_type.startswith('score_'):
+        from .presentation_scoring import check_versions
+        return check_versions(job)
     if (job.prompt_version != provider.COACHING_PROMPT_VERSION or
             job.prompt_digest != coaching_digest(job.description_set.provider, job.schema_version)):
         raise FeedbackError('snapshot_unavailable')
