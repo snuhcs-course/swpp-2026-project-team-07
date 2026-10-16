@@ -1574,3 +1574,23 @@ Human usefulness/visual Review acceptance remains pending. No commit, push or me
 - Separate review: Codex reviewer (exact variant not recorded), two passes. First pass found Q&A could bypass the new provider consent. Codex added a client-side gate and Continue/Cancel dialog, with upgrade/cancel/retry/read-only regression tests; second pass reported no further actionable issues. AI review is not human approval.
 - Errors/revisions: first full backend invocation lacked Pillow in the temporary environment; installed the locked non-gate dependencies and reran successfully. One mobile command was invoked from the repository root and failed to find a package; rerun from `mobile/` passed. No additional provider request resulted from these setup errors.
 - Publication: authorized branch commit/push; final GitHub verification recorded at handoff. No PR, merge, Wiki edit or deployment is claimed.
+
+
+### Emulator and phone follow-up — October 16, 2026
+
+- Contributor: Injoon. Tool: OpenAI Codex. Model: GPT-6 family (exact variant not recorded).
+- Actual follow-ups (verbatim, in order):
+
+> Does this have the updated UI that Jaewon made
+
+> can u run on the emulator and my phone
+
+> can't we use expo go
+
+- Verified Jaewon's live `front-end-design-JJ` tip `eeb3307` is an ancestor of Scribe branch `20fbd3f`. Explained Expo Go cannot supply the project's native PDF/audio dependencies; a development client is required.
+- Runtime setup: exact mobile dependencies installed; generated ignored Android project, ignored local configuration and a dedicated local PostgreSQL/Redis instance for this branch. API and worker readiness passed. Installed the full locked backend runtime; all three packaged speech-gate tests now pass, including actual packaged-model silence detection, with no skips. These are agent-operated checks.
+- Device/build result: Android debug build succeeded in 9m52s using cached Java 17 and the branch's exact npm lock. Installed with `adb install -r -t` and launched `com.team07.outloud` on the connected Samsung SM-S931N and API 36 arm64 emulator. Screenshots inspected privately confirmed the phone rehearsal UI and emulator Home; no private PDF/media/screenshots were committed. Existing app data was not cleared. The emulator required a lower-memory restart and Wait on a temporary Android System UI busy dialog. Full rehearsal/transcription/usefulness acceptance is not claimed.
+- Runtime: Metro, API, Celery worker/scheduler and isolated PostgreSQL/Redis remain running. USB port forwarding connects both devices. A loopback-only IPv6-to-IPv4 bridge addresses differing localhost address families without exposing the API to the LAN. Keep the Mac running and phone USB connected for this development session.
+- Discovered blocker: actual PDF uploads returned PostgreSQL DataError because extracted slide text contained U+0000. A synthetic valid-PDF regression reproduced the identical error before the fix and passed afterward on PostgreSQL. Removed only NUL characters from extracted text; original PDF bytes and rendering are retained. Restarted the API with the fix, preserving saved media. The separate reviewer found no actionable issues.
+- Final backend checks: system/migration checks passed; 392 SQLite tests OK, 24 PostgreSQL-only skips; the new PostgreSQL upload regression and all three real speech-gate tests passed separately. No new mobile source changes were needed for this runtime task. One test-edit command used the wrong working-directory prefix; corrected before reproduction, with no source mutation from the failed command. A premature emulator installation was rejected while Android was still booting; it succeeded after startup.
+- Scope/publication: small PDF import fix and this verification record accompany the Scribe branch. No merge, deployment or Wiki publication; agent-operated device launch does not establish human approval.
