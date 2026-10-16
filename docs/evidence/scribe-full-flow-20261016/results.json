@@ -1,0 +1,119 @@
+{
+  "source": "EdUHK classroom presentation 5, 0\u201345 seconds",
+  "source_url": "https://corpus.eduhk.hk/english_speaking/index.php/classroom-presentation-5/",
+  "backend_precheck": {
+    "id": "d777ca36-ee91-42f6-a36b-f98558e4d025",
+    "status": "completed",
+    "provider": "elevenlabs",
+    "model": "scribe_v2",
+    "provider_requests": 1,
+    "raw_scribe_receipt_has_transcription_id": true,
+    "input_hash_matches_uploaded_audio": true,
+    "word_count": 91,
+    "fillers": [
+      {
+        "text": "Um,",
+        "start_ms": 10760,
+        "end_ms": 10960
+      },
+      {
+        "text": "uh--",
+        "start_ms": 23020,
+        "end_ms": 23120
+      },
+      {
+        "text": "uh,",
+        "start_ms": 25260,
+        "end_ms": 25380
+      },
+      {
+        "text": "uh,",
+        "start_ms": 28560,
+        "end_ms": 28620
+      },
+      {
+        "text": "Uh,",
+        "start_ms": 32020,
+        "end_ms": 32159
+      },
+      {
+        "text": "um,",
+        "start_ms": 40240,
+        "end_ms": 40580
+      }
+    ],
+    "raw_filler_count": 6,
+    "aligned_filler_count": 6,
+    "slide_count": 2,
+    "mobile_parser_filler_count": 6,
+    "filler_match_rule": "case-insensitive um/uh after punctuation removal; not a complete filler taxonomy",
+    "app_keyword_counter": {
+      "um": 2,
+      "uh": 4,
+      "like": 1
+    },
+    "keyword_counter_limitation": "like occurs in I would like to share; keyword matching is not context-aware filler classification"
+  },
+  "native_short_recording": {
+    "id": "d74947ac-8b03-4235-bb28-29696081fb25",
+    "recording_duration_ms": 26223,
+    "decoded_duration_ms": 26052.8125,
+    "status": "completed",
+    "outcome": "no_speech",
+    "provider_requests": 0,
+    "rms": 5.252207301964518e-06,
+    "peak": 0.00014883035328239202
+  },
+  "native_long_recording": {
+    "id": "3ffbb94b-3d1b-4956-99f0-2d58791c56d6",
+    "timeline_duration_ms": 75620,
+    "decoded_duration_ms": 73839.45578231293,
+    "upload_http_status": 400,
+    "provider_requests": 0
+  },
+  "full_native_speech_flow_passed": true,
+  "native_legacy_audio_recording": {
+    "id": "3572cd6d-9114-4872-99af-4dfa8caf5212",
+    "timeline_duration_ms": 101847,
+    "upload_http_status": 400,
+    "provider_requests": 0,
+    "injection_rpc": "DEADLINE_EXCEEDED after 90 seconds",
+    "rms": 0.7054771688789204,
+    "note": "Non-speech signal with legacy card; not a successful presentation capture.",
+    "decoded_duration_ms": 90372.06349206349
+  },
+  "native_phone_recording": {
+    "id": "d5f07df9-fdc0-475c-83a7-440df50eb2b5",
+    "duration_ms": 16830,
+    "slide_visits": 3,
+    "status": "completed",
+    "outcome": "speech",
+    "provenance": {
+      "provider": "elevenlabs",
+      "model": "scribe_v2",
+      "generation": 1,
+      "outcome": "received",
+      "speech_gate": "silero-vad"
+    },
+    "word_count": 26,
+    "fillers": [
+      {
+        "text": "Uh,",
+        "start_ms": 6180,
+        "end_ms": 6340
+      },
+      {
+        "text": "Um,",
+        "start_ms": 13120,
+        "end_ms": 13380
+      }
+    ],
+    "phone_cache_matches_server": true,
+    "ui_slide_1_transcript_observed": true,
+    "provider_requests": 1,
+    "raw_receipt_has_transcription_id": true,
+    "input_hash_matches": true,
+    "playback_listening_audit": false
+  },
+  "emulator_speech_flow_passed": false
+}

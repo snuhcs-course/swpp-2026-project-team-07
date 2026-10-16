@@ -1,7 +1,7 @@
 """Speech presence only. Packaged Silero CPU model; no downloads or transcription.
 
 Adapted policy from prototype 33907d3: gate only recordings with no speech;
-never trim or concatenate the uploaded audio sent to hosted Whisper.
+never trim or concatenate the uploaded audio sent to hosted Scribe v2.
 """
 from array import array
 from math import isfinite

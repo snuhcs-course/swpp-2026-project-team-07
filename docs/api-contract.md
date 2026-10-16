@@ -1,4 +1,9 @@
+> October 16 keyterms follow-up: new Scribe requests include up to 100 validated vocabulary hints extracted from visited-slide text when available, with `no_verbatim=false`. Private `ProviderRequest.request_options` snapshots exact submitted options (migration 0007); public transcript/provenance shape is unchanged. Updated mobile consent discloses audio plus slide-derived hints and replaces audio-only consent. [Behavior, cost and verification](scribe-transcription.md#automatic-slide-keyterms--implemented-october-16-2026).
+
 # Initial API contract
+
+> Provider update, October 16, 2026: new transcription requests use ElevenLabs Scribe v2 with up to 100 keyterms derived from recorded slides when text is available. `no_verbatim=false` preserves recognized fillers. Migration 0007 privately snapshots submitted request options; the public transcript schema is unchanged. The updated client requests consent for audio plus slide-derived hints. Older phase descriptions mentioning Whisper describe the previous provider; saved Whisper responses and results are still supported. See [current adapter](scribe-transcription.md).
+
 
 Base path `/api/`. JSON uses `snake_case`, UUID strings and integer milliseconds. Mobile types: `src/contracts/index.ts`. Health/readiness, deck upload/retrieval/history, attempt upload/retrieval, and explicit hosted processing are implemented. Upload alone leaves a recording awaiting analysis.
 
@@ -15,7 +20,7 @@ Base path `/api/`. JSON uses `snake_case`, UUID strings and integer milliseconds
 | `POST /decks/{id}/qa/questions/` | Strict JSON Audience Q&A question request below | 200: `{questions, provider, model}`; 404 `deck_not_found`; 503 configuration; 429 cooldown; 502 provider |
 | `POST /decks/{id}/qa/answers/` | Multipart `audio`, `metadata` JSON string (below) | 200: answer transcript and review; same errors |
 
-Current mobile flow: finish capture → save locally → open saved result → upload PDF if needed → upload audio with the same attempt UUID → request initial processing automatically after first-use OpenAI disclosure. The upload endpoint/helper still only stores audio; the saved screen coordinates the separate process request. Cancelled/older recordings retain manual Analyze. Upload handlers validate the known deck, slide bounds, UUID uniqueness, supported audio/container, duration/size limits and metadata. Reject conflicting uploads for an existing ID. New recording means new ID; upload retries retain the ID, audio and normalized metadata. Identical retries return the existing attempt; conflicting valid content returns 409. Processing retries retain the ID/audio and avoid duplicate provider work.
+Current mobile flow: finish capture → save locally → open saved result → upload PDF if needed → upload audio with the same attempt UUID → request initial processing automatically after first-use ElevenLabs disclosure. The upload endpoint/helper still only stores audio; the saved screen coordinates the separate process request. Cancelled/older recordings retain manual Analyze. Upload handlers validate the known deck, slide bounds, UUID uniqueness, supported audio/container, duration/size limits and metadata. Reject conflicting uploads for an existing ID. New recording means new ID; upload retries retain the ID, audio and normalized metadata. Identical retries return the existing attempt; conflicting valid content returns 409. Processing retries retain the ID/audio and avoid duplicate provider work.
 
 Example metadata:
 
@@ -68,20 +73,20 @@ POST process, GET attempt and deck history use the same serializer. All response
 | `visits` | Null, or chronological `{slide_index, start_ms, end_ms, words}` visits, including empty/zero-duration visits |
 | `metrics` | Null, or timing metrics below; the same shape for speech and no speech |
 | `analysis_outcome` | Null, `speech`, `no_speech`, or `legacy` |
-| `feedback`, `feedback_state` | Legacy shape retained. Whisper completion still saves `[]`, `disabled`; independent coaching is in `feedback_analysis` |
+| `feedback`, `feedback_state` | Legacy shape retained. Transcription completion still saves `[]`, `disabled`; independent coaching is in `feedback_analysis` |
 | `transcript_id`, `feedback_analysis` | Additive transcript evidence digest (nullable) and the safe coaching state below. Older mobile caches may omit both |
 | `error` | Null, or safe `{code, message}` |
-| `provenance` | `{provider, model, generation, outcome, speech_gate}`; values nullable; provider/model `openai`/`whisper-1`, request outcome `submitted`/`received`/`rejected`/`uncertain`, gate `silero-vad` |
+| `provenance` | `{provider, model, generation, outcome, speech_gate}`; values nullable; provider/model `elevenlabs`/`scribe_v2` for new requests or `openai`/`whisper-1` for historical requests, request outcome `submitted`/`received`/`rejected`/`uncertain`, gate `silero-vad` |
 
 Provenance identifies the received transcript's generation when one is available, otherwise the latest request. No raw provider response or input hash is public. Legacy rows retain stored results/media; migration never automatically queues them and labels existing results `legacy` rather than claiming they passed this pipeline. Legacy feedback remains untouched and is labeled `feedback_state=legacy`.
 
-Hosted transcription uses exactly `whisper-1`, `verbose_json`, and `timestamp_granularities=["word"]`; seconds normalize to integer milliseconds with half-up rounding. Missing, malformed, nonfinite or unsafe numeric timestamps fail normalization without replacing the raw evidence. Words outside the authoritative recording duration fail alignment with `alignment_failed`, retaining raw/transcript as actionable partial results. Retry reuses saved raw/transcript; it cannot repair an invalid original timeline by re-transcribing or extending/clamping duration.
+Hosted transcription uses ElevenLabs `scribe_v2`, `timestamps_granularity=word`, `no_verbatim=false`, `tag_audio_events=false`, `diarize=false` and `use_multi_channel=false`; only `type=word` entries become timed words. Saved Whisper raw responses are normalized according to their persisted provider. For both formats, seconds normalize to integer milliseconds with half-up rounding. Missing, malformed, nonfinite or unsafe numeric timestamps fail normalization without replacing the raw evidence. Words outside the authoritative recording duration fail alignment with `alignment_failed`, retaining raw/transcript as actionable partial results. Retry reuses saved raw/transcript; it cannot repair an invalid original timeline by re-transcribing or extending/clamping duration.
 
 `metrics` contains `duration_ms`, `time_per_slide: [{slide_index, duration_ms}]` summed across all visits, `detected_language`, `speaking_rates: [{language, unit, count, per_minute}]`, and `rate_note`. Rates are separate `en` English word-pattern counts and `ko` contiguous Hangul-run counts, divided by **total rehearsal minutes including silence**. Korean's label is `Korean Hangul runs/min`; it is an estimate, not a linguistic word count or speaking-only rate. No filler/other detector is claimed.
 
 The packaged Silero CPU gate checks a temporary PyAV-decoded waveform only. It never cuts, concatenates or rewrites provider input. Detection failure fails closed (`audio_check_failed`); no provider request occurs. Detected no-speech saves transcript `{text: "", words: []}` and `analysis_outcome=no_speech` before running `align_words([], slide_events, duration_ms)` and timing metrics. Completion retains every chronological visit with `words: []`, including simultaneous/zero-duration, repeated and backward visits. Metrics retain the authoritative recording duration and summed slide times, with `detected_language=und` and `speaking_rates=[]`. Original audio and slide events are unchanged and provider requests remain zero. Alignment failure retains the empty transcript and gate outcome as partial results; retry or stale-claim recovery reuses them without another gate/provider call.
 
-Mobile Analyze requires a recording known to the current API, established by its upload or validated server history. First-use disclosure has Continue/Cancel and locally persisted consent. Retry refreshes first and supplies the displayed current revision; uncertain requests require a separate charge acknowledgement. A client timeout is not server failure. Polling stops on navigation/background; stale callbacks and API-address changes cannot update another cache. SQLite result records are keyed by normalized API address and attempt UUID, separately from upload metadata. Offline refresh preserves cache and audio. Synchronized review is described below; coaching is independently generated through the explicit API below and remains disabled by default.
+Mobile Analyze requires a recording known to the current API, established by its upload or validated server history. First-use ElevenLabs disclosure has Continue/Cancel and locally persisted provider-specific consent. Previous OpenAI consent does not authorize ElevenLabs submissions. Retry refreshes first and supplies the displayed current revision; uncertain requests require a separate charge acknowledgement. A client timeout is not server failure. Polling stops on navigation/background; stale callbacks and API-address changes cannot update another cache. SQLite result records are keyed by normalized API address and attempt UUID, separately from upload metadata. Offline refresh preserves cache and audio. Synchronized review is described below; coaching is independently generated through the explicit API below and remains disabled by default.
 
 ## Durable slide descriptions (checkpoint 2)
 
@@ -520,7 +525,7 @@ The section "Mobile rehearsal review" above describes the pre-redesign review sc
 
 Audience Q&A has two synchronous endpoints. Each POST is one explicit user action. They use the same provider selection and gates as descriptions and coaching: `FEEDBACK_ENABLED=true`, the selected provider, model, key and project id, and positive RPM/TPM settings. They return 503 with `disabled`, `missing_api_key`, `invalid_configuration` or `quota_configuration` otherwise.
 
-Each call makes one provider request with no retries or fallback. Answers also make one hosted Whisper request. The server stores neither questions nor answer audio. The audio is written to a temporary file for Whisper and deleted afterwards; the phone keeps its own copy and the results.
+Each call makes one provider request with no retries or fallback. Answers also make one hosted Scribe v2 request. The server stores neither questions nor answer audio. The audio is written to a temporary file for transcription and deleted afterwards; the phone keeps its own copy and the results.
 
 **Quota limit:** these requests are not recorded as `FeedbackReservation` rows, which belong to description and coaching jobs, so they do not count against the RPM/TPM windows. They do refuse to run during an active provider cooldown on the shared quota bucket (429 `waiting_quota` with `retry_at`), and a provider 429 sets that cooldown.
 
@@ -567,7 +572,7 @@ The response is:
 **Errors** use `{error: {code, message, retry_at?}}`:
 - 404 `deck_not_found`. The app then uploads the PDF again once through `POST /decks/` and retries.
 - 400 `invalid_request`, `unsupported_audio` or `invalid_audio_size`.
-- 502 provider or Whisper failure; when the outcome is uncertain, the message says the request may have been charged.
+- 502 provider or transcription failure; when the outcome is uncertain, the message says the request may have been charged.
 - An older server without these routes returns Django's plain 404, which the app reports as "update the backend".
 
 ## Historical Stage 1 local capture boundary

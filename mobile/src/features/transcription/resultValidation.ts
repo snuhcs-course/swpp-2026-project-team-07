@@ -52,7 +52,9 @@ function validRecording(value: unknown, id: string): value is AttemptResult {
           typeof r.per_minute === "number" && Number.isFinite(r.per_minute) && r.per_minute >= 0)) return false;
   }
   const p = value.provenance;
-  if (!object(p) || ![null, "openai"].includes(p.provider as string | null) || ![null, "whisper-1"].includes(p.model as string | null) ||
+  if (!object(p) || !((p.provider === null && p.model === null) ||
+      (p.provider === "openai" && p.model === "whisper-1") ||
+      (p.provider === "elevenlabs" && p.model === "scribe_v2")) ||
       !(p.generation === null || (integer(p.generation) && p.generation <= value.processing_revision)) ||
       ![null, "submitted", "received", "rejected", "uncertain"].includes(p.outcome as string | null) ||
       ![null, "silero-vad"].includes(p.speech_gate as string | null)) return false;

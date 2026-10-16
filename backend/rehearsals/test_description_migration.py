@@ -33,6 +33,8 @@ class DescriptionMigrationTests(TransactionTestCase):
             finished_at=now, raw_response={'text': 'Synthetic retained receipt'}, usage={'tokens': 1}, outcome='received')
         names = ['Deck', 'Slide', 'Attempt', 'ProviderRequest']
         expected = {name: list(old.get_model('rehearsals', name).objects.values()) for name in names}
+        for row in expected['ProviderRequest']:
+            row['request_options'] = {}
         current = self.migrate(latest)
         for name in names:
             self.assertEqual(list(current.get_model('rehearsals', name).objects.values()), expected[name])

@@ -1922,3 +1922,157 @@ try again
 - The requester shared that the backend job's `python manage.py test` step failed while the mobile job passed. The job's package install, Django check, migration check and migration steps succeeded. GitHub's public check annotations only reported exit code 1; the job-log download endpoint was not accessible from this session.
 - Comparing the branch's edited test expectations with the prior passing redesign branch and the current backend implementation showed three stale assertions: Gemini tests expected schema versions v2/v3 instead of current v3/v4; feedback preparation expected 11 slides to fail despite no current slide-count limit; and the Gemini wire-schema expectation retained a `slide_index` maximum that the current v4 schema removes. Codex restored those checks to match the implementation. This source comparison identifies likely CI causes; the original failing assertion output was unavailable.
 - `python3 -m py_compile` passed for the three edited backend test modules, and `git diff --check` passed for the code changes. `python manage.py test` was attempted but could not start because this Mac's Python environment lacks Celery (`ModuleNotFoundError`); Docker is not running. A separate AI reviewer checked the changed expectations against the current implementation and found no concrete issue, but did not run the suite. The original GitHub test log remains unavailable, so the precise initial failing assertions are unconfirmed. After commit `63517af` was pushed through GitHub Desktop, GitHub Actions run [#132](https://github.com/snuhcs-course/swpp-2026-project-team-07/actions/runs/38776836151) completed successfully: both backend (including `python manage.py test`) and mobile jobs passed.
+
+
+## Scribe v2 transcription — October 16, 2026
+
+- Contributor: Injoon. Tool: OpenAI Codex. Model: GPT-6 (exact variant not recorded). Separate AI review will be recorded below.
+- Actual task prompt (verbatim):
+
+> I guess then we should use whisper instead. Let's make a branch (make it visible on github) to change the model to Eleven Labs Scribe v2. Make sure that we branch from the current latest branch
+
+- Human direction: explicit Scribe v2 target and publication authorization; the opening Whisper phrase is contradictory, so the agent stated its interpretation before work. No human testing, merge or deployment approval is inferred.
+- Base: newest live remote branch `it2/feature/ai_feedback`, `ff8472c`, fetched October 16. Separate worktree preserves existing edits.
+- Generated/retained work: provider adapter, persisted provider identity, historical raw-response compatibility, mobile parser and provider-specific disclosure/consent, focused regression tests and current setup/contract documentation. No new dependency; OpenAI feedback remains supported.
+- Verification: Django system/migration checks passed; 391 SQLite tests OK (25 skips: 24 PostgreSQL-specific, one packaged-VAD dependency test); final affected-backend rerun 41 OK (three PostgreSQL skips). Mobile TypeScript/lint and 298 tests passed; Android JS export passed. A real 20-second previously evaluated public presentation excerpt returned 62 timed words through the new adapter in 1.50 seconds. No listening audit, physical-device test, new PostgreSQL/worker integration or packaged-VAD run is claimed. Temporary environment uses locked backend dependencies except the uninstalled model-gate group.
+- Separate review: Codex reviewer (exact variant not recorded), two passes. First pass found Q&A could bypass the new provider consent. Codex added a client-side gate and Continue/Cancel dialog, with upgrade/cancel/retry/read-only regression tests; second pass reported no further actionable issues. AI review is not human approval.
+- Errors/revisions: first full backend invocation lacked Pillow in the temporary environment; installed the locked non-gate dependencies and reran successfully. One mobile command was invoked from the repository root and failed to find a package; rerun from `mobile/` passed. No additional provider request resulted from these setup errors.
+- Publication: authorized branch commit/push; final GitHub verification recorded at handoff. No PR, merge, Wiki edit or deployment is claimed.
+
+
+### Emulator and phone follow-up — October 16, 2026
+
+- Contributor: Injoon. Tool: OpenAI Codex. Model: GPT-6 family (exact variant not recorded).
+- Actual follow-ups (verbatim, in order):
+
+> Does this have the updated UI that Jaewon made
+
+> can u run on the emulator and my phone
+
+> can't we use expo go
+
+- Verified Jaewon's live `front-end-design-JJ` tip `eeb3307` is an ancestor of Scribe branch `20fbd3f`. Explained Expo Go cannot supply the project's native PDF/audio dependencies; a development client is required.
+- Runtime setup: exact mobile dependencies installed; generated ignored Android project, ignored local configuration and a dedicated local PostgreSQL/Redis instance for this branch. API and worker readiness passed. Installed the full locked backend runtime; all three packaged speech-gate tests now pass, including actual packaged-model silence detection, with no skips. These are agent-operated checks.
+- Device/build result: Android debug build succeeded in 9m52s using cached Java 17 and the branch's exact npm lock. Installed with `adb install -r -t` and launched `com.team07.outloud` on the connected Samsung SM-S931N and API 36 arm64 emulator. Screenshots inspected privately confirmed the phone rehearsal UI and emulator Home; no private PDF/media/screenshots were committed. Existing app data was not cleared. The emulator required a lower-memory restart and Wait on a temporary Android System UI busy dialog. Full rehearsal/transcription/usefulness acceptance is not claimed.
+- Runtime: Metro, API, Celery worker/scheduler and isolated PostgreSQL/Redis remain running. USB port forwarding connects both devices. A loopback-only IPv6-to-IPv4 bridge addresses differing localhost address families without exposing the API to the LAN. Keep the Mac running and phone USB connected for this development session.
+- Discovered blocker: actual PDF uploads returned PostgreSQL DataError because extracted slide text contained U+0000. A synthetic valid-PDF regression reproduced the identical error before the fix and passed afterward on PostgreSQL. Removed only NUL characters from extracted text; original PDF bytes and rendering are retained. Restarted the API with the fix, preserving saved media. The separate reviewer found no actionable issues.
+- Final backend checks: system/migration checks passed; 392 SQLite tests OK, 24 PostgreSQL-only skips; the new PostgreSQL upload regression and all three real speech-gate tests passed separately. No new mobile source changes were needed for this runtime task. One test-edit command used the wrong working-directory prefix; corrected before reproduction, with no source mutation from the failed command. A premature emulator installation was rejected while Android was still booting; it succeeded after startup.
+- Scope/publication: small PDF import fix and this verification record accompany the Scribe branch. No merge, deployment or Wiki publication; agent-operated device launch does not establish human approval.
+
+
+### Full recording flow and filler preservation — October 16, 2026
+
+- Contributor: Injoon. Tool: OpenAI Codex. Model: GPT-6 family (exact variant not recorded).
+- Actual prompt (verbatim):
+
+> can u test the full recording flow and check that it’s using Scribe v2 and keeping filler words in the transcript
+
+- Plan/scope: real emulator PDF import, native microphone capture, slide change, stop/save, disclosure, upload, worker/STT and on-screen result/playback. Feed a 45-second previously evaluated EdUHK presentation 5 excerpt into the emulator microphone through the installed emulator's authenticated gRPC API; do not replace recording/upload/transcription with fixtures or intercept provider responses. Host microphone remains disabled; phone untouched. Blank two-slide PDF is explicitly labeled synthetic.
+- Actual user follow-up (verbatim), after the agent asked to move the acoustic test to the phone:
+
+> Keep testing on emulator
+
+- Confirmed direction: emulator only. The phone was not used. Source excerpt, native media, raw responses, local app databases and screenshots remain private. Temporary gRPC tooling is outside app dependencies.
+- Confirmed live backend result: real HTTP upload, actual PostgreSQL/Redis/Celery and packaged Silero gate completed a 45-second public excerpt through one `elevenlabs / scribe_v2` request. Durable input hash matches audio, raw response has a private transcription ID, and all 91 words passed the actual mobile parser. Six `um`/`uh` tokens survive raw response, normalization, alignment and parsing. This is backend-only evidence, not native microphone success or reference-based accuracy/recall measurement.
+- Native results: actual PDF import, microphone permission, recording, slide change, save, upload and explicit ElevenLabs disclosure were operated. A 26-second capture uploaded successfully and correctly completed as `no_speech` with zero provider calls because injected speech was absent from its near-silent saved audio. Two other captures correctly failed duration validation and retained local media. Premature injection before an active microphone stream crashed the emulator; private crash evidence was preserved. With an active stream, injection reported success but failed to reach the recorded audio. A legacy sound-card trial timed out and produced non-speech signal; default audio settings were restored without wiping app data. A proposed final 48-kHz stereo real-time format was prepared outside the repo but not run: restored-emulator UI/screenshot response became too slow for a reliable bounded capture.
+- Correction: the agent initially counted five fillers because its punctuation filter excluded `uh--`. Corrected to six against the raw durable receipt, and reran the actual mobile parser assertion successfully. No app parsing defect was found. The existing app counter also flags `like` in “I would like to share,” a contextual false positive; no classifier change was requested or made.
+- Outcome/limits: **full native speech-to-Scribe flow remains unverified**. No app code, duration check, speech gate, provider receipt or captured audio was altered to manufacture success. No phone acceptance, listening audit, pause detection, human approval, deployment or Wiki synchronization is claimed. [Attempt evidence and safe metrics](evidence/scribe-full-flow-20261016/README.md).
+
+### Phone connection recovery — October 16, 2026
+
+- Contributor: Injoon. Tool: OpenAI Codex. Model: GPT-6 family (exact variant not recorded).
+- Actual follow-ups (verbatim):
+
+> ill use my phone instead
+
+> it says failed to connect to 127.0.0:8081
+
+- Human direction: phone use now supersedes the earlier emulator-only test constraint.
+- Agent-operated recovery: confirmed the Samsung SM-S931N is connected/authorized and Metro is running on localhost:8081. The phone's reverse-forwarding list was empty after reconnection. Restored USB forwarding for ports 8081 (Metro) and 8000 (API), then reopened the existing native development client. Metro status returned running; launch returned success. A private screenshot showed the Android PDF picker, with no connection-error screen. The agent did not choose a personal file or initiate recording. User recording/transcription remains pending. No application source change or new provider request was made by this recovery.
+
+### Phone take upload investigation — October 16, 2026
+
+- Contributor: Injoon. Tool: OpenAI Codex. Model: GPT-6 family (exact variant not recorded).
+- Actual prompt (verbatim):
+
+> It keeps saying couldn't upload this take: tap to retry
+
+- Initial evidence: local API still listening on port 8000, but the Samsung phone is absent from ADB; only the emulator is connected. Asked the user to reconnect/unlock the phone, since this localhost development configuration uses USB reverse forwarding. The phone-local error and saved take cannot yet be inspected; do not assume disconnection explains every earlier upload failure. Existing API logs show earlier successful PDF/context operations, but no recent phone take POST. No source fix or new transcription request has been made. Initial health probe used a nonexistent path and returned 404; corrected to the defined `/api/ready/` endpoint. Investigation remains pending reconnection; recordings were not cleared or modified.
+
+- Reconnection follow-up (verbatim): “it'a connected”. First checks still showed no phone in ADB. macOS briefly enumerated Samsung serial `R3CY30KYB0A`, then the USB device disappeared again before debugging access was available. Refreshed offline debugging connections; no phone appeared. Asked the user to secure a direct data-capable USB connection, keep it unlocked and accept the debugging prompt. No evidence yet distinguishes a cable/port issue from the phone's USB state; the saved take's exact error remains inaccessible.
+- Subsequent observed recovery: phone briefly reconnected as an authorized ADB device. Restored 8081/8000 forwarding and read a private copy of its saved attempt metadata. Three recent failed takes explicitly stored `java.net.ConnectException: Failed to connect to /127.0.0.1:8000`; latest take `d5f07df9-fdc0-475c-83a7-440df50eb2b5` is 16,830 ms with three slide visits. The older 6,752-ms take retains its historical PDF HTTP 500 error from before the earlier PDF fix; it is not evidence of a new PDF failure. The phone disconnected again before screenshot/retry, so no new upload or provider call was initiated. Asked the user to choose a stable direct USB data cable/port or wireless debugging. Root cause of the latest saved failures is unreachable backend; repeated USB loss prevents a verified retry. Physical cause of USB loss remains undetermined. Local audio and app data were preserved.
+
+- Actual reconnection follow-ups (verbatim): “try agian”; “check again”. The phone reconnected as authorized. Restored USB reverse forwarding (8081/8000), reopened OutLoud and used the existing Retry control for take `d5f07df9-fdc0-475c-83a7-440df50eb2b5`. Upload succeeded and phone state became submitted; server showed awaiting_analysis. Under the existing full-flow/Scribe testing authorization, the agent tapped Start and Continue in the explicit ElevenLabs disclosure. Exactly one durable `elevenlabs / scribe_v2` request completed through actual Silero/worker processing. Native duration 16,830 ms, 26 timed words, three slide visits; raw/normalized output retains `Uh,` at 6,180–6,340 ms and `Um,` at 13,120–13,380 ms. Durable audio hash matches and private Scribe receipt ID exists. Actual phone cache matches server transcript; inspected on-phone transcript includes `Uh,` and the upload error is cleared. No app source change, rerecording, synthetic result, local DB edit, merge or deployment was made. No playback listening or reference-based accuracy/recall audit is claimed. Updated safe evidence, implementation follow-up and project entry point; original emulator failures remain recorded.
+
+### Restore phone access again — October 16, 2026
+
+- Contributor: Injoon. Tool: OpenAI Codex. Model: exact variant not recorded.
+- Actual prompt (verbatim):
+
+> can you make it accessible on my phone again
+
+- Agent-operated result: confirmed the Samsung phone is connected and authorized, restored USB reverse forwarding for 8081 and 8000, and reopened the existing OutLoud development client. Metro returned running; backend readiness confirmed reachable database/broker (worker not checked by that endpoint). Native launch succeeded and both forwarding mappings were verified. No source change, recording action or provider request was made. This local development setup still requires the USB data connection and Mac services.
+
+### Scribe vocabulary-hint investigation — October 16, 2026
+
+- Contributor: Injoon. Tool: OpenAI Codex. Model: exact variant not recorded.
+- Actual prompt (verbatim):
+
+> Can you check if Scribe v2 supports vocabulary hints and whether we can use the slide text for that?
+
+- Checked current official ElevenLabs keyterm guide/API reference and the active branch's transcription adapter, processing call and PDF extraction/model. Confirmed batch `keyterms` support and feasibility using stored slide text; not currently sent by this implementation. Documented provider constraints, 20% surcharge and >100-term minimum billing, plus a proposed comparison before adoption. The API's strictly less-than-50-character limit is more precise than the guide's max-50 wording. Recommended curated relevant terms rather than whole-deck prose; image-only text requires separate OCR. This is a recommendation, not a confirmed implementation requirement. Also found built-in `transcript_edit`, correcting the earlier conversational assumption that all correction requires a separate AI provider; no evaluation of that feature is claimed. No source-code change or live provider call; current project entry point links the updated implementation/investigation document. Two exploratory searches referenced nonexistent optional pipeline/worker filenames and were corrected to the actual processing module; this did not affect verification results. No Wiki synchronization, merge or deployment.
+
+### Implement slide-derived Scribe keyterms — October 16, 2026
+
+- Contributor: Injoon. Tool: OpenAI Codex. Model: exact variant not recorded.
+- Actual prompt (verbatim):
+
+> Ok then let's make it so that our app extracts key words and then puts that as keyterms. What other parameters are there
+
+- Confirmed direction: enable automatic slide-derived vocabulary hints; preserve filler words. Agent implementation choice: deterministic bounded extraction from visited slides, without an additional AI call, capped at 100 terms under the provider's phrase/character limits. Explained the documented 20% surcharge. Snapshot submitted request options in private durable evidence, update disclosure for slide-derived text and preserve historical requests/results. Other provider parameters will be explained without enabling unrelated behavior. Implementation/tests/review in progress.
+
+- Generated/retained work: deterministic visited-slide word/phrase extraction (100-term cap, provider constraints), optional adapter keyterms, private durable request-options snapshot and additive migration, legacy Q&A hints, updated provider disclosure/consent namespace, regression/migration tests and current configuration/parameter documentation. No new dependency or extra AI model.
+- Verification: focused backend 56 OK (three PostgreSQL skips), full backend after fixture corrections 398 OK (24 PostgreSQL-only skips), mobile typecheck and 298 tests pass; lint zero errors and one existing effect-cleanup warning. System/migration drift checks pass; actual local PostgreSQL migration applied. One real synthetic-PDF/public-audio HTTP/worker integration sent 15 extracted hints, returned 91 timed words and preserved all six baseline `um`/`uh` tokens. Exactly one Scribe v2 request, private transcription ID and matching audio hash confirmed. No measured recognition improvement, listening audit or post-keyterms physical-phone capture is claimed.
+- Separate review: Codex reviewer reported an obsolete consent-test key; fixed by clearing current consent and granting old audio-only consent in the upgrade tests. No production correctness issue was reported. Full suites pass after the fix. A later request to the finished review agent found it was no longer live; no second review pass is claimed.
+- Errors/revisions: initial full backend run had four historical-migration assertion failures because the new empty options field was not in expected rows. Expectations now explicitly preserve all old values plus empty historical options. Initial mobile run exposed the reviewer's consent-fixture issue; corrected and reran. Exploratory reads of optional nonexistent backend/consent paths failed harmlessly and were corrected to actual files.
+
+### Restart development server — October 16, 2026
+
+- Contributor: Injoon. Tool: OpenAI Codex. Model: exact variant not recorded.
+- Actual prompt (verbatim):
+
+> restart dev server so I can use it on my phone
+
+- User interrupted service startup to request a restart. Checked surviving processes to avoid duplicate servers; restarted only this task's Metro server, confirmed API database/broker readiness and actual Celery worker pong. API, bridge, worker and scheduler from the interrupted startup were already running. Metro status is running. The phone is currently absent from ADB; requested USB reconnection and performed a bounded watch to restore 8081/8000 and open OutLoud when available. No phone connection/launch is claimed until detected.
+
+- Retained implementation: bounded deterministic term extractor, visited-slide worker wiring, shared adapter validation/repeated multipart fields, private durable request-options migration, legacy Q&A slide hints, updated audio+slide disclosure and versioned consent, focused tests and active docs. No new dependency or second AI call.
+- Verification: final full backend suite 398 OK (24 PostgreSQL-only skips), 298 mobile tests plus TypeScript/lint OK (one pre-existing hook warning), Android JS export passed; system/migration-drift checks passed. Applied the additive migration to the isolated PostgreSQL database; no saved recording was cleared. Restarted the task's local API, worker, scheduler, bridge and Metro after they were no longer running.
+- Errors/revisions: first full suite found migration-preservation assertions did not account for the new historical `{}` field (four failures including two replay subtests); updated expectations to test retained historical values plus the new empty option snapshot. A mobile consent test reset the obsolete key while new consent remained granted; corrected to clear v2 and grant v1, verifying renewed disclosure. Shared normalization validation now rejects six hyphenated words and whitespace before network submission. A few exploratory path/glob reads referenced nonexistent optional files; corrected to actual files.
+- Independent review: separate Codex reviewer (exact variant not recorded) found the stale consent test; final review after correction reported no remaining actionable correctness issues. AI review is not human approval.
+- Live verification: guarded existing test `d230518e-5f9c-44ef-b73d-8a1bc3c34a73` completed real PDF extraction/upload/worker/Scribe with 15 synthetic-slide hints, 91 timed words and six retained `um`/`uh` tokens in the public 45-second clip. Reverified its durable options, receipt and audio hash instead of repeating a charge when a temporary helper guard reported an existing identity. Safe metrics only are retained; raw output/media stay private. Accuracy improvement, a new phone recording with hints, and listening-based filler recall are not claimed.
+- Actual follow-up (verbatim): “It should be working”. Phone reconnected as authorized. Restored and verified USB reverse forwarding for 8081/8000; the native development-client launch succeeded. Metro and backend readiness rechecked successfully. Phone can now use the updated local bundle; no new phone recording or provider submission was initiated by this reconnection.
+
+- Restart verification follow-up: inspected the actual phone screen, showing OutLoud importing/rendering a PDF (23% at capture). An initial reverse-list recheck was empty after a brief connection reset; reapplied both mappings and immediately verified both present. The agent did not initiate or interrupt the user's import. Current feature edits and evidence remain local/uncommitted on the existing Scribe branch; no new publication, merge or Wiki synchronization is claimed.
+
+
+## Scribe v2 integration onto merged main — October 16, 2026
+
+**Contributor:** Injoon · **Tool:** OpenAI Codex · **Model:** GPT-6 (exact variant not recorded)
+
+### Prompts — verbatim, in order
+
+```text
+I want you to modify Jaewon's (justaoj) front end PR description
+```
+
+```text
+Change the title to an appropriate one.  I'll merge it myself and after I want you to make my transcription model changes on the updated main
+```
+
+```text
+I merged it. Go ahead and integrate my Scribe v2 transcription changes on the updated main and then make a PR
+```
+
+- **Output and scope:** Codex updated PR #29's description and title from its actual diff/CI, then verified the user's merge at `6435599`. An isolated updated-main branch ports the provider switch, visited-slide keyterms, request-options snapshot, provider-specific consent and PDF NUL fix from `20fbd3f`, `2740d7c`, `fbd7e88`. Earlier AI-feedback phases on the source branch are excluded. Main's UI and twenty-minute limit are retained. The migration is adapted to `0007_provider_request_options` after main's `0006`; the original source branch remains intact. Historical source verification above describes the earlier branch.
+- **Errors/revisions:** Applying source commits exposed expected conflicts with newer UI and absent durable Q&A. Codex retained main's screen/client and ported the consent gate to synchronous answers, excluding the absent durable-Q&A test. A safety hook blocked deleting that newly introduced incompatible test during conflict resolution; its contents were instead preserved outside the checkout. The original 0010 migration depended on unported phases and was adapted to 0007. No private environment/audio was copied or published.
+- **Verification/review:** Django system and migration-drift checks pass. Full SQLite suite: 296 tests OK, 18 PostgreSQL-specific skips; full suite against a disposable PostgreSQL 16 container: 296 tests OK, zero skips, including migration preservation and concurrency. Packaged Silero dependencies were available. Mobile `npm run check`: TypeScript, lint and 180 tests pass; Android JS export passes. Separate AI code review found no concrete defects; its stale migration-reference finding was corrected. Focused documentation review found no missing relative links or scope contradiction. Exact staged whitespace/scope checks pass. No new APK/device or live paid-provider test was run; earlier device/provider evidence belongs to the original branch. Publication is authorized; human acceptance and merge remain the user's responsibility, with no deployment authorized. Branch: `codex/scribe-v2-main-integration`.

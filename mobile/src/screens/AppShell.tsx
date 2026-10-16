@@ -1,3 +1,4 @@
+// Scribe migration: OpenAI Codex, Iteration 2 (2026-10-16); see active collaboration log.
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
 // OpenAI Codex light-mode ambient: docs/ai-collaboration-prompts-iteration-2.md#guide-based-light-mode-october-15-2026
 // Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
@@ -171,10 +172,10 @@ function Prompts() {
       else analysis.continuePrompt?.();
     };
     return (
-      <Dialog icon="i-mic" tone="neutral" title={disclosure ? 'Transcribe with OpenAI?' : 'Retry may charge again'}
+      <Dialog icon="i-mic" tone="neutral" title={disclosure ? 'Transcribe with ElevenLabs?' : 'Retry may charge again'}
         body={disclosure
-          ? 'Transcription sends your saved audio through your OutLoud server to OpenAI for hosted Whisper transcription. Audio and results stay available on this phone. Continue to allow automatic transcription after future recordings, or Cancel.'
-          : 'The previous OpenAI request may already have been charged. Retrying may send the audio again and incur another charge. There is no guarantee of exactly one provider request.'}
+          ? 'Transcription sends your saved audio and vocabulary hints extracted from the recorded slides through your OutLoud server to ElevenLabs for Scribe v2 transcription. Audio and results stay available on this phone. Continue to allow automatic transcription after future recordings, or Cancel.'
+          : 'The previous transcription request may already have been charged. Retrying may send the audio again and incur another charge. There is no guarantee of exactly one provider request.'}
         confirm="Continue" onConfirm={continueAll} onCancel={() => analysis.cancelPrompt?.()} />
     );
   }

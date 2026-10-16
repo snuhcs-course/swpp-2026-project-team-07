@@ -1,15 +1,16 @@
+// Scribe migration: OpenAI Codex, Iteration 2 (2026-10-16); see active collaboration log.
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
 // Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
 // OutLoud redesign: Audience Q&A API client (backend: rehearsals/qa_views.py).
 // Questions are written from the slide text and the merged transcript; answers are
-// transcribed with the existing hosted Whisper adapter and judged by the configured
+// transcribed with the existing hosted Scribe v2 adapter and judged by the configured
 // feedback provider. Provider keys stay on the server.
 import { File } from 'expo-file-system';
 import { fetch } from 'expo/fetch';
 import type { Transcript } from '../../contracts';
 import { API_URL } from '../../services/api';
 import { readStored } from '../../services/storage';
-import { normalizeApi } from '../transcription/analysisStorage';
+import { hasAnalysisConsent, normalizeApi } from '../transcription/analysisStorage';
 import { serverSlides } from '../presentations/serverDeck';
 import type { Presentation } from '../presentations/store';
 
@@ -75,8 +76,13 @@ export async function generateQuestions(deck: Presentation, slides: { slide_inde
   })).filter(q => q.question);
 }
 
+function requireTranscriptionConsent() {
+  if (!hasAnalysisConsent()) throw new QaError('transcription_consent_required', 'Allow ElevenLabs transcription to review this saved answer.');
+}
+
 export async function judgeAnswer(deck: Presentation, input: { audioUri: string; question: string; mainQuestion: string; part: 0 | 1; slideIndex: number; durationMs: number },
   signal?: AbortSignal): Promise<QaResult> {
+  requireTranscriptionConsent();
   let response: Response;
   try {
     const audio = new File(input.audioUri);

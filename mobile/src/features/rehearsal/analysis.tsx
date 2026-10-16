@@ -3,7 +3,7 @@
 // OutLoud redesign: background upload + hosted transcription for each take.
 // Each take that the screens need is handled by an invisible <AttemptWorker>, which reuses
 // the existing useAttemptAnalysis hook (revision-aware processing, polling, offline cache,
-// first-use OpenAI disclosure) and the existing uploadAttempt service, exactly as the
+// first-use ElevenLabs disclosure) and the existing uploadAttempt service, exactly as the
 // former saved-rehearsal screen did after a recording.
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { AttemptResult, Transcript } from '../../contracts';

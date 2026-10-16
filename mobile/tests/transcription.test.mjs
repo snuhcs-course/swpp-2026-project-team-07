@@ -210,3 +210,22 @@ test('malformed optional feedback is quarantined without hiding a usable recordi
     assert.equal(parsed.feedback_analysis, undefined);
   }
 });
+
+test('Scribe results and legacy Whisper caches parse; mismatched provider/model fails closed', async () => {
+  const { parseResult } = await import('../src/features/transcription/resultValidation.ts');
+  for (const [provider, model] of [['elevenlabs', 'scribe_v2'], ['openai', 'whisper-1']]) {
+    const value = result(); value.provenance = { ...value.provenance, provider, model };
+    assert.equal(parseResult(value, id)?.provenance.provider, provider);
+  }
+  const value = result(); value.provenance.provider = 'elevenlabs';
+  assert.equal(parseResult(value, id), null);
+});
+test('old OpenAI and audio-only Scribe consent do not authorize slide-keyterm submission', async () => {
+  const { writeStored } = await import('../src/services/storage.ts');
+  const { hasAnalysisConsent, saveAnalysisConsent } = await import('../src/features/transcription/analysisStorage.ts');
+  writeStored('analysis-consent:openai:v1', true);
+  writeStored('analysis-consent:elevenlabs:scribe-v2:v1', true);
+  assert.equal(hasAnalysisConsent(), false);
+  saveAnalysisConsent();
+  assert.equal(hasAnalysisConsent(), true);
+});
