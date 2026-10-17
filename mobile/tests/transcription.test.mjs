@@ -18,7 +18,7 @@ const result = (status = 'completed') => ({ attempt_id: id, status, duration_ms:
   visits: status === 'completed' ? [{ slide_index: 0, start_ms: 0, end_ms: 5000, words: [{ text: 'Hello', start_ms: 0, end_ms: 1000 }] }] : null,
   metrics: status === 'completed' ? { duration_ms: 5000, time_per_slide: [{ slide_index: 0, duration_ms: 5000 }], detected_language: 'english', speaking_rates: [], rate_note: 'Estimate' } : null,
   analysis_outcome: status === 'completed' ? 'speech' : null, feedback_state: 'disabled',
-  provenance: { provider: 'openai', model: 'whisper-1', generation: 1, outcome: 'received', speech_gate: null },
+  provenance: { provider: 'elevenlabs', model: 'scribe_v2', generation: 1, outcome: 'received', speech_gate: null },
   feedback: [], error: status === 'failed' ? { code: 'provider_timeout', message: 'Try later' } : null,
   ...(status === 'pending' ? { status: 'processing' } : {}),
 });
@@ -167,7 +167,7 @@ test('processing validates stages and accepts completed 200 with revision-aware 
     failed_stage: null, retry_available: false, retry_at: null, requires_confirmation: false,
     partial_available: { transcript: true, alignment: true }, visits: [{ slide_index: 0, start_ms: 0, end_ms: 5000, words: result().transcript.words }],
     duration_ms: 5000, metrics: { duration_ms: 5000, time_per_slide: [{ slide_index: 0, duration_ms: 5000 }], detected_language: 'english', speaking_rates: [], rate_note: 'Estimate' },
-    feedback_state: 'disabled', analysis_outcome: 'speech', provenance: { provider: 'openai', model: 'whisper-1', generation: 3, outcome: 'received', speech_gate: 'silero-vad' } };
+    feedback_state: 'disabled', analysis_outcome: 'speech', provenance: { provider: 'elevenlabs', model: 'scribe_v2', generation: 3, outcome: 'received', speech_gate: 'silero-vad' } };
   const { client, calls } = setup([json(complete)]);
   assert.deepEqual(await client.process(id, { processing_revision: 2, acknowledge_uncertain: true }), complete);
   assert.deepEqual(JSON.parse(calls[0].init.body), { processing_revision: 2, acknowledge_uncertain: true });
@@ -211,14 +211,13 @@ test('malformed optional feedback is quarantined without hiding a usable recordi
   }
 });
 
-test('Scribe results and legacy Whisper caches parse; mismatched provider/model fails closed', async () => {
+test('only Scribe provenance and empty pre-submission provenance are accepted', async () => {
   const { parseResult } = await import('../src/features/transcription/resultValidation.ts');
-  for (const [provider, model] of [['elevenlabs', 'scribe_v2'], ['openai', 'whisper-1']]) {
-    const value = result(); value.provenance = { ...value.provenance, provider, model };
-    assert.equal(parseResult(value, id)?.provenance.provider, provider);
+  const value = result(); value.provenance = { ...value.provenance, provider:'elevenlabs', model:'scribe_v2' };
+  assert.equal(parseResult(value, id)?.provenance.provider, 'elevenlabs');
+  for (const [provider,model] of [['openai','whisper-1'],['openai','scribe_v2'],['elevenlabs','whisper-1'],[null,'scribe_v2']]) {
+    assert.equal(parseResult({...value,provenance:{...value.provenance,provider,model}},id),null);
   }
-  const value = result(); value.provenance.provider = 'elevenlabs';
-  assert.equal(parseResult(value, id), null);
 });
 test('old OpenAI and audio-only Scribe consent do not authorize slide-keyterm submission', async () => {
   const { writeStored } = await import('../src/services/storage.ts');

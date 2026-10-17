@@ -97,3 +97,79 @@ test('real merged-run lines mark a sentence crossing adjacent slide recordings',
   assert.equal(feedbackRows(0, ctx({ times: [1, 1], targets: [1, 1], lines, points: [[], []] }))[3].text,
     'Moved to slide 2 mid-sentence');
 });
+
+
+test('slide-boundary detection ignores different source takes and nonadjacent visits', () => {
+  const transcript = { text: 'One sentence crosses these saved slide visits', words: [
+    ['One', 0], ['sentence', 500], ['crosses', 1100], ['these', 1500], ['saved', 2100], ['slide', 2500], ['visits', 2800],
+  ].map(([text, start_ms]) => ({ text, start_ms, end_ms: start_ms + 150 })) };
+  const transcripts = new Map([['a', transcript], ['b', transcript]]);
+  const differentSources = { parts: [
+    { attemptId: 'a', segments: [{ startMs: 0, endMs: 1000 }] },
+    { attemptId: 'b', segments: [{ startMs: 1000, endMs: 3000 }] },
+  ] };
+  const separate = buildLines(differentSources, 2, transcripts, {}, buildVocabulary(['', '']));
+  assert.deepEqual(separate.map(l => l.edge), [0, 0]);
+  const interveningSlide = { parts: [
+    { attemptId: 'a', segments: [{ startMs: 0, endMs: 1000 }] },
+    { attemptId: 'a', segments: [{ startMs: 2000, endMs: 3000 }] },
+    { attemptId: 'a', segments: [{ startMs: 1000, endMs: 2000 }] },
+  ] };
+  const intervening = buildLines(interveningSlide, 3, transcripts, {}, buildVocabulary(['', '', '']));
+  assert.deepEqual(intervening.map(l => l.edge), [0, 0, 0]);
+  assert.deepEqual(intervening.map(l => l.audio.startMs), [0, 2100, 1100]);
+});
+
+test('direct boundary flags preserve repeated-visit correction provenance and immutable timed words', () => {
+  const transcript = { text: 'First visit then back again and finish here', words: [
+    ['First', 0], ['visit', 500], ['then', 1100], ['back', 1500],
+    ['again', 2100], ['and', 2500], ['finish', 3100], ['here', 3500],
+  ].map(([text, start_ms]) => ({ text, start_ms, end_ms: start_ms + 150 })) };
+  const snapshot = JSON.stringify(transcript);
+  const run = { parts: [
+    { attemptId: 'a', segments: [{ startMs: 0, endMs: 1000 }, { startMs: 2000, endMs: 3000 }] },
+    { attemptId: 'a', segments: [{ startMs: 1000, endMs: 2000 }, { startMs: 3000, endMs: 4000 }] },
+  ] };
+  const lines = buildLines(run, 2, new Map([['a', transcript]]), { 'a#4': { text: 'Archived rewrite' } }, buildVocabulary(['', '']));
+  assert.deepEqual(lines.map(l => l.edge), [1, 1, -1, -1]);
+  const returned = lines.find(l => l.key === 'a#4');
+  assert.deepEqual(returned.visit, { slide: 0, index: 1, startMs: 2000 });
+  assert.deepEqual(returned.source, { first: 4, last: 5, text: 'Again and' });
+  assert.equal(returned.text, 'Again and');
+  assert.equal(returned.fixed, false);
+  assert.deepEqual(returned.flags, []);
+  assert.deepEqual(returned.audio, { attemptId: 'a', startMs: 2100, endMs: 2650 });
+  assert.deepEqual(returned.words.map(w => w.start_ms), [2100, 2500]);
+  assert.equal(JSON.stringify(transcript), snapshot);
+});
+
+
+test('sentence move eligibility matches applied placement edits while clipped boundary evidence keeps original audio', () => {
+  const transcript = { text: 'Complete sentence. Across the boundary.', words: [
+    ['Complete', 0], ['sentence', 400], ['Across', 800], ['the', 1200], ['boundary', 1600],
+  ].map(([text, start_ms]) => ({ text, start_ms, end_ms: start_ms + 150 })) };
+  const run = { parts: [
+    { attemptId: 'a', segments: [{ startMs: 0, endMs: 1000 }] },
+    { attemptId: 'a', segments: [{ startMs: 1000, endMs: 2000 }] },
+  ] };
+  const vocab = buildVocabulary(['', '']);
+  const transcripts = new Map([['a', transcript]]);
+  const original = buildLines(run, 2, transcripts, {}, vocab);
+  assert.deepEqual(original.map(line => line.canMove), [true, false, false]);
+  assert.deepEqual(original.map(line => line.edge), [0, 1, -1]);
+  const edited = buildLines(run, 2, transcripts, {
+    'a#0': { slide: 1 }, 'a#2': { slide: 1 }, 'a#3': { slide: 0 },
+  }, vocab);
+  const byKey = new Map(edited.map(line => [line.key, line]));
+  assert.equal(byKey.get('a#0').slide, 1, 'whole-sentence movement remains supported');
+  assert.equal(byKey.get('a#2').slide, 0, 'clipped placement edits stay archived');
+  assert.equal(byKey.get('a#3').slide, 1, 'the other side of the boundary also stays at its source slide');
+  for (const line of original) {
+    const after = byKey.get(line.key);
+    assert.deepEqual(after.audio, line.audio);
+    assert.deepEqual(after.words, line.words);
+    assert.deepEqual(after.source, line.source);
+    assert.deepEqual(after.visit, line.visit);
+    assert.equal(after.canMove, line.canMove);
+  }
+});

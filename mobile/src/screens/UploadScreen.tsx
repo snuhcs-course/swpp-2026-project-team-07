@@ -16,11 +16,10 @@ import { createThemedStyles, useTheme } from '../design/theme';
 import { ThemeToggle } from '../design/ThemeToggle';
 import { HintRow, Pop } from '../design/ui';
 import { BACK_FADE_Y, BACK_T } from '../domain/gestures';
-import { slideTargets } from '../domain/slides';
 import { analyzePdf, discardImport, pickPdf, type Progress } from '../features/presentations/importer';
-import { savePresentation, visibleDecks, type Presentation } from '../features/presentations/store';
+import { visibleDecks, type Presentation } from '../features/presentations/store';
 import type { LocalPdf } from '../features/pdf/service';
-import { PresentationSetup } from './PresentationSetup';
+import { PresentationRequirementsEditor } from './PresentationSetup';
 import { useBack, useShell } from './shared';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -32,7 +31,6 @@ export function UploadScreen() {
   const frame = useFrame();
   const [phase, setPhase] = useState<'pick' | 'picking' | 'analyze' | 'configure'>('pick');
   const [readyDeck, setReadyDeck] = useState<Presentation | null>(null);
-  const [setupError, setSetupError] = useState('');
   const [error, setError] = useState('');
   const [info, setInfo] = useState<Progress & { file: string }>({ progress: 0, status: 'Rendering slides', pages: null, file: '' });
   const [pct, setPct] = useState(0);
@@ -80,7 +78,6 @@ export function UploadScreen() {
       }, controller.signal);
       if (leaving.current) return;
       // OpenAI Codex import setup: docs/ai-collaboration-prompts-iteration-2.md#presentation-time-and-audience-setup-october-15-2026
-      setSetupError('');
       setReadyDeck(deck);
       setPhase('configure');
       home.setup.set(withTiming(1, { duration: 260 }));
@@ -95,11 +92,9 @@ export function UploadScreen() {
     }
   }, [home.analyzing, home.setup, phase, prog]);
 
-  const finishSetup = useCallback((target: number, audience: string) => {
+  const finishSetup = useCallback(() => {
     if (!readyDeck || leaving.current) return;
-    const deck = { ...readyDeck, target, targets: slideTargets(readyDeck.slides.map(s => s.text), target), audience };
-    try { savePresentation(deck); }
-    catch { setSetupError('Could not save these choices. Please try again.'); return; }
+    const deck = readyDeck;
     leaving.current = true;
     job.current = null;
     const index = visibleDecks().findIndex(d => d.id === deck.id);
@@ -208,7 +203,7 @@ export function UploadScreen() {
       </PanView>
       <ThemeToggle />
       </View>
-      {readyDeck && phase === 'configure' && <Enter kind="fade"><PresentationSetup deck={readyDeck} error={setupError} onConfirm={finishSetup} onBackPan={pan} /></Enter>}
+      {readyDeck && phase === 'configure' && <Enter kind="fade"><PresentationRequirementsEditor deck={readyDeck} initialImport onSaved={finishSetup} onBackPan={pan} /></Enter>}
       </Animated.View>
     </Enter>
   );

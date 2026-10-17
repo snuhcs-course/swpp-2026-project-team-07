@@ -24,6 +24,10 @@ import { mod } from '../domain/format';
 import type { HueName } from '../domain/hues';
 import { runAttemptIds } from '../domain/run';
 import { AnalysisHost, stageOf, usePlaybackIds, useWorkers } from '../features/rehearsal/analysis';
+import { DefaultRequirementsHost } from '../features/presentations/DefaultRequirementsHost';
+import { InitialQaHost } from '../features/qa/InitialQaHost';
+import { InitialFeedbackHost } from '../features/feedback/InitialFeedbackHost';
+import { InitialPresentationScoreHost } from '../features/feedback/InitialPresentationScoreHost';
 import { CoachHost, useCoaches } from '../features/rehearsal/coaching';
 import { deckById, getDeckState, loadPresentations, nextHue, useStore, visibleDecks } from '../features/presentations/store';
 import { HomeScreen } from './HomeScreen';
@@ -121,6 +125,10 @@ export function AppShell() {
       </Frame>
       <Workers />
       <CoachHost />
+      <DefaultRequirementsHost />
+      <InitialFeedbackHost />
+      <InitialPresentationScoreHost openedDeckId={['rehearse','review','full'].includes(s)?nav.deckId:null} />
+      <InitialQaHost />
       </HomeContext.Provider>
     </ShellContext.Provider>
   );
@@ -137,7 +145,7 @@ function LayerScreen({ screen, active }: { screen: NavState['screen']; active: b
   if (screen === 'review') return <ReviewScreen active={active} />;
   if (screen === 'full') return <FullReviewScreen active={active} />;
   if (screen === 'compare') return <CompareScreen />;
-  if (screen === 'qa') return <QAScreen />;
+  if (screen === 'qa') return <QAScreen active={active} />;
   return null;
 }
 

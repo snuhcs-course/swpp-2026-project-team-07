@@ -1,3 +1,4 @@
+// OpenAI Codex review routing: docs/ai-collaboration-prompts-iteration-2.md#first-recording-review-navigation-october-16-2026
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
 // OpenAI Codex light-mode compare: docs/ai-collaboration-prompts-iteration-2.md#guide-based-light-mode-october-15-2026
 // Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
@@ -14,7 +15,7 @@ import { Chip, IconRow, PageSurface, Pop, RecordButton } from '../design/ui';
 import { compareChips, compareRows, summarizeTake, type TakeSummary } from '../domain/analysis';
 import { fmt, quote } from '../domain/format';
 import { buildLines } from '../domain/lines';
-import { partSeconds, runAttemptIds, type Run } from '../domain/run';
+import { partSeconds, reviewDestination, runAttemptIds, type Run } from '../domain/run';
 import { scorablePoints } from '../domain/words';
 import { resolveCompare } from '../features/rehearsal/takes';
 import { transcriptsFor, useDeckModel } from '../features/presentations/useDeckModel';
@@ -48,13 +49,18 @@ export function CompareScreen() {
     };
   }, [c, model]);
 
-  const finish = useCallback((which: 'old' | 'new') => {
+  const finish = useCallback((which: 'old' | 'new', reviewing = true) => {
     if (!model || !view) return;
-    resolveCompare(model.deck.id, which);
-    go('rehearse', { nav: 'fade', deckId: model.deck.id, slide: view.first, sel: view.first });
-  }, [go, model, view]);
+    const resolved = resolveCompare(model.deck.id, which);
+    const requested = Math.max(0, Math.min(model.n - 1, nav.sel));
+    const inScope = c?.slides.includes(requested) || requested === c?.next.sel;
+    const fallback = c?.slides.find(i => partSeconds(resolved?.parts[i]) > 0);
+    const selected = inScope && partSeconds(resolved?.parts[requested]) > 0 ? requested :
+      fallback ?? Math.max(0, resolved?.parts.findIndex(part => partSeconds(part) > 0) ?? -1);
+    go(reviewing ? reviewDestination(model.state.takes) : 'rehearse', { nav: 'fade', deckId: model.deck.id, slide: selected, sel: selected, from: null });
+  }, [c, go, model, nav.sel, view]);
   // System Back leaves the current recording in place.
-  useBack(true, useCallback(() => { finish('old'); return true; }, [finish]));
+  useBack(true, useCallback(() => { finish('old', false); return true; }, [finish]));
 
   if (!model || !view) return null;
   const glow = HUES[model.deck.hue].glow;

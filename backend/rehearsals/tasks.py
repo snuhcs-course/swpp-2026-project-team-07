@@ -9,6 +9,12 @@ from .services.coaching import run_coaching, recover_coaching
 @shared_task(time_limit=300, ignore_result=True)
 def process_attempt(attempt_id: str, revision: int):
     run_attempt(attempt_id, revision)
+    from .services.audience_qa import advance_answer
+    try:
+        advance_answer(attempt_id)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).warning("Q&A evaluation admission deferred; recording retained.")
 
 
 @shared_task(ignore_result=True)
@@ -16,6 +22,8 @@ def recover_work():
     recover_processing()
     recover_descriptions()
     recover_coaching()
+    from .services.audience_qa import recover_answers
+    recover_answers()
 
 
 @shared_task(time_limit=300, ignore_result=True)

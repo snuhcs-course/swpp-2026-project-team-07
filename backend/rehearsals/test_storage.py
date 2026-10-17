@@ -100,7 +100,7 @@ class UploadTests(TestCase):
         self.assertEqual(upload().status_code, 400)
         metadata["slide_events"][0]["slide_index"] = 0
         self.assertEqual(upload(SimpleUploadedFile("bad.wav", b"broken")).status_code, 400)
-        metadata["duration_ms"] = 1_200_001
+        metadata["duration_ms"] = 1800001
         self.assertEqual(upload().status_code, 400)
 
     def test_exact_decimal_audio_limit_and_awaiting_analysis(self):

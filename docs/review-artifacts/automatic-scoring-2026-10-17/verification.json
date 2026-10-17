@@ -1,0 +1,84 @@
+{
+  "mobile": {
+    "command": "npm run check",
+    "node": "v26.8.2",
+    "tests": 555,
+    "failed": 0,
+    "typecheck": "pass",
+    "lint": "0 errors; 1 existing useSegmentPlayer cleanup-ref warning",
+    "log": "mobile-check-final.log"
+  },
+  "android_export": {
+    "command": "npm run bundle:android",
+    "status": "pass",
+    "log": "android-export-final.log"
+  },
+  "backend": {
+    "sqlite": {
+      "tests": 615,
+      "skipped": 24,
+      "seconds": 23.446,
+      "status": "passed",
+      "log": "backend-full-sqlite.log"
+    },
+    "postgres": {
+      "tests": 615,
+      "skipped": 0,
+      "seconds": 49.063,
+      "status": "passed",
+      "log": "backend-full-postgres.log",
+      "container": "outloud-unified-score-pg",
+      "isolated_test_database": "test_automatic_scoring_20261017",
+      "destroyed_after_tests": true
+    },
+    "checks": {
+      "django_check": "passed",
+      "makemigrations_check_dry_run": "No changes detected"
+    },
+    "live_http": "Blocked at httpx.HTTPTransport.handle_request; only explicit test mocks used",
+    "regression_fixed": "PostgreSQL JSONB protocol key ordering; exact prior protocol now compared by canonical fingerprint, historical stored request digest still required",
+    "stage_sha256": "d620f261d498820ec0a29683f6ed146951c16d04a8c35648cf4a615b2b3e4ccc",
+    "files": {
+      "backend/rehearsals/services/presentation_score_v2.py": "6b21770fba509450f6018aa77c26f372b83696a396cb7315119f1db4bf69647c",
+      "backend/rehearsals/services/presentation_scoring.py": "7cea54626c5a7b8e4fd2a1372fce992657d2982c04cf38f3ac94c9a95a3a2f4f",
+      "backend/rehearsals/test_presentation_score_v2_boundaries.py": "cd245a4943197f63063a4672a778eae5d9a0a4b0f4f39c564e967f8075f38a55",
+      "backend/rehearsals/test_presentation_scoring_lifecycle.py": "04ff2f475016aadf3256f674811a6534abfcee0c2825d2f3b732e6987d64cfcc"
+    }
+  },
+  "independent_review": {
+    "status": "no remaining actionable code findings",
+    "mobile_affected_tests": 103,
+    "backend_focused_tests": 54,
+    "additional_independent_lifecycle_tests": 2,
+    "findings_fixed": [
+      "Foreground pending submission did not resume GET reconciliation after an admission race",
+      "Three documentation accuracy qualifiers",
+      "Physical mocked preview transient in-flight uncertainty/status"
+    ],
+    "hashes": "independent-review-sha256.json",
+    "additional_independent_inflight_tests": 4
+  },
+  "paid_inference": "No agent-triggered inference; all automated transport mocked or blocked",
+  "android_visual": {
+    "status": "passed, physical Galaxy S23 Ultra",
+    "fixtures": "clearly labeled synthetic, native INTERNET permission absent",
+    "original_phase_mocked_posts": 4,
+    "final_status_retest_mocked_posts": 1,
+    "final_navigation_extra_posts": 0,
+    "screenshots": 37,
+    "report": "android-preview/visual-verification.txt",
+    "limitations": [
+      "Silent fixture playback is not audible speech quality proof",
+      "WPM unavailable under existing five-second minimum",
+      "Human real-provider acceptance remains pending"
+    ]
+  },
+  "local_rollout": {
+    "status": "verified in-place primary APK install, main app not launched",
+    "install": "phone-install-verification.json",
+    "backend": "health/ready200, worker responds idle",
+    "preserved": "frozen jobs and receipts hashes unchanged; feedback106/transcription10",
+    "receipt_proof": "phone-runtime-after-reload.json"
+  },
+  "external_evidence_root": "/private/tmp/outloud-automatic-scoring-20261017/"
+}

@@ -10,30 +10,47 @@ import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
 
 export type Segment = { uri: string; startMs: number; endMs: number };
 type Playback = { key: string; segments: Segment[]; index: number; token: number; advancing: boolean; paused: boolean };
+type PlaybackState = { key: string | null; progress: number; elapsedMs: number; paused: boolean; positionMs: number | null; uri: string | null };
+const idle: PlaybackState = { key: null, progress: 0, elapsedMs: 0, paused: false, positionMs: null, uri: null };
 
 /** Play a sentence or a sequence of slide visits from saved local audio. */
 export function useSegmentPlayer() {
   const player = useAudioPlayer(null, { updateInterval: 50 });
-  const [state, setState] = useState<{ key: string | null; progress: number; elapsedMs: number; paused: boolean }>({ key: null, progress: 0, elapsedMs: 0, paused: false });
+  const [state, setState] = useState<PlaybackState>(idle);
+  const [error, setError] = useState<string | null>(null);
   const current = useRef<Playback | null>(null);
   const loadedUri = useRef<string | null>(null);
   const token = useRef(0);
+  const operations = useRef<Promise<void>>(Promise.resolve());
 
   const stop = useCallback(() => {
     if (!current.current) return;
     token.current++;
     current.current = null;
     try { player.pause(); } catch { /* released */ }
-    setState({ key: null, progress: 0, elapsedMs: 0, paused: false });
+    setState(idle);
   }, [player]);
 
-  const startSegment = useCallback(async (mine: number, seg: Segment) => {
-    if (loadedUri.current !== seg.uri) { player.replace({ uri: seg.uri }); loadedUri.current = seg.uri; }
-    for (let i = 0; i < 40 && !player.isLoaded; i++) await new Promise(r => setTimeout(r, 50));
-    if (token.current !== mine) return;
-    await player.seekTo(seg.startMs / 1000);
-    if (token.current !== mine) return;
-    if (!current.current?.paused) player.play();
+  const failed = useCallback(() => {
+    loadedUri.current = null;
+    stop();
+    setError('Audio playback failed. Tap Play to retry.');
+  }, [stop]);
+
+  const startSegment = useCallback((mine: number, seg: Segment) => {
+    const next = operations.current.catch(() => undefined).then(async () => {
+      if (token.current !== mine) return;
+      player.pause();
+      if (loadedUri.current !== seg.uri) { player.replace({ uri: seg.uri }); loadedUri.current = seg.uri; }
+      for (let i = 0; i < 40 && !player.isLoaded && token.current === mine; i++) await new Promise(r => setTimeout(r, 50));
+      if (token.current !== mine) return;
+      if (!player.isLoaded) throw new Error('Audio did not load');
+      await player.seekTo(seg.startMs / 1000);
+      if (token.current !== mine) return;
+      if (!current.current?.paused) player.play();
+    });
+    operations.current = next;
+    return next;
   }, [player]);
 
   const playSegments = useCallback(async (key: string, segments: Segment[]) => {
@@ -47,14 +64,17 @@ export function useSegmentPlayer() {
     }
     const valid = segments.filter(s => s.endMs > s.startMs);
     if (!valid.length) return;
+    setError(null);
     const mine = ++token.current;
-    current.current = { key, segments: valid, index: 0, token: mine, advancing: false, paused: false };
-    setState({ key, progress: 0, elapsedMs: 0, paused: false });
+    const active: Playback = { key, segments: valid, index: 0, token: mine, advancing: true, paused: false };
+    current.current = active;
+    setState({ key, progress: 0, elapsedMs: 0, paused: false, positionMs: null, uri: null });
     try {
-      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false }).catch(() => undefined);
+      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
       await startSegment(mine, valid[0]);
-    } catch { if (token.current === mine) stop(); }
-  }, [player, startSegment, stop]);
+      if (current.current === active) active.advancing = false;
+    } catch { if (token.current === mine) failed(); }
+  }, [failed, player, startSegment]);
   // Existing sentence and Q&A taps retain their tap-again-to-stop behavior.
   const play = useCallback((key: string, seg: Segment) => {
     if (current.current?.key === key) { stop(); return Promise.resolve(); }
@@ -73,20 +93,20 @@ export function useSegmentPlayer() {
         if (c.index + 1 >= c.segments.length) { stop(); return; }
         c.advancing = true;
         c.index++;
-        void startSegment(c.token, c.segments[c.index]).then(() => { if (current.current === c) c.advancing = false; }, () => { if (current.current === c) stop(); });
+        void startSegment(c.token, c.segments[c.index]).then(() => { if (current.current === c) c.advancing = false; }, () => { if (current.current === c) failed(); });
         return;
       }
       const previous = c.segments.slice(0, c.index).reduce((sum, item) => sum + item.endMs - item.startMs, 0);
       const elapsedMs = Math.max(0, Math.min(span, previous + Math.max(0, Math.min(seg.endMs - seg.startMs, pos - seg.startMs))));
-      setState(s => (s.key === c.key ? { key: c.key, progress: elapsedMs / Math.max(1, span), elapsedMs, paused: false } : s));
+      setState(s => (s.key === c.key ? { key: c.key, progress: elapsedMs / Math.max(1, span), elapsedMs, paused: false, positionMs: pos, uri: seg.uri } : s));
     }, 50);
     return () => clearInterval(timer);
-  }, [player, startSegment, state.key, stop]);
+  }, [failed, player, startSegment, state.key, stop]);
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', s => { if (s !== 'active') stop(); });
-    return () => { sub.remove(); };
-  }, [stop]);
+    return () => { sub.remove(); token.current++; current.current = null; try { player.pause(); } catch { /* released */ } };
+  }, [player, stop]);
 
-  return { playingKey: state.key, progress: state.progress, elapsedMs: state.elapsedMs, paused: state.paused, play, playSegments, stop };
+  return { playingKey: state.key, progress: state.progress, elapsedMs: state.elapsedMs, paused: state.paused, positionMs: state.positionMs, uri: state.uri, error, play, playSegments, stop };
 }

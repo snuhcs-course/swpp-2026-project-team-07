@@ -57,7 +57,7 @@ emotion, pronunciation or personality judgments. Use the language of the answer.
 
 
 class Question(PrivateModel):
-    panelist: Annotated[str, Field(min_length=1, max_length=8)]
+    panelist: Annotated[str, Field(min_length=1, max_length=64)]
     role: Annotated[str, Field(min_length=1, max_length=60)]
     slide_index: Annotated[int, Field(ge=0)]
     topic: Annotated[str, Field(max_length=80)]

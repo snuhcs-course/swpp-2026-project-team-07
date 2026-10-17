@@ -1,0 +1,23 @@
+{
+  "backend/rehearsals/services/presentation_score_v2.py": "6b21770fba509450f6018aa77c26f372b83696a396cb7315119f1db4bf69647c",
+  "backend/rehearsals/services/presentation_scoring.py": "7cea54626c5a7b8e4fd2a1372fce992657d2982c04cf38f3ac94c9a95a3a2f4f",
+  "mobile/src/features/feedback/usePresentationScore.ts": "8250e4fdbbda8d46c4420ffb3a2e4fe5ca49b7547edbc9acb66034495c9f6373",
+  "mobile/src/features/feedback/automaticPresentationScore.ts": "4436aed7c699a1f17a81c90cee185cc5ef73c8b11c0f562e0b46d87dd2b17cf4",
+  "mobile/src/features/feedback/InitialPresentationScoreHost.tsx": "0bfd1729a0d86234d655219b9ea3d77a178fbfb39553e2bbda9aa215fe6ecdb5",
+  "mobile/src/features/feedback/presentationScoreDisplay.ts": "2c4e4687ccd5c84024bf1ea12d1f7f2d7ad7e7f5ed3155e2229df49aa11f66dd",
+  "mobile/src/features/feedback/PresentationScorePanel.tsx": "9dfdbbfb0ce15c5d6a2ddd887991bbcd0a0d20b182b50a950d9aad35f5009ba6",
+  "mobile/src/screens/AppShell.tsx": "141525dcf38476c3bb9e3924e2d24d4cd63ccbae6fa06beff35506f33ff1267c",
+  "mobile/src/screens/HomeFeedbackStats.tsx": "e6d9328762f78d9ee05c2175314e2958abb7ee7d1b246dfa09aaf0650c4311f3",
+  "mobile/src/screens/FullReviewScreen.tsx": "c65d5f9ac98d6c8b4876c86f05aeb7126126d8a59749fc5390654e79ab79c9fd",
+  "mobile/src/features/rehearsal/analysis.tsx": "663151947b74b44bda23bccdcb5a387a0321dcf90c6442e4cdfcef0e5e8a1e31",
+  "backend/rehearsals/test_presentation_score_v2_boundaries.py": "cd245a4943197f63063a4672a778eae5d9a0a4b0f4f39c564e967f8075f38a55",
+  "backend/rehearsals/test_presentation_scoring_lifecycle.py": "04ff2f475016aadf3256f674811a6534abfcee0c2825d2f3b732e6987d64cfcc",
+  "mobile/tests/presentation-score-workflow.test.mjs": "b813948a5a73f6389321463a9fd6c97ee61ae20472de8a16efd4e6231802e0f5",
+  "mobile/tests/presentation-score.test.mjs": "3f611f7161b7d885eb06d5a5282e842a5beb7dd31962c452090371cea7a86e4b",
+  "mobile/tests/presentation-score-integration.test.mjs": "88583aff9713ecf9e29209436b110cfe11c7166d5e3aec7cc33342013c9d0994",
+  "mobile/tests/presentation-score-automatic.test.mjs": "390dd0a9ad55c584858cd8175308de36cc822957da34403dd9ac669aedfa1ec7",
+  "mobile/tests/presentation-score-ui.test.mjs": "fec7e646cb429b9fc4f472b75a8f85f0e0f6e9debeefa3c1694677b922f99de0",
+  "mobile/tests/presentation-score-projection.test.mjs": "747146135f59ad05ecf512db3803a7ae42bcf4a07fc63ad1cc5becc2b8df3705",
+  "mobile/tests/ai-overview-screens.test.mjs": "4da0ffe453b64db70657df7ec1e20a35b90163bd0c4025efd2b69bc9c4e3f2ab",
+  "mobile/src/features/feedback/selectedPresentationScores.ts": "1ef61ad25b90edd4d8219772dd9b4315e0a001ebdebdd49de5aeaa6136f1a1b2"
+}

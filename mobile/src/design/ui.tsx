@@ -29,7 +29,7 @@ import { createThemedStyles, useTheme } from './theme';
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 // ── Hint row (SPEC §1.2) ─────────────────────────────────────────────────────
-export type Hint = { icon: GlyphName; text: string; nudge?: 'down' | 'up'; hidden?: boolean };
+export type Hint = { icon: GlyphName; text: string; nudge?: 'down' | 'up'; hidden?: boolean; onPress?: () => void };
 type IconMotion = 'horizontal' | 'rise' | 'drop' | 'tap' | 'hold' | 'tilt' | 'breathe';
 function motionFor(icon: GlyphName): IconMotion {
   if (icon === 'h-spin') return 'horizontal';
@@ -56,20 +56,18 @@ function MotionIcon({ children, kind }: { children: ReactNode; kind: IconMotion 
   return <Animated.View pointerEvents="none" style={motion}>{children}</Animated.View>;
 }
 export function HintRow({ hints, gap = 18, style }: { hints: Hint[]; gap?: number; style?: StyleProp<ViewStyle> }) {
-  return (
-    <View pointerEvents="none" style={[s.hints, { gap }, style]}>
-      {hints.map(h => (
-        <View key={h.icon + h.text} style={[s.hint, { gap: gap === 16 ? 5 : 6 }, h.hidden && { opacity: 0 }]}
-          accessibilityElementsHidden={!!h.hidden} importantForAccessibility={h.hidden ? 'no-hide-descendants' : 'auto'}>
-          <MotionIcon kind={h.nudge ? (h.nudge === 'down' ? 'drop' : 'rise') : motionFor(h.icon)}>
-            <Glyph name={h.icon} size={18} />
-          </MotionIcon>
-          <Txt style={s.hintText}>{h.text}</Txt>
-        </View>
-      ))}
-    </View>
-  );
+  return <View pointerEvents={hints.some(h => h.onPress && !h.hidden) ? 'box-none' : 'none'} style={[s.hints, { gap }, style]}>
+    {hints.map(h => {
+      const content = <><MotionIcon kind={h.nudge ? (h.nudge === 'down' ? 'drop' : 'rise') : motionFor(h.icon)}>
+        <Glyph name={h.icon} size={18} /></MotionIcon><Txt style={s.hintText}>{h.text}</Txt></>;
+      const rowStyle = [s.hint, { gap: gap === 16 ? 5 : 6 }, h.hidden && { opacity: 0 }];
+      return h.onPress && !h.hidden
+        ? <Pressable key={h.icon + h.text} accessibilityRole="button" accessibilityLabel={h.text} onPress={h.onPress} style={[rowStyle, { minHeight: 44 }]}>{content}</Pressable>
+        : <View key={h.icon + h.text} style={rowStyle} accessibilityElementsHidden={!!h.hidden} importantForAccessibility={h.hidden ? 'no-hide-descendants' : 'auto'}>{content}</View>;
+    })}
+  </View>;
 }
+
 // ── Chips ────────────────────────────────────────────────────────────────────
 export const Chip = memo(function Chip({ chip, size = 13 }: { chip: ChipModel; size?: number }) {
   const { c } = useTheme();

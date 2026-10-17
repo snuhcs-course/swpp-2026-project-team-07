@@ -1,3 +1,5 @@
+// Scribe-only compatibility: OpenAI Codex, October 17, 2026; docs/scribe-only-integration-verification.md.
+import { MAX_RECORDING_MS } from "../recording/limits";
 import { optionalFeedback, isDigest } from "../feedback/validation";
 import type { AttemptResult, TranscriptWord, Feedback } from "../../contracts";
 
@@ -20,7 +22,7 @@ function validRecording(value: unknown, id: string): value is AttemptResult {
   if (!object(value) || value.attempt_id !== id || typeof value.status !== "string" ||
       !["pending", "processing", "completed", "failed"].includes(value.status) ||
       typeof value.processing_state !== "string" || !stages.includes(value.processing_state) ||
-      !integer(value.processing_revision) || !integer(value.duration_ms) || value.duration_ms < 1 || value.duration_ms > 1_200_000 ||
+      !integer(value.processing_revision) || !integer(value.duration_ms) || value.duration_ms < 1 || value.duration_ms > MAX_RECORDING_MS ||
       (value.failed_stage !== null && (typeof value.failed_stage !== "string" || !activeStages.includes(value.failed_stage))) ||
       typeof value.retry_available !== "boolean" || !nullableDate(value.retry_at) || typeof value.requires_confirmation !== "boolean" ||
       (typeof value.feedback_state !== "string" || !["disabled", "legacy"].includes(value.feedback_state)) ||
@@ -53,7 +55,6 @@ function validRecording(value: unknown, id: string): value is AttemptResult {
   }
   const p = value.provenance;
   if (!object(p) || !((p.provider === null && p.model === null) ||
-      (p.provider === "openai" && p.model === "whisper-1") ||
       (p.provider === "elevenlabs" && p.model === "scribe_v2")) ||
       !(p.generation === null || (integer(p.generation) && p.generation <= value.processing_revision)) ||
       ![null, "submitted", "received", "rejected", "uncertain"].includes(p.outcome as string | null) ||

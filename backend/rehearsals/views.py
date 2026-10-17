@@ -71,6 +71,8 @@ def decks(request):
     if not isinstance(title, str) or not 1 <= len(title.strip()) <= 255:
         raise ValidationError("Title must contain 1 to 255 characters.")
     deck = store_deck(request.FILES.get("file"), title.strip())
+    from .services.slide_profiles import after_upload
+    after_upload(deck.pk)
     data = deck_data(deck, request)
     slides = data.pop("slides")
     return Response({"deck": data, "slides": slides}, status=201)
@@ -84,7 +86,7 @@ def deck_detail(request, deck_id):
 @api_view(["GET"])
 def deck_attempts(request, deck_id):
     deck = get_object_or_404(Deck, id=deck_id)
-    return Response([attempt_data(a, request) for a in deck.attempts.order_by("-created_at")])
+    return Response([attempt_data(a, request) for a in deck.attempts.filter(qa_answer__isnull=True).order_by("-created_at")])
 
 
 @api_view(["POST"])

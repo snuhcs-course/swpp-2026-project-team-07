@@ -1,3 +1,5 @@
+// OpenAI Codex review routing: docs/ai-collaboration-prompts-iteration-2.md#first-recording-review-navigation-october-16-2026
+// OpenAI Codex reliability fixes: docs/ai-collaboration-prompts-iteration-2.md#cue-and-feedback-reliability-october-16-2026
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
 // OpenAI Codex finger-linked page fade: docs/ai-collaboration-prompts-iteration-2.md#finger-linked-page-fade-october-15-2026
 // OpenAI Codex time/audience setup: docs/ai-collaboration-prompts-iteration-2.md#presentation-time-and-audience-setup-october-15-2026
@@ -29,35 +31,40 @@
 // OpenAI Codex immediate recording completion: docs/ai-collaboration-prompts-iteration-2.md#continuous-carousel-color-and-navigation-responsiveness-october-15-2026
 // OpenAI Codex forward-only live recording: docs/ai-collaboration-prompts-iteration-2.md#forward-only-recording-slide-navigation-october-15-2026
 import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View, type GestureResponderEvent } from 'react-native';
+import { Pressable, StyleSheet, View, type GestureResponderEvent } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import Animated, { Easing, cancelAnimation, runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
-import Svg, { Rect } from 'react-native-svg';
 import { Enter, Txt, useFrame } from '../design/frame';
-import { Glyph } from '../design/icons';
 import { PanView, type PanHandlers } from '../design/PanView';
 import { CARD_H, CARD_W, SlideCard } from '../design/SlideCard';
-import { C, EASE_SCREEN, EASE_SNAP, F, HUES } from '../design/tokens';
+import { C, EASE_SCREEN, EASE_SNAP, F } from '../design/tokens';
 import { createThemedStyles, useTheme } from '../design/theme';
 import { Chip, Confetti, Dialog, HintRow, IDLE_WAVE, OrbitalCaption, PageSurface, RecordButton, RecordRing, RoundButton, Waveform, type Hint, type RecordGlyph } from '../design/ui';
 import { paceChip } from '../domain/analysis';
 import { fmt } from '../domain/format';
 import { BACK_FADE_Y, BACK_T, CARD_STEP, decideRelease } from '../domain/gestures';
-import { splitFlags, type Line } from '../domain/lines';
-import { runAttemptIds, takeVisits } from '../domain/run';
+import { reviewDestination, runAttemptIds, takeVisits } from '../domain/run';
 import { CaptureEngine, type CaptureHandle } from '../features/rehearsal/CaptureEngine';
-import { audioOf, useWorkers, type Stage } from '../features/rehearsal/analysis';
+import { audioOf } from '../features/rehearsal/analysis';
 import { commitTake } from '../features/rehearsal/takes';
 import { useSegmentPlayer } from '../features/rehearsal/useSegmentPlayer';
 import { ensurePages, ensureSlideText } from '../features/presentations/importer';
-import { bump, getDeckState, updateDeckState, useStore, visibleDecks } from '../features/presentations/store';
+import { bump, getDeckState, useStore, visibleDecks } from '../features/presentations/store';
 import { useDeckModel, type DeckModel } from '../features/presentations/useDeckModel';
 import { savedAttempts, type SavedAttempt } from '../features/recording/storage';
+import { CueGuidancePanel } from '../features/presentations/CueGuidancePanel';
+import { useSlideProfiles } from '../features/presentations/useSlideProfiles';
+import type { ProfileState } from '../features/presentations/slideProfiles';
+import { API_URL } from '../services/api';
+import { defaultRequirementsPending } from '../features/presentations/defaultRequirements';
+import { requirementsPending, readRequirementsDraft } from '../features/presentations/requirementsDraft';
+import { getRequirementsVersion, subscribeRequirements } from '../features/presentations/requirementsStore';
+import { PresentationRequirementsEditor } from './PresentationSetup';
 import { TakePlayback } from './TakePlayback';
 import { useBack, useShell } from './shared';
 
 type Phase = 'idle' | 'count' | 'starting' | 'recording' | 'stopping' | 'burst';
-const locksPreviousSlide = (phase: Phase) => phase === 'starting' || phase === 'recording' || phase === 'stopping';
+const locksPreviousSlide = (phase: Phase) => phase === 'starting' || phase === 'stopping';
 const freezesSlideNavigation = (phase: Phase) => phase === 'starting' || phase === 'stopping';
 const SPEECH_DB = -38;
 // OpenAI Codex follow-up (2026-10-15): whole-presentation redo hold; see the Iteration 2 prompt log.
@@ -84,8 +91,9 @@ export const RehearseScreen = memo(function RehearseScreen({ active = true }: { 
   useEffect(() => {
     if (!nav.deckId) return;
     // A pending redo requires an explicit keep-or-overwrite decision.
-    if (getDeckState(nav.deckId).compare) {
-      go('compare', { nav: 'fade', deckId: nav.deckId });
+    const pending = getDeckState(nav.deckId).compare;
+    if (pending) {
+      go('compare', { nav: 'fade', deckId: nav.deckId, sel: pending.next.sel });
       return;
     }
     void ensurePages(nav.deckId).catch(() => undefined);
@@ -96,8 +104,11 @@ export const RehearseScreen = memo(function RehearseScreen({ active = true }: { 
 });
 
 function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
+  useTheme();
   const { go, nav, home } = useShell();
   const frame = useFrame();
+  useSyncExternalStore(subscribeRequirements, getRequirementsVersion);
+  const [setupOpen, setSetupOpen] = useState(false);
   const [pdfRotated, setPdfRotated] = useState(false);
   const pdfRotatedRef = useRef(false);
   const [pdfRotating, setPdfRotating] = useState(false);
@@ -105,7 +116,7 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
   const controlSwap = useSharedValue(0);
   const reducedMotion = useReducedMotion();
   const cardStep = CARD_STEP;
-  const { deck, n, lines, state } = model;
+  const { deck, n, state } = model;
   const run = state.run;
   const [slide, setSlideState] = useState(() => Math.max(0, Math.min(n - 1, nav.slide)));
   const slideRef = useRef(slide);
@@ -128,9 +139,9 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
   const countTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => () => { if (holdTimer.current) clearTimeout(holdTimer.current); }, []);
   const [live] = useState(createLive);
-  const [edit, setEdit] = useState<{ key: string; draft: string } | null>(null);
-  const [alt, setAlt] = useState<{ key: string; fi: number } | null>(null);
-  const [fixNote, setFixNote] = useState<string | null>(null);
+  const [playbackNotice, setPlaybackNotice] = useState<string | null>(null);
+  const profiles = useSlideProfiles(deck.id, n, active);
+  const [cueRetryAsk, setCueRetryAsk] = useState<ProfileState | null>(null);
   const ringP = useSharedValue(0), ringV = useSharedValue(0);
   const trackX = useSharedValue(-slide * CARD_STEP);
   useEffect(() => {
@@ -141,6 +152,18 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
   const backExiting = useRef(false);
   const player = useSegmentPlayer();
   const stopPlayback = player.stop;
+  const openReview = useCallback((takes: number, selected: number, comparing: boolean, transition: 'fade' | 'rise') => {
+    stopPlayback();
+    const destination = comparing ? 'compare' : reviewDestination(takes);
+    go(destination, { nav: transition, deckId: deck.id, sel: selected, slide: selected,
+      from: destination === 'full' ? 'rehearse' : null });
+  }, [deck.id, go, stopPlayback]);
+  const openSetup = useCallback(() => { if (active && phaseRef.current === 'idle') { stopPlayback(); setSetupOpen(true); } }, [active, stopPlayback]);
+  useEffect(() => {
+    if (active && nav.editRequirements && phaseRef.current === 'idle') {
+      openSetup(); go('rehearse', { editRequirements: false });
+    }
+  }, [active, nav.editRequirements, go, openSetup]);
   useEffect(() => { if (!active) stopPlayback(); }, [active, stopPlayback]);
   // The page stays mounted beneath Review/Compare. Clear its brief completion
   // state after it is covered so returning to it can start another recording.
@@ -155,7 +178,6 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
     });
     return () => cancelAnimationFrame(frameId);
   }, [active]);
-  const hue = HUES[deck.hue];
   const storeVersion = useStore(s => s.version);
   // Only an interrupted capture is surfaced here; selected and rejected takes
   // do not become a second history row above the clock.
@@ -194,7 +216,7 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
     }
     slideRef.current = to;
     setSlideState(to);
-    setAlt(null);
+    setPlaybackNotice(null);
   }, [cardStep, isNavigationFrozen, isPreviousLocked, live, n, player, trackX]);
   const routeSlideRef = useRef({ active: false, slide: nav.slide });
   useEffect(() => {
@@ -256,8 +278,7 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
       hideRing();
       setBurst({ total: take.durationMs / 1000, compare: !!compare });
       setPhase('burst');
-      if (compare) go('compare', { nav: 'rise', deckId: deck.id });
-      else go('review', { nav: 'fade', deckId: deck.id, sel: next.sel, from: null });
+      openReview(next.takeNo, next.sel, !!compare, compare ? 'rise' : 'fade');
     } catch (e) {
       fullRedo.current = false;
       hideRing();
@@ -266,7 +287,7 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
       setEngineKey(k => k + 1);
       setPhase('idle');
     }
-  }, [deck, go, live, model.stats?.coverage]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [deck, live, model.stats?.coverage, openReview]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onMeter = useCallback((db: number, ms: number) => {
     const L = live.get(), now = Date.now();
@@ -317,68 +338,19 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
   };
   const cancelRedo = () => { fullRedo.current = false; setRedoAsk(false); };
 
-  // ── Transcript corrections ────────────────────────────────────────────────
-  const noteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const note = (text: string) => {
-    setFixNote(text);
-    if (noteTimer.current) clearTimeout(noteTimer.current);
-    noteTimer.current = setTimeout(() => setFixNote(null), 2600);
-  };
-  const applyText = (line: Line, text: string, message: string, dismissed?: string[]) => {
-    player.stop();
-    updateDeckState(deck.id, s => ({ ...s, fixes: s.fixes + 1, edits: { ...s.edits, [line.key]: { ...s.edits[line.key], text, ...(dismissed ? { dismissed } : {}) } } }));
-    setEdit(null); setAlt(null);
-    note(message);
-  };
-  const applyAlt = (line: Line, fi: number, value: string) => {
-    const f = line.flags[fi];
-    const at = line.text.indexOf(f.w);
-    if (at < 0) return;
-    applyText(line, line.text.slice(0, at) + value + line.text.slice(at + f.w.length), 'Fixed · feedback updated');
-  };
-  const keepFlag = (line: Line, fi: number) => {
-    const w = line.flags[fi]?.w;
-    if (!w) return;
-    updateDeckState(deck.id, s => ({ ...s, edits: { ...s.edits, [line.key]: { ...s.edits[line.key], dismissed: [...(s.edits[line.key]?.dismissed || []), w] } } }));
-    setAlt(null);
-  };
-  const commitEdit = () => {
-    if (!edit) return;
-    const line = lines.find(l => l.key === edit.key);
-    const t = edit.draft.replace(/\s+/g, ' ').trim();
-    if (!line || !t || t === line.text) { setEdit(null); return; }
-    applyText(line, t, 'Edited · feedback updated');
-  };
-  const moveLine = (line: Line, dir: -1 | 1) => {
-    const target = line.slide + dir;
-    if (target < 0 || target >= n) return;
-    player.stop();
-    const origin = line.from ?? line.slide;
-    updateDeckState(deck.id, s => {
-      const e = { ...s.edits[line.key] };
-      if (target === origin) delete e.slide; else e.slide = target;
-      return { ...s, fixes: s.fixes + 1, edits: { ...s.edits, [line.key]: e } };
-    });
-    setAlt(null);
-    note('Moved to slide ' + (target + 1) + ' · feedback updated');
-  };
-  const playLine = (line: Line) => {
-    if (phaseRef.current !== 'idle') return;
-    const uri = audioOf(line.audio.attemptId);
-    if (!uri) { note('Audio for this take isn’t on this phone'); return; }
-    void player.play(line.key, { uri, startMs: line.audio.startMs, endMs: line.audio.endMs });
-  };
+  // The permanent Cues header keeps selected-slide audio playback.
   const playSlide = () => {
     if (phaseRef.current !== 'idle') return;
     const part = run?.parts[slideRef.current];
     if (!part) return;
     const uri = audioOf(part.attemptId);
-    if (!uri) { note('Audio for this slide isn’t on this phone'); return; }
+    if (!uri) { setPlaybackNotice('Audio for this slide isn’t on this phone'); return; }
+    setPlaybackNotice(null);
     void player.playSegments(`slide:${deck.id}:${slideRef.current}`, part.segments.map(segment => ({ uri, ...segment })));
   };
 
   // ── Back (swipe down / system Back) ───────────────────────────────────────
-  const canGoBack = !pdfRotated && phase === 'idle' && !redoAsk && !edit && !recoveryId;
+  const canGoBack = !pdfRotated && phase === 'idle' && !redoAsk && !recoveryId;
   const rotate = useCallback(() => {
     cancelAnimation(trackX);
     trackX.set(-slideRef.current * CARD_STEP);
@@ -423,10 +395,10 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
     onTerminate: () => { if (!backExiting.current) backDy.set(withTiming(0, { duration: 220, easing: EASE_SCREEN })); },
   };
   useBack(active, () => {
+    if (setupOpen) { setSetupOpen(false); return true; }
     if (pdfRotated) { rotate(); return true; }
     if (recoveryId) { closeRecovery(); return true; }
     if (redoAsk) { cancelRedo(); return true; }
-    if (edit) { setEdit(null); return true; }
     if (phaseRef.current !== 'idle') return true;
     leave(); return true;
   });
@@ -447,9 +419,7 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
 
   // ── View model ────────────────────────────────────────────────────────────
   const cur = slide;
-  const claimed = useSyncExternalStore(live.subscribe, () => !!live.get().spoken[cur]);
   const take = !recording && hasTake(cur);
-  const slideLines = lines.filter(l => l.slide === cur);
   const glyph: RecordGlyph = phase === 'count' ? (count as 3 | 2 | 1) : recording ? 'stop' : take ? 'redo' : 'mic';
   const btnLabel = phase === 'count' ? `Starting in ${count}. Tap to cancel` : recording ? 'Stop recording'
     : (take ? 'Redo slide ' + (cur + 1) : 'Record slide ' + (cur + 1)) + (anyTake ? '. Hold 3 seconds to redo the whole presentation' : '');
@@ -461,7 +431,6 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
       : phase === 'burst' ? [{ icon: 'h-tap', text: burst?.compare ? 'Comparing takes' : 'Opening review' }]
         : [idleHint, homeHint];
   const partId = run?.parts[cur]?.attemptId;
-  const stage: Stage | null = partId ? model.stages.get(partId) ?? null : null;
   const recovered = (attempt: SavedAttempt) => {
     const visits = takeVisits(attempt.recording.slide_events, attempt.recording.duration_ms);
     // Checkpoints know which slides were visited, but cannot prove speech on them.
@@ -472,15 +441,15 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
       attemptId: attempt.id, durationMs: attempt.recording.duration_ms, events: attempt.recording.slide_events,
     }, spoken, false, model.stats?.coverage ?? null);
     setRecoveryId(null);
-    if (compare) go('compare', { nav: 'fade', deckId: deck.id });
-    else go('review', { nav: 'fade', deckId: deck.id, sel: next.sel, from: null });
+    openReview(next.takeNo, next.sel, !!compare, 'fade');
   };
 
   return (
     <Enter kind={nav.nav}>
       <CaptureEngine key={engineKey} ref={engine} deck={deck} audience={deck.audience ?? ''} onMeter={onMeter}
         onInterrupted={m => { setError(m); bump(); }} onMustStop={() => { void stopRec(); }} />
-      <PanView style={StyleSheet.absoluteFill} {...back}>
+      <PanView style={StyleSheet.absoluteFill} {...back} pointerEvents={setupOpen ? 'none' : 'auto'}
+        accessibilityElementsHidden={setupOpen} importantForAccessibility={setupOpen ? 'no-hide-descendants' : 'auto'}>
         <Animated.View style={[StyleSheet.absoluteFill, screen]}>
           <PageSurface hue={deck.hue} />
           <View style={styles.header} pointerEvents="none">
@@ -489,18 +458,26 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
           <Animated.View pointerEvents="none" style={[styles.counterWrap, counterMotion]}>
             <Txt style={styles.counter}>{'Slide ' + (cur + 1) + ' of ' + n}</Txt>
           </Animated.View>
+          {active && phase === 'idle' && !pdfRotated && !pdfRotating && !setupOpen && <Pressable accessibilityRole="button"
+            accessibilityLabel="Edit presentation time and audience" onPress={openSetup} style={styles.editRequirements} hitSlop={{ left: 12, right: 12, top: 2 }}>
+            <Txt style={styles.editLabel}>Edit time &amp; audience</Txt>
+          </Pressable>}
           <SlideTrack model={model} slide={cur} trackX={trackX} onSlide={goSlide}
             previousLocked={locksPreviousSlide(phase)} isPreviousLocked={isPreviousLocked}
             navigationFrozen={freezesSlideNavigation(phase)} isNavigationFrozen={isNavigationFrozen}
             rotated={pdfRotated} rotating={pdfRotating} rotation={pdfRotation} />
           {!pdfRotated && <>
           <TickStrip n={n} cur={cur} disabled={freezesSlideNavigation(phase)} onPick={i => goSlide(i, 'jump')} />
-          <TranscriptPanel cur={cur} lines={slideLines} recording={recording} claimed={recording && claimed} stage={stage} partId={partId ?? null}
-              accent={hue.accent} n={n} playingKey={player.playingKey} progress={player.progress} edit={edit} alt={alt} fixNote={fixNote}
-              canPlayback={phase === 'idle'} slidePlaying={player.playingKey === `slide:${deck.id}:${cur}` && !player.paused} onPlaySlide={playSlide}
-              onPlay={playLine} onEdit={l => { player.stop(); setAlt(null); setEdit({ key: l.key, draft: l.text }); }} onDraft={d => setEdit(e => (e ? { ...e, draft: d } : e))}
-              onCommit={commitEdit} onCancelEdit={() => setEdit(null)} onAlt={(l, fi) => { player.stop(); setAlt(a => (a && a.key === l.key && a.fi === fi ? null : { key: l.key, fi })); }}
-              onApplyAlt={applyAlt} onKeepFlag={keepFlag} onMove={moveLine} hasRun={!!run} />
+          <CueGuidancePanel state={profiles.value} slide={cur} error={profiles.error} busy={profiles.busy}
+            canPlayback={phase === 'idle' && !!partId && !!audioOf(partId)}
+            slidePlaying={player.playingKey === `slide:${deck.id}:${cur}` && !player.paused}
+            requirementsNotice={requirementsPending(deck.id, API_URL) ? (readRequirementsDraft(deck.id, API_URL)?.conflict ? 'Presentation choices conflict · tap the title to resolve' : 'Presentation choices saved on phone · sync pending. Targets use last synchronized time.') : defaultRequirementsPending(deck.id, API_URL) ? 'Presentation requirements · sync pending' : null}
+            onPlaySlide={playSlide} playbackNotice={player.error || playbackNotice || (partId && !audioOf(partId) ? 'Audio for this slide isn’t on this phone' : null)}
+            onRecover={action => {
+              if (action === 'refresh') profiles.refresh();
+              else if (action === 'confirm') setCueRetryAsk(profiles.value);
+              else void profiles.recover();
+            }} />
           <Readout live={live} phase={phase} cur={cur} take={take} deck={deck} burst={burst} error={error}
             recoveryCount={recoveryAttempts.length} recoveryNumber={recoveryAttempts.length ? recoveryCursor % recoveryAttempts.length + 1 : 0}
             onRecovery={() => recoveryAttempt && setRecoveryId(recoveryAttempt.id)} />
@@ -515,9 +492,9 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
             caption="Rotate" captionRotation={controlSwap} onPress={rotate} style={{ left: 49 }} />
           <Animated.View pointerEvents={pdfRotated ? 'none' : 'box-none'} accessibilityElementsHidden={pdfRotated}
             importantForAccessibility={pdfRotated ? 'no-hide-descendants' : 'auto'} style={[styles.rightControlLayer, reviewMotion]}>
-            <RoundButton glyph="h-review-bars" label="Open last review" caption="Review" captionRotation={controlSwap}
+            <RoundButton glyph="h-review-bars" label={reviewDestination(state.takes) === 'full' ? 'Review full presentation' : 'Review current slide'} caption="Review" captionRotation={controlSwap}
               disabled={!run || recording || phase === 'count'}
-              onPress={() => run && go(state.compare ? 'compare' : 'review', { nav: 'rise', deckId: deck.id, sel: run.sel })}
+              onPress={() => run && openReview(state.takes, cur, !!state.compare, 'rise')}
               style={{ left: 0, top: 0 }} />
           </Animated.View>
           <Animated.View pointerEvents="none" accessibilityElementsHidden={!pdfRotated}
@@ -530,6 +507,8 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
           {showIdleHints && <HintRow hints={[homeHint]} style={styles.homeHintRight} />}
         </Animated.View>
       </PanView>
+      {setupOpen && <View style={StyleSheet.absoluteFill}><PageSurface hue={deck.hue} /><PresentationRequirementsEditor deck={deck} active={active}
+        onSaved={() => setSetupOpen(false)} onBackPan={{ onMoveShould: (_e, g) => g.dy > 12 && g.dy > Math.abs(g.dx), onRelease: (_e, g) => { if (g.dy > BACK_T) setSetupOpen(false); } }} /></View>}
       {redoAsk && (
         <Dialog title={redoAsk === 'all' ? 'Redo the whole presentation?' : 'Redo slide ' + (cur + 1) + '?'}
           body={redoAsk === 'all' ? 'Recording starts again from slide 1. When you stop, you can compare it with your current run and keep either one.'
@@ -537,6 +516,8 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
           confirm={redoAsk === 'all' ? 'Redo all' : 'Redo'} onConfirm={confirmRedo} onCancel={cancelRedo}
           />
       )}
+      {cueRetryAsk && <Dialog title="Retry AI cues?" body="The previous provider request has an uncertain outcome. Retrying may incur another charge."
+        confirm="Retry" onConfirm={() => { const captured = cueRetryAsk; setCueRetryAsk(null); void profiles.recover(true, captured); }} onCancel={() => setCueRetryAsk(null)} />}
       {phase === 'burst' && <Confetti />}
       {recoveryId && <TakePlayback id={recoveryId} deck={deck} initialSlide={cur}
         onClose={closeRecovery} onRecovered={recovered} />}
@@ -693,172 +674,6 @@ function TickStrip({ n, cur, disabled, onPick }: { n: number; cur: number; disab
   );
 }
 
-// ── Transcript panel ─────────────────────────────────────────────────────────
-type PanelProps = {
-  cur: number; n: number; lines: Line[]; recording: boolean; claimed: boolean; stage: Stage | null; partId: string | null; accent: string; hasRun: boolean;
-  canPlayback: boolean; slidePlaying: boolean; onPlaySlide: () => void;
-  playingKey: string | null; progress: number; edit: { key: string; draft: string } | null; alt: { key: string; fi: number } | null; fixNote: string | null;
-  onPlay: (l: Line) => void; onEdit: (l: Line) => void; onDraft: (d: string) => void; onCommit: () => void; onCancelEdit: () => void;
-  onAlt: (l: Line, fi: number) => void; onApplyAlt: (l: Line, fi: number, v: string) => void; onKeepFlag: (l: Line, fi: number) => void; onMove: (l: Line, dir: -1 | 1) => void;
-};
-function TranscriptPanel(p: PanelProps) {
-  const { c } = useTheme();
-  const workers = useWorkers();
-  const worker = p.partId ? workers.get(p.partId) : undefined;
-  const showLines = !(p.recording && p.claimed);
-  const lines = showLines ? p.lines : [];
-  const count = lines.length ? lines.length + (lines.length === 1 ? ' sentence' : ' sentences') : '';
-  const right = p.fixNote && !p.recording ? p.fixNote : lines.length && !p.recording ? 'Hold to fix · swipe to move' : count;
-  let empty = '';
-  let action: (() => void) | undefined;
-  if (!lines.length) {
-    if (p.recording) empty = 'Listening…';
-    else if (p.stage && p.stage !== 'done' && p.stage !== 'no_speech') {
-      const s = p.stage;
-      empty = s === 'processing' ? (worker?.detail || 'Transcribing') + '…'
-        : s === 'uploading' ? 'Uploading your take…'
-          : s === 'upload_failed' ? 'Couldn’t upload this take · tap to retry'
-            : s === 'failed' ? 'Transcription stopped · tap to retry'
-              : s === 'awaiting' ? (worker?.prompt ? 'Waiting for your OK to transcribe' : 'Transcription not started · tap to start')
-                : s === 'interrupted' ? 'This take was interrupted. Its audio is kept on this phone.'
-                  : s === 'missing' ? 'This take isn’t on this phone' : 'Saved on this phone · uploads when online';
-      action = s === 'upload_failed' ? worker?.retryUpload : s === 'failed' ? worker?.retry : s === 'awaiting' && !worker?.prompt ? worker?.analyze : undefined;
-    } else if (p.stage === 'no_speech') empty = 'No speech was detected in this take';
-    else empty = p.hasRun ? 'Nothing said on this slide in the last run' : 'Your words appear here after you record';
-  }
-  return <>
-    <View style={styles.txHead}>
-      <Txt style={styles.txHeadText}>{'Slide ' + (p.cur + 1) + ' transcript'}</Txt>
-      <View style={styles.txRule} />
-      <Txt numberOfLines={1} style={[styles.txRight, { color: p.fixNote && !p.recording ? c.good : c.tertiary }]}>{right}</Txt>
-      <Pressable accessibilityRole="button" accessibilityLabel={`${p.slidePlaying ? 'Pause' : 'Play'} slide ${p.cur + 1} recording`}
-        disabled={!p.canPlayback || !p.partId} onPress={p.onPlaySlide}
-        style={[styles.txPlay, (!p.canPlayback || !p.partId) && { opacity: 0.28 }]}>
-        <Glyph name={p.slidePlaying ? 'p-pause' : 'p-play'} size={15} color={p.slidePlaying ? c.strong : c.secondary} />
-      </Pressable>
-    </View>
-    <View style={styles.txBox}>
-      <ScrollView contentContainerStyle={{ gap: 8, paddingBottom: 14, flexGrow: 1 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        {!lines.length && (
-          <Pressable disabled={!action} onPress={action} style={{ flexGrow: 1, justifyContent: 'center' }}>
-            <Txt style={[styles.empty, action ? { color: c.secondary } : null]}>{empty}</Txt>
-          </Pressable>
-        )}
-        {lines.map(l => (
-          <LineRow key={l.key} line={l} {...p} playing={p.playingKey === l.key} editing={p.edit?.key === l.key} altFi={p.alt?.key === l.key ? p.alt.fi : -1} />
-        ))}
-      </ScrollView>
-    </View>
-  </>;
-}
-
-function LineRow(p: PanelProps & { line: Line; playing: boolean; editing: boolean; altFi: number }) {
-  const { c } = useTheme();
-  const { line } = p;
-  const frame = useFrame();
-  const dx = useSharedValue(0);
-  const [dragX, setDragX] = useState(0);
-  const holdT = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const g = useRef<{ axis: 'x' | 'y' | null; long: boolean } | null>(null);
-  const latest = useRef(p);
-  useEffect(() => { latest.current = p; });
-  useEffect(() => () => { if (holdT.current) clearTimeout(holdT.current); }, []);
-  const responder: PanHandlers = {
-    onStartShould: () => !p.recording && !p.editing,
-    onGrant: () => {
-      g.current = { axis: null, long: false };
-      holdT.current = setTimeout(() => {
-        if (g.current && !g.current.axis) { g.current.long = true; void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined); latest.current.onEdit(latest.current.line); }
-      }, 480);
-    },
-    onMove: (_e, gs) => {
-      const s = g.current;
-      if (!s || s.long) return;
-      const x = gs.dx / frame.s, y = gs.dy / frame.s;
-      if (!s.axis) {
-        if (Math.abs(x) < 7 && Math.abs(y) < 7) return;
-        if (holdT.current) { clearTimeout(holdT.current); holdT.current = null; }
-        s.axis = Math.abs(x) > Math.abs(y) ? 'x' : 'y';
-      }
-      if (s.axis !== 'x') return;
-      const edge = (x < 0 && p.cur === 0) || (x > 0 && p.cur === p.n - 1);
-      const v = edge ? x * 0.25 : x;
-      dx.set(v); setDragX(v);
-    },
-    onRelease: e => end(false, e),
-    onTerminate: () => end(true),
-    onTerminationRequest: () => g.current?.axis !== 'x',
-  };
-  function end(cancelled: boolean, event?: GestureResponderEvent) {
-    if (holdT.current) { clearTimeout(holdT.current); holdT.current = null; }
-    const s = g.current;
-    g.current = null;
-    const v = dx.get();
-    dx.set(withTiming(0, { duration: 220, easing: EASE_SNAP })); setDragX(0);
-    if (!s || s.long || cancelled) return;
-    if (s.axis === 'x') { if (Math.abs(v) > 90) p.onMove(line, v < 0 ? -1 : 1); return; }
-    // Playback is reached through the transcript words, without a separate control.
-    if (!s.axis && event && (event.nativeEvent.pageX - frame.left) / frame.s >= 60) p.onPlay(line);
-  }
-  const row = useAnimatedStyle(() => ({ transform: [{ translateX: dx.value }] }));
-  const toPrev = dragX < 0, target = p.cur + (toPrev ? -1 : 1), canMove = target >= 0 && target < p.n, past = Math.abs(dragX) > 90 && canMove;
-  const segs = splitFlags(line.text, p.recording ? [] : line.flags);
-  const pct = Math.round(p.progress * 100);
-  return (
-    <View style={{ flexShrink: 0 }}>
-      <View pointerEvents="none" style={[styles.reveal, { justifyContent: toPrev ? 'flex-end' : 'flex-start', backgroundColor: past ? p.accent : c.ink08, opacity: Math.min(1, Math.abs(dragX) / 50) }]}>
-        <Txt style={[styles.revealText, !past && { color: c.text }]}>{dragX && canMove ? (toPrev ? '← Slide ' + (target + 1) : 'Slide ' + (target + 1) + ' →') : ''}</Txt>
-      </View>
-      <PanView style={[styles.lineRow, { backgroundColor: p.playing ? undefined : dragX ? c.rowDrag : 'transparent' }, row]} {...responder}
-        accessible accessibilityRole="button" accessibilityLabel={(p.playing ? 'Stop playback: ' : 'Tap transcript words to play from ' + fmt(line.t) + ': ') + line.text}
-        accessibilityActions={[{ name: 'activate' }, { name: 'longpress', label: 'Edit sentence' },
-          ...(p.cur > 0 ? [{ name: 'movePrev', label: 'Move to slide ' + p.cur }] : []), ...(p.cur < p.n - 1 ? [{ name: 'moveNext', label: 'Move to slide ' + (p.cur + 2) }] : [])]}
-        onAccessibilityAction={e => { const a = e.nativeEvent.actionName; if (a === 'activate') p.onPlay(line); else if (a === 'longpress') p.onEdit(line); else if (a === 'movePrev') p.onMove(line, -1); else if (a === 'moveNext') p.onMove(line, 1); }}>
-        {p.playing && (
-          <Svg style={StyleSheet.absoluteFill} preserveAspectRatio="none">
-            <Rect x="0" y="0" width={`${pct}%`} height="100%" rx={10} fill={c.ink14} />
-            <Rect x={`${pct}%`} y="0" width={`${100 - pct}%`} height="100%" fill={c.ink05} />
-          </Svg>
-        )}
-        <View style={styles.playCol}>
-          <Txt style={styles.lineTime}>{fmt(line.t)}</Txt>
-        </View>
-        {!p.editing ? (
-          <Txt style={[styles.lineText, { color: p.playing ? c.strong : c.body }]}>
-            {segs.map((sg, i) => sg.fi < 0 ? <Txt key={i}>{sg.t}</Txt> : (
-              <Txt key={i} accessibilityRole="button" accessibilityLabel={'Possibly misheard: ' + sg.t + '. Show corrections'} onPress={() => p.onAlt(line, sg.fi)} style={styles.flag}>{sg.t}</Txt>
-            ))}
-          </Txt>
-        ) : (
-          <TextInput autoFocus multiline accessibilityLabel="Edit this sentence" value={p.edit?.draft ?? ''} onChangeText={p.onDraft} onBlur={p.onCommit}
-            onSubmitEditing={p.onCommit} blurOnSubmit submitBehavior="blurAndSubmit" returnKeyType="done" style={styles.editor} selectionColor={p.accent} />
-        )}
-      </PanView>
-      {p.altFi >= 0 && line.flags[p.altFi] && (
-        <View style={styles.alts}>
-          <Txt style={styles.altLead}>Did you say</Txt>
-          {line.flags[p.altFi].alts.map(a => (
-            <Pressable key={a} accessibilityRole="button" accessibilityLabel={`Replace “${line.flags[p.altFi].w}” with “${a}”`} onPress={() => p.onApplyAlt(line, p.altFi, a)}
-              style={[styles.altChip, { borderColor: 'rgba(255, 216, 102, 0.45)', backgroundColor: 'rgba(255, 216, 102, 0.18)' }]}>
-              <Txt style={[styles.altText, { color: c.goldText }]}>{a}</Txt>
-            </Pressable>
-          ))}
-          <Pressable accessibilityRole="button" accessibilityLabel={`Keep “${line.flags[p.altFi].w}” as heard`} onPress={() => p.onKeepFlag(line, p.altFi)}
-            style={[styles.altChip, { borderColor: c.border14, backgroundColor: c.surface06 }]}>
-            <Txt style={[styles.altText, { color: c.body3 }]}>{'Keep “' + line.flags[p.altFi].w + '”'}</Txt>
-          </Pressable>
-        </View>
-      )}
-      {!!line.edge && !p.recording && !p.editing && (
-        <View style={styles.edge} pointerEvents="none">
-          <Glyph name="h-spin" size={14} color={c.warn} />
-          <Txt style={styles.edgeText}>{line.edge < 0 ? 'Said as the slide changed · swipe ← to move to slide ' + p.cur : 'Said as the slide changed · swipe → to move to slide ' + (p.cur + 2)}</Txt>
-        </View>
-      )}
-    </View>
-  );
-}
-
 // ── Timer, slide time, pace chip and waveform (re-render ~10×/s while recording) ──
 function Readout({ live, phase, cur, take, deck, burst, error, recoveryCount, recoveryNumber, onRecovery }: {
   live: LiveStore; phase: Phase; cur: number; take: boolean; deck: DeckModel['deck']; burst: { total: number } | null; error: string;
@@ -898,6 +713,8 @@ const styles = createThemedStyles({
   deckTitle: { fontFamily: F.display, fontSize: 18, lineHeight: 21.6, letterSpacing: -0.3, color: C.text },
   counterWrap: { position: 'absolute', left: 120, top: 75, width: 150, height: 18, alignItems: 'center', justifyContent: 'center' },
   counter: { fontFamily: F.medium, fontSize: 13, color: C.secondary },
+  editRequirements: { position: 'absolute', left: 96, right: 96, top: 96, height: 20, alignItems: 'center', justifyContent: 'center' },
+  editLabel: { fontFamily: F.semibold, fontSize: 11, lineHeight: 14, color: C.secondary },
   slideStage: { position: 'absolute', left: 0, top: 100, width: 390, height: 510, overflow: 'hidden' },
   slidePosition: { position: 'absolute', left: 16, top: 16, width: CARD_W, height: CARD_H },
   slideZoom: { width: CARD_W, height: CARD_H, overflow: 'hidden' },
@@ -915,28 +732,6 @@ const styles = createThemedStyles({
   corner: { position: 'absolute', width: 60, height: 60 },
   rotatedCorner: { position: 'absolute', left: 55, width: 76, height: 76 },
   strip: { position: 'absolute', left: 16, right: 16, top: 330, height: 32, flexDirection: 'row', alignItems: 'center', gap: 4 },
-  txHead: { position: 'absolute', left: 16, right: 16, top: 364, flexDirection: 'row', alignItems: 'center', gap: 8, zIndex: 2 },
-  txHeadText: { fontFamily: F.bold, fontSize: 11, letterSpacing: 0.6, textTransform: 'uppercase', color: C.tertiary },
-  txRule: { flex: 1, height: 1, backgroundColor: 'rgba(255, 255, 255, 0.1)' },
-  txRight: { fontFamily: F.semibold, fontSize: 11, maxWidth: 165, flexShrink: 1 },
-  txPlay: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  txBox: { position: 'absolute', left: 16, right: 16, top: 402, height: 104, overflow: 'hidden' },
-  empty: { textAlign: 'center', fontFamily: F.medium, fontSize: 13, color: C.tertiary },
-  reveal: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, borderRadius: 10 },
-  revealText: { fontFamily: F.bold, fontSize: 12, color: '#FFFFFF' },
-  lineRow: { flexDirection: 'row', gap: 8, paddingTop: 6, paddingBottom: 6, paddingRight: 8, paddingLeft: 4, borderRadius: 10, overflow: 'hidden' },
-  playCol: { width: 34, alignItems: 'center', paddingTop: 3 },
-  lineTime: { fontFamily: F.semibold, fontSize: 11, color: C.tertiary, fontVariant: ['tabular-nums'] },
-  lineText: { flex: 1, fontFamily: F.medium, fontSize: 14, lineHeight: 19.3 },
-  flag: { backgroundColor: 'rgba(255, 216, 102, 0.14)', color: '#FFE08A', textDecorationLine: 'underline', textDecorationStyle: 'dotted', textDecorationColor: 'rgba(255, 216, 102, 0.85)' },
-  editor: { flex: 1, minHeight: 64, paddingVertical: 6, paddingHorizontal: 8, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.3)', borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)', fontFamily: F.medium, fontSize: 14, lineHeight: 19.3, color: C.text, textAlignVertical: 'top' },
-  alts: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, paddingTop: 4, paddingBottom: 4, paddingLeft: 42 },
-  altLead: { fontFamily: F.semibold, fontSize: 12, color: C.tertiary },
-  altChip: { paddingVertical: 4, paddingHorizontal: 10, borderWidth: 1, borderRadius: 999 },
-  altText: { fontFamily: F.bold, fontSize: 12 },
-  edge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingBottom: 4, paddingLeft: 42 },
-  edgeText: { flex: 1, fontFamily: F.semibold, fontSize: 12, color: '#FFC266' },
   paceWrap: { position: 'absolute', left: 0, right: 0, top: 512, alignItems: 'center' },
   big: { position: 'absolute', left: 0, right: 0, top: 548, textAlign: 'center', fontFamily: F.display, fontSize: 42, lineHeight: 44, letterSpacing: -1.3, fontVariant: ['tabular-nums'] },
   line: { position: 'absolute', left: 30, right: 30, top: 596, textAlign: 'center', fontFamily: F.semibold, fontSize: 14 },

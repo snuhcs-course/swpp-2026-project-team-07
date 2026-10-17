@@ -37,7 +37,7 @@ def png_with_private_profile():
     return data[:33] + encoded + data[33:], marker.decode('ascii')  # After IHDR.
 
 
-def fixture(*, words=None, events=None, audience='', slides=2, text=None):
+def fixture(*, words=None, events=None, audience='', slides=2, text=None, duration_ms=3000):
     words = deepcopy(words if words is not None else [
         {'text': 'Hello,', 'start_ms': 100, 'end_ms': 500},
         {'text': '안녕!', 'start_ms': 500, 'end_ms': 1100},
@@ -46,8 +46,8 @@ def fixture(*, words=None, events=None, audience='', slides=2, text=None):
         {'text': 'Return.', 'start_ms': 2200, 'end_ms': 2500},
     ])
     events = events or [{'slide_index': 0, 'at_ms': 0}, {'slide_index': 1, 'at_ms': 1000}, {'slide_index': 0, 'at_ms': 2000}]
-    visits = align_words([{**w, 'index': i} for i, w in enumerate(words)], events, 3000)
-    value = {'attempt_id': ATTEMPT, 'deck_id': DECK, 'duration_ms': 3000, 'speaker_language': 'ko/en', 'audience': audience,
+    visits = align_words([{**w, 'index': i} for i, w in enumerate(words)], events, duration_ms)
+    value = {'attempt_id': ATTEMPT, 'deck_id': DECK, 'duration_ms': duration_ms, 'speaker_language': 'ko/en', 'audience': audience,
              'slides': [{'deck_id': DECK, 'slide_index': i, 'source_language': 'en', 'extracted_text': f'Synthetic slide {i}'} for i in range(slides)],
              'transcript': {'text': text if text is not None else ' '.join(w['text'] for w in words), 'words': words},
              'visits': [{k: v for k, v in visit.items() if k != 'words'} | {'word_indexes': [w['index'] for w in visit['words']]} for visit in visits]}
@@ -71,6 +71,16 @@ def suggestion(analysis, **changes):
 
 
 class FeedbackEvidenceTests(TestCase):
+    def test_long_recording_evidence_preserves_late_word_times(self):
+        value, images = fixture(words=[{'text': 'Finish', 'start_ms': 1799000, 'end_ms': 1799500}],
+                                events=[{'slide_index': 0, 'at_ms': 0}], text='Finish', duration_ms=1800000)
+        analysis = prepare_analysis(value, images)
+        descriptions = validate_descriptions(description_value(analysis), analysis)
+        card = suggestion(analysis, speech_quote='Finish', word_start=0, word_end=0)
+        result = validate_suggestions({'suggestions': [card]}, analysis, descriptions)
+        self.assertEqual(result.state, 'accepted')
+        self.assertEqual((result.suggestions[0].start_ms, result.suggestions[0].end_ms), (1799000, 1799500))
+
     def setUp(self):
         self.value, self.images = fixture()
         self.analysis = prepare_analysis(self.value, self.images)
@@ -99,7 +109,8 @@ class FeedbackEvidenceTests(TestCase):
     def test_quotes_preserve_korean_case_punctuation_and_complete_words(self):
         valid = suggestion(self.analysis, speech_quote='\tHello,\n 안녕!  ')
         self.assertEqual(self.validate(valid).accepted_count, 1)
-        for quote in ['Hello 안녕!', 'hello, 안녕!', 'Hello, 안녕', 'Hello,', '녕!', 'ello, 안녕!', 'Hello, 안녕! extra']:
+        self.assertEqual(self.validate(suggestion(self.analysis,speech_quote='hello, 안녕!')).accepted_count,1)
+        for quote in ['Hello 안녕!', 'Hello, 안녕', 'Hello,', '녕!', 'ello, 안녕!', 'Hello, 안녕! extra']:
             self.assertEqual(self.validate(suggestion(self.analysis, speech_quote=quote)).state, 'all_invalid')
         value, images = fixture(words=[{'text': 'restart', 'start_ms': 0, 'end_ms': 100}], text='restart')
         analysis = prepare_analysis(value, images)
@@ -164,7 +175,7 @@ class FeedbackEvidenceTests(TestCase):
 
     def test_input_types_unknown_fields_timestamps_and_bounds_fail_closed(self):
         bad = []
-        for path, values in [(['duration_ms'], [True, '3000', 0, -1, 1_200_001, float('nan')]),
+        for path, values in [(['duration_ms'], [True, '3000', 0, -1, 1800001, float('nan')]),
                              (['slides', 0, 'slide_index'], [True, -1, 10, '0', 1]),
                              (['transcript', 'words', 0, 'end_ms'], [True, '100', 3001, -1, None, float('inf')]),
                              (['transcript', 'words', 0, 'start_ms'], [501, 3000, -1]),
@@ -288,7 +299,7 @@ class FeedbackEvidenceTests(TestCase):
 
     def test_uncertain_or_inexact_slide_evidence_is_discarded(self):
         for changes in [{'description_ref': 'visual_facts/0', 'slide_quote': 'An unreadable chart value.'},
-                        {'description_ref': 'key_ideas/4'}, {'slide_quote': 'Save'}, {'slide_quote': 'Save before analysis. '},
+                        {'description_ref': 'key_ideas/4'}, {'slide_quote': 'Save after analysis.'},
                         {'transcript_id': '0' * 64}, {'word_start': 1, 'word_end': 0}]:
             self.assertEqual(self.validate(suggestion(self.analysis, **changes)).state, 'all_invalid')
 
@@ -314,6 +325,20 @@ class FeedbackEvidenceTests(TestCase):
         third = suggestion(self.analysis, visit_id=2, segment_id='v2s0', word_start=4, word_end=4, speech_quote='Return.')
         second = suggestion(self.analysis, slide_index=1, source_id=self.analysis.source_ids[1], visit_id=1, segment_id='v1s0', word_start=2, word_end=3)
         self.assertEqual(self.validate(card, second, third).accepted_count, 3)
+
+    def test_nfc_quote_expansion_cannot_poison_valid_peers(self):
+        import unicodedata
+        source=[{'text':'e\u0301'*10,'start_ms':i*40,'end_ms':i*40+30} for i in range(49)]
+        source.append({'text':'Valid','start_ms':2000,'end_ms':2100})
+        value,images=fixture(words=source,events=[{'slide_index':0,'at_ms':0}],duration_ms=3000)
+        analysis=prepare_analysis(value,images)
+        descriptions=validate_descriptions(description_value(analysis),analysis)
+        full=' '.join(w['text'] for w in source[:49]);self.assertGreater(len(full),1000)
+        long=suggestion(analysis,word_start=0,word_end=48,speech_quote=unicodedata.normalize('NFC',full))
+        peer=suggestion(analysis,word_start=49,word_end=49,segment_id='v0s1',speech_quote='Valid',observation='A distinct issue.',suggestion='A distinct improvement.')
+        result=validate_suggestions({'suggestions':[long,peer]},analysis,descriptions)
+        self.assertEqual(result.accepted_count,2)
+        self.assertLessEqual(len(result.suggestions[0].speech_quote),1000)
 
     def test_strict_envelopes_types_actions_and_nonfinite_json(self):
         for value in [{'suggestions': [], 'action': 'send'}, [], None, {'suggestions': 'none'}, {'suggestions': [dict(suggestion(self.analysis), word_start=True)]},

@@ -1,8 +1,24 @@
 # ElevenLabs Scribe v2 transcription
 
-Confirmed direction received from Injoon on October 16, 2026: create a visible GitHub branch from the latest branch to replace transcription with ElevenLabs Scribe v2. The explicit model request governs despite the opening phrase “use whisper instead.” This is branch-scoped implementation, not a merge or deployment decision.
+## Current Scribe-only integration — October 17, 2026
 
-Current integration: `codex/scribe-v2-main-integration` starts at merged main `6435599` (PR #29). It ports Scribe commits `20fbd3f`, `2740d7c` and `fbd7e88` from `codex/scribe-v2-transcription`, excluding its earlier AI-feedback phases. Jaewon's themes, Review/Full review, setup and twenty-minute recording limit remain. The additive request-options migration is renumbered from source-branch `0010` to main's `0007`, depending on `0006_durable_coaching`. Do not apply both histories to the same database. The original Scribe worktree and unrelated edits are preserved.
+`integration/ai-feedback-with-scribe` starts from main `5aed316` and incorporates
+the complete application from `codex/presentation-score` at `e8f4869`, retaining
+both histories. That branch supplies all scoring, singleton compact feedback,
+corrections, durable Q&A, UI/navigation, playback, reliability and thirty-minute
+recording behavior. Only the transcription boundary and necessary consent/identity
+validation change. There is no historical Whisper decoding or fallback.
+
+The additive `0011_merge_scribe_scoring` joins main's
+`0007_provider_request_options` and our `0010_slide_review_membership`, defaults
+new request identities to Scribe and rewrites no saved rows or committed migrations.
+Fresh database initialization is the supported verification target. No shared
+database, running service or secrets are changed by this source integration.
+
+See [integration verification](scribe-only-integration-verification.md) for the
+current diff boundary, tests, independent review and remaining delivery gates.
+The dated October 16 records below describe earlier revisions, including their
+former compatibility policy; they do not establish current integration acceptance.
 
 ## Configuration and behavior
 
@@ -24,15 +40,15 @@ Language is automatically detected. Keyterms are selected from extracted text on
 
 ## Compatibility and recovery
 
-The public transcript stays `{text, words: [{text, start_ms, end_ms}]}`. Only Scribe `type=word` items become timed words; spacing/audio-event entries remain in private raw evidence. Seconds use half-up integer-millisecond rounding on the original audio timeline. Detected language uses Scribe `language_code`; old Whisper results retain `language`. File limits (25,000,000 bytes and accepted extensions), Silero no-speech gating, alignment checks and recording retention remain unchanged.
+The public transcript stays `{text, words: [{text, start_ms, end_ms}]}`. Only Scribe `type=word` items become timed words; spacing/audio-event entries remain in private raw evidence. Seconds use half-up integer-millisecond rounding on the original audio timeline. Detected language uses Scribe `language_code`. File limits (25,000,000 bytes and accepted extensions), Silero no-speech gating, alignment checks and recording retention remain unchanged.
 
-New durable requests explicitly store `elevenlabs` / `scribe_v2`. The database's historical request defaults remain `openai` / `whisper-1`; existing rows are not relabeled. Saved raw responses are decoded using their stored provider; completed transcripts are reused without new provider calls. Both provider/model pairs are accepted by the mobile parser and offline cache. Q&A audio uses the same transcription adapter.
+New durable requests and model defaults use only `elevenlabs` / `scribe_v2`. The mobile parser accepts this exact pair or the existing null pre-submission/no-speech identity. Saved Scribe receipts and normalized transcripts are reused without another provider call; Whisper-format raw output and unsupported receipt identities are rejected. Durable Q&A answers use the same processing adapter. Existing feedback/scoring/evaluation providers are independent and unchanged.
 
-The app discloses ElevenLabs and slide-derived vocabulary hints before new submissions, including Q&A answers and transcription retries; declining keeps the saved recording and sends no new audio. Its current consent key (`analysis-consent:elevenlabs:scribe-v2:keyterms:v2`) is separate from prior OpenAI and audio-only Scribe consent; existing users must acknowledge the updated disclosure. Read-only playback of old results requires no new consent. Existing server-side queued jobs retain the established admission behavior; consent is a mobile gate, not a new server-enforced consent protocol. Coordinate API/worker/mobile rollout and drain old queued work before changing providers on a shared server. An old mobile build rejects Scribe provenance, so this branch requires the updated client.
+The app discloses ElevenLabs and vocabulary hints from visited slides before new transcription submissions or retries, including durable Q&A answers. The Scribe-specific consent key is `analysis-consent:elevenlabs:scribe-v2:keyterms:v2`; no older consent is read or migrated. Cancel retains the same saved answer/audio; Continue resumes its existing identity. Reads, status polling and feedback-only recovery do not require transcription consent. Consent remains the existing mobile admission gate, with no new public API fields. No deployment is performed.
 
 Each submission makes one HTTP request, with no automatic retries or redirect following and a 120-second timeout. Durable markers precede submission; raw responses precede normalization. Timeout, network loss, HTTP 408/5xx and unknown post-submission failures retain uncertain-charge confirmation. Known rejections and Retry-After remain recoverable. Provider bodies/keys stay out of public errors and APIs.
 
-## Current main-integration verification — October 16, 2026
+## Historical main-integration verification — October 16, 2026
 
 Agent-operated checks on `codex/scribe-v2-main-integration`:
 

@@ -4,6 +4,7 @@ import { normalizeApi } from '../transcription/analysisStorage';
 import { readReview } from '../transcription/reviewStorage';
 import { preferFeedback } from '../transcription/reviewValidation';
 import { parseDescriptionState, optionalFeedback, type FeedbackContext } from './validation';
+import type { LocalCorrections } from '../../domain/corrections';
 
 export const feedbackKey = (api: string, kind: string, id: string) => `feedback:v1:${encodeURIComponent(normalizeApi(api))}:${kind}:${id}`;
 export const consentKey = (api: string, selection: FeedbackSelection) => feedbackKey(api, 'consent', `${selection.provider}:${selection.disclosure_version}`);
@@ -13,7 +14,22 @@ export const saveFeedbackConsent = (api: string, selection: FeedbackSelection) =
 export function readFeedback(api: string, id: string, context?: FeedbackContext) {
   const cached = optionalFeedback(readStored(feedbackKey(api, 'attempt', id)), id, context);
   const legacy = readReview(api, id)?.feedback_analysis;
-  return preferFeedback(optionalFeedback(legacy, id, context), cached) ?? null;
+  return withCorrectionStaleness(preferFeedback(optionalFeedback(legacy, id, context), cached) ?? null, api, id);
+}
+export function withCorrectionStaleness(value: FeedbackAnalysis | null, api: string, id: string): FeedbackAnalysis | null {
+  if (value?.feedback_revision && ((value.analysis_version && value.analysis_version !== 'recognition-v2') ||
+      (!readStored(`transcript-corrections:v2:${encodeURIComponent(normalizeApi(api))}:${id}`) && (value.transcript_revision ?? 0) > 0))) {
+    return { ...value, state: 'stale', stale: true, retry_available: true, result: value.result ? { ...value.result, stale: true } : null };
+  }
+  const correction = readStored<LocalCorrections>(`transcript-corrections:v2:${encodeURIComponent(normalizeApi(api))}:${id}`);
+  return correctionStaleness(value, correction?.server.revision, correction?.pending,
+    correction?.conflict || correction?.server.source_changed);
+}
+export function correctionStaleness(value: FeedbackAnalysis | null, revision?: number, pending?: boolean, conflict?: boolean): FeedbackAnalysis | null {
+  if (!value || !value.feedback_revision || revision === undefined || (!pending && !conflict &&
+      revision === (value.transcript_revision ?? 0))) return value;
+  return { ...value, state: 'stale', stale: true, retry_available: true,
+    result: value.result ? { ...value.result, stale: true } : null };
 }
 export function saveFeedback(api: string, value: FeedbackAnalysis) { writeStored(feedbackKey(api, 'attempt', value.attempt_id), value); }
 export function readDescriptions(api: string, deck: string, set?: string | null): DescriptionState | null {
