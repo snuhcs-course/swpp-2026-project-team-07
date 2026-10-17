@@ -520,7 +520,7 @@ The isolated runtime and temporary APK/log directories are session artifacts, no
 - [Retained-feature verification](retained-features-verification.md): Step 1/navigation/reliability and discontinued runtime cleanup.
 - [Scribe specification](scribe-transcription.md): provider boundary and backend configuration.
 - [Scribe integration verification](scribe-only-integration-verification.md): preservation allowlist, automated/independent review and subsequent live-phone evidence.
-- [AI-use record](ai-use.md) and [actual collaboration prompts](ai-collaboration-prompts-iteration-2.md): AI assistance and task-level verification, separate from human approval.
+- [AI collaboration log](ai-collaboration-prompts-iteration-2.md): actual prompts, AI assistance and task-level verification, separate from human approval.
 
 The reviewed source patch hash is `3497f6def49dd2c121aedf635552eaefc77d4ef197cd330b57460cc22beec28c`. Seven later runtime-file edits added attribution comments only; byte comparisons confirmed the reviewed implementation remained unchanged.
 

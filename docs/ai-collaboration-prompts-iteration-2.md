@@ -1302,11 +1302,17 @@ without labeling first/return visits in that view. The underlying timeline keeps
 separate visits; their visual identification is an outstanding UI issue, not a
 Phase 3 implementation or a passed human alignment test.
 
+**Subsequent handoff:** Phase 3 was subsequently approved and committed as
+`ee6233be2875739c6c9f8d2c62e9878e4ab759b7`. This supersedes the implementation
+snapshot's pending-commit state; no additional approval prompt is recorded here.
+
 ## Transcript visit labels — October 15, 2026
 
 **Contributor:** Seoyeon
 
 **Tool:** OpenAI Codex desktop; separate independent AI reviewer.
+
+**Model:** not recorded
 
 **Requests (verbatim):**
 
@@ -1345,6 +1351,8 @@ are pending; independent AI review is not human teammate approval.
 
 **Tool:** OpenAI Codex desktop; separate independent AI reviewer.
 
+**Model:** not recorded
+
 **Requests (verbatim):**
 
 ```text
@@ -1382,6 +1390,8 @@ requirements-entry UI, Phase 4, commit, push or merge. Final inspection is pendi
 **Contributor:** Seoyeon
 
 **Tool:** OpenAI Codex, with a separate AI reviewer. AI review is not human review.
+
+**Model:** not recorded
 
 **Representative user prompts (verbatim):**
 
@@ -1459,6 +1469,8 @@ transcripts are included in this entry.
 
 **Tool:** OpenAI Codex with a separate AI reviewer; this is not human review.
 
+**Model:** not recorded
+
 **Representative user requests (verbatim):**
 
 > OutLoud must faithfully represent what the presenter actually said. Users must not be able to rewrite their transcript to improve their presentation without rerecording the audio.
@@ -1503,6 +1515,8 @@ evidence, review and the updated physical-device checklist are recorded in
 
 **Tool:** OpenAI Codex with independent AI review.
 
+**Model:** not recorded
+
 **Representative requests (verbatim):**
 
 > **Sync corrections:** Hide it when everything is synchronized. Show a status/action only for pending edits, failures, or conflicts.
@@ -1527,9 +1541,7 @@ Physical-phone/human acceptance remains pending. No commit/push/merge.
 
 ## Phase 5 selected-slide review (October 16, 2026)
 
-Contributor: Seoyeon
-
-Tool: OpenAI Codex.
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex · **Model:** not recorded
 
 User prompt (verbatim):
 
@@ -1547,9 +1559,7 @@ No commit, push or merge is authorized by this request.
 
 ## Automatic first feedback and middle-school audience preview (October 16, 2026)
 
-Contributor: Seoyeon
-
-Tool: OpenAI Codex.
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex · **Model:** not recorded
 
 User prompts (verbatim):
 
@@ -1569,10 +1579,9 @@ No custom editing, new screen, commit, push or merge.
 
 ## Purpose-aware feedback and reachable correction choices (October 16, 2026)
 
-Contributor: Seoyeon
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex · **Model:** not recorded
 
-Tool: OpenAI Codex. Independent AI review: separate reviewer agent; human review
-remains pending.
+Independent AI review: separate reviewer agent; human review remains pending.
 
 Representative user prompts/excerpts (verbatim):
 
@@ -1608,9 +1617,9 @@ No commit, push, merge or later phase is authorized by these changes.
 
 ## Phase 6 durable audience Q&A (October 16, 2026)
 
-Contributor: Seoyeon
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex · **Model:** not recorded
 
-Tool: OpenAI Codex; separate independent AI reviewer. Human inspection is pending.
+Independent AI review: separate reviewer agent. Human inspection is pending.
 Representative user prompts (verbatim):
 
 > plan for phase 6
@@ -1633,9 +1642,9 @@ no commit, push, merge, publication, Phase 7 or real-provider quality acceptance
 
 ## Phase 6 phone Q&A availability repair (October 16, 2026)
 
-Contributor: Seoyeon
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex · **Model:** not recorded
 
-Tool: OpenAI Codex; separate independent AI reviewer.
+Independent AI review: separate reviewer agent.
 Representative prompt (verbatim):
 
 > Im getting that Audience Q&A is offline or unavailable
@@ -1651,9 +1660,9 @@ No commit, push or merge.
 
 ## New-presentation defaults (October 16, 2026)
 
-Contributor: Seoyeon
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex · **Model:** not recorded
 
-Tool: OpenAI Codex; separate independent AI reviewer.
+Independent AI review: separate reviewer agent.
 Representative prompt (verbatim):
 
 > Set default audience as general ppl. default duration 5 minutes
@@ -1669,9 +1678,9 @@ No commit, push or merge.
 
 ## Cue policy v5 (October 16, 2026)
 
-Contributor: Seoyeon
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex · **Model:** not recorded
 
-Tool: OpenAI Codex; separate independent AI reviewer.
+Independent AI review: separate reviewer agent.
 Representative prompts (verbatim):
 
 > preparing ai cues not working
@@ -1690,9 +1699,9 @@ No commit, push or merge. Human usefulness acceptance remains pending.
 
 ## Q&A navigation and clearer-expression feedback (October 16, 2026)
 
-Contributor: Seoyeon
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex · **Model:** not recorded
 
-Tool: OpenAI Codex; separate independent AI reviewer.
+Independent AI review: separate reviewer agent.
 Representative prompts (verbatim):
 
 > Audience Questions should be generated alongside feedback. I shouldn't have to be waiting for it. Also because not all were generated creates blank screens after on equestion. I had to go back so that it regenreated. Also could AI feedback critique on the structure of the transcript like how the individual articulated their ideas. And give more coherent ways to express that same idea
@@ -1713,9 +1722,9 @@ No incremental recording, requirements sheet, new screen, commit, push or merge.
 
 ## Evidence-validation audit (October 16, 2026)
 
-Contributor: Seoyeon
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex · **Model:** not recorded
 
-Tool: OpenAI Codex; separate independent AI reviewer.
+Independent AI review: separate reviewer agent.
 Representative request excerpts (verbatim):
 
 > Audit and revise OutLoud's AI feedback evidence-validation pipeline.
@@ -3140,7 +3149,7 @@ I merged it. Go ahead and integrate my Scribe v2 transcription changes on the up
 
 - Contributor: Seoyeon
 - Tool: OpenAI Codex desktop, with implementation/test subagents and a separate final reviewer.
-- Model: exact variant not recorded.
+- Model: not recorded (exact variant was not recorded).
 - Human decisions: permanent Cues replaces the recording transcript body; Play remains; Must Cover and Go Deeper share one scroll; slide-based audience-independent generation is retained. The broad setup integration plan was discarded.
 
 ### Implementation request (verbatim)
@@ -3193,7 +3202,7 @@ PLEASE IMPLEMENT THIS PLAN:
 
 - Prepared isolated `it2/integration-ai-nakajima` from AI `ff8472c` and uncommitted merge of Nakajima `959025e`, because no integrated checkout existed. Preserved source worktrees and backend runtime contracts.
 - Reused immutable profile cache/client/hook; permanent themed Cues, retained selected-slide Play/Pause, normal/rotated layout handling, Review correction access and retained durable Q&A/feedback hosts.
-- Verification and remaining limits are recorded in the matching October 16 entry in `docs/ai-use.md`; initial integration check exposed correction-component lint and theme test-loader failures, repaired before the final run.
+- Verification and remaining limits are recorded in [the recording-cues verification record](recording-cues-verification.md); initial integration check exposed correction-component lint and theme test-loader failures, repaired before the final run.
 - No human testing or final inspection is inferred. No commit or push performed.
 
 Final verification for permanent Cues: 331 mobile tests passed, typecheck and lint
@@ -3231,7 +3240,7 @@ The existing PDF catalog still contains seven entries. Backend port 8000 was not
 listening, so this presentation showed the explicit unavailable-offline cue state;
 no claim of physical-phone cue generation or speech/audio quality is made. Source
 code and the previously tested/staged implementation remain unchanged; evidence
-updated in recording-cues-verification.md and docs/ai-use.md. No commit or push.
+updated in [recording-cues-verification.md](recording-cues-verification.md#physical-phone-preview-correction--october-16-2026) and this task entry. No commit or push.
 
 
 ## Complete AI feedback integration into Nakajima UI — October 16, 2026
@@ -3373,7 +3382,7 @@ Implementation and actual check/device evidence are recorded in [recording-cues-
 
 ## Inline Review transcript — October 16, 2026
 
-Contributor: Seoyeon. Tool: OpenAI Codex.
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex · **Model:** not recorded
 
 ### Verbatim request
 
@@ -3383,12 +3392,14 @@ Currently transcript in review is shown in seperate black window. Dleete that wi
 
 ### Incorporated work
 
-Moved the selected-source transcript and existing correction controls into the normal Review page below its saved-audio Play button and above AI feedback. Removed Review's separate playback modal; retained rehearsal recovery's existing sheet. Reused the same segment player for slide/sentence/word/evidence audio, source URI and source-time highlighting, correction state, downloads and collapsed recording tools. No backend contract, provider prompt, generation scope or native dependency changed. Verification and final review are recorded in [the verification record](recording-cues-verification.md#inline-review-transcript-october-16-2026).
+**Output and use:** Moved the selected-source transcript and existing correction controls into the normal Review page below its saved-audio Play button and above AI feedback. Removed Review's separate playback modal; retained rehearsal recovery's existing sheet. Reused the same segment player for slide/sentence/word/evidence audio, source URI and source-time highlighting, source-owned corrections, original-word playback, saved-media downloads and collapsed recording tools. No backend contract, provider prompt, generation scope or native dependency changed.
+
+**Verification and limits:** Checks and final review are recorded in [the verification record](recording-cues-verification.md#inline-review-transcript-october-16-2026). Human final inspection remained pending at this implementation handoff; no commit, push or PR was implied. The later [integration publication](#integration-publication--october-16-2026) supersedes that commit/push gate.
 
 
 ## Both cue categories visible — October 16, 2026
 
-Contributor: Seoyeon. Tool: OpenAI Codex; model: GPT-6.
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex · **Model:** GPT-6 (exact variant not recorded)
 
 ### Verbatim request
 
@@ -3398,12 +3409,12 @@ Go deeper is hidden beneath must cover
 
 ### Incorporated work and verification
 
-Replaced vertically stacked categories with equal-width Must Cover / Go Deeper columns within the existing shared recording-panel scroll. Kept category labels above the scroll, retained original content/details, and placed shared notices after category content so they cannot push both cue starts out of view. Panel bounds, Play, timer, recording controls and generation/cache workflows remain unchanged. Focused layout regression reproduced the defect before the fix. Final automated, phone and independent-review evidence is recorded in [the verification record](recording-cues-verification.md#both-cue-categories-visible-october-16-2026). No commit or push.
+Replaced vertically stacked categories with equal-width Must Cover / Go Deeper columns within the existing shared recording-panel scroll. Kept category labels above the scroll, retained original content/details, and placed shared notices after category content so they cannot push both cue starts out of view. Panel bounds, Play, timer, recording controls and generation/cache workflows remain unchanged. Focused layout regression reproduced the defect before the fix. Final automated, phone and independent-review evidence is recorded in [the verification record](recording-cues-verification.md#both-cue-categories-visible-october-16-2026). Human final inspection remained pending at this implementation handoff; no commit or push occurred then. The later [integration publication](#integration-publication--october-16-2026) supersedes that commit/push gate.
 
 
 ## Integration publication — October 16, 2026
 
-Contributor: Seoyeon. Tool: OpenAI Codex; model: GPT-6.
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex · **Model:** GPT-6 (exact variant not recorded)
 
 ### Verbatim request
 
@@ -3413,10 +3424,13 @@ commit and push
 
 ### Authorized handoff
 
-The user authorized committing and pushing `it2/integration-ai-nakajima` after the staged integration, inline Review transcript and cue-visibility handoffs. The final application source is unchanged from the reviewed and tested tree `5e9306cc1bb950c3912765c1cce170c6e0715906`; this follow-up adds only publication evidence. Prior 406-test, Android-export and physical-phone results apply to the unchanged source. The commit retains the AI and Nakajima merge parents. No PR creation or merge into another remote branch was requested.
+- **Human decision:** The user authorized committing and pushing `it2/integration-ai-nakajima` after the staged integration, inline Review transcript and cue-visibility handoffs. This supersedes those implementation snapshots' pending-inspection state for commit/push; it does not establish human functional acceptance or teammate approval. No PR creation or merge into another remote branch was requested in this October 16 request.
+- **Output and verification:** Codex checked the branch, merge parents, exact staged source against recorded AI reviews, outgoing scope and live remote destination. Application source was unchanged from reviewed/tested tree `5e9306cc1bb950c3912765c1cce170c6e0715906`; only publication evidence was added. Prior 406-mobile-test, Android-export and physical-phone results apply to that unchanged snapshot. The commit retains the AI and Nakajima merge parents; these historical checks do not describe the later Scribe integration snapshot.
 
 
 ## Complete automatic scoring source commit — October 17, 2026
+
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex · **Model:** not recorded
 
 User request:
 
@@ -3424,19 +3438,23 @@ User request:
 >
 > Before committing: identify all scoring-related source files and dependencies; preserve unrelated changes and the original staging state; verify completeness and tests; commit only verified scoring and required dependencies; report the hash, included files, results and remaining changes. Do not push, merge, deploy, or modify unrelated work.
 
-OpenAI Codex used the existing implementation rather than redesigning it, selected scoring-only hunks from mixed files, and tested the proposed source snapshot independently of unrelated local changes. Required earlier v1 helpers are retained for v2 evidence/measurement validation; experimental evaluation tools and grouped-feedback models are excluded. Verification and independent review are recorded in [the source-snapshot report](presentation-scoring-source-verification.md).
+- **Output and use:** Codex selected the complete existing automatic scoring implementation and required earlier uncommitted runtime dependencies into an isolated source snapshot. Retained material includes the frozen v2 rubric/evidence reconstruction, deterministic scorer, existing-job API integration, Android validation/cache/controller, automatic selected-recording scoring, direct advice/evidence, shared score colors and Home statistics. Existing v1 evidence/measurement helpers remain runtime dependencies; experiment runners, grouped-feedback schemas and unrelated cue/navigation/reliability changes are excluded.
+- **Errors and revisions:** Mixed source/test files include only reviewed scoring hunks. A candidate-test edit removed an unnecessary historical grouping-model assertion while retaining scoring/singleton independence checks. Independent AI review found a missing explicit Retry for rejected source assessments in slide/composed views; Codex added a narrow UI gate and regression, then passed final mobile checks with 494 tests.
+- **Verification:** The isolated snapshot was tested independently of unrelated local changes. Included files, exact checks, separate AI review and remaining limits are recorded in [the source-snapshot report](presentation-scoring-source-verification.md).
+- **Human decisions and preservation:** Seoyeon authorized committing the complete scoring implementation and dependencies. Original index/staged snapshots were saved locally before history changes; unrelated staged entries and working-tree content were preserved. This task made no live AI calls, push, merge, deployment or device update. Commit authorization does not establish teammate approval or real-provider usefulness; human code edits are not recorded.
 
 
 ## Retained features integration October 17, 2026
+
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex · **Model:** not recorded
 
 User request:
 
 > Step 2 and older scoring experiments are discontinued. No longer needed. Can even delete from history. Step 1, navigation and layout changes and cue and feedback reliability should be applied to app and committed as well.
 
-Codex preserved the completed scoring implementation, integrated the retained work,
-removed obsolete runners and grouping runtime, and used ordinary commits rather
-than rewriting history. No new grouping, experiment, paid inference or deployment
-was introduced. [Verification and scope](retained-features-verification.md).
+- **Human decisions:** Seoyeon discontinued Step 2 and older scoring experiments, and authorized applying/committing Step 1 compact feedback context, navigation/layout and cue/feedback reliability. Human functional acceptance remains separate from commit authorization.
+- **Output and use:** Codex preserved completed scoring, integrated the retained implementations, removed obsolete experiment runners, grouping runtime and superseded records, and used ordinary commits without rewriting history. Five earlier evidence/measurement helpers remain because active v2 scoring imports them. The applied membership migration remains inert for schema consistency.
+- **Verification:** Codex checked actual saved-data dependencies read-only; no grouped snapshots or membership rows existed in the known local datasets. Focused/full mocked checks and separate AI review are recorded in [retained-features verification](retained-features-verification.md). No architecture restart, paid inference, shared-data mutation, push, merge or live deployment occurred in this task; no new grouping or experiment was introduced.
 
 ## First-recording review navigation October 16, 2026
 
@@ -3457,9 +3475,9 @@ historical group handoff code are discontinued. [Current contract](api-contract.
 
 ## Scribe-only application integration (October 17, 2026)
 
-- Contributor: Seoyeon
-- Tool: OpenAI Codex desktop; model: not recorded.
-- Context: integrate the complete reviewed scoring application with main's Scribe transcription, with final human inspection before commit. Provider calls prohibited.
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex desktop · **Model:** not recorded
+
+**Initial context:** Integrate the complete reviewed scoring application with main's Scribe transcription, with final human inspection before commit. Provider calls were prohibited for this initial mocked implementation/review snapshot; later authorized live testing and publication are recorded below.
 
 ### Actual requests and decisions
 
@@ -3550,12 +3568,12 @@ Use **`integration/ai-feedback-with-scribe`** consistently for the integration b
 
 ### Incorporated work and verification
 
-- AI retained our complete reviewed application and adapted main's Scribe boundary to Scribe-only identity/normalization, joined both migration histories, and added necessary durable-Q&A consent checks and regression tests. Final evidence is maintained in [the integration verification record](scribe-only-integration-verification.md).
+- AI retained our complete reviewed application and adapted main's Scribe boundary to Scribe-only identity/normalization, joined both migration histories, and added necessary durable-Q&A consent checks and regression tests. Scoring formulas, feedback prompts, corrections, navigation and layouts were preserved. Final evidence is maintained in [the integration verification record](scribe-only-integration-verification.md).
 - Human decisions: current app takes precedence; historical Whisper compatibility explicitly rejected; integration branch name confirmed; final inspection required before commit. Human code edits or device testing for this integration: not recorded.
 - Errors/revisions: initial mechanical indentation edit and consent effect lint error were corrected before full checks; a new renderer fixture initially populated an unused mock, then switched to the real validated review cache. These were implementation/test-fixture mistakes, not fabricated provider success.
-- Provider calls: prohibited and blocked/mocked throughout. Earlier dated Scribe provider checks remain historical evidence only. Commit, push and PR await the explicit final inspection gate.
+- Provider calls in the initial review snapshot: prohibited and blocked/mocked throughout. Earlier dated Scribe provider checks remain historical evidence only. Commit, push and PR awaited the explicit final inspection gate; the subsequent authorized live validation and publication below supersede this dated restriction.
 
-Final task verification: 554 SQLite backend tests OK (24 expected PostgreSQL-only
+**Initial review snapshot, October 17, 2026:** 554 SQLite backend tests OK (24 expected PostgreSQL-only
 skips), 554 disposable PostgreSQL tests OK (zero skips), fresh migrations/system/drift
 checks passed, 549 mobile tests/typecheck/lint passed (one existing warning), Android
 export passed with 112 exact embedded application sources. Independent review found
@@ -3564,48 +3582,90 @@ verified consent cancellation, one same-ID submission after continuation and sav
 result restoration after test consent revocation. No paid calls or physical-phone
 update occurred. Existing Q&A AppState polling limitations remain unchanged; native
 microphone/live-provider/real worker-kill acceptance is unverified. Final human
-inspection is pending; no commit, push, PR or merge into main has occurred.
+inspection was pending at this snapshot; no commit, push, PR or merge into main
+had occurred then. These 549-mobile-test/554-backend-test results belong to the
+pre-cleanup snapshot; later cleanup and publication evidence is recorded below.
 
 
 ### Authorized Scribe live phone test — October 17, 2026
 
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex · **Model:** not recorded
+
 User request: “Lets test live scribe and physical phone behavior open .env for me
-to input elven labs api key”, followed by “saved”. Codex verified key presence
-without displaying its value, used an isolated API/database/worker and built a
-production-source APK. Two Scribe-only requests verified the synthetic backend
-case and real phone capture/consent/transcript/playback. Other inference remained
-disabled; phone speech accuracy needs a quiet human check because surrounding
-audio dominated. No source edit, commit or push occurred. The additional evidence
-notes are unstaged; original reviewed staging remains intact.
+to input elven labs api key”, followed by “saved”.
+
+- **Human decisions:** Seoyeon authorized live Scribe and physical-phone testing after the mocked review and saved the ElevenLabs key in the ignored backend environment. Codex checked presence without displaying the value; this approval superseded the initial task's prohibition for these Scribe tests only.
+- **Output and verification:** In an isolated API/database/worker runtime, Codex verified a real normalized Scribe transcript, saved-receipt reuse, visited-slide hints, unchanged source audio and client validation. A separately built production-source-verified release was installed on the Galaxy S23 Ultra without clearing data. Agent-operated native checks observed PDF import, capture/slide navigation, Scribe consent/transcription, saved-audio playback/highlighting and restored statistics.
+- **Costs and limits:** Exactly two paid Scribe submissions covered the synthetic backend case and physical-phone capture; other inference was disabled. Surrounding audio dominated the microphone check, so human recognition accuracy and live feedback/scoring/Q&A quality remain unverified. No real worker process-kill result is claimed.
+- **Preservation and status:** No application source changed; original reviewed staging stayed intact and new evidence notes were unstaged at this handoff. No commit or push occurred in this test task. See [dated live/device evidence](scribe-only-integration-verification.md#subsequent-authorized-live-scribe-and-physical-phone-check--october-17-2026).
 
 
 ### Detailed implementation handoff — October 17, 2026
 
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex · **Model:** not recorded
+
 User request: “Make a file describing in detail everything that was implemented.”
-Codex created `docs/outloud-implementation-handoff.md` covering the complete
-authoritative application, automatic scoring/Step 1/reliability, Scribe-only
-adaptation, source/API map, branch origins, verification and remaining delivery
-limits. Facts were checked against current source and recorded evidence; no new
-provider call or application change was made. Original staging stayed unchanged.
+
+- **Output and use:** Codex created [the implementation handoff](outloud-implementation-handoff.md) covering the complete authoritative application, automatic scoring/Step 1/reliability, Scribe-only adaptation, source/API map, branch origins, verification and remaining delivery limits. It distinguishes committed scoring/retained features, the then-staged Scribe integration, actual live checks and unresolved limits.
+- **Verification:** Facts were checked against current application source, Git ancestry, existing contracts and recorded review/test/device artifacts. Local links/anchors and documented file locations were checked. This documentation task ran no application builds/tests or provider calls and changed no runtime source.
+- **Human decision and status:** Seoyeon requested the detailed handoff. Original staged implementation stayed unchanged; the handoff remained unstaged for user review at this snapshot. No commit or publication occurred in this documentation task; later publication below supersedes that delivery state. Human code edits or acceptance are not recorded.
 
 
 ### Approved cleanup and Scribe integration PR delivery — October 17, 2026
 
-- Contributor: Seoyeon.
-- Tool/model: OpenAI Codex; exact serving model not recorded.
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex · **Model:** not recorded
+
 - Actual prompt: “delete abd e and the make a pr of the integration”.
 - Decision: remove audit groups A/B/D and E's seven unused PNGs; retain C, editable
   SVG originals, design duplicates/exports/history, shared scoring dependencies and
   committed migrations. The user authorized commit/push/PR delivery after review.
-- Work: removed unused scaffold/UI files and the orphan ring's dedicated test,
-  cleaned its test stubs, deleted unused raster artwork, corrected README's stale
-  provider summary, and retained the requested implementation handoff.
+- Output and use: removed unused scaffold/UI files and the orphan ring's dedicated
+  test, cleaned its test stubs, deleted unused raster artwork, corrected README's
+  stale provider summary, and retained the requested implementation handoff.
+  Remaining backend/mobile runtime source is byte-identical to the reviewed
+  integration; prior unchanged-backend full-suite/database and dated device
+  evidence are reused with their original limits.
 - Verification: 548 mobile tests/typecheck/lint and Android export passed; current
   Django system/drift checks passed. Independent final staged review found no
   blocking findings and independently passed 73 focused mobile tests. Its source
   reconstruction and export checks matched 233 remaining source files and 112
-  embedded application sources. Human teammate/usefulness review remains pending.
+  embedded application sources. Subsequent pre-publication changes only formatted
+  Markdown metadata and recorded these outcomes; they did not change runtime source.
+  Human teammate/usefulness review remains pending.
 - Actual clarification: “no merge just pr”. Publication is limited to the
   integration branch and an unmerged PR; main remains unchanged.
 - Preservation: pre-cleanup index/patch/files saved privately; no service,
-  credential, database, unrelated checkout, worktree or history rewrite.
+  credential, database, unrelated checkout, worktree or history rewrite. No paid
+  inference, new device/service operation, shared-data change or deployment occurred
+  in cleanup/publication.
+- Publication result: the reviewed integration was committed and pushed at
+  `4c6ce95d95a6a3604efb96dbd188e381496153ec` on
+  `integration/ai-feedback-with-scribe`. [PR #31](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/31)
+  targets `main` at base `5aed316` and remains open/unmerged as verified October 17,
+  2026. This supersedes the earlier pending-commit/push/PR snapshots; it does not
+  establish human functional acceptance, teammate approval or deployment. The
+  user's no-merge instruction remains in force.
+
+
+## Consolidate AI collaboration records — October 17, 2026
+
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex with documentation subagents · **Model:** not recorded
+
+- **Human decisions:** Seoyeon requested consolidation into the collaboration logs, correction of `AGENTS.md`, and correction of the latest PR's AI-use records in the existing reporting format. Publication is limited to updating [PR #31](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/31); the earlier no-merge instruction remains in force. Human code edits and teammate approval are not recorded.
+- **Output and use:** Codex compared all 219 lines of the duplicate `docs/ai-use.md` at PR head `4c6ce95` with the active log and merged missing facts into the corresponding task entries. Existing requests stay verbatim. Added details include the Phase 3 commit, scoring Retry repair, retained-feature boundaries, authorized Scribe/device checks, handoff, cleanup review and actual PR publication. The duplicate file is removed; shared instructions and the reporting guide prohibit recreating it, including pointer-only files, and the implementation handoff links to this log. Historical references inside quoted plans remain quotations. The separate older prototype checkout receives its own local documentation consolidation while its app changes remain untouched.
+- **Errors and revisions:** Agents continued using a retired log: the prototype carried older instructions, and the integration recreated a pointer file that accumulated task results. Seoyeon identified the inconsistency. Codex corrected the destinations and preserved dated pending/restricted states alongside the later authorization and publication that superseded them. Earlier implementation checks remain tied to their original snapshots.
+- **Verification:** Coverage checks account for all 48 source blocks and 219 source lines. All 189 original fenced blocks, 65 blockquoted items and 28 curly-quoted strings remain unchanged; 133 relative file/heading links pass. The diff contains only five intended documentation paths, with mobile/backend source unchanged. A separate documentation reviewer found no missing task facts, invented prompts or approvals, or actionable format/coverage findings. An initial quotation checker misread four-backtick fences; Codex corrected it before the passing run. This correction runs no application builds/tests, provider calls, device operations or database changes; earlier runtime validation retains its original limits. Human functional acceptance remains pending.
+
+### Prompts — verbatim, in order
+
+```text
+why are we still using ai-use.md? i thought we decided on only recording on ai-collaboration
+```
+
+```text
+then consolidate the extra entries into ai-collaboration and update AGENTS.md so we stop using ai-use.md
+```
+
+```text
+our most recent pr only upadated ai _use not ai collaboration as it should have. update so all the data that was updated on ai use goes inot ai collaboration with the correct format
+```

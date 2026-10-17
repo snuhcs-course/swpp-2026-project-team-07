@@ -15,7 +15,7 @@ identify the active iteration; update both references at a confirmed transition.
 | Iteration report | The team's analysis of AI use, results, failures, revisions and human decisions; the [Iteration 1 report](ai-collaboration-report-iteration-1.md) is a prior-iteration reference |
 | [This guide](#human-review-before-submission) | Collection rules, report format and human review checklist |
 
-The earlier [AI-use record](history/ai-use-before-prompt-consolidation-2026-10-09.md) and [validation review](history/ai-collaboration-validation-iteration-1-retired-2026-10-09.md) are archived. Keep one collaboration log per iteration at `docs/ai-collaboration-prompts-iteration-N.md`. Do not recreate either retired document as an active log.
+The earlier [AI-use record](history/ai-use-before-prompt-consolidation-2026-10-09.md) and [validation review](history/ai-collaboration-validation-iteration-1-retired-2026-10-09.md) are archived. Keep one collaboration log per iteration at `docs/ai-collaboration-prompts-iteration-N.md`. Do not recreate either retired document as an active log. Do not create an `ai-use.md` pointer file or second task diary. References to that path in historical prompts remain quotations; record current results in the matching collaboration entry.
 
 ## Compact task entry
 
