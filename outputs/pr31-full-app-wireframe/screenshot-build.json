@@ -1,0 +1,32 @@
+{
+  "manifest": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/screenshot-manifest.json",
+  "actual_captures": 47,
+  "captured_screens": [
+    "compare",
+    "full",
+    "home",
+    "qa",
+    "rehearse",
+    "review",
+    "upload"
+  ],
+  "source_screens": [
+    "home",
+    "upload",
+    "rehearse",
+    "review",
+    "full",
+    "compare",
+    "qa"
+  ],
+  "source_states": 54,
+  "action_links": 90,
+  "missing_state_entries": 3,
+  "embedded_images": 47,
+  "source_navigation_reference_read": true,
+  "generated": [
+    "index.html",
+    "screenshot-board.html",
+    "actual-app-diagram.svg"
+  ]
+}

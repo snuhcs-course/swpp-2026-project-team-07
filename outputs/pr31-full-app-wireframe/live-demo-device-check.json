@@ -1,0 +1,58 @@
+{
+  "agent_operated": true,
+  "synthetic_demo_only": true,
+  "compare_action": "Keep current selected and green check confirmed",
+  "retained_original_full_run_duration_ms": 74823,
+  "observed_final_duration": "1:15",
+  "observed_final_score": 64,
+  "observed_slide_scores": [
+    67,
+    67,
+    67
+  ],
+  "recording_active": false,
+  "final_view": "New demo Full Review",
+  "device_serial": "R3CW20SNFXV",
+  "original_presentations_preserved": true,
+  "phone_reverse_left_for_demo": "tcp:58010 -> tcp:58011",
+  "capture_evidence": {
+    "evidence_id": "ev_326bf4e202a64144baf73b57c7cabac6d608fa807d6743c79c1c7e5865da2a04",
+    "subject": null,
+    "provider": {
+      "id": "adb",
+      "name": "Android Debug Bridge",
+      "version": "37.0.1-15733141"
+    },
+    "analysis_profile": null,
+    "predicate_type": "rea.analysis",
+    "operation": "capture_adb_screen",
+    "parameters": {
+      "serial": "R3CW20SNFXV",
+      "output_directory": "/private/tmp/pr31-expanded-demo/final-phone-full-review"
+    },
+    "raw_result": null,
+    "normalized_result": {
+      "client": {
+        "binary_path": "adb",
+        "path_source": "path",
+        "version": "37.0.1-15733141",
+        "installed_path": "/opt/homebrew/bin/adb"
+      },
+      "serial": "R3CW20SNFXV",
+      "local_path": "/private/tmp/pr31-expanded-demo/final-phone-full-review/screen.png",
+      "bytes": 569067,
+      "sha256": "0bf8f8673e27a4f1b671c6b98e851436aa527d3594f716d8a2a0c74f4e9221b8",
+      "width": 1080,
+      "height": 2316
+    },
+    "confidence": "observed",
+    "authority": "shipped-artifact",
+    "environment": null,
+    "limitations": [
+      "Artifact identity is unavailable for this observation.",
+      "The capture is one frame at read time; no recording or interaction occurred"
+    ],
+    "locations": [],
+    "evidence_links": []
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "wireframes": 54,
+  "frame_links": "all targets exist",
+  "inspection": "open, show source, transition navigation and close passed",
+  "notes_toggle": "54 notes opened and closed",
+  "responsive_widths": [
+    1440,
+    1024,
+    736,
+    375
+  ],
+  "horizontal_overflow": false,
+  "browser_errors": [],
+  "svg_text_overflows": []
+}

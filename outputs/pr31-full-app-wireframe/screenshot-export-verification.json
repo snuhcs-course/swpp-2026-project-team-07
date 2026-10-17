@@ -1,0 +1,17 @@
+{
+  "agent_operated": true,
+  "capture_count": 47,
+  "source_routes": 7,
+  "action_links": 90,
+  "pdf_pages": 20,
+  "all_capture_ids_present": true,
+  "all_20_pages_rendered_and_contact_sheet_inspected": true,
+  "final_changed_map_and_compare_pages_rendered_and_inspected": true,
+  "svg_rendered_and_xml_parsed": true,
+  "pdf_sha256": "21ea3d991f3084a9ad97e661805a10c32be4b71c4d3b7d95beb80f3e210dd233",
+  "svg_sha256": "6bd04d288db6daa814b4afd389bd952ab69653f341828af146b3d764c2f95c4e",
+  "browser_verification": "screenshot-browser-verification.json",
+  "independent_review": "expanded-screenshot-integrity-review.json",
+  "human_acceptance": false,
+  "entry_context_notes_checked": true
+}

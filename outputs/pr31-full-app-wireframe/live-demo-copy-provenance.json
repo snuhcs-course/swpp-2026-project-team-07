@@ -1,0 +1,46 @@
+{
+  "copied_at_utc": "2026-10-17T07:02:57.242191+00:00",
+  "authorized_new_demo_only": true,
+  "source_database_read_only": true,
+  "deck_id": "50d7cf91-909b-42ed-8c66-fac2866b354d",
+  "attempt_id": "ffb81647-cd08-4fdc-a8b7-6776f0dd3519",
+  "source_and_destination_concrete_fields_equal": true,
+  "preserved_original_ids_timestamps_transcript_and_provider_receipt": true,
+  "models_copied": {
+    "Deck": 1,
+    "Slide": 3,
+    "PresentationContext": 1,
+    "Attempt": 1,
+    "ProviderRequest": 1,
+    "TranscriptCorrection": 0
+  },
+  "feedback_jobs_copied": 0,
+  "inference_dispatched_by_copy": false,
+  "media": [
+    {
+      "relative_path": "decks/2026/10/481f60fc55014930880d842592cdaabf/50d7cf91-909b-42ed-8c66-fac2866b354d.pdf",
+      "sha256": "9f47f4498d856014e8be3007bde566a00d9d499284b13db991a2f69d32f8e623",
+      "bytes": 3824
+    },
+    {
+      "relative_path": "slides/2026/10/1c0c47eb11d547f4946b5a73cba6757f/50d7cf91-909b-42ed-8c66-fac2866b354d-0.png",
+      "sha256": "26f5f610269cccca0d2b100872bd0427b26bea308931456e453e69f78e6d9439",
+      "bytes": 77655
+    },
+    {
+      "relative_path": "slides/2026/10/c2c3654c371c4cd9b92edfd69f92e24d/50d7cf91-909b-42ed-8c66-fac2866b354d-1.png",
+      "sha256": "2526bc691b05dd0e8edf9ef51989f206593ac35139daeab26c3286462acea9fe",
+      "bytes": 79127
+    },
+    {
+      "relative_path": "slides/2026/10/0a29913facdd4918bb019a76813903cc/50d7cf91-909b-42ed-8c66-fac2866b354d-2.png",
+      "sha256": "8022d7bdeb8373e4f66cf89a353ca3d64f99dd08acb59a4b9c0ff163b32f8cb4",
+      "bytes": 92636
+    },
+    {
+      "relative_path": "recordings/2026/10/4fcc4e66c3794e27b87c578899cc46d7/ffb81647-cd08-4fdc-a8b7-6776f0dd3519.m4a",
+      "sha256": "fd4eb844f407e50ce31dd004d13dc9272ad13cc3ac324bd72b2d6ca8ea8b3e4d",
+      "bytes": 613967
+    }
+  ]
+}

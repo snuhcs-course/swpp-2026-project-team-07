@@ -1,0 +1,17 @@
+{
+  "frames": 54,
+  "groups": 9,
+  "screens": [
+    "compare",
+    "full",
+    "home",
+    "qa",
+    "rehearse",
+    "review",
+    "upload"
+  ],
+  "source_references": 174,
+  "transitions": 153,
+  "head_sha": "f1af9dd9737e2ac9adbe8a45186f0e2722863e60",
+  "source_check": "All paths and one-based line references resolve in pinned archive."
+}

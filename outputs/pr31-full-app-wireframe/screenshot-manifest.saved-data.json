@@ -1,0 +1,590 @@
+{
+  "source": {
+    "pr": 31,
+    "sha": "f1af9dd9737e2ac9adbe8a45186f0e2722863e60",
+    "package": "com.team07.outloud",
+    "device": "Samsung Galaxy S23 Ultra / R3CW20SNFXV",
+    "provenance": "Installed APK matches retained Scribe release; all 112 bundled application source modules match PR #31 f1af9dd. Original selected presentation and first-slide Review were restored after capture.",
+    "limitations": [
+      "The user requested existing saved data only; no new PDF, rehearsal or answer was created.",
+      "Runtime screenshots are genuine device frames. Offline/unavailable messages are preserved rather than replaced with sample results.",
+      "The installed bundle's 112 imported application modules match PR31; the build source map is retained local evidence, not a signed Git identifier.",
+      "Backend revision and provider behavior are not established by screenshot capture."
+    ]
+  },
+  "captures": [
+    {
+      "id": "S18",
+      "title": "Home · presentation library",
+      "screen": "home",
+      "file": "captures/S18-home/screen.png",
+      "group": "Home & import",
+      "notes": [
+        "Returned to the saved five-presentation carousel.",
+        "Shows the selected presentation's existing summary and app gesture controls."
+      ],
+      "transitions": [
+        {
+          "to": "S13",
+          "label": "Open selected presentation"
+        },
+        {
+          "to": "S21",
+          "label": "Pull up to Add"
+        },
+        {
+          "to": "S19",
+          "label": "Hold selected icon"
+        },
+        {
+          "to": "S20",
+          "label": "Open About"
+        },
+        {
+          "to": "S26",
+          "label": "Tap assessment ring"
+        },
+        {
+          "to": "S24",
+          "label": "Spin carousel"
+        }
+      ],
+      "evidence_id": "ev_7479dd11d08691d8b937af3067b71514b4a9f83c0fce4cdc0b9d26f6e834020b",
+      "sha256": "4721ac8a32385e3fb558aa0ab7c7017897c4f6a5eddd1e982c0a84d9a45cf4e9"
+    },
+    {
+      "id": "S24",
+      "title": "Home · another saved presentation",
+      "screen": "home",
+      "file": "captures/S24-home-browse/screen.png",
+      "group": "Home & import",
+      "notes": [
+        "Spun the existing carousel from the fifth deck to the first.",
+        "The saved Guatemala presentation and its existing summary are shown; no presentation was added or removed."
+      ],
+      "transitions": [
+        {
+          "to": "S25",
+          "label": "Open this saved presentation"
+        },
+        {
+          "to": "S18",
+          "label": "Spin back"
+        }
+      ],
+      "evidence_id": "ev_02a3ddec41506de59b4e960a5613397c0ccdc6939169ebe0f844e68eaafbc685",
+      "sha256": "198ac65802ff9df1820334a3aef6acd88cccb0ba7cdbbc9b6e32cec5df7fc709"
+    },
+    {
+      "id": "S19",
+      "title": "Presentation icon picker",
+      "screen": "home",
+      "file": "captures/S19-icon-picker/screen.png",
+      "group": "Home & import",
+      "notes": [
+        "Opened the actual icon grid with a long press.",
+        "Dismissed without choosing an icon or changing the saved presentation."
+      ],
+      "transitions": [
+        {
+          "to": "S18",
+          "label": "Back / close picker"
+        }
+      ],
+      "evidence_id": "ev_5f7b25b92ca8364f77e989cdc7516f91391be127046e5b7794764e7301e3bd93",
+      "sha256": "3451e59ae56793a5b712d437b2ab9e5ca59f08edc46e59ee1e2fd9658e3bbf15"
+    },
+    {
+      "id": "S20",
+      "title": "About OutLoud · credits",
+      "screen": "home",
+      "file": "captures/S20-about/screen.png",
+      "group": "Home & import",
+      "notes": [
+        "Opened About OutLoud from the Home brand mark.",
+        "Closed the overlay with Back."
+      ],
+      "transitions": [
+        {
+          "to": "S18",
+          "label": "Back / close About"
+        }
+      ],
+      "evidence_id": "ev_fb2cb4b8cdfa50f3b58174be1b509dc5729a4f4407483776bf86ce86242971d0",
+      "sha256": "37dbb2b478a7dfd95e21ce61bbf7cb001ccf6aeb8c0c1babaf1d8efe6eea3fb0"
+    },
+    {
+      "id": "S21",
+      "title": "Add presentation · PDF import entry",
+      "screen": "upload",
+      "file": "captures/S21-import/screen.png",
+      "group": "Home & import",
+      "notes": [
+        "Opened Add presentation with the app's upward gesture.",
+        "No new PDF was selected or imported."
+      ],
+      "transitions": [
+        {
+          "to": "S22",
+          "label": "Choose PDF"
+        },
+        {
+          "to": "S18",
+          "label": "Back / cancel import"
+        }
+      ],
+      "evidence_id": "ev_b61b44177f449955936cfd996932e0d7ff117f9079dd6cc5a70f9e13e08c15ce",
+      "sha256": "5af464dfbf7824dbb797f64c724cc2f229fe6ece9889f1899476a0437286beff"
+    },
+    {
+      "id": "S22",
+      "title": "Native Android PDF picker",
+      "screen": "upload",
+      "file": "captures/S22-pdf-picker/screen.png",
+      "group": "Home & import",
+      "notes": [
+        "This is Android's system PDF picker, opened by OutLoud.",
+        "Cancelled without selecting a file; no new presentation was imported."
+      ],
+      "transitions": [
+        {
+          "to": "S21",
+          "label": "Cancel native picker"
+        }
+      ],
+      "evidence_id": "ev_503fccec8c565f995a9bdd92ef44647a087360a23847dc0a5f9d6b94048de158",
+      "sha256": "ef1e54542c0a5e3a0957ee035b28ce1f5e454f8de9bc81e8289d140e01277341"
+    },
+    {
+      "id": "S25",
+      "title": "Rehearse · another saved PDF",
+      "screen": "rehearse",
+      "file": "captures/S25-other-presentation/screen.png",
+      "group": "Presentation & rehearsal",
+      "notes": [
+        "Opened the existing Guatemala presentation from the carousel.",
+        "Shows its actual PDF cover and current offline cue state; no new recording was started."
+      ],
+      "transitions": [
+        {
+          "to": "S24",
+          "label": "Back to Home"
+        }
+      ],
+      "evidence_id": "ev_466b8d5aaa77492ace9b39db435b71aca8ab5331d6f0a0dc842d29bda7e0c28c",
+      "sha256": "a3e4c7628f4cdf95468a27a34e313ef224b1abb7b059a8378c8ab5ec29968f7a"
+    },
+    {
+      "id": "S13",
+      "title": "Rehearse · saved presentation",
+      "screen": "rehearse",
+      "file": "captures/S13-rehearse/screen.png",
+      "group": "Presentation & rehearsal",
+      "notes": [
+        "Returned to the existing presentation's second slide.",
+        "Shows the real PDF, slide strip, cue categories, timer, Rotate, Redo and Review controls.",
+        "No microphone capture was started."
+      ],
+      "transitions": [
+        {
+          "to": "S14",
+          "label": "Edit time & audience"
+        },
+        {
+          "to": "S15",
+          "label": "Rotate PDF"
+        },
+        {
+          "to": "S16",
+          "label": "Tap Redo"
+        },
+        {
+          "to": "S17",
+          "label": "Hold to redo all"
+        },
+        {
+          "to": "S26",
+          "label": "Open Full Review"
+        },
+        {
+          "to": "S18",
+          "label": "Back to Home"
+        }
+      ],
+      "evidence_id": "ev_f23e6e4f433803536d9e8ceab0f7799cbbdff38a38c829ff5efb83b194aa131a",
+      "sha256": "0806e8dc7c7f44da02bb76e56c15e7d08287d3794485b520bfb374e505849ade"
+    },
+    {
+      "id": "S14",
+      "title": "Presentation setup · existing time and audience",
+      "screen": "rehearse",
+      "file": "captures/S14-setup/screen.png",
+      "group": "Presentation & rehearsal",
+      "notes": [
+        "Opened the existing presentation's setup overlay.",
+        "Current choices are no time limit and General audience.",
+        "Closed with Back without saving or changing preferences."
+      ],
+      "transitions": [
+        {
+          "to": "S13",
+          "label": "Back without saving"
+        }
+      ],
+      "evidence_id": "ev_8f58103a44d1e148385b9a24d68867a9cb1f72a0985c990b0c7f4babb488385f",
+      "sha256": "d2bf730827045a54263b1fe5314b9f46450421ba591c081d3a477429111f35df"
+    },
+    {
+      "id": "S15",
+      "title": "Rehearse · rotated PDF view",
+      "screen": "rehearse",
+      "file": "captures/S15-rotated/screen.png",
+      "group": "Presentation & rehearsal",
+      "notes": [
+        "Rotated only the PDF view using the app's Rotate control.",
+        "No recording was started; returned to normal view with Back."
+      ],
+      "transitions": [
+        {
+          "to": "S13",
+          "label": "Rotate back / Back"
+        }
+      ],
+      "evidence_id": "ev_bd683114011f458de982da21a141c5c08641a9808ab9b4bdcac775f990012ca5",
+      "sha256": "d905aac78b12f6c99f4467d73dfc194f9179f9b95509b0e4e693457093a424a0"
+    },
+    {
+      "id": "S16",
+      "title": "Redo slide · confirmation",
+      "screen": "rehearse",
+      "file": "captures/S16-redo-slide/screen.png",
+      "group": "Presentation & rehearsal",
+      "notes": [
+        "Opened Redo for the existing recorded slide.",
+        "The confirmation was cancelled; no recording or transcript was replaced."
+      ],
+      "transitions": [
+        {
+          "to": "S13",
+          "label": "Cancel"
+        }
+      ],
+      "evidence_id": "ev_d885f7b63b92fe6cf0275d9c12f3d5ccdbc39b8d0a93d80b0a953c51b3100f90",
+      "sha256": "901def3aed1aadf245bd12837a3a40f7aa99afcce502257d62c56cbb8b1f4e3b"
+    },
+    {
+      "id": "S17",
+      "title": "Redo whole presentation · confirmation",
+      "screen": "rehearse",
+      "file": "captures/S17-redo-all/screen.png",
+      "group": "Presentation & rehearsal",
+      "notes": [
+        "Held the existing Redo control to show the app's whole-presentation confirmation.",
+        "Cancelled without starting capture; the existing selected take is preserved."
+      ],
+      "transitions": [
+        {
+          "to": "S13",
+          "label": "Cancel"
+        }
+      ],
+      "evidence_id": "ev_a543d38ec20e874aa1e4b286e89be44837229cde8656dcb0674150958cf0e2f7",
+      "sha256": "bd05c2340d244b41d30583bf2069175ad7ce8354f67c9589d4fb58f74e38b185"
+    },
+    {
+      "id": "S01",
+      "title": "Slide Review",
+      "screen": "review",
+      "file": "captures/S01-review/screen.png",
+      "group": "Review & playback",
+      "notes": [
+        "Observed existing selected-slide Review on the physical phone.",
+        "No new recording or AI request was made."
+      ],
+      "transitions": [
+        {
+          "to": "S26",
+          "label": "Full Review"
+        },
+        {
+          "to": "S04",
+          "label": "Tap slide 2 time bar"
+        },
+        {
+          "to": "S05",
+          "label": "Audience Q&A"
+        }
+      ],
+      "evidence_id": "ev_1435e051f707804a5e6c40b835f121390b18df95111fd573b3a20ea899676114",
+      "sha256": "dc8c08faf1e33ef74cc864735ebef4c8d6afed2e497bd0d9f66dafa10da8c050"
+    },
+    {
+      "id": "S04",
+      "title": "Slide Review · second slide",
+      "screen": "review",
+      "file": "captures/S04-slide-two/screen.png",
+      "group": "Review & playback",
+      "notes": [
+        "Selected slide 2 from Full Review.",
+        "Shows the real slide thumbnail, audio control, timing, filler count and correction sync notice."
+      ],
+      "transitions": [
+        {
+          "to": "S26",
+          "label": "Full Review"
+        },
+        {
+          "to": "S07",
+          "label": "Scroll transcript"
+        },
+        {
+          "to": "S01",
+          "label": "Tap slide 1 time bar"
+        },
+        {
+          "to": "S05",
+          "label": "Audience Q&A"
+        }
+      ],
+      "evidence_id": "ev_8827ef33d7b53c3ad5f81caae163c3a8ef942b7db19493b5aea971a30dc818da",
+      "sha256": "b9406cfa603f845536cf1c5398e2fe383a26a9b36af092d79e26ec3361d1e352"
+    },
+    {
+      "id": "S07",
+      "title": "Transcript · saved text and timing",
+      "screen": "review",
+      "file": "captures/S07-review-details/screen.png",
+      "group": "Review & playback",
+      "notes": [
+        "Scrolled the existing saved slide transcript.",
+        "Shows the original slide-boundary timing notice, recording tools entry and unavailable grading state."
+      ],
+      "transitions": [
+        {
+          "to": "S09",
+          "label": "Open tools and scroll"
+        },
+        {
+          "to": "S12",
+          "label": "Scroll to feedback"
+        },
+        {
+          "to": "S04",
+          "label": "Scroll to top"
+        },
+        {
+          "to": "S26",
+          "label": "Full Review"
+        }
+      ],
+      "evidence_id": "ev_f01e203e478a06876602b1b0577b7d33fc8a701a16c62ed27b97638c041726b8",
+      "sha256": "667d6efa60ba98e124f91956b331e14feb49712dcfdbecd3181813f6f94627de"
+    },
+    {
+      "id": "S09",
+      "title": "Recording tools · suggestions and offline access",
+      "screen": "review",
+      "file": "captures/S09-recording-tools/screen.png",
+      "group": "Review & playback",
+      "notes": [
+        "Expanded Recording tools and scrolled to its saved-context controls.",
+        "Generate suggestions was not pressed."
+      ],
+      "transitions": [
+        {
+          "to": "S10",
+          "label": "Expand slide descriptions"
+        },
+        {
+          "to": "S11",
+          "label": "Expand PDF offline tools"
+        },
+        {
+          "to": "S07",
+          "label": "Hide tools / scroll back"
+        }
+      ],
+      "evidence_id": "ev_cb83a14163958f77b4126398b4b52aa723c9521c39b8c57f8bd59a88cfa2d3ad",
+      "sha256": "f05fc4490ce5cc384b9218e0a47fdb2455b99ec83e8c7791d71117f61171ec40"
+    },
+    {
+      "id": "S10",
+      "title": "Slide descriptions · current empty state",
+      "screen": "review",
+      "file": "captures/S10-descriptions/screen.png",
+      "group": "Review & playback",
+      "notes": [
+        "Expanded saved slide descriptions.",
+        "This saved presentation has no available descriptions, and AI suggestions are turned off on its server.",
+        "No description was generated or edited."
+      ],
+      "transitions": [
+        {
+          "to": "S09",
+          "label": "Hide slide descriptions"
+        },
+        {
+          "to": "S11",
+          "label": "Open PDF tools and scroll"
+        }
+      ],
+      "evidence_id": "ev_57a6285414e717803dc727fbb2ab522224420dd0630e2527f6dcc9041b439b36",
+      "sha256": "1044932b804c57c1f85dcea512bb6cb57648f3ad3e49af2021763b76c381cb26"
+    },
+    {
+      "id": "S11",
+      "title": "PDF offline tools",
+      "screen": "review",
+      "file": "captures/S11-offline-pdf/screen.png",
+      "group": "Review & playback",
+      "notes": [
+        "Expanded PDF offline tools for the existing recording.",
+        "The original PDF is already available offline; no download was requested."
+      ],
+      "transitions": [
+        {
+          "to": "S09",
+          "label": "Hide PDF tools / scroll back"
+        },
+        {
+          "to": "S12",
+          "label": "Scroll to assessments"
+        }
+      ],
+      "evidence_id": "ev_b99f6a245d408fe447133e40084adb841f56dd2e05afc36e5334181cc168426d",
+      "sha256": "df2939efe90170f772152f3449c3b16e2b76a0bc338b80e956bb79e8e2e683a1"
+    },
+    {
+      "id": "S12",
+      "title": "Slide score and AI feedback · unavailable state",
+      "screen": "review",
+      "file": "captures/S12-feedback-status/screen.png",
+      "group": "Review & playback",
+      "notes": [
+        "Scrolled to the current score and selected-slide AI feedback panels.",
+        "The real app reports grading and analysis unavailable; refresh/retry controls were not used."
+      ],
+      "transitions": [
+        {
+          "to": "S04",
+          "label": "Scroll to top"
+        },
+        {
+          "to": "S26",
+          "label": "Full Review"
+        },
+        {
+          "to": "S05",
+          "label": "Audience Q&A"
+        }
+      ],
+      "evidence_id": "ev_ffedec12b5b19dd6db0b5efb3c0a2b572c32fe7dc436dce68c697d6e96cb3cda",
+      "sha256": "980862ff770510f1ec0d0bb40df8765a91a41371668d5ecf134a84d5964ccf35"
+    },
+    {
+      "id": "S26",
+      "title": "Full Review · presentation score and assessment",
+      "screen": "full",
+      "file": "captures/S26-full-score/screen.png",
+      "group": "Review & playback",
+      "notes": [
+        "Opened the existing run's Full Review.",
+        "Shows whole-run playback, the real complete-recording score prerequisite, assessment counts and slide tiles.",
+        "No score generation or retry was requested."
+      ],
+      "transitions": [
+        {
+          "to": "S01",
+          "label": "Tap slide 1"
+        },
+        {
+          "to": "S04",
+          "label": "Tap slide 2"
+        },
+        {
+          "to": "S03",
+          "label": "Scroll to transcript"
+        },
+        {
+          "to": "S13",
+          "label": "Back to slides"
+        }
+      ],
+      "evidence_id": "ev_0656860277f400dbf54156ac6e9b576f2d3f599bdfc1d47fc5dcd35280376bbf",
+      "sha256": "de5c0df2e71e91779bf17158aaae16be35ec1b979bfc743b9aa6499b2983b307"
+    },
+    {
+      "id": "S03",
+      "title": "Full Review · assessment status",
+      "screen": "full",
+      "file": "captures/S03-full-assessment/screen.png",
+      "group": "Review & playback",
+      "notes": [
+        "Scrolled the existing Full Review to the assessment counts and transcript heading.",
+        "The device currently reports a connection interruption; no successful AI assessment is implied."
+      ],
+      "transitions": [
+        {
+          "to": "S26",
+          "label": "Scroll to score panel"
+        },
+        {
+          "to": "S01",
+          "label": "Tap slide 1"
+        },
+        {
+          "to": "S04",
+          "label": "Tap slide 2"
+        },
+        {
+          "to": "S13",
+          "label": "Back to slides"
+        }
+      ],
+      "evidence_id": "ev_8faad22d443caa2cc9298771654c8008fad0a5dad646f1aaf05acdbe97c66f48",
+      "sha256": "9d8c556316aac9516488c44e9b3ce333ca43e73ea6c9a46cb81c58ea7046f9f7"
+    },
+    {
+      "id": "S05",
+      "title": "Audience Q&A · offline / unavailable",
+      "screen": "qa",
+      "file": "captures/S05-qa/screen.png",
+      "group": "Audience Q&A",
+      "notes": [
+        "Opened Audience Q&A from Slide Review.",
+        "No existing question batch is available for this presentation; the phone shows its real offline/unavailable state.",
+        "Retry questions was not pressed; no AI request was made."
+      ],
+      "transitions": [
+        {
+          "to": "S04",
+          "label": "Back to slide Review"
+        }
+      ],
+      "evidence_id": "ev_a9fcf395e3a070eca68f410d785a825ec53cbdf054f57d9abf2d2214b455c782",
+      "sha256": "097dc774d58afd04d63a9239bb6898f6498f897e47e8842087bb5fa43ebcd74a"
+    }
+  ],
+  "missing_states": [
+    {
+      "screen": "compare",
+      "reason": "Not captured: no comparison was open in the inspected saved sessions. Creating a new take to enter Compare was excluded by the user's existing-data-only choice."
+    },
+    {
+      "screen": "rehearse",
+      "reason": "Live microphone capture, countdown completion and stop/completion states were not created because the user requested existing saved data only."
+    },
+    {
+      "screen": "qa",
+      "reason": "The inspected Q&A view has no available saved question batch. Populated question, answer evaluation, follow-up and archive views were not generated."
+    },
+    {
+      "screen": "upload",
+      "reason": "PDF processing/import success and failure were not created; the native picker was cancelled without importing."
+    },
+    {
+      "screen": "review",
+      "reason": "No available saved numeric assessment, feedback evidence, correction-choice result, or editable slide-description set was present in the inspected presentation. Its actual unavailable/empty states are captured."
+    }
+  ]
+}

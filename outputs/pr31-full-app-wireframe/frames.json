@@ -1,0 +1,3928 @@
+[
+  {
+    "id": "A",
+    "title": "Home & presentation library",
+    "description": "Presentation carousel, customization, deletion, and import entry.",
+    "frames": [
+      {
+        "id": "A1",
+        "title": "Home · saved presentations",
+        "screen": "home",
+        "kind": "screen",
+        "blocks": [
+          {
+            "type": "muted",
+            "text": "About OutLoud    OutLoud    Light mode"
+          },
+          {
+            "type": "text",
+            "text": "[Title]"
+          },
+          {
+            "type": "muted",
+            "text": "[Slide count] slides · [Deck ordinal]"
+          },
+          {
+            "type": "box",
+            "text": "Presentation icon · horizontal carousel"
+          },
+          {
+            "type": "ring",
+            "text": "[Score] · Overall score",
+            "value": "[score]"
+          },
+          {
+            "type": "fields",
+            "items": [
+              "Last run · [Date]",
+              "[Findings] total findings",
+              "[Time] duration · [WPM] wpm"
+            ]
+          }
+        ],
+        "notes": [
+          "Tap the front icon to open the deck; tap an adjacent icon to center it.",
+          "The score ring opens Full review only when the deck has a saved run.",
+          "Bottom legend: Spin · Open · Icon · Add · Delete."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/HomeScreen.tsx",
+            "line": 281
+          },
+          {
+            "path": "mobile/src/screens/HomeScreen.tsx",
+            "line": 288
+          },
+          {
+            "path": "mobile/src/screens/HomeScreen.tsx",
+            "line": 384
+          },
+          {
+            "path": "mobile/src/screens/HomeScreen.tsx",
+            "line": 309
+          },
+          {
+            "path": "mobile/src/screens/HomeFeedbackStats.tsx",
+            "line": 27
+          }
+        ],
+        "transitions": [
+          {
+            "to": "B6",
+            "label": "Tap front deck"
+          },
+          {
+            "to": "E1",
+            "label": "Tap score ring"
+          },
+          {
+            "to": "A3",
+            "label": "Hold deck icon"
+          },
+          {
+            "to": "A4",
+            "label": "Tap About"
+          },
+          {
+            "to": "A5",
+            "label": "Pull down and hold"
+          },
+          {
+            "to": "A6",
+            "label": "Pull up"
+          }
+        ]
+      },
+      {
+        "id": "A2",
+        "title": "Home · no presentations",
+        "screen": "home",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "muted",
+            "text": "About OutLoud    OutLoud    Light mode"
+          },
+          {
+            "type": "text",
+            "text": "New presentation"
+          },
+          {
+            "type": "muted",
+            "text": "New · [Deck ordinal]"
+          },
+          {
+            "type": "box",
+            "text": "New presentation icon"
+          },
+          {
+            "type": "muted",
+            "text": "Pagination dot"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Tap to add",
+              "Add ↑"
+            ]
+          }
+        ],
+        "notes": [
+          "Empty Home shows a new-presentation ghost card.",
+          "Tap its icon or pull up to open Add your presentation."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/HomeScreen.tsx",
+            "line": 133
+          },
+          {
+            "path": "mobile/src/screens/HomeScreen.tsx",
+            "line": 439
+          },
+          {
+            "path": "mobile/src/screens/HomeScreen.tsx",
+            "line": 505
+          }
+        ],
+        "transitions": [
+          {
+            "to": "A6",
+            "label": "Tap icon / pull up"
+          },
+          {
+            "to": "A4",
+            "label": "Tap About"
+          }
+        ]
+      },
+      {
+        "id": "A3",
+        "title": "Choose an icon",
+        "screen": "home",
+        "kind": "overlay",
+        "blocks": [
+          {
+            "type": "muted",
+            "text": "Dimmed Home beneath"
+          },
+          {
+            "type": "text",
+            "text": "Choose an icon"
+          },
+          {
+            "type": "muted",
+            "text": "[Title]"
+          },
+          {
+            "type": "grid",
+            "items": [
+              "Presentation",
+              "Chart",
+              "Growth",
+              "Money",
+              "Bulb",
+              "Rocket",
+              "Cap",
+              "Book",
+              "Flask",
+              "Atom",
+              "Globe",
+              "Computer"
+            ]
+          },
+          {
+            "type": "muted",
+            "text": "Current icon marked with a dot"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Swipe down to close"
+            ]
+          }
+        ],
+        "notes": [
+          "The source icon grid includes 20 icon options; this diagram schematically shows a subset.",
+          "Selecting an icon saves it and closes the sheet. Backdrop, swipe down, or Android Back closes it."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/HomeScreen.tsx",
+            "line": 515
+          },
+          {
+            "path": "mobile/src/screens/HomeScreen.tsx",
+            "line": 531
+          },
+          {
+            "path": "mobile/src/screens/HomeScreen.tsx",
+            "line": 539
+          },
+          {
+            "path": "mobile/src/screens/HomeScreen.tsx",
+            "line": 251
+          }
+        ],
+        "transitions": [
+          {
+            "to": "A1",
+            "label": "Choose icon / close"
+          }
+        ]
+      },
+      {
+        "id": "A4",
+        "title": "About OutLoud · credits",
+        "screen": "home",
+        "kind": "overlay",
+        "blocks": [
+          {
+            "type": "muted",
+            "text": "Blurred Home beneath"
+          },
+          {
+            "type": "text",
+            "text": "OutLoud"
+          },
+          {
+            "type": "text",
+            "text": "박서연"
+          },
+          {
+            "type": "text",
+            "text": "전인준"
+          },
+          {
+            "type": "text",
+            "text": "최재원"
+          },
+          {
+            "type": "text",
+            "text": "현주영"
+          }
+        ],
+        "notes": [
+          "Opened from the stopwatch brand mark.",
+          "Tap backdrop or Android Back to close. The source shows names without a settings menu."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/HomeScreen.tsx",
+            "line": 283
+          },
+          {
+            "path": "mobile/src/screens/HomeScreen.tsx",
+            "line": 318
+          },
+          {
+            "path": "mobile/src/screens/HomeScreen.tsx",
+            "line": 251
+          }
+        ],
+        "transitions": [
+          {
+            "to": "A1",
+            "label": "Tap backdrop / Back"
+          }
+        ]
+      },
+      {
+        "id": "A5",
+        "title": "Delete presentation · Undo",
+        "screen": "home",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "muted",
+            "text": "OutLoud · Home"
+          },
+          {
+            "type": "text",
+            "text": "[Title]"
+          },
+          {
+            "type": "box",
+            "text": "Selected presentation icon"
+          },
+          {
+            "type": "ring",
+            "text": "Hold to delete"
+          },
+          {
+            "type": "muted",
+            "text": "Pull down · keep holding to delete"
+          },
+          {
+            "type": "toast",
+            "text": "Deleted “[Title]” · Undo"
+          }
+        ],
+        "notes": [
+          "The hold gesture deletes the selected deck only when more than one deck remains.",
+          "The toast is the immediate post-delete state; Undo restores the hidden deck during its 4.5-second window.",
+          "With one deck remaining, the pull hint says Keep at least one presentation."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/HomeScreen.tsx",
+            "line": 103
+          },
+          {
+            "path": "mobile/src/screens/HomeScreen.tsx",
+            "line": 112
+          },
+          {
+            "path": "mobile/src/screens/HomeScreen.tsx",
+            "line": 314
+          },
+          {
+            "path": "mobile/src/screens/HomeScreen.tsx",
+            "line": 461
+          }
+        ],
+        "transitions": [
+          {
+            "to": "A1",
+            "label": "Undo / toast expires"
+          }
+        ]
+      },
+      {
+        "id": "A6",
+        "title": "Add your presentation",
+        "screen": "upload",
+        "kind": "screen",
+        "blocks": [
+          {
+            "type": "muted",
+            "text": "Light mode"
+          },
+          {
+            "type": "text",
+            "text": "Add your presentation"
+          },
+          {
+            "type": "box",
+            "text": "Upload icon · tap to choose PDF"
+          },
+          {
+            "type": "muted",
+            "text": "Tap the icon to upload"
+          },
+          {
+            "type": "muted",
+            "text": "PDF · up to 50 MiB · any slide count"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Swipe down to go back"
+            ]
+          }
+        ],
+        "notes": [
+          "Tapping the icon opens the native PDF picker, which is operating-system UI.",
+          "While opening, the app subtitle reads Opening your files…; canceling the picker returns here.",
+          "Swipe down or Android Back returns Home."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/UploadScreen.tsx",
+            "line": 58
+          },
+          {
+            "path": "mobile/src/screens/UploadScreen.tsx",
+            "line": 165
+          },
+          {
+            "path": "mobile/src/screens/UploadScreen.tsx",
+            "line": 202
+          }
+        ],
+        "transitions": [
+          {
+            "to": "B1",
+            "label": "Select PDF in native picker"
+          },
+          {
+            "to": "A1",
+            "label": "Swipe down / Back"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "B",
+    "title": "Import, setup & rehearsal entry",
+    "description": "PDF processing, presentation time and audience, sync states, and ready view.",
+    "frames": [
+      {
+        "id": "B1",
+        "title": "Import · slides, text, timing",
+        "screen": "upload",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "[Progress]%"
+          },
+          {
+            "type": "ring",
+            "text": "Rendering slides / [Status]"
+          },
+          {
+            "type": "muted",
+            "text": "[File].pdf · [Slide count] slides"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Slides",
+              "Text",
+              "Timing"
+            ]
+          },
+          {
+            "type": "muted",
+            "text": "Slide text waits for server when offline"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Swipe down to cancel"
+            ]
+          }
+        ],
+        "notes": [
+          "Stages are Slides, Text, Timing; completed stages receive checkmarks.",
+          "Percentages and labels reflect the import progress state.",
+          "A text-offline notice is conditional; successful analysis opens setup."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/UploadScreen.tsx",
+            "line": 67
+          },
+          {
+            "path": "mobile/src/screens/UploadScreen.tsx",
+            "line": 153
+          },
+          {
+            "path": "mobile/src/screens/UploadScreen.tsx",
+            "line": 175
+          },
+          {
+            "path": "mobile/src/screens/UploadScreen.tsx",
+            "line": 199
+          }
+        ],
+        "transitions": [
+          {
+            "to": "B3",
+            "label": "Analysis completes"
+          },
+          {
+            "to": "B2",
+            "label": "Analysis fails"
+          },
+          {
+            "to": "A1",
+            "label": "Cancel import"
+          }
+        ]
+      },
+      {
+        "id": "B2",
+        "title": "PDF import failed · choose again",
+        "screen": "upload",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "muted",
+            "text": "Light mode"
+          },
+          {
+            "type": "text",
+            "text": "Add your presentation"
+          },
+          {
+            "type": "box",
+            "text": "Upload icon · choose PDF again"
+          },
+          {
+            "type": "text",
+            "text": "[PDF import error]"
+          },
+          {
+            "type": "muted",
+            "text": "PDF · up to 50 MiB · any slide count"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Swipe down to go back"
+            ]
+          }
+        ],
+        "notes": [
+          "The app returns to its pick phase and shows the actual picker/import error as the subtitle.",
+          "There is no dedicated Retry button; tapping the upload icon reopens file selection."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/UploadScreen.tsx",
+            "line": 62
+          },
+          {
+            "path": "mobile/src/screens/UploadScreen.tsx",
+            "line": 84
+          },
+          {
+            "path": "mobile/src/screens/UploadScreen.tsx",
+            "line": 165
+          }
+        ],
+        "transitions": [
+          {
+            "to": "B1",
+            "label": "Choose a PDF again"
+          },
+          {
+            "to": "A1",
+            "label": "Swipe down / Back"
+          }
+        ]
+      },
+      {
+        "id": "B3",
+        "title": "Presentation setup · defaults",
+        "screen": "upload",
+        "kind": "overlay",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "[Title]"
+          },
+          {
+            "type": "muted",
+            "text": "[Slide count] slides"
+          },
+          {
+            "type": "text",
+            "text": "How long? · 5:00"
+          },
+          {
+            "type": "ruler",
+            "text": "Time ruler · 1–30 minutes"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Students",
+              "Teachers",
+              "Colleagues",
+              "Clients",
+              "General audience",
+              "Other…"
+            ]
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "No required time",
+              "No target audience"
+            ]
+          },
+          {
+            "type": "record",
+            "text": "✓ Save"
+          }
+        ],
+        "notes": [
+          "Initial import defaults to 5:00 and General audience.",
+          "The ruler uses 30-second steps. Optional controls clear the required time or target audience.",
+          "Save persists choices locally, requests synchronization when possible, and opens Rehearse.",
+          "This editor is reused for existing decks; Back closes it to Rehearse. Initial import Back returns Home."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/PresentationSetup.tsx",
+            "line": 21
+          },
+          {
+            "path": "mobile/src/screens/PresentationSetup.tsx",
+            "line": 77
+          },
+          {
+            "path": "mobile/src/screens/PresentationSetup.tsx",
+            "line": 96
+          },
+          {
+            "path": "mobile/src/screens/PresentationSetup.tsx",
+            "line": 98
+          },
+          {
+            "path": "mobile/src/screens/PresentationSetup.tsx",
+            "line": 119
+          },
+          {
+            "path": "mobile/src/screens/PresentationSetup.tsx",
+            "line": 191
+          },
+          {
+            "path": "mobile/src/screens/UploadScreen.tsx",
+            "line": 95
+          },
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 397
+          }
+        ],
+        "transitions": [
+          {
+            "to": "B4",
+            "label": "Choose Other…"
+          },
+          {
+            "to": "B6",
+            "label": "Save choices"
+          },
+          {
+            "to": "A1",
+            "label": "Initial import: Back to Home"
+          },
+          {
+            "to": "B6",
+            "label": "Editing existing deck: Back"
+          }
+        ]
+      },
+      {
+        "id": "B4",
+        "title": "Custom audience · input & validation",
+        "screen": "upload",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "[Title] · setup"
+          },
+          {
+            "type": "muted",
+            "text": "Do you have a target audience?"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Other…",
+              "No target audience"
+            ]
+          },
+          {
+            "type": "fields",
+            "items": [
+              "Describe your audience",
+              "[Character count]/500 · Done"
+            ]
+          },
+          {
+            "type": "text",
+            "text": "[Validation message]"
+          },
+          {
+            "type": "record",
+            "text": "✓ Save"
+          }
+        ],
+        "notes": [
+          "Other… reveals a multiline audience field, character counter, and Done control when the keyboard is open.",
+          "The viewport scrolls above the keyboard.",
+          "Invalid Save says Use a time from 1–30 minutes and an audience of at most 500 characters."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/PresentationSetup.tsx",
+            "line": 39
+          },
+          {
+            "path": "mobile/src/screens/PresentationSetup.tsx",
+            "line": 55
+          },
+          {
+            "path": "mobile/src/screens/PresentationSetup.tsx",
+            "line": 109
+          },
+          {
+            "path": "mobile/src/screens/PresentationSetup.tsx",
+            "line": 115
+          }
+        ],
+        "transitions": [
+          {
+            "to": "B6",
+            "label": "Save valid choices"
+          },
+          {
+            "to": "B3",
+            "label": "Choose preset audience"
+          }
+        ]
+      },
+      {
+        "id": "B5",
+        "title": "Presentation choices · sync conflict",
+        "screen": "rehearse",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "[Title] · setup"
+          },
+          {
+            "type": "muted",
+            "text": "[Slide count] slides"
+          },
+          {
+            "type": "fields",
+            "items": [
+              "[Required time]",
+              "[Target audience]"
+            ]
+          },
+          {
+            "type": "text",
+            "text": "[Presentation choices conflict]"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Use server",
+              "Keep mine"
+            ]
+          },
+          {
+            "type": "record",
+            "text": "✓ Save · disabled"
+          }
+        ],
+        "notes": [
+          "This is the same time/audience editor with a pending revision conflict.",
+          "Normal Save is disabled. Use server accepts server choices; Keep mine keeps local choices and requests synchronization.",
+          "A non-conflict pending draft instead says Saved on phone · sync pending."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/PresentationSetup.tsx",
+            "line": 165
+          },
+          {
+            "path": "mobile/src/screens/PresentationSetup.tsx",
+            "line": 193
+          },
+          {
+            "path": "mobile/src/screens/PresentationSetup.tsx",
+            "line": 196
+          }
+        ],
+        "transitions": [
+          {
+            "to": "B6",
+            "label": "Use server / Keep mine"
+          }
+        ]
+      },
+      {
+        "id": "B6",
+        "title": "Rehearse · ready",
+        "screen": "rehearse",
+        "kind": "screen",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "[Title]"
+          },
+          {
+            "type": "muted",
+            "text": "Slide [n] of [N] · Edit time & audience"
+          },
+          {
+            "type": "pdf",
+            "text": "[PDF slide]"
+          },
+          {
+            "type": "box",
+            "text": "Cues · Must Cover | Further Insight"
+          },
+          {
+            "type": "ring",
+            "text": "0:00 · Full run target [Time]"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Rotate",
+              "Record",
+              "Review"
+            ]
+          }
+        ],
+        "notes": [
+          "Horizontal PDF gestures and folded corners navigate slides; tick strip provides direct approximate jumps.",
+          "Review is disabled until a saved run exists.",
+          "Swipe down goes Home while idle. Cues header includes selected-slide audio playback when available."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 455
+          },
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 465
+          },
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 471
+          },
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 490
+          },
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 696
+          }
+        ],
+        "transitions": [
+          {
+            "to": "B3",
+            "label": "Edit time & audience"
+          },
+          {
+            "to": "C1",
+            "label": "Cue Details"
+          },
+          {
+            "to": "C3",
+            "label": "Rotate"
+          },
+          {
+            "to": "C4",
+            "label": "Tap Record"
+          },
+          {
+            "to": "D1",
+            "label": "Tap Redo on recorded slide"
+          },
+          {
+            "to": "D2",
+            "label": "Hold 3 seconds"
+          },
+          {
+            "to": "E1",
+            "label": "Review first saved take"
+          },
+          {
+            "to": "E3",
+            "label": "Review later take"
+          },
+          {
+            "to": "A1",
+            "label": "Swipe down"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "C",
+    "title": "Rehearsal & capture states",
+    "description": "Cue evidence, rotated PDF, countdown, live audio, and completion routing.",
+    "frames": [
+      {
+        "id": "C1",
+        "title": "Cues · expanded details",
+        "screen": "rehearse",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "[Title] · Slide [n]"
+          },
+          {
+            "type": "pdf",
+            "text": "[PDF slide]"
+          },
+          {
+            "type": "muted",
+            "text": "Cues · selected-slide audio"
+          },
+          {
+            "type": "box",
+            "text": "Must Cover · [Cue] · Hide details"
+          },
+          {
+            "type": "box",
+            "text": "[Evidence premise] · To clarify: [Detail]"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Rotate",
+              "Record",
+              "Review"
+            ]
+          }
+        ],
+        "notes": [
+          "Each cue card independently toggles Details / Hide details.",
+          "Evidence can refer to saved summary, key ideas, visual facts, or a quoted slide reference.",
+          "Further Insight is the second cue column. To clarify is conditional on the cue data."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/features/presentations/CueGuidancePanel.tsx",
+            "line": 40
+          },
+          {
+            "path": "mobile/src/features/presentations/CueGuidancePanel.tsx",
+            "line": 66
+          },
+          {
+            "path": "mobile/src/features/presentations/CueGuidancePanel.tsx",
+            "line": 75
+          }
+        ],
+        "transitions": [
+          {
+            "to": "B6",
+            "label": "Hide details"
+          },
+          {
+            "to": "C4",
+            "label": "Record"
+          }
+        ]
+      },
+      {
+        "id": "C2",
+        "title": "Cues · pending, offline, retry",
+        "screen": "rehearse",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "[Title] · Slide [n]"
+          },
+          {
+            "type": "pdf",
+            "text": "[PDF slide]"
+          },
+          {
+            "type": "muted",
+            "text": "Cues · Must Cover | Further Insight"
+          },
+          {
+            "type": "box",
+            "text": "[AI cue status]"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Generate / Retry / Refresh"
+            ]
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Rotate",
+              "Record",
+              "Review"
+            ]
+          }
+        ],
+        "notes": [
+          "The status placeholder represents mutually exclusive source states: Requesting AI cues…, unavailable offline, outdated, not generated, disabled, source unavailable, failed, or needs confirmation.",
+          "Recovery controls appear only when the state offers the corresponding action; offline state has no recovery button.",
+          "An uncertain retry opens Retry AI cues? with Retry / Cancel and a possible-charge warning.",
+          "This frame groups conditional UI variants. Variant messages and recovery controls are not all visible at once."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/features/presentations/CueGuidancePanel.tsx",
+            "line": 25
+          },
+          {
+            "path": "mobile/src/features/presentations/CueGuidancePanel.tsx",
+            "line": 55
+          },
+          {
+            "path": "mobile/src/features/presentations/slideProfiles.ts",
+            "line": 77
+          },
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 519
+          }
+        ],
+        "transitions": [
+          {
+            "to": "B6",
+            "label": "Cues become ready"
+          },
+          {
+            "to": "C4",
+            "label": "Record with current cue state"
+          }
+        ],
+        "variants": true
+      },
+      {
+        "id": "C3",
+        "title": "Rehearse · rotated PDF",
+        "screen": "rehearse",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "[Title]"
+          },
+          {
+            "type": "muted",
+            "text": "Slide [n] of [N]"
+          },
+          {
+            "type": "pdf",
+            "text": "Rotated PDF · enlarged view"
+          },
+          {
+            "type": "muted",
+            "text": "[Compact status]"
+          },
+          {
+            "type": "wave",
+            "text": "[Live / idle waveform]"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Rotate back",
+              "Record / Stop",
+              "Time [Elapsed]"
+            ]
+          }
+        ],
+        "notes": [
+          "Only the PDF and associated labels/controls rotate; this is an in-screen view variant.",
+          "Cues, tick strip, and conventional large readout are hidden. Review gives way to the elapsed Time control.",
+          "Android Back returns the PDF to normal view before leaving the screen.",
+          "Rotation preserves the capture phase. Rotating back during recording keeps capture running; Stop uses the normal save flow."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 458
+          },
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 469
+          },
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 485
+          },
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 490
+          },
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 397
+          }
+        ],
+        "transitions": [
+          {
+            "to": "B6",
+            "label": "Idle: Rotate back / Back"
+          },
+          {
+            "to": "C4",
+            "label": "Tap Record"
+          },
+          {
+            "to": "C5",
+            "label": "Live: rotate back; keep recording"
+          },
+          {
+            "to": "C6",
+            "label": "Live: Stop recording"
+          }
+        ]
+      },
+      {
+        "id": "C4",
+        "title": "Record · countdown & starting",
+        "screen": "rehearse",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "[Title] · Slide [n]"
+          },
+          {
+            "type": "pdf",
+            "text": "[PDF slide]"
+          },
+          {
+            "type": "box",
+            "text": "Cues"
+          },
+          {
+            "type": "ring",
+            "text": "3 · 2 · 1"
+          },
+          {
+            "type": "muted",
+            "text": "Get ready…"
+          },
+          {
+            "type": "record",
+            "text": "Tap to cancel"
+          }
+        ],
+        "notes": [
+          "Three-second countdown follows Record or confirmed Redo. Tapping during countdown cancels it.",
+          "After countdown the capture enters starting; record button and slide navigation are disabled while preparing.",
+          "The native microphone permission prompt may appear. Denial returns idle with the actual error.",
+          "This frame groups conditional UI variants. Variant messages and recovery controls are not all visible at once."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 232
+          },
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 253
+          },
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 306
+          },
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 423
+          },
+          {
+            "path": "mobile/src/features/recording/service.ts",
+            "line": 50
+          }
+        ],
+        "transitions": [
+          {
+            "to": "C5",
+            "label": "Microphone capture starts"
+          },
+          {
+            "to": "B6",
+            "label": "Cancel / start error"
+          }
+        ],
+        "variants": true
+      },
+      {
+        "id": "C5",
+        "title": "Recording · live rehearsal",
+        "screen": "rehearse",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "[Title] · Slide [n] of [N]"
+          },
+          {
+            "type": "pdf",
+            "text": "[PDF slide] · swipe slides"
+          },
+          {
+            "type": "box",
+            "text": "Cues · Must Cover | Further Insight"
+          },
+          {
+            "type": "ring",
+            "text": "[Elapsed] · [Pace]"
+          },
+          {
+            "type": "wave",
+            "text": "Live waveform"
+          },
+          {
+            "type": "record",
+            "text": "Stop"
+          }
+        ],
+        "notes": [
+          "Live readout shows elapsed time and current-slide time of its target.",
+          "Slides can move backward or forward while recording and preserve visit events.",
+          "Tap Stop ends capture; Review is disabled during capture."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 200
+          },
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 292
+          },
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 423
+          },
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 686
+          },
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 495
+          }
+        ],
+        "transitions": [
+          {
+            "to": "C6",
+            "label": "Tap Stop"
+          },
+          {
+            "to": "C3",
+            "label": "Rotate PDF"
+          }
+        ]
+      },
+      {
+        "id": "C6",
+        "title": "Saving · completion & route",
+        "screen": "rehearse",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "[Title]"
+          },
+          {
+            "type": "pdf",
+            "text": "[PDF slide]"
+          },
+          {
+            "type": "ring",
+            "text": "[Duration]"
+          },
+          {
+            "type": "muted",
+            "text": "Run complete"
+          },
+          {
+            "type": "box",
+            "text": "Confetti · transient completion"
+          },
+          {
+            "type": "record",
+            "text": "Stop · saving disabled"
+          }
+        ],
+        "notes": [
+          "Saving is followed by a short completion/confetti state and automatic navigation. The diagram combines those adjacent transition states.",
+          "First saved take opens Full review. Later saved takes open Slide review. A redo with a candidate comparison opens Compare.",
+          "A failed stop/save returns idle with an error and retains honest recovery behavior.",
+          "This frame groups conditional UI variants. Variant messages and recovery controls are not all visible at once."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 270
+          },
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 155
+          },
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 505
+          },
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 521
+          },
+          {
+            "path": "mobile/src/domain/run.ts",
+            "line": 143
+          }
+        ],
+        "transitions": [
+          {
+            "to": "E1",
+            "label": "First saved take"
+          },
+          {
+            "to": "E3",
+            "label": "Later saved take"
+          },
+          {
+            "to": "G1",
+            "label": "Redo creates comparison"
+          },
+          {
+            "to": "B6",
+            "label": "Save fails"
+          }
+        ],
+        "variants": true
+      }
+    ]
+  },
+  {
+    "id": "D",
+    "title": "Redo, recovery & transcription permission",
+    "description": "Capture replacement choices, interrupted recordings, and global provider dialogs.",
+    "frames": [
+      {
+        "id": "D1",
+        "title": "Redo slide · confirmation",
+        "screen": "rehearse",
+        "kind": "overlay",
+        "blocks": [
+          {
+            "type": "muted",
+            "text": "Rehearse beneath"
+          },
+          {
+            "type": "text",
+            "text": "Redo slide [n]?"
+          },
+          {
+            "type": "box",
+            "text": "Recording and transcript will be replaced"
+          },
+          {
+            "type": "muted",
+            "text": "Compare takes and keep the old one"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Redo",
+              "Cancel"
+            ]
+          },
+          {
+            "type": "muted",
+            "text": "Confirmed redo starts the countdown"
+          }
+        ],
+        "notes": [
+          "This dialog opens when the selected slide already has a take and its redo button is tapped.",
+          "Replacement is reviewable through comparison after capture."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 306
+          },
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 512
+          }
+        ],
+        "transitions": [
+          {
+            "to": "C4",
+            "label": "Redo"
+          },
+          {
+            "to": "B6",
+            "label": "Cancel"
+          }
+        ]
+      },
+      {
+        "id": "D2",
+        "title": "Redo whole presentation",
+        "screen": "rehearse",
+        "kind": "overlay",
+        "blocks": [
+          {
+            "type": "muted",
+            "text": "Rehearse beneath"
+          },
+          {
+            "type": "text",
+            "text": "Redo the whole presentation?"
+          },
+          {
+            "type": "box",
+            "text": "Recording starts again from slide 1"
+          },
+          {
+            "type": "muted",
+            "text": "Compare with current run and keep either one"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Redo all",
+              "Cancel"
+            ]
+          },
+          {
+            "type": "muted",
+            "text": "Hold Record 3 seconds to open"
+          }
+        ],
+        "notes": [
+          "Available when any run exists and capture is idle.",
+          "The hold progress ring triggers this confirmation; confirming moves to slide 1 and starts countdown."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 315
+          },
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 334
+          },
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 512
+          }
+        ],
+        "transitions": [
+          {
+            "to": "C4",
+            "label": "Redo all"
+          },
+          {
+            "to": "B6",
+            "label": "Cancel"
+          }
+        ]
+      },
+      {
+        "id": "D3",
+        "title": "Interrupted recording · inspect entry",
+        "screen": "rehearse",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "[Title] · Slide [n]"
+          },
+          {
+            "type": "pdf",
+            "text": "[PDF slide]"
+          },
+          {
+            "type": "box",
+            "text": "Cues"
+          },
+          {
+            "type": "ring",
+            "text": "0:00"
+          },
+          {
+            "type": "text",
+            "text": "Recording interrupted · tap to inspect"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Rotate",
+              "Record",
+              "Review"
+            ]
+          }
+        ],
+        "notes": [
+          "Only unselected, undiscarded interrupted/capturing attempts are listed for recovery.",
+          "When several exist, the readout adds [x] of [N]; closing inspection advances the recovery cursor."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 184
+          },
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 481
+          },
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 697
+          }
+        ],
+        "transitions": [
+          {
+            "to": "D4",
+            "label": "Tap interrupted notice"
+          }
+        ]
+      },
+      {
+        "id": "D4",
+        "title": "Recording details · recover capture",
+        "screen": "rehearse",
+        "kind": "overlay",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "RECORDING DETAILS · [Title]"
+          },
+          {
+            "type": "muted",
+            "text": "Slide [n] of [N] · × Close"
+          },
+          {
+            "type": "box",
+            "text": "Recording · [Position] / [Duration]"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Recover recording"
+            ]
+          },
+          {
+            "type": "box",
+            "text": "Slide [n] transcription · [Status]"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Upload recording",
+              "PDF offline tools"
+            ]
+          }
+        ],
+        "notes": [
+          "There is no generic Play control in this recovery sheet. The source has a progress readout and conditional recovery, transcription, and offline tools.",
+          "Recover recording appears only when interrupted local audio is loaded and playable.",
+          "Upload recording is conditional on local/upload-failed stage; transcription controls vary by stage. Recovery failure retains the original file."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/TakePlayback.tsx",
+            "line": 116
+          },
+          {
+            "path": "mobile/src/screens/TakePlayback.tsx",
+            "line": 144
+          },
+          {
+            "path": "mobile/src/screens/TakePlayback.tsx",
+            "line": 159
+          },
+          {
+            "path": "mobile/src/screens/TakePlayback.tsx",
+            "line": 163
+          },
+          {
+            "path": "mobile/src/screens/TakePlayback.tsx",
+            "line": 192
+          },
+          {
+            "path": "mobile/src/screens/TakePlayback.tsx",
+            "line": 219
+          }
+        ],
+        "transitions": [
+          {
+            "to": "E1",
+            "label": "Recover first saved take"
+          },
+          {
+            "to": "E3",
+            "label": "Recover later saved take"
+          },
+          {
+            "to": "G1",
+            "label": "Recovery creates comparison"
+          },
+          {
+            "to": "D3",
+            "label": "Close"
+          }
+        ]
+      },
+      {
+        "id": "D5",
+        "title": "ElevenLabs · first-use permission",
+        "screen": "rehearse",
+        "kind": "overlay",
+        "blocks": [
+          {
+            "type": "muted",
+            "text": "Global provider dialog"
+          },
+          {
+            "type": "text",
+            "text": "Transcribe with ElevenLabs?"
+          },
+          {
+            "type": "box",
+            "text": "Saved audio and slide vocabulary hints"
+          },
+          {
+            "type": "muted",
+            "text": "Through OutLoud server to Scribe v2"
+          },
+          {
+            "type": "muted",
+            "text": "Audio and results remain on this phone"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Continue",
+              "Cancel"
+            ]
+          }
+        ],
+        "notes": [
+          "Global dialog can cover any active app screen; rehearse is a schematic underlying route.",
+          "Continue allows automatic transcription after future recordings and continues all takes waiting on the same first-use disclosure.",
+          "Cancel declines the pending permission prompt.",
+          "The dialog does not navigate. D4 is an example originating underlay, not a guaranteed destination; it may instead cover Review or another active screen."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/AppShell.tsx",
+            "line": 170
+          },
+          {
+            "path": "mobile/src/screens/AppShell.tsx",
+            "line": 177
+          },
+          {
+            "path": "mobile/src/screens/AppShell.tsx",
+            "line": 183
+          }
+        ],
+        "transitions": [
+          {
+            "to": "D4",
+            "label": "Dismiss to origin (D4 example)"
+          }
+        ]
+      },
+      {
+        "id": "D6",
+        "title": "Transcription · uncertain retry",
+        "screen": "rehearse",
+        "kind": "overlay",
+        "blocks": [
+          {
+            "type": "muted",
+            "text": "Global provider dialog"
+          },
+          {
+            "type": "text",
+            "text": "Retry may charge again"
+          },
+          {
+            "type": "box",
+            "text": "Previous transcription may be charged"
+          },
+          {
+            "type": "muted",
+            "text": "Retry may send the audio again"
+          },
+          {
+            "type": "muted",
+            "text": "Exactly one provider request is not guaranteed"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Continue",
+              "Cancel"
+            ]
+          }
+        ],
+        "notes": [
+          "Shown when the previous transcription request has an uncertain outcome.",
+          "Continue acknowledges that another provider charge may occur. The underlying screen is illustrative because this dialog is global.",
+          "The dialog does not navigate. D4 is an example originating underlay, not a guaranteed destination; it may instead cover Review or another active screen."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/AppShell.tsx",
+            "line": 175
+          },
+          {
+            "path": "mobile/src/screens/AppShell.tsx",
+            "line": 183
+          },
+          {
+            "path": "mobile/src/screens/AppShell.tsx",
+            "line": 186
+          }
+        ],
+        "transitions": [
+          {
+            "to": "D4",
+            "label": "Dismiss to origin (D4 example)"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "E",
+    "title": "Review & playback",
+    "description": "Whole-run review, slide playback and confirmed transcript corrections.",
+    "frames": [
+      {
+        "id": "E1",
+        "title": "Full review",
+        "screen": "full",
+        "kind": "screen",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "[Presentation title]"
+          },
+          {
+            "type": "ring",
+            "text": "— · Overall score [status]",
+            "value": "[score]"
+          },
+          {
+            "type": "grid",
+            "items": [
+              "[Duration] / [target]",
+              "[Findings]",
+              "[Fillers/min]",
+              "[WPM · pace]"
+            ]
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "▶ Whole run",
+              "[Slide audio sections]"
+            ]
+          },
+          {
+            "type": "box",
+            "text": "Presentation score · assessment counts · Transcript [scroll]"
+          },
+          {
+            "type": "grid",
+            "items": [
+              "Slide 1 [score]",
+              "Slide 2 [score]",
+              "Slide n [score]"
+            ]
+          }
+        ],
+        "notes": [
+          "Full review includes the Presentation score panel and transcript in one scroll region.",
+          "Slide tiles open selected-slide Review; downward navigation returns to incoming Home, Rehearse or Review.",
+          "Metrics and scores are placeholders, not claimed provider output."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/FullReviewScreen.tsx",
+            "line": 190
+          },
+          {
+            "path": "mobile/src/screens/FullReviewScreen.tsx",
+            "line": 238
+          },
+          {
+            "path": "mobile/src/screens/FullReviewScreen.tsx",
+            "line": 268
+          }
+        ],
+        "transitions": [
+          {
+            "to": "E3",
+            "label": "Tap a slide"
+          },
+          {
+            "to": "E2",
+            "label": "Play with partial missing audio"
+          },
+          {
+            "to": "A1",
+            "label": "Back when opened from Home"
+          },
+          {
+            "to": "B6",
+            "label": "Back when opened from Rehearse"
+          },
+          {
+            "to": "E3",
+            "label": "Back when opened from Slide review"
+          }
+        ]
+      },
+      {
+        "id": "E2",
+        "title": "Some run audio is missing",
+        "screen": "full",
+        "kind": "overlay",
+        "blocks": [
+          {
+            "type": "muted",
+            "text": "Full review underlay"
+          },
+          {
+            "type": "text",
+            "text": "Some run audio is missing"
+          },
+          {
+            "type": "box",
+            "text": "Audio for slide [n] is not on this phone."
+          },
+          {
+            "type": "muted",
+            "text": "Play only the available recordings?"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Cancel",
+              "Play available audio"
+            ]
+          }
+        ],
+        "notes": [
+          "Dialog appears only when some run segments are playable and others are missing.",
+          "If every segment is missing, show a status note instead.",
+          "If selected recordings change while dialog is open, restart is required."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/FullReviewScreen.tsx",
+            "line": 155
+          },
+          {
+            "path": "mobile/src/screens/FullReviewScreen.tsx",
+            "line": 284
+          }
+        ],
+        "transitions": [
+          {
+            "to": "E1",
+            "label": "Cancel"
+          },
+          {
+            "to": "E1",
+            "label": "Play available audio"
+          }
+        ]
+      },
+      {
+        "id": "E3",
+        "title": "Slide review",
+        "screen": "review",
+        "kind": "screen",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "[Presentation title] · [run label]"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Full Review · [assessed / recorded]"
+            ]
+          },
+          {
+            "type": "ring",
+            "text": "— · Slide score [status]",
+            "value": "[score]"
+          },
+          {
+            "type": "grid",
+            "items": [
+              "Slide [n] / [count]",
+              "[Time] / [target]",
+              "[Fillers]",
+              "[Verified findings]"
+            ]
+          },
+          {
+            "type": "bars",
+            "text": "Times per slide · tap a bar"
+          },
+          {
+            "type": "box",
+            "text": "Slide audio + transcript · score · AI feedback [scroll]"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "↓ Back to slides / Full review",
+              "↑ Audience Q&A"
+            ]
+          }
+        ],
+        "notes": [
+          "Full Review is a prominent header button.",
+          "Time bars select slides and show each selected score or status.",
+          "Return target depends on whether Review was opened from Full review."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/ReviewScreen.tsx",
+            "line": 92
+          },
+          {
+            "path": "mobile/src/screens/ReviewScreen.tsx",
+            "line": 101
+          },
+          {
+            "path": "mobile/src/screens/ReviewScreen.tsx",
+            "line": 124
+          }
+        ],
+        "transitions": [
+          {
+            "to": "E1",
+            "label": "Full Review"
+          },
+          {
+            "to": "E4",
+            "label": "Scroll to slide playback"
+          },
+          {
+            "to": "H2",
+            "label": "Audience Q&A when ready"
+          },
+          {
+            "to": "B6",
+            "label": "Back to slides"
+          },
+          {
+            "to": "H1",
+            "label": "Audience Q&A while preparing"
+          },
+          {
+            "to": "E1",
+            "label": "Back when opened from Full review"
+          }
+        ]
+      },
+      {
+        "id": "E4",
+        "title": "Slide audio & inline transcript",
+        "screen": "review",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "Slide [n] · [slide title]"
+          },
+          {
+            "type": "pdf",
+            "text": "[Slide preview]"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "▶ / Pause",
+              "[Elapsed] / [duration]"
+            ]
+          },
+          {
+            "type": "text",
+            "text": "Transcript"
+          },
+          {
+            "type": "box",
+            "text": "[Timestamp] [sentence / active word]\n[Timestamp] [sentence]"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Check transcription",
+              "Correct “[flagged word]”"
+            ]
+          },
+          {
+            "type": "muted",
+            "text": "Swipe a movable sentence to an adjacent slide"
+          }
+        ],
+        "notes": [
+          "Play is disabled when audio is unavailable, duration is zero or no selected part exists.",
+          "Tapping a sentence or timestamp plays its original interval.",
+          "Boundary sentences preserve source audio; only movable lines can be reassigned."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/ReviewSlidePlayback.tsx",
+            "line": 45
+          },
+          {
+            "path": "mobile/src/screens/TranscriptCorrections.tsx",
+            "line": 223
+          },
+          {
+            "path": "mobile/src/screens/TranscriptCorrections.tsx",
+            "line": 325
+          }
+        ],
+        "transitions": [
+          {
+            "to": "E5",
+            "label": "Tap flagged word"
+          },
+          {
+            "to": "E6",
+            "label": "Corrections conflict"
+          },
+          {
+            "to": "F4",
+            "label": "Recording tools"
+          }
+        ]
+      },
+      {
+        "id": "E5",
+        "title": "Transcription correction choices",
+        "screen": "review",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "muted",
+            "text": "Transcript sentence remains visible"
+          },
+          {
+            "type": "text",
+            "text": "Did you say “[word]”?"
+          },
+          {
+            "type": "box",
+            "text": "[Suggestion reason]"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "[Suggested replacement 1]",
+              "[Suggested replacement 2]"
+            ]
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Keep original",
+              "Play audio",
+              "Close"
+            ]
+          },
+          {
+            "type": "muted",
+            "text": "Select a replacement, keep original, or close"
+          }
+        ],
+        "notes": [
+          "Replacement choices come from the actual suggestion; sample alternatives are placeholders.",
+          "Accepting saves confirmed correction then synchronizes; failure retains local edit.",
+          "A changed transcript invalidates an open selection. Corrected lines offer Restore original.",
+          "Applying a choice closes this panel before the saved-correction notice appears in the transcript."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/TranscriptCorrections.tsx",
+            "line": 66
+          },
+          {
+            "path": "mobile/src/screens/TranscriptCorrections.tsx",
+            "line": 250
+          },
+          {
+            "path": "mobile/src/screens/TranscriptCorrections.tsx",
+            "line": 343
+          }
+        ],
+        "transitions": [
+          {
+            "to": "E4",
+            "label": "Apply replacement / Keep original / Close"
+          },
+          {
+            "to": "F5",
+            "label": "Feedback becomes outdated"
+          }
+        ]
+      },
+      {
+        "id": "E6",
+        "title": "Correction synchronization conflict",
+        "screen": "review",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "Transcript"
+          },
+          {
+            "type": "box",
+            "text": "[Current sentence and confirmed edits]"
+          },
+          {
+            "type": "toast",
+            "text": "Correction conflict · choose a version"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Use server",
+              "Keep mine"
+            ]
+          },
+          {
+            "type": "muted",
+            "text": "Pending state: Saved on phone · sync pending"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Sync corrections",
+              "Retry slide context"
+            ]
+          }
+        ],
+        "notes": [
+          "Use server / Keep mine appear for an actual correction conflict.",
+          "Sync corrections appears for pending sync without conflict, disabled while busy.",
+          "Retry slide context is conditional on a suggestion dependency recovery action.",
+          "This frame groups conditional UI variants. Variant messages and recovery controls are not all visible at once."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/TranscriptCorrections.tsx",
+            "line": 164
+          },
+          {
+            "path": "mobile/src/screens/TranscriptCorrections.tsx",
+            "line": 191
+          }
+        ],
+        "transitions": [
+          {
+            "to": "E4",
+            "label": "Resolve and synchronize"
+          },
+          {
+            "to": "F5",
+            "label": "Retry requires confirmation"
+          }
+        ],
+        "variants": true
+      }
+    ]
+  },
+  {
+    "id": "F",
+    "title": "Assessment & recording tools",
+    "description": "Numeric score, verified findings, evidence, offline tools and recovery states.",
+    "frames": [
+      {
+        "id": "F1",
+        "title": "Score prose & cited evidence",
+        "screen": "review",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "Slide score / Presentation score"
+          },
+          {
+            "type": "ring",
+            "text": "— · [validated score status]",
+            "value": "[score]"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Refresh"
+            ]
+          },
+          {
+            "type": "box",
+            "text": "[Score summary / justification]"
+          },
+          {
+            "type": "box",
+            "text": "Strengths · Weaknesses · Actionable improvements [prose]"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Open slide [n]",
+              "Listen to this interval",
+              "Listen to [n] cited intervals"
+            ]
+          }
+        ],
+        "notes": [
+          "Shared panel is used in Review and Full review.",
+          "There is no radar chart or criteria chart rendered by this component.",
+          "Only current validated results expose their source evidence; score and text here are placeholders.",
+          "In Full review, cited audio plays in place with a status note; the Feedback evidence card is used by Slide review."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/features/feedback/PresentationScorePanel.tsx",
+            "line": 16
+          },
+          {
+            "path": "mobile/src/features/feedback/PresentationScorePanel.tsx",
+            "line": 34
+          },
+          {
+            "path": "mobile/src/features/feedback/PresentationScorePanel.tsx",
+            "line": 47
+          },
+          {
+            "path": "mobile/src/screens/FullReviewScreen.tsx",
+            "line": 129
+          }
+        ],
+        "transitions": [
+          {
+            "to": "E3",
+            "label": "Open slide evidence"
+          },
+          {
+            "to": "F3",
+            "label": "Slide review: listen to interval"
+          },
+          {
+            "to": "F5",
+            "label": "Score recovery state"
+          }
+        ]
+      },
+      {
+        "id": "F2",
+        "title": "Selected-slide AI feedback",
+        "screen": "review",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "AI feedback"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Refresh"
+            ]
+          },
+          {
+            "type": "muted",
+            "text": "[Feedback status]"
+          },
+          {
+            "type": "box",
+            "text": "[Category]\n[Verified observation]\n[Suggestion]"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Details & evidence"
+            ]
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Further Insight · optional"
+            ]
+          },
+          {
+            "type": "box",
+            "text": "[Illustrative idea, only when expanded]"
+          }
+        ],
+        "notes": [
+          "This selected-slide feedback is distinct from numeric scoring and recording-wide suggestions.",
+          "Finding count, categories, observation and advice are provider-result placeholders.",
+          "Further Insight appears only when enrichments exist."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/features/feedback/SlideReviewSummary.tsx",
+            "line": 37
+          },
+          {
+            "path": "mobile/src/features/feedback/SlideReviewSummary.tsx",
+            "line": 49
+          },
+          {
+            "path": "mobile/src/features/feedback/SlideReviewSummary.tsx",
+            "line": 65
+          }
+        ],
+        "transitions": [
+          {
+            "to": "F3",
+            "label": "Details & evidence"
+          },
+          {
+            "to": "F5",
+            "label": "Update / retry feedback"
+          }
+        ]
+      },
+      {
+        "id": "F3",
+        "title": "Finding details & source audio",
+        "screen": "review",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "[Category] · details & evidence"
+          },
+          {
+            "type": "box",
+            "text": "[Slide quote]\n[Speech quote]"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Listen at [timestamp]",
+              "Hide details"
+            ]
+          },
+          {
+            "type": "text",
+            "text": "Feedback evidence"
+          },
+          {
+            "type": "box",
+            "text": "[Observation]\nSource recording · [start–end]"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Play / Pause / Resume evidence",
+              "Close evidence"
+            ]
+          },
+          {
+            "type": "muted",
+            "text": "Original audio interval; not synthesized audio"
+          }
+        ],
+        "notes": [
+          "Listen opens an inline evidence card and scrolls to it.",
+          "Playback is disabled when interval is invalid or local audio is unavailable.",
+          "An invalid interval message says original audio is retained."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/features/feedback/SlideReviewSummary.tsx",
+            "line": 71
+          },
+          {
+            "path": "mobile/src/screens/ReviewRecordingTools.tsx",
+            "line": 68
+          },
+          {
+            "path": "mobile/src/screens/ReviewScreen.tsx",
+            "line": 120
+          }
+        ],
+        "transitions": [
+          {
+            "to": "F2",
+            "label": "Hide details"
+          },
+          {
+            "to": "E4",
+            "label": "Close evidence"
+          },
+          {
+            "to": "F4",
+            "label": "Download unavailable local audio"
+          }
+        ]
+      },
+      {
+        "id": "F4",
+        "title": "Recording tools & offline files",
+        "screen": "review",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "Recording tools"
+          },
+          {
+            "type": "muted",
+            "text": "[Upload / transcription status]"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Upload / Retry / Transcribe recording",
+              "Refresh status"
+            ]
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Download audio",
+              "Original transcript · word playback"
+            ]
+          },
+          {
+            "type": "box",
+            "text": "Recording-wide suggestions [accordion content]"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "PDF offline tools",
+              "Download PDF"
+            ]
+          },
+          {
+            "type": "muted",
+            "text": "[Offline availability / file error]"
+          }
+        ],
+        "notes": [
+          "Actions are conditional: upload local/failed upload, retry failed transcription, transcribe awaiting input.",
+          "Download audio and PDF appear only for available remote source specifications; busy actions are disabled.",
+          "PDF can report already available offline or no downloadable source.",
+          "Original transcript expands raw timed words in these tools and seeks the original audio; it stays separate from corrected sentence playback."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/ReviewRecordingTools.tsx",
+            "line": 61
+          },
+          {
+            "path": "mobile/src/screens/ReviewRecordingTools.tsx",
+            "line": 78
+          },
+          {
+            "path": "mobile/src/screens/TakePlayback.tsx",
+            "line": 375
+          }
+        ],
+        "transitions": [
+          {
+            "to": "G2",
+            "label": "Recording-wide suggestions"
+          },
+          {
+            "to": "D5",
+            "label": "Transcription consent when needed"
+          },
+          {
+            "to": "F4",
+            "label": "Expand original words in tools"
+          }
+        ]
+      },
+      {
+        "id": "F5",
+        "title": "Assessment stale / unavailable / retry",
+        "screen": "review",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "Score / AI feedback status"
+          },
+          {
+            "type": "ring",
+            "text": "— · [No current score]"
+          },
+          {
+            "type": "toast",
+            "text": "[Outdated / unavailable / failed / context recovery]"
+          },
+          {
+            "type": "muted",
+            "text": "[Prerequisite or provider error explanation]"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Refresh",
+              "Update feedback / Retry / Retry profiles"
+            ]
+          },
+          {
+            "type": "box",
+            "text": "Previous request may have reached provider. Another charge is possible."
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Retry anyway",
+              "Cancel"
+            ]
+          }
+        ],
+        "notes": [
+          "This frame groups mutually exclusive recovery variants; they do not all render simultaneously.",
+          "Busy, unsynced requirements, unavailable provider or missing transcript can disable generation.",
+          "Stale results are withheld; retry charge acknowledgement appears only on uncertain prior outcome.",
+          "This frame groups conditional UI variants. Variant messages and recovery controls are not all visible at once."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/features/feedback/PresentationScorePanel.tsx",
+            "line": 20
+          },
+          {
+            "path": "mobile/src/features/feedback/SlideReviewSummary.tsx",
+            "line": 34
+          },
+          {
+            "path": "mobile/src/features/feedback/SlideReviewSummary.tsx",
+            "line": 58
+          }
+        ],
+        "transitions": [
+          {
+            "to": "F1",
+            "label": "Refresh / successful scoring"
+          },
+          {
+            "to": "F2",
+            "label": "Successful feedback retry"
+          },
+          {
+            "to": "B3",
+            "label": "Synchronize presentation choices"
+          }
+        ],
+        "variants": true
+      },
+      {
+        "id": "F6",
+        "title": "Speech / source unavailable states",
+        "screen": "review",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "Slide [n] review"
+          },
+          {
+            "type": "pdf",
+            "text": "[Selected slide preview]"
+          },
+          {
+            "type": "ring",
+            "text": "— · [Not scored / insufficient evidence]"
+          },
+          {
+            "type": "box",
+            "text": "[No speech / Uploading / Transcribing / No saved audio]"
+          },
+          {
+            "type": "muted",
+            "text": "[Unaligned original text: word timing unavailable]"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Retry upload / transcription, when offered",
+              "Download audio, when available"
+            ]
+          },
+          {
+            "type": "toast",
+            "text": "[Local original audio / transcript is retained]"
+          }
+        ],
+        "notes": [
+          "These are alternative empty or recovery states, not fabricated successful output.",
+          "No-speech, no recording and text-without-word-timing have different explanations.",
+          "Unaligned text cannot be assigned to a slide; missing audio disables inline playback.",
+          "This frame groups conditional UI variants. Variant messages and recovery controls are not all visible at once."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/ReviewScreen.tsx",
+            "line": 115
+          },
+          {
+            "path": "mobile/src/screens/TranscriptCorrections.tsx",
+            "line": 37
+          },
+          {
+            "path": "mobile/src/screens/TranscriptCorrections.tsx",
+            "line": 173
+          }
+        ],
+        "transitions": [
+          {
+            "to": "B6",
+            "label": "Record selected slide"
+          },
+          {
+            "to": "F4",
+            "label": "Recovery tools"
+          },
+          {
+            "to": "E4",
+            "label": "Transcript becomes ready"
+          }
+        ],
+        "variants": true
+      }
+    ]
+  },
+  {
+    "id": "G",
+    "title": "Compare & descriptions",
+    "description": "Keep or overwrite takes; inspect/edit slide context and acknowledge AI requests.",
+    "frames": [
+      {
+        "id": "G1",
+        "title": "Compare recordings",
+        "screen": "compare",
+        "kind": "screen",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "[Deck / slide scope]"
+          },
+          {
+            "type": "muted",
+            "text": "[Whole presentation / slide range] · choose one recording"
+          },
+          {
+            "type": "box",
+            "text": "[New duration] / [target] · [comparison chips]"
+          },
+          {
+            "type": "grid",
+            "items": [
+              "Keep current ✓\n[Duration]\n[Fillers / Points / Pace]\n[Opened with]",
+              "Overwrite\n[Duration]\n[Fillers / Points / Pace]\n[Opened with]"
+            ]
+          },
+          {
+            "type": "muted",
+            "text": "[Measured comparison rows / transcribing status]"
+          },
+          {
+            "type": "record",
+            "text": "✓ Keep current / Overwrite selected recording"
+          }
+        ],
+        "notes": [
+          "Keep current is the default selection; cards select the intended result.",
+          "Confirm resolves the choice and opens Full review for first saved take, otherwise Slide Review.",
+          "Hardware Back keeps current and returns Rehearse; no swipe navigation or card audio buttons."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/CompareScreen.tsx",
+            "line": 28
+          },
+          {
+            "path": "mobile/src/screens/CompareScreen.tsx",
+            "line": 68
+          },
+          {
+            "path": "mobile/src/screens/CompareScreen.tsx",
+            "line": 118
+          }
+        ],
+        "transitions": [
+          {
+            "to": "E1",
+            "label": "Confirm when first saved take"
+          },
+          {
+            "to": "E3",
+            "label": "Confirm on later take"
+          },
+          {
+            "to": "B6",
+            "label": "Hardware Back: keep current"
+          }
+        ]
+      },
+      {
+        "id": "G2",
+        "title": "Recording-wide suggestions",
+        "screen": "review",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "Recording-wide suggestions"
+          },
+          {
+            "type": "muted",
+            "text": "Original recording scope · selected-slide feedback stays in Review"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Load / Refresh suggestion status",
+              "Generate / Retry / Update suggestions"
+            ]
+          },
+          {
+            "type": "box",
+            "text": "[Category · slide]\n[Observation + suggestion]\n[Description / speech evidence]"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Retry slide descriptions",
+              "Slide descriptions"
+            ]
+          },
+          {
+            "type": "toast",
+            "text": "[Outdated / unavailable / provider notice]"
+          }
+        ],
+        "notes": [
+          "Result displays up to three recording-wide suggestions.",
+          "Generation is disabled while busy, disclosure/retry prompt is open, a description draft is unsaved or provider is unavailable.",
+          "Upload and transcribe prerequisite appears instead when server deck context is absent."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/TakePlayback.tsx",
+            "line": 232
+          },
+          {
+            "path": "mobile/src/screens/TakePlayback.tsx",
+            "line": 245
+          },
+          {
+            "path": "mobile/src/screens/TakePlayback.tsx",
+            "line": 264
+          }
+        ],
+        "transitions": [
+          {
+            "to": "G3",
+            "label": "Slide descriptions"
+          },
+          {
+            "to": "G5",
+            "label": "First-use suggestions consent"
+          },
+          {
+            "to": "G6",
+            "label": "Uncertain previous request"
+          }
+        ]
+      },
+      {
+        "id": "G3",
+        "title": "Slide descriptions accordion",
+        "screen": "review",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "Slide descriptions"
+          },
+          {
+            "type": "muted",
+            "text": "Read/edit saved descriptions without requesting AI"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Slide 1 ▾",
+              "Slide [n] ▴"
+            ]
+          },
+          {
+            "type": "box",
+            "text": "Summary: [text]\nKey idea: [text]\nVisual fact: [text]"
+          },
+          {
+            "type": "muted",
+            "text": "[Uncertainty explanation / stale-source notice]"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Edit description"
+            ]
+          }
+        ],
+        "notes": [
+          "Each saved description has an expand/collapse control.",
+          "Edit is disabled while busy, consent/retry prompt is open or another draft exists.",
+          "No saved descriptions and loading are explicit alternatives."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/TakePlayback.tsx",
+            "line": 278
+          },
+          {
+            "path": "mobile/src/screens/TakePlayback.tsx",
+            "line": 299
+          },
+          {
+            "path": "mobile/src/screens/TakePlayback.tsx",
+            "line": 304
+          }
+        ],
+        "transitions": [
+          {
+            "to": "G4",
+            "label": "Edit description"
+          },
+          {
+            "to": "G2",
+            "label": "Collapse descriptions"
+          }
+        ]
+      },
+      {
+        "id": "G4",
+        "title": "Description draft & conflict",
+        "screen": "review",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "Edit slide [n] description"
+          },
+          {
+            "type": "muted",
+            "text": "Unsaved draft from revision [n]"
+          },
+          {
+            "type": "fields",
+            "items": [
+              "Summary [multiline]",
+              "Key idea [multiline]",
+              "Visual fact [multiline]"
+            ]
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Mark uncertain / Mark certain"
+            ]
+          },
+          {
+            "type": "fields",
+            "items": [
+              "Uncertainty explanation [if uncertain]"
+            ]
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Save description",
+              "Reload current version",
+              "Cancel edit"
+            ]
+          },
+          {
+            "type": "toast",
+            "text": "[Conflict / save notice]"
+          }
+        ],
+        "notes": [
+          "Each text label states 400 characters maximum.",
+          "Conflict disables Save and reveals Reload current version; Cancel discards only draft.",
+          "Saving makes existing AI suggestions stale; regeneration is explicit.",
+          "Reload current version refreshes the editable draft and keeps the editor open.",
+          "This frame groups conditional UI variants. Variant messages and recovery controls are not all visible at once."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/TakePlayback.tsx",
+            "line": 289
+          },
+          {
+            "path": "mobile/src/screens/TakePlayback.tsx",
+            "line": 316
+          },
+          {
+            "path": "mobile/src/features/feedback/useFeedbackReview.ts",
+            "line": 247
+          }
+        ],
+        "transitions": [
+          {
+            "to": "G3",
+            "label": "Save / Cancel edit"
+          },
+          {
+            "to": "G2",
+            "label": "Regenerate after saved edit"
+          },
+          {
+            "to": "G4",
+            "label": "Reload current version into draft"
+          }
+        ],
+        "variants": true
+      },
+      {
+        "id": "G5",
+        "title": "AI suggestions consent",
+        "screen": "review",
+        "kind": "overlay",
+        "blocks": [
+          {
+            "type": "muted",
+            "text": "Recording tools underlay"
+          },
+          {
+            "type": "text",
+            "text": "AI suggestions from [provider]?"
+          },
+          {
+            "type": "box",
+            "text": "Slide images/text, descriptions, transcript and audience context go through the server."
+          },
+          {
+            "type": "muted",
+            "text": "[Provider · model] · No audio sent"
+          },
+          {
+            "type": "muted",
+            "text": "Requests may incur provider charges."
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Cancel",
+              "Continue"
+            ]
+          }
+        ],
+        "notes": [
+          "Global AppShell dialog is raised by recording-wide coaching first-use disclosure.",
+          "Provider/model are rendered from the actual configured disclosure, not fixed invented values.",
+          "Cancel returns without submitting; Continue resumes the pending action."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/AppShell.tsx",
+            "line": 190
+          }
+        ],
+        "transitions": [
+          {
+            "to": "G2",
+            "label": "Cancel / Continue"
+          }
+        ]
+      },
+      {
+        "id": "G6",
+        "title": "AI request uncertain retry",
+        "screen": "review",
+        "kind": "overlay",
+        "blocks": [
+          {
+            "type": "muted",
+            "text": "Suggestions / rehearsal cues underlay"
+          },
+          {
+            "type": "text",
+            "text": "Request again? / Retry AI cues?"
+          },
+          {
+            "type": "box",
+            "text": "The previous provider request has an uncertain outcome."
+          },
+          {
+            "type": "muted",
+            "text": "Another request may incur another charge."
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Cancel",
+              "Continue / Retry"
+            ]
+          }
+        ],
+        "notes": [
+          "Alternative actual dialogs: AppShell recording-wide suggestions says Request again? with Continue; Rehearse cue recovery says Retry AI cues? with Retry.",
+          "This overlay is separate from score, selected-slide feedback, transcription and Q&A retry controls."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/AppShell.tsx",
+            "line": 193
+          },
+          {
+            "path": "mobile/src/screens/RehearseScreen.tsx",
+            "line": 519
+          }
+        ],
+        "transitions": [
+          {
+            "to": "G2",
+            "label": "Suggestions retry"
+          },
+          {
+            "to": "B6",
+            "label": "Cue recovery retry"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "H",
+    "title": "Audience Q&A — answer capture",
+    "description": "Prepare audience questions, hear prompts and record durable answer audio.",
+    "frames": [
+      {
+        "id": "H1",
+        "title": "Prepare audience questions",
+        "screen": "qa",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "Audience Q&A"
+          },
+          {
+            "type": "muted",
+            "text": "Writing audience questions… · [audience]"
+          },
+          {
+            "type": "box",
+            "text": "[Preparation / prerequisite status]"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Edit time and audience",
+              "Review selected recordings"
+            ]
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Refresh status",
+              "Retry / Update questions"
+            ]
+          },
+          {
+            "type": "record",
+            "text": "Record [disabled until questions ready]"
+          }
+        ],
+        "notes": [
+          "Only buttons appropriate to the current prerequisite state appear.",
+          "Question preparation can wait for saved requirements synchronization or selected recording upload/transcription.",
+          "Retry/update is hidden while active generation is running or sources/settings are not ready."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/QAScreen.tsx",
+            "line": 98
+          },
+          {
+            "path": "mobile/src/screens/QAScreen.tsx",
+            "line": 378
+          }
+        ],
+        "transitions": [
+          {
+            "to": "B3",
+            "label": "Edit time and audience"
+          },
+          {
+            "to": "E3",
+            "label": "Review selected recordings"
+          },
+          {
+            "to": "H2",
+            "label": "Validated questions ready"
+          },
+          {
+            "to": "I5",
+            "label": "Preparation failed"
+          }
+        ]
+      },
+      {
+        "id": "H2",
+        "title": "Audience question",
+        "screen": "qa",
+        "kind": "screen",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "Audience Q&A · Question [n] / [count]"
+          },
+          {
+            "type": "box",
+            "text": "[Panelist initials] [Role]\nAsked after slide [n] · [topic]"
+          },
+          {
+            "type": "text",
+            "text": "“[Audience question]”"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "▶ Tap to hear"
+            ]
+          },
+          {
+            "type": "pdf",
+            "text": "[Related slide] · From slide [n]"
+          },
+          {
+            "type": "record",
+            "text": "Record answer"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Next →",
+              "↓ Back"
+            ]
+          }
+        ],
+        "notes": [
+          "Tap question toggles text-to-speech.",
+          "Horizontal swipe navigates questions; down returns to Slide Review.",
+          "Last question omits Next and shows Last question · swipe down for your review."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/QAScreen.tsx",
+            "line": 288
+          },
+          {
+            "path": "mobile/src/screens/QAScreen.tsx",
+            "line": 311
+          },
+          {
+            "path": "mobile/src/screens/QAScreen.tsx",
+            "line": 339
+          }
+        ],
+        "transitions": [
+          {
+            "to": "H3",
+            "label": "Tap Record"
+          },
+          {
+            "to": "H2",
+            "label": "Swipe / Next question"
+          },
+          {
+            "to": "E3",
+            "label": "Down / Back"
+          },
+          {
+            "to": "I4",
+            "label": "Saved Q&A"
+          }
+        ]
+      },
+      {
+        "id": "H3",
+        "title": "Answer countdown",
+        "screen": "qa",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "Question [n] / [count]"
+          },
+          {
+            "type": "box",
+            "text": "[Panelist · role]"
+          },
+          {
+            "type": "text",
+            "text": "“[Question / follow-up]”"
+          },
+          {
+            "type": "pdf",
+            "text": "[Related slide]"
+          },
+          {
+            "type": "record",
+            "text": "3 · 2 · 1"
+          },
+          {
+            "type": "muted",
+            "text": "Tap to cancel"
+          }
+        ],
+        "notes": [
+          "Countdown lasts three seconds and provides haptic selections.",
+          "Tapping again cancels; question navigation and back are blocked during countdown.",
+          "The microphone starts after countdown completes."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/QAScreen.tsx",
+            "line": 189
+          },
+          {
+            "path": "mobile/src/screens/QAScreen.tsx",
+            "line": 264
+          }
+        ],
+        "transitions": [
+          {
+            "to": "H4",
+            "label": "Countdown completes"
+          },
+          {
+            "to": "H2",
+            "label": "Tap to cancel"
+          }
+        ]
+      },
+      {
+        "id": "H4",
+        "title": "Record answer",
+        "screen": "qa",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "[Question / follow-up]"
+          },
+          {
+            "type": "box",
+            "text": "[Panelist · role]"
+          },
+          {
+            "type": "muted",
+            "text": "Listening…"
+          },
+          {
+            "type": "text",
+            "text": "[Elapsed recording time]"
+          },
+          {
+            "type": "wave"
+          },
+          {
+            "type": "record",
+            "text": "Stop answering"
+          },
+          {
+            "type": "muted",
+            "text": "60–90 seconds typical · follow-up 30–60"
+          }
+        ],
+        "notes": [
+          "Recording meters drive waveform and elapsed time.",
+          "Stop persists a new answer identity and audio before remote judging.",
+          "Navigation is blocked until capture ends; microphone/save errors are shown."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/QAScreen.tsx",
+            "line": 173
+          },
+          {
+            "path": "mobile/src/screens/QAScreen.tsx",
+            "line": 203
+          },
+          {
+            "path": "mobile/src/screens/QAScreen.tsx",
+            "line": 389
+          }
+        ],
+        "transitions": [
+          {
+            "to": "H5",
+            "label": "Stop when transcription consent needed"
+          },
+          {
+            "to": "H6",
+            "label": "Stop and evaluate saved answer"
+          }
+        ]
+      },
+      {
+        "id": "H5",
+        "title": "Answer transcription consent",
+        "screen": "qa",
+        "kind": "overlay",
+        "blocks": [
+          {
+            "type": "muted",
+            "text": "Saved answer underlay"
+          },
+          {
+            "type": "text",
+            "text": "Transcribe with ElevenLabs?"
+          },
+          {
+            "type": "box",
+            "text": "Saved answer audio + vocabulary hints go through OutLoud server to Scribe v2."
+          },
+          {
+            "type": "muted",
+            "text": "May incur provider charges; Continue permits future recordings and answers."
+          },
+          {
+            "type": "muted",
+            "text": "Cancel keeps saved audio without submitting."
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Cancel",
+              "Continue"
+            ]
+          }
+        ],
+        "notes": [
+          "This is the Q&A-specific answer consent dialog.",
+          "Consent-save failure retains the answer and reports error.",
+          "A new recording was already saved before this modal."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/QAScreen.tsx",
+            "line": 399
+          }
+        ],
+        "transitions": [
+          {
+            "to": "H6",
+            "label": "Continue"
+          },
+          {
+            "to": "H6",
+            "label": "Cancel: keep saved answer"
+          },
+          {
+            "to": "H6",
+            "label": "Consent-save error: keep answer"
+          }
+        ]
+      },
+      {
+        "id": "H6",
+        "title": "Saved answer · processing / retry",
+        "screen": "qa",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "Question [n] / [count]"
+          },
+          {
+            "type": "box",
+            "text": "Question\n“[Question text]”"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "▶ Saved audio · [duration]"
+            ]
+          },
+          {
+            "type": "box",
+            "text": "Your answer · [Transcribing/reviewing… OR review error · tap to retry]"
+          },
+          {
+            "type": "record",
+            "text": "Redo answer"
+          },
+          {
+            "type": "muted",
+            "text": "On review error: tap to try again"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Next →",
+              "↓ Back"
+            ]
+          }
+        ],
+        "notes": [
+          "Saved audio remains playable while evaluation is pending.",
+          "A late response from an older rerecording cannot replace the newer answer.",
+          "Question sets and answer attempts persist for resumption.",
+          "After declined or failed consent, the saved answer remains on this same question with its error and retry control; no new question is generated.",
+          "The saved-audio control always remains. Pending evaluation and review-error rows are mutually exclusive variants."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/QAScreen.tsx",
+            "line": 123
+          },
+          {
+            "path": "mobile/src/screens/QAScreen.tsx",
+            "line": 152
+          },
+          {
+            "path": "mobile/src/screens/QAScreen.tsx",
+            "line": 346
+          }
+        ],
+        "transitions": [
+          {
+            "to": "I1",
+            "label": "Evaluation complete"
+          },
+          {
+            "to": "H6",
+            "label": "Error / retry: retain saved answer"
+          },
+          {
+            "to": "I6",
+            "label": "Uncertain provider outcome"
+          },
+          {
+            "to": "H3",
+            "label": "Redo"
+          }
+        ],
+        "variants": true
+      }
+    ]
+  },
+  {
+    "id": "I",
+    "title": "Audience Q&A — review & continuation",
+    "description": "Evidence-backed answer review, follow-ups, saved sessions and recovery.",
+    "frames": [
+      {
+        "id": "I1",
+        "title": "Answer evaluation",
+        "screen": "qa",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "Question [n] / [count]"
+          },
+          {
+            "type": "box",
+            "text": "“[Question]”"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "▶ Saved audio · [duration]"
+            ]
+          },
+          {
+            "type": "box",
+            "text": "[Verdict: Answered / Partly answered / Too short]"
+          },
+          {
+            "type": "box",
+            "text": "Did it answer? [text]\nEvidence [text]\nClarify [text]"
+          },
+          {
+            "type": "box",
+            "text": "[Timestamp] [answer transcript]"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Follow-up · Tap to answer",
+              "Redo answer",
+              "Next / Back"
+            ]
+          }
+        ],
+        "notes": [
+          "Verdict, advice and transcript are placeholders for actual saved review output.",
+          "Too short instead explains insufficient duration and suggested 60–90 / 30–60 seconds.",
+          "Follow-up card appears only after a non-short evaluated primary answer and when follow-up exists."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/QAScreen.tsx",
+            "line": 268
+          },
+          {
+            "path": "mobile/src/screens/QAScreen.tsx",
+            "line": 346
+          }
+        ],
+        "transitions": [
+          {
+            "to": "I2",
+            "label": "Follow-up card"
+          },
+          {
+            "to": "H3",
+            "label": "Redo answer"
+          },
+          {
+            "to": "H2",
+            "label": "Next question"
+          },
+          {
+            "to": "E3",
+            "label": "Back"
+          }
+        ]
+      },
+      {
+        "id": "I2",
+        "title": "Follow-up question",
+        "screen": "qa",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "Question [n] / [count]"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Question · tap to go back"
+            ]
+          },
+          {
+            "type": "muted",
+            "text": "[Original question, condensed]"
+          },
+          {
+            "type": "text",
+            "text": "Follow-up · [panelist]\n“[Follow-up text]”"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "▶ Tap to hear"
+            ]
+          },
+          {
+            "type": "pdf",
+            "text": "[Related slide]"
+          },
+          {
+            "type": "record",
+            "text": "Answer the follow-up"
+          }
+        ],
+        "notes": [
+          "Tapping original question returns to primary question/answer.",
+          "Follow-up uses the same countdown, capture, saved audio, consent and evaluation flow.",
+          "Typical answer guidance is 30–60 seconds."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/QAScreen.tsx",
+            "line": 318
+          },
+          {
+            "path": "mobile/src/screens/QAScreen.tsx",
+            "line": 331
+          }
+        ],
+        "transitions": [
+          {
+            "to": "I1",
+            "label": "Original question"
+          },
+          {
+            "to": "H3",
+            "label": "Record follow-up"
+          },
+          {
+            "to": "I3",
+            "label": "View previously answered follow-up"
+          }
+        ]
+      },
+      {
+        "id": "I3",
+        "title": "Evaluated follow-up",
+        "screen": "qa",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "Follow-up · [panelist]"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Question · tap to go back"
+            ]
+          },
+          {
+            "type": "box",
+            "text": "“[Follow-up]”"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "▶ Saved audio · [duration]"
+            ]
+          },
+          {
+            "type": "box",
+            "text": "[Verdict]\nDid it answer? [text]\nEvidence [text]\nClarify [text]"
+          },
+          {
+            "type": "box",
+            "text": "[Timestamped follow-up transcript]"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Redo follow-up",
+              "Next question",
+              "↓ Back"
+            ]
+          }
+        ],
+        "notes": [
+          "Follow-up evaluation shares verdict, evidence, clarification and transcript rendering with primary answer.",
+          "The saved primary answer remains available through Question · tap to go back.",
+          "No additional nested follow-up chain is rendered."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/QAScreen.tsx",
+            "line": 325
+          },
+          {
+            "path": "mobile/src/screens/QAScreen.tsx",
+            "line": 346
+          },
+          {
+            "path": "mobile/src/screens/QAScreen.tsx",
+            "line": 367
+          }
+        ],
+        "transitions": [
+          {
+            "to": "I1",
+            "label": "Question · tap to go back"
+          },
+          {
+            "to": "H3",
+            "label": "Redo follow-up"
+          },
+          {
+            "to": "H2",
+            "label": "Next question"
+          },
+          {
+            "to": "E3",
+            "label": "Back"
+          }
+        ]
+      },
+      {
+        "id": "I4",
+        "title": "Saved Q&A archive",
+        "screen": "qa",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "buttons",
+            "items": [
+              "Next saved / Current Q&A"
+            ]
+          },
+          {
+            "type": "text",
+            "text": "Saved Q&A · Question [n] / [count]"
+          },
+          {
+            "type": "muted",
+            "text": "[Saved audience · panelist / role]"
+          },
+          {
+            "type": "box",
+            "text": "[Saved question / follow-up]"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "▶ Hear question",
+              "▶ Saved audio · [duration]"
+            ]
+          },
+          {
+            "type": "box",
+            "text": "[Saved evaluation and timestamped transcript]"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Next question",
+              "↓ Back"
+            ]
+          }
+        ],
+        "notes": [
+          "Archive cycles saved sets then returns to current Q&A.",
+          "Playback-only: Record/Redo and answer-retry action are absent.",
+          "Saved audience, questions and answers belong to the archived generation job."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/QAScreen.tsx",
+            "line": 46
+          },
+          {
+            "path": "mobile/src/screens/QAScreen.tsx",
+            "line": 289
+          },
+          {
+            "path": "mobile/src/screens/QAScreen.tsx",
+            "line": 395
+          }
+        ],
+        "transitions": [
+          {
+            "to": "I4",
+            "label": "Next saved set"
+          },
+          {
+            "to": "H2",
+            "label": "Current Q&A"
+          },
+          {
+            "to": "E3",
+            "label": "Back"
+          }
+        ]
+      },
+      {
+        "id": "I5",
+        "title": "Q&A failure & prerequisite recovery",
+        "screen": "qa",
+        "kind": "state",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "Audience Q&A"
+          },
+          {
+            "type": "toast",
+            "text": "[Question generation / answer review error]"
+          },
+          {
+            "type": "box",
+            "text": "[Prerequisite or failure explanation]\nSaved recordings / answer retained"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Edit time and audience",
+              "Review selected recordings"
+            ]
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Refresh status",
+              "Retry / Update questions"
+            ]
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Tap failed answer to retry review",
+              "▶ Saved answer audio"
+            ]
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "↓ Back"
+            ]
+          }
+        ],
+        "notes": [
+          "Grouped variants: pending recording upload/transcription, dirty settings, missing audience, stale questions, slide-profile recovery or generation failure.",
+          "Failed answer review remains playable and tap-to-retry; retry is absent in archives.",
+          "Only actions applicable to the active variant appear.",
+          "This frame groups conditional UI variants. Variant messages and recovery controls are not all visible at once."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/QAScreen.tsx",
+            "line": 98
+          },
+          {
+            "path": "mobile/src/screens/QAScreen.tsx",
+            "line": 349
+          },
+          {
+            "path": "mobile/src/screens/QAScreen.tsx",
+            "line": 378
+          }
+        ],
+        "transitions": [
+          {
+            "to": "B3",
+            "label": "Edit time and audience"
+          },
+          {
+            "to": "E3",
+            "label": "Review selected recordings"
+          },
+          {
+            "to": "H1",
+            "label": "Refresh / retry questions"
+          },
+          {
+            "to": "H6",
+            "label": "Retry answer review"
+          }
+        ],
+        "variants": true
+      },
+      {
+        "id": "I6",
+        "title": "Confirm uncertain Q&A retry",
+        "screen": "qa",
+        "kind": "overlay",
+        "blocks": [
+          {
+            "type": "muted",
+            "text": "Q&A / saved answer underlay"
+          },
+          {
+            "type": "text",
+            "text": "Confirm retry"
+          },
+          {
+            "type": "box",
+            "text": "Previous request may have reached the provider and incurred a charge."
+          },
+          {
+            "type": "muted",
+            "text": "Retry the same saved input?"
+          },
+          {
+            "type": "buttons",
+            "items": [
+              "Cancel",
+              "Retry"
+            ]
+          }
+        ],
+        "notes": [
+          "Shared Q&A dialog handles uncertain question generation or answer evaluation.",
+          "Retry reuses saved input; it does not make a new recording.",
+          "Cancel dismisses the pending acknowledgement and retains saved content."
+        ],
+        "sources": [
+          {
+            "path": "mobile/src/screens/QAScreen.tsx",
+            "line": 403
+          }
+        ],
+        "transitions": [
+          {
+            "to": "H6",
+            "label": "Retry answer evaluation"
+          },
+          {
+            "to": "H1",
+            "label": "Retry question preparation"
+          },
+          {
+            "to": "I5",
+            "label": "Cancel question retry"
+          },
+          {
+            "to": "H6",
+            "label": "Cancel answer retry: keep audio"
+          }
+        ]
+      }
+    ]
+  }
+]

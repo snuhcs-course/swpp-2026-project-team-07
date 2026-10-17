@@ -1,0 +1,1233 @@
+{
+  "reviewer": "independent AI reviewer",
+  "review_date": "2026-10-17",
+  "scope": "Expanded physical-phone screenshot integrity, source/provenance wording, state coverage, original/manifest/REA hash chain, embedded SVG images and local links. No phone/service interaction or app tests.",
+  "capture_count": 47,
+  "earlier_capture_count": 22,
+  "new_authorized_synthetic_demo_count": 25,
+  "selected_new_ids": [
+    "S28",
+    "S29",
+    "S30",
+    "S31",
+    "S32",
+    "S33",
+    "S34",
+    "S35",
+    "S36",
+    "S37",
+    "S39",
+    "S40",
+    "S43",
+    "S44",
+    "S45",
+    "S46",
+    "S47",
+    "S48",
+    "S49",
+    "S50",
+    "S51",
+    "S52",
+    "S53",
+    "S54",
+    "S55"
+  ],
+  "selected_new_id_set_matches": true,
+  "excluded_intermediate_ids_absent": true,
+  "captured_routes": [
+    "compare",
+    "full",
+    "home",
+    "qa",
+    "rehearse",
+    "review",
+    "upload"
+  ],
+  "all_seven_routes_represented": true,
+  "original_manifest_evidence_checks": [
+    {
+      "id": "S18",
+      "file": "captures/S18-home/screen.png",
+      "sha256": "4721ac8a32385e3fb558aa0ab7c7017897c4f6a5eddd1e982c0a84d9a45cf4e9",
+      "evidence_id": "ev_7479dd11d08691d8b937af3067b71514b4a9f83c0fce4cdc0b9d26f6e834020b",
+      "ledger": "capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S24",
+      "file": "captures/S24-home-browse/screen.png",
+      "sha256": "198ac65802ff9df1820334a3aef6acd88cccb0ba7cdbbc9b6e32cec5df7fc709",
+      "evidence_id": "ev_02a3ddec41506de59b4e960a5613397c0ccdc6939169ebe0f844e68eaafbc685",
+      "ledger": "capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S19",
+      "file": "captures/S19-icon-picker/screen.png",
+      "sha256": "3451e59ae56793a5b712d437b2ab9e5ca59f08edc46e59ee1e2fd9658e3bbf15",
+      "evidence_id": "ev_5f7b25b92ca8364f77e989cdc7516f91391be127046e5b7794764e7301e3bd93",
+      "ledger": "capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S20",
+      "file": "captures/S20-about/screen.png",
+      "sha256": "37dbb2b478a7dfd95e21ce61bbf7cb001ccf6aeb8c0c1babaf1d8efe6eea3fb0",
+      "evidence_id": "ev_fb2cb4b8cdfa50f3b58174be1b509dc5729a4f4407483776bf86ce86242971d0",
+      "ledger": "capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S21",
+      "file": "captures/S21-import/screen.png",
+      "sha256": "5af464dfbf7824dbb797f64c724cc2f229fe6ece9889f1899476a0437286beff",
+      "evidence_id": "ev_b61b44177f449955936cfd996932e0d7ff117f9079dd6cc5a70f9e13e08c15ce",
+      "ledger": "capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S22",
+      "file": "captures/S22-pdf-picker/screen.png",
+      "sha256": "ef1e54542c0a5e3a0957ee035b28ce1f5e454f8de9bc81e8289d140e01277341",
+      "evidence_id": "ev_503fccec8c565f995a9bdd92ef44647a087360a23847dc0a5f9d6b94048de158",
+      "ledger": "capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S28",
+      "file": "captures/S28-import-setup/screen.png",
+      "sha256": "db6ed0af95381453e891715d3be1c94597fafae3ef284fe114901eead1e84e79",
+      "evidence_id": "ev_9c0150e37b34234ffbe9878884a0a040e8ccac9af8b9fd67e4ca23e369dbd251",
+      "ledger": "expanded-capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S25",
+      "file": "captures/S25-other-presentation/screen.png",
+      "sha256": "a3e4c7628f4cdf95468a27a34e313ef224b1abb7b059a8378c8ab5ec29968f7a",
+      "evidence_id": "ev_466b8d5aaa77492ace9b39db435b71aca8ab5331d6f0a0dc842d29bda7e0c28c",
+      "ledger": "capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S13",
+      "file": "captures/S13-rehearse/screen.png",
+      "sha256": "0806e8dc7c7f44da02bb76e56c15e7d08287d3794485b520bfb374e505849ade",
+      "evidence_id": "ev_f23e6e4f433803536d9e8ceab0f7799cbbdff38a38c829ff5efb83b194aa131a",
+      "ledger": "capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S14",
+      "file": "captures/S14-setup/screen.png",
+      "sha256": "d2bf730827045a54263b1fe5314b9f46450421ba591c081d3a477429111f35df",
+      "evidence_id": "ev_8f58103a44d1e148385b9a24d68867a9cb1f72a0985c990b0c7f4babb488385f",
+      "ledger": "capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S15",
+      "file": "captures/S15-rotated/screen.png",
+      "sha256": "d905aac78b12f6c99f4467d73dfc194f9179f9b95509b0e4e693457093a424a0",
+      "evidence_id": "ev_bd683114011f458de982da21a141c5c08641a9808ab9b4bdcac775f990012ca5",
+      "ledger": "capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S16",
+      "file": "captures/S16-redo-slide/screen.png",
+      "sha256": "901def3aed1aadf245bd12837a3a40f7aa99afcce502257d62c56cbb8b1f4e3b",
+      "evidence_id": "ev_d885f7b63b92fe6cf0275d9c12f3d5ccdbc39b8d0a93d80b0a953c51b3100f90",
+      "ledger": "capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S17",
+      "file": "captures/S17-redo-all/screen.png",
+      "sha256": "bd05c2340d244b41d30583bf2069175ad7ce8354f67c9589d4fb58f74e38b185",
+      "evidence_id": "ev_a543d38ec20e874aa1e4b286e89be44837229cde8656dcb0674150958cf0e2f7",
+      "ledger": "capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S29",
+      "file": "captures/S29-demo-rehearsal/screen.png",
+      "sha256": "ae5c659a59883b506f2c29d139b2d7146debb1280c5909c0a5b04af9fa95bf7b",
+      "evidence_id": "ev_e93f39bdbe20155898b5386c55861591a55f7045ff21c78a64e951dcada377e5",
+      "ledger": "expanded-capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S30",
+      "file": "captures/S30-microphone-countdown/screen.png",
+      "sha256": "343dddce99db42c7bc87871e12b734ec1a7ea10eb6043612f4bc6d19ba1457bb",
+      "evidence_id": "ev_48f34621dbc3a902ff8e8f69604cfd0b0a7c1de4a88ecf190b32ccac610de37f",
+      "ledger": "expanded-capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S31",
+      "file": "captures/S31-live-microphone-slide1/screen.png",
+      "sha256": "06260e065381a9ab89d5f6700d1e97a5a77608a8f41d18286db7d73d728d40d2",
+      "evidence_id": "ev_a2bc906cf83a725053fdc30944ddc16d7c8fc5649cd2679d4da56b6ded4511ed",
+      "ledger": "expanded-capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S32",
+      "file": "captures/S32-live-microphone-slide2/screen.png",
+      "sha256": "abb0815c103fdcb28ff67969f3fcbbc9e2c643d3ef0e7703dc81a5338470a31d",
+      "evidence_id": "ev_13837884540445ff74c256684a5359c3a74b77285f212ac2c40f767aca8ce3c6",
+      "ledger": "expanded-capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S33",
+      "file": "captures/S33-live-microphone-slide3/screen.png",
+      "sha256": "9ee4d7f65624d43c278ea878b0df10e7e76d694a6781bc0bec041a436116c9db",
+      "evidence_id": "ev_dead7d8b833e5326e725c544470fa50229f2688ab01368740698ed6a48b7a2ff",
+      "ledger": "expanded-capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S39",
+      "file": "captures/S39-demo-live-coaching/screen.png",
+      "sha256": "063d913ad93f3dcd69c9bf2171e089e385fb5bb6ebaa00111d9471ae26cdcc23",
+      "evidence_id": "ev_3f72208a0448ee5204a95c1d4bff6672312c1a24eb5e1a08baf08b5c81b0e94b",
+      "ledger": "expanded-capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S51",
+      "file": "captures/S51-demo-redo-confirmation/screen.png",
+      "sha256": "1bbc32e13045cbfae29ec303840558185e8ff841e2e396b34ad3bea4a3ba6941",
+      "evidence_id": "ev_f0491c4b8d0f54b872748564df11a1042d1ee6580c1be76873699a4b6fbe0e3c",
+      "ledger": "expanded-capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S52",
+      "file": "captures/S52-redo-countdown/screen.png",
+      "sha256": "2c822724c4b55bbb10e6e8a284f27ee8f1c6ef79be00adc64a6317e6b0e9245b",
+      "evidence_id": "ev_a29381fd9c4d1be4f02589cb44ad13e9ebcd8a7f052b1b10476da0730d61300e",
+      "ledger": "expanded-capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S53",
+      "file": "captures/S53-redo-live/screen.png",
+      "sha256": "d76938b5f31ad0d1de1f899dae9dd8bc3898d9def057c5f9938489d52d470466",
+      "evidence_id": "ev_6716fd0938fc1a3ca4bfd451b9b7880e651e7acce9f22ac2199a97d4f45ca92b",
+      "ledger": "expanded-capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S01",
+      "file": "captures/S01-review/screen.png",
+      "sha256": "dc8c08faf1e33ef74cc864735ebef4c8d6afed2e497bd0d9f66dafa10da8c050",
+      "evidence_id": "ev_1435e051f707804a5e6c40b835f121390b18df95111fd573b3a20ea899676114",
+      "ledger": "capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S04",
+      "file": "captures/S04-slide-two/screen.png",
+      "sha256": "b9406cfa603f845536cf1c5398e2fe383a26a9b36af092d79e26ec3361d1e352",
+      "evidence_id": "ev_8827ef33d7b53c3ad5f81caae163c3a8ef942b7db19493b5aea971a30dc818da",
+      "ledger": "capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S07",
+      "file": "captures/S07-review-details/screen.png",
+      "sha256": "667d6efa60ba98e124f91956b331e14feb49712dcfdbecd3181813f6f94627de",
+      "evidence_id": "ev_f01e203e478a06876602b1b0577b7d33fc8a701a16c62ed27b97638c041726b8",
+      "ledger": "capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S09",
+      "file": "captures/S09-recording-tools/screen.png",
+      "sha256": "f05fc4490ce5cc384b9218e0a47fdb2455b99ec83e8c7791d71117f61171ec40",
+      "evidence_id": "ev_cb83a14163958f77b4126398b4b52aa723c9521c39b8c57f8bd59a88cfa2d3ad",
+      "ledger": "capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S10",
+      "file": "captures/S10-descriptions/screen.png",
+      "sha256": "1044932b804c57c1f85dcea512bb6cb57648f3ad3e49af2021763b76c381cb26",
+      "evidence_id": "ev_57a6285414e717803dc727fbb2ab522224420dd0630e2527f6dcc9041b439b36",
+      "ledger": "capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S11",
+      "file": "captures/S11-offline-pdf/screen.png",
+      "sha256": "df2939efe90170f772152f3449c3b16e2b76a0bc338b80e956bb79e8e2e683a1",
+      "evidence_id": "ev_b99f6a245d408fe447133e40084adb841f56dd2e05afc36e5334181cc168426d",
+      "ledger": "capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S12",
+      "file": "captures/S12-feedback-status/screen.png",
+      "sha256": "980862ff770510f1ec0d0bb40df8765a91a41371668d5ecf134a84d5964ccf35",
+      "evidence_id": "ev_ffedec12b5b19dd6db0b5efb3c0a2b572c32fe7dc436dce68c697d6e96cb3cda",
+      "ledger": "capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S26",
+      "file": "captures/S26-full-score/screen.png",
+      "sha256": "de5c0df2e71e91779bf17158aaae16be35ec1b979bfc743b9aa6499b2983b307",
+      "evidence_id": "ev_0656860277f400dbf54156ac6e9b576f2d3f599bdfc1d47fc5dcd35280376bbf",
+      "ledger": "capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S03",
+      "file": "captures/S03-full-assessment/screen.png",
+      "sha256": "9d8c556316aac9516488c44e9b3ce333ca43e73ea6c9a46cb81c58ea7046f9f7",
+      "evidence_id": "ev_8faad22d443caa2cc9298771654c8008fad0a5dad646f1aaf05acdbe97c66f48",
+      "ledger": "capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S34",
+      "file": "captures/S34-take-upload-processing/screen.png",
+      "sha256": "d2afd4fff039764b27e9d795292fe98f0c46072c4db4e17781eaccca848ae90d",
+      "evidence_id": "ev_e7f8770bc93ae218b23bf3d892eb3995ea97ff293a69923f59560e9e6b4ada9d",
+      "ledger": "expanded-capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S35",
+      "file": "captures/S35-demo-upload-status/screen.png",
+      "sha256": "7b268692513ad69193e650cc98527de8cddb74fb96de9c4f2a7561c4ec4bf7f5",
+      "evidence_id": "ev_1a8e2d6f12b262665a8033474c76017a3f4fef1ef4d9ef4db6dbea0baa6890fb",
+      "ledger": "expanded-capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S36",
+      "file": "captures/S36-demo-slide-review/screen.png",
+      "sha256": "330c315c06c90aaca2a3483563c42b4ae2839ca59fb5874b2c27c91c89303faa",
+      "evidence_id": "ev_ba4c582cc529d99dce192f9d61fc14ac4615efb26917aee4dd60f0bb8c7653d1",
+      "ledger": "expanded-capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S37",
+      "file": "captures/S37-review-playback/screen.png",
+      "sha256": "67bf70dbf734920a85c98fba3c8481f14402ad9bd1e690c33ae4709475d0fe1c",
+      "evidence_id": "ev_3fc93ca09a4cac8776e88e7661b04f603b9ba4d3dde4069d8b8172802627396e",
+      "ledger": "expanded-capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S40",
+      "file": "captures/S40-live-full-review/screen.png",
+      "sha256": "db7f9420851ce187b85aaa0ef4d3f68a5426c4131b5b9eba2ce6542ad6ec0911",
+      "evidence_id": "ev_1487f214eb171e32e6fa876c9a112ef89a89a9d05537be5de9f70c61b0f1dae5",
+      "ledger": "expanded-capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S43",
+      "file": "captures/S43-qa-question-preparing/screen.png",
+      "sha256": "596e2dc88064947be3291892d122b36b9d5ed2d9fc78da907cb20790dcc74c43",
+      "evidence_id": "ev_a2e9ce0f46955eb8768de35bf6325c8fb0b82c80960db6efbf59d8ccda967f46",
+      "ledger": "expanded-capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S50",
+      "file": "captures/S50-full-review-completed/screen.png",
+      "sha256": "5a103498a5b4cfc74986c5989a1ccd80157d932b16aa659e3119cc6964920a23",
+      "evidence_id": "ev_e1314f0d346a4b239d53090e5a800fddf6800808938d7e3d826633e6c74ed4a8",
+      "ledger": "expanded-capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S05",
+      "file": "captures/S05-qa/screen.png",
+      "sha256": "097dc774d58afd04d63a9239bb6898f6498f897e47e8842087bb5fa43ebcd74a",
+      "evidence_id": "ev_a9fcf395e3a070eca68f410d785a825ec53cbdf054f57d9abf2d2214b455c782",
+      "ledger": "capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S44",
+      "file": "captures/S44-qa-question/screen.png",
+      "sha256": "994dd9a33685485c8754d3f03bdb19d136c9f16aa8a30de8e4a474668f3b888d",
+      "evidence_id": "ev_a1cb5bbb8c21d7e1181acb086be1a26569b00622e059fc2c4d6bad4f5dd7180a",
+      "ledger": "expanded-capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S45",
+      "file": "captures/S45-qa-countdown/screen.png",
+      "sha256": "b3328b8fc7fe2348231cce4ec9b939dd8caec36f8cf85da6f0af4cbbf556829e",
+      "evidence_id": "ev_3e4bf12891978b6b38399a4fbfeb5a7970ee66f67a20ea4c726fa7b9e0fe2f44",
+      "ledger": "expanded-capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S46",
+      "file": "captures/S46-qa-live-answer/screen.png",
+      "sha256": "84ed06996d8a54dfbe9f23f0ee346c13cd666c71547a226a65f8d82143077bd2",
+      "evidence_id": "ev_9fb73d9ebc8716cef528ddb6b765509e59cf65b4bb578f0ec71d2dd5ca83beea",
+      "ledger": "expanded-capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S47",
+      "file": "captures/S47-qa-answer-processing/screen.png",
+      "sha256": "f5d8220a34343f7901ab2caed9b3715b220e61fc914068a529eba3c1a5f271c5",
+      "evidence_id": "ev_ffbd682a2af295f3236d651de3986bfa19cc3eaa805c0e1157b084783f9415b3",
+      "ledger": "expanded-capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S48",
+      "file": "captures/S48-qa-answer-review/screen.png",
+      "sha256": "4c7ddffa5d53c73f6e9d77c03b065a73780953ece0a624fad0bf5aa138f4186a",
+      "evidence_id": "ev_8fda59990932a4d2fe4b3195c107cec3941d4c0fa31d735d6818523e7275e647",
+      "ledger": "expanded-capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S49",
+      "file": "captures/S49-qa-followup-review/screen.png",
+      "sha256": "d2d391dafb1099448fd9c3295a331cadc8535cfae598958ebadfeabd2a6eefac",
+      "evidence_id": "ev_ca2d209b0bffcb7064f902245d60a5505e9ca6d7c678aa525a1a2905e1f556cb",
+      "ledger": "expanded-capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S54",
+      "file": "captures/S54-compare-takes/screen.png",
+      "sha256": "de103e61c516589c653e4b1eaad03210e7f39307ca3ef9c834e00a3ea10b56e0",
+      "evidence_id": "ev_ea94a98b4bb8285331030b6e0a4a63c5759594aa5018a4a4eab8eac1d4c2b684",
+      "ledger": "expanded-capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    },
+    {
+      "id": "S55",
+      "file": "captures/S55-compare-completed/screen.png",
+      "sha256": "2bdc0b46f7b68c7b9e62c85636e5bfa7ee00735f81224a54b6ac384972010435",
+      "evidence_id": "ev_94f0d39ac71707faed32bfe3fd412da83cb1f89cfd81e9b263ca4a758fd6e918",
+      "ledger": "expanded-capture-evidence.json",
+      "hash_matches_manifest_and_record": true,
+      "bytes_match": true,
+      "dimensions_match": true,
+      "dimensions": [
+        1080,
+        2316
+      ],
+      "path_matches": true,
+      "serial_matches": true,
+      "record_is_observed_adb_screen": true
+    }
+  ],
+  "all_original_evidence_checks_pass": true,
+  "ledger_files": {
+    "capture-evidence.json": {
+      "record_count": 22,
+      "sha256": "5679c363d24efecb585507a6c591cbb3a465d6df35cdb3012f6be0d22d2c1007"
+    },
+    "expanded-capture-evidence.json": {
+      "record_count": 29,
+      "sha256": "06615ab07f9a84482a96e0413c6c767c260c1cf19c457f9aaf361eef731f6ee1"
+    }
+  },
+  "svg_embedded_image_count": 47,
+  "svg_embedded_images": [
+    {
+      "sha256": "4721ac8a32385e3fb558aa0ab7c7017897c4f6a5eddd1e982c0a84d9a45cf4e9",
+      "matching_capture_ids": [
+        "S18"
+      ]
+    },
+    {
+      "sha256": "198ac65802ff9df1820334a3aef6acd88cccb0ba7cdbbc9b6e32cec5df7fc709",
+      "matching_capture_ids": [
+        "S24"
+      ]
+    },
+    {
+      "sha256": "3451e59ae56793a5b712d437b2ab9e5ca59f08edc46e59ee1e2fd9658e3bbf15",
+      "matching_capture_ids": [
+        "S19"
+      ]
+    },
+    {
+      "sha256": "37dbb2b478a7dfd95e21ce61bbf7cb001ccf6aeb8c0c1babaf1d8efe6eea3fb0",
+      "matching_capture_ids": [
+        "S20"
+      ]
+    },
+    {
+      "sha256": "5af464dfbf7824dbb797f64c724cc2f229fe6ece9889f1899476a0437286beff",
+      "matching_capture_ids": [
+        "S21"
+      ]
+    },
+    {
+      "sha256": "ef1e54542c0a5e3a0957ee035b28ce1f5e454f8de9bc81e8289d140e01277341",
+      "matching_capture_ids": [
+        "S22"
+      ]
+    },
+    {
+      "sha256": "db6ed0af95381453e891715d3be1c94597fafae3ef284fe114901eead1e84e79",
+      "matching_capture_ids": [
+        "S28"
+      ]
+    },
+    {
+      "sha256": "a3e4c7628f4cdf95468a27a34e313ef224b1abb7b059a8378c8ab5ec29968f7a",
+      "matching_capture_ids": [
+        "S25"
+      ]
+    },
+    {
+      "sha256": "0806e8dc7c7f44da02bb76e56c15e7d08287d3794485b520bfb374e505849ade",
+      "matching_capture_ids": [
+        "S13"
+      ]
+    },
+    {
+      "sha256": "d2bf730827045a54263b1fe5314b9f46450421ba591c081d3a477429111f35df",
+      "matching_capture_ids": [
+        "S14"
+      ]
+    },
+    {
+      "sha256": "d905aac78b12f6c99f4467d73dfc194f9179f9b95509b0e4e693457093a424a0",
+      "matching_capture_ids": [
+        "S15"
+      ]
+    },
+    {
+      "sha256": "901def3aed1aadf245bd12837a3a40f7aa99afcce502257d62c56cbb8b1f4e3b",
+      "matching_capture_ids": [
+        "S16"
+      ]
+    },
+    {
+      "sha256": "bd05c2340d244b41d30583bf2069175ad7ce8354f67c9589d4fb58f74e38b185",
+      "matching_capture_ids": [
+        "S17"
+      ]
+    },
+    {
+      "sha256": "ae5c659a59883b506f2c29d139b2d7146debb1280c5909c0a5b04af9fa95bf7b",
+      "matching_capture_ids": [
+        "S29"
+      ]
+    },
+    {
+      "sha256": "343dddce99db42c7bc87871e12b734ec1a7ea10eb6043612f4bc6d19ba1457bb",
+      "matching_capture_ids": [
+        "S30"
+      ]
+    },
+    {
+      "sha256": "06260e065381a9ab89d5f6700d1e97a5a77608a8f41d18286db7d73d728d40d2",
+      "matching_capture_ids": [
+        "S31"
+      ]
+    },
+    {
+      "sha256": "abb0815c103fdcb28ff67969f3fcbbc9e2c643d3ef0e7703dc81a5338470a31d",
+      "matching_capture_ids": [
+        "S32"
+      ]
+    },
+    {
+      "sha256": "9ee4d7f65624d43c278ea878b0df10e7e76d694a6781bc0bec041a436116c9db",
+      "matching_capture_ids": [
+        "S33"
+      ]
+    },
+    {
+      "sha256": "063d913ad93f3dcd69c9bf2171e089e385fb5bb6ebaa00111d9471ae26cdcc23",
+      "matching_capture_ids": [
+        "S39"
+      ]
+    },
+    {
+      "sha256": "1bbc32e13045cbfae29ec303840558185e8ff841e2e396b34ad3bea4a3ba6941",
+      "matching_capture_ids": [
+        "S51"
+      ]
+    },
+    {
+      "sha256": "2c822724c4b55bbb10e6e8a284f27ee8f1c6ef79be00adc64a6317e6b0e9245b",
+      "matching_capture_ids": [
+        "S52"
+      ]
+    },
+    {
+      "sha256": "d76938b5f31ad0d1de1f899dae9dd8bc3898d9def057c5f9938489d52d470466",
+      "matching_capture_ids": [
+        "S53"
+      ]
+    },
+    {
+      "sha256": "dc8c08faf1e33ef74cc864735ebef4c8d6afed2e497bd0d9f66dafa10da8c050",
+      "matching_capture_ids": [
+        "S01"
+      ]
+    },
+    {
+      "sha256": "b9406cfa603f845536cf1c5398e2fe383a26a9b36af092d79e26ec3361d1e352",
+      "matching_capture_ids": [
+        "S04"
+      ]
+    },
+    {
+      "sha256": "667d6efa60ba98e124f91956b331e14feb49712dcfdbecd3181813f6f94627de",
+      "matching_capture_ids": [
+        "S07"
+      ]
+    },
+    {
+      "sha256": "f05fc4490ce5cc384b9218e0a47fdb2455b99ec83e8c7791d71117f61171ec40",
+      "matching_capture_ids": [
+        "S09"
+      ]
+    },
+    {
+      "sha256": "1044932b804c57c1f85dcea512bb6cb57648f3ad3e49af2021763b76c381cb26",
+      "matching_capture_ids": [
+        "S10"
+      ]
+    },
+    {
+      "sha256": "df2939efe90170f772152f3449c3b16e2b76a0bc338b80e956bb79e8e2e683a1",
+      "matching_capture_ids": [
+        "S11"
+      ]
+    },
+    {
+      "sha256": "980862ff770510f1ec0d0bb40df8765a91a41371668d5ecf134a84d5964ccf35",
+      "matching_capture_ids": [
+        "S12"
+      ]
+    },
+    {
+      "sha256": "de5c0df2e71e91779bf17158aaae16be35ec1b979bfc743b9aa6499b2983b307",
+      "matching_capture_ids": [
+        "S26"
+      ]
+    },
+    {
+      "sha256": "9d8c556316aac9516488c44e9b3ce333ca43e73ea6c9a46cb81c58ea7046f9f7",
+      "matching_capture_ids": [
+        "S03"
+      ]
+    },
+    {
+      "sha256": "d2afd4fff039764b27e9d795292fe98f0c46072c4db4e17781eaccca848ae90d",
+      "matching_capture_ids": [
+        "S34"
+      ]
+    },
+    {
+      "sha256": "7b268692513ad69193e650cc98527de8cddb74fb96de9c4f2a7561c4ec4bf7f5",
+      "matching_capture_ids": [
+        "S35"
+      ]
+    },
+    {
+      "sha256": "330c315c06c90aaca2a3483563c42b4ae2839ca59fb5874b2c27c91c89303faa",
+      "matching_capture_ids": [
+        "S36"
+      ]
+    },
+    {
+      "sha256": "67bf70dbf734920a85c98fba3c8481f14402ad9bd1e690c33ae4709475d0fe1c",
+      "matching_capture_ids": [
+        "S37"
+      ]
+    },
+    {
+      "sha256": "db7f9420851ce187b85aaa0ef4d3f68a5426c4131b5b9eba2ce6542ad6ec0911",
+      "matching_capture_ids": [
+        "S40"
+      ]
+    },
+    {
+      "sha256": "596e2dc88064947be3291892d122b36b9d5ed2d9fc78da907cb20790dcc74c43",
+      "matching_capture_ids": [
+        "S43"
+      ]
+    },
+    {
+      "sha256": "5a103498a5b4cfc74986c5989a1ccd80157d932b16aa659e3119cc6964920a23",
+      "matching_capture_ids": [
+        "S50"
+      ]
+    },
+    {
+      "sha256": "097dc774d58afd04d63a9239bb6898f6498f897e47e8842087bb5fa43ebcd74a",
+      "matching_capture_ids": [
+        "S05"
+      ]
+    },
+    {
+      "sha256": "994dd9a33685485c8754d3f03bdb19d136c9f16aa8a30de8e4a474668f3b888d",
+      "matching_capture_ids": [
+        "S44"
+      ]
+    },
+    {
+      "sha256": "b3328b8fc7fe2348231cce4ec9b939dd8caec36f8cf85da6f0af4cbbf556829e",
+      "matching_capture_ids": [
+        "S45"
+      ]
+    },
+    {
+      "sha256": "84ed06996d8a54dfbe9f23f0ee346c13cd666c71547a226a65f8d82143077bd2",
+      "matching_capture_ids": [
+        "S46"
+      ]
+    },
+    {
+      "sha256": "f5d8220a34343f7901ab2caed9b3715b220e61fc914068a529eba3c1a5f271c5",
+      "matching_capture_ids": [
+        "S47"
+      ]
+    },
+    {
+      "sha256": "4c7ddffa5d53c73f6e9d77c03b065a73780953ece0a624fad0bf5aa138f4186a",
+      "matching_capture_ids": [
+        "S48"
+      ]
+    },
+    {
+      "sha256": "d2d391dafb1099448fd9c3295a331cadc8535cfae598958ebadfeabd2a6eefac",
+      "matching_capture_ids": [
+        "S49"
+      ]
+    },
+    {
+      "sha256": "de103e61c516589c653e4b1eaad03210e7f39307ca3ef9c834e00a3ea10b56e0",
+      "matching_capture_ids": [
+        "S54"
+      ]
+    },
+    {
+      "sha256": "2bdc0b46f7b68c7b9e62c85636e5bfa7ee00735f81224a54b6ac384972010435",
+      "matching_capture_ids": [
+        "S55"
+      ]
+    }
+  ],
+  "svg_all_embedded_bytes_match_originals": true,
+  "html_image_count": 47,
+  "html_image_set_matches_manifest": true,
+  "index_equals_board": true,
+  "local_html_missing_links": [],
+  "route_overview_matches_declared_capture_transitions": true,
+  "cross_route_edge_count": 15,
+  "visual_check": "Earlier22 originals previously checked. All25 new originals inspected together as a contact sheet; setup and completed score also viewed at full size. New titles and notes match visible physical app UI, including countdown/live waveform, transcript playback, live score67 and overall64, question/evaluation, offered unrecorded follow-up, and Compare31s/25s.",
+  "truthfulness_check": "Manifest separates the earlier existing-data inspection from later authorized acoustic synthetic microphone capture. Pending and unavailable screenshots remain genuine. It discloses first-take migration to isolated backend, retained personal presentations, all seven route coverage vs remaining conditional-state gaps, and absence of separate follow-up answer/archive. Visible results are described as actual runtime responses; synthetic speech is not claimed as human testing.",
+  "source_provenance_check": {
+    "frontend_modules": 112,
+    "frontend_evidence": "Previously independently compared installed APK, retained bundle and source-map application modules to pinned PR31; unchanged build-provenance.json retained.",
+    "backend_python_files_rehashed": 110,
+    "backend_mismatches": [],
+    "backend_head": "f1af9dd9737e2ac9adbe8a45186f0e2722863e60",
+    "live_provider_report_reviewed": "live-demo-verification.json records 3 completed Scribe transcripts and 7 successful OpenAI requests; reviewed the saved report without repeating paid requests."
+  },
+  "reviewed_artifact_sha256": {
+    "screenshot-manifest.json": "751137a073dd27848ab89272ae8fdc865b47ee5527ec119aafcef9b8971f4427",
+    "index.html": "7e02270dbb871fbe08e7087239d69d307f0cfd559ad97bcc605bca16a35a6d77",
+    "screenshot-board.html": "7e02270dbb871fbe08e7087239d69d307f0cfd559ad97bcc605bca16a35a6d77",
+    "actual-app-diagram.svg": "6bd04d288db6daa814b4afd389bd952ab69653f341828af146b3d764c2f95c4e",
+    "actual-app-diagram.pdf": "21ea3d991f3084a9ad97e661805a10c32be4b71c4d3b7d95beb80f3e210dd233",
+    "README.md": "ce8bf3066a7db062d261c5a7cc55776f32d4fcee26d1f2759a892c91d767659a",
+    "build-provenance.json": "351ff2c788ad50661471c8c94ff2d7f034d9ed66a157b9c8368ced9c7a715051",
+    "capture-evidence.json": "5679c363d24efecb585507a6c591cbb3a465d6df35cdb3012f6be0d22d2c1007",
+    "expanded-capture-evidence.json": "06615ab07f9a84482a96e0413c6c767c260c1cf19c457f9aaf361eef731f6ee1",
+    "live-demo-verification.json": "ef95e02916c0c39a9667484cfebe20d987c4c2ef6e633f9b610cba9175eb798a",
+    "live-demo-copy-provenance.json": "f9750bdf3c9d37659fabc90672163890a15f9f5ce3f72bd0f0bec2273526e0fa",
+    "live-demo-backend-source-provenance.json": "79a182a81aa43ab6f6578f702a7eb525b74c8d6bb229b48a88d4b97f15942385",
+    "live-demo-device-check.json": "9a23d3ccb94f62764862a9e6301696ba4b0fcc634b3003adc34db6df69d3b8f9",
+    "screenshot-browser-verification.json": "3fea99e686c44cbd0664d7c727b2cbb4f2b2a81b2fc2badfc6e1ee2da6ddc249"
+  },
+  "findings": [],
+  "pending_final_checks": [],
+  "limitations": [
+    "REA records capture one frame and do not prove interactions between frames.",
+    "Provider counts are supported by saved verification evidence reviewed here; reviewer did not rerun or independently intercept providers.",
+    "Parent owns browser responsiveness and visual PDF export QA."
+  ],
+  "device_or_service_actions_by_reviewer": false,
+  "source_flow_accuracy_check": {
+    "status": "passed",
+    "compare_return": "CompareScreen.tsx:52-60 calls reviewDestination(model.state.takes); domain/run.ts:143-145 returns review after the second saved take. Manifest S55 now points to S43.",
+    "rehearsal_review": "RehearseScreen.tsx:155-160 routes first-take Review to Full Review; S39 points to the pending S40 state.",
+    "assessment_transition": "S35 says assessment starts when service is available; it does not invent a button or imply grading was complete in that frame.",
+    "contextual_back": "FullReviewScreen.tsx:66-76 and280, ReviewScreen.tsx:57-60 and124 preserve entry context. New S43/S50/S55 notes explicitly distinguish the captured footer from post-Compare entry.",
+    "preferred_overview_capture_ids": [
+      "S18",
+      "S21",
+      "S29",
+      "S43",
+      "S50",
+      "S55",
+      "S44"
+    ]
+  },
+  "resolved_review_notes": [
+    {
+      "issue": "Reused S43/S50 captures show earlier contextual Back footers.",
+      "resolution": "S43/S50/S55 now state entry-dependent Back behavior explicitly; final PDF includes all three notes.",
+      "status": "resolved"
+    }
+  ],
+  "readme_accuracy_check": {
+    "status": "passed",
+    "missing_local_links": [],
+    "generation_scripts_exist": true,
+    "capture_count": 47,
+    "route_count": 7,
+    "navigation_link_count": 90,
+    "provenance_and_scope_claims_match_saved_evidence": true
+  },
+  "pdf_structure_cross_check": {
+    "pages": 20,
+    "expected_capture_ids": 47,
+    "missing_capture_ids": [],
+    "new_context_notes_present": true,
+    "limitation": "Structural and text checks by reviewer; parent owns rendered visual PDF QA."
+  },
+  "final_phone_saved_evidence_check": {
+    "raw_capture_sha256_matches": true,
+    "observed_saved_full_review": "1:15, score64, slide scores67/67/67",
+    "original_full_run_duration_ms": 74823,
+    "reviewer_viewed_saved_png": true,
+    "device_interaction_by_reviewer": false
+  },
+  "final_status": "passed",
+  "latest_review_covers_final_context_notes": true
+}

@@ -1,0 +1,885 @@
+{
+  "source": "Selected complete REA capture records from the root session",
+  "records": [
+    {
+      "evidence_id": "ev_02a3ddec41506de59b4e960a5613397c0ccdc6939169ebe0f844e68eaafbc685",
+      "subject": null,
+      "provider": {
+        "id": "adb",
+        "name": "Android Debug Bridge",
+        "version": "37.0.1-15733141"
+      },
+      "analysis_profile": null,
+      "predicate_type": "rea.analysis",
+      "operation": "capture_adb_screen",
+      "parameters": {
+        "serial": "R3CW20SNFXV",
+        "output_directory": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S24-home-browse"
+      },
+      "raw_result": null,
+      "normalized_result": {
+        "client": {
+          "binary_path": "adb",
+          "path_source": "path",
+          "version": "37.0.1-15733141",
+          "installed_path": "/opt/homebrew/bin/adb"
+        },
+        "serial": "R3CW20SNFXV",
+        "local_path": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S24-home-browse/screen.png",
+        "bytes": 506115,
+        "sha256": "198ac65802ff9df1820334a3aef6acd88cccb0ba7cdbbc9b6e32cec5df7fc709",
+        "width": 1080,
+        "height": 2316
+      },
+      "confidence": "observed",
+      "authority": "shipped-artifact",
+      "environment": null,
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "The capture is one frame at read time; no recording or interaction occurred"
+      ],
+      "locations": [],
+      "evidence_links": []
+    },
+    {
+      "evidence_id": "ev_0656860277f400dbf54156ac6e9b576f2d3f599bdfc1d47fc5dcd35280376bbf",
+      "subject": null,
+      "provider": {
+        "id": "adb",
+        "name": "Android Debug Bridge",
+        "version": "37.0.1-15733141"
+      },
+      "analysis_profile": null,
+      "predicate_type": "rea.analysis",
+      "operation": "capture_adb_screen",
+      "parameters": {
+        "serial": "R3CW20SNFXV",
+        "output_directory": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S26-full-score"
+      },
+      "raw_result": null,
+      "normalized_result": {
+        "client": {
+          "binary_path": "adb",
+          "path_source": "path",
+          "version": "37.0.1-15733141",
+          "installed_path": "/opt/homebrew/bin/adb"
+        },
+        "serial": "R3CW20SNFXV",
+        "local_path": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S26-full-score/screen.png",
+        "bytes": 603919,
+        "sha256": "de5c0df2e71e91779bf17158aaae16be35ec1b979bfc743b9aa6499b2983b307",
+        "width": 1080,
+        "height": 2316
+      },
+      "confidence": "observed",
+      "authority": "shipped-artifact",
+      "environment": null,
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "The capture is one frame at read time; no recording or interaction occurred"
+      ],
+      "locations": [],
+      "evidence_links": []
+    },
+    {
+      "evidence_id": "ev_1435e051f707804a5e6c40b835f121390b18df95111fd573b3a20ea899676114",
+      "subject": null,
+      "provider": {
+        "id": "adb",
+        "name": "Android Debug Bridge",
+        "version": "37.0.1-15733141"
+      },
+      "analysis_profile": null,
+      "predicate_type": "rea.analysis",
+      "operation": "capture_adb_screen",
+      "parameters": {
+        "serial": "R3CW20SNFXV",
+        "output_directory": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S01-review"
+      },
+      "raw_result": null,
+      "normalized_result": {
+        "client": {
+          "binary_path": "adb",
+          "path_source": "path",
+          "version": "37.0.1-15733141",
+          "installed_path": "/opt/homebrew/bin/adb"
+        },
+        "serial": "R3CW20SNFXV",
+        "local_path": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S01-review/screen.png",
+        "bytes": 525178,
+        "sha256": "dc8c08faf1e33ef74cc864735ebef4c8d6afed2e497bd0d9f66dafa10da8c050",
+        "width": 1080,
+        "height": 2316
+      },
+      "confidence": "observed",
+      "authority": "shipped-artifact",
+      "environment": null,
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "The capture is one frame at read time; no recording or interaction occurred"
+      ],
+      "locations": [],
+      "evidence_links": []
+    },
+    {
+      "evidence_id": "ev_466b8d5aaa77492ace9b39db435b71aca8ab5331d6f0a0dc842d29bda7e0c28c",
+      "subject": null,
+      "provider": {
+        "id": "adb",
+        "name": "Android Debug Bridge",
+        "version": "37.0.1-15733141"
+      },
+      "analysis_profile": null,
+      "predicate_type": "rea.analysis",
+      "operation": "capture_adb_screen",
+      "parameters": {
+        "serial": "R3CW20SNFXV",
+        "output_directory": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S25-other-presentation"
+      },
+      "raw_result": null,
+      "normalized_result": {
+        "client": {
+          "binary_path": "adb",
+          "path_source": "path",
+          "version": "37.0.1-15733141",
+          "installed_path": "/opt/homebrew/bin/adb"
+        },
+        "serial": "R3CW20SNFXV",
+        "local_path": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S25-other-presentation/screen.png",
+        "bytes": 823879,
+        "sha256": "a3e4c7628f4cdf95468a27a34e313ef224b1abb7b059a8378c8ab5ec29968f7a",
+        "width": 1080,
+        "height": 2316
+      },
+      "confidence": "observed",
+      "authority": "shipped-artifact",
+      "environment": null,
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "The capture is one frame at read time; no recording or interaction occurred"
+      ],
+      "locations": [],
+      "evidence_links": []
+    },
+    {
+      "evidence_id": "ev_503fccec8c565f995a9bdd92ef44647a087360a23847dc0a5f9d6b94048de158",
+      "subject": null,
+      "provider": {
+        "id": "adb",
+        "name": "Android Debug Bridge",
+        "version": "37.0.1-15733141"
+      },
+      "analysis_profile": null,
+      "predicate_type": "rea.analysis",
+      "operation": "capture_adb_screen",
+      "parameters": {
+        "serial": "R3CW20SNFXV",
+        "output_directory": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S22-pdf-picker"
+      },
+      "raw_result": null,
+      "normalized_result": {
+        "client": {
+          "binary_path": "adb",
+          "path_source": "path",
+          "version": "37.0.1-15733141",
+          "installed_path": "/opt/homebrew/bin/adb"
+        },
+        "serial": "R3CW20SNFXV",
+        "local_path": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S22-pdf-picker/screen.png",
+        "bytes": 129142,
+        "sha256": "ef1e54542c0a5e3a0957ee035b28ce1f5e454f8de9bc81e8289d140e01277341",
+        "width": 1080,
+        "height": 2316
+      },
+      "confidence": "observed",
+      "authority": "shipped-artifact",
+      "environment": null,
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "The capture is one frame at read time; no recording or interaction occurred"
+      ],
+      "locations": [],
+      "evidence_links": []
+    },
+    {
+      "evidence_id": "ev_57a6285414e717803dc727fbb2ab522224420dd0630e2527f6dcc9041b439b36",
+      "subject": null,
+      "provider": {
+        "id": "adb",
+        "name": "Android Debug Bridge",
+        "version": "37.0.1-15733141"
+      },
+      "analysis_profile": null,
+      "predicate_type": "rea.analysis",
+      "operation": "capture_adb_screen",
+      "parameters": {
+        "serial": "R3CW20SNFXV",
+        "output_directory": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S10-descriptions"
+      },
+      "raw_result": null,
+      "normalized_result": {
+        "client": {
+          "binary_path": "adb",
+          "path_source": "path",
+          "version": "37.0.1-15733141",
+          "installed_path": "/opt/homebrew/bin/adb"
+        },
+        "serial": "R3CW20SNFXV",
+        "local_path": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S10-descriptions/screen.png",
+        "bytes": 607014,
+        "sha256": "1044932b804c57c1f85dcea512bb6cb57648f3ad3e49af2021763b76c381cb26",
+        "width": 1080,
+        "height": 2316
+      },
+      "confidence": "observed",
+      "authority": "shipped-artifact",
+      "environment": null,
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "The capture is one frame at read time; no recording or interaction occurred"
+      ],
+      "locations": [],
+      "evidence_links": []
+    },
+    {
+      "evidence_id": "ev_5f7b25b92ca8364f77e989cdc7516f91391be127046e5b7794764e7301e3bd93",
+      "subject": null,
+      "provider": {
+        "id": "adb",
+        "name": "Android Debug Bridge",
+        "version": "37.0.1-15733141"
+      },
+      "analysis_profile": null,
+      "predicate_type": "rea.analysis",
+      "operation": "capture_adb_screen",
+      "parameters": {
+        "serial": "R3CW20SNFXV",
+        "output_directory": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S19-icon-picker"
+      },
+      "raw_result": null,
+      "normalized_result": {
+        "client": {
+          "binary_path": "adb",
+          "path_source": "path",
+          "version": "37.0.1-15733141",
+          "installed_path": "/opt/homebrew/bin/adb"
+        },
+        "serial": "R3CW20SNFXV",
+        "local_path": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S19-icon-picker/screen.png",
+        "bytes": 744227,
+        "sha256": "3451e59ae56793a5b712d437b2ab9e5ca59f08edc46e59ee1e2fd9658e3bbf15",
+        "width": 1080,
+        "height": 2316
+      },
+      "confidence": "observed",
+      "authority": "shipped-artifact",
+      "environment": null,
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "The capture is one frame at read time; no recording or interaction occurred"
+      ],
+      "locations": [],
+      "evidence_links": []
+    },
+    {
+      "evidence_id": "ev_7479dd11d08691d8b937af3067b71514b4a9f83c0fce4cdc0b9d26f6e834020b",
+      "subject": null,
+      "provider": {
+        "id": "adb",
+        "name": "Android Debug Bridge",
+        "version": "37.0.1-15733141"
+      },
+      "analysis_profile": null,
+      "predicate_type": "rea.analysis",
+      "operation": "capture_adb_screen",
+      "parameters": {
+        "serial": "R3CW20SNFXV",
+        "output_directory": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S18-home"
+      },
+      "raw_result": null,
+      "normalized_result": {
+        "client": {
+          "binary_path": "adb",
+          "path_source": "path",
+          "version": "37.0.1-15733141",
+          "installed_path": "/opt/homebrew/bin/adb"
+        },
+        "serial": "R3CW20SNFXV",
+        "local_path": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S18-home/screen.png",
+        "bytes": 520789,
+        "sha256": "4721ac8a32385e3fb558aa0ab7c7017897c4f6a5eddd1e982c0a84d9a45cf4e9",
+        "width": 1080,
+        "height": 2316
+      },
+      "confidence": "observed",
+      "authority": "shipped-artifact",
+      "environment": null,
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "The capture is one frame at read time; no recording or interaction occurred"
+      ],
+      "locations": [],
+      "evidence_links": []
+    },
+    {
+      "evidence_id": "ev_8827ef33d7b53c3ad5f81caae163c3a8ef942b7db19493b5aea971a30dc818da",
+      "subject": null,
+      "provider": {
+        "id": "adb",
+        "name": "Android Debug Bridge",
+        "version": "37.0.1-15733141"
+      },
+      "analysis_profile": null,
+      "predicate_type": "rea.analysis",
+      "operation": "capture_adb_screen",
+      "parameters": {
+        "serial": "R3CW20SNFXV",
+        "output_directory": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S04-slide-two"
+      },
+      "raw_result": null,
+      "normalized_result": {
+        "client": {
+          "binary_path": "adb",
+          "path_source": "path",
+          "version": "37.0.1-15733141",
+          "installed_path": "/opt/homebrew/bin/adb"
+        },
+        "serial": "R3CW20SNFXV",
+        "local_path": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S04-slide-two/screen.png",
+        "bytes": 514022,
+        "sha256": "b9406cfa603f845536cf1c5398e2fe383a26a9b36af092d79e26ec3361d1e352",
+        "width": 1080,
+        "height": 2316
+      },
+      "confidence": "observed",
+      "authority": "shipped-artifact",
+      "environment": null,
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "The capture is one frame at read time; no recording or interaction occurred"
+      ],
+      "locations": [],
+      "evidence_links": []
+    },
+    {
+      "evidence_id": "ev_8f58103a44d1e148385b9a24d68867a9cb1f72a0985c990b0c7f4babb488385f",
+      "subject": null,
+      "provider": {
+        "id": "adb",
+        "name": "Android Debug Bridge",
+        "version": "37.0.1-15733141"
+      },
+      "analysis_profile": null,
+      "predicate_type": "rea.analysis",
+      "operation": "capture_adb_screen",
+      "parameters": {
+        "serial": "R3CW20SNFXV",
+        "output_directory": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S14-setup"
+      },
+      "raw_result": null,
+      "normalized_result": {
+        "client": {
+          "binary_path": "adb",
+          "path_source": "path",
+          "version": "37.0.1-15733141",
+          "installed_path": "/opt/homebrew/bin/adb"
+        },
+        "serial": "R3CW20SNFXV",
+        "local_path": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S14-setup/screen.png",
+        "bytes": 548793,
+        "sha256": "d2bf730827045a54263b1fe5314b9f46450421ba591c081d3a477429111f35df",
+        "width": 1080,
+        "height": 2316
+      },
+      "confidence": "observed",
+      "authority": "shipped-artifact",
+      "environment": null,
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "The capture is one frame at read time; no recording or interaction occurred"
+      ],
+      "locations": [],
+      "evidence_links": []
+    },
+    {
+      "evidence_id": "ev_8faad22d443caa2cc9298771654c8008fad0a5dad646f1aaf05acdbe97c66f48",
+      "subject": null,
+      "provider": {
+        "id": "adb",
+        "name": "Android Debug Bridge",
+        "version": "37.0.1-15733141"
+      },
+      "analysis_profile": null,
+      "predicate_type": "rea.analysis",
+      "operation": "capture_adb_screen",
+      "parameters": {
+        "serial": "R3CW20SNFXV",
+        "output_directory": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S03-full-assessment"
+      },
+      "raw_result": null,
+      "normalized_result": {
+        "client": {
+          "binary_path": "adb",
+          "path_source": "path",
+          "version": "37.0.1-15733141",
+          "installed_path": "/opt/homebrew/bin/adb"
+        },
+        "serial": "R3CW20SNFXV",
+        "local_path": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S03-full-assessment/screen.png",
+        "bytes": 601881,
+        "sha256": "9d8c556316aac9516488c44e9b3ce333ca43e73ea6c9a46cb81c58ea7046f9f7",
+        "width": 1080,
+        "height": 2316
+      },
+      "confidence": "observed",
+      "authority": "shipped-artifact",
+      "environment": null,
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "The capture is one frame at read time; no recording or interaction occurred"
+      ],
+      "locations": [],
+      "evidence_links": []
+    },
+    {
+      "evidence_id": "ev_a543d38ec20e874aa1e4b286e89be44837229cde8656dcb0674150958cf0e2f7",
+      "subject": null,
+      "provider": {
+        "id": "adb",
+        "name": "Android Debug Bridge",
+        "version": "37.0.1-15733141"
+      },
+      "analysis_profile": null,
+      "predicate_type": "rea.analysis",
+      "operation": "capture_adb_screen",
+      "parameters": {
+        "serial": "R3CW20SNFXV",
+        "output_directory": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S17-redo-all"
+      },
+      "raw_result": null,
+      "normalized_result": {
+        "client": {
+          "binary_path": "adb",
+          "path_source": "path",
+          "version": "37.0.1-15733141",
+          "installed_path": "/opt/homebrew/bin/adb"
+        },
+        "serial": "R3CW20SNFXV",
+        "local_path": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S17-redo-all/screen.png",
+        "bytes": 366963,
+        "sha256": "bd05c2340d244b41d30583bf2069175ad7ce8354f67c9589d4fb58f74e38b185",
+        "width": 1080,
+        "height": 2316
+      },
+      "confidence": "observed",
+      "authority": "shipped-artifact",
+      "environment": null,
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "The capture is one frame at read time; no recording or interaction occurred"
+      ],
+      "locations": [],
+      "evidence_links": []
+    },
+    {
+      "evidence_id": "ev_a9fcf395e3a070eca68f410d785a825ec53cbdf054f57d9abf2d2214b455c782",
+      "subject": null,
+      "provider": {
+        "id": "adb",
+        "name": "Android Debug Bridge",
+        "version": "37.0.1-15733141"
+      },
+      "analysis_profile": null,
+      "predicate_type": "rea.analysis",
+      "operation": "capture_adb_screen",
+      "parameters": {
+        "serial": "R3CW20SNFXV",
+        "output_directory": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S05-qa"
+      },
+      "raw_result": null,
+      "normalized_result": {
+        "client": {
+          "binary_path": "adb",
+          "path_source": "path",
+          "version": "37.0.1-15733141",
+          "installed_path": "/opt/homebrew/bin/adb"
+        },
+        "serial": "R3CW20SNFXV",
+        "local_path": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S05-qa/screen.png",
+        "bytes": 454918,
+        "sha256": "097dc774d58afd04d63a9239bb6898f6498f897e47e8842087bb5fa43ebcd74a",
+        "width": 1080,
+        "height": 2316
+      },
+      "confidence": "observed",
+      "authority": "shipped-artifact",
+      "environment": null,
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "The capture is one frame at read time; no recording or interaction occurred"
+      ],
+      "locations": [],
+      "evidence_links": []
+    },
+    {
+      "evidence_id": "ev_b61b44177f449955936cfd996932e0d7ff117f9079dd6cc5a70f9e13e08c15ce",
+      "subject": null,
+      "provider": {
+        "id": "adb",
+        "name": "Android Debug Bridge",
+        "version": "37.0.1-15733141"
+      },
+      "analysis_profile": null,
+      "predicate_type": "rea.analysis",
+      "operation": "capture_adb_screen",
+      "parameters": {
+        "serial": "R3CW20SNFXV",
+        "output_directory": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S21-import"
+      },
+      "raw_result": null,
+      "normalized_result": {
+        "client": {
+          "binary_path": "adb",
+          "path_source": "path",
+          "version": "37.0.1-15733141",
+          "installed_path": "/opt/homebrew/bin/adb"
+        },
+        "serial": "R3CW20SNFXV",
+        "local_path": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S21-import/screen.png",
+        "bytes": 449188,
+        "sha256": "5af464dfbf7824dbb797f64c724cc2f229fe6ece9889f1899476a0437286beff",
+        "width": 1080,
+        "height": 2316
+      },
+      "confidence": "observed",
+      "authority": "shipped-artifact",
+      "environment": null,
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "The capture is one frame at read time; no recording or interaction occurred"
+      ],
+      "locations": [],
+      "evidence_links": []
+    },
+    {
+      "evidence_id": "ev_b99f6a245d408fe447133e40084adb841f56dd2e05afc36e5334181cc168426d",
+      "subject": null,
+      "provider": {
+        "id": "adb",
+        "name": "Android Debug Bridge",
+        "version": "37.0.1-15733141"
+      },
+      "analysis_profile": null,
+      "predicate_type": "rea.analysis",
+      "operation": "capture_adb_screen",
+      "parameters": {
+        "serial": "R3CW20SNFXV",
+        "output_directory": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S11-offline-pdf"
+      },
+      "raw_result": null,
+      "normalized_result": {
+        "client": {
+          "binary_path": "adb",
+          "path_source": "path",
+          "version": "37.0.1-15733141",
+          "installed_path": "/opt/homebrew/bin/adb"
+        },
+        "serial": "R3CW20SNFXV",
+        "local_path": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S11-offline-pdf/screen.png",
+        "bytes": 586045,
+        "sha256": "df2939efe90170f772152f3449c3b16e2b76a0bc338b80e956bb79e8e2e683a1",
+        "width": 1080,
+        "height": 2316
+      },
+      "confidence": "observed",
+      "authority": "shipped-artifact",
+      "environment": null,
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "The capture is one frame at read time; no recording or interaction occurred"
+      ],
+      "locations": [],
+      "evidence_links": []
+    },
+    {
+      "evidence_id": "ev_bd683114011f458de982da21a141c5c08641a9808ab9b4bdcac775f990012ca5",
+      "subject": null,
+      "provider": {
+        "id": "adb",
+        "name": "Android Debug Bridge",
+        "version": "37.0.1-15733141"
+      },
+      "analysis_profile": null,
+      "predicate_type": "rea.analysis",
+      "operation": "capture_adb_screen",
+      "parameters": {
+        "serial": "R3CW20SNFXV",
+        "output_directory": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S15-rotated"
+      },
+      "raw_result": null,
+      "normalized_result": {
+        "client": {
+          "binary_path": "adb",
+          "path_source": "path",
+          "version": "37.0.1-15733141",
+          "installed_path": "/opt/homebrew/bin/adb"
+        },
+        "serial": "R3CW20SNFXV",
+        "local_path": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S15-rotated/screen.png",
+        "bytes": 431966,
+        "sha256": "d905aac78b12f6c99f4467d73dfc194f9179f9b95509b0e4e693457093a424a0",
+        "width": 1080,
+        "height": 2316
+      },
+      "confidence": "observed",
+      "authority": "shipped-artifact",
+      "environment": null,
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "The capture is one frame at read time; no recording or interaction occurred"
+      ],
+      "locations": [],
+      "evidence_links": []
+    },
+    {
+      "evidence_id": "ev_cb83a14163958f77b4126398b4b52aa723c9521c39b8c57f8bd59a88cfa2d3ad",
+      "subject": null,
+      "provider": {
+        "id": "adb",
+        "name": "Android Debug Bridge",
+        "version": "37.0.1-15733141"
+      },
+      "analysis_profile": null,
+      "predicate_type": "rea.analysis",
+      "operation": "capture_adb_screen",
+      "parameters": {
+        "serial": "R3CW20SNFXV",
+        "output_directory": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S09-recording-tools"
+      },
+      "raw_result": null,
+      "normalized_result": {
+        "client": {
+          "binary_path": "adb",
+          "path_source": "path",
+          "version": "37.0.1-15733141",
+          "installed_path": "/opt/homebrew/bin/adb"
+        },
+        "serial": "R3CW20SNFXV",
+        "local_path": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S09-recording-tools/screen.png",
+        "bytes": 503001,
+        "sha256": "f05fc4490ce5cc384b9218e0a47fdb2455b99ec83e8c7791d71117f61171ec40",
+        "width": 1080,
+        "height": 2316
+      },
+      "confidence": "observed",
+      "authority": "shipped-artifact",
+      "environment": null,
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "The capture is one frame at read time; no recording or interaction occurred"
+      ],
+      "locations": [],
+      "evidence_links": []
+    },
+    {
+      "evidence_id": "ev_d885f7b63b92fe6cf0275d9c12f3d5ccdbc39b8d0a93d80b0a953c51b3100f90",
+      "subject": null,
+      "provider": {
+        "id": "adb",
+        "name": "Android Debug Bridge",
+        "version": "37.0.1-15733141"
+      },
+      "analysis_profile": null,
+      "predicate_type": "rea.analysis",
+      "operation": "capture_adb_screen",
+      "parameters": {
+        "serial": "R3CW20SNFXV",
+        "output_directory": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S16-redo-slide"
+      },
+      "raw_result": null,
+      "normalized_result": {
+        "client": {
+          "binary_path": "adb",
+          "path_source": "path",
+          "version": "37.0.1-15733141",
+          "installed_path": "/opt/homebrew/bin/adb"
+        },
+        "serial": "R3CW20SNFXV",
+        "local_path": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S16-redo-slide/screen.png",
+        "bytes": 361757,
+        "sha256": "901def3aed1aadf245bd12837a3a40f7aa99afcce502257d62c56cbb8b1f4e3b",
+        "width": 1080,
+        "height": 2316
+      },
+      "confidence": "observed",
+      "authority": "shipped-artifact",
+      "environment": null,
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "The capture is one frame at read time; no recording or interaction occurred"
+      ],
+      "locations": [],
+      "evidence_links": []
+    },
+    {
+      "evidence_id": "ev_f01e203e478a06876602b1b0577b7d33fc8a701a16c62ed27b97638c041726b8",
+      "subject": null,
+      "provider": {
+        "id": "adb",
+        "name": "Android Debug Bridge",
+        "version": "37.0.1-15733141"
+      },
+      "analysis_profile": null,
+      "predicate_type": "rea.analysis",
+      "operation": "capture_adb_screen",
+      "parameters": {
+        "serial": "R3CW20SNFXV",
+        "output_directory": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S07-review-details"
+      },
+      "raw_result": null,
+      "normalized_result": {
+        "client": {
+          "binary_path": "adb",
+          "path_source": "path",
+          "version": "37.0.1-15733141",
+          "installed_path": "/opt/homebrew/bin/adb"
+        },
+        "serial": "R3CW20SNFXV",
+        "local_path": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S07-review-details/screen.png",
+        "bytes": 561768,
+        "sha256": "667d6efa60ba98e124f91956b331e14feb49712dcfdbecd3181813f6f94627de",
+        "width": 1080,
+        "height": 2316
+      },
+      "confidence": "observed",
+      "authority": "shipped-artifact",
+      "environment": null,
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "The capture is one frame at read time; no recording or interaction occurred"
+      ],
+      "locations": [],
+      "evidence_links": []
+    },
+    {
+      "evidence_id": "ev_f23e6e4f433803536d9e8ceab0f7799cbbdff38a38c829ff5efb83b194aa131a",
+      "subject": null,
+      "provider": {
+        "id": "adb",
+        "name": "Android Debug Bridge",
+        "version": "37.0.1-15733141"
+      },
+      "analysis_profile": null,
+      "predicate_type": "rea.analysis",
+      "operation": "capture_adb_screen",
+      "parameters": {
+        "serial": "R3CW20SNFXV",
+        "output_directory": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S13-rehearse"
+      },
+      "raw_result": null,
+      "normalized_result": {
+        "client": {
+          "binary_path": "adb",
+          "path_source": "path",
+          "version": "37.0.1-15733141",
+          "installed_path": "/opt/homebrew/bin/adb"
+        },
+        "serial": "R3CW20SNFXV",
+        "local_path": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S13-rehearse/screen.png",
+        "bytes": 488173,
+        "sha256": "0806e8dc7c7f44da02bb76e56c15e7d08287d3794485b520bfb374e505849ade",
+        "width": 1080,
+        "height": 2316
+      },
+      "confidence": "observed",
+      "authority": "shipped-artifact",
+      "environment": null,
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "The capture is one frame at read time; no recording or interaction occurred"
+      ],
+      "locations": [],
+      "evidence_links": []
+    },
+    {
+      "evidence_id": "ev_fb2cb4b8cdfa50f3b58174be1b509dc5729a4f4407483776bf86ce86242971d0",
+      "subject": null,
+      "provider": {
+        "id": "adb",
+        "name": "Android Debug Bridge",
+        "version": "37.0.1-15733141"
+      },
+      "analysis_profile": null,
+      "predicate_type": "rea.analysis",
+      "operation": "capture_adb_screen",
+      "parameters": {
+        "serial": "R3CW20SNFXV",
+        "output_directory": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S20-about"
+      },
+      "raw_result": null,
+      "normalized_result": {
+        "client": {
+          "binary_path": "adb",
+          "path_source": "path",
+          "version": "37.0.1-15733141",
+          "installed_path": "/opt/homebrew/bin/adb"
+        },
+        "serial": "R3CW20SNFXV",
+        "local_path": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S20-about/screen.png",
+        "bytes": 681031,
+        "sha256": "37dbb2b478a7dfd95e21ce61bbf7cb001ccf6aeb8c0c1babaf1d8efe6eea3fb0",
+        "width": 1080,
+        "height": 2316
+      },
+      "confidence": "observed",
+      "authority": "shipped-artifact",
+      "environment": null,
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "The capture is one frame at read time; no recording or interaction occurred"
+      ],
+      "locations": [],
+      "evidence_links": []
+    },
+    {
+      "evidence_id": "ev_ffedec12b5b19dd6db0b5efb3c0a2b572c32fe7dc436dce68c697d6e96cb3cda",
+      "subject": null,
+      "provider": {
+        "id": "adb",
+        "name": "Android Debug Bridge",
+        "version": "37.0.1-15733141"
+      },
+      "analysis_profile": null,
+      "predicate_type": "rea.analysis",
+      "operation": "capture_adb_screen",
+      "parameters": {
+        "serial": "R3CW20SNFXV",
+        "output_directory": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S12-feedback-status"
+      },
+      "raw_result": null,
+      "normalized_result": {
+        "client": {
+          "binary_path": "adb",
+          "path_source": "path",
+          "version": "37.0.1-15733141",
+          "installed_path": "/opt/homebrew/bin/adb"
+        },
+        "serial": "R3CW20SNFXV",
+        "local_path": "/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/pr31-full-app-wireframe/captures/S12-feedback-status/screen.png",
+        "bytes": 536676,
+        "sha256": "980862ff770510f1ec0d0bb40df8765a91a41371668d5ecf134a84d5964ccf35",
+        "width": 1080,
+        "height": 2316
+      },
+      "confidence": "observed",
+      "authority": "shipped-artifact",
+      "environment": null,
+      "limitations": [
+        "Artifact identity is unavailable for this observation.",
+        "The capture is one frame at read time; no recording or interaction occurred"
+      ],
+      "locations": [],
+      "evidence_links": []
+    }
+  ]
+}

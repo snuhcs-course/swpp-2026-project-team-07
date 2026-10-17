@@ -1,0 +1,28 @@
+{
+  "captures": 47,
+  "loadedOriginalImages": 47,
+  "imageDimensions": "1080x2316",
+  "captureLinks": "all targets exist",
+  "inspector": "enlarge and navigate passed",
+  "responsive": [
+    {
+      "width": 1440,
+      "horizontalOverflow": false
+    },
+    {
+      "width": 1024,
+      "horizontalOverflow": false
+    },
+    {
+      "width": 736,
+      "horizontalOverflow": false
+    },
+    {
+      "width": 375,
+      "horizontalOverflow": false
+    }
+  ],
+  "printOverflow": [],
+  "browserErrors": [],
+  "pdf": "actual-app-diagram.pdf"
+}

@@ -1,0 +1,1153 @@
+{
+  "source": {
+    "pr": 31,
+    "sha": "f1af9dd9737e2ac9adbe8a45186f0e2722863e60",
+    "package": "com.team07.outloud",
+    "device": "Samsung Galaxy S23 Ultra / R3CW20SNFXV",
+    "provenance": "Physical Samsung phone running the installed Scribe release; all 112 bundled application source modules match PR #31 f1af9dd. Earlier saved-data captures are retained alongside a later authorized synthetic demo.",
+    "limitations": [
+      "Earlier screenshots preserve the original saved-data-only inspection. The user subsequently authorized live microphone, import, Q&A and review capture with synthetic demo content.",
+      "Every screen image is an unmodified physical-phone capture; offline, unavailable and processing states are retained.",
+      "New rehearsal and Q&A audio were recorded through the phone microphone from agent-operated synthetic speech played acoustically. This is a demonstration, not a human usability test.",
+      "Visible provider transcripts, coaching, question and score results are actual runtime responses; intermediate pending states are labeled separately.",
+      "The first demo transcript used the original local service. The exact saved take and media were then carried to an isolated backend to recover a persistent HTTP connection; its 110 backend source modules match PR31 and it served the later demo AI responses.",
+      "The installed bundle's 112 imported application modules match PR31; the retained source map is local build evidence, not a signed Git identifier.",
+      "A captured route does not establish every conditional, failure, or destructive path. The earlier source board retains the full source inventory.",
+      "The phone was left on the new demo Full Review after Keep current preserved the original 75-second demo run; existing personal presentations were retained."
+    ]
+  },
+  "captures": [
+    {
+      "id": "S18",
+      "title": "Home · presentation library",
+      "screen": "home",
+      "file": "captures/S18-home/screen.png",
+      "group": "Home & import",
+      "notes": [
+        "Returned to the saved five-presentation carousel.",
+        "Shows the selected presentation's existing summary and app gesture controls."
+      ],
+      "transitions": [
+        {
+          "to": "S13",
+          "label": "Open selected presentation"
+        },
+        {
+          "to": "S21",
+          "label": "Pull up to Add"
+        },
+        {
+          "to": "S19",
+          "label": "Hold selected icon"
+        },
+        {
+          "to": "S20",
+          "label": "Open About"
+        },
+        {
+          "to": "S26",
+          "label": "Tap assessment ring"
+        },
+        {
+          "to": "S24",
+          "label": "Spin carousel"
+        }
+      ],
+      "evidence_id": "ev_7479dd11d08691d8b937af3067b71514b4a9f83c0fce4cdc0b9d26f6e834020b",
+      "sha256": "4721ac8a32385e3fb558aa0ab7c7017897c4f6a5eddd1e982c0a84d9a45cf4e9",
+      "capture_session": "earlier saved-data inspection"
+    },
+    {
+      "id": "S24",
+      "title": "Home · another saved presentation",
+      "screen": "home",
+      "file": "captures/S24-home-browse/screen.png",
+      "group": "Home & import",
+      "notes": [
+        "Spun the existing carousel from the fifth deck to the first.",
+        "The saved Guatemala presentation and its existing summary are shown; no presentation was added or removed."
+      ],
+      "transitions": [
+        {
+          "to": "S25",
+          "label": "Open this saved presentation"
+        },
+        {
+          "to": "S18",
+          "label": "Spin back"
+        }
+      ],
+      "evidence_id": "ev_02a3ddec41506de59b4e960a5613397c0ccdc6939169ebe0f844e68eaafbc685",
+      "sha256": "198ac65802ff9df1820334a3aef6acd88cccb0ba7cdbbc9b6e32cec5df7fc709",
+      "capture_session": "earlier saved-data inspection"
+    },
+    {
+      "id": "S19",
+      "title": "Presentation icon picker",
+      "screen": "home",
+      "file": "captures/S19-icon-picker/screen.png",
+      "group": "Home & import",
+      "notes": [
+        "Opened the actual icon grid with a long press.",
+        "Dismissed without choosing an icon or changing the saved presentation."
+      ],
+      "transitions": [
+        {
+          "to": "S18",
+          "label": "Back / close picker"
+        }
+      ],
+      "evidence_id": "ev_5f7b25b92ca8364f77e989cdc7516f91391be127046e5b7794764e7301e3bd93",
+      "sha256": "3451e59ae56793a5b712d437b2ab9e5ca59f08edc46e59ee1e2fd9658e3bbf15",
+      "capture_session": "earlier saved-data inspection"
+    },
+    {
+      "id": "S20",
+      "title": "About OutLoud · credits",
+      "screen": "home",
+      "file": "captures/S20-about/screen.png",
+      "group": "Home & import",
+      "notes": [
+        "Opened About OutLoud from the Home brand mark.",
+        "Closed the overlay with Back."
+      ],
+      "transitions": [
+        {
+          "to": "S18",
+          "label": "Back / close About"
+        }
+      ],
+      "evidence_id": "ev_fb2cb4b8cdfa50f3b58174be1b509dc5729a4f4407483776bf86ce86242971d0",
+      "sha256": "37dbb2b478a7dfd95e21ce61bbf7cb001ccf6aeb8c0c1babaf1d8efe6eea3fb0",
+      "capture_session": "earlier saved-data inspection"
+    },
+    {
+      "id": "S21",
+      "title": "Add presentation · PDF import entry",
+      "screen": "upload",
+      "file": "captures/S21-import/screen.png",
+      "group": "Home & import",
+      "notes": [
+        "Opened Add presentation with the app's upward gesture.",
+        "No new PDF was selected or imported."
+      ],
+      "transitions": [
+        {
+          "to": "S22",
+          "label": "Choose PDF"
+        },
+        {
+          "to": "S18",
+          "label": "Back / cancel import"
+        }
+      ],
+      "evidence_id": "ev_b61b44177f449955936cfd996932e0d7ff117f9079dd6cc5a70f9e13e08c15ce",
+      "sha256": "5af464dfbf7824dbb797f64c724cc2f229fe6ece9889f1899476a0437286beff",
+      "capture_session": "earlier saved-data inspection"
+    },
+    {
+      "id": "S22",
+      "title": "Native Android PDF picker",
+      "screen": "upload",
+      "file": "captures/S22-pdf-picker/screen.png",
+      "group": "Home & import",
+      "notes": [
+        "This is Android's system PDF picker, opened by OutLoud.",
+        "Cancelled without selecting a file; no new presentation was imported."
+      ],
+      "transitions": [
+        {
+          "to": "S21",
+          "label": "Cancel native picker"
+        },
+        {
+          "to": "S28",
+          "label": "Later demo: select synthetic PDF and complete import"
+        }
+      ],
+      "evidence_id": "ev_503fccec8c565f995a9bdd92ef44647a087360a23847dc0a5f9d6b94048de158",
+      "sha256": "ef1e54542c0a5e3a0957ee035b28ce1f5e454f8de9bc81e8289d140e01277341",
+      "capture_session": "earlier saved-data inspection"
+    },
+    {
+      "id": "S28",
+      "title": "PDF import · audience and time setup",
+      "screen": "upload",
+      "file": "captures/S28-import-setup/screen.png",
+      "group": "Home & import",
+      "notes": [
+        "New synthetic demo PDF imported with the user's expanded authorization.",
+        "The actual setup screen shows three slides, no time limit, and Students selected."
+      ],
+      "transitions": [
+        {
+          "to": "S29",
+          "label": "Confirm presentation setup"
+        }
+      ],
+      "capture_session": "authorized synthetic demo",
+      "evidence_id": "ev_9c0150e37b34234ffbe9878884a0a040e8ccac9af8b9fd67e4ca23e369dbd251",
+      "sha256": "db6ed0af95381453e891715d3be1c94597fafae3ef284fe114901eead1e84e79"
+    },
+    {
+      "id": "S25",
+      "title": "Rehearse · another saved PDF",
+      "screen": "rehearse",
+      "file": "captures/S25-other-presentation/screen.png",
+      "group": "Presentation & rehearsal",
+      "notes": [
+        "Opened the existing Guatemala presentation from the carousel.",
+        "Shows its actual PDF cover and current offline cue state; no new recording was started."
+      ],
+      "transitions": [
+        {
+          "to": "S24",
+          "label": "Back to Home"
+        }
+      ],
+      "evidence_id": "ev_466b8d5aaa77492ace9b39db435b71aca8ab5331d6f0a0dc842d29bda7e0c28c",
+      "sha256": "a3e4c7628f4cdf95468a27a34e313ef224b1abb7b059a8378c8ab5ec29968f7a",
+      "capture_session": "earlier saved-data inspection"
+    },
+    {
+      "id": "S13",
+      "title": "Rehearse · saved presentation",
+      "screen": "rehearse",
+      "file": "captures/S13-rehearse/screen.png",
+      "group": "Presentation & rehearsal",
+      "notes": [
+        "Returned to the existing presentation's second slide.",
+        "Shows the real PDF, slide strip, cue categories, timer, Rotate, Redo and Review controls.",
+        "No microphone capture was started."
+      ],
+      "transitions": [
+        {
+          "to": "S14",
+          "label": "Edit time & audience"
+        },
+        {
+          "to": "S15",
+          "label": "Rotate PDF"
+        },
+        {
+          "to": "S16",
+          "label": "Tap Redo"
+        },
+        {
+          "to": "S17",
+          "label": "Hold to redo all"
+        },
+        {
+          "to": "S26",
+          "label": "Open Full Review"
+        },
+        {
+          "to": "S18",
+          "label": "Back to Home"
+        }
+      ],
+      "evidence_id": "ev_f23e6e4f433803536d9e8ceab0f7799cbbdff38a38c829ff5efb83b194aa131a",
+      "sha256": "0806e8dc7c7f44da02bb76e56c15e7d08287d3794485b520bfb374e505849ade",
+      "capture_session": "earlier saved-data inspection"
+    },
+    {
+      "id": "S14",
+      "title": "Presentation setup · existing time and audience",
+      "screen": "rehearse",
+      "file": "captures/S14-setup/screen.png",
+      "group": "Presentation & rehearsal",
+      "notes": [
+        "Opened the existing presentation's setup overlay.",
+        "Current choices are no time limit and General audience.",
+        "Closed with Back without saving or changing preferences."
+      ],
+      "transitions": [
+        {
+          "to": "S13",
+          "label": "Back without saving"
+        }
+      ],
+      "evidence_id": "ev_8f58103a44d1e148385b9a24d68867a9cb1f72a0985c990b0c7f4babb488385f",
+      "sha256": "d2bf730827045a54263b1fe5314b9f46450421ba591c081d3a477429111f35df",
+      "capture_session": "earlier saved-data inspection"
+    },
+    {
+      "id": "S15",
+      "title": "Rehearse · rotated PDF view",
+      "screen": "rehearse",
+      "file": "captures/S15-rotated/screen.png",
+      "group": "Presentation & rehearsal",
+      "notes": [
+        "Rotated only the PDF view using the app's Rotate control.",
+        "No recording was started; returned to normal view with Back."
+      ],
+      "transitions": [
+        {
+          "to": "S13",
+          "label": "Rotate back / Back"
+        }
+      ],
+      "evidence_id": "ev_bd683114011f458de982da21a141c5c08641a9808ab9b4bdcac775f990012ca5",
+      "sha256": "d905aac78b12f6c99f4467d73dfc194f9179f9b95509b0e4e693457093a424a0",
+      "capture_session": "earlier saved-data inspection"
+    },
+    {
+      "id": "S16",
+      "title": "Redo slide · confirmation",
+      "screen": "rehearse",
+      "file": "captures/S16-redo-slide/screen.png",
+      "group": "Presentation & rehearsal",
+      "notes": [
+        "Opened Redo for the existing recorded slide.",
+        "The confirmation was cancelled; no recording or transcript was replaced."
+      ],
+      "transitions": [
+        {
+          "to": "S13",
+          "label": "Cancel"
+        }
+      ],
+      "evidence_id": "ev_d885f7b63b92fe6cf0275d9c12f3d5ccdbc39b8d0a93d80b0a953c51b3100f90",
+      "sha256": "901def3aed1aadf245bd12837a3a40f7aa99afcce502257d62c56cbb8b1f4e3b",
+      "capture_session": "earlier saved-data inspection"
+    },
+    {
+      "id": "S17",
+      "title": "Redo whole presentation · confirmation",
+      "screen": "rehearse",
+      "file": "captures/S17-redo-all/screen.png",
+      "group": "Presentation & rehearsal",
+      "notes": [
+        "Held the existing Redo control to show the app's whole-presentation confirmation.",
+        "Cancelled without starting capture; the existing selected take is preserved."
+      ],
+      "transitions": [
+        {
+          "to": "S13",
+          "label": "Cancel"
+        }
+      ],
+      "evidence_id": "ev_a543d38ec20e874aa1e4b286e89be44837229cde8656dcb0674150958cf0e2f7",
+      "sha256": "bd05c2340d244b41d30583bf2069175ad7ce8354f67c9589d4fb58f74e38b185",
+      "capture_session": "earlier saved-data inspection"
+    },
+    {
+      "id": "S29",
+      "title": "New presentation · ready to record",
+      "screen": "rehearse",
+      "file": "captures/S29-demo-rehearsal/screen.png",
+      "group": "Live microphone rehearsal",
+      "notes": [
+        "The imported synthetic demo is ready for a three-slide microphone rehearsal.",
+        "The phone shows a three-minute full-run target and Record control."
+      ],
+      "transitions": [
+        {
+          "to": "S30",
+          "label": "Tap Record"
+        }
+      ],
+      "capture_session": "authorized synthetic demo",
+      "evidence_id": "ev_e93f39bdbe20155898b5386c55861591a55f7045ff21c78a64e951dcada377e5",
+      "sha256": "ae5c659a59883b506f2c29d139b2d7146debb1280c5909c0a5b04af9fa95bf7b"
+    },
+    {
+      "id": "S30",
+      "title": "Microphone capture · countdown",
+      "screen": "rehearse",
+      "file": "captures/S30-microphone-countdown/screen.png",
+      "group": "Live microphone rehearsal",
+      "notes": [
+        "Actual recording countdown, captured before audio recording begins."
+      ],
+      "transitions": [
+        {
+          "to": "S31",
+          "label": "Countdown completes"
+        }
+      ],
+      "capture_session": "authorized synthetic demo",
+      "evidence_id": "ev_48f34621dbc3a902ff8e8f69604cfd0b0a7c1de4a88ecf190b32ccac610de37f",
+      "sha256": "343dddce99db42c7bc87871e12b734ec1a7ea10eb6043612f4bc6d19ba1457bb"
+    },
+    {
+      "id": "S31",
+      "title": "Live microphone · slide 1",
+      "screen": "rehearse",
+      "file": "captures/S31-live-microphone-slide1/screen.png",
+      "group": "Live microphone rehearsal",
+      "notes": [
+        "The physical phone is recording agent-operated synthetic speech played acoustically.",
+        "The timer, recording waveform, Stop control and On pace indicator are visible."
+      ],
+      "transitions": [
+        {
+          "to": "S32",
+          "label": "Swipe to slide 2 while recording"
+        }
+      ],
+      "capture_session": "authorized synthetic demo",
+      "evidence_id": "ev_a2bc906cf83a725053fdc30944ddc16d7c8fc5649cd2679d4da56b6ded4511ed",
+      "sha256": "06260e065381a9ab89d5f6700d1e97a5a77608a8f41d18286db7d73d728d40d2"
+    },
+    {
+      "id": "S32",
+      "title": "Live microphone · slide 2",
+      "screen": "rehearse",
+      "file": "captures/S32-live-microphone-slide2/screen.png",
+      "group": "Live microphone rehearsal",
+      "notes": [
+        "Audio capture continues on the second slide of the same full rehearsal.",
+        "The actual Ahead timing cue and live waveform are preserved."
+      ],
+      "transitions": [
+        {
+          "to": "S33",
+          "label": "Swipe to slide 3 while recording"
+        }
+      ],
+      "capture_session": "authorized synthetic demo",
+      "evidence_id": "ev_13837884540445ff74c256684a5359c3a74b77285f212ac2c40f767aca8ce3c6",
+      "sha256": "abb0815c103fdcb28ff67969f3fcbbc9e2c643d3ef0e7703dc81a5338470a31d"
+    },
+    {
+      "id": "S33",
+      "title": "Live microphone · slide 3",
+      "screen": "rehearse",
+      "file": "captures/S33-live-microphone-slide3/screen.png",
+      "group": "Live microphone rehearsal",
+      "notes": [
+        "Audio capture continues on the third slide, with the elapsed timer and Stop control.",
+        "This is a real microphone capture of synthetic demo content."
+      ],
+      "transitions": [
+        {
+          "to": "S34",
+          "label": "Stop and save the full run"
+        }
+      ],
+      "capture_session": "authorized synthetic demo",
+      "evidence_id": "ev_dead7d8b833e5326e725c544470fa50229f2688ab01368740698ed6a48b7a2ff",
+      "sha256": "9ee4d7f65624d43c278ea878b0df10e7e76d694a6781bc0bec041a436116c9db"
+    },
+    {
+      "id": "S39",
+      "title": "Rehearsal · generated coaching cues",
+      "screen": "rehearse",
+      "file": "captures/S39-demo-live-coaching/screen.png",
+      "group": "Live microphone rehearsal",
+      "notes": [
+        "The demo presentation now has actual provider-generated coaching cues.",
+        "These visible cue results were generated after the user authorized the expanded capture."
+      ],
+      "transitions": [
+        {
+          "to": "S40",
+          "label": "Open Full Review"
+        },
+        {
+          "to": "S51",
+          "label": "Tap Redo slide 1"
+        }
+      ],
+      "capture_session": "authorized synthetic demo",
+      "evidence_id": "ev_3f72208a0448ee5204a95c1d4bff6672312c1a24eb5e1a08baf08b5c81b0e94b",
+      "sha256": "063d913ad93f3dcd69c9bf2171e089e385fb5bb6ebaa00111d9471ae26cdcc23"
+    },
+    {
+      "id": "S51",
+      "title": "Redo · confirm another slide take",
+      "screen": "rehearse",
+      "file": "captures/S51-demo-redo-confirmation/screen.png",
+      "group": "Live microphone rehearsal",
+      "notes": [
+        "The actual confirmation explains that the redo can be compared with the existing slide take.",
+        "This later redo uses only the new synthetic demo presentation."
+      ],
+      "transitions": [
+        {
+          "to": "S52",
+          "label": "Confirm Redo"
+        },
+        {
+          "to": "S39",
+          "label": "Cancel"
+        }
+      ],
+      "capture_session": "authorized synthetic demo",
+      "evidence_id": "ev_f0491c4b8d0f54b872748564df11a1042d1ee6580c1be76873699a4b6fbe0e3c",
+      "sha256": "1bbc32e13045cbfae29ec303840558185e8ff841e2e396b34ad3bea4a3ba6941"
+    },
+    {
+      "id": "S52",
+      "title": "Redo microphone · countdown",
+      "screen": "rehearse",
+      "file": "captures/S52-redo-countdown/screen.png",
+      "group": "Live microphone rehearsal",
+      "notes": [
+        "A second live microphone take begins with the real countdown.",
+        "The earlier generated coaching cue remains visible."
+      ],
+      "transitions": [
+        {
+          "to": "S53",
+          "label": "Countdown completes"
+        }
+      ],
+      "capture_session": "authorized synthetic demo",
+      "evidence_id": "ev_a29381fd9c4d1be4f02589cb44ad13e9ebcd8a7f052b1b10476da0730d61300e",
+      "sha256": "2c822724c4b55bbb10e6e8a284f27ee8f1c6ef79be00adc64a6317e6b0e9245b"
+    },
+    {
+      "id": "S53",
+      "title": "Redo microphone · live slide take",
+      "screen": "rehearse",
+      "file": "captures/S53-redo-live/screen.png",
+      "group": "Live microphone rehearsal",
+      "notes": [
+        "The phone is recording a second synthetic spoken version of slide 1.",
+        "The running timer, waveform and On pace cue are actual device UI."
+      ],
+      "transitions": [
+        {
+          "to": "S54",
+          "label": "Stop and compare takes"
+        }
+      ],
+      "capture_session": "authorized synthetic demo",
+      "evidence_id": "ev_6716fd0938fc1a3ca4bfd451b9b7880e651e7acce9f22ac2199a97d4f45ca92b",
+      "sha256": "d76938b5f31ad0d1de1f899dae9dd8bc3898d9def057c5f9938489d52d470466"
+    },
+    {
+      "id": "S01",
+      "title": "Slide Review",
+      "screen": "review",
+      "file": "captures/S01-review/screen.png",
+      "group": "Review & playback",
+      "notes": [
+        "Observed existing selected-slide Review on the physical phone.",
+        "No new recording or AI request was made."
+      ],
+      "transitions": [
+        {
+          "to": "S26",
+          "label": "Full Review"
+        },
+        {
+          "to": "S04",
+          "label": "Tap slide 2 time bar"
+        },
+        {
+          "to": "S05",
+          "label": "Audience Q&A"
+        }
+      ],
+      "evidence_id": "ev_1435e051f707804a5e6c40b835f121390b18df95111fd573b3a20ea899676114",
+      "sha256": "dc8c08faf1e33ef74cc864735ebef4c8d6afed2e497bd0d9f66dafa10da8c050",
+      "capture_session": "earlier saved-data inspection"
+    },
+    {
+      "id": "S04",
+      "title": "Slide Review · second slide",
+      "screen": "review",
+      "file": "captures/S04-slide-two/screen.png",
+      "group": "Review & playback",
+      "notes": [
+        "Selected slide 2 from Full Review.",
+        "Shows the real slide thumbnail, audio control, timing, filler count and correction sync notice."
+      ],
+      "transitions": [
+        {
+          "to": "S26",
+          "label": "Full Review"
+        },
+        {
+          "to": "S07",
+          "label": "Scroll transcript"
+        },
+        {
+          "to": "S01",
+          "label": "Tap slide 1 time bar"
+        },
+        {
+          "to": "S05",
+          "label": "Audience Q&A"
+        }
+      ],
+      "evidence_id": "ev_8827ef33d7b53c3ad5f81caae163c3a8ef942b7db19493b5aea971a30dc818da",
+      "sha256": "b9406cfa603f845536cf1c5398e2fe383a26a9b36af092d79e26ec3361d1e352",
+      "capture_session": "earlier saved-data inspection"
+    },
+    {
+      "id": "S07",
+      "title": "Transcript · saved text and timing",
+      "screen": "review",
+      "file": "captures/S07-review-details/screen.png",
+      "group": "Review & playback",
+      "notes": [
+        "Scrolled the existing saved slide transcript.",
+        "Shows the original slide-boundary timing notice, recording tools entry and unavailable grading state."
+      ],
+      "transitions": [
+        {
+          "to": "S09",
+          "label": "Open tools and scroll"
+        },
+        {
+          "to": "S12",
+          "label": "Scroll to feedback"
+        },
+        {
+          "to": "S04",
+          "label": "Scroll to top"
+        },
+        {
+          "to": "S26",
+          "label": "Full Review"
+        }
+      ],
+      "evidence_id": "ev_f01e203e478a06876602b1b0577b7d33fc8a701a16c62ed27b97638c041726b8",
+      "sha256": "667d6efa60ba98e124f91956b331e14feb49712dcfdbecd3181813f6f94627de",
+      "capture_session": "earlier saved-data inspection"
+    },
+    {
+      "id": "S09",
+      "title": "Recording tools · suggestions and offline access",
+      "screen": "review",
+      "file": "captures/S09-recording-tools/screen.png",
+      "group": "Review & playback",
+      "notes": [
+        "Expanded Recording tools and scrolled to its saved-context controls.",
+        "Generate suggestions was not pressed."
+      ],
+      "transitions": [
+        {
+          "to": "S10",
+          "label": "Expand slide descriptions"
+        },
+        {
+          "to": "S11",
+          "label": "Expand PDF offline tools"
+        },
+        {
+          "to": "S07",
+          "label": "Hide tools / scroll back"
+        }
+      ],
+      "evidence_id": "ev_cb83a14163958f77b4126398b4b52aa723c9521c39b8c57f8bd59a88cfa2d3ad",
+      "sha256": "f05fc4490ce5cc384b9218e0a47fdb2455b99ec83e8c7791d71117f61171ec40",
+      "capture_session": "earlier saved-data inspection"
+    },
+    {
+      "id": "S10",
+      "title": "Slide descriptions · current empty state",
+      "screen": "review",
+      "file": "captures/S10-descriptions/screen.png",
+      "group": "Review & playback",
+      "notes": [
+        "Expanded saved slide descriptions.",
+        "This saved presentation has no available descriptions, and AI suggestions are turned off on its server.",
+        "No description was generated or edited."
+      ],
+      "transitions": [
+        {
+          "to": "S09",
+          "label": "Hide slide descriptions"
+        },
+        {
+          "to": "S11",
+          "label": "Open PDF tools and scroll"
+        }
+      ],
+      "evidence_id": "ev_57a6285414e717803dc727fbb2ab522224420dd0630e2527f6dcc9041b439b36",
+      "sha256": "1044932b804c57c1f85dcea512bb6cb57648f3ad3e49af2021763b76c381cb26",
+      "capture_session": "earlier saved-data inspection"
+    },
+    {
+      "id": "S11",
+      "title": "PDF offline tools",
+      "screen": "review",
+      "file": "captures/S11-offline-pdf/screen.png",
+      "group": "Review & playback",
+      "notes": [
+        "Expanded PDF offline tools for the existing recording.",
+        "The original PDF is already available offline; no download was requested."
+      ],
+      "transitions": [
+        {
+          "to": "S09",
+          "label": "Hide PDF tools / scroll back"
+        },
+        {
+          "to": "S12",
+          "label": "Scroll to assessments"
+        }
+      ],
+      "evidence_id": "ev_b99f6a245d408fe447133e40084adb841f56dd2e05afc36e5334181cc168426d",
+      "sha256": "df2939efe90170f772152f3449c3b16e2b76a0bc338b80e956bb79e8e2e683a1",
+      "capture_session": "earlier saved-data inspection"
+    },
+    {
+      "id": "S12",
+      "title": "Slide score and AI feedback · unavailable state",
+      "screen": "review",
+      "file": "captures/S12-feedback-status/screen.png",
+      "group": "Review & playback",
+      "notes": [
+        "Scrolled to the current score and selected-slide AI feedback panels.",
+        "The real app reports grading and analysis unavailable; refresh/retry controls were not used."
+      ],
+      "transitions": [
+        {
+          "to": "S04",
+          "label": "Scroll to top"
+        },
+        {
+          "to": "S26",
+          "label": "Full Review"
+        },
+        {
+          "to": "S05",
+          "label": "Audience Q&A"
+        }
+      ],
+      "evidence_id": "ev_ffedec12b5b19dd6db0b5efb3c0a2b572c32fe7dc436dce68c697d6e96cb3cda",
+      "sha256": "980862ff770510f1ec0d0bb40df8765a91a41371668d5ecf134a84d5964ccf35",
+      "capture_session": "earlier saved-data inspection"
+    },
+    {
+      "id": "S26",
+      "title": "Full Review · presentation score and assessment",
+      "screen": "full",
+      "file": "captures/S26-full-score/screen.png",
+      "group": "Review & playback",
+      "notes": [
+        "Opened the existing run's Full Review.",
+        "Shows whole-run playback, the real complete-recording score prerequisite, assessment counts and slide tiles.",
+        "No score generation or retry was requested."
+      ],
+      "transitions": [
+        {
+          "to": "S01",
+          "label": "Tap slide 1"
+        },
+        {
+          "to": "S04",
+          "label": "Tap slide 2"
+        },
+        {
+          "to": "S03",
+          "label": "Scroll to transcript"
+        },
+        {
+          "to": "S13",
+          "label": "Back to slides"
+        }
+      ],
+      "evidence_id": "ev_0656860277f400dbf54156ac6e9b576f2d3f599bdfc1d47fc5dcd35280376bbf",
+      "sha256": "de5c0df2e71e91779bf17158aaae16be35ec1b979bfc743b9aa6499b2983b307",
+      "capture_session": "earlier saved-data inspection"
+    },
+    {
+      "id": "S03",
+      "title": "Full Review · assessment status",
+      "screen": "full",
+      "file": "captures/S03-full-assessment/screen.png",
+      "group": "Review & playback",
+      "notes": [
+        "Scrolled the existing Full Review to the assessment counts and transcript heading.",
+        "The device currently reports a connection interruption; no successful AI assessment is implied."
+      ],
+      "transitions": [
+        {
+          "to": "S26",
+          "label": "Scroll to score panel"
+        },
+        {
+          "to": "S01",
+          "label": "Tap slide 1"
+        },
+        {
+          "to": "S04",
+          "label": "Tap slide 2"
+        },
+        {
+          "to": "S13",
+          "label": "Back to slides"
+        }
+      ],
+      "evidence_id": "ev_8faad22d443caa2cc9298771654c8008fad0a5dad646f1aaf05acdbe97c66f48",
+      "sha256": "9d8c556316aac9516488c44e9b3ce333ca43e73ea6c9a46cb81c58ea7046f9f7",
+      "capture_session": "earlier saved-data inspection"
+    },
+    {
+      "id": "S34",
+      "title": "Full Review · saved take processing",
+      "screen": "full",
+      "file": "captures/S34-take-upload-processing/screen.png",
+      "group": "Review & playback",
+      "notes": [
+        "The new microphone take has been saved and opened in Full Review.",
+        "Transcription is pending; the score and assessment are not complete in this frame."
+      ],
+      "transitions": [
+        {
+          "to": "S35",
+          "label": "Transcription finishes"
+        }
+      ],
+      "capture_session": "authorized synthetic demo",
+      "evidence_id": "ev_e7f8770bc93ae218b23bf3d892eb3995ea97ff293a69923f59560e9e6b4ada9d",
+      "sha256": "d2afd4fff039764b27e9d795292fe98f0c46072c4db4e17781eaccca848ae90d"
+    },
+    {
+      "id": "S35",
+      "title": "Full Review · transcription available",
+      "screen": "full",
+      "file": "captures/S35-demo-upload-status/screen.png",
+      "group": "Review & playback",
+      "notes": [
+        "A real provider transcript of the acoustic demo is now visible.",
+        "The app reports Grading unavailable at this moment; the screenshot preserves that intermediate state."
+      ],
+      "transitions": [
+        {
+          "to": "S36",
+          "label": "Tap slide 1 to review"
+        },
+        {
+          "to": "S40",
+          "label": "Assessment starts when service is available"
+        }
+      ],
+      "capture_session": "authorized synthetic demo",
+      "evidence_id": "ev_1a8e2d6f12b262665a8033474c76017a3f4fef1ef4d9ef4db6dbea0baa6890fb",
+      "sha256": "7b268692513ad69193e650cc98527de8cddb74fb96de9c4f2a7561c4ec4bf7f5"
+    },
+    {
+      "id": "S36",
+      "title": "Slide Review · recorded demo transcript",
+      "screen": "review",
+      "file": "captures/S36-demo-slide-review/screen.png",
+      "group": "Review & playback",
+      "notes": [
+        "The recorded first slide and its provider transcript are available for review.",
+        "Assessment is not complete in this captured intermediate state."
+      ],
+      "transitions": [
+        {
+          "to": "S37",
+          "label": "Play the recorded slide"
+        },
+        {
+          "to": "S35",
+          "label": "Open Full Review"
+        }
+      ],
+      "capture_session": "authorized synthetic demo",
+      "evidence_id": "ev_ba4c582cc529d99dce192f9d61fc14ac4615efb26917aee4dd60f0bb8c7653d1",
+      "sha256": "330c315c06c90aaca2a3483563c42b4ae2839ca59fb5874b2c27c91c89303faa"
+    },
+    {
+      "id": "S37",
+      "title": "Slide Review · playing with transcript highlight",
+      "screen": "review",
+      "file": "captures/S37-review-playback/screen.png",
+      "group": "Review & playback",
+      "notes": [
+        "Actual saved audio playback is running with the pause control and elapsed progress.",
+        "The current transcript word is highlighted by the app."
+      ],
+      "transitions": [
+        {
+          "to": "S36",
+          "label": "Pause playback"
+        },
+        {
+          "to": "S39",
+          "label": "Return to rehearsal after cue generation"
+        }
+      ],
+      "capture_session": "authorized synthetic demo",
+      "evidence_id": "ev_3fc93ca09a4cac8776e88e7661b04f603b9ba4d3dde4069d8b8172802627396e",
+      "sha256": "67bf70dbf734920a85c98fba3c8481f14402ad9bd1e690c33ae4709475d0fe1c"
+    },
+    {
+      "id": "S40",
+      "title": "Full Review · provider assessment in progress",
+      "screen": "full",
+      "file": "captures/S40-live-full-review/screen.png",
+      "group": "Review & playback",
+      "notes": [
+        "The app shows Grading and one of three recorded slides assessed.",
+        "The numeric score has not finished processing in this frame."
+      ],
+      "transitions": [
+        {
+          "to": "S43",
+          "label": "Assessment finishes; open slide Review"
+        }
+      ],
+      "capture_session": "authorized synthetic demo",
+      "evidence_id": "ev_1487f214eb171e32e6fa876c9a112ef89a89a9d05537be5de9f70c61b0f1dae5",
+      "sha256": "db7f9420851ce187b85aaa0ef4d3f68a5426c4131b5b9eba2ce6542ad6ec0911"
+    },
+    {
+      "id": "S43",
+      "title": "Slide Review · completed score and findings",
+      "screen": "review",
+      "file": "captures/S43-qa-question-preparing/screen.png",
+      "group": "Review & playback",
+      "notes": [
+        "Actual provider assessment is complete: all three slides assessed and two findings across the presentation.",
+        "This captured slide shows a score of 67 and the existing recorded transcript.",
+        "Captured from Full Review, so Back returns there. After Compare, this Review content instead has Back to slides."
+      ],
+      "transitions": [
+        {
+          "to": "S44",
+          "label": "Open Audience Q&A"
+        },
+        {
+          "to": "S50",
+          "label": "Open Full Review"
+        }
+      ],
+      "capture_session": "authorized synthetic demo",
+      "evidence_id": "ev_a2e9ce0f46955eb8768de35bf6325c8fb0b82c80960db6efbf59d8ccda967f46",
+      "sha256": "596e2dc88064947be3291892d122b36b9d5ed2d9fc78da907cb20790dcc74c43"
+    },
+    {
+      "id": "S50",
+      "title": "Full Review · completed presentation score",
+      "screen": "full",
+      "file": "captures/S50-full-review-completed/screen.png",
+      "group": "Review & playback",
+      "notes": [
+        "The actual provider presentation assessment shows an overall score of 64 and Competent.",
+        "All three slide scores are 67; the graded explanation, two verified findings and cited audio intervals are visible.",
+        "Captured from rehearsal with Back to slides. Entry from slide Review instead shows Back to review."
+      ],
+      "transitions": [
+        {
+          "to": "S43",
+          "label": "Tap slide 1"
+        },
+        {
+          "to": "S39",
+          "label": "Back to rehearsal"
+        }
+      ],
+      "capture_session": "authorized synthetic demo",
+      "evidence_id": "ev_e1314f0d346a4b239d53090e5a800fddf6800808938d7e3d826633e6c74ed4a8",
+      "sha256": "5a103498a5b4cfc74986c5989a1ccd80157d932b16aa659e3119cc6964920a23"
+    },
+    {
+      "id": "S05",
+      "title": "Audience Q&A · offline / unavailable",
+      "screen": "qa",
+      "file": "captures/S05-qa/screen.png",
+      "group": "Audience Q&A",
+      "notes": [
+        "Opened Audience Q&A from Slide Review.",
+        "No existing question batch is available for this presentation; the phone shows its real offline/unavailable state.",
+        "Retry questions was not pressed; no AI request was made."
+      ],
+      "transitions": [
+        {
+          "to": "S04",
+          "label": "Back to slide Review"
+        }
+      ],
+      "evidence_id": "ev_a9fcf395e3a070eca68f410d785a825ec53cbdf054f57d9abf2d2214b455c782",
+      "sha256": "097dc774d58afd04d63a9239bb6898f6498f897e47e8842087bb5fa43ebcd74a",
+      "capture_session": "earlier saved-data inspection"
+    },
+    {
+      "id": "S44",
+      "title": "Audience Q&A · generated question",
+      "screen": "qa",
+      "file": "captures/S44-qa-question/screen.png",
+      "group": "Audience Q&A",
+      "notes": [
+        "The actual generated first question is ready for the Students audience.",
+        "The question is linked to the second slide of the synthetic demo."
+      ],
+      "transitions": [
+        {
+          "to": "S45",
+          "label": "Tap microphone to answer"
+        },
+        {
+          "to": "S43",
+          "label": "Back to slide Review"
+        }
+      ],
+      "capture_session": "authorized synthetic demo",
+      "evidence_id": "ev_a1cb5bbb8c21d7e1181acb086be1a26569b00622e059fc2c4d6bad4f5dd7180a",
+      "sha256": "994dd9a33685485c8754d3f03bdb19d136c9f16aa8a30de8e4a474668f3b888d"
+    },
+    {
+      "id": "S45",
+      "title": "Audience Q&A · answer countdown",
+      "screen": "qa",
+      "file": "captures/S45-qa-countdown/screen.png",
+      "group": "Audience Q&A",
+      "notes": [
+        "Actual microphone countdown before recording an answer to the displayed question."
+      ],
+      "transitions": [
+        {
+          "to": "S46",
+          "label": "Countdown completes"
+        }
+      ],
+      "capture_session": "authorized synthetic demo",
+      "evidence_id": "ev_3e4bf12891978b6b38399a4fbfeb5a7970ee66f67a20ea4c726fa7b9e0fe2f44",
+      "sha256": "b3328b8fc7fe2348231cce4ec9b939dd8caec36f8cf85da6f0af4cbbf556829e"
+    },
+    {
+      "id": "S46",
+      "title": "Audience Q&A · live microphone answer",
+      "screen": "qa",
+      "file": "captures/S46-qa-live-answer/screen.png",
+      "group": "Audience Q&A",
+      "notes": [
+        "The phone is recording the synthetic spoken demo answer through its microphone.",
+        "Listening, the running timer, waveform and Stop control are visible."
+      ],
+      "transitions": [
+        {
+          "to": "S47",
+          "label": "Stop and save answer"
+        }
+      ],
+      "capture_session": "authorized synthetic demo",
+      "evidence_id": "ev_9fb73d9ebc8716cef528ddb6b765509e59cf65b4bb578f0ec71d2dd5ca83beea",
+      "sha256": "84ed06996d8a54dfbe9f23f0ee346c13cd666c71547a226a65f8d82143077bd2"
+    },
+    {
+      "id": "S47",
+      "title": "Audience Q&A · transcription and evaluation",
+      "screen": "qa",
+      "file": "captures/S47-qa-answer-processing/screen.png",
+      "group": "Audience Q&A",
+      "notes": [
+        "The recorded answer is saved; the app shows its duration and processing state.",
+        "Transcribing and reviewing is visible; completion is not implied by this frame."
+      ],
+      "transitions": [
+        {
+          "to": "S48",
+          "label": "Answer evaluation completes"
+        }
+      ],
+      "capture_session": "authorized synthetic demo",
+      "evidence_id": "ev_ffbd682a2af295f3236d651de3986bfa19cc3eaa805c0e1157b084783f9415b3",
+      "sha256": "f5d8220a34343f7901ab2caed9b3715b220e61fc914068a529eba3c1a5f271c5"
+    },
+    {
+      "id": "S48",
+      "title": "Audience Q&A · evaluated answer",
+      "screen": "qa",
+      "file": "captures/S48-qa-answer-review/screen.png",
+      "group": "Audience Q&A",
+      "notes": [
+        "The saved 57-second demo answer received an actual provider evaluation and an Answered status.",
+        "The app shows its Did it answer, Evidence and Clarify feedback sections."
+      ],
+      "transitions": [
+        {
+          "to": "S49",
+          "label": "Scroll to follow-up and transcript"
+        },
+        {
+          "to": "S43",
+          "label": "Back to slide Review"
+        }
+      ],
+      "capture_session": "authorized synthetic demo",
+      "evidence_id": "ev_8fda59990932a4d2fe4b3195c107cec3941d4c0fa31d735d6818523e7275e647",
+      "sha256": "4c7ddffa5d53c73f6e9d77c03b065a73780953ece0a624fad0bf5aa138f4186a"
+    },
+    {
+      "id": "S49",
+      "title": "Audience Q&A · follow-up and answer transcript",
+      "screen": "qa",
+      "file": "captures/S49-qa-followup-review/screen.png",
+      "group": "Audience Q&A",
+      "notes": [
+        "An actual generated follow-up question and the saved answer transcript are visible.",
+        "The follow-up is offered for recording; no follow-up answer was recorded for this capture."
+      ],
+      "transitions": [
+        {
+          "to": "S48",
+          "label": "Scroll to evaluation"
+        },
+        {
+          "to": "S43",
+          "label": "Back to slide Review"
+        }
+      ],
+      "capture_session": "authorized synthetic demo",
+      "evidence_id": "ev_ca2d209b0bffcb7064f902245d60a5505e9ca6d7c678aa525a1a2905e1f556cb",
+      "sha256": "d2d391dafb1099448fd9c3295a331cadc8535cfae598958ebadfeabd2a6eefac"
+    },
+    {
+      "id": "S54",
+      "title": "Compare · new take transcribing",
+      "screen": "compare",
+      "file": "captures/S54-compare-takes/screen.png",
+      "group": "Compare recordings",
+      "notes": [
+        "The current 31-second take is shown beside the new 25-second take.",
+        "The new take is still transcribing in this real intermediate frame; Keep current is selected."
+      ],
+      "transitions": [
+        {
+          "to": "S55",
+          "label": "Transcription and comparison finish"
+        }
+      ],
+      "capture_session": "authorized synthetic demo",
+      "evidence_id": "ev_ea94a98b4bb8285331030b6e0a4a63c5759594aa5018a4a4eab8eac1d4c2b684",
+      "sha256": "de103e61c516589c653e4b1eaad03210e7f39307ca3ef9c834e00a3ea10b56e0"
+    },
+    {
+      "id": "S55",
+      "title": "Compare · completed take metrics",
+      "screen": "compare",
+      "file": "captures/S55-compare-completed/screen.png",
+      "group": "Compare recordings",
+      "notes": [
+        "Both real takes have transcripts and metrics: the new take is six seconds faster.",
+        "Keep current was confirmed after capture, retaining the original full demo take.",
+        "Confirmation opens the Review content illustrated by S43, with Back to slides in this entry context."
+      ],
+      "transitions": [
+        {
+          "to": "S43",
+          "label": "Confirm Keep current and return to slide Review"
+        }
+      ],
+      "capture_session": "authorized synthetic demo",
+      "evidence_id": "ev_94f0d39ac71707faed32bfe3fd412da83cb1f89cfd81e9b263ca4a758fd6e918",
+      "sha256": "2bdc0b46f7b68c7b9e62c85636e5bfa7ee00735f81224a54b6ac384972010435"
+    }
+  ],
+  "missing_states": [
+    {
+      "screen": "upload",
+      "reason": "The genuine native PDF import succeeded and its setup is captured. The brief analysis state before setup passed before a distinct screenshot could be taken."
+    },
+    {
+      "screen": "qa",
+      "reason": "Generated questions, live answer recording, evaluation and the offered follow-up are captured. A separate follow-up answer and archive were not created."
+    },
+    {
+      "screen": "conditional states",
+      "reason": "All seven app routes are represented. Destructive choices, exhaustive error recovery and every conditional correction or editing panel were not exercised; the source wireframe board inventories the broader state space."
+    }
+  ]
+}
