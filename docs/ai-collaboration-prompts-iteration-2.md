@@ -517,6 +517,23 @@ remove the static movement in the main page.
 ```
 
 
+## Transcription check and redesign branch, October 14, 2026
+
+**Contributor:** unconfirmed · **Tool:** OpenAI Codex · **Model:** not recorded
+
+- **Context and human decisions:** These two phone follow-ups belong to the earlier transcription check and `front-end-design-JJ` publication task, as recorded in [the original task entry](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/5bf000dc8a968a8d5bb6a5c2067771ca404bb822/docs/ai-collaboration-prompts-iteration-2.md#L482-L511). The requester unlocked the phone, then chose to retain the synthetic-only result after automatic approval review rejected a private-recording retry. The historical contributor remains unconfirmed.
+- **Verification and limits:** The source records a synthetic Whisper/backend check with nine timestamped words and publication of the separate redesign branch. No saved phone recording was uploaded, and the in-app upload/disclosure/transcript flow remained unverified. These are historical results; this documentation correction performs no transcription or device operation.
+
+### Follow-up prompts — verbatim, in order
+
+```text
+Phone unlocked; continue
+```
+
+```text
+Keep the synthetic-only result
+```
+
 ## Whole-app theme toggle, October 15, 2026
 
 **Contributor:** Jaewon · **Tool:** OpenAI Codex · **Model:** not recorded
@@ -678,13 +695,26 @@ also export details and the icon for the rotate to horizontal preview page.
 
 ## Landscape rehearsal implementation, October 15, 2026
 
-```text
-Phone unlocked; continue
-```
+**Contributor:** Jaewon Choi (requester) · **Tool:** OpenAI Codex · **Model:** not recorded
+
+### Prompt — verbatim
 
 ```text
-Keep the synthetic-only result
+implement the horizontal rehearse page
 ```
+
+The requester attached `rotate-to-portrait.svg`, `rotate-to-landscape.svg`, `landscape-rehearse-spec.md` and `light-mode-toggle-spec.md` as references. The attached specs were treated as design guidance, not as additional user prompts. The separate light-mode feature was not requested in this prompt; the app remains in its existing dark appearance.
+
+### AI-generated and retained work
+
+- Added the SDK 57 `expo-screen-orientation` dependency and native `default` orientation, with portrait locking outside Rehearse.
+- Added one landscape layout to the existing Rehearse screen: large slide stage, swipe navigation, timer rail, recording control, rotate back control, completion note and landscape confetti position. Replaced the portrait Cues control with Rotate and removed only its screen UI. The recording engine and slide tracking remain shared across orientations.
+- Extended the shared design frame for the 844 × 390 landscape canvas and safe-area insets, and added the two supplied outline rotate glyphs.
+
+### Verification and limits
+
+- An initial physical-phone check found that the landscape slide and rail worked, but its slide-shadow edge was abrupt; Codex added a full-width hue wash and faded the stage edge. The same check found Android Back sent the app to the launcher, including from portrait. This matched an accepted Expo Router predictive-back issue, so Codex disabled predictive back in `app.json` and regenerated the native Android project. The final phone check showed portrait Rehearse, landscape Rehearse, Timer pill, landscape slide swipe, Back to portrait, and Back from portrait to Home. The ambient hue now extends behind the rail. No new recording, transcription, capture-continuity, auto-rotate, compare-after-landscape, human-usefulness or smoothness check was performed.
+- Agent-operated TypeScript typecheck, uncached Expo lint and local offline release APK build passed after the final fixes. The APK was installed and launched on the connected Samsung phone. No app test suite, separate AI reviewer, human test, commit or push was performed for this task.
 
 ## Redesign branch check repairs, October 14, 2026
 
@@ -695,13 +725,6 @@ Keep the synthetic-only result
 - **AI-generated revision:** Updated the affected tests to assert the current unlimited positive slide count, the current Gemini schema, and unchanged active coverage while a replacement take is pending. No app or backend runtime code was changed.
 - **Agent-operated verification:** A fresh `npm run check` passed TypeScript, Expo lint and all 168 mobile tests. The full Django suite ran against the repaired branch code in a temporary Compose container and passed all 286 tests. `git diff --check` passed. These checks do not establish an Android build or human/device acceptance. Runtime source was unchanged, so no Android build was run. The agent reviewed the focused test diff; a separate AI reviewer was unavailable for this test-only change.
 - **Publication:** Committed the six repaired test files as `083091c` and pushed them to `front-end-design-JJ` through the signed-in GitHub Desktop app. `git ls-remote` independently confirmed the remote branch at `083091c37523b3c8116640e042dd235788e4abc0`. No pull request or merge was created.
-**Contributor:** Jaewon Choi (requester) · **Tool:** OpenAI Codex · **Model:** not recorded
-
-### Prompt — verbatim
-
-```text
-implement the horizontal rehearse page
-```
 
 ## Phase 1 AI-feedback foundation — October 15, 2026
 
@@ -1457,7 +1480,6 @@ claimed; offline persistence/conflicts are exercised in SQLite tests.
 the staged implementation after repairs; 17 focused tests passed in review. Final
 human inspection remains. Exact staged patch identity and review evidence are
 provided in the handoff. No commit, push, merge or Phase 5 is authorized.
-The implementation request does not authorize commit, push, merge or Phase 5.
 The temporary synthetic worker database/queue and verification artifacts are
 separate from project media and private recordings. No credentials or private
 transcripts are included in this entry.
@@ -1744,18 +1766,7 @@ full authoritative fact context, and per-finding source-length isolation.
 [Verification and limits](evidence-validation-verification.md). Tests use mocked
 providers; one current saved result was repaired and fetched by the actual phone.
 Human usefulness/visual Review acceptance remains pending. No commit, push or merge.
-The requester attached `rotate-to-portrait.svg`, `rotate-to-landscape.svg`, `landscape-rehearse-spec.md` and `light-mode-toggle-spec.md` as references. The attached specs were treated as design guidance, not as additional user prompts. The separate light-mode feature was not requested in this prompt; the app remains in its existing dark appearance.
 
-### AI-generated and retained work
-
-- Added the SDK 57 `expo-screen-orientation` dependency and native `default` orientation, with portrait locking outside Rehearse.
-- Added one landscape layout to the existing Rehearse screen: large slide stage, swipe navigation, timer rail, recording control, rotate back control, completion note and landscape confetti position. Replaced the portrait Cues control with Rotate and removed only its screen UI. The recording engine and slide tracking remain shared across orientations.
-- Extended the shared design frame for the 844 × 390 landscape canvas and safe-area insets, and added the two supplied outline rotate glyphs.
-
-### Verification and limits
-
-- An initial physical-phone check found that the landscape slide and rail worked, but its slide-shadow edge was abrupt; Codex added a full-width hue wash and faded the stage edge. The same check found Android Back sent the app to the launcher, including from portrait. This matched an accepted Expo Router predictive-back issue, so Codex disabled predictive back in `app.json` and regenerated the native Android project. The final phone check showed portrait Rehearse, landscape Rehearse, Timer pill, landscape slide swipe, Back to portrait, and Back from portrait to Home. The ambient hue now extends behind the rail. No new recording, transcription, capture-continuity, auto-rotate, compare-after-landscape, human-usefulness or smoothness check was performed.
-- Agent-operated TypeScript typecheck, uncached Expo lint and local offline release APK build passed after the final fixes. The APK was installed and launched on the connected Samsung phone. No app test suite, separate AI reviewer, human test, commit or push was performed for this task.
 
 ## Portrait-only PDF rotation correction, October 15, 2026
 
@@ -3439,7 +3450,7 @@ User request:
 > Before committing: identify all scoring-related source files and dependencies; preserve unrelated changes and the original staging state; verify completeness and tests; commit only verified scoring and required dependencies; report the hash, included files, results and remaining changes. Do not push, merge, deploy, or modify unrelated work.
 
 - **Output and use:** Codex selected the complete existing automatic scoring implementation and required earlier uncommitted runtime dependencies into an isolated source snapshot. Retained material includes the frozen v2 rubric/evidence reconstruction, deterministic scorer, existing-job API integration, Android validation/cache/controller, automatic selected-recording scoring, direct advice/evidence, shared score colors and Home statistics. Existing v1 evidence/measurement helpers remain runtime dependencies; experiment runners, grouped-feedback schemas and unrelated cue/navigation/reliability changes are excluded.
-- **Errors and revisions:** Mixed source/test files include only reviewed scoring hunks. A candidate-test edit removed an unnecessary historical grouping-model assertion while retaining scoring/singleton independence checks. Independent AI review found a missing explicit Retry for rejected source assessments in slide/composed views; Codex added a narrow UI gate and regression, then passed final mobile checks with 494 tests.
+- **Errors and revisions:** Mixed source/test files include only reviewed scoring hunks. A candidate-test edit removed an unnecessary historical grouping-model assertion while retaining scoring/singleton independence checks. Independent AI review found a missing explicit Retry for rejected source assessments in slide/composed views; Codex added a narrow UI gate and regression, then passed final mobile checks with 494 tests. Repair cost was not recorded.
 - **Verification:** The isolated snapshot was tested independently of unrelated local changes. Included files, exact checks, separate AI review and remaining limits are recorded in [the source-snapshot report](presentation-scoring-source-verification.md).
 - **Human decisions and preservation:** Seoyeon authorized committing the complete scoring implementation and dependencies. Original index/staged snapshots were saved locally before history changes; unrelated staged entries and working-tree content were preserved. This task made no live AI calls, push, merge, deployment or device update. Commit authorization does not establish teammate approval or real-provider usefulness; human code edits are not recorded.
 
@@ -3654,7 +3665,7 @@ User request: “Make a file describing in detail everything that was implemente
 - **Human decisions:** Seoyeon requested consolidation into the collaboration logs, correction of `AGENTS.md`, and correction of the latest PR's AI-use records in the existing reporting format. Publication is limited to updating [PR #31](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/31); the earlier no-merge instruction remains in force. Human code edits and teammate approval are not recorded.
 - **Output and use:** Codex compared all 219 lines of the duplicate `docs/ai-use.md` at PR head `4c6ce95` with the active log and merged missing facts into the corresponding task entries. Existing requests stay verbatim. Added details include the Phase 3 commit, scoring Retry repair, retained-feature boundaries, authorized Scribe/device checks, handoff, cleanup review and actual PR publication. The duplicate file is removed; shared instructions and the reporting guide prohibit recreating it, including pointer-only files, and the implementation handoff links to this log. Historical references inside quoted plans remain quotations. The separate older prototype checkout receives its own local documentation consolidation while its app changes remain untouched.
 - **Errors and revisions:** Agents continued using a retired log: the prototype carried older instructions, and the integration recreated a pointer file that accumulated task results. Seoyeon identified the inconsistency. Codex corrected the destinations and preserved dated pending/restricted states alongside the later authorization and publication that superseded them. Earlier implementation checks remain tied to their original snapshots.
-- **Verification:** Coverage checks account for all 48 source blocks and 219 source lines. All 189 original fenced blocks, 65 blockquoted items and 28 curly-quoted strings remain unchanged; 133 relative file/heading links pass. The diff contains only five intended documentation paths, with mobile/backend source unchanged. A separate documentation reviewer found no missing task facts, invented prompts or approvals, or actionable format/coverage findings. An initial quotation checker misread four-backtick fences; Codex corrected it before the passing run. This correction runs no application builds/tests, provider calls, device operations or database changes; earlier runtime validation retains its original limits. Human functional acceptance remains pending.
+- **Verification:** Coverage checks account for all 48 source blocks and 219 source lines. All 214 original fenced blocks, 65 blockquoted items and 28 curly-quoted strings remain unchanged; 133 relative file/heading links pass. The initial consolidation diff contained only five intended documentation paths, with mobile/backend source unchanged. A separate documentation reviewer initially reported no actionable findings; the subsequent audit below found four documentation issues. The quotation checker mishandled four-backtick fences and initially excluded indented fences from its count; Markdown-aware parsing now covers both. This correction runs no application builds/tests, provider calls, device operations or database changes; earlier runtime validation retains its original limits. Human functional acceptance remains pending.
 
 ### Prompts — verbatim, in order
 
@@ -3668,4 +3679,31 @@ then consolidate the extra entries into ai-collaboration and update AGENTS.md so
 
 ```text
 our most recent pr only upadated ai _use not ai collaboration as it should have. update so all the data that was updated on ai use goes inot ai collaboration with the correct format
+```
+
+
+### Follow-up verification — October 17, 2026
+
+- **Scope and verification:** Seoyeon requested a second check of PR #31's original AI-use data against the collaboration log. Codex and two separate documentation reviewers checked published head `1f70dd6` against the 219-line source at `4c6ce95`. All 48 source blocks' task facts and 19 referenced paths remain; no consolidation-introduced duplicate task or prompt was found. A Markdown-aware check preserved all 214 original fenced blocks, 65 blockquoted items and 28 curly-quoted strings; 133 relative links passed. No application checks, provider calls or human acceptance test ran.
+- **Findings and limits:** At the audited `1f70dd6` snapshot, source coverage passed but formatting/duplication needed correction. Landscape task metadata/request/output were split across unrelated sections, and Phase 4 repeated its publication restriction; both predated consolidation. The scoring Retry repair lacked explicit `not recorded` repair-cost metadata, and the verification note counted 189 original fenced blocks rather than 214. No repair cost was available and no missing prompt was reconstructed. These findings were pending at this audit snapshot; the authorized corrections are recorded below.
+- **Status:** This audit was initially recorded locally without a commit or PR update. The subsequent request below authorizes publishing its documentation corrections to PR #31; no merge or application change is authorized.
+
+Follow-up request, verbatim:
+
+```text
+Double check that all the ai-use data from PR #31 is in ai-collaboration in the correct format, with nothing missing or duplicated.
+```
+
+
+### Four audit corrections — October 17, 2026
+
+- **Human decision:** Seoyeon authorized fixing the four audit findings and updating PR #31, preserving original prompts and leaving the PR unmerged.
+- **Output and use:** Codex reunited Landscape's metadata, actual request and implementation/verification notes under its existing task heading. Historical source identifies the two stranded phone-decision prompts with the earlier transcription/branch task; they now sit together under that task with its original unconfirmed contributor. Codex removed the repeated Phase 4 publication restriction, marked scoring repair cost as `not recorded`, and corrected the original fenced-block count from 189 to 214.
+- **Verification:** Exact-byte checks preserved all 217 previously published fenced blocks and the local audit request, plus all 65 blockquoted items and 28 curly-quoted strings; the only added prompt is the authorized fix request below. The intact Landscape entry matches `5aed316`; all 48 source-coverage destinations and 133 relative links pass, with no duplicate task headings or newly duplicated substantive paragraphs. A separate documentation reviewer found no actionable findings; whitespace and one-file scope checks pass.
+- **Limits:** This correction changes documentation only; no application checks/builds, provider calls, device operations or human acceptance test are performed. Repair cost is not recorded.
+
+Request, verbatim:
+
+```text
+Fix those four issues and update PR #31. Keep the original prompts unchanged and don't merge it.
 ```
