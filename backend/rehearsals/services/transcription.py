@@ -1,9 +1,10 @@
+# Scribe-only integration: OpenAI Codex, October 17, 2026; docs/scribe-only-integration-verification.md.
 # AI-generated/modified with OpenAI Codex, Iteration 1 (2026-09-26 to 2026-10-09).
 # Attribution/review scope: docs/history/ai-collaboration-validation-iteration-1-retired-2026-10-09.md#ai-code-markers
 # Historical review: Injoon reviewed the PR #3 version; later integrated changes are not covered.
 # Scribe v2 migration: OpenAI Codex, Iteration 2 (2026-10-16).
 # See docs/ai-collaboration-prompts-iteration-2.md#scribe-v2-transcription-october-16-2026
-"""Hosted Scribe v2 adapter, with read compatibility for saved Whisper evidence."""
+"""Hosted Scribe v2 only; normalized output preserves the existing transcript contract."""
 import os
 import json
 from contextlib import contextmanager
@@ -45,31 +46,27 @@ def _seconds(value):
     return result
 
 
-def _normalize(raw, provider=PROVIDER):
+def _normalize(raw):
     if not isinstance(raw, dict) or not isinstance(raw.get("text"), str):
         raise _invalid()
     words = raw.get("words")
     if not isinstance(words, list) or (raw["text"].strip() and not words):
         raise _invalid()
-    if provider not in {PROVIDER, "openai"}:
-        raise _invalid()
     normalized = []
-    field = "word" if provider == "openai" else "text"
     for item in words:
         if not isinstance(item, dict):
             raise _invalid()
-        if provider == PROVIDER:
-            if item.get("type") in {"spacing", "audio_event"}:
-                continue
-            if item.get("type") != "word":
-                raise _invalid()
-        if not isinstance(item.get(field), str) or not item[field].strip():
+        if item.get("type") in {"spacing", "audio_event"}:
+            continue
+        if item.get("type") != "word":
+            raise _invalid()
+        if not isinstance(item.get("text"), str) or not item["text"].strip():
             raise _invalid()
         start, end = _seconds(item.get("start")), _seconds(item.get("end"))
         if end < start:
             raise _invalid()
         normalized.append({
-            "text": item[field],
+            "text": item["text"],
             "start_ms": int((start * 1000).quantize(Decimal("1"), rounding=ROUND_HALF_UP)),
             "end_ms": int((end * 1000).quantize(Decimal("1"), rounding=ROUND_HALF_UP)),
         })

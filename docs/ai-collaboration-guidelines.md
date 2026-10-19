@@ -15,7 +15,7 @@ identify the active iteration; update both references at a confirmed transition.
 | Iteration report | The team's analysis of AI use, results, failures, revisions and human decisions; the [Iteration 1 report](ai-collaboration-report-iteration-1.md) is a prior-iteration reference |
 | [This guide](#human-review-before-submission) | Collection rules, report format and human review checklist |
 
-The earlier [AI-use record](history/ai-use-before-prompt-consolidation-2026-10-09.md) and [validation review](history/ai-collaboration-validation-iteration-1-retired-2026-10-09.md) are archived. Keep one collaboration log per iteration at `docs/ai-collaboration-prompts-iteration-N.md`. Do not recreate either retired document as an active log.
+The earlier [AI-use record](history/ai-use-before-prompt-consolidation-2026-10-09.md) and [validation review](history/ai-collaboration-validation-iteration-1-retired-2026-10-09.md) are archived. Keep one collaboration log per iteration at `docs/ai-collaboration-prompts-iteration-N.md`. Do not recreate either retired document as an active log. Do not create an `ai-use.md` pointer file or second task diary. References to that path in historical prompts remain quotations; record current results in the matching collaboration entry.
 
 ## Compact task entry
 
@@ -30,6 +30,13 @@ The earlier [AI-use record](history/ai-use-before-prompt-consolidation-2026-10-0
 | Human decisions | Manual edits and why prompting stopped; deliberate non-use and its reason; acceptance or rejection |
 
 Keep notes to a sentence or two per field and combine related fields where useful. Several prompts can share one task entry. Link detailed diffs, tests and PR records instead of copying them.
+
+Seoyeon confirmed on October 15, 2026 that their own prompts in every iteration
+should use exactly `Seoyeon` in the contributor field, without a requester/requestor
+suffix. Use confirmed names for other contributors. The same request identified the
+Iteration 2 entries between Injoon's README task and Seoyeon's Phase 1 task as Jaewon's;
+those contributor fields use `Jaewon`. This attribution does not assert manual
+code authorship, review or acceptance.
 
 Update the same entry when a meaningful failure, revision or decision occurs. At handoff, record the incorporated result, checks and unresolved issues. At iteration close, every member confirms their entries and supplies missing edit notes; rotate the report writer.
 

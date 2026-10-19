@@ -1,0 +1,884 @@
+diff --git a/backend/rehearsals/services/presentation_score_v2.py b/backend/rehearsals/services/presentation_score_v2.py
+--- a/backend/rehearsals/services/presentation_score_v2.py
++++ b/backend/rehearsals/services/presentation_score_v2.py
+@@ -22,7 +22,7 @@
+                        strict_json, validated, MAX_CONTEXT_BYTES)
+ 
+ VERSION = 'presentation-score-v2'
+-PROMPT_VERSION = 'presentation-score-prompt-v2'
++PROMPT_VERSION = 'presentation-score-prompt-v2.1'
+ SCHEMA_VERSION = 'presentation-score-selection-v2'
+ Text = Annotated[str, Field(min_length=1, max_length=1000)]
+ Index = Annotated[int, Field(ge=0)]
+@@ -157,7 +157,14 @@
+ validated weakness evidence by selecting an empty evidence array. Secondary
+ uses require supporting speech evidence and a distinct consequence; never
+ penalize a shared weakness automatically across criteria.
+-Delivery requires speech plus a non-signal rate/pause/speech measurement.
++An assessed delivery criterion must include a direct supporting speech selection
++in its OWN evidence array PLUS an eligible non-signal rate/pause/speech measurement.
++Measurements and duration requirements alone cannot justify assessed delivery,
++even when they accurately describe the recording. Every delivery weakness and delivery deduction
++must be grounded in direct supporting speech plus an eligible measurement; a
++primary deduction may inherit the validated weakness evidence as described above.
++If that support is unavailable, return insufficient_evidence with a null level
++and explicit limitations rather than assigning a delivery level or inventing speech.
+ Pauses, rate, fillers and repetitions need explained communication consequences
+ for deductions. Relative signal measures describe recording context. Do not grade
+ confidence, emotion, pronunciation, vocal expressiveness, gestures, eye contact
+diff --git a/backend/rehearsals/services/presentation_scoring.py b/backend/rehearsals/services/presentation_scoring.py
+--- a/backend/rehearsals/services/presentation_scoring.py
++++ b/backend/rehearsals/services/presentation_scoring.py
+@@ -18,8 +18,16 @@
+ from .feedback_config import Selection, QuotaPolicy, assert_selection, selection_descriptor
+ 
+ VERSION = 'presentation-score-v2'
+-PROMPT_VERSION = VERSION
++PROMPT_VERSION = 'presentation-score-prompt-v2.1'
+ SCHEMA_VERSION = VERSION
++
++# Exact original v2 protocol, including rubric, evidence, measurements and schema.
++# This only authorizes fresh generation; old receipts remain bound to their own
++# immutable protocol and are never normalized using the replacement prompt.
++_PREVIOUS_V2_PROTOCOL_DIGEST = '3c4c634861209d739d76e31068e6caaad00b4c7e905ed68c52fabcb9ce9a83f0'
++# Canonical fingerprint is separate from the historical request digest because
++# JSONB reorders object fields while preserving their exact values.
++_PREVIOUS_V2_PROTOCOL_FINGERPRINT = '1205c060a5691f8a220fd7ab6bfd19c791114deb3334883a457904d581bf8b5b'
+ 
+ 
+ def context_for(attempt, context_id):
+@@ -57,6 +65,22 @@
+     if (job.prompt_version != PROMPT_VERSION or job.schema_version != SCHEMA_VERSION or
+             job.prompt_digest != prompt_digest() or job.source_snapshot.get('presentation_score', {}).get('protocol') != protocol()):
+         raise FeedbackError('snapshot_unavailable')
++
++
++def _replacement_supported(job):
++    try:
++        check_versions(job)
++        return True
++    except FeedbackError:
++        captured = job.source_snapshot.get('presentation_score', {}).get('protocol')
++        return (job.prompt_version == VERSION and job.schema_version == SCHEMA_VERSION and
++                job.prompt_digest == _PREVIOUS_V2_PROTOCOL_DIGEST and
++                v1._digest(captured) == _PREVIOUS_V2_PROTOCOL_FINGERPRINT)
++
++
++def _rejected_completion(job):
++    return (job.state == 'completed' and job.result is not None and
++            job.result.get('presentation_score', {}).get('assessment_status') == 'invalid_evidence')
+ 
+ 
+ def descriptor(selection=None, *, value=None, job=None):
+@@ -126,7 +150,8 @@
+             if 'transcript_revision' in payload and payload['transcript_revision'] != corrections.snapshot(attempt)['revision']:
+                 raise coaching.Conflict('correction_conflict')
+             stale = coaching._stale(value, old) or not coaching._source_current(old)
+-            if not stale and old.state in coaching.ACTIVE | {'completed'}:
++            explicit_rejected_retry = _rejected_completion(old) and 'feedback_revision' in payload
++            if not stale and old.state in coaching.ACTIVE | {'completed'} and not explicit_rejected_retry:
+                 return owner
+             if 'feedback_revision' not in payload:
+                 raise coaching.Conflict('revision_required')
+@@ -140,8 +165,8 @@
+                 raise coaching.Conflict('source_changed')
+             selection = Selection.saved(value)
+             selection.check_versions(value.prompt_digest)
+-            # Saved receipts must never be interpreted under another scoring protocol.
+-            check_versions(old)
++            if not _replacement_supported(old):
++                raise FeedbackError('snapshot_unavailable')
+             selection.credentials(); QuotaPolicy.current(selection)
+             source = old.source_snapshot['source']
+             # Rebuild immutable admission revisions, but measure only in the worker.
+@@ -244,6 +269,7 @@
+ 
+ def normalize(value, job, prepared_request, receipt):
+     from . import presentation_score_v2 as core
++    check_versions(job)
+     bundle = _bundle(value, job, job.source_snapshot['presentation_score']['measurements'])
+     result, audit = core.normalize_with_audit(bundle, prepared_request, receipt)
+     audit = {**audit, 'binding': {'input_hash': prepared_request.input_hash, 'protocol': protocol(),
+@@ -290,6 +316,11 @@
+         value = job.description_set
+         state['selection'] = descriptor(value=value, job=job)
+         identity = job.source_snapshot.get('presentation_score', {}).get('source_identity')
++        if not _replacement_supported(job):
++            state['retry_available'] = False
++        elif _rejected_completion(job):
++            retry_at = state['retry_at']
++            state['retry_available'] = not retry_at or retry_at <= timezone.now()
+     else:
+         try:
+             selection = coaching.profile_selection(attempt.deck_id)
+diff --git a/backend/rehearsals/test_presentation_score_v2_boundaries.py b/backend/rehearsals/test_presentation_score_v2_boundaries.py
+--- a/backend/rehearsals/test_presentation_score_v2_boundaries.py
++++ b/backend/rehearsals/test_presentation_score_v2_boundaries.py
+@@ -7,7 +7,7 @@
+ from unittest.mock import patch
+ 
+ from .services import feedback_provider as provider
+-from .services import presentation_score_v2 as scorer
++from .services import presentation_score_v2 as scorer, presentation_score as v1
+ from .services.feedback import FeedbackError, has_nul, json_bytes
+ from .test_feedback import fixture
+ from .test_feedback_provider import envelope
+@@ -259,3 +259,40 @@
+         altered.revisions['profile_revision'] = 100
+         with self.assertRaises(FeedbackError):
+             scorer.source_identity(altered)
++
++    def test_delivery_instructions_require_direct_speech_and_eligible_measurement(self):
++        self.assertEqual(scorer.PROMPT_VERSION, 'presentation-score-prompt-v2.1')
++        for phrase in ('direct supporting speech selection',
++                       'Measurements and duration requirements alone',
++                       'delivery weakness and delivery deduction'):
++            self.assertIn(phrase, scorer.RULES)
++
++    def test_measurement_and_duration_only_delivery_rejects_total_but_retains_slide_scores(self):
++        bundle = v1.capture(self.bundle.analysis, self.bundle.descriptions,
++            measurements=self.bundle.measurements,
++            requirements={'context_id': '11111111-1111-4111-8111-111111111111', 'revision': 0,
++                          'audience': 'Students', 'required_duration_seconds': 300},
++            correction=self.bundle.correction,
++            revisions={**self.bundle.revisions, 'requirements_revision': 0})
++        raw = output(bundle)
++        raw['whole'][-1]['evidence'] = [
++            {'kind': 'measurement', 'measurement_id': 'speech_0'},
++            {'kind': 'requirement', 'field': 'required_duration_seconds'}]
++        result = scorer.validate_output(bundle, raw)
++        self.assertEqual(result['assessment_status'], 'invalid_evidence')
++        self.assertIsNone(result['overall']['score'])
++        self.assertIn('whole:delivery: unsupported_assessment', result['validation']['score_critical']['reasons'])
++        self.assertEqual([slide['score'] for slide in result['slides']], [100, 100, 100])
++        raw['whole'][-1]['evidence'].insert(0, speech())
++        self.assertEqual(scorer.validate_output(bundle, raw)['overall']['score'], 100)
++
++    def test_old_prompt_receipt_is_never_renormalized_under_new_instructions(self):
++        with patch.object(scorer, 'PROMPT_VERSION', 'presentation-score-prompt-v2'), \
++             patch.object(scorer, 'RULES', 'A previous frozen scoring prompt.'):
++            prepared = scorer.prepare(self.bundle, self.config)
++            receipt = self.receipt(prepared)
++        original = receipt.body
++        with self.assertRaises(FeedbackError) as caught:
++            scorer.normalize(self.bundle, prepared, receipt)
++        self.assertEqual(caught.exception.code, 'source_mismatch')
++        self.assertEqual(receipt.body, original)
+diff --git a/backend/rehearsals/test_presentation_scoring_lifecycle.py b/backend/rehearsals/test_presentation_scoring_lifecycle.py
+--- a/backend/rehearsals/test_presentation_scoring_lifecycle.py
++++ b/backend/rehearsals/test_presentation_scoring_lifecycle.py
+@@ -1,7 +1,10 @@
+ """Score lifecycle through the existing worker; synthetic evidence and blocked network."""
+ from copy import deepcopy
++from datetime import timedelta
++import json
+ from unittest.mock import patch
+ from django.test import TestCase
++from django.utils import timezone
+ from .models import FeedbackAnalysis, FeedbackJob, FeedbackRequest, PresentationContext, SlideReviewMembership
+ from .services import coaching, feedback_provider as provider, presentation_scoring as scoring
+ from .services.feedback import FeedbackError
+@@ -181,3 +184,127 @@
+         self.assertEqual(state['source_identity'], state['result']['source_identity'])
+         self.assertEqual(state['result']['overall']['score'], 100)
+         self.assertEqual(self.owner().feedback_revision, 2)
++
++    def rejected_score(self):
++        self.complete()
++        self.assertEqual(self.post_score().status_code, 202)
++        owner = self.owner()
++        def rejected(prepared):
++            job = self.job(owner)
++            bundle = scoring._bundle(job.description_set, job,
++                job.source_snapshot['presentation_score']['measurements'])
++            raw = output(bundle)
++            raw['whole'][-1]['evidence'] = [{'kind': 'measurement', 'measurement_id': 'speech_0'}]
++            return self.coaching_receipt(prepared, output=raw)
++        with patch.object(self, 'score_receipt', side_effect=rejected):
++            self.assertEqual(self.execute_score(owner), (1, 1))
++        self.assertEqual(self.client.get(self.url).json()['assessment_status'], 'invalid_evidence')
++        return owner
++
++    def prior_protocol(self, job):
++        previous = deepcopy(scoring.protocol())
++        previous['prompt_version'] = 'presentation-score-v2'
++        previous['definition']['prompt_version'] = 'presentation-score-prompt-v2'
++        previous['definition']['prompt_sha256'] = 'b34ba4784daae6fdaf8d06d7714d81889c6d35e07a0217bdcc12a147e9592037'
++        self.assertEqual(coaching._digest(previous), '3c4c634861209d739d76e31068e6caaad00b4c7e905ed68c52fabcb9ce9a83f0')
++        job.prompt_version = 'presentation-score-v2'
++        job.prompt_digest = coaching._digest(previous)
++        # PostgreSQL JSONB does not retain insertion order. Persist equivalent
++        # reordered protocol fields even on SQLite so upgrade coverage is portable.
++        job.source_snapshot['presentation_score']['protocol'] = json.loads(json.dumps(previous, sort_keys=True))
++        job.save(update_fields=['prompt_version', 'prompt_digest', 'source_snapshot'])
++
++    def test_completed_rejected_total_requires_explicit_retry_and_preserves_receipt(self):
++        owner = self.rejected_score()
++        state = self.client.get(self.url).json()
++        self.assertEqual(state['state'], 'completed')
++        self.assertTrue(state['retry_available'])
++        self.assertEqual(state['result']['slides'][0]['score'], 100)
++        first = self.job(owner)
++        request = FeedbackRequest.objects.get(coaching_job=first)
++        receipt = deepcopy(request.raw_body)
++        saved_result = deepcopy(first.result)
++        for _ in range(2):
++            self.assertEqual(self.post_score().status_code, 200)
++        self.assertEqual(owner.jobs.count(), 1)
++        response = self.post_score(feedback_revision=1, expected_selection=state['selection']['token'])
++        self.assertEqual(response.status_code, 202, response.content)
++        self.assertEqual(response.json()['feedback_revision'], 2)
++        self.assertEqual(self.post_score(feedback_revision=1).status_code, 409)
++        first.refresh_from_db(); request.refresh_from_db()
++        self.assertEqual(first.result, saved_result)
++        self.assertEqual(request.raw_body, receipt)
++        owner.refresh_from_db()
++        self.assertEqual(self.execute_score(owner), (1, 1))
++        self.assertEqual(self.client.get(self.url).json()['result']['overall']['score'], 100)
++
++    def test_completed_rejected_retry_obeys_existing_cooldown_and_uncertainty(self):
++        owner = self.rejected_score()
++        job = self.job(owner)
++        job.retry_at = timezone.now() + timedelta(minutes=5)
++        job.save(update_fields=['retry_at'])
++        self.assertFalse(self.client.get(self.url).json()['retry_available'])
++        response = self.post_score(feedback_revision=1)
++        self.assertEqual(response.status_code, 409, response.content)
++        self.assertEqual(response.json()['error']['code'], 'retry_not_available')
++        job.retry_at = timezone.now() - timedelta(seconds=1)
++        job.save(update_fields=['retry_at'])
++        self.assertTrue(self.client.get(self.url).json()['retry_available'])
++        FeedbackRequest.objects.filter(coaching_job=job).update(outcome='uncertain')
++        response = self.post_score(feedback_revision=1)
++        self.assertEqual(response.status_code, 409, response.content)
++        self.assertEqual(response.json()['error']['code'], 'confirmation_required')
++        response = self.post_score(feedback_revision=1, acknowledge_uncertain=True)
++        self.assertEqual(response.status_code, 202, response.content)
++
++    def test_successful_completed_explicit_revision_is_still_a_noop(self):
++        self.complete(); self.assertEqual(self.post_score().status_code, 202)
++        owner = self.owner(); self.assertEqual(self.execute_score(owner), (1, 1))
++        self.assertEqual(self.post_score(feedback_revision=1).status_code, 200)
++        self.assertEqual(owner.jobs.count(), 1)
++
++    def test_supported_prior_protocol_creates_new_generation_without_reinterpreting_receipt(self):
++        self.complete(); self.assertEqual(self.post_score().status_code, 202)
++        owner = self.owner(); self.assertEqual(self.execute_score(owner), (1, 1))
++        old = self.job(owner)
++        self.prior_protocol(old)
++        old_snapshot, old_result = deepcopy(old.source_snapshot), deepcopy(old.result)
++        request = FeedbackRequest.objects.get(coaching_job=old)
++        old_receipt = deepcopy(request.raw_body)
++        state = self.client.get(self.url).json()
++        self.assertTrue(state['stale'])
++        self.assertTrue(state['retry_available'])
++        self.assertIsNone(state['result'])
++        self.assertEqual(self.post_score().status_code, 409)
++        response = self.post_score(feedback_revision=1, expected_selection=state['selection']['token'])
++        self.assertEqual(response.status_code, 202, response.content)
++        fresh = self.job(owner)
++        self.assertEqual(fresh.source_snapshot['presentation_score']['protocol'], scoring.protocol())
++        self.assertNotEqual(fresh.prompt_digest, old.prompt_digest)
++        old.refresh_from_db(); request.refresh_from_db()
++        self.assertEqual(old.source_snapshot, old_snapshot)
++        self.assertEqual(old.result, old_result)
++        self.assertEqual(request.raw_body, old_receipt)
++        with self.assertRaises(FeedbackError) as caught:
++            scoring.prepared(old.description_set, old)
++        self.assertEqual(caught.exception.code, 'snapshot_unavailable')
++        with self.assertRaises(FeedbackError) as caught:
++            scoring.normalize(old.description_set, old, None, None)
++        self.assertEqual(caught.exception.code, 'snapshot_unavailable')
++        owner.refresh_from_db(); self.assertEqual(self.execute_score(owner), (1, 1))
++        self.assertEqual(self.client.get(self.url).json()['result']['overall']['score'], 100)
++
++    def test_unknown_prior_protocol_cannot_be_retried_as_supported_upgrade(self):
++        self.complete(); self.assertEqual(self.post_score().status_code, 202)
++        owner = self.owner(); self.assertEqual(self.execute_score(owner), (1, 1))
++        old = self.job(owner)
++        self.prior_protocol(old)
++        old.source_snapshot['presentation_score']['protocol']['definition']['prompt_sha256'] = 'f' * 64
++        old.prompt_digest = coaching._digest(old.source_snapshot['presentation_score']['protocol'])
++        old.save(update_fields=['prompt_digest', 'source_snapshot'])
++        state = self.client.get(self.url).json()
++        self.assertFalse(state['retry_available'])
++        response = self.post_score(feedback_revision=1)
++        self.assertEqual(response.status_code, 503, response.content)
++        self.assertEqual(response.json()['error']['code'], 'snapshot_unavailable')
++        self.assertEqual(owner.jobs.count(), 1)
+diff --git a/mobile/src/features/feedback/automaticPresentationScore.ts b/mobile/src/features/feedback/automaticPresentationScore.ts
+new file mode 100644
+--- /dev/null
++++ b/mobile/src/features/feedback/automaticPresentationScore.ts
+@@ -0,0 +1,26 @@
++/** Eligibility and durable attempt guards for the existing scoring transport. */
++import type { LocalCorrections } from '../../domain/corrections';
++import { readStored, writeStored } from '../../services/storage';
++import { normalizeApi } from '../transcription/analysisStorage';
++import { bump } from '../presentations/store';
++import type { PresentationScore, ScoreTarget } from './presentationScore';
++import { presentationScoreKey } from './presentationScoreStore';
++
++const eligibilityKey=(api:string,id:string)=>`score-auto-eligible:v1:${normalizeApi(api)}:${id}`;
++export const automaticScoreEnabled=(api:string,id:string)=>readStored<boolean>(eligibilityKey(api,id))===true;
++export function enableAutomaticScore(api:string,id:string) {
++ if(automaticScoreEnabled(api,id))return;
++ writeStored(eligibilityKey(api,id),true);bump();
++}
++export type AutomaticScoreAttempt={input:string;state:'attempted'|'preflight_failed';retryAt:number;notice:string};
++const attemptKey=(api:string,target:ScoreTarget)=>`${presentationScoreKey(api,target)}:automatic`;
++export const readAutomaticScoreAttempt=(api:string,target:ScoreTarget)=>readStored<AutomaticScoreAttempt>(attemptKey(api,target));
++export function saveAutomaticScoreAttempt(api:string,target:ScoreTarget,record:AutomaticScoreAttempt) {
++ writeStored(attemptKey(api,target),record);bump();
++}
++/** Stable inputs, never mutable job status or feedback revision. No transcript text is stored. */
++export function automaticScoreInput(api:string,target:ScoreTarget,revision:number|null,correction:LocalCorrections|null,state:PresentationScore) {
++ return JSON.stringify([presentationScoreKey(api,target),target.pageCount,target.review?.deck_id,
++  target.review?.duration_ms,target.review?.slide_events,revision,correction?.server.revision??0,
++  state.selection?.token,state.source_identity,state.dependency?.description_set_id,state.dependency?.processing_revision]);
++}
+diff --git a/mobile/src/features/feedback/InitialPresentationScoreHost.tsx b/mobile/src/features/feedback/InitialPresentationScoreHost.tsx
+new file mode 100644
+--- /dev/null
++++ b/mobile/src/features/feedback/InitialPresentationScoreHost.tsx
+@@ -0,0 +1,32 @@
++/** Eligible selected recordings share one automatic assessment across all screens. */
++import { useEffect } from 'react';
++import { API_URL } from '../../services/api';
++import { runAttemptIds } from '../../domain/run';
++import { getDeckState, useStore, visibleDecks } from '../presentations/store';
++import { readRequirements } from '../presentations/requirementsStore';
++import { useDeckModel } from '../presentations/useDeckModel';
++import { automaticScoreEnabled, enableAutomaticScore } from './automaticPresentationScore';
++import { selectedPresentationScores } from './selectedPresentationScores';
++import { usePresentationScore } from './usePresentationScore';
++import type { ScoreTarget } from './presentationScore';
++
++export function InitialPresentationScoreHost({openedDeckId}:{openedDeckId:string|null}) {
++ const version=useStore(s=>s.version);
++ useEffect(()=>{
++  if(!openedDeckId)return;
++  const saved=getDeckState(openedDeckId);
++  if(!saved.compare)for(const id of runAttemptIds(saved.run))enableAutomaticScore(API_URL,id);
++ },[openedDeckId,version]);
++ return <>{visibleDecks().map(deck=><DeckWorker key={deck.id} id={deck.id}/>)}</>;
++}
++function DeckWorker({id}:{id:string}) {
++ const model=useDeckModel(id);
++ if(!model||model.state.compare)return null;
++ const derived=selectedPresentationScores(model,API_URL);
++ return <>{derived.targets.filter(target=>automaticScoreEnabled(API_URL,target.id)&&derived.items.some(item=>item.target?.id===target.id)).map(target=><SourceWorker
++  key={JSON.stringify([target.id,target.contextId,target.review?.transcript_id])} target={target}
++  revision={target.contextId?readRequirements(id,API_URL).revision:null} localDeckId={id}/>)}</>;
++}
++function SourceWorker({target,revision,localDeckId}:{target:ScoreTarget;revision:number|null;localDeckId:string}) {
++ usePresentationScore(target,revision,localDeckId,true,true);return null;
++}
+diff --git a/mobile/src/features/feedback/usePresentationScore.ts b/mobile/src/features/feedback/usePresentationScore.ts
+--- a/mobile/src/features/feedback/usePresentationScore.ts
++++ b/mobile/src/features/feedback/usePresentationScore.ts
+@@ -1,4 +1,4 @@
+-// Explicit presentation grading over the existing durable score and correction APIs.
++// Automatic scoring and explicit recovery over the existing durable score/correction APIs.
+ import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+ import { AppState } from 'react-native';
+ import { useFocusEffect } from 'expo-router';
+@@ -8,9 +8,10 @@
+ import { defaultRequirementsPending } from '../presentations/defaultRequirements';
+ import { requirementsDirty, requirementsPending } from '../presentations/requirementsDraft';
+ import { getRequirementsVersion, readRequirements, subscribeRequirements } from '../presentations/requirementsStore';
+-import { useStore } from '../presentations/store';
++import { bump, useStore } from '../presentations/store';
+ import { normalizeApi } from '../transcription/analysisStorage';
+ import { parsePresentationScore, scoreActive, type PresentationScore, type ScoreTarget } from './presentationScore';
++import { automaticScoreInput, readAutomaticScoreAttempt, saveAutomaticScoreAttempt } from './automaticPresentationScore';
+ import { createPresentationScoreReader, effectivePresentationScore, presentationScoreKey, publishPresentationScore, readPresentationScore, scoreSubmissionLocks } from './presentationScoreStore';
+ 
+ type Pending = { revision:number; dependency?:number };
+@@ -18,7 +19,7 @@
+ const snapshot = (s:PresentationScore,correctionRevision:number,localVersion:number) => JSON.stringify([correctionRevision,localVersion,s.feedback_revision,s.selection?.token,s.source_identity,s.transcript_revision,
+  s.requirements.revision,s.dependency?.description_set_id,s.dependency?.processing_revision]);
+ 
+-export function usePresentationScore(target:ScoreTarget|null, requirementsRevision:number|null, localDeckId?:string, active=true) {
++export function usePresentationScore(target:ScoreTarget|null, requirementsRevision:number|null, localDeckId?:string, active=true, automatic=false) {
+  const api=normalizeApi(API_URL), key=target?presentationScoreKey(api,target):'';
+  // A same-attempt replacement transcript/chronology is also a different control owner.
+  const identity=JSON.stringify([key,requirementsRevision,localDeckId,target?.pageCount,target?.review?.deck_id,
+@@ -31,6 +32,7 @@
+  const [working,setWorking]=useState({identity,busy:false});
+  const [failed,setFailed]=useState({identity,value:false});
+  const [ask,setAsk]=useState<Confirmation|null>(null);
++ const [foreground,setForeground]=useState(AppState.currentState==='active');
+  const version=useStore(s=>s.version);
+  useSyncExternalStore(subscribeRequirements,getRequirementsVersion);
+  const pendingKey=`${key}:uncertain`;
+@@ -57,16 +59,16 @@
+  },[api,identity,resolvePending,valid]);
+  useFocusEffect(useCallback(()=>{
+   const reset=()=>{operation.current++;refreshing.current=null;submitting.current=false;setWorking({identity,busy:false});setAsk(null);};
+-  enabled.current=active&&AppState.currentState==='active';reset();
++  enabled.current=active&&AppState.currentState==='active';setForeground(enabled.current);reset();
+   if(enabled.current){
+    const t=current.current.target,cached=t?readPresentationScore(api,t):null;
+    setValue({identity,state:cached});void refresh();
+   }
+   const sub=AppState.addEventListener('change',state=>{
+-   enabled.current=active&&state==='active';reset();
++   enabled.current=active&&state==='active';setForeground(enabled.current);reset();
+    if(enabled.current)void refresh();
+   });
+-  return()=>{enabled.current=false;operation.current++;sub.remove();};
++  return()=>{enabled.current=false;setForeground(false);operation.current++;sub.remove();};
+  },[active,api,identity,refresh]));
+  useEffect(()=>{
+   const t=current.current.target;
+@@ -77,12 +79,13 @@
+  const dirty=!!localDeckId&&(requirementsDirty(localDeckId,api)||defaultRequirementsPending(localDeckId,api));
+  const state=effectivePresentationScore(raw,{requirementsRevision,correction,dirty,transcriptId:target?.review?.transcript_id});
+  const readFailed=failed.identity===identity&&failed.value;
++ const reconcilePending=!!readStored(pendingKey)&&!raw?.requires_confirmation;
+  useEffect(()=>{
+-  if(!active||!scoreActive(raw)&&!readFailed)return;
++  if(!active||!scoreActive(raw)&&!readFailed&&!reconcilePending&&!(raw?.stale&&raw.requires_confirmation))return;
+   const timer=setInterval(()=>void refresh(),readFailed?5000:2000);return()=>clearInterval(timer);
+- },[active,raw,readFailed,refresh]);
++ },[active,raw,readFailed,reconcilePending,refresh]);
+ 
+- const generate=async(confirmed?:Confirmation)=>{
++ const generate=async(confirmed?:Confirmation,initial=false)=>{
+   const t=current.current.target;
+   if(!t||!enabled.current||!current.current.active||current.current.identity!==identity||submitting.current||scoreSubmissionLocks.has(key))return;
+   const settingsReady=()=>{
+@@ -93,7 +96,7 @@
+    }
+   };
+   try{settingsReady();}catch(error){setMessage({identity,text:(error as Error).message});return;}
+-  const op=++operation.current;submitting.current=true;scoreSubmissionLocks.add(key);setWorking({identity,busy:true});setAsk(null);
++  const op=++operation.current;submitting.current=true;scoreSubmissionLocks.add(key);bump();setWorking({identity,busy:true});setAsk(null);
+   let submitted=false;
+   try{
+    const original=t.review;
+@@ -113,7 +116,8 @@
+     requirementsRevision===null||fresh.requirements.revision!==null&&fresh.requirements.revision>requirementsRevision))throw new Error('Presentation settings changed. Refresh before grading.');
+    if(confirmed&&(confirmed.identity!==identity||confirmed.snapshot!==snapshot(fresh,synced.server.revision,local.localVersion)))throw new Error('Score status changed. Review it before retrying.');
+    const effective=effectivePresentationScore(fresh,{requirementsRevision,correction:local,dirty:false,transcriptId:original.transcript_id});
+-   if(scoreActive(fresh)||fresh.state==='completed'&&!effective?.stale)return;
++   if(scoreActive(fresh)||fresh.state==='completed'&&!effective?.stale&&(initial||fresh.assessment_status!=='invalid_evidence'))return;
++   if(initial&&(!fresh.stale&&fresh.state!=='absent'||fresh.dependency?.retry_action))return;
+    if(fresh.availability.state!=='available'||!fresh.selection?.token)throw new Error('Grading is unavailable on this server.');
+    const uncertain=readStored(pendingKey)||fresh.requires_confirmation||fresh.dependency?.requires_confirmation;
+    if(uncertain&&!confirmed){setAsk({identity,snapshot:snapshot(fresh,synced.server.revision,local.localVersion)});return;}
+@@ -130,6 +134,9 @@
+    }else{
+     if(fresh.feedback_revision>0&&!fresh.retry_available)throw new Error('Retry is not available yet.');
+     // The marker commits before transport; a timeout/remount cannot silently retry paid work.
++    // Durable input marker precedes transport, including manual recovery. Remounts
++    // may reconcile with GET but cannot silently re-submit the same inputs.
++    saveAutomaticScoreAttempt(api,t,{input:automaticScoreInput(api,t,requirementsRevision,local,fresh),state:'attempted',retryAt:0,notice:''});
+     writeStored(pendingKey,{revision:fresh.feedback_revision});submitted=true;
+     const response=await fetch(`${api}/attempts/${t.id}/presentation-score/`,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({context_id:t.contextId,expected_selection:fresh.selection.token,transcript_revision:synced.server.revision,
+@@ -141,15 +148,44 @@
+    if(valid(op))setMessage({identity,text:''});
+   }catch(error){
+    if(valid(op)){
++    if(initial&&!submitted){
++     const currentState=readPresentationScore(api,t);
++     if(currentState)saveAutomaticScoreAttempt(api,t,{input:automaticScoreInput(api,t,requirementsRevision,readCorrections(api,t.id),currentState),state:'preflight_failed',retryAt:Date.now()+5000,notice:'Could not start scoring. Reconnecting… You can retry scoring.'});
++    }
+     if(submitted&&(error as Error&{definite?:boolean}).definite){writeStored(pendingKey,false);submitted=false;}
+-    setMessage({identity,text:submitted?'Request outcome may be uncertain. Refresh before retrying.':error instanceof Error?error.message:'Grading unavailable.'});
++    const notice=submitted?'Request outcome may be uncertain. Refresh before retrying.':error instanceof Error?error.message:'Scoring unavailable. Retry scoring.';
++    const record=readAutomaticScoreAttempt(api,t);
++    if(record?.state==='attempted')saveAutomaticScoreAttempt(api,t,{...record,notice});
++    setMessage({identity,text:notice});
+    }
+   }finally{
+-   scoreSubmissionLocks.delete(key);
++   scoreSubmissionLocks.delete(key);bump();
+    if(valid(op)){submitting.current=false;setWorking({identity,busy:false});}
+   }
+  };
+- return {state,busy:active&&working.identity===identity&&working.busy,notice:message.identity===identity?message.text:'',refresh,generate:()=>generate(),
++ const autoStart=useRef<()=>Promise<void>>(async()=>{});
++ useLayoutEffect(()=>{autoStart.current=()=>generate(undefined,true);});
++ const autoInput=target&&raw?automaticScoreInput(api,target,requirementsRevision,correction,raw):'';
++ const autoRecord=target?readAutomaticScoreAttempt(api,target):null;
++ // Only stable primitives drive the debounce. GET/cache publications must not
++ // restart the timer while the actual synchronized scoring inputs are unchanged.
++ const autoReady=automatic&&active&&foreground&&!!target&&!!raw&&!!state&&!dirty&&!correction?.pending&&!correction?.conflict&&!correction?.server.source_changed&&
++  raw.availability.state==='available'&&!raw.requires_confirmation&&!raw.dependency?.requires_confirmation&&!raw.dependency?.retry_action&&
++  !readStored(pendingKey)&&!scoreSubmissionLocks.has(key)&&!scoreActive(raw)&&
++  (state.stale||raw.state==='absent'&&raw.feedback_revision===0);
++ const autoAttempted=autoRecord?.input===autoInput&&autoRecord.state==='attempted';
++ const autoRetryAt=autoRecord?.input===autoInput?autoRecord.retryAt:0;
++ const autoCooldownAt=raw?.retry_at?Date.parse(raw.retry_at):0;
++ const autoDebounce=raw&&(raw.feedback_revision>0||(correction?.server.revision??0)>0)?1000:0;
++ useEffect(()=>{
++  if(!autoReady||autoAttempted)return;
++  const delay=Math.max(0,autoRetryAt-Date.now(),autoCooldownAt-Date.now(),autoDebounce);
++  if(delay){const timer=setTimeout(()=>void autoStart.current(),delay);return()=>clearTimeout(timer);}
++  void autoStart.current();
++ },[autoReady,autoInput,autoAttempted,autoRetryAt,autoCooldownAt,autoDebounce]);
++ const autoNotice=autoRecord?.input===autoInput?autoRecord.notice:'';
++ const uncertainNotice=target&&readStored(pendingKey)&&!scoreSubmissionLocks.has(key)&&!scoreActive(raw)?'Scoring request outcome may be uncertain. Refresh before retrying.':'';
++ return {state,busy:active&&foreground&&(working.identity===identity&&working.busy||scoreSubmissionLocks.has(key)),notice:(message.identity===identity?message.text:'')||autoNotice||uncertainNotice,refresh,generate:()=>generate(),
+   ask:active&&ask?.identity===identity,confirm:()=>{if(ask?.identity===identity)void generate(ask);},cancel:()=>{if(current.current.identity===identity)setAsk(null);}};
+ }
+ export type PresentationScoreController=ReturnType<typeof usePresentationScore>;
+diff --git a/mobile/src/features/feedback/selectedPresentationScores.ts b/mobile/src/features/feedback/selectedPresentationScores.ts
+--- a/mobile/src/features/feedback/selectedPresentationScores.ts
++++ b/mobile/src/features/feedback/selectedPresentationScores.ts
+@@ -9,7 +9,7 @@
+ import { runAttemptIds } from '../../domain/run';
+ import { normalizeApi } from '../transcription/analysisStorage';
+ import { scoreActive,scorePartMatches,scoreRunAttempt,scoreStatus,type PresentationScore,type ScoreTarget,type SlideScore,type ScoreResult,type ScoreLevel } from './presentationScore';
+-import { effectivePresentationScore,readPresentationScore } from './presentationScoreStore';
++import { effectivePresentationScore,readPresentationScore,presentationScoreKey,scoreSubmissionLocks } from './presentationScoreStore';
+ 
+ export type PresentationSlideDisplay={slide:number;score:number|null;level:ScoreLevel|null;status:string;
+  state:PresentationScore|null;result:SlideScore|null;target:ScoreTarget|null};
+@@ -36,6 +36,8 @@
+    requirementsRevision:contextId?settings!.revision:null,correction,dirty:dirty||unreadable,transcriptId:review.transcript_id});
+   sources.set(id,{target,state:value});targets.push(target);if(scoreActive(value))activeTargets.push(target);
+  }
++ // A shared in-flight controller owns the request before the server returns a job.
++ const sourceStatus=(target:ScoreTarget,state:PresentationScore|null)=>scoreSubmissionLocks.has(presentationScoreKey(api,target))&&(!state||state.state!=='completed'||state.stale)?state?.stale?'Score outdated':'Scoring…':scoreStatus(state);
+  const items:PresentationSlideDisplay[]=Array.from({length:model.n},(_,slide)=>{
+   const part=run?.parts[slide],source=part?sources.get(part.attemptId):undefined;
+   const recorded=!!part?.segments.some(s=>s.endMs>s.startMs);
+@@ -45,7 +47,7 @@
+   const result=current?state.result?.slides.find(row=>row.slide_index===slide)??null:null;
+   const score=result?.status==='scored'?result.score:null;
+   const status=!recorded?'Not recorded':!settingsValid?'Presentation settings unavailable':!source?(model.stages.get(part!.attemptId)==='no_speech'?'No speech detected':model.stages.get(part!.attemptId)==='done'?'No usable word timing':'Transcript pending'):!matching?'Recording selection changed':
+-   result&&result.status!=='scored'?({not_applicable:'Not applicable',not_recorded:'Not recorded',insufficient_evidence:'Insufficient evidence',invalid_evidence:'Score evidence could not be verified'}[result.status]??scoreStatus(state)):scoreStatus(state);
++   result&&result.status!=='scored'?({not_applicable:'Not applicable',not_recorded:'Not recorded',insufficient_evidence:'Insufficient evidence',invalid_evidence:'Score evidence could not be verified'}[result.status]??sourceStatus(source!.target,state)):sourceStatus(source!.target,state);
+   return {slide,score,level:score!==null?result!.level:null,status,state,result,target:matching?source!.target:null};
+  });
+  const ids=run?runAttemptIds(run):[],sole=ids.length===1?sources.get(ids[0]):undefined;
+@@ -53,7 +55,7 @@
+  const wholeTarget=exact?sole!.target:null,state=sole?.state??null;
+  const result=exact&&state?.state==='completed'&&!state.stale?state.result:null;
+  const overall:PresentationOverallDisplay={score:result?.overall.status==='scored'?result.overall.score:null,
+-  level:result?.overall.status==='scored'?result.overall.level:null,status:ids.length>1?'Combined recordings':!exact?'Select a complete recording':scoreStatus(state),
++  level:result?.overall.status==='scored'?result.overall.level:null,status:ids.length>1?'Combined recordings':!exact?'Select a complete recording':sourceStatus(wholeTarget!,state),
+   state,result,target:wholeTarget};
+  const target=selectedSlide===undefined?wholeTarget:items[selectedSlide]?.target??null;
+  return {items,overall,target,requirementsRevision:target?.contextId?settings!.revision:null,targets,activeTargets};
+diff --git a/mobile/src/features/rehearsal/analysis.tsx b/mobile/src/features/rehearsal/analysis.tsx
+--- a/mobile/src/features/rehearsal/analysis.tsx
++++ b/mobile/src/features/rehearsal/analysis.tsx
+@@ -12,6 +12,7 @@
+ import { uploadAttempt } from '../recording/upload';
+ import { enableInitialQa } from '../qa/automatic';
+ import { enableInitialFeedback } from '../feedback/automaticFeedback';
++import { enableAutomaticScore } from '../feedback/automaticPresentationScore';
+ import { normalizeApi, readAnalysis } from '../transcription/analysisStorage';
+ import { readReview } from '../transcription/reviewStorage';
+ import { existingLocalFile, reviewMedia } from '../transcription/reviewMedia';
+@@ -137,6 +138,7 @@
+     try {
+       saveAttempt({ ...saved, auto_process_api: undefined });
+       enableInitialQa(address,id);
++      enableAutomaticScore(address,id);
+       handedOff.add(id);
+     } catch { handOffFailed.add(id); }
+     notify();
+diff --git a/mobile/src/screens/AppShell.tsx b/mobile/src/screens/AppShell.tsx
+--- a/mobile/src/screens/AppShell.tsx
++++ b/mobile/src/screens/AppShell.tsx
+@@ -26,6 +26,7 @@
+ import { DefaultRequirementsHost } from '../features/presentations/DefaultRequirementsHost';
+ import { InitialQaHost } from '../features/qa/InitialQaHost';
+ import { InitialFeedbackHost } from '../features/feedback/InitialFeedbackHost';
++import { InitialPresentationScoreHost } from '../features/feedback/InitialPresentationScoreHost';
+ import { CoachHost, useCoaches } from '../features/rehearsal/coaching';
+ import { deckById, getDeckState, loadPresentations, nextHue, useStore, visibleDecks } from '../features/presentations/store';
+ import { HomeScreen } from './HomeScreen';
+@@ -125,6 +126,7 @@
+       <CoachHost />
+       <DefaultRequirementsHost />
+       <InitialFeedbackHost />
++      <InitialPresentationScoreHost openedDeckId={['rehearse','review','full'].includes(s)?nav.deckId:null} />
+       <InitialQaHost />
+       </HomeContext.Provider>
+     </ShellContext.Provider>
+diff --git a/mobile/tests/presentation-score-automatic.test.mjs b/mobile/tests/presentation-score-automatic.test.mjs
+new file mode 100644
+--- /dev/null
++++ b/mobile/tests/presentation-score-automatic.test.mjs
+@@ -0,0 +1,166 @@
++// Automatic score admission over real controllers/cache; synthetic transport only.
++import {test} from 'node:test';
++import assert from 'node:assert/strict';
++import {registerHooks} from 'node:module';
++import {resolve,load} from './helpers/presentation-score-workflow-loader.mjs';
++import {withFeedback} from './helpers/feedback-fixtures.mjs';
++import {scoreState} from './helpers/presentation-score-fixtures.mjs';
++registerHooks({resolve,load});
++const React=await import('react');const {act,create}=await import('react-test-renderer');
++const {usePresentationScore}=await import('../src/features/feedback/usePresentationScore.ts');
++const {API_URL}=await import('../src/services/api.ts');
++const {readStored}=await import('../src/services/storage.ts');
++const {initializeCorrections,confirmCorrection,createCorrectionClient}=await import('../src/features/presentations/correctionStore.ts');
++const {saveRequirements}=await import('../src/features/presentations/requirementsStore.ts');
++const {confirmRequirements,acceptServerRequirements}=await import('../src/features/presentations/requirementsDraft.ts');
++const {bump}=await import('./helpers/slide-review-runtime-store.mjs');
++const {backgroundApp}=await import('./helpers/recording-screen-ui.mjs');
++globalThis.IS_REACT_ACT_ENVIRONMENT=true;
++let serial=700,values=[];
++const target=()=>{const id=`${++serial}00000-1234-4234-8234-123456789abc`;return {id,contextId:null,pageCount:2,review:withFeedback({attempt_id:id})};};
++const absent=(t,extra={})=>({schema_version:'presentation-score-v2',rubric_version:'presentation-score-v2',attempt_id:t.id,context_id:null,source_identity:null,assessment_status:'not_graded',feedback_revision:0,transcript_revision:0,state:'absent',stale:false,updated_at:null,selection:{token:'1'.repeat(64)},availability:{state:'available'},retry_available:false,requires_confirmation:false,retry_at:null,error:null,dependency:null,requirements:{context_id:null,revision:null,audience:'',required_duration_seconds:null},result:null,...extra});
++const correction=(t,revision=0)=>({attempt_id:t.id,base_transcript_id:t.review.transcript_id,revision,edits:revision?[{word_start:0,word_end:0,text:`Correction ${revision}`}]:[],effective_text:revision?`Correction ${revision}`:t.review.transcript.text,source_changed:false});
++const response=(v,status=200)=>new Response(JSON.stringify(v),{status});
++function completed(t){const value=scoreState();const old=value.attempt_id;function walk(v){if(!v||typeof v!=='object')return;for(const [k,x] of Object.entries(v)){if(k==='attempt_id'&&x===old)v[k]=t.id;else walk(x);}}walk(value);return value;}
++function Probe({t,automatic=true,active=true,slot=0,revision=null,local}){values[slot]=usePresentationScore(t,revision,local,active,automatic);return null;}
++const settle=()=>new Promise(r=>setImmediate(r));
++async function mount(t,fetcher,props={}){const old=globalThis.fetch;globalThis.fetch=fetcher;let tree;values=[];
++ await act(async()=>{tree=create(React.createElement(Probe,{t,...props}));await settle();});
++ return {tree,get value(){return values[0];},async close(){await act(async()=>tree.unmount());globalThis.fetch=old;backgroundApp('active');}};
++}
++test('first eligible transcript starts once automatically and persisted queued state survives remount',async()=>{
++ const t=target(),posts=[];let current=absent(t);
++ const fetcher=async(url,init={})=>{if(url.endsWith('/corrections/'))return response(correction(t));if(init.method==='POST'){posts.push(JSON.parse(init.body));current=absent(t,{state:'queued',feedback_revision:1,assessment_status:'pending'});}return response(current);};
++ let h=await mount(t,fetcher);try{assert.equal(posts.length,1);assert.equal(posts[0].transcript_revision,0);await act(async()=>h.value.refresh());assert.equal(posts.length,1);}finally{await h.close();}
++ h=await mount(t,fetcher);try{assert.equal(posts.length,1);}finally{await h.close();}
++});
++test('two automatic owners and a read-only screen share a single source submission',async()=>{
++ const t=target();let posts=0,current=absent(t);
++ const fetcher=async(url,init={})=>{if(url.endsWith('/corrections/'))return response(correction(t));if(init.method==='POST'){posts++;current=absent(t,{state:'queued',feedback_revision:1,assessment_status:'pending'});}return response(current);};
++ const h=await mount(t,fetcher);try{await act(async()=>{h.tree.update(React.createElement(React.Fragment,null,React.createElement(Probe,{t}),React.createElement(Probe,{t,slot:1}),React.createElement(Probe,{t,slot:2,automatic:false})));await settle();});assert.equal(posts,1);}finally{await h.close();}
++});
++test('saved corrections refresh the score automatically after one second of stable synchronized inputs',async ctx=>{
++ ctx.mock.timers.enable({apis:['setTimeout','setInterval','Date']});const t=target();let revision=0,posts=0,current=completed(t);
++ initializeCorrections(API_URL,t.id,t.review.transcript_id,t.review.transcript);
++ const fetcher=async(url,init={})=>{if(url.endsWith('/corrections/'))return response(correction(t,revision));if(init.method==='POST'){posts++;assert.equal(JSON.parse(init.body).transcript_revision,revision);current=absent(t,{state:'queued',feedback_revision:2,transcript_revision:revision,assessment_status:'pending'});}return response(current);};
++ const h=await mount(t,fetcher);try{
++  assert.equal(posts,0);current=absent(t,{state:'stale',stale:true,feedback_revision:1,retry_available:true,updated_at:current.updated_at});
++  await act(async()=>confirmCorrection(API_URL,t.id,0,0,'Correction 1',t.review.transcript));
++  await act(async()=>ctx.mock.timers.tick(2000));assert.equal(posts,0,'unsynchronized correction must not submit');
++  revision=1;await act(async()=>createCorrectionClient(API_URL).refresh(t.id));
++  await act(async()=>createCorrectionClient(API_URL).synchronize(t.id));
++  await act(async()=>ctx.mock.timers.tick(500));await act(async()=>bump());
++  await act(async()=>ctx.mock.timers.tick(499));assert.equal(posts,0);
++  await act(async()=>{ctx.mock.timers.tick(1);await settle();});assert.equal(posts,1);
++ }finally{await h.close();ctx.mock.timers.reset();}
++});
++test('failed and rejected completed results do not enter an automatic paid retry loop; rejected result offers manual retry',async()=>{
++ for(const rejected of [false,true]){const t=target();let posts=0,current=absent(t,{state:'failed',feedback_revision:1,retry_available:true,assessment_status:'unavailable'});
++  if(rejected){current=completed(t);current.retry_available=true;current.assessment_status=current.result.assessment_status='invalid_evidence';current.result.overall={status:'invalid_evidence',score:null,level:null,exact:null,components:{slide_mean:{numerator:200,denominator:3},whole:null}};current.result.whole[3]={...current.result.whole[3],status:'insufficient_evidence',level:null,evidence:[],limitations:['Missing speech citation.']};current.result.validation.score_critical={rejected_count:1,reasons:['whole:delivery: unsupported_assessment']};}
++  const h=await mount(t,async(url,init={})=>{if(url.endsWith('/corrections/'))return response(correction(t));if(init.method==='POST'){posts++;current=absent(t,{state:'queued',feedback_revision:2,assessment_status:'pending'});}return response(current);});
++  try{assert.equal(posts,0);await act(async()=>h.value.refresh());assert.equal(posts,0);await act(async()=>h.value.generate());assert.equal(posts,1,rejected?'rejected completed result must be retryable':'failed result can retry');}finally{await h.close();}
++ }
++});
++test('uncertain automatic POST is not repeated on refresh/remount and still requires explicit confirmation',async()=>{
++ const t=target();let posts=0;
++ const fetcher=async(url,init={})=>{if(url.endsWith('/corrections/'))return response(correction(t));if(init.method==='POST'){posts++;throw Error('connection interrupted after dispatch');}return response(absent(t));};
++ let h=await mount(t,fetcher);try{assert.equal(posts,1);await act(async()=>h.value.refresh());assert.equal(posts,1);}finally{await h.close();}
++ h=await mount(t,fetcher);try{assert.equal(posts,1);await act(async()=>h.value.generate());assert.equal(h.value.ask,true);assert.equal(posts,1);}finally{await h.close();}
++});
++test('automatic owners pause in background and read-only owners never admit scoring',async()=>{
++ for(const mode of ['background','read-only']){const t=target();let posts=0;if(mode==='background')backgroundApp('background');
++  const h=await mount(t,async(url,init={})=>{if(url.endsWith('/corrections/'))return response(correction(t));if(init.method==='POST'){posts++;return response(absent(t,{state:'queued',feedback_revision:1,assessment_status:'pending'}));}return response(absent(t));},{automatic:mode!=='read-only'});
++  try{assert.equal(posts,0);if(mode==='background'){await act(async()=>{backgroundApp('active');await settle();});assert.equal(posts,1);}}finally{await h.close();}
++ }
++});
++test('reactive store publications do not repeatedly submit when server still reports absent after a successful POST',async()=>{
++ const t=target();let posts=0;
++ const h=await mount(t,async(url,init={})=>{if(url.endsWith('/corrections/'))return response(correction(t));if(init.method==='POST'){posts++;return response(absent(t,{state:'queued',feedback_revision:1,assessment_status:'pending'}));}return response(absent(t));});
++ try{assert.equal(posts,1);for(let i=0;i<4;i++)await act(async()=>{bump();await settle();});assert.equal(posts,1);}finally{await h.close();}
++});
++
++test('a definite automatic POST rejection remains manually recoverable in a separate screen controller',async()=>{
++ const t=target();let posts=0;
++ const h=await mount(t,async(url,init={})=>{if(url.endsWith('/corrections/'))return response(correction(t));if(init.method==='POST'){posts++;return response({error:'synthetic admission rejection'},409);}return response(absent(t));});
++ try{await act(async()=>{h.tree.update(React.createElement(React.Fragment,null,React.createElement(Probe,{t}),React.createElement(Probe,{t,slot:1,automatic:false})));await settle();});assert.equal(posts,1);assert.match(values[1].notice,/retry|scor/i);assert.equal(values[1].busy,false);}finally{await h.close();}
++});
++test('offline correction preflight is bounded across reactive renders and recovers without a paid retry',async ctx=>{
++ ctx.mock.timers.enable({apis:['setTimeout','setInterval','Date']});const t=target();let online=false,checks=0,posts=0;
++ const h=await mount(t,async(url,init={})=>{if(url.endsWith('/corrections/')){checks++;if(!online)throw Error('offline');return response(correction(t));}if(init.method==='POST'){posts++;return response(absent(t,{state:'queued',feedback_revision:1,assessment_status:'pending'}));}return response(absent(t));});
++ try{assert.equal(checks,1);for(let i=0;i<4;i++)await act(async()=>bump());assert.equal(checks,1);assert.equal(posts,0);online=true;await act(async()=>{ctx.mock.timers.tick(5000);await settle();});assert.equal(checks,2);assert.equal(posts,1);}finally{await h.close();ctx.mock.timers.reset();}
++});
++test('rapid synchronized corrections coalesce to the latest revision before automatic scoring',async ctx=>{
++ ctx.mock.timers.enable({apis:['setTimeout','setInterval','Date']});const t=target();let revision=0,posts=[];const completedState=completed(t);let current=completedState;
++ initializeCorrections(API_URL,t.id,t.review.transcript_id,t.review.transcript);
++ const h=await mount(t,async(url,init={})=>{if(url.endsWith('/corrections/'))return response(correction(t,revision));if(init.method==='POST'){posts.push(JSON.parse(init.body));return response(absent(t,{state:'queued',feedback_revision:2,transcript_revision:revision,assessment_status:'pending'}));}return response(current);});
++ try{
++  current=absent(t,{state:'stale',stale:true,feedback_revision:1,retry_available:true,updated_at:completedState.updated_at});
++  revision=1;await act(async()=>createCorrectionClient(API_URL).refresh(t.id));await act(async()=>ctx.mock.timers.tick(700));
++  revision=2;await act(async()=>createCorrectionClient(API_URL).refresh(t.id));await act(async()=>ctx.mock.timers.tick(999));assert.equal(posts.length,0);
++  await act(async()=>{ctx.mock.timers.tick(1);await settle();});assert.equal(posts.length,1);assert.equal(posts[0].transcript_revision,2);
++ }finally{await h.close();ctx.mock.timers.reset();}
++});
++
++
++test('saved settings wait for synchronization and automatically refresh at the new context revision',async ctx=>{
++ ctx.mock.timers.enable({apis:['setTimeout','setInterval','Date']});const t=target();t.contextId='12345678-1234-4234-8234-123456789abc';const local='settings-auto-'+t.id;
++ saveRequirements(local,API_URL,{contextId:t.contextId,deckId:t.review.deck_id,revision:1,audience:'First audience',requiredDurationSeconds:300});
++ initializeCorrections(API_URL,t.id,t.review.transcript_id,t.review.transcript);
++ let current=absent(t,{context_id:t.contextId,state:'completed',feedback_revision:1,assessment_status:'insufficient_evidence',updated_at:'2026-10-17T02:00:00Z',requirements:{context_id:t.contextId,revision:1,audience:'First audience',required_duration_seconds:300}}),posts=0;
++ const h=await mount(t,async(url,init={})=>{if(url.endsWith('/corrections/'))return response(correction(t));if(init.method==='POST'){posts++;return response({...current,state:'queued',stale:false,assessment_status:'pending',feedback_revision:2,requirements:{...current.requirements,revision:2}});}return response(current);},{revision:1,local});
++ try{
++  await act(async()=>confirmRequirements(local,API_URL,{audience:'New audience',requiredDurationSeconds:360}));await act(async()=>ctx.mock.timers.tick(2000));assert.equal(posts,0);
++  await act(async()=>{saveRequirements(local,API_URL,{contextId:t.contextId,deckId:t.review.deck_id,revision:2,audience:'New audience',requiredDurationSeconds:360});acceptServerRequirements(local,API_URL);current={...current,state:'stale',stale:true,retry_available:true};h.tree.update(React.createElement(Probe,{t,revision:2,local}));});
++  await act(async()=>ctx.mock.timers.tick(999));assert.equal(posts,0);await act(async()=>{ctx.mock.timers.tick(1);await settle();});assert.equal(posts,1);
++ }finally{await h.close();ctx.mock.timers.reset();}
++});
++test('a saved change during an unresolved provider request waits for its receipt before one replacement',async ctx=>{
++ ctx.mock.timers.enable({apis:['setTimeout','setInterval','Date']});const t=target();let revision=0,posts=0,current=absent(t);
++ const h=await mount(t,async(url,init={})=>{if(url.endsWith('/corrections/'))return response(correction(t,revision));if(init.method==='POST'){posts++;current=absent(t,{state:'queued',feedback_revision:posts,transcript_revision:revision,assessment_status:'pending',updated_at:`2026-10-17T03:0${posts}:00Z`});}return response(current);});
++ try{
++  assert.equal(posts,1);revision=1;current={...current,state:'stale',stale:true,requires_confirmation:true,retry_available:true};await act(async()=>{await createCorrectionClient(API_URL).refresh(t.id);await h.value.refresh();});
++  await act(async()=>ctx.mock.timers.tick(2500));assert.equal(posts,1,'a submitted source must reconcile before any replacement');
++  current={...current,requires_confirmation:false,updated_at:'2026-10-17T03:02:00Z'};await act(async()=>h.value.refresh());await act(async()=>{ctx.mock.timers.tick(1000);await settle();});assert.equal(posts,2);
++ }finally{await h.close();ctx.mock.timers.reset();}
++});
++
++// Independent review reproduced this foreground/admission race.
++test('independent: foreground owner reconciles a delayed accepted POST after reading absent',async ctx=>{
++ ctx.mock.timers.enable({apis:['setInterval','Date']});
++ const t=target();let posts=0,reads=0,release,current=absent(t);
++ const h=await mount(t,async(url,init={})=>{
++  if(url.endsWith('/corrections/'))return response(correction(t));
++  if(init.method==='POST'){posts++;return new Promise(r=>release=()=>{current=absent(t,{state:'queued',feedback_revision:1,assessment_status:'pending'});r(response(current));});}
++  reads++;return response(current);
++ });
++ try{
++  assert.equal(posts,1);
++  await act(async()=>{backgroundApp('background');backgroundApp('active');await settle();});
++  assert.equal(h.value.state.state,'absent');
++  await act(async()=>{release();await settle();});
++  const before=reads;
++  await act(async()=>{ctx.mock.timers.tick(10000);await settle();});
++  assert.equal(posts,1);
++  assert.ok(reads>before,`expected GET reconciliation for durable uncertain intent; reads stayed ${reads}`);
++  assert.equal(h.value.state.state,'queued');
++ }finally{await h.close();ctx.mock.timers.reset();}
++});
++test('independent: changing selected owner while automatic correction preflight is pending never posts the former owner',async()=>{
++ const first=target(),second=target(),posts=[];let release,firstCorrection=true;
++ const h=await mount(first,async(url,init={})=>{
++  const owner=url.includes(first.id)?first:second;
++  if(url.endsWith('/corrections/')){
++   if(owner===first&&firstCorrection){firstCorrection=false;return new Promise(r=>release=()=>r(response(correction(first))));}
++   return response(correction(owner));
++  }
++  if(init.method==='POST'){posts.push(owner.id);return response(absent(owner,{state:'queued',feedback_revision:1,assessment_status:'pending'}));}
++  return response(absent(owner));
++ });
++ try{
++  assert.equal(typeof release,'function');
++  await act(async()=>{h.tree.update(React.createElement(Probe,{t:second}));await settle();});
++  await act(async()=>{release();await settle();});
++  assert.deepEqual(posts,[second.id]);
++  assert.equal(h.value.state.attempt_id,second.id);
++ }finally{await h.close();}
++});
+diff --git a/mobile/tests/presentation-score-integration.test.mjs b/mobile/tests/presentation-score-integration.test.mjs
+--- a/mobile/tests/presentation-score-integration.test.mjs
++++ b/mobile/tests/presentation-score-integration.test.mjs
+@@ -1,10 +1,11 @@
+-// Actual panel -> controller -> mocked API -> validator -> persistent cache -> score projection.
++// Actual automatic host -> controller -> mocked API -> validator/cache -> panel projection.
+ import {test} from 'node:test';import assert from 'node:assert/strict';import {registerHooks} from 'node:module';
+ import {resolve,load} from './helpers/presentation-score-integration-loader.mjs';
+ import {scoreState,scoreReview} from './helpers/presentation-score-fixtures.mjs';
+ registerHooks({resolve,load});
+ const React=await import('react'),{act,create}=await import('react-test-renderer');
+ const overview=await import('../src/features/feedback/useRunPresentationScores.ts').catch(()=>({}));
++const {InitialPresentationScoreHost}=await import('../src/features/feedback/InitialPresentationScoreHost.tsx');
+ const {PresentationScorePanel,PresentationScoreRing}=await import('../src/features/feedback/PresentationScorePanel.tsx');
+ const {API_URL}=await import('../src/services/api.ts'),{writeStored}=await import('../src/services/storage.ts');
+ const {reviewKey}=await import('../src/features/transcription/reviewStorage.ts');
+@@ -16,6 +17,7 @@
+  const id=`${String(++serial+800).padStart(8,'0')}-4321-4321-8321-123456789abc`,review=scoreReview({attempt_id:id});
+  writeStored(reviewKey(API_URL,'attempt',id),review);
+  const model={deck:{id:'integration-'+id},n:2,state:{run:{parts:[{attemptId:id,segments:[{startMs:0,endMs:1000}]},{attemptId:id,segments:[{startMs:1000,endMs:2000}]}]}},stages:new Map([[id,'done']])};
++ globalThis.runtimeDecks=[model.deck];globalThis.runtimeDeckStates={[model.deck.id]:model.state};globalThis.runtimeModels={[model.deck.id]:model};
+  const absent={schema_version:'presentation-score-v2',rubric_version:'presentation-score-v2',attempt_id:id,context_id:null,source_identity:null,assessment_status:'not_graded',feedback_revision:0,transcript_revision:0,state:'absent',stale:false,updated_at:null,selection:{token:'1'.repeat(64)},availability:{state:'available'},retry_available:false,requires_confirmation:false,retry_at:null,error:null,dependency:null,requirements:{context_id:null,revision:null,audience:'',required_duration_seconds:null},result:null};
+  const result=scoreState();const rename=v=>{if(!v||typeof v!=='object')return;for(const [k,x]of Object.entries(v)){if(k==='attempt_id')v[k]=id;else rename(x);}};rename(result);
+  return {id,review,model,absent,result};
+@@ -23,7 +25,7 @@
+ function Probe({model,slide,active=true}){
+  assert.equal(typeof overview.useRunPresentationScores,'function','run scoring adapter must exist');
+  latest=overview.useRunPresentationScores(model,active,slide);const item=slide===undefined?latest.overall:latest.items[slide];
+- return React.createElement(React.Fragment,null,React.createElement(PresentationScoreRing,{id:'test-score',label:slide===undefined?'Overall score':'Slide score',item}),
++ return React.createElement(React.Fragment,null,React.createElement(InitialPresentationScoreHost,{openedDeckId:model.deck.id}),React.createElement(PresentationScoreRing,{id:'test-score',label:slide===undefined?'Overall score':'Slide score',item}),
+   React.createElement(PresentationScorePanel,{item,controller:latest.controller,target:latest.target,overall:slide===undefined,active,refresh:latest.refresh,onEvidence:()=>{}}));
+ }
+ const button=(r,label)=>r.root.findAllByType('pressable').find(x=>x.props.accessibilityLabel===label);
+@@ -37,11 +39,11 @@
+  };
+  return {fetcher,posts,gets,set:next=>{current=next;}};
+ }
+-test('first-time Grade reaches score display via polling; navigation and reopening never regenerate',async t=>{
++test('automatic first scoring reaches display via polling; navigation and reopening never regenerate',async t=>{
+  t.mock.timers.enable({apis:['setInterval']});const s=setup(),network=mockNetwork(s),old=globalThis.fetch;globalThis.fetch=network.fetcher;let r;
+  try{
+-  await act(async()=>{r=create(React.createElement(Probe,{model:s.model}));});assert.equal(network.posts.length,0);assert.equal(latest.overall.score,null);
+-  await click(r,'Grade presentation');assert.equal(network.posts.length,1);assert.match(network.posts[0].url,/presentation-score\/$/);
++  await act(async()=>{r=create(React.createElement(Probe,{model:s.model}));});assert.equal(network.posts.length,1);assert.equal(latest.overall.score,null);
++  assert.equal(button(r,'Grade presentation'),undefined);assert.equal(network.posts.length,1);assert.match(network.posts[0].url,/presentation-score\/$/);
+   network.set(s.result);await act(async()=>{t.mock.timers.tick(2500);await flush();});
+   assert.equal(latest.overall.score,67);assert.equal(r.root.findByType('score-ring').props.value,'67');
+   await act(async()=>r.update(React.createElement(Probe,{model:s.model,slide:1})));assert.equal(latest.items[1].score,67);assert.equal(network.posts.length,1);
+@@ -65,7 +67,7 @@
+   // Initialize/sync on explicit Grade is unnecessary here: initialize the existing correction store only.
+   const {initializeCorrections}=await import('../src/features/presentations/correctionStore.ts');
+   await act(async()=>{initializeCorrections(API_URL,s.id,s.review.transcript_id,s.review.transcript);confirmCorrection(API_URL,s.id,0,0,'Corrected recognition',s.review.transcript);});
+-  assert.equal(latest.overall.score,null);assert.equal(r.root.findByType('score-ring').props.value,'—');assert.ok(button(r,'Update score'));
++  assert.equal(latest.overall.score,null);assert.equal(r.root.findByType('score-ring').props.value,'—');assert.equal(button(r,'Update score'),undefined);
+   assert.equal(readPresentationScore(API_URL,{id:s.id,contextId:null,review:s.review,pageCount:2}).result.overall.score,67);assert.equal(network.posts.length,0);
+  }finally{if(r)await act(async()=>r.unmount());globalThis.fetch=old;}
+ });
+@@ -79,8 +81,38 @@
+  writeStored(reviewKey(API_URL,'attempt',s.id),s.review);
+  const network=mockNetwork(s),old=globalThis.fetch;globalThis.fetch=network.fetcher;let r;
+  try{
+-  await act(async()=>{r=create(React.createElement(Probe,{model:s.model}));});await click(r,'Grade presentation');network.set(s.result);
++  await act(async()=>{r=create(React.createElement(Probe,{model:s.model}));});assert.equal(network.posts.length,1);network.set(s.result);
+   await act(async()=>{t.mock.timers.tick(2500);await flush();});assert.equal(latest.overall.score,67);assert.deepEqual(latest.items.map(i=>i.score),[67,67]);
+   assert.equal(latest.overall.result.evidence.visits.length,5);assert.equal(latest.overall.result.slides[1].evidence[0].visit_id,4);assert.equal(network.posts.length,1);
+  }finally{if(r)await act(async()=>r.unmount());globalThis.fetch=old;}
+ });
++
++test('opening a saved presentation enables only its selected sources, leaving unopened history untouched',async()=>{
++ const selected=setup(),history=setup(),old=globalThis.fetch;let r;const posts=[];
++ globalThis.runtimeDecks=[selected.model.deck,history.model.deck];globalThis.runtimeDeckStates={[selected.model.deck.id]:selected.model.state,[history.model.deck.id]:history.model.state};globalThis.runtimeModels={[selected.model.deck.id]:selected.model,[history.model.deck.id]:history.model};
++ globalThis.fetch=async(url,init={})=>{assert.ok(!url.includes(history.id),'unused history must not be read or graded');if(url.endsWith('/corrections/'))return response({attempt_id:selected.id,base_transcript_id:selected.review.transcript_id,revision:0,edits:[],effective_text:selected.review.transcript.text,source_changed:false});if(init.method==='POST'){posts.push(url);return response({...selected.absent,state:'queued',assessment_status:'pending',feedback_revision:1});}return response(selected.absent);};
++ try{await act(async()=>{r=create(React.createElement(InitialPresentationScoreHost,{openedDeckId:null}));});assert.equal(posts.length,0);await act(async()=>{r.update(React.createElement(InitialPresentationScoreHost,{openedDeckId:selected.model.deck.id}));await flush();});assert.equal(posts.length,1);await act(async()=>r.update(React.createElement(InitialPresentationScoreHost,{openedDeckId:null})));assert.equal(posts.length,1);}finally{if(r)await act(async()=>r.unmount());globalThis.fetch=old;}
++});
++
++test('pending comparisons and cropped selected intervals cannot admit an automatic assessment',async()=>{
++ for(const mode of ['comparison','cropped']){const s=setup(),old=globalThis.fetch;let r,requests=0;
++  if(mode==='comparison')s.model.state.compare={pending:true};else for(const p of s.model.state.run.parts)p.segments[0].startMs++;
++  globalThis.fetch=async()=>{requests++;return response(s.absent);};
++  try{await act(async()=>{r=create(React.createElement(InitialPresentationScoreHost,{openedDeckId:s.model.deck.id}));await flush();});assert.equal(requests,0,mode+' must not trigger scoring');}finally{if(r)await act(async()=>r.unmount());globalThis.fetch=old;}
++ }
++});
++
++
++test('active automatic submission shows scoring across readers without an uncertainty warning or retry',async()=>{
++ const s=setup(),network=mockNetwork(s),old=globalThis.fetch;let r,finish;const pending=new Promise(resolve=>{finish=resolve;});
++ globalThis.fetch=async(url,init={})=>init.method==='POST'?pending:network.fetcher(url,init);
++ try{
++  await act(async()=>{r=create(React.createElement(Probe,{model:s.model}));await flush();});
++  assert.equal(latest.controller.busy,true);assert.equal(latest.controller.notice,'');
++  assert.equal(latest.overall.status,'Scoring…');assert.equal(r.root.findByType('score-ring').props.value,'…');
++  assert.equal(button(r,'Retry grading'),undefined);
++  await act(async()=>r.update(React.createElement(Probe,{model:s.model,slide:1})));
++  assert.equal(latest.items[1].status,'Scoring…');assert.equal(latest.controller.notice,'');
++  await act(async()=>{finish(response({...s.absent,state:'queued',assessment_status:'pending',feedback_revision:1},202));await flush();});
++ }finally{finish?.(response({...s.absent,state:'queued',assessment_status:'pending',feedback_revision:1},202));if(r)await act(async()=>r.unmount());globalThis.fetch=old;}
++});
+diff --git a/mobile/tests/helpers/presentation-score-integration-loader.mjs b/mobile/tests/helpers/presentation-score-integration-loader.mjs
+--- a/mobile/tests/helpers/presentation-score-integration-loader.mjs
++++ b/mobile/tests/helpers/presentation-score-integration-loader.mjs
+@@ -1,6 +1,7 @@
+ import {resolve as workflowResolve} from './presentation-score-workflow-loader.mjs';
+ export {load} from './domain-loader.mjs';
+ export function resolve(specifier,context,next){
++ if(specifier.endsWith('/presentations/useDeckModel'))return {url:'data:text/javascript,export const useDeckModel=id=>globalThis.runtimeModels?.[id]??null;',shortCircuit:true};
+  if(specifier==='react-native'||/\/(frame|theme|ScoreRing)$/.test(specifier))return {url:new URL('./presentation-score-integration-native.mjs',import.meta.url).href,shortCircuit:true};
+  if(specifier==='react-native-reanimated')return {url:new URL('./ai-overview-screen-native.mjs',import.meta.url).href,shortCircuit:true};
+  return workflowResolve(specifier,context,next);

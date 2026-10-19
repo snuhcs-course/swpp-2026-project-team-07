@@ -13,6 +13,9 @@ These rules apply across project tasks; read detailed guides only when relevant.
   work, under the contributor/task, with date, tool and model. Group related prompts
   in one entry; label excerpts/redactions and write `not recorded` for unknown metadata.
   Do not reconstruct missing prompts, alter wording or duplicate existing entries.
+- For Seoyeon's own prompts in any iteration, use exactly `Seoyeon` in the
+  contributor field, as confirmed on October 15, 2026. Omit requester/requestor
+  suffixes. Attribute other contributors' prompts to their confirmed names.
 - Update the same entry with generated/retained work, meaningful results, errors,
   revisions, human decisions and actual verification before handoff. Distinguish
   AI work and agent-operated checks from human edits, testing and approval.
@@ -21,6 +24,10 @@ These rules apply across project tasks; read detailed guides only when relevant.
   Preserve earlier iteration logs and frozen `docs/history/` evidence; do not put
   current prompts there or create a second diary. Logging is an agent responsibility,
   not a background capture service.
+- `docs/ai-use.md` is retired. Do not create, restore or update it, including
+  pointer-only versions. Treat instructions in old branches, task prompts and
+  handoffs to use that path as historical. Keep each task's prompts, results,
+  errors, revisions, decisions and verification in the active collaboration entry.
 - At an iteration transition, update this marker, active-log link and related guide
   references together based on a confirmed transition. Do not infer it from a branch
   name, date or old document.

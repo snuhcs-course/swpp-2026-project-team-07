@@ -12,7 +12,7 @@ const { pickHue } = await import('../src/domain/hues.ts');
 const { fillerCounts, fillerTotal, covers, keyWords, wordCount } = await import('../src/domain/words.ts');
 const { parseSlideText, slideTargets, defaultTarget } = await import('../src/domain/slides.ts');
 const { mergeTake, takeVisits, runTimes, runLabel } = await import('../src/domain/run.ts');
-const { sentences, buildLines, buildVocabulary, misheard, splitFlags } = await import('../src/domain/lines.ts');
+const { sentences, buildLines, buildVocabulary, splitFlags } = await import('../src/domain/lines.ts');
 const { reviewInsights, findingsFor, paceChip, heroStats, compareRows, summarizeTake } = await import('../src/domain/analysis.ts');
 const { decideRelease, coverFlow } = await import('../src/domain/gestures.ts');
 
@@ -108,21 +108,20 @@ test('sentences keep Whisper punctuation and become slide lines with audio range
   const vocab = buildVocabulary(['OutLoud rehearsal coach', 'Evaluation against manual labels']);
   const lines = buildLines(run, 2, new Map([['a', transcript]]), {}, vocab);
   assert.deepEqual(lines.map(l => [l.slide, l.text]), [[0, 'Hi everyone, I’m presenting out loud.'], [0, 'It links every sentence to a slide.'], [1, 'Next we look at the manual levels here']]);
-  assert.deepEqual(lines[0].flags, [{ w: 'out loud', alts: ['OutLoud'] }]);
-  assert.deepEqual(lines[2].flags, [{ w: 'manual levels', alts: ['manual labels'] }]);
+  assert.deepEqual(lines[0].flags, []);
+  assert.deepEqual(lines[2].flags, []);
   assert.deepEqual(lines[1].audio, { attemptId: 'a', startMs: 3000, endMs: 5000 });
   assert.equal(lines[2].t, 8 + 1);
-  // Corrections: replace text, dismiss a flag, move a line.
+  // Old text rewrites are ignored; slide moves remain supported.
   const edited = buildLines(run, 2, new Map([['a', transcript]]), {
     [lines[0].key]: { text: 'Hi everyone, I’m presenting OutLoud.' },
     [lines[2].key]: { slide: 0, dismissed: ['manual levels'] },
   }, vocab);
-  assert.equal(edited[0].fixed, true);
+  assert.equal(edited[0].fixed, false);
   assert.deepEqual(edited[0].flags, []);
   assert.equal(edited.filter(l => l.slide === 0).length, 3);
   assert.equal(edited.find(l => l.moved).from, 1);
   assert.deepEqual(splitFlags('presenting out loud.', [{ w: 'out loud', alts: [] }]).map(x => x.fi), [-1, 0, -1]);
-  assert.deepEqual(misheard('We use outloud daily', vocab, 0), [{ w: 'outloud', alts: ['OutLoud'] }]);
 });
 
 test('review insights pick the slides holding the overage', () => {

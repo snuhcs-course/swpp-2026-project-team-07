@@ -1,16 +1,20 @@
+// OpenAI Codex review routing: docs/ai-collaboration-prompts-iteration-2.md#first-recording-review-navigation-october-16-2026
 // OpenAI Codex Review and Full review: docs/ai-collaboration-prompts-iteration-2.md#review-and-full-review-redesign-october-15-2026
-// Real merged-run audio, timed transcript and per-slide grades; no synthesized speech.
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+// Real merged-run audio, timed transcript and verified AI assessment status.
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, type GestureResponderEvent, type PanResponderGestureState } from 'react-native';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Enter, Txt, useFrame } from '../design/frame';
 import { Glyph, UIIcon } from '../design/icons';
 import { PanView } from '../design/PanView';
-import { ScoreRing } from '../design/ScoreRing';
+import { PresentationScorePanel, PresentationScoreRing } from '../features/feedback/PresentationScorePanel';
+import { useRunPresentationScores } from '../features/feedback/useRunPresentationScores';
+import { currentScoreEvidence, scoreAudioEvidence, scoreLevelColor, scoreLevelLabel, scorePlaybackSource } from '../features/feedback/presentationScoreDisplay';
+import type { ScoreEvidence } from '../features/feedback/presentationScore';
 import { EASE_SCREEN, F } from '../design/tokens';
 import { useTheme } from '../design/theme';
-import { HintRow, PageSurface } from '../design/ui';
-import { GRADE, GRADE_ORDER, slideGrade, type GradeKey } from '../domain/analysis';
+import { Dialog, HintRow, PageSurface } from '../design/ui';
+import { useRunFeedbackStatus } from '../features/feedback/useRunFeedbackStatus';
 import { fmt, relativeDay } from '../domain/format';
 import { BACK_FADE_Y, BACK_T } from '../domain/gestures';
 import { runLabel, runPosition, runStarts, type RunAudioPlanEntry } from '../domain/run';
@@ -25,14 +29,24 @@ type Mode = { kind: 'run' } | { kind: 'slide'; slide: number } | null;
 type RowLayout = { y: number; h: number };
 
 export function FullReviewScreen({ active = true }: { active?: boolean }) {
-  const { c } = useTheme();
+  const { c, mode: themeMode } = useTheme();
   const { go, nav } = useShell();
   const frame = useFrame();
   const model = useDeckModel(nav.deckId);
   const run = model?.state.run ?? null;
+  const feedback = useRunFeedbackStatus(model, active);
+  const scores = useRunPresentationScores(model, active);
+  const scoreSource = useRef({item:scores.overall,target:scores.target,active});
+  useLayoutEffect(()=>{scoreSource.current={item:scores.overall,target:scores.target,active};return()=>{scoreSource.current.active=false;};},[scores.overall,scores.target,active]);
+  const [missingAudio, setMissingAudio] = useState<{slides:number[];signature:string}|null>(null);
   const now = useNow();
   const player = useSegmentPlayer();
   const stopPlayback = player.stop;
+  const scoreEvidenceSource=useRef<string|null>(null);
+  const scorePlaybackIdentity=scorePlaybackSource(scores.overall.state,scores.target);
+  useEffect(()=>{if(player.playingKey?.startsWith('score-evidence:')&&scoreEvidenceSource.current!==scorePlaybackIdentity)stopPlayback();},[scorePlaybackIdentity,player.playingKey,stopPlayback]);
+  const sourceIdentity=JSON.stringify(run?.parts??[]);
+  useEffect(()=>{stopPlayback();},[sourceIdentity,stopPlayback]);
   const dy = useSharedValue(0);
   const backExiting = useRef(false);
   const [mode, setMode] = useState<Mode>(null);
@@ -51,9 +65,10 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
   useEffect(() => () => { if (noteTimer.current) clearTimeout(noteTimer.current); stopPlayback(); }, [stopPlayback]);
   const toBack = useCallback(() => {
     stopPlayback();
-    if (nav.from === 'review') go('review', { deckId: nav.deckId });
+    if (nav.from === 'review') go('review', { deckId: nav.deckId, sel: nav.sel });
+    else if (nav.from === 'rehearse') go('rehearse', { nav: null, deckId: nav.deckId, slide: nav.sel });
     else go('home');
-  }, [go, nav.deckId, nav.from, stopPlayback]);
+  }, [go, nav.deckId, nav.from, nav.sel, stopPlayback]);
   const openSlide = useCallback((i: number) => {
     stopPlayback();
     if (nav.from === 'review') go('review', { deckId: nav.deckId, sel: i });
@@ -82,17 +97,6 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
 
   const times = useMemo(() => model?.times ?? [], [model]);
   const starts = useMemo(() => runStarts(times), [times]);
-  const grades = useMemo(() => {
-    if (!model || !run) return [];
-    return times.map((_, i) => {
-      const id = run.parts[i]?.attemptId;
-      return slideGrade(i, { times, targets: model.deck.targets, lines: model.lines, points: model.points,
-        ai: model.ai, haveText: model.deck.text === 'ready',
-        pending: !!id && !model.transcripts.has(id) && model.stages.get(id) !== 'no_speech' });
-    });
-  }, [model, run, times]);
-  const counts = useMemo(() => Object.fromEntries(GRADE_ORDER.map(key =>
-    [key, grades.filter(g => g.key === key).length])) as Record<(typeof GRADE_ORDER)[number], number>, [grades]);
   const lines = useMemo(() => (model?.lines ?? []).filter(line => (times[line.slide] ?? 0) > 0).slice().sort((a, b) => a.t - b.t), [model, times]);
   const runKey = `run:${model?.deck.id ?? ''}`;
   const playing = !!player.playingKey;
@@ -122,23 +126,40 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
     if (noteTimer.current) clearTimeout(noteTimer.current);
     noteTimer.current = setTimeout(() => setAudioNote(''), 3000);
   };
-  const wholeAudio = (): { segments: Segment[]; entries: RunAudioPlanEntry[] } => {
-    const segments: Segment[] = [], entries: RunAudioPlanEntry[] = [];
+  const onScoreEvidence = (refs: ScoreEvidence[]) => {
+    const current=scoreSource.current;
+    if(!current.active||!currentScoreEvidence(current.item.state,current.target,refs))return;
+    const fact=refs.find(ref=>ref.kind==='slide');
+    if(fact?.kind==='slide'){openSlide(fact.slide_index);return;}
+    const audio=scoreAudioEvidence(refs),duration=current.target!.review?.duration_ms??0;
+    if(!audio.length||audio.some(ref=>ref.attempt_id!==current.target!.id||ref.end_ms>duration))return;
+    const uri=audioOf(current.target!.id);
+    if(!uri){note('Original recording audio is not on this phone. Open its slide review to download it.');return;}
+    scoreEvidenceSource.current=scorePlaybackSource(current.item.state,current.target);
+    setAudioNote('Playing cited intervals from the original recording');setMode(null);setPlan([]);
+    void player.playSegments(`score-evidence:${current.target!.id}:${audio.map(ref=>`${ref.start_ms}:${ref.end_ms}`).join(',')}`,audio.map(ref=>({uri,startMs:ref.start_ms,endMs:ref.end_ms})));
+  };
+  const wholeAudio = (): { segments: Segment[]; entries: RunAudioPlanEntry[]; missing:number[] } => {
+    const segments: Segment[] = [], entries: RunAudioPlanEntry[] = [], missing: number[] = [];
     times.forEach((t, i) => {
       if (t <= 0) return;
       const part = run.parts[i], uri = part && audioOf(part.attemptId);
-      if (!uri || !part) return;
+      if (!uri || !part) { missing.push(i); return; }
       const selected = part.segments.filter(seg => seg.endMs > seg.startMs).map(seg => ({ uri, ...seg }));
-      if (!selected.length) return;
+      if (!selected.length) { missing.push(i); return; }
       segments.push(...selected);
       entries.push({ slide: i, runStart: starts[i], durMs: t * 1000 });
     });
-    return { segments, entries };
+    return { segments, entries, missing };
   };
-  const toggleWhole = () => {
-    const { segments, entries } = wholeAudio();
+  const toggleWhole = (allowPartial = false) => {
+    if (player.playingKey===runKey) { void player.playSegments(runKey,[]); return; }
+    const { segments, entries, missing } = wholeAudio();
     if (!segments.length) { note('Audio for this run isn’t on this phone'); return; }
-    setAudioNote('');
+    if (missing.length && !allowPartial) {
+      setMissingAudio({slides:missing,signature:JSON.stringify(run.parts)}); return;
+    }
+    setAudioNote(missing.length ? `Playing available audio · ${missing.length} slide${missing.length===1?'':'s'} missing` : '');
     setPlan(entries); setMode({ kind: 'run' });
     void player.playSegments(runKey, segments);
   };
@@ -149,19 +170,15 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
     setMode({ kind: 'slide', slide: i });
     void player.playSegments(`slide:${deck.id}:${i}`, part.segments.map(seg => ({ uri, ...seg })));
   };
-  const coverage = stats?.coverage ?? null;
-  const coverageLabel = coverage == null ? model.pending ? 'Transcribing' : deck.text === 'ready' ? 'No speech' : 'No slide text'
-    : coverage >= 90 ? 'On point' : coverage >= 75 ? 'Almost there' : 'Needs work';
-  const coverageColor = coverage == null ? c.secondary : coverage >= 90 ? c.good : coverage >= 75 ? c.warnAlt : c.badAlt;
-  const gradient: readonly [string, string] = coverage == null || coverage >= 90 ? GRADE.green.gradient
-    : coverage >= 75 ? ['#FFE58C', '#FF8A1E'] : GRADE.red.gradient;
-  const delta = run.delta != null && Math.abs(run.delta) >= 1 ? run.delta : null;
-  const over = total - run.targetSum;
-  const row2Value = delta != null ? fmt(Math.abs(delta)) : stats?.coverage == null ? '—/' + (stats?.total ?? '—') : stats.said + '/' + stats.total;
-  const row2Unit = delta != null ? delta < 0 ? 'faster than last' : 'slower than last' : 'points said';
-  const row2Color = delta == null ? c.secondary : delta < 0 ? c.good : c.warnAlt;
+  const a=feedback.aggregate;
+  const source=deck.requirementsDefault?'default':deck.timing.source==='required'?'required':'suggested';
+  const over=total-model.targetSum;
+  const assessmentCounts=[
+    ['With findings',a.slidesWithFindings],['Partial',a.partial],['Analyzing',a.pending],
+    ['Outdated',a.outdated],['Needs recovery',a.recoveryNeeded],['Insufficient evidence',a.insufficient],['Not analyzed',a.notAnalyzed],
+  ] as const;
   const rightText = audioNote || ((runPlaying || slidePlaying) && playbackSlide != null
-    ? runPlaying ? `${fmt(pos)} / ${fmt(total)}` : `${fmt(pos - starts[playbackSlide])} / ${fmt(times[playbackSlide])}`
+    ? runPlaying ? `${fmt(player.elapsedMs/1000)} / ${fmt(plan.reduce((sum,p)=>sum+p.durMs,0)/1000)}` : `${fmt(pos - starts[playbackSlide])} / ${fmt(times[playbackSlide])}`
     : 'Tap a section to hear it');
   const headerText = (runPlaying || slidePlaying) && playbackSlide != null
     ? `Slide ${playbackSlide + 1} · ${deck.slides[playbackSlide]?.title ?? 'Slide ' + (playbackSlide + 1)}` : 'Whole run';
@@ -175,14 +192,12 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
           <Txt numberOfLines={1} style={[styles.label, { color: c.secondary }]}>{'Full review · ' + runLabel(run, now, relativeDay)}</Txt>
         </View>
         <View style={styles.ringRow}>
-          <ScoreRing id="gFullScore" percent={coverage} value={coverage == null ? model.pending ? '…' : '—' : coverage + '%'}
-            label={coverageLabel} labelColor={coverageColor} gradient={gradient} />
+          <PresentationScoreRing id="gFullAssessment" label="Overall score" item={scores.overall}/>
           <View style={styles.ringStats}>
             <Stat icon="i-clock" value={fmt(total)}
-              unit={over > 3 ? fmt(over) + ' over' : over < -3 ? fmt(-over) + ' under' : 'on target'}
+              unit={`${over>3?fmt(over)+' over':over < -3?fmt(-over)+' under':'on target'} · ${source}`}
               color={over > 3 ? c.warn : over < -3 ? c.info : c.good} />
-            <Stat icon={delta == null ? 'i-slides' : delta < 0 ? 'i-faster' : 'i-slower'}
-              value={row2Value} unit={row2Unit} color={row2Color} opacity={delta == null && coverage == null ? 0.45 : 1} />
+            <Stat icon="i-slides" value={String(a.findings)} unit="verified findings" color={c.secondary} />
             <Stat icon="i-bubble" value={stats?.fpm == null ? '—' : stats.fpm.toFixed(1)} unit="fillers / min"
               color={c.secondary} opacity={stats?.fpm == null ? 0.45 : 1} />
             <Stat icon="i-gauge" value={stats?.wpm == null ? '—' : String(stats.wpm)}
@@ -196,7 +211,7 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
           </View>
           <View style={styles.controls}>
             <Pressable accessibilityRole="button" accessibilityLabel={runPlaying && !player.paused ? 'Pause' : `Play the whole run, ${fmt(total)}`}
-              onPress={toggleWhole} style={styles.wholePlay}>
+              onPress={() => toggleWhole()} style={styles.wholePlay}>
               <Glyph name={runPlaying && !player.paused ? 'p-pause' : 'p-play'} size={20} color={c.text} />
             </Pressable>
             <View style={styles.sections}>
@@ -220,6 +235,14 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
           }} onScrollBeginDrag={() => { transcriptDrag.current = true; }}
           onScrollEndDrag={() => { transcriptDrag.current = false; }} onMomentumScrollBegin={() => { transcriptDrag.current = true; }}
           onMomentumScrollEnd={() => { transcriptDrag.current = false; }} showsVerticalScrollIndicator={false}>
+          <PresentationScorePanel key={`${scores.target?.id??'composed'}:${scores.target?.contextId??''}`} item={scores.overall} controller={scores.controller} target={scores.target} overall active={active} notice={scores.notice} refresh={scores.refresh} onEvidence={onScoreEvidence}/>
+          <View style={styles.assessmentSummary} accessibilityLabel="AI assessment summary">
+            <Txt style={[styles.slidesTitle,{color:c.text}]}>{`${a.assessed} of ${a.recorded} recorded slides assessed`}</Txt>
+            <View style={styles.assessmentCounts}>{assessmentCounts.map(([label,count])=><Txt key={label} style={[styles.assessmentCount,{color:c.secondary}]}>{`${count} ${label.toLowerCase()}`}</Txt>)}</View>
+            {!!feedback.notice&&<Txt style={[styles.emptyTranscript,{color:c.secondary}]}>{feedback.notice}</Txt>}
+            <Pressable accessibilityRole="button" accessibilityLabel="Refresh AI assessment status" onPress={()=>void feedback.refresh()} style={styles.refresh}><Txt style={[styles.assessmentCount,{color:c.text}]}>Refresh status</Txt></Pressable>
+            <Txt style={[styles.slidesTitle,{color:c.text}]}>Transcript</Txt>
+          </View>
           {lines.length ? lines.map((line, i) => <TranscriptRow key={line.key} line={line}
             first={i === 0 || lines[i - 1].slide !== line.slide} active={currentLine === line.key}
             playing={playing} layouts={rowLayouts} />)
@@ -229,13 +252,7 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
         </ScrollView>
         <View style={styles.slidesHeader}>
           <Txt style={[styles.slidesTitle, { color: c.text }]}>Slides</Txt>
-          <View style={styles.legend}>
-            {GRADE_ORDER.map(key => <View key={key} style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: GRADE[key].fill }]} />
-              <Txt style={[styles.legendCount, { color: c.text }]}>{counts[key]}</Txt>
-              <Txt style={[styles.legendName, { color: c.secondary }]}>{GRADE[key].label}</Txt>
-            </View>)}
-          </View>
+          <Txt style={[styles.legendName,{color:c.secondary}]}>Slide scores · tap to review</Txt>
         </View>
         <View style={[styles.stripCard, { borderColor: c.hair, backgroundColor: c.surface06 }]}>
           <ScrollView ref={stripRef} horizontal showsHorizontalScrollIndicator={false}
@@ -243,26 +260,28 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
             onScrollBeginDrag={() => { stripDrag.current = true; }} onScrollEndDrag={() => { stripDrag.current = false; }}
             onMomentumScrollBegin={() => { stripDrag.current = true; }} onMomentumScrollEnd={() => { stripDrag.current = false; }}>
             {times.map((t, i) => {
-              const grade = grades[i]?.key ?? 'none' as GradeKey;
-              const fill = grade !== 'none' && grade !== 'pending' ? GRADE[grade].fill : c.ink08;
-              const tileInk = grade !== 'none' && grade !== 'pending' ? '#14161D' : c.secondary;
+              const item=feedback.items[i],score=scores.items[i];
+              const fill=score?.score!=null?scoreLevelColor(score.level,c):c.ink08;
+              const tileInk=score?.score==null?c.secondary:themeMode==='dark'?'#14161D':'#FFFFFF';
+              const badge=score?.score!=null?String(score.score):score?.status.includes('…')?'…':score?.status.toLowerCase().includes('outdated')?'↻':'—';
               const selected = (runPlaying || slidePlaying) && playbackSlide === i;
               return <Pressable key={i} accessibilityRole="button"
-                accessibilityLabel={`Slide ${i + 1}, ${deck.slides[i]?.title ?? 'Slide ' + (i + 1)}, ${t > 0 ? fmt(t) : 'not reached'}, ${grade === 'pending' ? 'pending' : grade === 'none' ? 'not reached' : GRADE[grade].label.toLowerCase()}. Open its review`}
+                accessibilityLabel={`Slide ${i + 1}, ${deck.slides[i]?.title ?? 'Slide ' + (i + 1)}, ${t > 0 ? fmt(t) : 'not reached'}, ${score?.score!=null?`${score.score} points, ${scoreLevelLabel(score.level)}`:score?.status??'Not graded'}, ${item?.label??'Not analyzed'}. Open its review`}
                 onPress={() => openSlide(i)} style={styles.tileWrap}>
                 {selected && <View style={[styles.tileOutline, { borderColor: c.strong }]} />}
                 <View style={[styles.tile, { backgroundColor: fill }]}>
                   <Txt style={[styles.tileNum, { color: tileInk }]}>{i + 1}</Txt>
-                  <Txt style={[styles.tileTime, { color: tileInk }]}>{t <= 0 ? '—' : fmt(t)}</Txt>
+                  <Txt style={[styles.tileTime, { color: tileInk }]}>{badge}</Txt>
                 </View>
               </Pressable>;
             })}
           </ScrollView>
         </View>
-        <HintRow hints={[{ icon: 'h-dn', text: nav.from === 'review' ? 'Back to review' : 'Back', nudge: 'down' },
+        <HintRow hints={[{ icon: 'h-dn', text: nav.from === 'review' ? 'Back to review' : nav.from === 'rehearse' ? 'Back to slides' : 'Back', nudge: 'down', onPress:toBack },
           { icon: 'h-tap', text: 'Tap a slide to review it' }]} />
       </Animated.View>
     </PanView>
+    {active&&missingAudio&&<Dialog title="Some run audio is missing" body={`Audio for slide${missingAudio.slides.length===1?'':'s'} ${missingAudio.slides.map(i=>i+1).join(', ')} is not on this phone. Play only the available recordings?`} confirm="Play available audio" onCancel={()=>setMissingAudio(null)} onConfirm={()=>{const captured=missingAudio;setMissingAudio(null);if(!active||captured.signature!==JSON.stringify(run.parts)){note('Selected recordings changed. Start playback again.');return;}toggleWhole(true);}}/>}
   </Enter>;
 }
 
@@ -283,7 +302,7 @@ function Stat({ icon, value, unit, color, opacity = 1 }: {
   return <View style={[styles.statRow, { opacity }]}>
     <UIIcon name={icon} size={22} />
     <Txt style={[styles.statValue, { color: c.text }]}>{value}</Txt>
-    <Txt numberOfLines={1} style={[styles.statUnit, { color }]}>{unit}</Txt>
+    <Txt numberOfLines={2} style={[styles.statUnit, { color }]}>{unit}</Txt>
   </View>;
 }
 const TranscriptRow = memo(function TranscriptRow({ line, first, active, playing, layouts }: {
@@ -308,10 +327,10 @@ const styles = StyleSheet.create({
   label: { marginTop: 3, fontFamily: F.medium, fontSize: 13 },
   ringRow: { position: 'absolute', left: 16, right: 16, top: 140, height: 120, paddingHorizontal: 12,
     flexDirection: 'row', alignItems: 'center', gap: 18 },
-  ringStats: { width: 196, gap: 10 },
-  statRow: { height: 22, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  ringStats: { width: 196, gap: 7 },
+  statRow: { minHeight: 22, flexDirection: 'row', alignItems: 'center', gap: 8 },
   statValue: { fontFamily: F.display, fontSize: 18, lineHeight: 20, fontVariant: ['tabular-nums'] },
-  statUnit: { flexShrink: 1, fontFamily: F.medium, fontSize: 13 },
+  statUnit: { flexShrink: 1, fontFamily: F.medium, fontSize: 12, lineHeight: 15 },
   whole: { position: 'absolute', left: 16, right: 16, top: 278, height: 55 },
   wholeHeader: { height: 17, flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 },
   wholeTitle: { flex: 1, minWidth: 0, fontFamily: F.bold, fontSize: 14 },
@@ -324,6 +343,7 @@ const styles = StyleSheet.create({
   sectionFill: { height: 6, borderRadius: 3 },
   transcript: { position: 'absolute', left: 16, right: 16, top: 343, bottom: 169 },
   transcriptContent: { paddingVertical: 8, gap: 6 },
+  assessmentSummary:{gap:10,marginBottom:12},assessmentCounts:{flexDirection:'row',flexWrap:'wrap',gap:8},assessmentCount:{fontFamily:F.medium,fontSize:12,lineHeight:17},refresh:{minHeight:44,alignSelf:'flex-start',justifyContent:'center',paddingHorizontal:10},
   transcriptRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   badge: { width: 20, height: 18, marginTop: 1, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
   badgeSpacer: { width: 20, height: 18 },

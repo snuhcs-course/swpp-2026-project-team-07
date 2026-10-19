@@ -10,7 +10,7 @@ import type { SharedValue } from 'react-native-reanimated';
 import type { EnterKind } from '../design/frame';
 
 export type ScreenName = 'home' | 'upload' | 'rehearse' | 'review' | 'full' | 'compare' | 'qa';
-export type NavState = { screen: ScreenName; nav: EnterKind; deckId: string | null; slide: number; sel: number; from: ScreenName | null; visit: number };
+export type NavState = { screen: ScreenName; nav: EnterKind; deckId: string | null; slide: number; sel: number; from: ScreenName | null; visit: number; editRequirements?: boolean };
 export type Go = (screen: ScreenName, patch?: Partial<Omit<NavState, 'screen' | 'visit'>>) => void;
 
 /** Shared values the Home carousel and the Upload screen both drive (the carousel stays mounted behind Upload). */

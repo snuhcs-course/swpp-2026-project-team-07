@@ -1,0 +1,170 @@
+diff --git a/README.md b/README.md
+--- a/README.md
++++ b/README.md
+@@ -26,8 +26,8 @@
+ This scoring worktree now has the [v2 deterministic scorer and existing durable-job API](docs/presentation-score-v2.md),
+ verified with synthetic providers on SQLite, PostgreSQL and a real Celery worker.
+ [Android scoring workflow and existing review UI](docs/android-presentation-scoring-verification.md)
+-now support explicit grading, source-aware scores and evidence, verified with mocked workflows.
+-Physical-device scoring interaction and real-provider usefulness remain unverified; the
++now support automatic scoring, source-aware scores, explicit failure recovery and evidence, verified with mocked workflows.
++Synthetic scoring interactions are verified on a physical Galaxy S23 Ultra; real-provider usefulness remains unverified. The
+ [backend milestone record](docs/presentation-scoring-milestones.md) preserves earlier checks.
+ The [v1 scorer](docs/presentation-score.md) and [comparison workflow](docs/presentation-score-pilot.md) remain historical;
+ no deployed grading or scoring reliability is claimed.
+@@ -88,10 +88,10 @@
+ 3. With the server available, the app uploads the PDF/audio and starts transcription after first-use OpenAI disclosure. If upload or transcription fails, use the saved recording details to retry.
+ 4. Open a presentation from Home. The normal recording layout shows the selected slide's Must Cover and Go Deeper cues before and during capture. Tap Play beside Cues to play or pause its saved audio when not recording. Rotation enlarges the PDF; returning restores the current slide's Cues panel. Retaking a recorded slide opens the existing comparison screen, where you choose **Keep current** or **Overwrite**. The new recording stays pending until you decide. If a capture is interrupted, tap the status beneath the timer to inspect and recover its audio; close the sheet and tap again to inspect another interrupted capture. A recovered redo uses the same choice.
+ 5. After a new selected recording is transcribed, its first feedback starts automatically. In Review, select a recorded slide. The AI status ring and page-level feedback show up to four verified findings. Expand Details & evidence, then use **Listen at…** and **Play evidence** to hear the original bounded interval. Use **Update feedback** after confirmed transcription corrections. Legacy take-level suggestions remain under Recording tools.
+-6. In Review, the transcript appears directly below Play and above AI feedback, highlighting the original timed words as audio plays. Confirmed suggestions, restore, synchronization and sentence playback stay inline. Recording tools retain original-word playback, transcription retries and slide descriptions; remote audio can be downloaded on the same page. Full Review retains saved audio and transcripts; Full Review is also accessible from the Home assessment ring. Home and Full Review summarize assessed recorded slides and verified finding counts; they do not assign AI quality percentages. Full Review warns before playing a run with missing source audio.
++6. In Review, the transcript appears directly below Play and above AI feedback, highlighting the original timed words as audio plays. Confirmed suggestions, restore, synchronization and sentence playback stay inline. Recording tools retain original-word playback, transcription retries and slide descriptions; remote audio can be downloaded on the same page. Full Review retains saved audio and transcripts; Full Review is also accessible from the Home assessment ring. Home and Full Review show the same validated overall presentation score for an exact complete original recording. Slide rings and navigation tiles show validated slide scores; finding counts remain separate. Home shows total current findings, recording duration and WPM. Scores start automatically after transcription, including previously unscored selected recordings when their presentation is opened, and refresh after saved corrections or settings finish synchronizing. Failures and uncertain requests retain explicit Retry controls. Full Review warns before playing a run with missing source audio.
+ 
+ - Previously saved local media and cached results remain stored through network or provider failures. Download uncached remote audio directly in Review when needed.
+-- Browsing, refreshing, downloading and replaying do not start analysis or feedback. PDF upload may generate the reusable AI cue profile; failed/uncertain generation requires explicit recovery. Rehearsal coaching generation remains explicit and does not retranscribe audio.
++- Refreshing, downloading and replaying do not start transcription or feedback. Opening a presentation may admit one automatic score for its selected recordings; unused history is not backfilled. Score indicators and GET requests themselves never admit work. PDF upload may generate the reusable AI cue profile; failed/uncertain generation requires explicit recovery. Rehearsal coaching generation remains explicit and does not retranscribe audio.
+ - History covers locally known presentations for the selected API, not an account-wide archive. [Recording, playback and recovery details](docs/rehearsal-review.md).
+ 
+ ## Configuration and limits
+diff --git a/docs/api-contract.md b/docs/api-contract.md
+--- a/docs/api-contract.md
++++ b/docs/api-contract.md
+@@ -2,7 +2,7 @@
+ 
+ This scoring worktree implements the [presentation-score-v2 contract](presentation-score-v2.md)
+ on the existing durable feedback jobs. Backend checks use synthetic providers.
+-[Android grading controls and validated score displays](android-presentation-scoring-verification.md)
++[Android automatic scoring and validated score displays](android-presentation-scoring-verification.md)
+ are implemented locally; physical-device scoring and live-provider quality remain unverified.
+ The [backend milestone record](presentation-scoring-milestones.md) preserves prior checks.
+ The [standalone v1 scorer and its receipts](presentation-score.md) remain historical.
+@@ -1169,3 +1169,12 @@
+ individually. Original visits, including empty/zero-duration rows, retain their
+ original IDs. Playback's positive-duration filtering must not renumber citations.
+ Private receipts, model selections and reconstruction audits are never public.
++
++
++### Automatic scoring and rejected-total recovery — October 17, 2026
++
++The Android app-level scoring host admits first assessments for new selected recordings and selected saved recordings after opening their presentation. It reuses the existing POST shape after transcripts and confirmed settings/corrections synchronize. Later synchronized input changes coalesce for one second. Persistent per-input intent and shared submission locks prevent repeated navigation, cache publications, concurrent screens and remounts from admitting duplicate work. GET remains read-only. Unresolved POST intent reconciles through foreground GET polling; failures and uncertain outcomes require explicit recovery rather than automatic same-input paid retries. Singleton feedback and Q&A remain independent.
++
++The scoring prompt is now `presentation-score-prompt-v2.1`; public schema, rubric, exact arithmetic and evidence validation remain v2. Assessed delivery must directly cite supporting original speech plus an eligible non-signal measurement. Measurements/requirements alone remain rejected. A completed `invalid_evidence` assessment exposes cooldown-aware `retry_available`; its Retry POST must include the matching `feedback_revision`. Current non-stale active/completed duplicate POSTs remain no-ops unless a rejected assessment receives an explicit revision-fenced Retry; failed/stale requests without a revision return a conflict. A fresh generation may replace the exact recognized previous v2 protocol, but old receipts cannot normalize under the replacement prompt; unsupported protocol snapshots remain unavailable. Stored JSON key ordering does not change protocol identity.
++
++Home, Full Review and slide reviews share validated score projection and level colors: Beginning red, Emerging amber, Competent green, Advanced blue; unavailable/stale/pending results remain neutral. Criteria and weights stay in this contract and backend validation but are hidden in product screens. Direct summaries, strengths, weaknesses, improvements and supporting playback remain available. Home displays the same selected-run overall score as Full Review, plus total current verified findings once, selected-run duration and WPM. Composite/incomplete sources cannot borrow another recording's overall score.
+diff --git a/docs/presentation-score-v2.md b/docs/presentation-score-v2.md
+--- a/docs/presentation-score-v2.md
++++ b/docs/presentation-score-v2.md
+@@ -26,6 +26,8 @@
+ 
+ Each applicable slide needs all three criteria; whole needs all four. Criteria select `assessed` with a valid level, justification, usable references, limitations, deductions; or `insufficient_evidence` with null level and explicit limitations. Invalid score evidence suppresses that slide/whole component and overall, but other valid slides survive. Unknown/duplicate criteria or slide identities fail closed. Insufficient evidence is different from demonstrated missing essential meaning; omissions require full-attempt review and an identified essential fact or requirement.
+ 
++Prompt `presentation-score-prompt-v2.1` explicitly requires assessed delivery and its weaknesses/deductions to cite supporting speech alongside an eligible non-signal measurement; duration requirements or measurements alone cannot establish it.
++
+ Audio unavailable/corrupted/insufficient suppresses overall; do not invent measurements or renormalize away delivery. Pauses/rate/fillers/repetitions need explained communication consequences for deductions. Relative signal levels describe recording context. No confidence, emotion, pronunciation, vocal expressiveness, gestures, eye contact or Q&A grading.
+ 
+ Shared weaknesses use unique IDs and one primary criterion key (`slide:<index>:<id>` or `whole:<id>`). Secondary deductions require a distinct consequence and supporting evidence. Provenance validation cannot prove semantic support or detect all disguised duplicate penalties.
+@@ -44,7 +46,7 @@
+ 
+ ## Public response and transport seam
+ 
+-GET `/api/attempts/{id}/presentation-score/?context_id=<UUID>` (omit query for null context). POST same route accepts `{context_id: UUID|null,expected_selection?,transcript_revision?,feedback_revision?,acknowledge_uncertain?}`. No client-selected transcript, slides, intervals or scores. Reuse existing selection/revision/quota/uncertainty guards; repeated identical POST reuses current active/completed work. GET and all mobile lifecycle events never admit grading. Initial historical state is not graded.
++GET `/api/attempts/{id}/presentation-score/?context_id=<UUID>` (omit query for null context). POST same route accepts `{context_id: UUID|null,expected_selection?,transcript_revision?,feedback_revision?,acknowledge_uncertain?}`. No client-selected transcript, slides, intervals or scores. Reuse existing selection/revision/quota/uncertainty guards; repeated identical POST reuses current active/completed work. A completed invalid-evidence assessment permits a revision-fenced explicit Retry with existing cooldown and uncertainty checks. The exact recognized previous scoring protocol may start a fresh generation; old receipts are never reinterpreted under new instructions. GET never admits grading. The app-level automatic workflow may POST once eligible selected recording inputs are ready, and again after synchronized scoring inputs change; ordinary indicator reads remain GET-only. Unscored historical recordings are eligible only when selected in a presentation the user opens.
+ 
+ New analysis type is `score_` plus 24 hash characters of canonical context identity; one owner per attempt/context. Versions stay in frozen generations. Existing jobs/requests/JSON fields; no scoring table. Reuse current provider/model and adapter. One request yields slide and whole assessments and score explanations; do not request separate generated feedback to fill the score cards. Existing grouped feedback stays readable and its findings are never converted to rubric selections.
+ 
+@@ -76,11 +78,11 @@
+ 
+ ## Mobile behavior
+ 
+-Use versioned, API/attempt/context/source-aware validated cache and deduplicated GETs. Explicit Grade/Update/Retry controls are the only POST paths. Preserve source-selection fences and saved results through offline reads; stale/uncertain responses cannot overwrite newer results. Unrecognized server schemas remain readable as legacy feedback but do not fabricate scores.
++Use versioned, API/attempt/context/source-aware validated cache and deduplicated GETs. The app-level host admits automatic initial scores and refreshed scores after synchronized corrections/settings (one-second debounce). Eligible sources come from new selected recordings or the selected run of an opened presentation; unused history is not backfilled. Normal Grade/Update controls are removed. Retry and uncertain-charge acknowledgement remain explicit, and failed or rejected current-protocol results do not automatically retry unchanged inputs. Preserve source-selection fences and saved results through offline reads; stale/uncertain responses cannot overwrite newer results. Unrecognized server schemas remain readable as legacy feedback but do not fabricate scores.
+ 
+-Full Review ring: integer, proportion 0–100, `Overall score`, derived performance label. Slide ring: `Slide score`. Tiles display each selected source's score. Not graded/loading/stale/unavailable/insufficient/recovery states use no fake number. Keep existing timing/fillers/WPM/audio/transcript/thumbnail/graph/coverage/recovery/navigation. Replace visible findings with feedback/feedback items. Expand rubric, explanations, strengths and improvements; support multiple evidence playback intervals.
++Full Review ring: integer, proportion 0–100, `Overall score`, derived performance label. Slide ring: `Slide score`. Tiles display each selected source's score. Not graded/loading/stale/unavailable/insufficient/recovery states use no fake number. Keep existing timing/fillers/WPM/audio/transcript/thumbnail/graph/coverage/recovery/navigation. Replace visible findings with feedback/feedback items. Show summaries, strengths, weaknesses and actionable improvements directly with supporting evidence playback. Hide criterion cards, weights, anchor descriptions and the explanations toggle. Use the validated unrounded backend level for colors: Beginning red, Emerging amber, Competent green, Advanced blue; unavailable states stay neutral.
+ 
+-A composed run may show per-slide scores from its original attempts but no overall total. Require one attempt with exact original visit selection and every applicable slide; `Run.full` alone is not proof. No old-attempt substitution. Home uses latest complete single attempt only and does not grade on read.
++A composed run may show per-slide scores from its original attempts but no overall total. Require one attempt with exact original visit selection and every applicable slide; `Run.full` alone is not proof. No old-attempt substitution. Home uses the same exact selected-run overall projection as Full Review, with no latest-old-attempt substitution. It displays total current verified findings once, selected-run duration and WPM. Home indicator reads do not grade.
+ 
+ ## Gates and boundaries
+ 
+diff --git a/docs/android-presentation-scoring-verification.md b/docs/android-presentation-scoring-verification.md
+--- a/docs/android-presentation-scoring-verification.md
++++ b/docs/android-presentation-scoring-verification.md
+@@ -1,4 +1,32 @@
+ # Android presentation scoring integration — October 17, 2026
++
++## Automatic scoring follow-up — October 17, 2026
++
++The current follow-up supersedes the explicit Grade/Update controls and expandable rubric display described in the earlier integration record below. It preserves the existing scorer, exact source/evidence validation, Step 1 compact context, singleton feedback and original index. All source remains uncommitted.
++
++- **Workflow:** one app-level host reuses the existing scoring controller/cache/jobs. New selected recordings become eligible through the recording hand-off; opening a saved presentation enables only its selected sources. Pending comparisons, sources with no exact selected slide interval, missing transcripts, unsynchronized settings/corrections and background state cannot admit a score. First scoring starts automatically; confirmed synchronized changes debounce for one second.
++- **Recovery:** durable input markers precede POST, with shared cross-screen locks. Same-input failed/rejected requests never auto-retry. Unresolved submissions poll through GET after foreground/restart, including the independently reproduced race where foreground reads absent before the old POST is accepted. Failure and uncertain-charge recovery remain explicit.
++- **Backend:** the saved overall failure reproduced without transport: six slide scores validated, while delivery cited measurements/requirements without supporting speech. Versioned prompt v2.1 now states that requirement explicitly. Strict validation is unchanged. Completed invalid totals permit revision/cooldown/uncertainty-fenced Retry. Exact recognized previous v2 protocol permits a fresh generation without reinterpreting old receipts; canonical fingerprints handle PostgreSQL JSONB ordering.
++- **Display:** direct summaries, strengths, weaknesses, improvements and playable summary/advice evidence; no rubric cards, weights, anchors, Grade/Update or explanation toggle. Home/Full Review/slide rings and navigation tiles use backend levels: Beginning red, Emerging amber, Competent green, Advanced blue. Empty/stale/loading states are neutral and ring messages are short. Rejected totals preserve valid slide scores with explicit Retry.
++- **Home:** the same verified selected-run overall score as Full Review, total current verified findings once, recording duration and WPM. Mixed/incomplete selections never borrow an old recording's total.
++
++Automated verification: `npm run check` passes all **555 mobile tests**, typecheck and lint (one existing `useSegmentPlayer.ts:108` warning), using Node v26.8.2 (compatible with the package minimum; README recommends Node 24). Full backend suites pass **615 on SQLite** (24 expected PostgreSQL-only skips) and **615 on PostgreSQL** (no skips); Django system and migration checks pass. Android export passes. Independent review reproduced and verified the foreground/admission race repair, tested exact previous-protocol acceptance versus altered-protocol rejection, and found no remaining actionable issues in the reviewed scope. Final foreground-state lint repair received a further review. The physical synthetic preview also exposed a transient in-flight uncertainty notice. A held-POST regression reproduced it; the narrow repair displays shared progress across readers and defers local-marker uncertainty until submission settles. Four further independent lifecycle regressions and 54 adjacent tests pass. Physical rendering and installation evidence follows below.
++
++Task artifacts, before-source copies, exact staging snapshot, red/green logs and independent review evidence: `/private/tmp/outloud-automatic-scoring-20261017/`. No agent-triggered paid inference, commit, push, merge or cleanup. The clearly labeled synthetic preview has no Android Internet permission and cannot use the real backend. The authorized local-phone rollout is recorded separately below.
++
++## Physical automatic-scoring preview and local delivery — October 17, 2026
++
++A separate `com.team07.outloud.scoringpreview` release runs the real screens, automatic host, controller, cache, validators and playback with clearly labeled synthetic data. It has **no Android Internet permission**. On the physical Galaxy S23 Ultra (`SM-S918N`), agent-operated checks verified Home/Full Review/slide colors in both themes, neutral unavailable/loading states, direct summary/strength/weakness/improvement content, saved slide scores after overall rejection, explicit failure/rejected-result Retry and original-evidence playback. Silent fixture audio proves the playback path; audible speech quality remains untested. Home shows the same 67/100 Competent result, two current verified findings and 0:02 duration; WPM remains unavailable under the existing five-second minimum. The temporary preview controls and fixtures are outside the repository and excluded from the main app.
++
++The initial automatic request was admitted once; repeated navigation retained one mocked POST. One synchronized update and two explicit failure/rejection retries produced four mocked POSTs in total. The automated held-POST regression and final physical capture pass: ring and panel show Scoring… with no uncertainty/Retry, and repeated Home/slide/Full navigation retains exactly one mocked POST in the separate final retest. There are 37 saved PNG files across the original matrix and final retest (including one duplicate alias). Screenshots, request logs, APK hashes and source/permission proofs are under `/private/tmp/outloud-automatic-scoring-20261017/android-preview/`.
++
++Both native builds use isolated temporary copies. A full-source check rejected an initial normal APK containing a cross-project preview router context before installation. Rebuilding with isolated Metro temporary storage, explicit project/router roots and forced no-cache JS generation restored exact production source. The respective contributions of shared cache and daemon environment were not separately isolated. The final main APK has all 112 embedded application sources matching the reviewed worktree, no preview code, and identical generated/packaged Hermes bytes. Its original package, recording permission, signing certificate and USB API endpoint are verified.
++
++The verified main `com.team07.outloud` APK was updated in place using `adb install -r`, without opening it or clearing data. Its installed SHA256 is `860dd83b1a3f6dac56a144f9904b2c2c50e3e62e43666a245243b8d03d2b8079`; signature matches the previous build, first-install identity remains October 6, and last-update time is October 17 at 04:46:21 on the phone. The parallel AI Feedback package and USB forwards are unchanged. The main process remains stopped. The optional Play Protect upload was declined without changing security settings. This proves installation and packaged source; final real-provider interaction is left to the user.
++
++Only the existing idle scoring-phone API, worker and scheduler were gracefully reloaded. Health/readiness return 200 and the worker responds. Frozen job/source/result and saved receipt hashes are unchanged; feedback request count remains 106 and transcription request count remains 10. Other local workers and databases were left running. This reload and all automated/physical synthetic verification made no provider inference requests. The user previously authorized real AI for manual phone use; real-provider scoring after opening the main app remains a separate human test. Unsupported evidence still withholds the affected score.
++
++## Earlier integration record (explicit workflow)
+ 
+ Implemented the authorized Phase A workflow and Phase B UI integration in the
+ existing `codex/presentation-score` worktree at `234c0e1`. Existing v2 scoring,
+diff --git a/docs/ai-use.md b/docs/ai-use.md
+--- a/docs/ai-use.md
++++ b/docs/ai-use.md
+@@ -319,3 +319,11 @@
+ ### October 17, 2026 — backend for manual phone scoring test
+ 
+ OpenAI Codex started the existing scoring backend, worker, and recovery scheduler after the user explicitly authorized real AI for manual phone use. It preserved the old phone stack by cloning its database and copying media, used temporary launch configuration, and restored USB forwarding. [Verification](android-presentation-scoring-verification.md#physical-phone-backend-enabled--october-17-2026) records live health/readiness, worker ping, audio dependency loading, and successful physical-app API reads. No paid inference action was performed by the agent; live inference and human acceptance remain pending. Product code, `.env`, and the original staged snapshot were preserved.
++
++
++## October 17, 2026 — automatic scoring and clearer score summaries
++
++OpenAI Codex implemented the user-approved follow-up using the existing scorer, durable feedback transport and Android layouts. AI contributions include automatic selected-source admission and synchronized update scheduling, persistent duplicate/uncertainty guards, narrow versioned-prompt/rejected-result recovery, shared score colors and direct advice display, Home score/findings/duration/WPM, and mocked regressions. The user explicitly chose Advanced blue, automatic refresh after saved changes, selected saved-run inclusion and the three-row Home summary. [Current verification and limitations](android-presentation-scoring-verification.md#automatic-scoring-follow-up--october-17-2026) records checks and independent review. The PostgreSQL suite caught a JSONB key-order compatibility bug; independent review caught a foreground/admission reconciliation race; both received regression fixes. Physical mocked rendering exposed an in-flight status/uncertainty message; a held-POST test reproduced it, the narrow shared-progress repair passes independent review, and the final mobile suite has 555 tests. Original staging, unrelated work, Step 1 and singleton feedback are preserved. Human acceptance and real-provider usefulness remain pending. No agent-paid calls, commits, push, merge or cleanup.
++
++
++Automatic-scoring delivery follow-up: agent-operated synthetic checks on the Galaxy S23 Ultra used a separate network-disabled preview, including the final held-submit progress fix and one-request navigation retest. The verified final main APK was installed in place without launch or data clearing, and only the existing idle phone API/worker/scheduler were reloaded. Saved job and receipt hashes and provider-request counts are unchanged. [Physical preview and local delivery evidence](android-presentation-scoring-verification.md#physical-automatic-scoring-preview-and-local-delivery--october-17-2026) distinguishes these results from the pending manual real-provider test. No agent-triggered inference occurred.
+diff --git a/docs/ai-collaboration-prompts-iteration-2.md b/docs/ai-collaboration-prompts-iteration-2.md
+--- a/docs/ai-collaboration-prompts-iteration-2.md
++++ b/docs/ai-collaboration-prompts-iteration-2.md
+@@ -5126,3 +5126,12 @@
+ User reply: “Enable real AI for my manual phone testing”
+ 
+ Codex started the existing scoring API/worker/scheduler with isolated copies of phone data and existing provider configuration; no source implementation changes or agent-triggered inference. [Verification and limitations](android-presentation-scoring-verification.md#physical-phone-backend-enabled--october-17-2026).
++
++
++### Automatic scoring and clearer score displays — October 17, 2026
++
++Representative user requests: “Presentation and slide score should not be toggled it should be geneerated instantaneously like ai feedback and q&A are also dont show what the criteria is and color the emrging competent so users knwo if its good or bad.” The user also reported rejected overall evidence with working slide scores, requested score-dependent ring colors, and requested Home presentation score plus total findings.
++
++Confirmed choices: “Automatically refresh scores”; “Include selected saved runs (Recommended)”; “Findings + duration + WPM”. The user then requested implementation of the approved “Automatic scoring and clearer score displays” plan, changing its Advanced color to **blue**, preserving original staging and existing scoring/Step 1/singleton work, and prohibiting commits, push, merge, cleanup and agent-triggered paid inference.
++
++Codex implemented the existing-flow changes in separately reviewable backend/workflow and display scope; [verification](android-presentation-scoring-verification.md#automatic-scoring-follow-up--october-17-2026) records automated tests, independent findings/fixes and Android rendering separately. This entry summarizes the long approved plan rather than claiming to reproduce it verbatim.
+diff --git a/docs/presentation-score-progress.md b/docs/presentation-score-progress.md
+--- a/docs/presentation-score-progress.md
++++ b/docs/presentation-score-progress.md
+@@ -1,8 +1,10 @@
+ # Unified scoring — current implementation
++
++Current follow-up: automatic selected-recording scoring and synchronized updates, direct advice, semantic level colors (Advanced blue), Home overall/findings/duration/WPM, and rejected-overall recovery are implemented locally. See the [current Android verification](android-presentation-scoring-verification.md#automatic-scoring-follow-up--october-17-2026) for checks, review and remaining device/provider limits. Earlier explicit-control milestones below remain historical evidence.
+ 
+ October 17: user approved and requested implementation of [presentation-score-v2](presentation-score-v2.md). Current scope supersedes the former experiment-only integration gate. v1 arithmetic and experiment artifacts remain historical.
+ 
+-Current checkpoint: the singleton cooldown repair and missing v2 backend modules are implemented in the working tree, with 72 focused backend tests and 607 full PostgreSQL tests passing. No new code is staged or committed. See [completion milestones, independent review and remaining blockers](presentation-scoring-milestones.md). Android scoring workflow and Full Review/slide UI integration are now implemented as separately reviewable working-tree changes: 80 focused and 533 full mobile tests, typecheck/lint and Android JS export pass. See [integration evidence and remaining device/provider limits](android-presentation-scoring-verification.md). The prior [zero-duration compatibility evidence](android-scoring-visits-verification.md) remains valid. The [Step 2 removal evidence](step2-removal-verification.md) remains the historical removal checkpoint.
++Earlier integration checkpoint: the singleton cooldown repair and missing v2 backend modules are implemented in the working tree, with 72 focused backend tests and 607 full PostgreSQL tests passing. No new code is staged or committed. See [completion milestones, independent review and remaining blockers](presentation-scoring-milestones.md). Android scoring workflow and Full Review/slide UI integration are now implemented as separately reviewable working-tree changes: 80 focused and 533 full mobile tests, typecheck/lint and Android JS export pass. See [integration evidence and remaining device/provider limits](android-presentation-scoring-verification.md). The prior [zero-duration compatibility evidence](android-scoring-visits-verification.md) remains valid. The [Step 2 removal evidence](step2-removal-verification.md) remains the historical removal checkpoint.
+ 
+ Current ruling: Step 2 is permanently cancelled. Independent singleton slide feedback is restored in this checkout; preserve Step 1, scoring and unrelated current navigation. Historical grouped records retain read/recovery compatibility only. The original staged snapshot remains unchanged.
+ 

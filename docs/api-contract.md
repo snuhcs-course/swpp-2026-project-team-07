@@ -2,7 +2,7 @@
 
 # Initial API contract
 
-> Provider update, October 16, 2026: new transcription requests use ElevenLabs Scribe v2 with up to 100 keyterms derived from recorded slides when text is available. `no_verbatim=false` preserves recognized fillers. Migration 0007 privately snapshots submitted request options; the public transcript schema is unchanged. The updated client requests consent for audio plus slide-derived hints. Older phase descriptions mentioning Whisper describe the previous provider; saved Whisper responses and results are still supported. See [current adapter](scribe-transcription.md).
+> Provider update, October 16, 2026: new transcription requests use ElevenLabs Scribe v2 with up to 100 keyterms derived from recorded slides when text is available. `no_verbatim=false` preserves recognized fillers. Migration 0007 privately snapshots submitted request options; the public transcript schema is unchanged. The updated client requests consent for audio plus slide-derived hints. October 17 Scribe-only integration supersedes the historical Whisper behavior below. Whisper receipts/provenance are unsupported; feedback/scoring/Q&A evaluation providers are unchanged. See [current adapter](scribe-transcription.md).
 
 
 Base path `/api/`. JSON uses `snake_case`, UUID strings and integer milliseconds. Mobile types: `src/contracts/index.ts`. Health/readiness, deck upload/retrieval/history, attempt upload/retrieval, and explicit hosted processing are implemented. Upload alone leaves a recording awaiting analysis.
@@ -15,6 +15,8 @@ Base path `/api/`. JSON uses `snake_case`, UUID strings and integer milliseconds
 | `POST /attempts/` | Multipart `audio`, `metadata` JSON string | 201: `{attempt_id}` after durable storage |
 | `POST /attempts/{id}/process/` | Strict JSON process request below | 202: accepted/active `AttemptResult`; 200: completed `AttemptResult`; 409: retry conflict |
 | `GET /attempts/{id}/` | None | 200: `AttemptResult` |
+| `GET /attempts/{id}/presentation-score/` | Optional `context_id` query UUID | 200: v2 scoring state; read-only |
+| `POST /attempts/{id}/presentation-score/` | Optional `context_id`, selection/revision/acknowledgement controls | 202 active; 200 completed; existing retry conflicts |
 | `GET /attempts/{id}/feedback/` | None | 200: independent feedback state; read-only |
 | `POST /attempts/{id}/feedback/generate/` | Strict JSON feedback request below | 202: active; 200: current completed; 409: selection/revision/confirmation/cooldown conflict |
 | `POST /decks/{id}/qa/questions/` | Strict JSON Audience Q&A question request below | 200: `{questions, provider, model}`; 404 `deck_not_found`; 503 configuration; 429 cooldown; 502 provider |
@@ -37,6 +39,42 @@ Example metadata:
   ]
 }
 ```
+
+## Iteration 2 Phase 1: presentation requirements
+
+`PresentationContext` is independent of deduplicated decks, original attempt audiences,
+and JJ's local selected-run record. Multiple contexts may reference the same deck.
+No context operation admits provider/worker work, modifies a transcript/run, or changes
+the current recording limit. See [the full phased contract](iteration-2-ai-feedback.md).
+
+| Route | Exact JSON input | Response |
+| --- | --- | --- |
+| `POST /presentation-contexts/` | `{id, deck_id}` canonical lowercase UUIDs | 201 new; 200 identical identity retry, returning current requirements; 409 context ID bound to another deck |
+| `GET /presentation-contexts/{id}/` | None; no query fields | 200 current context; 404 missing |
+| `PATCH /presentation-contexts/{id}/` | `{expected_revision, required_duration_seconds, audience}` | 200 current/updated; 409 stale or exhausted revision; 404 missing |
+
+All success responses are `{id, deck_id, required_duration_seconds, audience, revision}`.
+Creation starts at `{required_duration_seconds:null, audience:"", revision:0}`. Duration,
+when supplied, is an integer 60–1,800 seconds; audience is a string of at most 500 Unicode
+code points without U+0000 or unpaired surrogates; valid emoji are accepted. Duration `null` and audience `""` clear requirements. Blank
+audience is still missing for readiness. Legacy target times and "Faculty panel" never
+backfill these fields. Partial requirements are valid persisted data, not a ready AI input.
+
+POST and PATCH require `application/json`, a body of at most 8,192 bytes, exact fields,
+no duplicate keys, and strictly typed values. Revisions are integers 0–2,147,483,647;
+booleans/string numbers are invalid. PATCH locks the context and requires the current
+revision even for an identical-value request. Unchanged values leave the revision intact;
+changed values advance it once. An exhausted revision cannot advance. Creation retries
+must retain the context ID and deck ID and cannot reset current requirements.
+
+Invalid requests return 400; missing identities 404; conflicts 409; unexpected database
+failures 503. Errors are fixed `{error:{code,message}}`, without source data or raw
+exceptions. These endpoints retain the existing local unauthenticated pilot boundary.
+
+Mobile helper records are separate from JJ's existing presentation/run stores and are
+scoped by API address and local presentation identity. They preserve reserved context
+IDs across failed POSTs, validate server identity, ignore older revisions, and reject
+conflicting values at the same revision. No new UI is wired in Phase 1.
 
 ## Timeline
 
@@ -76,11 +114,11 @@ POST process, GET attempt and deck history use the same serializer. All response
 | `feedback`, `feedback_state` | Legacy shape retained. Transcription completion still saves `[]`, `disabled`; independent coaching is in `feedback_analysis` |
 | `transcript_id`, `feedback_analysis` | Additive transcript evidence digest (nullable) and the safe coaching state below. Older mobile caches may omit both |
 | `error` | Null, or safe `{code, message}` |
-| `provenance` | `{provider, model, generation, outcome, speech_gate}`; values nullable; provider/model `elevenlabs`/`scribe_v2` for new requests or `openai`/`whisper-1` for historical requests, request outcome `submitted`/`received`/`rejected`/`uncertain`, gate `silero-vad` |
+| `provenance` | `{provider, model, generation, outcome, speech_gate}`; values nullable; provider/model `elevenlabs`/`scribe_v2` exclusively, request outcome `submitted`/`received`/`rejected`/`uncertain`, gate `silero-vad` |
 
 Provenance identifies the received transcript's generation when one is available, otherwise the latest request. No raw provider response or input hash is public. Legacy rows retain stored results/media; migration never automatically queues them and labels existing results `legacy` rather than claiming they passed this pipeline. Legacy feedback remains untouched and is labeled `feedback_state=legacy`.
 
-Hosted transcription uses ElevenLabs `scribe_v2`, `timestamps_granularity=word`, `no_verbatim=false`, `tag_audio_events=false`, `diarize=false` and `use_multi_channel=false`; only `type=word` entries become timed words. Saved Whisper raw responses are normalized according to their persisted provider. For both formats, seconds normalize to integer milliseconds with half-up rounding. Missing, malformed, nonfinite or unsafe numeric timestamps fail normalization without replacing the raw evidence. Words outside the authoritative recording duration fail alignment with `alignment_failed`, retaining raw/transcript as actionable partial results. Retry reuses saved raw/transcript; it cannot repair an invalid original timeline by re-transcribing or extending/clamping duration.
+Hosted transcription uses ElevenLabs `scribe_v2`, `timestamps_granularity=word`, `no_verbatim=false`, `tag_audio_events=false`, `diarize=false` and `use_multi_channel=false`; only `type=word` entries become timed words. Only saved Scribe raw responses are supported; their private provider/model identity must match before reuse. For both formats, seconds normalize to integer milliseconds with half-up rounding. Missing, malformed, nonfinite or unsafe numeric timestamps fail normalization without replacing the raw evidence. Words outside the authoritative recording duration fail alignment with `alignment_failed`, retaining raw/transcript as actionable partial results. Retry reuses saved raw/transcript; it cannot repair an invalid original timeline by re-transcribing or extending/clamping duration.
 
 `metrics` contains `duration_ms`, `time_per_slide: [{slide_index, duration_ms}]` summed across all visits, `detected_language`, `speaking_rates: [{language, unit, count, per_minute}]`, and `rate_note`. Rates are separate `en` English word-pattern counts and `ko` contiguous Hangul-run counts, divided by **total rehearsal minutes including silence**. Korean's label is `Korean Hangul runs/min`; it is an estimate, not a linguistic word count or speaking-only rate. No filler/other detector is claimed.
 
@@ -88,7 +126,123 @@ The packaged Silero CPU gate checks a temporary PyAV-decoded waveform only. It n
 
 Mobile Analyze requires a recording known to the current API, established by its upload or validated server history. First-use ElevenLabs disclosure has Continue/Cancel and locally persisted provider-specific consent. Previous OpenAI consent does not authorize ElevenLabs submissions. Retry refreshes first and supplies the displayed current revision; uncertain requests require a separate charge acknowledgement. A client timeout is not server failure. Polling stops on navigation/background; stale callbacks and API-address changes cannot update another cache. SQLite result records are keyed by normalized API address and attempt UUID, separately from upload metadata. Offline refresh preserves cache and audio. Synchronized review is described below; coaching is independently generated through the explicit API below and remains disabled by default.
 
+## Iteration 2 Phase 3: required timing and thirty-minute audio
+
+There is no new wire endpoint, allocation job or migration. Existing presentation
+contexts retain their Phase 1 shape/revision contract. The mobile read model uses
+an explicitly supplied duration only when the local PDF/API/server-deck binding
+matches; it never converts a legacy suggested target into a requirement. Audience
+may remain missing for time allocation alone. Allocation reuses JJ's bounded
+text-weighted largest-remainder algorithm: nonnegative whole seconds, exact total,
+stable slide-order ties. Empty/image-only slides use base weight. Budgets can be
+zero when slide count exceeds available seconds. This is a heuristic budget,
+not an AI quality judgment. Changing duration recomputes current targets and
+selected-run Review totals without changing saved attempts, selected segments,
+Compare snapshots, profiles or transcripts. Clearing duration restores suggestions.
+Reopen, refresh and playback do not admit allocation/provider work.
+
+The attempt API now accepts 1–1,800,000 integer milliseconds, retaining the exact
+25,000,000-byte cap and existing audio/metadata identity/retry policy. New Android
+capture uses mono AAC/MPEG-4 at 64 kbps and requests normal native finalization
+at 1,799,000 ms, preserving the existing one-second stop margin. Metadata never
+extends past the authoritative cap; decoding permits only the existing one-second
+codec tail. Recovery, result/review and verified feedback playback accept the same
+timeline. Original files remain unchanged; no trimming, recompression or chunking.
+Provider prompt/schema scopes and existing timeout/receipt/recovery rules remain
+unchanged. [Phase 3 verification and remaining UI/device limits](phase-3-verification.md).
+
 ## Durable slide descriptions (checkpoint 2)
+
+### Iteration 2 Phase 2 — immutable slide profiles
+
+`GET /decks/{deck_id}/profiles/` returns the same bounded `DescriptionState`
+envelope as descriptions, but in the independent current profile scope. Optional
+`description_set_id` selects a saved profile belonging to that deck; selecting an
+ordinary description set returns 400. GET never admits work. `POST
+/decks/{deck_id}/profiles/generate/` accepts the existing strict generation/retry
+body and returns 200 completed or 202 retained/active state. Failed or uncertain
+initial lookup retains its existing state without retrying. Explicit retries
+require the saved set ID and processing revision; uncertain work also requires
+`acknowledge_uncertain: true`. Stale retry revisions conflict. Quotas, receipts,
+lease fencing and broker/Beat recovery are shared with descriptions.
+
+Successful PDF upload automatically admits the current profile scope when provider
+configuration and source preparation are valid. AI admission failure does not fail
+PDF import. Repeated uploads reuse exact source/provider/project/model/prompt/schema
+scopes, including failed and uncertain jobs; no blind resubmission. Existing decks
+without profiles can use explicit generation. Requirements, recordings, selected
+takes, playback and reads neither invalidate profiles nor create jobs.
+
+Current profile prompt version is `slide-profile-v5`; schema versions are
+`slide-profile-v5` (OpenAI) and `slide-profile-gemini-v5` (Gemini). v5 targets
+8–16 words with a hard maximum of 25 whitespace-separated words per cue in both
+categories. Each cue has one useful speaking objective; avoid repetitive clauses,
+near-duplicate objectives and padded instructions. Supporting reasoning stays in
+expandable details. This is a generation policy, not silent truncation.
+Historical v1–v4 payloads, validation limits and prompt digests remain unchanged;
+v4 retains its 15-word limit for receipt recovery and explicit retries. Successful
+v4 profiles for the same source/provider/project/model remain reusable and current,
+including for review and audience Q&A; running or uncertain v4 jobs also retain
+their scope to avoid duplicate provider work. Reads do not admit replacement jobs. Failed
+or absent v4 profiles use v5 for new admission. An already admitted v5 scope takes
+precedence and repeated admissions reuse that scope.
+Profiles use
+the existing JSON persistence, with no migration. PATCH through the description
+endpoint rejects profile scopes with 409 `immutable_profile`.
+
+Each profile has the ordinary `deck_id`, `slide_index`, `source_id`, `summary`,
+`key_ideas` and `visual_facts`, plus `slide_kind` (`title`, `content`, `closing`,
+`unknown`). Historical v1 profiles retain `cues` (zero to four, ordered); current
+v2 profiles instead require `must_cover` and `go_deeper`, each zero to three ordered
+items. Must Cover expresses essential speaking objectives rather than scripts or
+bullet summaries. Each Must Cover item is
+`{text, evidence_refs}`: nonblank text up to 400 Unicode codepoints and one to
+five distinct references to existing **certain** facts (`summary`,
+`key_ideas/0..4`, `visual_facts/0..4`). Duplicate cue text, unsupported references,
+uncertain evidence, missing fields, invalid Unicode or extra model fields fail
+the entire generated profile. Existing source, fact, slide completeness and 64 KiB
+output limits apply. Gemini omits wire array bounds while local validation retains
+them. Graph axes, units, numerical values and trends are retained as visual facts;
+ambiguous readings carry uncertainty and cannot ground cues.
+
+Each Go Deeper item is `{text, kind, evidence_refs, information_needed}`. Text is
+nonblank and at most 400 codepoints; `kind` is `connection` or `question`.
+References are one to five distinct objects `{slide_index, source_id, fact_ref,
+quote}` identifying certain facts on any slide in this same complete profile
+response. `quote` must be a contiguous, verifiable excerpt of the referenced fact after safe
+quotation normalization (see the evidence-validation policy below). Unknown slide,
+source, fact, uncertain fact or unsupported quote rejects the whole response.
+`information_needed` is empty for supported connections; questions require a
+nonblank description of the missing evidence, at most 400 codepoints. Questions
+must frame unsupported answers as investigations, not established causes/results.
+Canonical exact duplicates across categories and verbatim fact restatements are
+rejected. These structural checks do not prove semantic entailment or detect all
+paraphrased redundancy; prompt rules, live evaluation and human judgment remain
+necessary. Optional suggestions never become mandatory coverage findings.
+
+Source or selection changes select a new scope and mark saved profiles stale.
+Old snapshots remain available by set ID. Mobile uses a separate
+`slide-profiles:v1:<encoded API>:<deck UUID>` cache, validates identities/evidence,
+retains successful cached cues offline and prevents reversed refreshes from
+restoring an older scope. JJ's existing cue panel shows distinct unavailable,
+pending, failed, confirmation-required, stale, insufficient-evidence and successful
+states. A compact essential/optional selector reuses the existing Rehearse area;
+empty categories remain empty. Historical v1 cues remain parseable in cache but
+are never relabeled Must Cover: the panel offers explicit updated generation.
+Reading/reopening never admits replacement jobs. No keyword heuristic is presented
+as an AI cue or confirmed omission. Server unavailable responses without a
+replacement set expose their current state while retaining the last complete
+offline payload. Confirmed absent/source-unavailable scopes or changed selection
+identity persist its stale marker. Historical v2 pilot caches also show outdated
+status under newer prompts, even offline; replacements always require explicit admission.
+Current cue text expresses one concise speaking objective; no linking rationale
+is appended. Evidence quotes and missing-information details remain stored and
+are collapsed behind an in-panel Details control, including during recording.
+Details reset on slide/category/profile changes. Content slides are encouraged
+to have meaningful central-message or contrast objectives before returning an
+empty collection; sparse or unreadable slides may still be empty without padding.
+
+### Existing description contract
 
 These separate routes preserve existing deck responses, Whisper requests, upload
 and transcription. Current attempt processing still saves legacy `feedback=[]`,
@@ -352,8 +506,8 @@ snapshots; later edits never relabel an older result. Valid empty has zero count
 `message="No supported suggestions."`; other statuses have null message.
 `all_invalid` is a **failed** generation (`unsupported_feedback`), never successful
 empty output. Malformed envelopes/refusal/truncation/NUL output fail explicitly
-and retain private raw evidence. Unsupported well-formed cards are discarded
-individually; partial results report both counts. A failed/new generation can
+and retain private raw evidence. Unsupported or malformed cards are discarded independently within a valid bounded
+envelope; partial results report both counts. Malformed envelopes still fail. A failed/new generation can
 coexist with earlier suggestions, labeled stale with their original provenance.
 
 Each suggestion has `category` (`consistency`, `clarity`, `audience`), `slide_index`,
@@ -362,8 +516,11 @@ Each suggestion has `category` (`consistency`, `clarity`, `audience`), `slide_in
 `suggestion`, and server-derived `start_ms`/`end_ms`. Observation/suggestion are
 bounded to 600/700 characters, speech quote to 1,000, slide quote to 400. All are
 plain strings. An audience card requires saved audience context. Evidence is one
-contiguous run of original transcript indexes in a ≤40-word segment of one visit.
-The entire cited description fact must match exactly and be certain. Repeated
+contiguous run of original transcript indexes within one slide visit. The segment
+ID anchors the first word; the span may cross internal 40-word chunk boundaries,
+but never the original visit boundary. A cited description must be certain; a
+contiguous safely normalized excerpt is accepted, then the full authoritative fact
+is returned to preserve qualifications and negations. Repeated
 phrases do not establish word identity. Word starts select visits; last simultaneous
 event wins. Crossing word ends are valid within authoritative audio duration; ranges
 use min(start)/max(end) without clipping. Structural evidence validity does not
@@ -516,7 +673,7 @@ The initial request refreshes server state first and only starts `awaiting_analy
 The mobile UI was rebuilt from the design prototype (see `REDESIGN.md`). The upload, processing, feedback and deck endpoints above are unchanged and are used as before. The mobile flow changed as follows.
 
 - **Import:** the app renders page images on the device and calls `POST /decks/` at import time to read `extracted_text`. It stores the result under the same `server-deck:<API>:<local id>` mapping that attempt uploads use. Offline imports fetch the text later.
-- **Takes:** every recording is a normal attempt with the existing `auto_process_api` handoff. A background worker per take replaces the former saved-result screen: it consumes the intent once, uploads, and requests initial processing after the first-use disclosure. A presentation's run (which take supplies each slide) and transcript corrections are client-side records in the SQLite key/value table (`pres:v1:`, `deck:v1:`). They are not sent to the server.
+- **Takes:** every recording is a normal attempt with the existing `auto_process_api` handoff. A background worker per take replaces the former saved-result screen: it consumes the intent once, uploads, and requests initial processing after the first-use disclosure. A presentation's run (which take supplies each slide), moved-sentence placement and suggestion dismissals remain client-side SQLite records (`pres:v1:`, `deck:v1:`). Phase 4 synchronizes confirmed text corrections independently, as described below; the original legacy records are retained.
 - **Coaching:** `POST /attempts/{id}/feedback/generate/` is still requested only after an explicit tap, with the existing disclosure and charge acknowledgement.
 
 The section "Mobile rehearsal review" above describes the pre-redesign review screens. Its cache and media rules remain in the mobile services; the new screens use the cached results, transcripts and local audio.
@@ -588,7 +745,7 @@ Stage 1 used a Results route carrying session-only `audioUri`, `slideEvents`, `d
 
 The prepared audio URI and initial visible slide are stored in one SQLite write before capture starts. Startup recovery must succeed before a new capture is allowed, and native audio time/events are saved at page changes and about every second. On restart, unfinished capture requires explicit recovery against playable media duration; interrupted uploads can be retried with the same ID. Unplayable or oversized files remain local. Audio exceeding 25,000,000 bytes is rejected before any upload request with an explanation to make a shorter new recording; local playback remains available. Recovery cannot reconstruct audio that Android failed to finalize.
 
-Limits: at least one slide, 50 MiB PDF, 1,200,000 ms recording, and exactly 25,000,000 audio bytes. Deck content/preparation hashes deduplicate PDFs. Attempt hashes include the audio and normalized metadata: identical retries return the original attempt; conflicting IDs return HTTP 409, including concurrent submissions. Added model fields are migrated without replacing old media. Audio is decoded locally to validate the audio duration against metadata (up to a 1,000 ms codec tail); container headers alone do not establish playable audio. Each submission writes to unique media paths. Failure cleanup protects the committed winner, and uncertain database outcomes retain media for later reconciliation; cleanup failures may leave unreferenced files. No automatic orphan deletion is implemented.
+Limits: at least one slide, 50 MiB PDF, 1,800,000 ms recording, and exactly 25,000,000 audio bytes. Deck content/preparation hashes deduplicate PDFs. Attempt hashes include the audio and normalized metadata: identical retries return the original attempt; conflicting IDs return HTTP 409, including concurrent submissions. Added model fields are migrated without replacing old media. Audio is decoded locally to validate the audio duration against metadata (up to a 1,000 ms codec tail); container headers alone do not establish playable audio. Each submission writes to unique media paths. Failure cleanup protects the committed winner, and uncertain database outcomes retain media for later reconciliation; cleanup failures may leave unreferenced files. No automatic orphan deletion is implemented.
 
 Attempt GET/history add `deck_id`, `duration_ms`, `slide_events`, `audience`, `created_at`, `audio_url` and `processing_state`. An uploaded unprocessed recording has status `pending`, processing_state `awaiting_analysis`, transcript `null` and no feedback. The mobile upload function does not call processing. Explicit hosted analysis is described above.
 
@@ -606,3 +763,391 @@ Compatible image bytes/source IDs remain unchanged; converted evidence identitie
 use the bytes actually sent to the provider. Invalid or missing saved media still
 rejects admission without provider work. The mobile rejection message identifies
 the PDF/slide source issue instead of suggesting a revision refresh will repair it.
+
+## Iteration 2 Phase 4 — confirmed transcript overlays
+
+Correction persistence, feedback invalidation and explicit regeneration are separate
+operations. No correction GET/PATCH, screen opening, navigation or audio playback
+admits AI work. Original Whisper text/words, audio, slide events/visits and attempt
+processing generation remain immutable inputs to the correction layer.
+
+| Route | Request | Behavior |
+| --- | --- | --- |
+| `GET /attempts/{id}/corrections/` | No query/body | Read source identity, current revision and confirmed overlays; no row created |
+| `PATCH /attempts/{id}/corrections/` | `{base_transcript_id, expected_revision, edits}` | Save only; 200 current snapshot, 409 stale revision/source, 400 invalid input |
+| `GET /attempts/{id}/correction-suggestions/` | No query/body | Read the independent STT-suggestion analysis; never queue |
+| `POST /attempts/{id}/correction-suggestions/` | Existing feedback admission/retry fields, plus optional `transcript_revision` | Explicitly generate/retry STT suggestions, 202 pending or 200 completed cache |
+
+Correction snapshots are `{attempt_id, base_transcript_id, revision, edits,
+effective_text, source_changed}`. `base_transcript_id` is the existing original
+transcript evidence digest. Revision starts at zero. Each edit is exactly
+`{word_start, word_end, text}` with inclusive original word indexes, nonempty
+replacement text (at most 4000 characters), no NUL, and nonoverlapping ranges.
+The complete sorted set has at most 2000 edits; PATCH is bounded to 262144 bytes
+and rejects duplicate/extra fields, noninteger/boolean revisions and ranges.
+Whitespace is normalized in replacement text. No-op effective text retains its
+revision and canonical edit representation; stale expected revisions still conflict.
+Original punctuation is preserved where source text/words map exactly; otherwise
+effective text falls back to indexed source words plus confirmed replacements.
+
+If the original transcript digest changes beneath existing corrections, reads
+retain the old database record, return `source_changed=true`, and do not apply its
+old ranges to the new source. Writes/analysis reject the stale source rather than
+silently rebasing it. Automatic source rebasing is not implemented. Normal
+processing retries retain the attempt/audio and do not rewrite successful STT.
+
+Coaching retains original indexed words/quotes for validated playback evidence.
+Its private snapshot additionally captures the synchronized correction revision,
+overlays, effective text and `recognition-v2` analysis augmentation. The provider
+is instructed to analyze the corrected text, not report confirmed STT errors as
+presentation problems. It must still quote original timed evidence; corrections
+never manufacture word timings. A whole-attempt analysis depends on its whole
+transcript, so boundary edits invalidate that attempt, including all relevant
+visits. Other attempts and immutable slide-only profiles/cues are unaffected.
+Stored original STT metrics remain original-source data; JJ's current text-based
+display estimates derive from the corrected selected-run lines.
+
+Feedback state/results add `transcript_revision`, `analysis_type` and
+`analysis_version`; older cached coaching defaults to original revision zero.
+Completed historical output is retained with `stale=true` after changed input.
+An old running job cannot publish as current after a correction; its receipt and
+usage still finalize safely. Explicit coaching POST may include
+`transcript_revision`; a mismatch returns 409. Client regeneration first refreshes
+and synchronizes pending corrections, rejects conflicts/offline failures, and
+checks again immediately before POST. Saving a correction never calls that POST.
+
+STT suggestions use a separate `FeedbackAnalysis` type
+`transcription_suggestions`, unique alongside `coaching` per attempt. They reuse
+description context and the existing durable jobs/quotas/receipts/recovery;
+transport/request stage remains `coaching` internally, but the prompt, output
+validator, result namespace and analysis identity are distinct. Suggestion output
+has at most 30 entries `{word_start, word_end, original, error_type, replacements, reason}`,
+with one to three replacements. Validation requires exact original indexed text,
+no overlapping suggestions/confirmed edits, and bounded nonempty strings. None
+is automatically applied. Failed description prerequisites retain their own
+revisioned retry and uncertainty acknowledgement. Failure is not an empty success.
+
+Repeated admissions reuse active/completed matching attempt/revision/type/version
+and description/provider scope. Failed/uncertain calls retain explicit revisioned
+retry; retry generations are not new input revisions. STT suggestions become
+unusable when their source revision changes or local edits are pending/conflicted.
+Accepting one saves a correction only, never presentation feedback.
+
+Mobile state uses separate API/attempt-scoped `transcript-corrections:v2:` and
+`transcription-suggestions:v2:` records. Old v1 correction caches and `deck:v1`
+free-text edits are archived in place, never imported or displayed as corrections. Pending saves survive reload/offline failures;
+later edits cannot be cleared by earlier responses. Server conflicts require
+Use server/Keep mine; repeated refresh does not resolve them implicitly. A
+successful no-op save accepts canonical server ranges if no newer local edit
+intervened. Dismissal is source-revision/range-specific and does not advance the
+transcript revision. Accepted replacements retain sentence playback. Display-only highlight spans
+reuse original source-range start/end timestamps (a replacement phrase is one
+range, with no invented internal timing); source words/audio/visits remain intact.
+Boundary-spanning replacements fall back to safe original mappings.
+
+Migration 0008 preserves existing rows and admits multiple analysis types. Upgrade
+the isolated API/workers together before admitting the new type; old process
+queries do not filter it. Downgrade is verified for legacy-only data, and explicitly
+refused once new correction/type records would be lost. Keep 0008 installed until
+new data is deliberately archived/reconciled; do not delete it to force rollback.
+
+
+### Phase 4 recognition-only product amendment
+
+This amendment supersedes Phase 4's earlier manual/custom editing scope. Users
+may accept an offered recognition replacement, keep the original, play its source
+audio, or restore an accepted correction. No sentence editor, arbitrary replacement,
+custom option or slide-spelling heuristic can rewrite the transcript. Substance,
+grammar, fillers, repetitions and inaccurate explanations require rerecording.
+
+The provider must identify likely malformed/unrecognized words, technical terms,
+proper nouns, acronyms or mixed-language recognition errors. `error_type` is one of
+`malformed_word`, `technical_term`, `proper_noun`, `acronym`, `mixed_language`.
+No grammar/style category is accepted. Slide disagreement alone is not recognition
+evidence. The prompt explicitly preserves grammar, fillers, repetitions and factual
+claims; uncertainty should produce no suggestion. Human audio confirmation remains
+necessary: model classification is not acoustic verification.
+
+PATCH still receives the complete three-field edit list. Unchanged accepted edits
+and removals/restores are allowed. Every new replacement must exactly match a
+current completed recognition-v2 suggestion for the same attempt/source/revision,
+with current description/analysis evidence; otherwise the request is rejected (400).
+A stale expected correction revision still returns 409. No AI call is admitted.
+The server alone persists `suggestion_job_id` and a stable `recognition_policy`
+inside overlay JSON on explicit acceptance. Clients cannot submit that metadata.
+Reads expose only three-field edits and apply only explicitly accepted, validated
+provenance. A future matching offer cannot activate an archived manual edit.
+Accepted provenance survives analysis-version changes; newer outputs still require
+current analysis-version evidence. Existing unsupported overlay rows remain stored
+but are not applied; their policy change invalidates old feedback via its analysis
+version without changing original STT or silently advancing transcript revisions.
+
+Historical STT result schemas are unusable as new candidates but do not block
+metadata refresh, explicit retry or polling. Old coaching remains retained/outdated
+locally, including offline. Accepted corrections and restore continue to invalidate
+feedback without automatic regeneration. Cues/audio-only metrics remain reusable.
+
+## Iteration 2 Phase 5 — selected-slide review
+
+`GET /api/attempts/{id}/slide-review/?scope=<JSON>` is read-only. POST to the same
+route explicitly generates/retries, using `scope` plus the existing feedback fields
+`feedback_revision`, `transcript_revision`, `expected_selection`, and
+`acknowledge_uncertain`. Initial completed/running identical scopes reuse results.
+Retries require the current feedback revision; uncertain submissions require the
+existing acknowledgement. Description dependency recovery retains its own endpoint.
+
+Scope: `{context_id: UUID|null, slides: [{slide_index, segments: [{start_ms,end_ms}]}]}`.
+Indexes are zero-based and times integer audio-relative milliseconds. A selected
+slide must include exactly all its positive-duration visits in that attempt, in
+chronological order. Invented/clipped/omitted visits, duplicate slides and contexts
+from another deck are rejected. Normal mobile calls scope one selected slide.
+Source attempt is the route identity; run labels are not analysis identity.
+
+FeedbackAnalysis uses `review_` plus 24 hexadecimal SHA256 scope characters, within
+its existing 32-character type field and existing attempt/type uniqueness constraint.
+No migration. Jobs snapshot `slide-review-v3`, explicit requirements and revision,
+original STT identity, confirmed correction revision, selected intervals, provider
+selection, image-aware profile and description revision. The review profile reuses
+cached cue work; it does not mutate cues. Legacy coaching/STT output stays separate.
+
+New independent selected-slide review captures freeze internal
+`request_context_version=selected-review-context-v1`. Compact JSON carries full-deck
+facts/guidance once, original indexed rows for selected visits, at most twenty
+neighboring words per side as non-citable context, and corrected full speech once
+as background. Original evidence IDs/times, strict validation, public schema and
+model/output limits are unchanged. Old singleton snapshots reconstruct their old
+request hashes exactly. Unknown or discontinued grouped protocols fail closed.
+See [compact-context contract](feedback-compact-context.md).
+
+The response extends feedback metadata with `scope`, `review_version`, `requirements`
+and result `slides: [{slide_index,status,evaluation_mode,findings,enrichments}]`. Each slide has zero to four
+prioritized findings. Status is `successful`, `insufficient_evidence`, `partial`,
+`invalid_evidence`, or `model_error`; job pending, failure and outdated states remain
+independent. Insufficient speech/model-declined assessment is distinguished from
+rejected references and malformed AI output. Valid findings survive invalid peers.
+Invalid/omitted evidence never becomes a zero-problem successful result. Findings
+carry original word/visit/segment identity, authoritative speech/fact quotes and
+derived playback ranges. Speech-only findings
+may omit slide-fact quotes. Timing findings are deterministic, have no word range
+(`word_start/end=-1`), and navigate to the first selected visit.
+
+Context or effective transcript changes retain but invalidate dependent feedback.
+Scope changes select another durable analysis. Corrections near boundaries invalidate
+all scopes consuming that source transcript conservatively. Late receipts retain usage
+but cannot publish current output. Reopening/refresh/playback never submit jobs;
+explicit generation synchronizes accepted corrections first. Missing requirements
+are null/blank, never inferred from legacy attempt audience or suggested targets.
+
+
+Phase 5 automatic-first follow-up: completed recording/transcription marks initial
+selected-slide work eligible. The app-level host admits it once with a durable
+initial marker; completed results have no Analyze action. The POST API remains
+revision/dedup protected and reusable by explicit Update/retry. Corrections do not
+trigger that initial workflow, and no historical-deck backfill is implied.
+
+October 16 purpose-aware amendment: the shared evaluator automatically selects
+`informative_descriptive`, `analytical_persuasive`, or `mixed_or_uncertain` from
+full-deck evidence. A chart alone does not imply an analytical purpose. It applies
+only relevant criteria, checks supplied effective speech before recommending
+additions, and does not demand hypotheses or unrelated topics for an introduction.
+Each slide may include zero to two optional `enrichments: [{kind:"illustrative",idea}]`
+(maximum 500 characters each), separate from the zero-to-four problem findings.
+These are explicitly hypothetical examples/analogies or invitations to recall an
+authentic anecdote; no external factual claims or search calls are implemented.
+Opening Further Insight only expands cached content. Purpose and enrichment are in the
+same durable versioned result; no additional job or automatic retry is introduced.
+Version-1 results remain retained and display as outdated, with explicit Update
+feedback required. The mobile parser accepts a historical v1 result only if the result is marked stale (including a retained v1 result while
+a newer v2 owner is pending). Reusable cues are unaffected.
+
+
+## Phase 6 — durable selected-run audience Q&A
+
+The synchronous legacy `/decks/{id}/qa/questions/` and `/qa/answers/` endpoints remain
+compatible for older clients. The JJ Q&A screen now uses these additional routes:
+
+- `GET /attempts/{anchor}/audience-qa/?scope=<JSON>` inspects only; no provider work.
+- `POST /attempts/{anchor}/audience-qa/` admits one durable question job or explicitly
+  retries/updates an existing generation. Return 202 while pending, 200 when complete.
+- `GET /attempts/{answer}/qa-answer/` reads the original recording's processing and
+  evaluation state; 404 `answer_not_found` when not yet bound.
+- `POST /attempts/{answer}/qa-answer/` binds an uploaded answer to a question and
+  optionally requests recording processing or explicit evaluation recovery.
+
+Question `scope` is `{context_id: UUID|null, slides:[{slide_index,attempt_id,
+segments:[{start_ms,end_ms}]}]}`. Indexes are zero-based; every positive-duration
+original visit for each selected slide must be supplied in chronological order,
+including backward/repeated visits. Different slides may use different source takes;
+all sources/context must belong to one deck. The anchor is the lexicographically
+smallest normalized source UUID. Client-selected run identity lives in this manifest;
+no claim is made that the server owns JJ's local Keep/Overwrite decision.
+
+POST includes `scope`, `source_revisions:{attemptUUID: transcriptRevision}`, and the
+existing feedback control fields `expected_selection`, optional `feedback_revision`
+and `acknowledge_uncertain`. The server also accepts omitted source_revisions for
+compatible direct callers, capturing current server revisions. Supplied maps must
+exactly match all selected sources, otherwise 409 `correction_conflict`. Admission
+uses deck then source locks. Analysis type `qa_<24 hex scope hash>` separates source
+selections. Each generation captures `audience-qa-v2`, saved context requirements,
+source identities/corrections and selected effective speech. Missing audience is
+400 `missing_audience`, never the legacy Faculty panel default. Cached profiles carry
+full-deck purpose/context; unselected transcript text is excluded from the AI payload.
+
+Question responses use existing durable feedback states, dependencies, receipts,
+retry/uncertainty/selection controls, plus `scope`, `qa_version`, `requirements` and
+`source_revisions`. `result` adds `job_id`, `qa_version`, and one to three `questions`:
+`{id,panelist,role,slide_index,topic,question,follow_up}`. IDs are stable within the
+immutable job result. Panelist names are bounded to 64 characters. New captures
+freeze `question_schema=names-v1`; older captures reconstruct the original
+eight-character schema for receipt/hash compatibility. Old output is retained and marked stale; current active work
+must not be hidden by its historical result. Revisions, audience or profile changes
+never automatically enqueue updates. New selected recording workflows admit their
+first eligible set once, independently of screen navigation; historical sets require
+an explicit existing-screen action. Failed/uncertain calls use explicit recovery.
+
+Answer audio first uses existing `POST /attempts/` with a new client UUID, deck,
+capture duration (1–300,000 ms), and a single question-slide event at 0. Binding POST
+uses `{question_job_id:integer,question_id:string,part:0|1,processing?:ProcessSerializer,
+feedback?:existingFeedbackControls}`. The question job must be completed, on the same
+deck and contain that ID/slide. A bound UUID cannot be rebound; conflicting question,
+part or generation is 409 `source_changed`. A rerecord has a new UUID. Binding
+persists before asynchronous processing. Repeated uploads retain existing content
+hash conflict handling; repeated processing/evaluation requests reuse saved work.
+
+Answer GET/POST responses contain `{attempt_id,question_job_id,question_id,part,
+processing:{status,processing_revision,requires_confirmation,retry_available,error},
+feedback:existingFeedbackState,result:null|{transcript,duration_ms,verdict,did,evidence,
+clarify}}`. Recording status and feedback status are distinct. Saved successful STT
+is reused after evaluation failure. Under eight seconds or fifteen words is
+`too_short`, with original transcript/audio retained and no evaluation request.
+Explicit retry retains existing cooldown/revision/charge-confirmation rules, including
+failed profile dependencies. Follow-up evaluation receives its active question,
+original main question and `is_follow_up` explicitly. Answer evaluations retain their
+original question/audience after presentation requirements change.
+
+New migration `0009_qaanswer` adds only an answer-to-Attempt/question-job binding
+and a part 0/1 constraint. It does not rewrite existing media, attempts, transcripts,
+contexts or feedback. Reversing it removes bindings, while original Attempt/media
+and question jobs remain. Rehearsal history excludes bound answer attempts.
+
+Before running this client against the development server: apply `python manage.py
+migrate`, then restart the API, worker and recovery scheduler using the existing
+development setup. No credential/env changes are required by Phase 6.
+
+
+### October 16 — Q&A startup/navigation and expression feedback
+
+Initial Q&A continues to start at app level alongside initial selected-slide feedback
+once the selected source transcripts and saved audience are ready. Its durable
+initial marker is consumed at the POST boundary, after synchronization/preflight.
+Preflight failures can retry safely after a five-second backoff through background
+GET polling (four seconds) or app foregrounding; failed/uncertain submitted provider
+work retains explicit recovery. Consumed initial markers remain authoritative even
+when a server later reports absent. This is not automatic stale-feedback regeneration.
+Questions plus follow-ups are returned as one completed one-to-three-item batch.
+The screen adopts that entire validated batch, retains answers within its job,
+bounds navigation to actual available items and labels the last question. Pending
+states offer no Next action; swipes/reopening/playback do not submit question jobs.
+
+`slide-review-v3` retains the existing output schema and finding cap. Delivery findings
+may critique transcript-supported ordering, articulation, ambiguous references and
+connections between ideas. Their existing `suggestion` may include a concise
+"Clearer way to express this" example preserving the original meaning, qualifications
+and facts. It is optional future-rehearsal advice, never a persisted transcript edit
+or STT suggestion. Natural fragments/mixed language are not automatically faults;
+no unsupported claims or stronger conclusions may be added. Original indexed speech
+remains the evidence and playback anchor. V2 prompt bytes remain available for saved
+request reconstruction; retained v1/v2 results are outdated and require explicit
+Update feedback. No migration, incremental audio, new screen or requirements sheet.
+
+
+### Evidence-validation policy (October 16 follow-up)
+
+Server normalization revision `evidence-v1` is separate from the unchanged
+`slide-review-v3` generation prompt/schema. Python and TypeScript share a regression
+corpus. Normalize NFC, explicit Unicode whitespace, ordinary prose capitalization,
+in-word typographic apostrophes, and a single sentence-ending period only where
+unambiguous. Token count/order and meaningful punctuation remain exact. Decimal
+points, C++, negations, mathematical/programming operators, identifiers, acronyms,
+and case-sensitive quantities/units must survive. `!` and `?` remain exact because
+they may be operators. Never use fuzzy matching, word deletion, reordering, NFKC,
+or punctuation stripping. Match against the indexed original transcript, then
+return its authoritative text and original timings. Confirmed correction revisions
+remain separate input/provenance; this does not rewrite transcripts.
+
+Distinct findings may overlap evidence. Redundant normalized observation/advice
+pairs on the same slide (and same visit for legacy coaching) are deduplicated;
+shared quotes or word bags alone are not duplicates. This deliberately conservative
+comparison does not attempt general paraphrase clustering. Scope/provenance object
+comparison is structural; arrays retain order.
+
+Each new review result includes `validation_revision`; each slide adds bounded
+`validation: {rejected_count,reasons,duplicates_removed,speech_word_count,
+model_insufficient}`. Fixed diagnostic reason codes appear in server warnings and
+responses without private quotes. Invalid findings are isolated, optional malformed
+enrichment cannot erase findings, and envelope/source-selection failures remain
+strict. Raw provider receipts remain private.
+
+GET, playback and navigation do not revalidate or regenerate saved reviews. An
+explicit administrative command can revalidate one completed current receipt
+without AI work; stale source/revision/generation/hash checks remain mandatory.
+It defaults to dry run and applies idempotently only with `--apply`. See
+[evidence verification](evidence-validation-verification.md) for commands and limits.
+
+
+## Presentation scoring v2
+
+The [frozen scoring contract](presentation-score-v2.md) defines criteria, exact
+weights, statuses and public evidence. A response includes `schema_version` and
+`rubric_version` equal to `presentation-score-v2`, `source_identity`,
+`assessment_status`, the existing durable-job state, `requirements`, and nullable
+`result`. Requirements are `{context_id, revision, audience,
+required_duration_seconds}`; active/saved generations expose their captured
+requirements, while an absent score exposes current requirements. Projection stays
+bound to the generation read, even if another request advances the owner.
+
+GET never creates a job or calls a provider. Explicit POST uses the existing durable
+transport: selection assertions, revision fences, cooldowns, uncertain-submission
+acknowledgement and saved-receipt recovery. Singleton slide review owns separate
+jobs; scoring does not require grouped review admission or memberships.
+
+A stale result or an older completed generation is retained privately but withheld
+from the current numeric response. Invalid score-critical evidence suppresses the
+affected component and any dependent total; malformed optional advice is filtered
+individually. Original visits, including empty/zero-duration rows, retain their
+original IDs. Playback's positive-duration filtering must not renumber citations.
+Private receipts, model selections and reconstruction audits are never public.
+
+
+### Automatic scoring and rejected-total recovery — October 17, 2026
+
+The Android app-level scoring host admits first assessments for new selected recordings and selected saved recordings after opening their presentation. It reuses the existing POST shape after transcripts and confirmed settings/corrections synchronize. Later synchronized input changes coalesce for one second. Persistent per-input intent and shared submission locks prevent repeated navigation, cache publications, concurrent screens and remounts from admitting duplicate work. GET remains read-only. Unresolved POST intent reconciles through foreground GET polling; failures and uncertain outcomes require explicit recovery rather than automatic same-input paid retries. Singleton feedback and Q&A remain independent.
+
+The scoring prompt is now `presentation-score-prompt-v2.1`; public schema, rubric, exact arithmetic and evidence validation remain v2. Assessed delivery must directly cite supporting original speech plus an eligible non-signal measurement. Measurements/requirements alone remain rejected. A completed `invalid_evidence` assessment exposes cooldown-aware `retry_available`; its Retry POST must include the matching `feedback_revision`. Current non-stale active/completed duplicate POSTs remain no-ops unless a rejected assessment receives an explicit revision-fenced Retry; failed/stale requests without a revision return a conflict. A fresh generation may replace the exact recognized previous v2 protocol, but old receipts cannot normalize under the replacement prompt; unsupported protocol snapshots remain unavailable. Stored JSON key ordering does not change protocol identity.
+
+Home, Full Review and slide reviews share validated score projection and level colors: Beginning red, Emerging amber, Competent green, Advanced blue; unavailable/stale/pending results remain neutral. Criteria and weights stay in this contract and backend validation but are hidden in product screens. Direct summaries, strengths, weaknesses, improvements and supporting playback remain available. Home displays the same selected-run overall score as Full Review, plus total current verified findings once, selected-run duration and WPM. Composite/incomplete sources cannot borrow another recording's overall score.
+
+
+## Retained navigation, cue reliability and singleton feedback
+
+The first saved recording routes to Full Review; later recordings route to the
+selected slide. Compare Keep/Overwrite and review return paths retain source/slide
+identity. Cue GETs reconnect at 2.5/5/10/30-second capped backoff, retain validated
+cache through failure, stop while covered/backgrounded and restart on return.
+Failed-first feedback reads reconnect with GET only. Active job stages, elapsed
+quota waits, missing completed output, inadequate words, declined assessment and
+invalid evidence remain distinct. UI labels say Further Insight; existing wire
+keys remain unchanged.
+
+New slide feedback always uses independent singleton scope. Repeated visits,
+correction synchronization, durable initial claims, cooldowns, submission locks and
+uncertain-outcome confirmation remain enforced. Multi-slide review admission and
+the retired grouped protocol are rejected before provider submission. There is no
+group-owner projection, paired admission or coupled Update workflow. Existing
+singleton reviews remain readable; no saved job, receipt or recording is deleted.
+
+Migration `0010_slide_review_membership` and its inert model remain only because
+that migration has already been applied to the current local phone database.
+Read-only checks found zero membership rows and zero grouped-review snapshots in
+both known local phone datasets. No active code uses that table; no database
+rollback/deletion or live configuration change accompanies this source cleanup.

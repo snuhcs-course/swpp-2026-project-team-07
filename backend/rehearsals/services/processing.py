@@ -1,3 +1,4 @@
+# Scribe-only integration: OpenAI Codex, October 17, 2026; docs/scribe-only-integration-verification.md.
 # Scribe migration: OpenAI Codex, Iteration 2 (2026-10-16); see active collaboration log.
 """Durable queue and fenced processing. Database intent precedes broker publication.
 
@@ -139,6 +140,8 @@ def run_attempt(attempt_id, revision):
     try:
         # Reuse durable partial work even across an explicitly authorized generation.
         saved = claim.provider_requests.filter(raw_received_at__isnull=False).order_by('-generation').first()
+        if saved and (saved.provider, saved.model) != (transcription.PROVIDER, transcription.MODEL):
+            raise transcription.TranscriptionError('invalid_response', 'Unsupported transcription evidence.')
         if claim.transcript is None:
             write_claim(claim, processing_state='checking_audio')
             if saved is None:
@@ -162,7 +165,7 @@ def run_attempt(attempt_id, revision):
                 write_claim(claim, processing_state='transcribing')
                 raw = saved.raw_response
             if claim.transcript is None:
-                normalized = transcription._normalize(raw, saved.provider if saved else transcription.PROVIDER)
+                normalized = transcription._normalize(raw)
                 write_claim(claim, transcript={'text': normalized['text'], 'words': normalized['words']})
         write_claim(claim, processing_state='aligning')
         try:
@@ -173,7 +176,7 @@ def run_attempt(attempt_id, revision):
                 'retry reuses this transcript. Check recording timestamps before retrying.') from None
         saved = claim.provider_requests.filter(raw_received_at__isnull=False).order_by('-generation').first()
         raw = saved.raw_response if saved and isinstance(saved.raw_response, dict) else {}
-        language = raw.get('language_code', raw.get('language', 'und'))
+        language = raw.get('language_code', 'und')
         if not isinstance(language, str):
             language = 'und'
         metrics = timing_metrics(visits, claim.duration_ms, claim.transcript['text'], language)

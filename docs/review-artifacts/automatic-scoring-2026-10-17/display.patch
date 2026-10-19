@@ -1,0 +1,276 @@
+diff --git a/mobile/src/features/feedback/presentationScoreDisplay.ts b/mobile/src/features/feedback/presentationScoreDisplay.ts
+--- a/mobile/src/features/feedback/presentationScoreDisplay.ts
++++ b/mobile/src/features/feedback/presentationScoreDisplay.ts
+@@ -1,7 +1,22 @@
+ /** Display and playback boundaries for already validated rubric results. */
++import type { Palette } from '../../design/tokens';
+ import type { PresentationScore, ScoreEvidence, ScoreLevel, ScoreTarget } from './presentationScore';
+ export const scoreLevelLabel = (level: ScoreLevel | null) => level ? level[0].toUpperCase() + level.slice(1) : '';
+ export const scoreNumber = (score: number | null | undefined) => Number.isSafeInteger(score) && score! >= 0 && score! <= 100 ? score! : null;
++/** Color by the validated exact backend level; rounded points never choose a level. */
++export function scoreLevelColor(level: ScoreLevel | null, palette: Pick<Palette, 'bad'|'warn'|'good'|'info'|'secondary'>): string {
++ return level === 'beginning' ? palette.bad : level === 'emerging' ? palette.warn : level === 'competent' ? palette.good : level === 'advanced' ? palette.info : palette.secondary;
++}
++/** Keep ring labels short; panels retain the full explanation and recovery action. */
++export function scoreRingStatus(status: string): string {
++ if (/outdated|stale|changed/i.test(status)) return 'Updating';
++ if (/…|grading|pending|transcrib/i.test(status) && !/failed|unavailable|not graded/i.test(status)) return 'Scoring…';
++ if (/failed/i.test(status)) return 'Failed';
++ if (/not graded/i.test(status)) return 'Not scored';
++ if (/not recorded/i.test(status)) return 'Not recorded';
++ if (/insufficient|no speech|no usable/i.test(status)) return 'No score';
++ return 'Unavailable';
++}
+ export function scorePlaybackSource(state: PresentationScore | null, target: ScoreTarget | null): string | null {
+  if (!state || !target || state.stale || state.state !== 'completed' || !state.result || state.attempt_id !== target.id || state.context_id !== target.contextId ||
+   state.source_identity !== state.result.source_identity || target.review?.transcript_id !== state.result.evidence.transcript_id) return null;
+diff --git a/mobile/src/features/feedback/PresentationScorePanel.tsx b/mobile/src/features/feedback/PresentationScorePanel.tsx
+--- a/mobile/src/features/feedback/PresentationScorePanel.tsx
++++ b/mobile/src/features/feedback/PresentationScorePanel.tsx
+@@ -1,73 +1,40 @@
+ // Rubric scores use the scoring transport only; legacy findings stay separate.
+-import { useState } from 'react';
+ import { Pressable, StyleSheet, View } from 'react-native';
+ import { Txt } from '../../design/frame';
+ import { ScoreRing } from '../../design/ScoreRing';
+ import { F } from '../../design/tokens';
+ import { useTheme } from '../../design/theme';
+-import { scoreActive, type PresentationScore, type ScoreCriterion, type ScoreEvidence, type ScoreFeedback, type ScoreLevel, type ScoreResult, type ScoreTarget, type SlideScore } from './presentationScore';
+-import { scoreAudioEvidence, scoreEvidenceLabel, scoreLevelLabel, scoreNumber } from './presentationScoreDisplay';
++import { scoreActive, type PresentationScore, type ScoreEvidence, type ScoreFeedback, type ScoreLevel, type ScoreResult, type ScoreTarget, type SlideScore } from './presentationScore';
++import { scoreAudioEvidence, scoreEvidenceLabel, scoreLevelColor, scoreLevelLabel, scoreNumber, scoreRingStatus } from './presentationScoreDisplay';
+ 
+ type Controller = {state:PresentationScore|null;busy:boolean;notice:string;ask:boolean;refresh:()=>unknown;generate:()=>unknown;confirm:()=>unknown;cancel:()=>unknown};
+ export type ScoreDisplay = {score:number|null;level:ScoreLevel|null;status:string;state:PresentationScore|null;result:ScoreResult|SlideScore|null;target:ScoreTarget|null};
+ export function PresentationScoreRing({id,label,item}:{id:string;label:'Overall score'|'Slide score';item:Pick<ScoreDisplay,'score'|'level'|'status'>}) {
+- const {c}=useTheme(),value=scoreNumber(item.score);
+- return <ScoreRing id={id} percent={value} value={value===null?item.status.includes('…')?'…':'—':String(value)} label={`${label}\n${value===null?item.status:scoreLevelLabel(item.level)}`} labelColor={value===null?c.secondary:c.text} gradient={['#9AF7D6','#0EA877']}/>;
++ const {c}=useTheme(),value=scoreNumber(item.score),color=scoreLevelColor(value===null?null:item.level,c),status=scoreRingStatus(item.status);
++ return <ScoreRing id={id} percent={value} value={value===null?status.includes('…')?'…':'—':String(value)} label={`${label}\n${value===null?status:scoreLevelLabel(item.level)}`} labelColor={color} gradient={[color,color]}/>;
+ }
+-const labels:Record<string,string>={essential_coverage:'Essential coverage',explanation_depth:'Explanation depth',clarity_relevance:'Clarity and relevance',structure:'Structure',coherence:'Coherence',audience_suitability:'Audience suitability',delivery:'Delivery'};
+-const anchors:Record<string,readonly string[]>={
+- essential_coverage:['Essential meaning missing or obscured','Partial meaning with consequential gaps','Essential meaning communicated appropriately','Essential meaning communicated with effective prioritization'],
+- explanation_depth:['Essential meaning remains unexplained','Important relationships remain unclear','Suitable explanations or examples establish meaning','Explanations connect relationships and implications effectively'],
+- clarity_relevance:['Ambiguity or digression obstructs understanding','Recurring friction obscures the message','Clear, relevant expression supports understanding','Precise, economical expression consistently aids understanding'],
+- structure:['Purpose or ending leaves the message unresolved','Opening or conclusion provides weak orientation','Purpose, organization and takeaway are clear','Opening and conclusion form an effective framework'],
+- coherence:['Disconnected sequencing obstructs understanding','Unexplained jumps interrupt connections','Ideas and transitions form a logical sequence','Relationships and transitions build a coherent whole'],
+- audience_suitability:['Framing substantially obstructs the supplied audience','Consequential assumptions remain unexplained','Context and terminology suit the supplied audience','Framing consistently anticipates audience needs'],
+- delivery:['Supported continuity or timing problems materially obstruct communication','Supported disruptions sometimes impede understanding','Continuity and time allocation support understanding','Intentional continuity and pacing consistently aid processing and emphasis'],
+-};
+ export function PresentationScorePanel({item,controller,target,overall=false,active=true,notice='',refresh,onEvidence}:{item:ScoreDisplay;controller:Controller;target:ScoreTarget|null;overall?:boolean;active?:boolean;notice?:string;refresh:()=>unknown;onEvidence:(refs:ScoreEvidence[])=>void}) {
+- const {c}=useTheme(),[expanded,setExpanded]=useState(false),state=controller.state;
++ const {c}=useTheme(),state=controller.state;
+  const current=!!item.state&&!item.state.stale&&item.state.state==='completed';
+- const result=current?item.result:null,whole=result&&'whole' in result?result:null;
+- const criteria=whole?whole.whole:result&&'criteria' in result?result.criteria:[];
+- const feedback=result?.feedback;
++ const result=current?item.result:null,feedback=result?.feedback;
+  const busy=controller.busy||scoreActive(state),ready=!!target?.review?.transcript_id&&!!target.review.transcript&&!!target.review.duration_ms;
+  const unavailable=!!state&&state.availability.state!=='available';
+- const savedCurrent=state?.state==='completed'&&!state.stale;
+- const label=state?.stale?'Update score':state?.state==='failed'||state?.requires_confirmation||state?.dependency?.retry_action?'Retry grading':state?.result||state?.state==='completed'?'Update score':'Grade presentation';
+- const actionLabel=overall?label:label==='Grade presentation'?'Grade original recording':label;
++ const rejected=overall&&current&&!!result&&'overall' in result&&result.overall.status==='invalid_evidence';
++ const retry=state?.state==='failed'||state?.requires_confirmation||!!state?.dependency?.retry_action||rejected||!!controller.notice&&!(state?.state==='completed'&&!state.stale);
+  return <View style={[styles.root,{borderColor:c.hair}]}>
+   <View style={styles.heading}><Txt style={[styles.title,{color:c.text}]}>{overall?'Presentation score':'Slide score'}</Txt><Action label="Refresh score status" text="Refresh" disabled={!active||controller.busy} onPress={()=>void refresh()}/></View>
+-  <Txt accessibilityLiveRegion="polite" style={[styles.status,{color:c.text}]}>{item.status}</Txt>
+-  <Txt style={[styles.note,{color:c.secondary}]}>Provisional rubric points out of 100. Levels describe communicated meaning; these points are not calibrated grades or percentiles.</Txt>
+-  {!target&&<Txt style={[styles.note,{color:c.secondary}]}>{overall?'An overall score needs one complete original recording. Each slide can show its selected original recording’s score.':'Select an exact original recording for this slide to grade it.'}</Txt>}
+-  {target&&<>
+-   {!ready&&<Txt style={[styles.note,{color:c.secondary}]}>Analyze this original recording to obtain a transcript before grading.</Txt>}
+-   {!overall&&<Txt style={[styles.note,{color:c.secondary}]}>Grading reviews this entire original recording and returns its slide and overall assessments.</Txt>}
+-   {!savedCurrent&&<Action label={actionLabel} text={busy?'Grading…':actionLabel} disabled={!active||busy||!ready||unavailable||controller.ask} onPress={()=>void controller.generate()}/>}
+-  </>}
++  <Txt accessibilityLiveRegion="polite" style={[styles.status,{color:c.text}]}>{rejected?'Presentation score unavailable. Your slide scores are saved.':item.status}</Txt>
++  {!target&&<Txt style={[styles.note,{color:c.secondary}]}>{overall?'An overall score needs one complete original recording. Each slide can show its selected original recording’s score.':'Select an exact original recording for this slide to score it.'}</Txt>}
++  {target&&!ready&&<Txt style={[styles.note,{color:c.secondary}]}>Analyze this original recording to obtain a transcript before scoring.</Txt>}
++  {target&&retry&&<Action label="Retry grading" text={busy?'Scoring…':'Retry'} disabled={!active||busy||!ready||unavailable||controller.ask} onPress={()=>void controller.generate()}/>}
+   {controller.ask&&target&&<View style={[styles.card,{borderColor:c.hair}]}><Txt style={[styles.note,{color:c.secondary}]}>A previous request may have reached the provider. Retrying may incur another charge.</Txt><Action label="Confirm grading retry" text="Retry anyway" disabled={!active||controller.busy} onPress={()=>void controller.confirm()}/><Action label="Cancel grading retry" text="Cancel" onPress={()=>void controller.cancel()}/></View>}
+   {!!(notice||controller.notice)&&<Txt accessibilityRole="alert" style={[styles.note,{color:c.secondary}]}>{notice||controller.notice}</Txt>}
+   {state?.state==='failed'&&state.error&&<Txt style={[styles.note,{color:c.secondary}]}>{state.error.message}</Txt>}
+   {!!result&&<>
+-   {!!feedback?.summary&&<Txt style={[styles.body,{color:c.text}]}>{feedback.summary.text}</Txt>}
+-   <Action label={expanded?'Hide score explanations':'Show score explanations'} text={expanded?'Hide explanations':'Rubric, explanations & evidence'} onPress={()=>setExpanded(x=>!x)}/>
+-   {expanded&&<>
+-    <Txt style={[styles.note,{color:c.secondary}]}>{whole?'Overall uses 70% of exact slide mean and 30% whole-presentation criteria. Rounding happens once.':'Slide criteria: essential coverage 40%, explanation depth 35%, clarity and relevance 25%.'}</Txt>
+-    {'justification' in result&&!!result.justification&&<Txt style={[styles.body,{color:c.text}]}>{result.justification}</Txt>}
+-    {criteria.map(criterion=><Criterion key={criterion.id} value={criterion} onEvidence={onEvidence}/>)}
+-    {!!feedback&&<Feedback value={feedback} onEvidence={onEvidence}/>}
+-   </>}
++   {!!feedback?.summary&&<View style={styles.list}><Txt style={[styles.body,{color:c.text}]}>{feedback.summary.text}</Txt><Evidence refs={feedback.summary.evidence} title="Score summary" onEvidence={onEvidence}/></View>}
++   {'justification' in result&&!!result.justification&&<Txt style={[styles.body,{color:c.text}]}>{result.justification}</Txt>}
++   {!!feedback&&<Feedback value={feedback} onEvidence={onEvidence}/>}
+   </>}
+- </View>;
+-}
+-function Criterion({value,onEvidence}:{value:ScoreCriterion;onEvidence:(refs:ScoreEvidence[])=>void}) {
+- const {c}=useTheme(),title=labels[value.id]??value.id,index=['beginning','emerging','competent','advanced'].indexOf(value.level??'');
+- return <View style={[styles.card,{borderColor:c.hair}]}><Txt style={[styles.criterion,{color:c.text}]}>{title+' · '+(value.status==='assessed'?scoreLevelLabel(value.level):'Insufficient evidence')}</Txt>
+-  {index>=0&&!!anchors[value.id]?.[index]&&<Txt style={[styles.note,{color:c.secondary}]}>{anchors[value.id][index]}</Txt>}
+-  <Txt style={[styles.body,{color:c.text}]}>{value.justification}</Txt>
+-  {value.limitations.map((limitation,i)=><Txt key={i} style={[styles.note,{color:c.secondary}]}>{'Limitation: '+limitation}</Txt>)}
+-  {value.deductions.map((deduction,i)=><View key={i} style={styles.list}><Txt style={[styles.note,{color:c.secondary}]}>{`Deduction: ${deduction.consequence}`}</Txt><Evidence refs={deduction.evidence} title={`${title} deduction ${i+1}`} onEvidence={onEvidence}/></View>)}
+-  <Evidence refs={value.evidence} title={title} onEvidence={onEvidence}/>
+  </View>;
+ }
+ function Feedback({value,onEvidence}:{value:ScoreFeedback;onEvidence:(refs:ScoreEvidence[])=>void}) {
+diff --git a/mobile/src/screens/HomeFeedbackStats.tsx b/mobile/src/screens/HomeFeedbackStats.tsx
+--- a/mobile/src/screens/HomeFeedbackStats.tsx
++++ b/mobile/src/screens/HomeFeedbackStats.tsx
+@@ -4,19 +4,21 @@
+ import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+ import { Txt } from '../design/frame';
+ import { UIIcon } from '../design/icons';
+-import { ScoreRing } from '../design/ScoreRing';
++import { PresentationScoreRing } from '../features/feedback/PresentationScorePanel';
++import { useRunPresentationScores } from '../features/feedback/useRunPresentationScores';
+ import { createThemedStyles, useTheme } from '../design/theme';
+ import { C, F } from '../design/tokens';
+ import { PULL_T } from '../domain/gestures';
+-import { relativeDay } from '../domain/format';
++import { fmt, relativeDay } from '../domain/format';
+ import { useDeckModel } from '../features/presentations/useDeckModel';
+ import { useRunFeedbackStatus } from '../features/feedback/useRunFeedbackStatus';
+ import type { HomeShared } from './shared';
+ 
+ export function HomeFeedbackStats({deckId,home,active}:{deckId:string|null;home:HomeShared;active:boolean}) {
+- const {c}=useTheme();
++ useTheme();
+  const model=useDeckModel(deckId);
+  const feedback=useRunFeedbackStatus(model,active);
++ const scores=useRunPresentationScores(model,active);
+  const style=useAnimatedStyle(()=>{
+   const pull=Math.min(1,Math.abs(home.vy.value)/PULL_T),fraction=Math.abs(home.p.value-Math.round(home.p.value));
+   return {opacity:(home.vy.value<0?1-Math.min(1,pull*1.6)*.9:1)*Math.max(0,1-fraction*2.4)};
+@@ -24,13 +26,12 @@
+  if(!model)return null;
+  const {aggregate:a}=feedback,stats=model.stats,run=model.state.run;
+  const rows=[
+-  {icon:'i-flag' as const,value:String(a.findings),unit:'verified findings'},
+-  {icon:'i-bubble' as const,value:stats?.fpm==null?'—':stats.fpm.toFixed(1),unit:'fillers / min'},
++  {icon:'i-flag' as const,value:String(a.findings),unit:'total findings'},
++  {icon:'i-clock' as const,value:run?fmt(model.total):'—',unit:'duration'},
+   {icon:'i-gauge' as const,value:stats?.wpm==null?'—':String(stats.wpm),unit:stats?.pace?'wpm · '+stats.pace:'wpm'},
+  ];
+  return <Animated.View pointerEvents="none" style={[styles.root,style]}>
+-  <ScoreRing id="gHomeAssessment" percent={a.recorded?100*a.assessed/a.recorded:null}
+-   value={a.recorded?`${a.assessed}/${a.recorded}`:'—'} label="slides assessed" labelColor={c.secondary} gradient={['#9AF7D6','#0EA877']}/>
++  <PresentationScoreRing id="gHomeAssessment" label="Overall score" item={scores.overall}/>
+   <View style={{flex:1,minWidth:0,gap:9}}>
+    <Txt numberOfLines={1} style={styles.label}>{run?'Last run · '+(relativeDay(run.createdAt)||'Earlier'):'No runs yet'}</Txt>
+    {rows.map(row=><View key={row.icon} style={styles.row}><UIIcon name={row.icon} size={21}/><Txt style={styles.value}>{row.value}</Txt><Txt style={styles.unit}>{row.unit}</Txt></View>)}
+diff --git a/mobile/src/screens/FullReviewScreen.tsx b/mobile/src/screens/FullReviewScreen.tsx
+--- a/mobile/src/screens/FullReviewScreen.tsx
++++ b/mobile/src/screens/FullReviewScreen.tsx
+@@ -9,7 +9,7 @@
+ import { PanView } from '../design/PanView';
+ import { PresentationScorePanel, PresentationScoreRing } from '../features/feedback/PresentationScorePanel';
+ import { useRunPresentationScores } from '../features/feedback/useRunPresentationScores';
+-import { currentScoreEvidence, scoreAudioEvidence, scoreLevelLabel, scorePlaybackSource } from '../features/feedback/presentationScoreDisplay';
++import { currentScoreEvidence, scoreAudioEvidence, scoreLevelColor, scoreLevelLabel, scorePlaybackSource } from '../features/feedback/presentationScoreDisplay';
+ import type { ScoreEvidence } from '../features/feedback/presentationScore';
+ import { EASE_SCREEN, F } from '../design/tokens';
+ import { useTheme } from '../design/theme';
+@@ -261,7 +261,7 @@
+             onMomentumScrollBegin={() => { stripDrag.current = true; }} onMomentumScrollEnd={() => { stripDrag.current = false; }}>
+             {times.map((t, i) => {
+               const item=feedback.items[i],score=scores.items[i];
+-              const fill=score?.score!=null?score.level==='advanced'?c.good:score.level==='competent'?c.info:score.level==='emerging'?c.warnAlt:c.badAlt:c.ink08;
++              const fill=score?.score!=null?scoreLevelColor(score.level,c):c.ink08;
+               const tileInk=score?.score==null?c.secondary:themeMode==='dark'?'#14161D':'#FFFFFF';
+               const badge=score?.score!=null?String(score.score):score?.status.includes('…')?'…':score?.status.toLowerCase().includes('outdated')?'↻':'—';
+               const selected = (runPlaying || slidePlaying) && playbackSlide === i;
+diff --git a/mobile/tests/presentation-score-ui.test.mjs b/mobile/tests/presentation-score-ui.test.mjs
+--- a/mobile/tests/presentation-score-ui.test.mjs
++++ b/mobile/tests/presentation-score-ui.test.mjs
+@@ -3,12 +3,13 @@
+ import {resolve,load} from './helpers/ai-overview-screen-loader.mjs';registerHooks({resolve,load});
+ const React=await import('react'),{act,create}=await import('react-test-renderer');
+ const {runtime}=await import('./helpers/ai-overview-screen-native.mjs');
++const {DARK_PALETTE,LIGHT_PALETTE}=await import('../src/design/tokens.ts');runtime.palettes={dark:DARK_PALETTE,light:LIGHT_PALETTE};
+ const {ReviewScreen}=await import('../src/screens/ReviewScreen.tsx'),{FullReviewScreen}=await import('../src/screens/FullReviewScreen.tsx');
+ globalThis.IS_REACT_ACT_ENVIRONMENT=true;
+ function setup(score=67){
+  const id='original',source='f'.repeat(64),speech={kind:'speech',attempt_id:id,transcript_id:'transcript',source_id:'a'.repeat(64),slide_index:0,visit_id:0,segment_id:'v0s0',word_start:0,word_end:0,quote:'Original words',start_ms:100,end_ms:400};
+  const speech2={...speech,visit_id:2,segment_id:'v2s0',word_start:2,word_end:2,start_ms:2200,end_ms:2600},fact={kind:'slide',slide_index:1,source_id:'b'.repeat(64),fact_ref:'key_ideas/0',quote:'Slide fact'};
+- const feedback={summary:{text:'Communicates the result.',evidence:[speech]},strengths:[{text:'Connects cause and effect.',evidence:[speech]}],weaknesses:[{text:'A transition needs context.',evidence:[speech2]}],improvements:[{text:'Explain the connection before the result.',evidence:[speech,speech2]}],improvement_shortage:null};
++ const feedback={summary:{text:'Communicates the result.',evidence:[speech]},strengths:[{text:'Connects cause and effect.',evidence:[speech]}],weaknesses:[{text:'A transition needs context.',evidence:[speech2]}],improvements:[{text:'Explain the connection before the result.',evidence:[speech,speech2,fact]}],improvement_shortage:null};
+  const level=score===0?'beginning':score===100?'advanced':'competent',criterion={id:'essential_coverage',status:'assessed',level,justification:'The essential result is communicated.',evidence:[speech,speech2,fact],limitations:['Audience was not supplied.'],deductions:[]};
+  const slide=i=>({slide_index:i,status:'scored',score,level,justification:'Slide meaning is established.',criteria:[criterion],evidence:[speech],feedback});
+  const result={rubric_version:'presentation-score-v2',source_identity:source,assessment_status:'scored',overall:{status:'scored',score,level},slides:[slide(0),slide(1)],whole:[{...criterion,id:'structure'}],feedback,evidence:{attempt_id:id,transcript_id:'transcript',duration_ms:3000,sources:[{slide_index:0,source_id:'a'.repeat(64)},{slide_index:1,source_id:'b'.repeat(64)}]}};
+@@ -21,19 +22,23 @@
+ }
+ const text=r=>JSON.stringify(r.toJSON()),button=(r,label)=>r.root.findAllByType('pressable').find(x=>x.props.accessibilityLabel===label);
+ async function render(Component,fn){let r;try{await act(async()=>{r=create(React.createElement(Component));});await fn(r);}finally{if(r)await act(async()=>r.unmount());}}
+-const expand=async r=>act(async()=>button(r,'Show score explanations').props.onPress());
+ test('real review rings show 0,67,100 and keep findings separate',async()=>{for(const score of [0,67,100])for(const Component of [ReviewScreen,FullReviewScreen]){setup(score);await render(Component,async r=>{const ring=r.root.findByType('score-ring');assert.equal(ring.props.value,String(score));assert.equal(ring.props.percent,score);assert.match(ring.props.label,Component===ReviewScreen?/Slide score/:/Overall score/);assert.match(text(r),/verified findings|feedback items/);assert.equal(runtime.scoreActions.length,0);});}});
+ test('recovery statuses suppress fake values and arcs',async()=>{for(const status of ['Not graded','Grading…','Score outdated','Grading failed','Insufficient evidence','Incomplete recording','Grading unavailable']){const {state}=setup();runtime.scores.items[0]={...runtime.scores.items[0],score:null,level:null,status,result:null};runtime.scores.overall={...runtime.scores.overall,score:null,level:null,status,result:null};state.state=status==='Grading failed'?'failed':'absent';state.stale=status==='Score outdated';for(const Component of [ReviewScreen,FullReviewScreen])await render(Component,async r=>{assert.equal(r.root.findByType('score-ring').props.value,status==='Grading…'?'…':'—');assert.equal(r.root.findByType('score-ring').props.percent,null);assert.ok(text(r).includes(status));});}});
+ test('composed Full Review keeps per-source slide score navigation without an overall grade',async()=>{setup();runtime.model.state.run.parts[1].attemptId='another';runtime.scores.overall={score:null,level:null,status:'Composed run',state:null,result:null,target:null};runtime.scores.target=null;await render(FullReviewScreen,async r=>{assert.equal(r.root.findByType('score-ring').props.value,'—');assert.match(text(r),/original recording/i);const tile=r.root.findAllByType('pressable').find(x=>x.props.accessibilityLabel?.startsWith('Slide 2,'));assert.match(tile.props.accessibilityLabel,/67/);assert.equal(button(r,'Grade presentation'),undefined);await act(async()=>tile.props.onPress());assert.deepEqual(runtime.routes.at(-1),['review',{nav:'fade',deckId:'deck',sel:1,from:'full'}]);});});
+-test('grading, uncertain retry and refresh are explicit actions',async()=>{setup();runtime.scores.overall.result=null;runtime.scores.controller.state=null;await render(FullReviewScreen,async r=>{assert.equal(runtime.scoreActions.length,0);await act(async()=>button(r,'Grade presentation').props.onPress());assert.deepEqual(runtime.scoreActions,['grade']);runtime.scores.controller.ask=true;await act(async()=>r.update(React.createElement(FullReviewScreen)));assert.match(text(r),/another charge/);await act(async()=>button(r,'Confirm grading retry').props.onPress());assert.deepEqual(runtime.scoreActions,['grade','confirm']);await act(async()=>button(r,'Refresh score status').props.onPress());assert.equal(runtime.scoreActions.at(-1),'refresh');});});
+-test('expanded criteria explain selected levels, justifications, strengths, weaknesses and improvements',async()=>{setup();await render(ReviewScreen,async r=>{assert.doesNotMatch(text(r),/The essential result is communicated/);await expand(r);for(const value of ['Essential coverage','Competent','The essential result is communicated.','Connects cause and effect.','A transition needs context.','Explain the connection before the result.'])assert.ok(text(r).includes(value),value);assert.ok(button(r,'Show slide 2 evidence'));});});
+-test('Full Review plays all cited original intervals and blocks an old evidence action after staleness',async()=>{const {state}=setup();await render(FullReviewScreen,async r=>{await expand(r);const play=button(r,'Play cited audio for Structure');assert.ok(play);await act(async()=>play.props.onPress());assert.deepEqual(runtime.plays.at(-1).segments,[{uri:'file://original.m4a',startMs:100,endMs:400},{uri:'file://original.m4a',startMs:2200,endMs:2600}]);assert.match(text(r),/Original recording/);assert.ok(text(r).includes('0:00.100–0:00.400'));const old=play.props.onPress;runtime.scores={...runtime.scores,overall:{...runtime.scores.overall,state:{...state,stale:true},result:null,score:null,level:null,status:'Score outdated'}};await act(async()=>r.update(React.createElement(FullReviewScreen)));await act(async()=>old());assert.equal(runtime.plays.length,1);});});
+-test('Review evidence uses current original recording tools and slide fact navigation',async()=>{setup();await render(ReviewScreen,async r=>{assert.equal(runtime.scoreSelections.at(-1),0);await expand(r);await act(async()=>button(r,'Listen to evidence 1 for Essential coverage').props.onPress());const evidence=r.root.findByType('recording-tools').props.evidence;assert.equal(evidence.start_ms,100);assert.equal(evidence.end_ms,400);assert.equal(evidence.speech_quote,'Original words');await act(async()=>button(r,'Show slide 2 evidence').props.onPress());assert.deepEqual(runtime.routes.at(-1),['review',{deckId:'deck',sel:1}]);});});
+-test('zero-duration provenance has no invented playable interval',async()=>{const {state}=setup();state.result.whole[0].evidence=state.result.whole[0].evidence.map(e=>e.kind==='speech'?{...e,end_ms:e.start_ms}:e);await render(FullReviewScreen,async r=>{await expand(r);assert.equal(button(r,'Play cited audio for Structure'),undefined);assert.match(text(r),/No playable interval/);assert.equal(runtime.plays.length,0);});});
++test('normal grading controls are removed while uncertain retry and refresh remain explicit',async()=>{setup();runtime.scores.overall.result=null;runtime.scores.controller.state=null;await render(FullReviewScreen,async r=>{assert.equal(runtime.scoreActions.length,0);assert.equal(button(r,'Grade presentation'),undefined);assert.equal(button(r,'Update score'),undefined);runtime.scores.controller.ask=true;await act(async()=>r.update(React.createElement(FullReviewScreen)));assert.match(text(r),/another charge/);await act(async()=>button(r,'Confirm grading retry').props.onPress());assert.deepEqual(runtime.scoreActions,['confirm']);await act(async()=>button(r,'Refresh score status').props.onPress());assert.equal(runtime.scoreActions.at(-1),'refresh');});});
++test('feedback explanations appear directly without criteria, anchors or toggles',async()=>{setup();await render(ReviewScreen,async r=>{for(const value of ['Connects cause and effect.','A transition needs context.','Explain the connection before the result.','Actionable improvements'])assert.ok(text(r).includes(value),value);assert.doesNotMatch(text(r),/Essential coverage|essential meaning communicated|Slide criteria|Rubric|percentile|The essential result is communicated/);assert.equal(button(r,'Show score explanations'),undefined);assert.ok(button(r,'Show slide 2 evidence'));assert.ok(button(r,'Listen to evidence 1 for Score summary'));});});
++test('Full Review plays all cited original intervals and blocks an old evidence action after staleness',async()=>{const {state}=setup();await render(FullReviewScreen,async r=>{const play=button(r,'Play cited audio for improvements 1');assert.ok(play);await act(async()=>play.props.onPress());assert.deepEqual(runtime.plays.at(-1).segments,[{uri:'file://original.m4a',startMs:100,endMs:400},{uri:'file://original.m4a',startMs:2200,endMs:2600}]);assert.match(text(r),/Original recording/);assert.ok(text(r).includes('0:00.100–0:00.400'));const old=play.props.onPress;runtime.scores={...runtime.scores,overall:{...runtime.scores.overall,state:{...state,stale:true},result:null,score:null,level:null,status:'Score outdated'}};await act(async()=>r.update(React.createElement(FullReviewScreen)));await act(async()=>old());assert.equal(runtime.plays.length,1);});});
++test('Review evidence uses current original recording tools and slide fact navigation',async()=>{setup();await render(ReviewScreen,async r=>{assert.equal(runtime.scoreSelections.at(-1),0);await act(async()=>button(r,'Listen to evidence 1 for Score summary').props.onPress());const evidence=r.root.findByType('recording-tools').props.evidence;assert.equal(evidence.start_ms,100);assert.equal(evidence.end_ms,400);assert.equal(evidence.speech_quote,'Original words');await act(async()=>button(r,'Show slide 2 evidence').props.onPress());assert.deepEqual(runtime.routes.at(-1),['review',{deckId:'deck',sel:1}]);});});
++test('zero-duration provenance has no invented playable interval',async()=>{const {state}=setup();state.result.feedback.summary.evidence=state.result.feedback.summary.evidence.map(e=>e.kind==='speech'?{...e,end_ms:e.start_ms}:e);await render(FullReviewScreen,async r=>{assert.equal(button(r,'Listen to evidence 1 for Score summary'),undefined);assert.match(text(r),/No playable interval/);assert.equal(runtime.plays.length,0);});});
+ 
+-test('stale score clears inline evidence while legacy feedback remains independently usable',async()=>{const {state}=setup();await render(ReviewScreen,async r=>{await expand(r);await act(async()=>button(r,'Listen to evidence 1 for Essential coverage').props.onPress());assert.ok(r.root.findByType('recording-tools').props.evidence);runtime.scores.items[0]={...runtime.scores.items[0],state:{...state,stale:true},result:null,score:null,level:null,status:'Score outdated'};await act(async()=>r.update(React.createElement(ReviewScreen)));assert.equal(r.root.findByType('recording-tools').props.evidence,null);const finding={start_ms:100,end_ms:400,speech_quote:'Original words'};await act(async()=>r.root.findByType('slide-feedback').props.onEvidence(finding));assert.equal(r.root.findByType('recording-tools').props.evidence.speech_quote,'Original words');});});
+-test('fresh completed score offers Refresh and hides a no-op update; deductions explain the consequence without internal IDs',async()=>{const {state,speech}=setup();state.result.slides[0].criteria[0].deductions=[{weakness_id:'private-weakness-key',consequence:'The comparison is difficult to follow.',evidence:[speech]}];await render(ReviewScreen,async r=>{assert.ok(!button(r,'Update score'),'fresh completed scores have no no-op update');assert.ok(button(r,'Refresh score status'));await expand(r);assert.match(text(r),/The comparison is difficult to follow/);assert.doesNotMatch(text(r),/private-weakness-key/);});});
++test('stale score clears inline evidence while legacy feedback remains independently usable',async()=>{const {state}=setup();await render(ReviewScreen,async r=>{await act(async()=>button(r,'Listen to evidence 1 for Score summary').props.onPress());assert.ok(r.root.findByType('recording-tools').props.evidence);runtime.scores.items[0]={...runtime.scores.items[0],state:{...state,stale:true},result:null,score:null,level:null,status:'Score outdated'};await act(async()=>r.update(React.createElement(ReviewScreen)));assert.equal(r.root.findByType('recording-tools').props.evidence,null);const finding={start_ms:100,end_ms:400,speech_quote:'Original words'};await act(async()=>r.root.findByType('slide-feedback').props.onEvidence(finding));assert.equal(r.root.findByType('recording-tools').props.evidence.speech_quote,'Original words');});});
++test('fresh completed scores offer Refresh while criteria and internal deduction IDs stay hidden',async()=>{const {state,speech}=setup();state.result.slides[0].criteria[0].deductions=[{weakness_id:'private-weakness-key',consequence:'The comparison is difficult to follow.',evidence:[speech]}];await render(ReviewScreen,async r=>{assert.ok(!button(r,'Update score'),'fresh completed scores have no no-op update');assert.ok(button(r,'Refresh score status'));assert.doesNotMatch(text(r),/The comparison is difficult to follow/);assert.match(text(r),/A transition needs context/);assert.doesNotMatch(text(r),/private-weakness-key/);});});
+ 
+-test('Full Review stops score evidence on stale scoring inputs and preserves normal run playback',async()=>{for(const cited of [true,false]){const {state}=setup();await render(FullReviewScreen,async r=>{if(cited){await expand(r);await act(async()=>button(r,'Play cited audio for Structure').props.onPress());}else await act(async()=>r.root.findAllByType('pressable').find(x=>x.props.accessibilityLabel?.startsWith('Play the whole run')).props.onPress());assert.ok(runtime.players[0].playingKey);runtime.scores.overall={...runtime.scores.overall,state:{...state,stale:true},result:null,score:null,level:null,status:'Score outdated'};await act(async()=>r.update(React.createElement(FullReviewScreen)));assert.equal(runtime.players[0].playingKey,cited?null:'run:deck');});}});
+-test('measurement and full-attempt evidence use their positive original audio intervals',async()=>{const {state}=setup();const measurement={kind:'measurement',attempt_id:'original',audio_hash:'c'.repeat(64),measurement_id:'pause-1',start_ms:500,end_ms:900,measurement:{id:'pause-1',kind:'pause',start_ms:500,end_ms:900,value:400,unit:'ms'}},full={kind:'full_attempt',attempt_id:'original',source_id:state.source_identity,start_ms:0,end_ms:3000};state.result.whole[0].evidence=[measurement,full];await render(FullReviewScreen,async r=>{await expand(r);await act(async()=>button(r,'Listen to evidence 1 for Structure').props.onPress());assert.deepEqual(runtime.plays.at(-1).segments,[{uri:'file://original.m4a',startMs:500,endMs:900}]);await act(async()=>button(r,'Listen to evidence 2 for Structure').props.onPress());assert.deepEqual(runtime.plays.at(-1).segments,[{uri:'file://original.m4a',startMs:0,endMs:3000}]);assert.match(text(r),/pause · 400 ms/);assert.match(text(r),/Full original recording/);});});
+-test('missing original score audio reports recovery and never substitutes a different recording',async()=>{setup();runtime.audio=new Map([['unrelated','file://unrelated.m4a']]);await render(FullReviewScreen,async r=>{await expand(r);await act(async()=>button(r,'Play cited audio for Structure').props.onPress());assert.equal(runtime.plays.length,0);assert.match(text(r),/Original recording audio is not on this phone/);});});
++test('Full Review stops score evidence on stale scoring inputs and preserves normal run playback',async()=>{for(const cited of [true,false]){const {state}=setup();await render(FullReviewScreen,async r=>{if(cited){await act(async()=>button(r,'Play cited audio for improvements 1').props.onPress());}else await act(async()=>r.root.findAllByType('pressable').find(x=>x.props.accessibilityLabel?.startsWith('Play the whole run')).props.onPress());assert.ok(runtime.players[0].playingKey);runtime.scores.overall={...runtime.scores.overall,state:{...state,stale:true},result:null,score:null,level:null,status:'Score outdated'};await act(async()=>r.update(React.createElement(FullReviewScreen)));assert.equal(runtime.players[0].playingKey,cited?null:'run:deck');});}});
++test('measurement and full-attempt evidence use their positive original audio intervals',async()=>{const {state}=setup();const measurement={kind:'measurement',attempt_id:'original',audio_hash:'c'.repeat(64),measurement_id:'pause-1',start_ms:500,end_ms:900,measurement:{id:'pause-1',kind:'pause',start_ms:500,end_ms:900,value:400,unit:'ms'}},full={kind:'full_attempt',attempt_id:'original',source_id:state.source_identity,start_ms:0,end_ms:3000};state.result.feedback.summary.evidence=[measurement,full];await render(FullReviewScreen,async r=>{await act(async()=>button(r,'Listen to evidence 1 for Score summary').props.onPress());assert.deepEqual(runtime.plays.at(-1).segments,[{uri:'file://original.m4a',startMs:500,endMs:900}]);await act(async()=>button(r,'Listen to evidence 2 for Score summary').props.onPress());assert.deepEqual(runtime.plays.at(-1).segments,[{uri:'file://original.m4a',startMs:0,endMs:3000}]);assert.match(text(r),/pause · 400 ms/);assert.match(text(r),/Full original recording/);});});
++test('missing original score audio reports recovery and never substitutes a different recording',async()=>{setup();runtime.audio=new Map([['unrelated','file://unrelated.m4a']]);await render(FullReviewScreen,async r=>{await act(async()=>button(r,'Play cited audio for improvements 1').props.onPress());assert.equal(runtime.plays.length,0);assert.match(text(r),/Original recording audio is not on this phone/);});});
++
++test('rejected overall evidence keeps slide scores and exposes a recoverable Retry',async()=>{const {state}=setup();state.assessment_status='invalid_evidence';state.result.overall={status:'invalid_evidence',score:null,level:null};runtime.scores.overall={...runtime.scores.overall,score:null,level:null,status:'Score evidence could not be verified'};await render(FullReviewScreen,async r=>{assert.match(text(r),/Presentation score unavailable. Your slide scores are saved./);assert.ok(button(r,'Retry grading'));assert.equal(r.root.findByType('score-ring').props.label,'Overall score\nUnavailable');const tile=r.root.findAllByType('pressable').find(x=>x.props.accessibilityLabel?.startsWith('Slide 1,'));assert.match(tile.props.accessibilityLabel,/67 points, Competent/);await act(async()=>button(r,'Retry grading').props.onPress());assert.deepEqual(runtime.scoreActions,['grade']);});});
++test('validated levels color rings, labels and navigation consistently in both themes without rounded-score inference',async()=>{for(const theme of ['dark','light'])for(const [score,level,tone] of [[0,'beginning','bad'],[50,'emerging','warn'],[67,'competent','good'],[83,'competent','good'],[83,'advanced','info'],[100,'advanced','info']]){setup(score);runtime.theme=theme;const color=runtime.palettes[theme][tone];for(const item of [...runtime.scores.items,runtime.scores.overall])item.level=level;for(const Component of [ReviewScreen,FullReviewScreen])await render(Component,async r=>{const ring=r.root.findByType('score-ring');assert.deepEqual(ring.props.gradient,[color,color]);assert.equal(ring.props.labelColor,color);if(Component===FullReviewScreen){const tile=r.root.findAllByType('pressable').find(x=>x.props.accessibilityLabel?.startsWith('Slide 1,'));assert.equal(tile.findAllByType('view').find(x=>x.props.style?.some?.(style=>style?.backgroundColor)).props.style.at(-1).backgroundColor,color);}});}});
++
++test('automatic failures expose Retry and stale or missing results use neutral ring colors',async()=>{for(const condition of ['absent-notice','failed','stale']){const {state}=setup();runtime.scores.overall={...runtime.scores.overall,score:null,level:null,result:null,status:condition==='stale'?'Score outdated':'Grading failed'};state.state=condition==='absent-notice'?'absent':condition==='failed'?'failed':'completed';state.stale=condition==='stale';runtime.scores.controller.notice=condition==='absent-notice'?'Connection interrupted.':'';await render(FullReviewScreen,async r=>{const ring=r.root.findByType('score-ring');assert.deepEqual(ring.props.gradient,[DARK_PALETTE.secondary,DARK_PALETTE.secondary]);assert.equal(ring.props.percent,null);if(condition!=='stale')assert.ok(button(r,'Retry grading'));assert.equal(button(r,'Update score'),undefined);});}});
+diff --git a/mobile/tests/ai-overview-screens.test.mjs b/mobile/tests/ai-overview-screens.test.mjs
+--- a/mobile/tests/ai-overview-screens.test.mjs
++++ b/mobile/tests/ai-overview-screens.test.mjs
+@@ -3,6 +3,7 @@
+ import {resolve,load} from './helpers/ai-overview-screen-loader.mjs';registerHooks({resolve,load});
+ const React=await import('react');const {act,create}=await import('react-test-renderer');
+ const {runtime}=await import('./helpers/ai-overview-screen-native.mjs');
++const {DARK_PALETTE,LIGHT_PALETTE}=await import('../src/design/tokens.ts');runtime.palettes={dark:DARK_PALETTE,light:LIGHT_PALETTE};
+ const {ReviewScreen}=await import('../src/screens/ReviewScreen.tsx');
+ const {FullReviewScreen}=await import('../src/screens/FullReviewScreen.tsx');
+ const {HomeFeedbackStats}=await import('../src/screens/HomeFeedbackStats.tsx');
+@@ -41,7 +42,7 @@
+  await act(async()=>r.root.findAllByType('pressable').find(x=>x.props.accessibilityLabel?.startsWith('Slide 2,')).props.onPress());assert.equal(runtime.routes.at(-1)[1].sel,1);
+  });});
+ test('Home presents the same AI counts in both themes, with measured pace kept separate',async()=>{for(const theme of ['light','dark']){setup();runtime.theme=theme;
+- await render(HomeFeedbackStats,{deckId:'deck',active:true,home:{p:{value:0},vy:{value:0}}},async r=>{const ring=r.root.findByType('score-ring');assert.equal(ring.props.value,'1/2');assert.match(ring.props.label,/assessed/i);assert.match(text(r),/4/);assert.match(text(r),/findings/);assert.doesNotMatch(text(r),/100%|On point|slide points said/);});
++ await render(HomeFeedbackStats,{deckId:'deck',active:true,home:{p:{value:0},vy:{value:0}}},async r=>{const ring=r.root.findByType('score-ring');assert.equal(ring.props.value,'—');assert.match(ring.props.label,/Overall score/i);assert.match(text(r),/0:04/);assert.match(text(r),/duration/);assert.doesNotMatch(text(r),/fillers \/ min|slides assessed/);assert.match(text(r),/4/);assert.match(text(r),/findings/);assert.doesNotMatch(text(r),/100%|On point|slide points said/);});
+ }});
+ 
+ test('Review retains Q&A swipe outside its page scroll',async()=>{setup();await render(ReviewScreen,{},async r=>{const pan=r.root.findByType('pan');assert.equal(pan.props.onMoveShould({nativeEvent:{pageY:800}},{dx:0,dy:-150}),true);await act(async()=>{pan.props.onMove({}, {dx:0,dy:-150});pan.props.onRelease();});assert.equal(runtime.routes.at(-1)[0],'qa');});});
+@@ -144,3 +145,6 @@
+  runtime.nav.sel=0;runtime.model.state.takes=2;runtime.model.state.compare={slides:[1],whole:false,prev,next:{...prev,sel:1,takeNo:2}};
+  await render(CompareScreen,{},async r=>{await act(async()=>r.root.findByType('record-button').props.onPress());assert.equal(runtime.routes.at(-1)[1].sel,1);});
+ });
++
++test('Home restores the same verified overall score and level as Full Review while retaining findings and duration',async()=>{for(const theme of ['dark','light']){setup();runtime.theme=theme;runtime.scores={overall:{score:67,level:'competent',status:'Graded',state:null,result:null,target:null}};await render(HomeFeedbackStats,{deckId:'deck',active:true,home:{p:{value:0},vy:{value:0}}},async r=>{const ring=r.root.findByType('score-ring');assert.equal(ring.props.value,'67');assert.deepEqual(ring.props.gradient,[runtime.palettes[theme].good,runtime.palettes[theme].good]);assert.match(ring.props.label,/Overall score\nCompetent/);assert.match(text(r),/4/);assert.match(text(r),/total findings/);assert.match(text(r),/0:04/);assert.match(text(r),/130/);});}});
++test('Home retains pending and partial findings notices without inventing a composed overall score',async()=>{setup();runtime.feedback.aggregate.pending=1;runtime.feedback.aggregate.partial=1;runtime.feedback.items[0]={...runtime.feedback.items[0],status:'pending',label:'Feedback pending'};await render(HomeFeedbackStats,{deckId:'deck',active:true,home:{p:{value:0},vy:{value:0}}},async r=>{assert.equal(r.root.findByType('score-ring').props.value,'—');assert.match(text(r),/Feedback pending/);assert.match(text(r),/1 partial/);});});
+diff --git a/mobile/tests/helpers/ai-overview-screen-native.mjs b/mobile/tests/helpers/ai-overview-screen-native.mjs
+--- a/mobile/tests/helpers/ai-overview-screen-native.mjs
++++ b/mobile/tests/helpers/ai-overview-screen-native.mjs
+@@ -24,7 +24,7 @@
+ export const useSharedValue=value=>{const r=React.useRef({value,get(){return this.value},set(v){this.value=v}});return r.current;};
+ export const useAnimatedStyle=()=>({}),useAnimatedProps=()=>({}),useReducedMotion=()=>true;
+ export const createThemedStyles=x=>x;
+-export const useTheme=()=>({mode:runtime.theme??'dark',c:{text:'#fff',body:'#ddd',secondary:'#aaa',tertiary:'#888',good:'#0a0',warn:'#fa0',bad:'#f44',info:'#88f',strong:'#fff'}});
++export const useTheme=()=>({mode:runtime.theme??'dark',c:runtime.palettes?.[runtime.theme??'dark']??{text:'#fff',body:'#ddd',secondary:'#aaa',tertiary:'#888',good:'#0a0',warn:'#fa0',bad:'#f44',info:'#88f',strong:'#fff'}});
+ export const Defs='defs',LinearGradient='gradient',Path='path',Rect='rect',Stop='stop',Circle='circle';
+ export function HintRow({hints}){return React.createElement('hints',null,hints.map(h=>h.onPress?React.createElement('pressable',{key:h.text,accessibilityRole:'button',accessibilityLabel:h.text,onPress:h.onPress},React.createElement('text',null,h.text)):h.text));}
+ const Animated=Object.assign(({children})=>React.createElement('svg',null,children),{View:'animated'});export default Animated;

@@ -1,5 +1,5 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// OpenAI Codex twenty-minute capture: docs/ai-collaboration-prompts-iteration-2.md#presentation-time-and-audience-setup-october-15-2026
+// OpenAI Codex historical twenty-minute capture: docs/ai-collaboration-prompts-iteration-2.md#presentation-time-and-audience-setup-october-15-2026
 // Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
 // OutLoud redesign: microphone capture for one take.
 // Ported from the former RehearsalScreen without changing its rules: the recording
@@ -15,6 +15,7 @@ import type { SlideEvent } from '../../contracts';
 import { API_URL } from '../../services/api';
 import { createRecordingService } from '../recording/service';
 import { stopCapture } from '../recording/stopCapture';
+import { STOP_RECORDING_MS, VOICE_RECORDING_OPTIONS } from '../recording/limits';
 import { beginAttempt, checkpointAttempt, interruptAttempt, recoverPendingAttempts } from '../recording/storage';
 
 export type FinishedTake = { attemptId: string; durationMs: number; events: SlideEvent[] };
@@ -33,7 +34,7 @@ type Props = {
   onMeter: (db: number, elapsedMs: number) => void;
   /** Capture failed or the app went to the background; the take is kept for recovery. */
   onInterrupted: (message: string) => void;
-  /** Reached the 20-minute limit, or the app left the foreground: the screen should stop. */
+  /** Reached the 30-minute limit, or the app left the foreground: the screen should stop. */
   onMustStop: () => void;
 };
 
@@ -56,7 +57,7 @@ export const CaptureEngine = forwardRef<CaptureHandle, Props>(function CaptureEn
   }, []);
 
   // directory "document" keeps audio out of the system-cleared cache.
-  const recorder = useAudioRecorder({ ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true, directory: 'document' }, status => {
+  const recorder = useAudioRecorder({ ...RecordingPresets.HIGH_QUALITY, ...VOICE_RECORDING_OPTIONS, isMeteringEnabled: true, directory: 'document' }, status => {
     if ((status.hasError || (status.isFinished && phase.current === 'recording')) && mounted.current) {
       fail('The recording could not be finalized. Any checkpoint remains in saved rehearsals.');
     }
@@ -78,7 +79,7 @@ export const CaptureEngine = forwardRef<CaptureHandle, Props>(function CaptureEn
         const status = recorder.getStatus();
         callbacks.current.onMeter(typeof status.metering === 'number' ? status.metering : -160, status.durationMillis);
         if (status.durationMillis - lastCheckpoint.current >= 1000) checkpoint();
-        if (status.durationMillis >= 1_199_000) callbacks.current.onMustStop();
+        if (status.durationMillis >= STOP_RECORDING_MS) callbacks.current.onMustStop();
       } catch {
         callbacks.current.onMustStop();
       }

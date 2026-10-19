@@ -1,3 +1,4 @@
+// OpenAI Codex review routing: docs/ai-collaboration-prompts-iteration-2.md#first-recording-review-navigation-october-16-2026
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
 // Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
 // OpenAI Codex run-audio position mapping: docs/ai-collaboration-prompts-iteration-2.md#review-and-full-review-redesign-october-15-2026
@@ -137,4 +138,9 @@ export function runLabel(run: Run, now = Date.now(), day: (iso: string) => strin
   if (Number.isFinite(age) && age < 15 * 60_000) return 'Just now · ' + run.core;
   const when = day(run.createdAt) || 'Earlier';
   return when + ' · ' + (run.full && !run.whole ? 'attempt ' + run.takeNo + ' · ' : '') + run.core;
+}
+
+/** First saved take stays presentation-wide until another take is saved, even if the old run is kept. */
+export function reviewDestination(savedTakes: number): 'full' | 'review' {
+  return savedTakes === 1 ? 'full' : 'review';
 }

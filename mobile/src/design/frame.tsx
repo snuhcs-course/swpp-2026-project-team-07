@@ -9,9 +9,9 @@
 // OpenAI Codex semantic footer motion: docs/ai-collaboration-prompts-iteration-2.md#semantic-bottom-caption-motion-october-15-2026
 // OpenAI Codex stationary page entrances: docs/ai-collaboration-prompts-iteration-2.md#stationary-forward-page-fades-october-15-2026
 // OpenAI Codex stable frame context: docs/ai-collaboration-prompts-iteration-2.md#continuous-carousel-color-and-navigation-responsiveness-october-15-2026
-import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions, type TextProps } from 'react-native';
-import Animated, { Easing, cancelAnimation, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming, type SharedValue } from 'react-native-reanimated';
+import Animated, { Easing, cancelAnimation, runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming, type SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FRAME_H, FRAME_W } from './tokens';
 import { useTheme } from './theme';
@@ -70,11 +70,20 @@ export type EnterKind = 'rise' | 'zoom' | 'fade' | null;
 export function Enter({ kind, children, style, pointerEvents }: { kind: EnterKind; children: ReactNode; style?: object; pointerEvents?: 'box-none' | 'auto' }) {
   const reducedMotion = useReducedMotion();
   const opacity = useSharedValue(kind && !reducedMotion ? 0 : 1);
+  const [entered, setEntered] = useState(!kind || reducedMotion);
   useEffect(() => {
-    opacity.set(kind && !reducedMotion ? withTiming(1, { duration: 220, easing: Easing.out(Easing.cubic) }) : 1);
+    let cancelled = false;
+    const complete = () => { if (!cancelled) setEntered(true); };
+    opacity.set(withTiming(1, { duration: kind && !reducedMotion ? 220 : 0, easing: Easing.out(Easing.cubic) }, finished => {
+      if (finished) runOnJS(complete)();
+    }));
+    return () => { cancelled = true; cancelAnimation(opacity); };
   }, [kind, opacity, reducedMotion]);
   const fade = useAnimatedStyle(() => ({ opacity: opacity.value }));
-  return <Animated.View pointerEvents={pointerEvents} style={[StyleSheet.absoluteFill, style, fade]}>{children}</Animated.View>;
+  // Fabric can reapply an animated style's initial opacity on a later React
+  // commit. Once the entrance finishes, React must own the opaque final value.
+  const visible = entered || !kind || reducedMotion;
+  return <Animated.View pointerEvents={pointerEvents} style={[StyleSheet.absoluteFill, style, visible ? { opacity: 1 } : fade]}>{children}</Animated.View>;
 }
 
 const styles = StyleSheet.create({

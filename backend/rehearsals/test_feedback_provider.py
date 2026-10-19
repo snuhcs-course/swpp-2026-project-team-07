@@ -344,7 +344,7 @@ class FeedbackProviderTests(TestCase):
                 self.adapter().prepare_descriptions(analysis)
             outbound.assert_not_called()
             self.assertEqual(caught.exception.code, code)
-        self.value['duration_ms'] = 1_200_001
+        self.value['duration_ms'] = 1800001
         with self.assertRaises(FeedbackError):
             prepare_analysis(self.value, self.images)
         self.network.assert_not_called()

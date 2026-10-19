@@ -198,11 +198,9 @@ class TranscriptionTests(TestCase):
         self.assertNotIn("authorization", self.calls[0].headers)
         self.assertEqual(len(result["raw_response"]["words"]), 4)
 
-    def test_legacy_whisper_raw_remains_readable_only_as_legacy(self):
-        raw = {"text": "hello", "words": [{"word": "hello", "start": 0, "end": 1}]}
-        self.assertEqual(_normalize(raw, "openai")["words"][0]["text"], "hello")
+    def test_non_scribe_word_format_is_rejected(self):
         with self.assertRaises(TranscriptionError):
-            _normalize(raw)
+            _normalize({"text": "hello", "words": [{"word": "hello", "start": 0, "end": 1}]})
 
     def test_spacing_only_and_unknown_token_types_fail_closed(self):
         for kind in ["spacing", "audio_event", "unknown", None]:

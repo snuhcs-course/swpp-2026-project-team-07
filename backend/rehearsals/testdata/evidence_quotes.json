@@ -1,0 +1,170 @@
+{
+  "accept": [
+    [
+      "So each AI pet has different roles by mode and that's what makes them unique",
+      "So each AI pet has different roles by mode and that's what makes them unique."
+    ],
+    [
+      "This is useful",
+      "this is useful."
+    ],
+    [
+      "That's useful",
+      "That’s useful."
+    ],
+    [
+      "Two\nideas",
+      "two ideas."
+    ],
+    [
+      "C++ is useful",
+      "C++ is useful."
+    ],
+    [
+      "The result is 1.5",
+      "The result is 1.5."
+    ],
+    [
+      "café",
+      "café."
+    ],
+    [
+      "A clear point",
+      "A﻿clearpoint."
+    ],
+    [
+      "١٢.",
+      "١٢"
+    ]
+  ],
+  "reject": [
+    [
+      "1.5",
+      "15"
+    ],
+    [
+      "C++",
+      "C"
+    ],
+    [
+      "It is not safe",
+      "It is safe"
+    ],
+    [
+      "The result is -5",
+      "The result is 5"
+    ],
+    [
+      "5%",
+      "5"
+    ],
+    [
+      "A causes B",
+      "B causes A"
+    ],
+    [
+      "use userID",
+      "use userId"
+    ],
+    [
+      "x!",
+      "x"
+    ],
+    [
+      "x != y",
+      "x = y"
+    ],
+    [
+      "obj.value",
+      "obj value"
+    ],
+    [
+      "x <= 5",
+      "x < 5"
+    ],
+    [
+      "The dose is 5 mg",
+      "The dose is 5 Mg"
+    ],
+    [
+      "Use x + y",
+      "Use x - y"
+    ],
+    [
+      "They are ready",
+      "They are all ready"
+    ],
+    [
+      "text",
+      "text..."
+    ],
+    [
+      "five mg",
+      "five Mg"
+    ],
+    [
+      "dose in mg",
+      "dose in Mg"
+    ],
+    [
+      "PATH",
+      "path"
+    ],
+    [
+      "factorial count!",
+      "factorial count"
+    ],
+    [
+      "½’½",
+      "½'½"
+    ],
+    [
+      "FOO is useful",
+      "foo is useful"
+    ],
+    [
+      "Use `obj.value`",
+      "Use `obj.value.`"
+    ],
+    [
+      "The value is count!",
+      "the value is count"
+    ],
+    [
+      "The value is total?",
+      "the value is total"
+    ],
+    [
+      "FOO IS USEFUL",
+      "foo is useful"
+    ],
+    [
+      "The dose is 5 Rg",
+      "the dose is 5 rg"
+    ],
+    [
+      "dose in Rg",
+      "dose in rg"
+    ],
+    [
+      "C++",
+      "C++."
+    ],
+    [
+      "٥ Newton",
+      "٥ newton"
+    ],
+    [
+      "twenty Kilo",
+      "twenty kilo"
+    ],
+    [
+      "twenty-five Kilo",
+      "twenty-five kilo"
+    ],
+    [
+      "1/2 Kilo",
+      "1/2 kilo"
+    ]
+  ]
+}

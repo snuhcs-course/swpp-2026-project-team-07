@@ -12,6 +12,7 @@ export function useAudioRecorder(options, listener) {
     const listeners = new Set();
     const emit = status => { callback.current?.(status); for (const listener of listeners) listener(status); };
     const capture = {
+      options,
       isPrepared: false, isRecording: false, released: false, uri: 'file:///test.m4a',
       durationMillis: 1000,
       async prepareToRecordAsync() {

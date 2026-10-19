@@ -112,11 +112,11 @@ def store_attempt(upload, metadata):
                 duration += frame.samples * 1000 / frame.sample_rate
                 if duration > MAX_DURATION_MS + 1000:
                     raise ValueError()
-            # A small codec tail is allowed; the capture timeline remains capped at 20 minutes.
+            # A small codec tail is allowed; the capture timeline remains capped at 30 minutes.
             if not 0 < duration <= MAX_DURATION_MS + 1000 or abs(duration - metadata["duration_ms"]) > 1000:
                 raise ValueError()
     except Exception as exc:
-        raise ValidationError("Audio must be playable, at most 20 minutes, and match its recording duration.") from exc
+        raise ValidationError("Audio must be playable, at most 30 minutes, and match its recording duration.") from exc
     digest = hashlib.sha256(data + json.dumps(metadata, sort_keys=True, default=str).encode()).hexdigest()
     existing = Attempt.objects.filter(id=metadata["id"]).first()
     if existing:
