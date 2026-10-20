@@ -22,3 +22,9 @@ local.properties
 /mobile/ios/
 /tmp/
 /output/
+
+# Private AI-session review data belongs outside Git.
+ai-session-exports/
+*.session-selection.private.json
+*-session-export.zip
+*-development-sessions.zip

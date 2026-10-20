@@ -9,10 +9,17 @@ These rules apply across project tasks; read detailed guides only when relevant.
 **Current iteration: 2.** The active log is
 [docs/ai-collaboration-prompts-iteration-2.md](docs/ai-collaboration-prompts-iteration-2.md).
 
-- Record each actual project-task prompt and follow-up verbatim in that log during
+- Record each actual app-development prompt and follow-up verbatim in that log during
   work, under the contributor/task, with date, tool and model. Group related prompts
   in one entry; label excerpts/redactions and write `not recorded` for unknown metadata.
   Do not reconstruct missing prompts, alter wording or duplicate existing entries.
+- Apply the [development collection scope](docs/ai-collaboration/iteration-2/README.md#what-belongs-in-the-development-collection).
+  Choose sessions by private content review; folder/date matches are insufficient.
+  Exclude reporting/admin and other nondevelopment conversations from the developer
+  prompt log and development archive; exclude mixed/uncertain whole sessions pending
+  review. Apply this to new log entries and the current archive; retain historical
+  log records unless the user separately authorizes cleanup. Member pages contain
+  coverage/confirmation metadata and links only.
 - For Seoyeon's own prompts in any iteration, use exactly `Seoyeon` in the
   contributor field, as confirmed on October 15, 2026. Omit requester/requestor
   suffixes. Attribute other contributors' prompts to their confirmed names.

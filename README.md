@@ -130,7 +130,7 @@ docker compose exec api python manage.py makemigrations --check --dry-run
 | Feedback behavior and quality limits | [AI feedback reference](docs/ai-feedback.md) · [controlled evaluation](docs/feedback-evaluation.md) |
 | Verification evidence | [Verification guide](docs/verification.md) · [historical scaffold review](docs/review.md) |
 | Contributor rules and earlier ownership context | [Shared instructions](AGENTS.md) · [Iteration 1 work division](docs/team-work-division.md) · [Iteration 1 handoff](docs/iteration-1-handoff.md) |
-| AI contribution and disclosure | [Iteration 2 collaboration log](docs/ai-collaboration-prompts-iteration-2.md) · [reporting guide](docs/ai-collaboration-guidelines.md) |
+| AI contribution and disclosure | [Iteration 2 collection and members](docs/ai-collaboration/iteration-2/README.md) · [development prompt log](docs/ai-collaboration-prompts-iteration-2.md) · [report draft](docs/ai-collaboration-report-iteration-2.md) · [reporting guide](docs/ai-collaboration-guidelines.md) |
 | Meeting records | [Meeting-log workflow](docs/meeting-log-workflow.md) · [reusable template](docs/daily-standup-meeting-log-template.md); Wiki publication follows approval |
 | Historical setup rationale | [Original scaffold walkthrough](docs/setup-explained.md); its scaffold-only status and branch instructions describe the earlier stage |
 

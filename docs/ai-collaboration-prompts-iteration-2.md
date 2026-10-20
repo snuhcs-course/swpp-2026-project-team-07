@@ -3475,6 +3475,100 @@ Review button and header-aware scrolling preserve the existing recording source.
 The navigation fixes and their regression tests are integrated in the retained
 feature task above, rather than replaced by the scoring implementation.
 
+### Review navigation after saved recordings — historical supplement, October 16–17, 2026
+
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex, recorded `source=vscode`, with a nested AI reviewer · **Model:** `gpt-6.1-sol` in all three original turn-context records; serving variant not independently verified.
+
+- **Scope/provenance:** The user confirmed this Mac contains only Seoyeon's project sessions; ownership is not inferred from session IDs. October 16, 23:45:53–October 17, 00:02:41, 2026, `Asia/Seoul`; extracted October 20. The source's filename/session-metadata ID disagreement remains unresolved and unmodified. This interactive task is distinct from Jaewon's [earlier redesign](#review-and-full-review-redesign-october-15-2026); that attribution is unchanged.
+- **Generated/retained work:** The first saved take opens Full Review and later takes open slide Review; manual entry uses the durable counter and Stop/recovery uses the new count. The Full Review action stays beneath the title while the body scrolls. Back/Keep/Overwrite paths retain valid slide selection, including older audio and restored comparisons. Historical changes affect `mobile/src/screens/RehearseScreen.tsx`, `ReviewScreen.tsx`, `FullReviewScreen.tsx`, `CompareScreen.tsx` and navigation tests. No backend, native dependency or storage-schema change was part of this patch.
+- **Errors/revisions:** Original focused regressions failed before routing/header/selection repairs. A separate AI reviewer found Back and mixed/restored-comparison selection defects; the agent reproduced and fixed them. Automatic approval review rejected an optional phone SQLite/WAL copy as excessive extraction; that command did not run (record 283). The historical verification note states no extraction workaround was used.
+- **Original checks, not rerun now:** Tool-result record 370 shows 429 tests passed, zero failed/skipped, and Android JavaScript export successful, both exit 0. The check/export commands ran in record 349, were polled in 367 and returned their results in 370. Final `git diff --check` exited 0 (464). Records 395 and 418 are ADB/documentation results, not additional test/export runs. The original verification note records TypeScript passing, zero ESLint errors and the existing `useSegmentPlayer.ts:108` cleanup-ref warning. Capture/player boundaries were mocked; backend checks were not rerun.
+- **Original device evidence/limits:** ADB taps/screenshots and the historical note document existing Galaxy S23 Ultra navigation: later-take slide Review, the fixed Full Review action during scrolling, and a slide-2 Full/slide Review/Back/rehearsal round trip retaining selection. No fresh recording, real Keep/Overwrite decision, transcript edit or generation request was made. Images were not copied/re-emitted for this extraction. These were agent checks, not human acceptance or microphone/provider proof.
+- **Revision/retention:** Historical working tree `it2/integration-ai-nakajima`, base `b94d233553ffd7c0797836576c4af1abaaa94548`; tests: `mobile/tests/review-navigation.test.mjs`. Its verification note `docs/review-navigation-verification.md` remains untracked. The original session records no commit/push. The later [retained-features integration](#retained-features-integration-october-17-2026) and retained behavior above document subsequent integration; the recovered session alone does not establish final revision inclusion. The user later reported no manual code edits for Iteration 2; human acceptance of this specific patch remains unconfirmed.
+
+#### Actual substantive inputs — verbatim and in source order
+
+Four substantive input events follow. The structured-answer wrapper and two AI-plan replays are labelled; their text is not counted as independently human-authored.
+
+**Initial task request — 2026-10-16 23:45:56 KST**
+
+````text
+First recording should route review button to full review screen. Subsequenct reviews should route to that slide's review screen. Also make the full revirew button on the slide review screen less hiddena /plan
+````
+
+**Structured clarification answer (UI-generated reply wrapper with user selections) — 2026-10-16 23:47:39 KST**
+
+````text
+<send_user_message_question_reply>
+[{"questionItemId":"[\"request_user_input_async\",\"call_fc010aa71ea247cf80d34a42c5279072\",0]","question":"Should Full Review remain the Review button’s destination while a presentation has only its first saved recording?","answer":"Yes—first recording → Full Review; after another recording → slide review (Recommended)"},{"questionItemId":"[\"request_user_input_async\",\"call_fc010aa71ea247cf80d34a42c5279072\",1]","question":"Should the same rule also apply when Stop automatically opens review after saving a recording?","answer":"Yes—use the same destination after Stop (Recommended)"}]
+</send_user_message_question_reply>
+````
+
+**User-role replay of the AI-authored proposed plan; not human-authored plan text — 2026-10-16 23:48:51 KST**
+
+````text
+\<proposed_plan> # Plan &#x20;
+
+Make review navigation follow the recording sequence and make Full Review easy to find from slide review.
+
+## Scope
+
+- First saved recording per presentation: **Stop and Review → Full Review**, including recordings stopped early.
+- After another recording: **Stop and Review → the relevant slide’s review**.
+- Keep recording storage, AI processing and backend contracts unchanged.
+
+## Action items
+
+- Use the existing per-presentation saved-take counter for one shared routing rule. Reopening Review does not change the destination; keeping an older take does not reset the counter.
+- Apply that rule after saving, when tapping Review, and when recovering an interrupted recording. Navigate without waiting for AI analysis.
+- Preserve retake comparison: show Keep/Overwrite when required, then open the relevant slide review after confirmation. Cancel/Back keeps the existing recording and returns to rehearsal.
+- Move **Full Review** into a prominent, fixed action below the slide-review title, outside the scrolling transcript and feedback. Use the existing theme, review icon and an accessible touch target; remove the buried duplicate.
+- Preserve return navigation and slide selection: Full Review opened from rehearsal returns there; Full Review opened from slide review returns to that slide. Stop playback when switching.
+- Add tests for first and subsequent recordings, partial recordings, reopening/restarting, Keep/Overwrite, rejected retakes, and whole-presentation redos.
+- Verify the Full Review action stays visible with long transcripts and feedback. Run `npm run check`, `npm run bundle:android`, and Android navigation checks; record results and obtain independent review.
+
+## Defaults
+
+“First” means the first saved recording for that presentation, regardless of slide coverage. Later whole-presentation redos also follow the subsequent-recording rule. Preserve existing local documentation edits; commit and push remain separate actions.\
+\</proposed_plan>
+````
+
+**Implementation request containing the user-approved AI-authored plan — 2026-10-16 23:51:36 KST**
+
+````text
+PLEASE IMPLEMENT THIS PLAN:
+# Plan
+
+Make review navigation follow the recording sequence and make Full Review easy to find from slide review.
+
+## Scope
+
+- First saved recording per presentation: **Stop and Review → Full Review**, including recordings stopped early.
+- After another recording: **Stop and Review → the relevant slide’s review**.
+- Keep recording storage, AI processing and backend contracts unchanged.
+
+## Action items
+
+- [ ] Use the existing per-presentation saved-take counter for one shared routing rule. Reopening Review does not change the destination; keeping an older take does not reset the counter.
+- [ ] Apply that rule after saving, when tapping Review, and when recovering an interrupted recording. Navigate without waiting for AI analysis.
+- [ ] Preserve retake comparison: show Keep/Overwrite when required, then open the relevant slide review after confirmation. Cancel/Back keeps the existing recording and returns to rehearsal.
+- [ ] Move **Full Review** into a prominent, fixed action below the slide-review title, outside the scrolling transcript and feedback. Use the existing theme, review icon and an accessible touch target; remove the buried duplicate.
+- [ ] Preserve return navigation and slide selection: Full Review opened from rehearsal returns there; Full Review opened from slide review returns to that slide. Stop playback when switching.
+- [ ] Add tests for first and subsequent recordings, partial recordings, reopening/restarting, Keep/Overwrite, rejected retakes, and whole-presentation redos.
+- [ ] Verify the Full Review action stays visible with long transcripts and feedback. Run `npm run check`, `npm run bundle:android`, and Android navigation checks; record results and obtain independent review.
+
+## Defaults
+
+“First” means the first saved recording for that presentation, regardless of slide coverage. Later whole-presentation redos also follow the subsequent-recording rule. Preserve existing local documentation edits; commit and push remain separate actions.
+
+````
+
+#### Retrospective extraction evidence
+
+- Retained original input records: 8, 75, 111, 126. Automatic open-page/agent-environment messages (109, 363) and thirteen developer instructions are excluded.
+- The historical verification note was located and compared with the original source. Execution claims retained above were checked against actual command/result records; a statement written into that note is not proof of another test run. Its inspected documentation copy has SHA-256 `838f13e7dbc4b5f2e9d2546d40397442c61663189893a44b39deb31364f43102`; this is not a raw-session hash or a committed artifact.
+- Focused historical extraction only. Full-history coverage, owner privacy approval and contributor confirmation remain pending; no fresh app tests were run.
+
 ## Cue and feedback reliability October 16, 2026
 
 Retained behavior: GET-only reconnect with cached cues, foreground/visibility
