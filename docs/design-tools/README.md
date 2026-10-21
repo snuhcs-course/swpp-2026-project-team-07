@@ -1,5 +1,7 @@
 # Design Documentation production
 
+These tools produce the historical Iteration 1 document and its matching figures/exports. The [current Iteration 2 design](../design-iteration-2.md) has a separate source; these commands do not export that revision. Do not present an existing Iteration 1 PDF as the current design.
+
 `Design-Documentation.md` is the primary source. Edit it first; the PDF, HTML preview and Wiki-ready package derive from it. The document now uses two major revision entries: 1.0 (initial design) and 2.0 (Iteration 1 design). Earlier Rev.4.x drafts remain in Git history and local archives.
 
 ```sh

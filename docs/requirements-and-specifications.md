@@ -3,6 +3,34 @@
 Team 07 (치르치르), Software Development Principles and Practice, Seoul National University<br>
 Version 2.0, 9 October 2026
 
+## October 21 implementation status
+
+Status addendum to v2.0, received/checked October 21, 2026. The user requested this documentation update today. The source baseline is merged PR31 (`c4a3f48`); test and device dates below remain their original execution dates. This addendum records behavior and open differences; the v2.0 stories and acceptance criteria below remain unchanged.
+
+- **Implemented capabilities:** Scribe v2 transcription, redesigned rehearsal/review, saved time/audience settings, reusable cues, recognition corrections, evidence-linked feedback, automatic scoring and durable Q&A. See [current design](design-iteration-2.md).
+- **Evidence:** October 20 main CI passed 548 mobile and 554 PostgreSQL backend tests. The separate B09 branch adds five regressions and an agent-operated Galaxy S25 retest. The first-Redo fix is published but unmerged; the exact seven-second timer jump remains unreproduced. See [Testing Documentation](testing.md).
+- **Current implementation limits:** PDFs up to 50 MiB, a positive slide count without a fixed ten-slide cap, captures up to 30 minutes, audio uploads up to 25,000,000 bytes, and audience text up to 500 characters. Saved duration settings accept 1–30 minutes. These supersede older provisional implementation numbers for this snapshot; they do not approve a new product limit.
+- **Defaults:** new untouched imports initialize General audience and 5 minutes. Users can edit or clear settings; defaults do not establish that a user explicitly selected that audience/time.
+
+| Requirement or decision | Current behavior and remaining work |
+| --- | --- |
+| AC-02d: leave while recording | The app blocks Back. Stop/save/discard confirmation needs implementation or an agreed requirement revision. |
+| AC-03b/d/e: spoken key ideas | Slide-derived cues/descriptions do not fulfill a separate summary of what the presenter said. Confirm the implementation plan and failure state. |
+| AC-08b–e: selection/comparison | Current Redo and Keep/Overwrite differ from the empty-selection checklist and complete two-attempt audio/transcript/feedback comparison. Keep the missing criteria open. |
+| AC-11a–c: deletion | Hide/Undo and removal of a local PDF do not establish complete attempt/media/derived-data deletion or partial-deletion recovery. |
+| Disclosure before transfer | v2.0 requires disclosure before the first recording upload. Current rehearsal analysis gates provider submission after upload; durable Q&A guards new answer upload as well. Reconcile the flows and test cancellation. |
+| On-request feedback | v2.0 describes a separate explicit request. PR31 admits initial selected-slide feedback and automatic scoring. Confirm the intended trigger and disclosure wording before revising the specification. |
+| US-17/US-20: Q&A and Korean | v2.0 calls these optional. Earlier user-confirmed semester scope retains them; Q&A now exists in code. Team scope agreement and Korean quality evidence remain open. |
+| NFR quality/accessibility/device targets | Galaxy S25 checks supplement the S22/S23 targets; they do not replace them. Latency, recognition, advice usefulness, score calibration and accessibility still need the specified evidence. |
+
+[Story-to-Test Matrix](story-test-matrix.md) traces criteria to tests and remaining checks. CI does not establish acceptance. The wireframes below remain intended-interface references; the merged app and current design describe implementation.
+
+**Source status:** merged code/contracts at `c4a3f48`, earlier confirmed scope in the course workspace, Injoon’s October 20 findings and device clarification, Seoyeon’s supplied findings, and B09’s dated branch evidence. No new scope choice, owner, measured quality result or acceptance is inferred. Repo and Wiki previously differed on PDF/slide limits: the repo’s v2.0 paragraph already said 50 MiB/no fixed cap, while the Wiki still said 20 MiB/10 slides. This update synchronizes that paragraph to the repository text and labels the remaining ten-minute statement below as historical. Git history and submitted PDFs preserve the originals.
+
+## Preserved v2.0 specification
+
+The following sections retain the October 9 specification. Current implementation differences are listed above.
+
 ## Table of Contents
 
 1. [Document Revision History](#1-document-revision-history)

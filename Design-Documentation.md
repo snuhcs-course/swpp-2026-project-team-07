@@ -1,5 +1,7 @@
 # OutLoud Design Documentation
 
+**Historical Iteration 1 design.** Read the [current Iteration 2 design, revision 3.0](docs/design-iteration-2.md) for merged PR31/Scribe behavior and separate branch work. The document and its PDF/HTML exports below describe the October 9 design, including plans and then-open PRs. Their provider names and delivery status are historical.
+
 Team 07 | Rev.2.0 | Iteration 1 | 9 October 2026
 
 OutLoud is an Android app for rehearsing presentations with PDF slides. It saves recordings and slide visits, transcribes speech, and links feedback to the relevant audio and slide.

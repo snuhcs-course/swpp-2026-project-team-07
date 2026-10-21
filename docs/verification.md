@@ -1,5 +1,7 @@
 # Verification commands and evidence
 
+For the current plan, October 20 merged-main CI (548 mobile / 554 PostgreSQL backend), B09 branch results and open acceptance checks, read [Testing Documentation](testing.md), [Test Inventory](test-inventory.md) and the [Story-to-Test Matrix](story-test-matrix.md). The dated snapshots below remain historical; this documentation update ran no app tests.
+
 - Commands and dated evidence relocated from README on October 13, 2026.
 - Historical counts below describe separate snapshots; they are not new test runs or a combined total.
 - Automated checks and agent-operated emulator/provider checks do not establish human approval or physical-phone validation.

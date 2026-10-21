@@ -3707,3 +3707,20 @@ Request, verbatim:
 ```text
 Fix those four issues and update PR #31. Keep the original prompts unchanged and don't merge it.
 ```
+
+
+## Testing, design and requirements documentation update — October 21, 2026
+
+**Contributor:** Injoon · **Tool:** OpenAI Codex · **Model:** GPT-6 (exact variant not recorded)
+
+### Prompt — verbatim
+
+```text
+Can we update our testing, design and requirements documentaiton on repo and wiki? Waht are we changing
+```
+
+- **Human decision:** Requested repo/Wiki documentation updates and an explanation of the changes. This does not resolve the recorded product scope differences or establish human acceptance.
+- **Output and use:** Added the current Iteration 2 design, consolidated testing plan/results, test inventory/matrix and requirements status addendum; updated entry points and preserved historical criteria/design/exports. Prepared matching Wiki pages from those sources.
+- **Verification:** Documentation accuracy, diff review, 40 relative links, 218 pinned source paths/line references, five source-to-Wiki page pairs, all 46 matrix rows and nine findings passed. Exact comparisons preserve the original requirements body, design body and prior collaboration log. Re-read the original main CI job logs: 548 mobile pass, 554 backend OK. No fresh app execution. October 20 CI, B09 branch tests and device records remain attributed to their original revisions/dates; no application test, provider call or device run occurred here.
+- **Errors and corrections:** The managed-worktree tool could not find a Git repository because the course workspace is not itself a repository; Codex created an isolated checkout from the verified application main. The initial Wiki fetch hit the network sandbox; an authorized network retry retrieved it. A stale prepared addendum misdescribed the repository’s old PDF/slide limits; source comparison corrected the description and identified the actual Wiki/repo drift. No app data changed.
+- **Limits:** Named test maintainers, coverage targets/measurement, original links for reported repairs, remaining scope decisions, current submission PDFs and human review remain open. The repo branch is prepared for publication through the connected GitHub app; Wiki publication is blocked by unavailable Git credentials and a signed-out browser. The user was asked to sign in while independent repo work continues.
