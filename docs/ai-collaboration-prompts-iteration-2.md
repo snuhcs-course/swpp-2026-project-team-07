@@ -3801,3 +3801,1217 @@ Request, verbatim:
 ```text
 Fix those four issues and update PR #31. Keep the original prompts unchanged and don't merge it.
 ```
+
+
+The Injoon entries below were recovered from local Codex history on October 21. Automated browser context and attachment-path wrappers are omitted; structured replies retain the actual answer text. Prompts are listed in time order within each task, with their recorded timestamps. No missing wording was reconstructed.
+
+## Merge conflicts and PDF download regression — October 11, 2026
+
+**Contributor:** Injoon · **Tool:** OpenAI Codex · **Model:** `gpt-6-astra` (recorded turn context; serving variant not independently verified)
+
+- **Output and use:** Codex reconciled the overlapping recording histories, merged the authorized feature/documentation stack, then investigated the post-merge mobile failures. PR #25 fixes an empty-catalog identity race that could cancel PDF downloads, replaces two premature asynchronous test waits, and renames the workflow to App checks. [PR #25](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/25) preserves the code and verification account.
+- **Errors and revisions:** The agent initially described all checks as passed using pre-merge results. When Injoon asked about failed Scaffold checks, Codex corrected that statement, distinguished later main failures, reproduced the download race and added a regression. Repair time and token cost were not recorded.
+- **Verification and limits:** Historical agent-run evidence records 289 mobile tests, typecheck/lint and Android export passing, plus 20 delayed-I/O runs covering the three affected cases. These are historical results, not tests rerun for this history review. No new device or human-acceptance result is inferred.
+
+### Prompts — verbatim, in order
+
+October 11, 11:41 KST
+
+```text
+I'm getting merge conflict errors after merging jooyoung's PR
+```
+
+October 11, 11:46 KST · reply
+
+```text
+github pr
+```
+
+October 11, 11:47 KST
+
+```text
+I'm just wondering why there is a conflict because I thought that gabeduate stacked their pr on jooyoung's branch
+```
+
+October 11, 11:50 KST
+
+```text
+what does it mean **commits aren’t its ancestors**.
+```
+
+October 11, 11:52 KST
+
+```text
+So is it fine if we still merge it
+```
+
+October 11, 11:55 KST
+
+```text
+그니까 주영이가 만든 PR을 방금 merge했는데, 이제 17을 main 기준으로 rebase해야 한다는 거지?
+```
+
+October 11, 12:02 KST
+
+```text
+But i dont get it why do we have to merge it can't we just stack the PRs and merge that onto current main
+```
+
+October 11, 12:03 KST
+
+```text
+ik but doesn't 17 contain jooyoung's code anyways + more so you can just override it
+```
+
+October 11, 12:04 KST
+
+```text
+CAn you do that
+```
+
+October 11, 12:05 KST
+
+```text
+Do that but I want to stack the other PRs
+```
+
+October 11, 12:06 KST · reply
+
+```text
+Keep #18–#21 stacked; leave documentation PRs separate
+```
+
+October 11, 12:24 KST
+
+```text
+Do it for me
+```
+
+October 11, 12:26 KST
+
+```text
+merge remaining feature. The most recent document PRs should be merged.
+```
+
+October 11, 12:49 KST
+
+```text
+what are scaffold checks and why did they fail
+```
+
+October 11, 12:53 KST
+
+```text
+How do we fix this
+```
+
+October 11, 13:00 KST
+
+```text
+Why would pdfs cause scaffold problems
+```
+
+October 11, 13:02 KST
+
+```text
+Okay let's change it.
+```
+
+October 11, 13:04 KST
+
+```text
+Is it safe to delete all the branches since we merged them?
+```
+
+
+## AI-feedback requirement checks — October 11 and 14, 2026
+
+**Contributor:** Injoon · **Tool:** OpenAI Codex · **Model:** `gpt-6.1-sol` (recorded turn context; serving variant not independently verified)
+
+- **Output and use:** Codex compared recorded product decisions with the repository/Wiki feedback contract and supplied references for content, audience, delivery and evidence requirements. This was a requirements explanation, not an implementation change.
+- **Errors and revisions:** The first October 11 answer summarized broader local decisions without establishing a GitHub source for the whole list. Injoon requested the exact reference; Codex narrowed its claim to the implemented feedback contract and stated that the broader agreement was not all verified in one GitHub document.
+- **Verification and limits:** Source lookup only; no app tests or completeness claim. The dated three-priority design and other requirements describe those historical sources, not a new decision overriding later changes.
+
+### Prompts — verbatim, in order
+
+October 11, 12:56 KST
+
+```text
+What were the requiremnts we set for AI feedback
+```
+
+October 11, 12:57 KST
+
+```text
+Tell me where it is on github
+```
+
+October 11, 12:58 KST
+
+```text
+Give the exact reference
+```
+
+October 14, 15:34 KST
+
+```text
+What were the requirements for the AI feedback?
+```
+
+
+## Frontend prototype and Review UI — October 12–14, 2026
+
+**Contributor:** Injoon · **Tool:** OpenAI Codex · **Model:** `gpt-6.1-sol` (recorded turn context; serving variant not independently verified)
+
+- **Output and use:** Codex prepared comparison wireframes/prototypes, shared flow briefs and a grayscale journey map, then edited the local frontend with its existing components. Review work included back-stack destinations, preserved slide aspect ratios, balanced slide selection, a labeled synthetic complete-rehearsal fixture and a progress summary. These were local prototype/comparison changes; inclusion in current main is not established by this entry.
+- **Errors and revisions:** Injoon found that a rewritten wireframe had lost the original design, that Back could loop between screens, and that slide dimensions and selection layout were wrong. He directed Codex to reuse existing components and check real screen states. Codex revised those paths and presentation details. The complete-rehearsal narration and feedback were synthetic UI fixtures, not real AI results.
+- **Verification and limits:** Historical records describe code checks, Android exports/builds and agent-operated browser/emulator layout checks, including enlarged text and 48 screen/state combinations. They do not establish a complete physical-phone or real-provider acceptance pass. The source chat also contains an initial meeting/admin request, so that whole chat is excluded from development-archive selection; only its development task prompts appear below. No source history was trimmed to create an archive.
+
+### Prompts — verbatim, in order
+
+October 12, 14:41 KST
+
+```text
+Ok make a new branch with a good name format. My goal for this branch is to to create the wireframe and/or implement the whole frontend. What is the recommend structure of my workflow
+```
+
+October 12, 14:46 KST
+
+```text
+but multiple people are gong to make one so I want you to include my name. We are going to each make one and choose the best one. I believe you should have the front end (I made the frontend implementation separately for testing, can you find it?). I want you to revise the plan
+```
+
+October 12, 14:53 KST
+
+```text
+do u think it's just better for me to ask you to implement the front end from start to end.
+```
+
+October 12, 14:54 KST
+
+```text
+like does that mean it will be based on our current frontend that we made for testing individually.
+```
+
+October 12, 14:57 KST
+
+```text
+Do you think it's okay if I ask you to make a different wireframe first like the one made by claude. Some things that teammates said is that it would be better if it was more simple. By that I don't mean start with the claude wireframe as the base but start from scratch while using claude as a guideline
+```
+
+October 12, 15:01 KST
+
+```text
+Ok make a new simpler wireframe from scratch, using the Claude wireframe as a guideline for the features and flows, not as the layout base. First create multiple design libraries (including color scheme, font, component design, etc). Use UI skills. I will choose a couple from the different designs
+```
+
+October 12, 15:21 KST
+
+```text
+What if we use existing component libraries to make it instead of making our own. Could you give me a list of popular libraries that people use with our tech stack
+```
+
+October 12, 17:14 KST
+
+```text
+In order for me to get consistent results with any of these component libraries then compare them, should i first create a very simple white and black wireframe or what
+```
+
+October 12, 17:16 KST
+
+```text
+But I want some freedom for the different versions to kind of implement the specific Ui although the backbone and overall structure might be similiar
+```
+
+October 12, 22:56 KST
+
+```text
+Ok make the shared flow map and screen briefs first. Keep the core features and overall structure consistent, but leave room for each component library to implement its own UI.
+```
+
+October 12, 23:06 KST
+
+```text
+Ok now make versions using React Native Paper, React Native Reusables, and Expo UI based on the shared flow and screen briefs. Let each use its own UI style so I can compare them.
+```
+
+October 13, 11:22 KST
+
+```text
+Like I feel like the structure regardless of the component library remains the same. I think the one I made myself with my teammate's claude is better. Can you open that in android simulator
+```
+
+October 13, 11:42 KST
+
+```text
+Are these Ui components made from a custom library we made or is it from an exisitng component library
+```
+
+October 13, 11:52 KST
+
+```text
+Do you think it's better to use an existing component library instead?
+```
+
+October 13, 12:10 KST
+
+```text
+Ok main was branched with another PR, should we rebase it?
+```
+
+October 13, 12:13 KST
+
+```text
+Ok right now I feel like we should make a complete wireframe based on the current claude-based UI design. After that I can ask you to make modifications to the UI. Do you recommend this approach?
+```
+
+October 13, 12:14 KST
+
+```text
+I don't think color is important right now or specific design elements (like how round the buttons are) are important. Is that recommended?
+```
+
+October 13, 12:15 KST
+
+```text
+Ok make the complete grayscale wireframe based on the current Claude-based UI. Keep the structure and flows, include all screens and important states, and make it clickable so I can review it. I want you to connect them with arrows so we know what action caused a transition from one screen to another.
+```
+
+October 13, 12:33 KST
+
+```text
+Look at the arrow map yourself. There are too many arrows. This was not what I wanted. I wanted something like this where there are arrows between buttons and tell how states have changed. Maybe it's impossible to show every single state.
+```
+
+October 13, 14:11 KST
+
+```text
+Let's make one long page with all the journeys. Make it so that each "row" is a separate journey and label
+```
+
+October 13, 14:16 KST
+
+```text
+I don't see it. Where do I find it
+```
+
+October 13, 14:18 KST
+
+```text
+I don't see it can you output it as one hiqh quality png or pdf
+```
+
+October 13, 14:24 KST
+
+```text
+What happened to my design branch on github.
+```
+
+October 13, 14:25 KST
+
+```text
+Is it fine to just upload branch now and then push local changes later
+```
+
+October 13, 14:26 KST
+
+```text
+Do that please
+```
+
+October 13, 14:39 KST
+
+```text
+Here's feedback for now:
+
+
+
+1. Home
+   1. “A little practice…” Needed?
+   2. “Last review\....” Needed? I think user can just open recent presentation
+   3. Practice History Needed?
+2. Practice
+   1. “Practice OutLoud project proposal” Needed?
+   2. Question I have: how to make home page and practice page different?
+   3. When adding presentation, it shows sample but in production, obviously we won’t have sample
+   4. Why do we need a separate page for add presentation for upload-blank? Like the user will upload the presentation while giving the presentation name
+   5. I don’t get home-resume. The home and practice UI should be consistent, but it changed.
+```
+
+October 13, 14:41 KST
+
+```text
+Then should we have a My Presentations page instead of practice or is it not that necessary
+```
+
+October 13, 14:42 KST
+
+```text
+But what if you want to see all your presentations not just the most recent
+```
+
+October 13, 14:43 KST
+
+```text
+So you're saying still don't have another page for all presentations right
+```
+
+October 13, 14:44 KST
+
+```text
+Would there be any other pages needed?
+```
+
+October 13, 14:45 KST
+
+```text
+Ok update the wireframe with Presentations and Profile as the two tabs with the suggestions on my feedback
+```
+
+October 13, 14:55 KST
+
+```text
+The problem is that you did not preserve the design of the app with the changes. Compare the original and the new one, and investigate why
+```
+
+October 13, 15:25 KST
+
+```text
+I think it's because the changes you made are not baed on the existing components
+```
+
+October 13, 15:27 KST
+
+```text
+Wait then it's easier to just make direct edits on the frontend right and I can see the changes on my phone
+```
+
+October 13, 15:28 KST
+
+```text
+Ok copy the original frontend into my design branch and make the changes using the existing components. Keep the design and help me open it on my phone.
+```
+
+October 13, 15:29 KST · reply
+
+```text
+Android
+```
+
+October 13, 15:44 KST
+
+```text
+presentations:
+
+1. Let's remove unnecessary labels like all presentations most recently used first
+2. It keeps saying refreshing why
+```
+
+October 13, 15:45 KST · reply
+
+```text
+Stays or keeps reappearing
+```
+
+October 13, 15:47 KST
+
+```text
+Did you integrate the frontend into the existing features that are implemented in main, or no?
+```
+
+October 13, 15:50 KST
+
+```text
+When I upload the PPT, there is a card called ready for your first rehearsal. I don't want these useless labels
+```
+
+October 13, 15:51 KST
+
+```text
+I want you to go through the whole app and try to remove these useless labels
+```
+
+October 13, 16:01 KST
+
+```text
+When you click on a presentation. it gives you option to start practice or continue right. How about we make that clearer. Isn't the latest review also a previous attempt
+```
+
+October 13, 16:50 KST
+
+```text
+Sure
+```
+
+October 13, 18:22 KST
+
+```text
+reload expo
+```
+
+October 13, 18:23 KST
+
+```text
+Restart the expo server so I can access it with my phone
+```
+
+October 13, 18:25 KST · reply
+
+```text
+Keep local Wi-Fi access
+```
+
+October 13, 18:35 KST
+
+```text
+Ok let's just run the emulator on my computer
+```
+
+October 14, 09:02 KST
+
+```text
+Restart so that i can access on my phone
+```
+
+October 14, 09:14 KST
+
+```text
+1) When I am in a presentation and 2 click on prepare review and go back using back arrow on top right it goes to home not the presentation
+2) Remove speaker cues for now
+3) For selected slides, do you think it's best to keep the selection design? If so, then fix the ui problemw ehre there is white space to the right
+4) For target audience, let's make it so that the user can type it and our app gives feedback based on it using AI so we can accomodate any audience and give more specific advice
+```
+
+October 14, 09:19 KST
+
+```text
+Let's improve the review/presentation feedback UI design. I want you check all the screens and all the states and give me suggestions for improvement. Imagine as if you were the target user yourself. What would you want to see on the UI?
+```
+
+October 14, 09:20 KST · reply
+
+```text
+Use two reviewers
+```
+
+October 14, 09:39 KST
+
+```text
+For 3, should we let the user fix the transcript? We are giving feedback on the user's presentation.
+```
+
+October 14, 09:39 KST
+
+```text
+I still don't get 1) slide feedback
+```
+
+October 14, 09:40 KST
+
+```text
+ok but were you planning to show the slide along the feedbac
+```
+
+October 14, 09:41 KST
+
+```text
+Ok update the UI using subagents.
+```
+
+October 14, 09:46 KST
+
+```text
+1) After you upload presentation and record you click on prepare sample feedback. The icon for it is kind of messed up
+```
+
+October 14, 09:50 KST
+
+```text
+I can't click on the top left go back button to go to home. It keeps like switching back between presentation detailds and feedback. I want you to a complete check on all go back buttons and check whether it's going to the appopriate state
+```
+
+October 14, 09:57 KST
+
+```text
+The selected slides still don't fill the horizontal space I think it's because you're using the buttons as fixed size. Then either center the buttons altogether or stretch the buttons depending on the phone
+```
+
+October 14, 09:57 KST
+
+```text
+The ratio of the slides is not correct. The slides should be preserved, it is not something where the dimensions could be chnged.
+```
+
+October 14, 09:59 KST
+
+```text
+Enable dragging across the buttons so that you can select more easily
+```
+
+October 14, 10:02 KST
+
+```text
+I feel like we should remove sample labels throughout the app. It just bloats the app so I find it difficult to determine how good the UI is
+```
+
+October 14, 10:03 KST
+
+```text
+I feel like we should remove sample labels throughout the app. It just bloats the app so I find it difficult to determine how good the UI is
+```
+
+October 14, 10:10 KST
+
+```text
+In the feedback page, here are some suggestions:
+1) Overview page: the duration card is too big. unnecessary for it take that much space. speech pace should be measured right? Is it because our app doesn't provide such feedback or it's because it's an empty presentation
+2) Slides: instead of previous and next slide let's make user swipe left or right on the presentation to see the feedback and then in trancsript and audio evidence it takes user to transcript page
+3) Transcript: It should be divided by slides and the user can click on a word to get to the certain point in time. Don't say correct transcript at 0:00 just say Edit Transcription. Remove OutLoud branding if unnecessary.
+There seems to be lots of text at the top of each artfiact. They might be useful for development but they just bloat the UI. If you think such information is needed put it in a separate document so we can refer to it when combining the front and back end
+```
+
+October 14, 10:20 KST
+
+```text
+If you look at the selected slides menu, there is a bug where if there are 8 slides there are 5 on the first row and 3 on the 2nd row. You have to make sure the number of slides on each row is consistent if possible
+```
+
+October 14, 10:21 KST
+
+```text
+I feel like things like 0:31 under target is unncessary
+```
+
+October 14, 10:22 KST
+
+```text
+When the slide changes, it refreshes the entire page making it not smooth. And right now you can click on a slide to see a preview but it just remains the same size so it's pointless. Remove it or change it so you can see it horizontally. Also when you change slides there needs to be some visual feedback so that the user knows you're switching sldies
+```
+
+October 14, 10:23 KST
+
+```text
+0:01 on "screen" sounds weird
+```
+
+October 14, 10:24 KST
+
+```text
+Can you create a complete sample presentation rehearsal so I can test all the features properly.
+```
+
+October 14, 10:27 KST
+
+```text
+Remove practice preferences and change it to more like app settings with like app language
+```
+
+October 14, 11:01 KST
+
+```text
+I want you to review the entire UI for the compelte rehearsal doing a full check on the UI, including layout, spacing, padding, checking for unnecessary labels, etc.
+```
+
+October 14, 11:17 KST
+
+```text
+I feel like the overview should also tell the user if they have improved or not right now it's not really evident
+```
+
+October 14, 11:25 KST
+
+```text
+I think the UI is a bit too plain? Like the information is there but the design is so bad. Give me suggestions using existing components
+```
+
+October 14, 11:27 KST
+
+```text
+Ok implement those suggestions using the existing components. Keep the overall design and make sure it looks good on my phone.
+```
+
+October 14, 15:49 KST
+
+```text
+ok restart on expo
+```
+
+
+## Reusable components and design contract — October 14, 2026
+
+**Contributor:** Injoon · **Tool:** OpenAI Codex · **Model:** `gpt-6.1-sol` (recorded turn context; serving variant not independently verified)
+
+- **Output and use:** Codex inspected the teammate export, built a separate sample-data Expo prototype and a live component gallery, and wrote a design contract showing actual component specimens. Later work audited Jaewon's branch and refactored the app/contract around shared components. Historical prototype inventories grew from 27 to 45 components.
+- **Errors and revisions:** The first usable-prototype claim did not satisfy Injoon: controls and navigation were unnatural. Codex checked the emulator and corrected Back/cancel behavior, the accelerated timer and a first-recording review crash. Injoon also rejected screenshot-only component examples and required labeled editable components and visible specimens.
+- **Verification and limits:** Historical task evidence records prototype checks/builds, 14 prototype tests at the expanded-library checkpoint and representative emulator journeys. Sample recording/feedback remained simulated; physical-phone usability and full production integration were not established. Prototype counts and outcomes do not describe the current main app.
+
+### Prompts — verbatim, in order
+
+October 14, 11:34 KST
+
+```text
+This is a folder created by my teammate with his proposed design. Can you check if this is based on a custom component library that we can actually reproduce
+```
+
+October 14, 11:42 KST
+
+```text
+Can you reproduce this design in a separate Expo/React Native prototype with sample data so I can compare it with my current frontend on Android? But before you do that I want you to first plan out how you are going to reproduce this design
+```
+
+October 14, 11:43 KST
+
+```text
+Sounds good. I want to emphasize on the component library because later on we are going to make changes to the UI and without it, it woud be nearly impsosible
+```
+
+October 14, 11:45 KST
+
+```text
+Sure
+```
+
+October 14, 13:51 KST
+
+```text
+continue
+```
+
+October 14, 14:28 KST
+
+```text
+I need it to be a usable app. Right now it's nothing like one. Run the emulator and check it out yourself
+```
+
+October 14, 14:33 KST · reply
+
+```text
+Controls and navigation don’t work naturally
+```
+
+October 14, 15:54 KST
+
+```text
+where is the component library
+```
+
+October 14, 15:55 KST
+
+```text
+are these icons or editasble componenets
+```
+
+October 14, 17:11 KST
+
+```text
+Do you think that making an app with these components is realistic?
+```
+
+October 14, 17:13 KST
+
+```text
+I want to make a design contract that includes these components. I have attached an example of a design file I'm looking to create. It doesn't have to be as complete as this but I want a contract to make sure I get consistent results and any following change to the UI results are consistent
+```
+
+October 14, 17:15 KST
+
+```text
+Here it is
+```
+
+October 14, 17:38 KST
+
+```text
+Are there enough components to make the whole app
+```
+
+October 14, 17:42 KST
+
+```text
+Okay I want you add thee shared components. I want you to look at our other front end design (based on claude) and determine what components to add exactly. In the design contract file make sure we can see the components not just give their directories.
+```
+
+October 14, 18:40 KST
+
+```text
+I feel like the current design system is too messy. I want you to clean it. How would you clean it
+```
+
+October 14, 18:41 KST
+
+```text
+I feel like the current design file (not design itself) is too messy. I want you to clean it. How would you clean it
+```
+
+October 14, 18:41 KST
+
+```text
+Ok let's do that
+```
+
+October 14, 19:12 KST
+
+```text
+For the components I don't want a screenshot of the example I want each component labeled and visible
+```
+
+October 14, 19:50 KST
+
+```text
+I need you to do a check on every component making sure that text is properly aligned with the components, spacing and padding is adequate
+```
+
+October 14, 20:11 KST
+
+```text
+My teammate jaewon made some changes to the UI components on his branch. Can you get his branch and tell me what I can update to my design contract
+```
+
+October 14, 20:18 KST
+
+```text
+Yea Instead of having the icons for the slide previews let's have the actual slide previews. Can you update the design file with other suggestions
+```
+
+October 14, 20:29 KST
+
+```text
+I think jaewon's current design is good but I want to make sure they are actually built from reusable components that we can modify later
+```
+
+October 14, 20:31 KST
+
+```text
+Okay, refactor Jaewon's design into reusable components without changing how it looks, and make sure the app and design contract use the same component library. After that, do a complete visual check using design skills (choose what you think are appropriate)
+```
+
+October 14, 22:41 KST · reply
+
+```text
+No—finish the emulator checks
+```
+
+
+## Transcription comparison and Scribe source supplement — October 14–16, 2026
+
+**Contributor:** Injoon · **Tool:** OpenAI Codex · **Model:** `gpt-6.1-sol` (recorded turn context; serving variant not independently verified)
+
+- **Output and use:** Before the existing Scribe implementation entry, Codex investigated Whisper behavior and compared hosted alternatives using public presentation recordings and their references. Injoon asked for accuracy, filler detection and cost, then chose Scribe v2 and slide-derived vocabulary hints. The existing [Scribe task](#scribe-v2-transcription--october-16-2026) retains implementation, consent, provider/device results and known failures; its prompts are not repeated here.
+- **Errors and revisions:** The investigation separated a fluent cleaned transcript from preservation of what the presenter actually said. Whisper prompting did not establish reliable verbatim filler recovery. Public reference/audio comparisons and contextual false positives remain evaluation limits; they are not evidence of Korean accuracy or a production-wide improvement. The existing task records the corrected five-to-six filler count and the failed emulator microphone-injection attempts.
+- **Metadata and verification:** All recovered turn-context records for these local Scribe chats identify gpt-6.1-sol. This is the recorded development model identifier, not independent proof of a serving variant. Review used historical outputs and saved evaluation/task evidence, without rerunning paid inference. The final multilingual question was interrupted without a visible answer; no resulting implementation is claimed.
+
+### Prompts — verbatim, in order
+
+October 14, 17:19 KST
+
+```text
+As mentioned in today's meeting log (in wiki) and product requirements, I want to update the current whisper implementation so that transcription is more accurate. Could you a brief summary of how whisper is implemented right now.
+```
+
+October 14, 17:21 KST
+
+```text
+How would you improve transcription accuracy and add filler-word and pause detection? Please compare the options and recommend an approach for our app.
+```
+
+October 14, 17:30 KST
+
+```text
+Which parameters does whisper take for us to improve recognition. And what do you mean by transcript contract? Clarify.
+```
+
+October 15, 11:40 KST
+
+```text
+I still don't get what the hesitation sentence does.
+```
+
+October 15, 11:41 KST
+
+```text
+Then how can we reliably detect filler words if Whisper leaves them out of the transcript?
+```
+
+October 15, 11:49 KST
+
+```text
+Does whispr not do verbatim transcription model so we can't detect filelr?
+```
+
+October 15, 22:01 KST
+
+```text
+i don't get it so if our audio has filler words it can't detect that exactly?
+```
+
+October 15, 22:02 KST
+
+```text
+Why does it do that tho
+```
+
+October 15, 22:03 KST
+
+```text
+Then should we use CrisperWhisper instead? How hard would it be to switch our current implementation?
+```
+
+October 15, 22:09 KST
+
+```text
+Are there any other hosted models
+```
+
+October 15, 22:10 KST
+
+```text
+i would prefer openai whisper but I would need to see the accuracy and fee
+```
+
+October 15, 22:12 KST
+
+```text
+what about the other models
+```
+
+October 15, 22:13 KST
+
+```text
+can you find a sample presentation online
+```
+
+October 15, 22:15 KST
+
+```text
+Do you think this is a good test subject?
+```
+
+October 15, 22:15 KST
+
+```text
+Can you find that
+```
+
+October 15, 22:16 KST
+
+```text
+Can you test Whisper on the first presentation and compare its transcript and filler detection against the reference?
+```
+
+October 15, 22:27 KST
+
+```text
+Is this a complete component library
+```
+
+October 16, 09:14 KST
+
+```text
+Wait so let's do a comparison of models in terms of the AI features we need. Read the wiki for the AI features
+```
+
+October 16, 09:18 KST
+
+```text
+First find me the audio file for the sample recording
+```
+
+October 16, 09:19 KST
+
+```text
+Let's try out elevenlabs scribe and gemini transcribe. Redirect me to the pages where I can get the API key
+```
+
+October 16, 09:27 KST
+
+```text
+So there's no way to turn on filler mode on whisper and transcribe right
+```
+
+October 16, 09:33 KST
+
+```text
+Can you try to find presentation recordings like the one we tested with? It doesn't have to have as many filler words
+```
+
+October 16, 09:34 KST
+
+```text
+Test presentations 10, 12 and 5 with Whisper, Scribe and Gemini, then compare transcription accuracy, filler detection and cost.
+```
+
+October 16, 15:43 KST
+
+```text
+So how can we test it
+```
+
+October 16, 15:45 KST
+
+```text
+When you mean audio-injection you mean by like trying to use a precording right
+```
+
+October 16, 15:47 KST
+
+```text
+Is it not possiblto bypass without using my mac speakers
+```
+
+October 16, 15:48 KST
+
+```text
+So you're saying that recording it myself is the best right
+```
+
+October 16, 17:34 KST
+
+```text
+Do you think we should additionally clean the transcript after we get the transcript to improve accuracy regardless of whether user pronounced it kind of badly
+```
+
+October 16, 17:35 KST
+
+```text
+Would this be done by scribe or a correction layer by an additional ai
+```
+
+October 16, 21:46 KST
+
+```text
+But does that mean we still get filler words
+```
+
+October 16, 21:59 KST
+
+```text
+Does it also allow multi language
+```
+
+Earlier Scribe implementation/device/keyterm prompts and results remain in their original task above.
+
+
+## Read-only PR31 review — October 17, 2026
+
+**Contributor:** Injoon · **Tool:** OpenAI Codex · **Model:** `gpt-6.1-sol` (recorded turn context; serving variant not independently verified)
+
+- **Output and use:** Codex reviewed PR31 head 4c6ce95 against main 5aed316. It reproduced stale-model score refresh rejection and acceptance of an unexpected transcript revision, and traced the re-created retired ai-use.md record. This was a read-only review; the agent did not post review comments or implement fixes in that task.
+- **Verification and limits:** Historical agent evidence records 554 backend tests with 24 SQLite skips, 548 mobile tests, typecheck/lint and Android export. Those checks belong to that head, not later PR31/main. No fresh device/provider test or independent PostgreSQL run was performed. Later merged status does not prove that this review itself fixed the findings. [PR31](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/31) is the public change context.
+
+### Prompts — verbatim, in order
+
+October 17, 11:19 KST
+
+```text
+Gabdeguate made a PR after making a branch from main (after I merged mine). I want you to do a full check on the diff. One of the concerns I have is that I see the ai-use.md although I thought I deleted that in a previous merge. Find other issues as well
+```
+
+
+## Phone-demo setup and scoring recovery — October 19 and 21, 2026
+
+**Contributor:** Injoon · **Tool:** OpenAI Codex · **Model:** `gpt-6.1-sol` (recorded turn context; serving variant not independently verified)
+
+- **Output and use:** Codex ran PR31 on the Galaxy S25, restored USB forwarding, corrected disabled feedback and a crashing worker, and built a local reconnecting development launcher. After Injoon saved a replacement Scribe key locally, fresh phone transcription, slide feedback and Q&A completed. A separate local validator repair accepted empty criteria only for source-confirmed unvisited slides marked insufficient evidence; it replayed an existing scoring response without another provider request. These launcher/timeout/validator changes were local and were not part of unchanged PR31.
+- **Errors and revisions:** The initial server-health claim missed disabled feedback and worker failure. Raising a request reservation allowance fixed short-deck admission but did not fix the 91-slide cue output limit. A scoring request and its one expressly authorized retry timed out; their uncertain states were preserved rather than silently retried. A later, different recording exposed the partial-run validator defect.
+- **Verification and limits:** Saved agent-run evidence records 548 mobile tests and Android export, 556 backend tests with 24 SQLite skips at the final local repair checkpoint, five launcher tests and independent review. Live checks reused a labeled synthetic saved recording and later observed fresh user-controlled phone recordings. One source receipt contains 16 words in 10,652 ms; this is not a listening-accuracy score. The three-slide replay produced partial scores without awarding an overall complete-presentation score. Playback, retakes, recorded Q&A answers and large-deck cues were not all verified in that walkthrough.
+- **October 21 restart:** The temporary environment/media target had disappeared. Codex restored the pinned backend environment and link to existing media, restarted services and restored USB forwarding after Injoon reconnected. Connectivity checks passed; the full feature suite was not rerun. Credentials, recordings, device identifiers and local addresses stay out of this public entry.
+
+### Prompts — verbatim, in order
+
+October 19, 08:57 KST
+
+```text
+I want you run the dev server so I can run that on my phone. Use the latest PR
+```
+
+October 19, 09:07 KST
+
+```text
+Why am i not getting feedback am i not connectef to ai feedback model
+```
+
+October 19, 09:18 KST
+
+```text
+it says ai cues are unavailable offline making me suspect that there are problems with connection
+```
+
+October 19, 09:21 KST
+
+```text
+says ai cues failed
+```
+
+October 19, 09:22 KST
+
+```text
+Wait so is the model set by the app openai
+```
+
+October 19, 09:23 KST
+
+```text
+Okay raise the limit and retry generating the AI cues with OpenAI.
+```
+
+October 19, 12:22 KST
+
+```text
+let's rerun dev server for phone
+```
+
+October 19, 17:24 KST
+
+```text
+Can you make sure that the app is setup so all the features should be working and then i can run a working demo on my phone
+```
+
+October 19, 17:33 KST · reply
+
+```text
+Reconnected and unlocked
+```
+
+October 19, 17:33 KST · reply
+
+```text
+Find me the file
+```
+
+October 19, 17:39 KST
+
+```text
+I saved
+```
+
+October 19, 17:40 KST · reply
+
+```text
+Connected and unlocked now
+```
+
+October 19, 17:49 KST · reply
+
+```text
+Yes, retry the score once
+```
+
+October 21, 11:27 KST
+
+```text
+restart dev server on my phone
+```
+
+October 21, 12:17 KST
+
+```text
+reocnnected
+```
+
+October 21, 12:22 KST
+
+```text
+it's connected
+```
+
+
+## B09 specification, regression and device check — October 20–21, 2026
+
+**Contributor:** Injoon · **Tool:** OpenAI Codex · **Model:** `gpt-6.1-sol` (recorded turn context; serving variant not independently verified)
+
+- **Human observations:** Injoon's October 20 messages identify his manual demo session as October 19 on a Galaxy S25 connected to his Mac by USB. He reported nine findings, including the first-Redo already-started error and a second-retry timer jump. These are contributor observations, not an all-flow pass.
+- **Output and use:** At Injoon's request, Codex wrote the intended behavior, added five regressions, then changed two production lines to remount the finished recorder after saving. The focused spec/code/evidence are published on [fix/retry-recording](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/fix/retry-recording/docs/b09-retry-recording.md), with publication commit 3ae9d16. The branch remains separate from main.
+- **Verification and errors:** Historical evidence: four of five new cases failed before the fix; all five passed afterwards, with 553 mobile tests and Android export passing. Codex then operated the Galaxy S25 before/after checks: three consecutive retakes, Keep current, Overwrite and selected-audio playback. Separate AI review found no blocking issue. An initial test targeted a nonexistent Cancel button and another the inactive rotated timer; Codex corrected the tests before final evidence.
+- **Limits:** The exact 0:00-to-0:07 timer freeze was not reproduced and is still open. Device checks were operated by Codex, with providers offline; they are not Injoon's manual retest or human acceptance. The original local code/test/device dates remain October 20; publication on October 21 was not another test run. The source chat mixes development with schedules/slides, so it is excluded as a whole from development-archive selection; these task-specific excerpts do not create a trimmed archive.
+
+### Prompts — verbatim, in order
+
+October 20, 10:14 KST
+
+```text
+**Bugs**
+
+
+
+- When we swipe right or left to see all the presentation, it’s too fast
+- At the start of the video you can see that after importing slides, the score statistics show, and lots of components that shouldn’t show  show up
+- The time and time setting slider component is too cramped
+- In the screen where you can see all the slides and cue, we can’t really see the cues that easily we have to scroll down (improvement we can make)
+- The edit time and audience is almost impossible to click
+- After recording it opens full review (which is correct) In the full review page the overall score unavailable text leaks over the circle
+- Animation doesn’t exist everywhere. When I clicked on one of the slides to get slide feedback in the full review page, it didn’t
+- Not in video but it takes some time to get the feedback
+- Bug where it says take has already started for a retry 
+  - So we clicked retry again but then it’s frozen at 0:00 and then jumps to 0:07
+
+
+
+these were the main findings can you classify them. Are bugs and suggestions fine enough
+```
+
+October 20, 20:19 KST
+
+```text
+The test date was yesterday, device is galaxy s25 connected to my mac via USB.
+
+My friend gave me the attahed findings but are these also manual checks?
+```
+
+October 20, 20:41 KST
+
+```text
+Can you investigate and fix B09 in a separate branch, add the tests, and prepare the before and after evidence for the PPT? Should we first describe the intended behavior as a spec then you create the test? How does the order work
+```
+
+October 20, 20:42 KST · reply
+
+```text
+It should be connected
+```
+
+October 20, 21:01 KST · reply
+
+```text
+connected
+```
+
+October 21, 10:18 KST
+
+```text
+Can you upload the fixed branch on github
+```
+
+
+## Testing, design and requirements source supplement — October 21, 2026
+
+**Contributor:** Injoon · **Tool:** OpenAI Codex · **Model:** `gpt-6.1-sol` (recorded turn context; serving variant not independently verified)
+
+- **Output and use:** Codex consolidated Testing Plan/Results, a test inventory/story matrix, current design and a requirements implementation-status addendum while retaining original criteria and historical designs. It published draft PR32 before Injoon changed direction to local work. Remote branch deletion/PR closure remained blocked by authentication; local edits and the later style/canonical-file corrections remain unpublished. [PR32](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/32) shows the earlier published snapshot.
+- **Errors and revisions:** Injoon found version 2.0 still at the expected design path: Codex had placed the real revision in a separate file. Codex moved the full Rev.3.0 content to Design-Documentation.md and preserved Rev.2.0 under an explicit Iteration 1 filename. Old PDF/HTML exports were not regenerated. Local-first direction for that documentation branch remains in force.
+- **Verification and limits:** Historical documentation checks covered links, pinned source references, 46 story-matrix entries, nine findings and preservation of original content. They were not new application tests or measured coverage. Wiki publication, current exports, named maintainers and unresolved product scope remained open. These prompts concern technical app documentation; reporting-only conversations and slides are excluded from this supplement.
+
+### Prompts — verbatim, in order
+
+October 21, 14:37 KST
+
+```text
+Can we update our testing, design and requirements documentaiton on repo and wiki? Waht are we changing
+```
+
+October 21, 15:35 KST
+
+```text
+Delete the branch and let's work on it locally firt
+```
+
+October 21, 19:47 KST
+
+```text
+Can you make sure the documnets follow the style of previous versions, if any, and then apply anti-slop skill to make language seem direct and natural. Give me a list of all documents that are modified in this branch
+```
+
+October 21, 19:56 KST
+
+```text
+In the deisng-documentation.md file it says version 2.0,are the files actuallu updated
+```

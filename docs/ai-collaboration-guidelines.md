@@ -55,9 +55,10 @@ actual input prompts and notes; the shared report remains the team's responsibil
 the input prompt log and findings, not full responses or complete transcripts.
 
 **Confirmed Iteration 2 scope: October 10–23, 2026, inclusive, in `Asia/Seoul`.**
-An October 20 review is preliminary. Repeat collection and review after October 23
-so later work and still-running sessions are covered before finalizing the report.
-Do not treat the end date as an independently established submission deadline.
+An October 20 review is preliminary. Continue collection and review as work proceeds,
+then refresh before final team review and submission. Record the source cutoff and
+any later or still-running sessions as coverage gaps. Complete submission by the
+assignment deadline; the interval's end date does not independently establish it.
 
 Keep source coverage, review status and unresolved gaps in the
 [member coverage pages](ai-collaboration/iteration-2/README.md#member-coverage).
@@ -188,7 +189,7 @@ Reference files/lines, commits, PRs or issues so readers can check the examples.
 Review the report together using this checklist. Automated checks can help with quotations, links and formatting; contributors confirm their own work. Keep corrections in the report or log rather than maintaining a separate validation file.
 
 - [ ] Choose the rotating writer. Each member confirms their prompts, tool/model, manual edits, deliberate non-use, errors and personal testing. Do not treat missing input as “none.”
-- [ ] Complete the member coverage pages. Review all members' full histories for October 10–23 in `Asia/Seoul`, refresh after iteration close, and resolve or state gaps. Development-only topic selection does not establish this course review.
+- [ ] Complete the member coverage pages. Review all members' full histories for October 10–23 in `Asia/Seoul`, refresh before final submission, and resolve or state gaps. Development-only topic selection does not establish this course review.
 - [ ] Read all six required subjects and §7. Check that the examples reflect the team's work and explain what helped, what failed and what we will change next time.
 - [ ] Match quotations to the log and claims to cited evidence. Distinguish human edits/testing from AI-written repairs and agent-operated checks. Keep unknown costs and test limits explicit.
 - [ ] Check AI code comments on the final submitted revision and verify the report's links to them.
@@ -219,4 +220,4 @@ review and a separate, focused decision.
 
 After human review and explicit publication authorization, publish **AI Collaboration Report – Iteration N** on the repository Wiki, add a sidebar link and link the full prompt log. Check the exported PDF's one-page layout and links.
 
-For Iteration 1, the [eTL assignment](https://myetl.snu.ac.kr/courses/305891/assignments/381929) requires `team7-iter1-AI-collaboration-report.pdf` in the submission ZIP. That historical filename/ZIP requirement does not establish an Iteration 2 requirement. Neither v1.1 nor the exporter tutorial independently establishes an Iteration 2 ZIP upload or submission deadline. This guide is internal working guidance. Commit, push, Wiki publication and eTL submission must stay within the user's authorization; human review does not itself authorize publication.
+For Iteration 1, the [eTL assignment](https://myetl.snu.ac.kr/courses/305891/assignments/381929) requires `team7-iter1-AI-collaboration-report.pdf` in the submission ZIP. That historical filename/ZIP requirement does not establish an Iteration 2 requirement. The [Iteration 2 assignment](https://myetl.snu.ac.kr/courses/305891/assignments/386091), in the official API/page snapshot retrieved October 18, specifies `team7-iter2-AI-collaboration-report.pdf` inside `team7-iter2.zip`, due October 23 at 23:59 KST. Recheck the live assignment before uploading; this source review did not refresh eTL. Neither v1.1 nor the exporter tutorial independently establishes the assignment deadline or ZIP contents. This guide is internal working guidance. Commit, push, Wiki publication and eTL submission must stay within the user's authorization; human review does not itself authorize publication.

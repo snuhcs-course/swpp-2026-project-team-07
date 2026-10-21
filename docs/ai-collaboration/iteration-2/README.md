@@ -1,6 +1,6 @@
 # Iteration 2 development-session collection
 
-**October 10–23, 2026, inclusive · Asia/Seoul · preliminary as of October 20**
+**October 10–23, 2026, inclusive · Asia/Seoul · Seoyeon snapshot October 20; Injoon draft review October 21**
 
 Use this folder to coordinate private content selection and contributor confirmation.
 It contains metadata and links, not session transcripts or another prompt diary.
@@ -77,14 +77,14 @@ a development-only archive does not establish that review or owner privacy appro
    into member pages or add this reporting conversation to the developer log.
 7. Use the normal review, commit and push workflow for these public documentation
    changes. The selection script neither publishes evidence nor authorizes Git/Wiki
-   publication. Refresh collection after October 23 before final team review.
+   publication. Refresh collection with remaining iteration work before final team review and submission.
 
 ## Member coverage
 
 | Member | Source ownership and contribution account | Content selection | Full-history / privacy / report review |
 | --- | --- | --- | --- |
 | [Seoyeon](members/seoyeon.md) | This Mac's ownership confirmed; personal edits/non-use/testing account supplied | 12 included; 311 excluded; 0 pending topic decisions | Full-history / owner privacy / report review pending |
-| [Injoon](members/injoon.md) | Member inventory and confirmation pending | Pending | Pending |
+| [Injoon](members/injoon.md) | Local Codex inventory and saved October 19 phone observations reviewed; no manual code edits confirmed; deliberate non-use unconfirmed | 12 selected development chats; 20 excluded from 32 human-chat candidates; no archive built | Focused source review complete; public contribution approved; full-history / private-source privacy / final team-report review pending |
 | [Jaewon](members/jaewon.md) | Member inventory and confirmation pending; app/cloud coverage needs review | Pending | Pending |
 | [Jooyoung](members/jooyoung.md) | Member inventory and confirmation pending | Pending | Pending |
 
@@ -96,6 +96,36 @@ The private derived ZIP contains 24 source/support files plus its manifest; CRC,
 selected membership and file hashes passed. This is topic selection, not completed
 full-history or owner privacy review. The source snapshot ends October 20 at
 10:41:23.889 KST, so later development still needs collection.
+
+**Injoon's October 21 source review**
+
+32 human-chat candidate records, represented by 40 current/archived rollout files on this Mac; 118 automatic safety-review records and 17 delegated-agent records identified separately.
+
+12 development chats selected; 20 excluded, including mixed/admin/presentation/lab conversations and three candidates whose actual tasks precede the interval; no pending topic decision in this candidate set.
+
+Local Codex desktop records are labeled `source=vscode`. Direct local source inspection, including compressed/resumed histories; no exporter ZIP or development archive was created or shared.
+
+Actual prompts, visible task outcomes and selected command/test/device evidence checked; canonical log supplemented. Parsing all events and topic selection do not establish exhaustive semantic review of every output or embedded image.
+
+The 12 selected chats correspond to merge/CI repair, two requirement lookups,
+README revision, Review UI work, Scribe investigation/implementation, reusable
+components, a Scribe phone restart, Scribe integration/PR review, phone-demo
+recovery, an October 21 runtime restart and technical documentation revision.
+The 40 files are resumed/source segments, not 40 separate conversations.
+
+All selected chats began in the course workspace rather than the nested repository.
+Repository-root-only filtering would therefore miss these sources. Session content,
+turn-context paths, linked task evidence and the known project worktrees were
+checked; other machines, unsupported/cloud interfaces, histories begun in another
+parent directory and deleted/unavailable records remain coverage gaps. No evidence
+from this Mac is used to confirm another contributor's history.
+
+Whole mixed conversations remain excluded from development-archive selection.
+Specific development-task prompts from the prototype/B09 conversations can be
+cited in the canonical log without manufacturing trimmed development sessions.
+No archive membership or full-history approval follows from those excerpts.
+
+Injoon approved this contribution and authorized commit/push on October 21, and confirmed no manual application-code edits during Iteration 2. Deliberate AI non-use, personal prompt accuracy and unknown repair costs remain unconfirmed. Full-history/private-source privacy and final team-report review remain pending; this approval does not establish Wiki publication or course submission.
 
 Do not infer another member's coverage from sessions on Seoyeon's Mac. No row
 establishes all-flow testing, human acceptance or complete collection.
