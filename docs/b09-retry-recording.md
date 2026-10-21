@@ -2,6 +2,8 @@
 
 Branch: `fix/retry-recording`, based on merged PR31/main `c4a3f48`.
 
+Published October 21, 2026: [GitHub branch](https://github.com/snuhcs-course/swpp-2026-project-team-07/tree/fix/retry-recording), with code/evidence publication commit `3ae9d162d53088a129bffaf15a915400480a6483`. The GitHub app recreated commit metadata because local Git authentication was unavailable; its tree matches the reviewed local `bfb526a` exactly (`aecb6478c62706b7aeea0070651ad5ed61d2801d`). Earlier `e423010`/`bb4fcbe` references below identify the original local development/evidence commits. That local history is preserved separately. No PR, merge or new test run is claimed by publication.
+
 ## Intended behavior
 
 This focused spec refines the existing retry/Keep current/Overwrite flow in

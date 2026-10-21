@@ -3767,3 +3767,18 @@ Prompt, verbatim:
 ```text
 But the way it is written doesn't mention like writing spec and the way it's layed out is not clear because it looks  like part of overall findings
 ```
+
+
+## Publish B09 fix branch — October 21, 2026
+
+**Contributor:** Injoon · **Tool:** OpenAI Codex, Git and connected GitHub app · **Model:** not recorded
+
+- **Human decision:** Injoon requested uploading the existing fixed branch to GitHub. Scope is `fix/retry-recording`; no merge or PR creation was requested.
+- **Output and verification:** Reviewed the outgoing four local commits and ten changed files, confirmed a clean worktree and whitespace check, then published the exact file tree through the GitHub app. GitHub code/evidence commit `3ae9d162d53088a129bffaf15a915400480a6483` has the same tree SHA (`aecb6478c62706b7aeea0070651ad5ed61d2801d`) as reviewed local head `bfb526ad7d0fd606b1b70f277d62f0adb5f70007`. All ten uploaded blob hashes match local Git. Created and read back branch `fix/retry-recording`. This follow-up records publication/provenance; original local commits are retained separately when aligning the worktree to the published branch. The focused fix, tests and previous verification remain unchanged; no new CI or human approval is inferred.
+- **Errors and handling:** HTTPS push failed because Git could not obtain a username; GitHub CLI reported an invalid token. Existing SSH authentication also failed with `Permission denied (publickey)`. Used the already connected GitHub app without exposing/changing credentials. The app recreated commit metadata, so public and original local commit IDs differ despite identical file contents. No force push, merge, main-branch change or private media/database upload occurred. Cost not recorded.
+
+Prompt, verbatim:
+
+```text
+Can you upload the fixed branch on github
+```
