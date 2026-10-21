@@ -1,0 +1,1017 @@
+
+> outloud-mobile@0.1.0 check
+> npm run typecheck && npm run lint && npm test
+
+
+> outloud-mobile@0.1.0 typecheck
+> tsc --noEmit
+
+
+> outloud-mobile@0.1.0 lint
+> expo lint
+
+
+/Users/jun/Documents/ChatGPT/Software Development/project/outloud/worktrees/b09-retry-recording/mobile/src/features/rehearsal/useSegmentPlayer.ts
+  108:40  warning  The ref value 'token.current' will likely have changed by the time this effect cleanup function runs. If this ref points to a node rendered by React, copy 'token.current' to a variable inside the effect, and use that variable in the cleanup function  react-hooks/exhaustive-deps
+
+✖ 1 problem (0 errors, 1 warning)
+
+
+> outloud-mobile@0.1.0 test
+> node --test tests/*.test.mjs
+
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ Review keeps findings separate from ungraded performance, page scroll, selected-source evidence and tappable navigation (20.079792ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ Full Review keeps ungraded score/status tiles and discloses partial audio before playing (8.482666ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ Home presents the same AI counts in both themes, with measured pace kept separate (2.920083ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ Review retains Q&A swipe outside its page scroll (2.579834ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ covered Review unmounts its detail feedback controller (5.181708ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ Review has no native-invalid bare text outside Text (2.46775ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ Review places selected transcript below Play and above feedback; selection, reopening and themes keep one player (29.860083ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ unrecorded Review retains its slide preview and explicit missing-audio state (3.0065ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ each evidence selection scrolls to inline controls, including the same finding; playback does not resnap scroll (14.851958ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ Full Review action stays outside the scrolling transcript and reserves measured header space (7.173709ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ Full Review entered from rehearsal returns to the selected rehearsal slide (4.658167ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ comparison confirmation reviews the selected slide; Back keeps old audio and returns to rehearsal (57.022458ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ returning from slide review retains the Full Review origin and selected slide (21.919292ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ Android Back from slide review carries the selected slide back through Full Review (4.22625ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ Keep current reviews retained audio when a mixed retake selects a newly recorded slide (7.578334ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ restored comparison ignores an unrelated inherited slide selection (1.920417ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ Home restores the same verified overall score and level as Full Review while retaining findings and duration (11.169709ms)
+✔ Home retains pending and partial findings notices without inventing a composed overall score (3.804667ms)
+(node:63286) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/jun/Documents/ChatGPT/Software%20Development/project/outloud/worktrees/b09-retry-recording/mobile/src/features/recording/storage.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/jun/Documents/ChatGPT/Software Development/project/outloud/worktrees/b09-retry-recording/mobile/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:63288) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/jun/Documents/ChatGPT/Software%20Development/project/outloud/worktrees/b09-retry-recording/mobile/src/features/recording/storage.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/jun/Documents/ChatGPT/Software Development/project/outloud/worktrees/b09-retry-recording/mobile/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:63289) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/jun/Documents/ChatGPT/Software%20Development/project/outloud/worktrees/b09-retry-recording/mobile/src/features/recording/storage.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/jun/Documents/ChatGPT/Software Development/project/outloud/worktrees/b09-retry-recording/mobile/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:63291) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/jun/Documents/ChatGPT/Software%20Development/project/outloud/worktrees/b09-retry-recording/mobile/src/features/recording/storage.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/jun/Documents/ChatGPT/Software Development/project/outloud/worktrees/b09-retry-recording/mobile/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:63278) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/jun/Documents/ChatGPT/Software%20Development/project/outloud/worktrees/b09-retry-recording/mobile/src/features/recording/storage.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/jun/Documents/ChatGPT/Software Development/project/outloud/worktrees/b09-retry-recording/mobile/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ each capture owns one UUID, distinct from local deck identity; finalization preserves visits (2.557167ms)
+✔ recovery uses playable media duration, retains backwards visits and refuses oversize duration (0.153208ms)
+✔ thirty-minute capture and recovery retain the final backward visit and reject one millisecond over (0.163375ms)
+✔ SQLite persists checkpoint/audio and interrupted uploads through a new process (143.526334ms)
+✔ restart after server acknowledgement and local save failure retries the same upload identity (211.635ms)
+(node:63279) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/jun/Documents/ChatGPT/Software%20Development/project/outloud/worktrees/b09-retry-recording/mobile/src/services/api.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/jun/Documents/ChatGPT/Software Development/project/outloud/worktrees/b09-retry-recording/mobile/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ lost audio acknowledgement retries the exact UUID/audio/visits and reuses the persisted PDF mapping (19.230791ms)
+✔ PDF failure never submits audio and can retry without replacing the attempt (0.8635ms)
+✔ missing or malformed cached deck mappings are repaired before audio upload (0.525375ms)
+✔ transient deck lookup failure retains mapping and prevents speculative uploads (1.079208ms)
+✔ mismatched cached deck identity or page count never reaches audio upload (0.813291ms)
+✔ malformed deck responses retain local audio and never submit it (0.965416ms)
+✔ conflicting or malformed audio acknowledgements cannot mark success or allocate a new UUID (0.551792ms)
+✔ same-attempt concurrent calls share a request; different attempts share deck upload (0.25975ms)
+✔ mapping persistence failure stops before audio; retry recovers the acknowledged deck (0.317875ms)
+✔ repeated local writes failing after server acknowledgement preserve a retryable UUID and exact payload (0.285875ms)
+✔ legacy oversized audio stays local, makes no network request and suggests a shorter new recording (0.184083ms)
+✔ submitted on another server resolves a new mapping and uploads with the same attempt identity (0.135917ms)
+✔ selected API reuses only its own deck mapping and normalizes completed upload deduplication (0.419708ms)
+✔ overlapping uploads deduplicate per API and late old-server completion cannot replace the selected-server checkpoint (3.970666ms)
+✔ selecting an already active destination again reuses its upload and restores its checkpoint ownership (1.269208ms)
+✔ failed status persistence cannot hide the original upload conflict (0.4655ms)
+✔ audio timeout aborts transport and a later retry retains exactly the submitted metadata (1.253792ms)
+✔ offline edits survive, remain distinct per API, and never request analysis (1.293958ms)
+✔ an edit made during PATCH is not cleared by its older response; concurrent sync is shared (49.151042ms)
+✔ conflicts retain local edits and require an explicit version choice (0.623833ms)
+✔ local invalidation retains results but marks them outdated before synchronization (0.077791ms)
+✔ a successful equivalent-text save accepts the server canonical ranges without repeated PATCHes (0.209583ms)
+✔ refresh recognizes a committed save after its response was lost despite JSONB object-key ordering (0.236791ms)
+✔ keeping an AI recognition original dismisses only that offer without changing text or revision (2.565417ms)
+✔ displaying a word correction preserves sentence punctuation and native word evidence (2.473167ms)
+✔ restoring a correction that spans a slide boundary restores both sides without changing visits/audio (1.920709ms)
+✔ AI suggestion selects the second repeated term and is rejected after local edits (0.556083ms)
+✔ legacy arbitrary sentence edits remain archived and are never adopted or displayed (0.295458ms)
+✔ delayed suggestion GET cannot clear newer staleness; local correction revisions also fence output (4.229292ms)
+✔ only offered AI replacements are accepted locally; acceptance/restoration keep source timing and offline state (0.605584ms)
+✔ old suggestion result schema remains read-only and cannot block explicit upgrade (0.245291ms)
+✔ old rewrite-derived coaching stays retained but outdated even offline (0.095791ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ retry acknowledgment cannot move to another take or changed generation; opening only reads (49.803209ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ failed context has a distinct explicit revisioned retry and never generates presentation feedback (5.685875ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ synchronization failures expose recovery and successful sync clears it without a persistent success message (1.7925ms)
+✔ an explicit transcription check clears a previous sync failure even when corrections need no PATCH (3.022375ms)
+✔ confirmed edits replace exact indexed occurrence, preserve source, and recognize no-op saves (13.660625ms)
+✔ boundary correction invalidates all overlapping visits and keeps unrelated slides (20.171792ms)
+✔ pending edits and older analyzed revisions remain outdated; suggestion dismissal is not a text edit (0.076125ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ permanent Cues panel displays both generated categories with selected-slide playback (9.363458ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ slide navigation resets details and scroll subtree, restores cached cues on revisits, and never regenerates (5.448417ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ Play switches to Pause and stays unavailable while recording or when saved audio is absent (3.612584ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ missing, outdated and failed cues show explicit status with user initiated recovery only (8.084625ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ empty evidence, loading, playback and synchronization notices remain visible (2.173084ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ theme changes and reopening retain actual cues without admitting generation (5.53675ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ long accepted cues remain complete and reachable in the shared scroll panel (1.008792ms)
+✔ both category labels stay above a shared scroll and actual cues start side by side (1.30725ms)
+✔ reopening a finished answer only reads the exact bound result (27.141167ms)
+✔ uncertain transcription needs confirmation; retry retains the same ID and recording (0.693708ms)
+✔ saved failed answers do not automatically retry on reopening (0.185583ms)
+✔ profile dependency retry uses its revision and confirmation without uploading audio (0.367833ms)
+✔ lost submission acknowledgement reuses uploaded identity and saved result (0.576666ms)
+✔ question generations and rerecorded answer attempts remain separated by API and question job (14.145833ms)
+✔ durable answer consent blocks a new upload and preserves its identity for continuation (1.467792ms)
+✔ saved answers can be read without Scribe consent; new transcription retries cannot submit (0.38575ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ opening and reopening read only; concurrent explicit requests reuse one admitted job (46.729125ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ pending offline corrections block question admission (3.143625ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ historical recordings are not automatically backfilled (2.5015ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ two initial hosts admit once for a newly completed workflow and remount does not regenerate (5.410041ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ automatic Q&A retries safe preflight failure without reopening and submits once (9.614375ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ uncertain initial question submission never automatically repeats a POST (3.18075ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ a persisted consumed initial scope is not backfilled when the server reports absent (1.842667ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ confirmed pending requirements immediately invalidate saved questions and block admission (2.298708ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ covering Q&A during preflight prevents the delayed provider admission (22.598209ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ HTTP 400 read failure retains current accepted requirements and is not reported as offline (14.270958ms)
+✔ covering an active cached question job clears the polling timer without losing its state (9.371291ms)
+✔ Q&A manifest retains mixed takes and all returns; excludes unrecorded slides (2.595083ms)
+✔ pending corrections and selected-source revisions invalidate without modifying cached questions (3.174542ms)
+✔ strict response identity rejects foreign, duplicate and out-of-scope questions (0.611042ms)
+✔ outdated current generation remains available in read-only history and same-job resync reinitializes answer controls (3.873ms)
+✔ accepts backend scope field order without weakening selected-source identity (0.248167ms)
+✔ panelist names accept reasonable labels and reject unbounded metadata (0.1815ms)
+✔ shared quote corpus accepts formatting and rejects changed meaning (4.401875ms)
+✔ only contiguous whole-word slide excerpts are accepted (0.196291ms)
+✔ structural equality ignores property order but preserves array order and values (0.099959ms)
+(node:63292) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/jun/Documents/ChatGPT/Software%20Development/project/outloud/worktrees/b09-retry-recording/mobile/src/features/feedback/validation.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/jun/Documents/ChatGPT/Software Development/project/outloud/worktrees/b09-retry-recording/mobile/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ long-recording result, review, feedback evidence and seeking accept the same thirty-minute timeline (5.533042ms)
+✔ valid original indexed evidence is allowlisted and enables exact bounded seeking (0.481417ms)
+✔ missing source context cannot enable seeking even if wire claims verification (0.260958ms)
+✔ source, fact, contiguous indexes, counts and exact derived times are enforced (4.704167ms)
+✔ NUL and oversized generated strings quarantined; markup stays inert plain text (1.663167ms)
+✔ accepted partial empty all-invalid remain distinct, and empty is not invalid success (1.097875ms)
+✔ backward and simultaneous visits, repeated phrases and crossing words retain original indexes (0.384416ms)
+✔ feedback freshness reconciles independently of Whisper and quarantined feedback cannot erase cache (1.5075ms)
+✔ late current coaching receipts cannot restore obsolete confirmation in either cache (2.102375ms)
+✔ a later old coaching receipt cannot replace the retried generation in either cache (1.028917ms)
+✔ legacy caches and partial/no-speech review remain usable with invalid feedback (0.6255ms)
+✔ description parser uses exact deck/source scope, revisions and bounded facts (0.277209ms)
+✔ dependency retry carries exact separate description revisions; stale and uncertainty coexist (1.602209ms)
+✔ out-of-order dependency responses cannot hide failure or uncertainty actions in either cache (3.542958ms)
+✔ dependency retry and receipt recovery can advance to a lower state rank without reversing on delayed responses (0.451834ms)
+✔ legacy dependency caches use revision and terminal-state tie breaks; invalid new freshness is quarantined (0.428208ms)
+✔ explicit clients send only selected actions; GET and 409 never retry or process (21.786875ms)
+✔ runtime input guards reject provider/model/extras and bad revisions with zero fetches (0.647666ms)
+✔ feedback GET cancellation and generation timeout cannot cause automatic paid retries (7.697333ms)
+✔ partial legacy review cache reconciles feedback without requiring process permission (0.88025ms)
+✔ an explicit description lookup rejects another set even on the same deck (0.30525ms)
+✔ incomplete chronology leaves feedback readable but cannot enable evidence seeking (0.118625ms)
+✔ contradictory revision, stale, outcome and confirmation metadata is quarantined (0.714208ms)
+✔ a failed new generation keeps old description facts and stale suggestions with separate output counts (0.087625ms)
+✔ stale analysis or retained stale result remains readable but cannot seek (0.127417ms)
+✔ selection assertions permit initial requests but never provider selection or malformed tokens (0.483583ms)
+✔ complete description edits enforce UTF-8 64 KiB bound before fetch (3.934292ms)
+✔ selection and captured origin metadata are bounded, allowlisted, and legacy caches remain readable (1.163875ms)
+✔ description cache reconciliation preserves its own revision and terminal uncertainty (1.921333ms)
+✔ quota_stopped parses for coaching and its failed description dependency without dropping saved evidence (0.502166ms)
+✔ current successful and partial findings replace quality scores; failures never count as clean (0.972458ms)
+✔ requirements, source and correction revisions centrally invalidate cached feedback (0.129125ms)
+✔ aggregate counts include only current verified findings and keep partial/pending/outdated separate (0.120875ms)
+✔ cache keys retain exact singleton scope and GET reader deduplicates with at most three concurrent requests (21.0415ms)
+✔ read refresh retains newer cached revisions and rejects mismatched source identities (4.547208ms)
+✔ selected source and exact visits choose the current cache; pending settings exclude prior findings (15.682167ms)
+✔ retained evidence source identity is checked even without a correction snapshot (0.09375ms)
+✔ missing slide output is a recovery problem and not insufficient speech (0.0585ms)
+✔ all feedback surfaces explain active stages and long waits using server time (9.490542ms)
+✔ insufficient speech and model-declined assessment have different explanations (0.14075ms)
+✔ quota waits with an elapsed retry time explain that recovery is overdue (0.071334ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ a completed entrance keeps opaque React props when its content changes (7.195875ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ a queued completion from a prior entrance cannot settle a changed entrance (7.996958ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ reduced motion settles the entrance and keeps it opaque after motion is restored (2.291916ms)
+✔ unmount cancels the pending entrance without leaving a live completion (0.908084ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ automatic host selects only eligible chosen takes, excluding historical and pending comparisons (8.709291ms)
+✔ new recording feedback waits for default requirements to synchronize (2.709625ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ reactive publications do not retry failed correction preflights (71.220875ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ singleton admission runs once across reactive publications (44.023042ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ a failed session preflight exposes existing explicit Retry recovery without consuming the initial claim (77.838916ms)
+✔ automatic singleton hook bounds fresh-read failure and initialization publications, retaining explicit recovery (79.586417ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ two new same-source selected slides independently admit singleton requests (163.896167ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ different source attempts retain separate singleton requests (58.755084ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ failed singleton requests consume per-slide claims without automatic remount retry (85.003958ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ saved owners, active work, uncertainty and durable initial history are excluded from automatic singleton admission (288.302459ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ preflight discovers a competing owner and admits only the remaining absent member (84.64675ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ server corrections are refreshed before either singleton admission (58.922ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ local correction accepted while singleton preflight is in flight fences singleton admission (59.254542ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ different provider selection tokens each admit an independent singleton (58.910958ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ unknown submitted outcome retains per-slide uncertainty and never retries on remount (86.171291ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ eligible work mounted while backgrounded waits for foreground and still admits once (124.455583ms)
+✔ concurrent automatic hosts share singleton claims before any POST (59.857209ms)
+(node:63298) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/jun/Documents/ChatGPT/Software%20Development/project/outloud/worktrees/b09-retry-recording/mobile/src/features/pdf/service.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/jun/Documents/ChatGPT/Software Development/project/outloud/worktrees/b09-retry-recording/mobile/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ cancelled picker does not create a catalog or substitute sample data (10.50425ms)
+✔ import copies the source and persists the selected PDF for later reads (17.116958ms)
+✔ empty and disguised non-PDF input fail without saving an entry (2.409166ms)
+✔ catalog failure removes the newly copied file and preserves the source (2.949834ms)
+✔ removing an imported PDF deletes only its app copy and catalog entry (9.921875ms)
+✔ oversize PDF is rejected using actual file size even when the picker omits it (1.563708ms)
+✔ concurrent imports preserve both catalog entries (3.048333ms)
+(node:63299) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/jun/Documents/ChatGPT/Software%20Development/project/outloud/worktrees/b09-retry-recording/mobile/src/features/transcription/playback.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/jun/Documents/ChatGPT/Software Development/project/outloud/worktrees/b09-retry-recording/mobile/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ highlight follows half-open word intervals, gaps and end (2.123792ms)
+✔ seeking backwards recomputes the active word without a ticking timer (0.10675ms)
+✔ saved transcript spans retain every character and map all 38 words (5.774583ms)
+✔ repeated tokens map sequentially and unmatched text stays readable (0.510417ms)
+✔ mismatched or omitted transcript tokens stay entirely plain: We restart. (0.165459ms)
+✔ mismatched or omitted transcript tokens stay entirely plain: We restarted. (0.08025ms)
+✔ mismatched or omitted transcript tokens stay entirely plain: We really restart. (0.072875ms)
+✔ mismatched or omitted transcript tokens stay entirely plain: First we restart. (0.219208ms)
+✔ mismatched or omitted transcript tokens stay entirely plain: We restart again. (0.072167ms)
+✔ mismatched or omitted transcript tokens stay entirely plain: Echo Echo (0.08825ms)
+✔ mismatched or omitted transcript tokens stay entirely plain: 발표를 시작합니다. (0.043458ms)
+✔ exact English/Korean tokens preserve punctuation, repeated words and whitespace (0.200042ms)
+✔ a newer pause/source change/navigation cancels pending replay (0.111666ms)
+✔ replay starts only after successful seek; failed seek never plays (0.178125ms)
+✔ chronological repeated/backward and zero-duration visits retain half-open boundaries and final page (0.087292ms)
+✔ out-of-range and zero-length words remain readable but cannot highlight or seek (0.066667ms)
+✔ rapid newer seeks supersede queued targets, preserve playing intent, and paused seeks stay paused (4.596375ms)
+✔ pause while native seek is pending and background/return invalidate resume (0.572709ms)
+✔ foreground reasserts pause if the Android host resumed before the JS lifecycle callback (0.160375ms)
+✔ failed or disposed seeks cannot resume old native players (1.282041ms)
+✔ resuming during a pending seek preserves its target instead of rewinding from the old EOF position (0.362375ms)
+✔ previous transport can leave a simultaneous boundary; instantaneous visits remain explicitly selectable (0.188542ms)
+✔ EOF notifications cannot override queued or running newer seeks, but natural EOF still pauses (0.418333ms)
+✔ an unsuperseded seek to EOF settles paused even if its EOF event preceded seek completion (0.337917ms)
+✔ Pause between superseded EOF and newer seek completion retains the user pause (0.428125ms)
+(node:63300) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/jun/Documents/ChatGPT/Software%20Development/project/outloud/worktrees/b09-retry-recording/mobile/src/features/presentations/defaultRequirements.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/jun/Documents/ChatGPT/Software Development/project/outloud/worktrees/b09-retry-recording/mobile/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ new presentation saves general audience and 300 seconds once, separately from missing legacy requirements (13.331375ms)
+✔ offline initialization retains its UUID and resumes without overwriting saved preferences (0.932458ms)
+✔ lost PATCH acknowledgement resolves through GET without a second update (0.932875ms)
+✔ a concurrent preference update wins over default initialization (0.860042ms)
+(node:63304) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/jun/Documents/ChatGPT/Software%20Development/project/outloud/worktrees/b09-retry-recording/mobile/src/features/presentations/requirementsStore.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/jun/Documents/ChatGPT/Software Development/project/outloud/worktrees/b09-retry-recording/mobile/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:63308) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/jun/Documents/ChatGPT/Software%20Development/project/outloud/worktrees/b09-retry-recording/mobile/src/features/presentations/requirementsStore.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/jun/Documents/ChatGPT/Software Development/project/outloud/worktrees/b09-retry-recording/mobile/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:63301) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/jun/Documents/ChatGPT/Software%20Development/project/outloud/worktrees/b09-retry-recording/mobile/src/services/storage.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/jun/Documents/ChatGPT/Software Development/project/outloud/worktrees/b09-retry-recording/mobile/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ legacy timing and audience defaults never become confirmed requirements (1.117167ms)
+✔ requirements persist separately per presentation and API address (0.300583ms)
+✔ requirements survive a fresh process and SQLite reopen (199.982125ms)
+✔ missing, partial, and explicitly provided requirements remain distinct (0.370542ms)
+✔ out-of-order responses cannot roll back or rebind a stored context (4.948792ms)
+✔ malformed Unicode cannot overwrite saved requirements; valid emoji use code-point limits (0.718959ms)
+✔ context reservation survives a failed create and never resets requirements (10.37ms)
+✔ client checks response identity and saves only successful validated updates (0.570917ms)
+✔ scope follows selected parts and revisions, not transient run labels or object ordering (0.249125ms)
+✔ scope distinguishes unrecorded slides and rejects missing or invalid input identity (0.127917ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ first eligible transcript starts once automatically and persisted queued state survives remount (56.155084ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ two automatic owners and a read-only screen share a single source submission (6.894583ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ saved corrections refresh the score automatically after one second of stable synchronized inputs (23.332875ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ failed and rejected completed results do not enter an automatic paid retry loop; rejected result offers manual retry (8.1735ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ uncertain automatic POST is not repeated on refresh/remount and still requires explicit confirmation (7.669291ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ automatic owners pause in background and read-only owners never admit scoring (3.38ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ reactive store publications do not repeatedly submit when server still reports absent after a successful POST (6.321833ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ a definite automatic POST rejection remains manually recoverable in a separate screen controller (4.032375ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ offline correction preflight is bounded across reactive renders and recovers without a paid retry (4.75625ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ rapid synchronized corrections coalesce to the latest revision before automatic scoring (7.346083ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ saved settings wait for synchronization and automatically refresh at the new context revision (5.859375ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ a saved change during an unresolved provider request waits for its receipt before one replacement (6.217792ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ independent: foreground owner reconciles a delayed accepted POST after reading absent (5.027375ms)
+✔ independent: changing selected owner while automatic correction preflight is pending never posts the former owner (5.574375ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ automatic first scoring reaches display via polling; navigation and reopening never regenerate (68.488959ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ failed assessment offers Retry and explicit retry uses the existing generation only once (13.409542ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ local correction immediately removes performance numbers while retaining saved assessment (16.617792ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ zero-duration chronology completes the actual scoring workflow without reindexing repeated visits (17.185583ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ opening a saved presentation enables only its selected sources, leaving unopened history untouched (7.882042ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ pending comparisons and cropped selected intervals cannot admit an automatic assessment (5.339709ms)
+✔ active automatic submission shows scoring across readers without an uncertainty warning or retry (22.928375ms)
+✔ projection restores validated performance numbers including zero and never infers scores from feedback counts (22.556375ms)
+✔ composed runs show per-slide original scores but cannot substitute one recording as their overall grade (3.714041ms)
+✔ altered visit selection or recording identity cannot inherit a previously cached score (3.279875ms)
+✔ local transcript corrections stale the display without erasing a saved assessment (1.6275ms)
+✔ saved and unsynchronized presentation requirements stale scores at the correct context (2.258167ms)
+✔ partial, pending, failed and stale states never invent an overall number (2.858167ms)
+✔ missing transcription and a mismatched saved server deck cannot authorize grading (0.998292ms)
+✔ silent completed sources stay ungraded and do not appear to be perpetually transcribing (1.280167ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ real review rings show 0,67,100 and keep findings separate (50.944333ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ recovery statuses suppress fake values and arcs (31.722084ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ composed Full Review keeps per-source slide score navigation without an overall grade (4.001375ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ normal grading controls are removed while uncertain retry and refresh remain explicit (10.718417ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ feedback explanations appear directly without criteria, anchors or toggles (4.501667ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ Full Review plays all cited original intervals and blocks an old evidence action after staleness (7.864125ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ Review evidence uses current original recording tools and slide fact navigation (6.904292ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ zero-duration provenance has no invented playable interval (5.20075ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ stale score clears inline evidence while legacy feedback remains independently usable (12.50625ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ fresh completed scores offer Refresh while criteria and internal deduction IDs stay hidden (2.3065ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ Full Review stops score evidence on stale scoring inputs and preserves normal run playback (26.999375ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ measurement and full-attempt evidence use their positive original audio intervals (5.678791ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ missing original score audio reports recovery and never substitutes a different recording (12.407667ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ rejected overall evidence keeps slide scores and exposes a recoverable Retry (4.569791ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ validated levels color rings, labels and navigation consistently in both themes without rounded-score inference (137.87ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ automatic failures expose Retry and stale or missing results use neutral ring colors (9.379083ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ rejected source assessments remain retryable from slide review in exact and composed runs (8.755708ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ mount, refresh, focus and remount only read; first explicit Grade posts frozen selection and revisions once (47.419208ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ active queued score polls to completion with no second POST (6.240209ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ same-frame repeated taps and two mounted controllers admit only one request (8.129167ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ failed retry obeys cooldown, then sends matching feedback revision explicitly (2.579167ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ ambiguous submission persists uncertainty across remount and requires fresh acknowledged retry (5.959458ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ confirmation is invalidated by changed selection, revision or source identity (7.769416ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ local correction invalidates cached score immediately, synchronizes before explicit update, and fences edits during preflight (3.200708ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ offline correction synchronization preserves score and blocks admission (3.555292ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ pending settings immediately mark stale and block posts; setting changes during GET also fence admission (11.283125ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ source selection change and inactive state discard late responses and old confirmation handlers (6.779209ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ backgrounded submission retains uncertainty and cross-mount lock until response, then foreground refreshes (7.422375ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ failed profile recovery uses the shared descriptions retry revision without posting a score or singleton feedback (4.689125ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ read failure recovers by GET and restored cache remains available offline (7.024792ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ Update synchronizes a correction and grades against its new revision while the stale score retains its frozen revision (4.03725ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ Update uses current saved settings while preserving the server frozen stale context revision (2.936625ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ stale generation cooldown still blocks explicit updates (8.0955ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ first explicit grade polls a validated 67 score with simultaneous/repeated visits and restores it offline (19.247708ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ malformed score response retains validated result and marks an explicit POST outcome uncertain (3.60025ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ a definite admission rejection clears the uncertain marker and the next explicit attempt refreshes status (3.112792ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ a saved requirements revision changed during preflight blocks admission even without a pending draft (6.466625ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ background cannot release another mounted controller into a second submission before the original settles (9.429917ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ inactive and null targets perform no lifecycle requests or submissions until activated (3.793042ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ uncertain retry acknowledgement is invalidated by corrections changed after its prompt (4.332208ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ a stale cancel handler cannot dismiss the current source retry confirmation (3.983542ms)
+✔ a local requirements record bound to another deck cannot authorize null-context grading (2.040917ms)
+✔ v2 parser publishes rubric scores 0,67,100 and never reads legacy findings as points (12.62825ms)
+✔ score validation rejects wrong arithmetic, unknown criteria and evidence source/timing drift (0.7555ms)
+✔ insufficient evidence retains valid slides while suppressing whole number (0.516167ms)
+✔ only exact original intervals from one complete attempt qualify for overall (0.361958ms)
+✔ Home picks latest complete attempt independently of which older attempt has a score (0.176417ms)
+✔ validated source-aware cache retains newer results and deduplicates GETs only (83.839834ms)
+✔ corrections and requirement changes suppress numeric output without destroying saved result (0.244958ms)
+✔ score evidence preserves simultaneous empty visits and original citation IDs across repeated/backward visits (2.598625ms)
+✔ empty visits remain records but cannot acquire speech or silently renumber provenance (0.973875ms)
+✔ valid zero-duration source words and measurements remain evidence without widened timestamps (0.902459ms)
+✔ scoring rejects malformed chronology even when response metadata mirrors it (0.454125ms)
+✔ repeated-visit scores retain strict timestamp, visit, slide, quote and source validation (1.428958ms)
+✔ scoring rejects malformed original word times even when speech citations copy them (0.628458ms)
+✔ a preserved empty visit cannot qualify its slide or overall presentation for a score (0.466834ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ existing arbitrary seconds and custom audience survive opening and Save (20.434583ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ duration adjustment reaches 30 minutes; explicit clear preserves missing time/audience (20.510375ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ custom audience enforces code-point bound and does not truncate emoji (51.809666ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ keyboard viewport uses physical frame scale, reveals custom input and resets on hide (13.169667ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ Other audience and conflict recovery use explicit colors in dark and light themes (40.090875ms)
+✔ long validation, recovery and Save flow in the scroll content instead of overlapping fixed positions (3.003084ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ one/two/three ready questions navigate and stop at actual last question (77.439ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ pending Q&A does not advertise next navigation or recording (2.278916ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ pending to complete batch becomes navigable without leaving or regenerating (12.244833ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ failed Q&A read keeps the saved audience visible without falsely requiring audience entry (1.8735ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ unfinished selected sources show recording recovery and open the first unready slide without generating (5.002375ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ question batch retains its historical audience when current presentation audience differs (2.734083ms)
+✔ tapping the mounted Q&A Back hint returns to its selected Review without generating (2.1515ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ actual Next buttons advance a cached three-question page while retaining header, surface and answer control (42.252209ms)
+✔ Scribe consent Cancel keeps a saved answer and Continue submits that same identity once (61.138ms)
+✔ recording reserves its normal panel for permanent cues and saved audio playback (57.143959ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ normal recording screen preserves both saved cue categories and repeated-visit Play/Pause across forward/backward navigation (67.459209ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ countdown/capture keep Cues visible, disable Play and update both slide directions against capture (27.178208ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ rotation removes Cues and Play from accessibility/interactions, retains PDF navigation and restores the selected slide (24.820708ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ theme changes and reopening retain selected-slide cues without generating; missing audio stays explicit (12.560167ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ interrupted recovery preserves the current slide cues through the existing recovery interface (43.7455ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ existing presentation opens the shared setup without changing the selected slide or cue set (35.408583ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ Review opens the currently selected slide while automatic completion keeps its own initial review (8.18925ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ covered rehearsal does not expose the edit requirements action (8.357584ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ covered rehearsal stops cue reconnects and reopening reads immediately without generation (17.776583ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ first saved recording Review opens Full Review repeatedly; a later take opens the current slide (52.832792ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ stopping a first partial recording opens Full Review without analysis (14.182708ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ a later recording automatically opens its slide review using the post-save count (16.192792ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ recovering the first interrupted recording opens Full Review without waiting for analysis (11.094708ms)
+✔ reopening a saved pending comparison carries the candidate review slide (5.663958ms)
+(node:63319) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/jun/Documents/ChatGPT/Software%20Development/project/outloud/worktrees/b09-retry-recording/mobile/src/features/recording/service.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/jun/Documents/ChatGPT/Software Development/project/outloud/worktrees/b09-retry-recording/mobile/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ native audio time retains initial, forward, backward and simultaneous visits (0.668125ms)
+✔ events at the exact capture end are excluded, earlier visits remain (0.087542ms)
+✔ inactive navigation is ignored and a new recording resets previous visits (0.087125ms)
+✔ permission denial prevents capture preparation and does not create a timeline (0.186667ms)
+✔ checkpoint is written after preparation but before microphone capture starts (0.071208ms)
+(node:63323) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/jun/Documents/ChatGPT/Software%20Development/project/outloud/worktrees/b09-retry-recording/mobile/src/features/recording/stopCapture.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/jun/Documents/ChatGPT/Software Development/project/outloud/worktrees/b09-retry-recording/mobile/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ stopping retains the audio duration when Android resets native status (4.010917ms)
+✔ failed native stop propagates instead of returning saved audio (0.316791ms)
+✔ quick or invalid stop duration 0 is not reported as a saved recording (0.508583ms)
+✔ quick or invalid stop duration NaN is not reported as a saved recording (0.327458ms)
+✔ quick or invalid stop duration Infinity is not reported as a saved recording (0.446ms)
+✔ a resolved native stop still waits for and rejects the asynchronous error event (0.69625ms)
+✔ missing native completion times out and removes its listener (stop hangs: false) (3.111167ms)
+✔ missing native completion times out and removes its listener (stop hangs: true) (0.094875ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ capture uses voice AAC and stops near thirty minutes instead of ten (28.248083ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ a finished take is saved with its slide timeline and marked for automatic transcription (4.283208ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ a failed native start leaves no running take and the next engine can record (12.339458ms)
+✔ leaving the app while recording asks the screen to stop; the meter reports while capturing (179.769625ms)
+✔ formatting and hues follow the design (0.454375ms)
+✔ fillers are whole words, including Korean hesitation sounds (0.649875ms)
+✔ coverage needs half of a point’s key words, on 5-letter stems (0.927542ms)
+✔ slide text becomes a title and points; wrapped lines are joined (0.582125ms)
+✔ a first take on every slide is a full run (3.867209ms)
+✔ redoing one slide keeps every other slide and offers a comparison (0.165916ms)
+✔ a whole take replaces the run and compares every slide (0.110708ms)
+✔ sentences keep Whisper punctuation and become slide lines with audio ranges (4.7645ms)
+✔ review insights pick the slides holding the overage (0.22075ms)
+✔ findings react to fixes, pace chip matches the design (0.266042ms)
+✔ home stats and compare rows come from the merged transcript (0.346333ms)
+✔ slide carousel release rules and cover flow match the prototype (0.145625ms)
+(node:63327) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/jun/Documents/ChatGPT/Software%20Development/project/outloud/worktrees/b09-retry-recording/mobile/src/features/transcription/analysisStorage.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/jun/Documents/ChatGPT/Software Development/project/outloud/worktrees/b09-retry-recording/mobile/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ questions are requested for the mapped server deck and sanitised (2.388958ms)
+✔ an older backend without the Q&A route is reported as such (0.915084ms)
+✔ feedback switched off on the server surfaces its error code (0.214417ms)
+✔ a server that lost the presentation gets it uploaded again once (34.484ms)
+✔ an answer is sent as audio plus metadata and the review is validated (0.520667ms)
+✔ a missing answer recording is caught before any upload (0.15125ms)
+✔ old provider consent cannot authorize answer audio or slide hints (0.216542ms)
+(node:63329) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/jun/Documents/ChatGPT/Software%20Development/project/outloud/worktrees/b09-retry-recording/mobile/src/features/rehearsal/takes.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/jun/Documents/ChatGPT/Software Development/project/outloud/worktrees/b09-retry-recording/mobile/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ first take on every slide becomes the full run without a comparison (5.204417ms)
+✔ redoing one slide replaces only that slide, and keeping the old take restores the run exactly (0.219541ms)
+✔ keeping the new take leaves the merged run and clears the comparison (0.118458ms)
+✔ a whole redo replaces every slide and compares all of them (0.099209ms)
+✔ review destination follows durable take count, including partial first recordings and rejected retakes (0.31025ms)
+(node:63330) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/jun/Documents/ChatGPT/Software%20Development/project/outloud/worktrees/b09-retry-recording/mobile/src/domain/slides.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/jun/Documents/ChatGPT/Software Development/project/outloud/worktrees/b09-retry-recording/mobile/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ required allocation uses exact integer seconds with stable slide-order tie breaks (8.125708ms)
+✔ explicit requirements override suggested timing without mutating legacy defaults or requiring an audience (0.304667ms)
+✔ saved timing is isolated by API and server deck and never overwrites selected-run or legacy records (1.518708ms)
+✔ current required time changes Review totals while preserving historical run and Compare snapshots (0.206666ms)
+✔ clearing a requirement restores consistent full and partial Review totals for runs recorded under it (0.398917ms)
+(node:63334) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/jun/Documents/ChatGPT/Software%20Development/project/outloud/worktrees/b09-retry-recording/mobile/src/features/presentations/requirementsDraft.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/jun/Documents/ChatGPT/Software Development/project/outloud/worktrees/b09-retry-recording/mobile/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:63338) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/jun/Documents/ChatGPT/Software%20Development/project/outloud/worktrees/b09-retry-recording/mobile/src/features/presentations/requirementsDraft.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/jun/Documents/ChatGPT/Software Development/project/outloud/worktrees/b09-retry-recording/mobile/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:63331) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/jun/Documents/ChatGPT/Software%20Development/project/outloud/worktrees/b09-retry-recording/mobile/src/features/presentations/requirementsDraft.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/jun/Documents/ChatGPT/Software Development/project/outloud/worktrees/b09-retry-recording/mobile/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ confirmed choice stays separate until accepted; only context work is requested (21.435542ms)
+✔ offline Save persists through SQLite reopen with API/local-id isolation (185.380417ms)
+✔ lost PATCH acknowledgement is resolved by read without duplicate write (0.68925ms)
+✔ server changes require explicit keep-mine or use-server (0.610292ms)
+✔ new Save during in-flight write survives old acknowledgement (1.817375ms)
+✔ user Save wins over already-running default initialization (1.485375ms)
+✔ clear values, 1–30 minutes and 500 Unicode code points validate without damaging last draft (0.941333ms)
+✔ a default PATCH already submitted cannot overwrite a newer confirmed choice (0.911875ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ B09: first redo after returning from review starts a fresh capture and preserves the original (90.559417ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ B09: successive redos use a new audio clock and support overwrite and keep current (114.738666ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ B09: cancelling a redo countdown preserves the saved take and permits the next redo (64.26975ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ B09: repeated record taps while the native recorder prepares start only one capture (11.801458ms)
+✔ B09: holding redo restarts the full presentation and overwrite replaces its selected run (43.068333ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ validation failure statuses never blame insufficient recorded speech and valid partial cards stay playable (30.740333ms)
+✔ slideGrade handles unreached, clean and pending slides (1.017833ms)
+✔ slideGrade caps timing at 40 and fillers at 24 (0.223459ms)
+✔ slideGrade subtracts eight for each note as well as point coverage (1.031083ms)
+✔ slideGrade uses the 85, 70 and 55 boundaries (0.113666ms)
+✔ feedbackRows always has four fixed slots with clean Spot On text (0.167166ms)
+✔ feedbackRows handles unreached, pending and absent slide text (0.090125ms)
+✔ feedbackRows puts an audience AI suggestion in delivery, never filler (0.08725ms)
+✔ runPosition maps concatenated audio to true slide starts, including a missing middle recording (0.0725ms)
+✔ real merged-run lines mark a sentence crossing adjacent slide recordings (2.559667ms)
+✔ slide-boundary detection ignores different source takes and nonadjacent visits (0.266875ms)
+✔ direct boundary flags preserve repeated-visit correction provenance and immutable timed words (0.175583ms)
+✔ sentence move eligibility matches applied placement edits while clipped boundary evidence keeps original audio (0.1865ms)
+✔ known history merges by API and UUID, retains capture recovery state and missing-catalog groups (9.607917ms)
+✔ offline failures preserve cached history, and late aborted responses cannot publish (9.98325ms)
+✔ history cannot regress newer revisions or same-revision terminal/detail snapshots (1.281417ms)
+✔ legacy and partial transcripts degrade independently from malformed media, dates, pages and process metadata (0.309041ms)
+✔ GET deck/history/review are read-only and reject mismatched attempt-deck association (0.301583ms)
+✔ malformed first timestamp cannot assign the second Echo timing to the first occurrence (0.563833ms)
+✔ API-scoped history, deck, analysis and media metadata survive a fresh process without creating a local capture (747.264667ms)
+✔ upgrade reads analysis-only cache as a review without writing or crossing API/attempt identities (0.927916ms)
+✔ downloads publish only after complete native validation and file move; scoped records survive manager reuse (36.003333ms)
+✔ audio accepts exactly its byte limit without Content-Length and rejects actual overflow before writing it (7.863167ms)
+✔ pdf accepts exactly its byte limit without Content-Length and rejects actual overflow before writing it (10.610792ms)
+✔ concurrent active consumers share one download and native validation (1.171959ms)
+✔ cancelling the validation owner transfers the same temporary file and ignores its late success (2.085875ms)
+✔ owner cancellation before the response chooses a remaining validator without a second GET (0.778083ms)
+✔ a replacement validator failure preserves the previous good PDF and cleans the owned download (1.437833ms)
+✔ last consumer cancellation during validation discards stale completion and cleans only owned temps (1.041416ms)
+✔ cancellation during promotion never publishes a late result (0.950625ms)
+✔ native failure preserves previous valid file and cache (1.093625ms)
+✔ move failure preserves previous valid file and cache (0.465666ms)
+✔ write failure preserves previous valid file and cache (0.32625ms)
+✔ PDF failure is independent of successful audio; invalid page bounds and unsafe URLs never fetch (0.525792ms)
+✔ interrupting the stream and rejected redirects cannot publish media (1.686959ms)
+✔ missing, oversized declared, and empty streams cannot become offline media (0.449416ms)
+✔ network timeout settles even an unresponsive stream and removes its temporary file (1.111375ms)
+✔ a successful PDF is retained when the independent audio decoder fails (0.570458ms)
+✔ Review claims downward body drag only at scroll top, preserving scroll and modal controls (2.215375ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ inline evidence uses the single host player, contextual source range and bounded pause/resume (36.255625ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ original word playback remains explicit and uses remaining selected visits on the host player (30.983792ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ untimed source text stays readable inline and unavailable audio retains download and errors (7.522334ms)
+✔ invalid evidence is explicit and cannot start playback (4.821875ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ one active-only overview timer reads exact singleton status and never generates on navigation (63.546042ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ overview reconnects after an uncached first read fails, using GET only (8.89175ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ playback failure gives a retryable message rather than silently looking active (44.742167ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ rapid sentence switches serialize native seeks so the newest position wins (7.847041ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ tapping an earlier sentence waits for its seek before checking the previous position (14.758833ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ cancel during a pending seek cannot start audio when it resolves (3.728ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ superseded audio-mode setup cannot replace the newest sentence source (2.641667ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ slide playback sequences visits; pause/resume and sentence tap-again still work (1.757ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ zero-duration evidence never creates a native seek or fabricated playback interval (2.04375ms)
+✔ playback skips empty visits while retaining repeated positive-duration visits in order (1.939083ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ navigation, layout and theme changes reuse the v5 set; offline reopening restores the actual cache with GET only (69.832666ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ active polling is read-only and stops when the recording screen closes (7.180792ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ unmount aborts an in-flight profile read and prevents follow-up polling (1.766792ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ stale saved content is hidden and generation occurs only after an explicit recovery action (13.993292ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ transient cue reads retry with bounded backoff and clear the notice on recovery (6.27725ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ foreground and screen focus resume cue reads; a superseded read cannot replace another deck (9.216708ms)
+✔ current cached cues remain visible through a failed read and successful same-screen reconnect (9.706917ms)
+(node:63357) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/jun/Documents/ChatGPT/Software%20Development/project/outloud/worktrees/b09-retry-recording/mobile/src/features/presentations/slideProfiles.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/jun/Documents/ChatGPT/Software Development/project/outloud/worktrees/b09-retry-recording/mobile/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:63358) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/jun/Documents/ChatGPT/Software%20Development/project/outloud/worktrees/b09-retry-recording/mobile/src/features/presentations/slideProfiles.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/jun/Documents/ChatGPT/Software Development/project/outloud/worktrees/b09-retry-recording/mobile/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ profiles preserve zero-to-four evidence-linked cues and reject uncertain/wrong sources (4.594875ms)
+✔ v2 separates essential and optional guidance and rejects invented premises and duplicates (20.34275ms)
+✔ v2 cache replaces historical scope and is retained offline without generating (21.641666ms)
+✔ server unavailable status is returned explicitly without erasing saved offline guidance (1.622083ms)
+✔ concise v4 retains category boundaries and allows supported cross-slide connections (0.316083ms)
+✔ known selection or source invalidation survives offline reopening while retaining history (3.654084ms)
+✔ v4 enforces fifteen words in both categories without truncating historical v3 (1.019292ms)
+✔ v4 counts Unicode separators consistently with backend (17.49425ms)
+✔ pending, stale, failed, disabled and missing profiles cannot appear as successful empty cues (0.687292ms)
+✔ client only reads on refresh, retains offline cache, and retries with captured revision (2.115583ms)
+✔ a reversed refresh cannot restore a superseded source scope (1.011791ms)
+✔ cue profiles survive a fresh SQLite process without overwriting JJ records (188.54975ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ cue hook reopening and cached offline use perform reads only (10.65825ms)
+✔ confirmation is bound to its captured generation and rapid retry taps admit once (6.22ms)
+✔ v5 accepts up to 25 words in either category and rejects 26 without truncation (1.626833ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ summary renders zero/four findings, evidence actions, and recoverable dependency control (58.620292ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ Further Insight is expandable and never generates feedback or changes the problem verdict (3.279458ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ AI feedback has a clear primary heading and finding evidence expands without generation (3.236917ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ session preflight failure uses the existing explicit Retry control and reason without a receipt (2.942666ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ singleton cooldown keeps the feedback action disabled (4.273709ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ slide profile dependency cooldown keeps the feedback action disabled (1.347416ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ unavailable feedback keeps the feedback action disabled (1.545041ms)
+✔ disabled feedback keeps the feedback action disabled (8.0255ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ opening, refreshing and remounting perform reads only; explicit action admits once (39.939125ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ late responses and retry confirmations cannot cross selected takes (5.282584ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ offline correction synchronization blocks generation and keeps saved feedback (3.99625ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ background during submitted generation releases UI lock and refreshes on foreground (8.6395ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ failed profile dependency retries only on explicit action, with its own revision (4.617458ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ overlapping refreshes do not starve a slow successful response (2.39125ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ initial feedback automatically admits once across remounts; no automatic retry (49.245208ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ confirmed corrections never trigger automatic initial generation (25.481875ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ abandoned starting marker exposes explicit retry without automatic resubmission (3.154875ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ first supplied audience context after initial feedback requires explicit update (8.412041ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ automatic preflight never retries a generation admitted by another client (24.936ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ confirmed unsynchronized presentation choices invalidate feedback and block explicit generation (6.714959ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ mounted feedback becomes outdated when the source transcript changes or disappears without a correction record (3.584083ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ a failed first feedback read recovers without navigation or generation (2.956292ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ automatic feedback uses the ordinary singleton route and request shape (22.346333ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ singleton cooldown blocks explicit generation (1.704125ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ slide profile dependency cooldown blocks explicit generation (7.975875ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ singleton retry preserves its current revision and selection then reconciles a lost reply through GET only (8.308875ms)
+✔ singleton uncertain retry requires a new confirmation when its selection token changes (38.697834ms)
+✔ scope preserves first/return visits and ignores run labels (0.702708ms)
+✔ missing, failed, insufficient, outdated and successful are distinct (0.155417ms)
+✔ reject responses for other takes, visit selections and oversized summaries (0.317709ms)
+✔ failed profile dependencies are recoverable, not indefinitely pending (0.054291ms)
+✔ verify original speech and slide evidence before enabling playback (25.644833ms)
+✔ shared backend/mobile allocation golden cases include float ties and Unicode (28.822833ms)
+✔ optional enrichment and purpose are validated; v1 results survive only as outdated (0.422417ms)
+✔ v2 review results remain readable only as retained outdated results (0.173625ms)
+✔ scope equality ignores object order while preserving exact visits and playback ranges (0.105625ms)
+✔ partial and invalid-model statuses remain distinct and overlapping verified findings survive (0.322ms)
+(node:63351) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/jun/Documents/ChatGPT/Software%20Development/project/outloud/worktrees/b09-retry-recording/mobile/src/services/storage.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/jun/Documents/ChatGPT/Software Development/project/outloud/worktrees/b09-retry-recording/mobile/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ failed schema initialization closes the handle and retries before using SQLite (1.487625ms)
+✔ startup recovery failure blocks new capture and retry never rewrites a later active capture (1.832209ms)
+✔ checkpoint and finalization failures preserve the last durable URI and timeline (0.563709ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ evidence displays its finding and original interval, plays only that validated source range, and pauses/resumes without seeking again (29.062917ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ evidence, sentence corrections and original word playback stop each other (10.531792ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ unavailable validated audio or invalid evidence ranges stay explicit and retain download tools (5.860125ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ recording-wide suggestions and slide descriptions stay collapsed under Recording tools (4.07175ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ changing evidence or losing its validated media stops the old interval without autoplay (9.615ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ evidence source interval preserves subsecond timestamps in its contextual label (1.369834ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ pending original-word audio setup cannot restart after newer evidence playback (3.712667ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ pending original-word audio setup cannot restart after newer correction playback (3.287208ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ only the latest original-word audio-mode intent may seek when promises resolve out of order (3.263209ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ pending word setup cannot resume after close (2.89325ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ pending word setup cannot resume after source (3.17775ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ pending word setup cannot resume after background (2.680583ms)
+✔ scrolling recording details stays inside a clipped viewport below the fixed sheet header (1.074667ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ moved sentence remains visible with source A audio, correction and synchronization when target slide selects B (19.64975ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ selected saved text without word timing retains the existing unsplit transcript action (2.432958ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ selected timed words that do not match saved text retain the original unsplit text (1.826708ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ removing another source does not stop current playback; closing the shared panel does (1.948417ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ Pause header pauses same-source evidence without restarting selected slide playback (1.92925ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ selected corrected transcript keeps exact-word playback reachable through the original transcript control (5.248459ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ inline transcript flows without its own scroll or duplicate slide Play while preserving moved-source sentence controls (2.723084ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ inline native source time highlights evidence and return visits with half-open word bounds and existing pause behavior (8.517792ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ inline untimed source text remains readable without invented slide timing or playback (0.578042ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ inline missing transcript preserves processing state without inventing words (0.676083ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ inline missing transcript preserves no_speech state without inventing words (0.53025ms)
+✔ inline missing transcript preserves missing state without inventing words (0.426625ms)
+✔ native audio time highlights one word and preserves multiword correction controls and punctuation (2.244125ms)
+✔ silence, stop and exact word end do not highlight an unrelated word (0.182666ms)
+✔ corrected text that no longer maps to timed words stays readable without invented highlighting (0.075916ms)
+✔ an ignored full-sentence edit does not disable highlighting on a clipped slide visit (1.143541ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ replacement taps do not play audio; choices, keep, restore, playback and accessible slide moves remain usable (10.894542ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ Review correction panel preserves checks, sync conflicts and stale suggestions (sheet) (6.058958ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ Review correction panel preserves checks, sync conflicts and stale suggestions (inline) (4.304083ms)
+✔ clipped boundary sentences keep playback without advertising unsupported slide moves (0.80275ms)
+✔ sentences retain their first or return visit and exact-boundary source playback (2.811959ms)
+✔ silent first visits still count; moving a sentence preserves provenance and ignores archived text rewrites (0.2475ms)
+✔ a separate selected retake starts at first visit and leaves old slide visits intact (0.188209ms)
+(node:63361) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/jun/Documents/ChatGPT/Software%20Development/project/outloud/worktrees/b09-retry-recording/mobile/src/features/transcription/client.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/jun/Documents/ChatGPT/Software Development/project/outloud/worktrees/b09-retry-recording/mobile/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ upload metadata/file then process the same ID; preserve input (12.69825ms)
+✔ 501 never starts processing or substitutes sample data (0.463708ms)
+✔ process failure retains ID; retry only processes without reupload (0.366667ms)
+✔ wrong upload/processing IDs fail (0.412417ms)
+✔ sequential polling ends on completion or failure (6.768833ms)
+✔ poll limit does not mark server attempt failed or trigger retry (1.281334ms)
+✔ malformed JSON and invalid results fail safely (0.5385ms)
+✔ network failure is safe and does not retry (0.089625ms)
+✔ pre-cancelled operation performs no upload (0.112541ms)
+✔ request timeout aborts transport (11.786459ms)
+✔ cancellation during polling sleep stops further requests (9.12225ms)
+✔ invalid metadata is rejected before network (0.729542ms)
+✔ unavailable, empty, oversize, or unsupported local audio is rejected (0.744ms)
+✔ cancellation during an active request aborts transport (0.533209ms)
+✔ cancellation after upload response prevents processing and preserves ID (0.557625ms)
+✔ upload alone is durable success without a processing request (0.269583ms)
+✔ 25,000,000-byte limit is decimal and exact, including legacy files (0.229041ms)
+✔ processing validates stages and accepts completed 200 with revision-aware retry (0.981ms)
+✔ no-speech completion accepts empty-word visits and timing metrics without provider provenance (6.309041ms)
+✔ malformed optional feedback is quarantined without hiding a usable recording (0.308083ms)
+✔ only Scribe provenance and empty pre-submission provenance are accepted (0.29025ms)
+✔ old OpenAI and audio-only Scribe consent do not authorize slide-keyterm submission (1.821625ms)
+ℹ tests 553
+ℹ suites 0
+ℹ pass 553
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3306.280125

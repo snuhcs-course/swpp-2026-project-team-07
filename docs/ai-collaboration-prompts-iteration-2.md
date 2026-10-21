@@ -3707,3 +3707,63 @@ Request, verbatim:
 ```text
 Fix those four issues and update PR #31. Keep the original prompts unchanged and don't merge it.
 ```
+
+
+## B09 retry recording — October 20, 2026
+
+**Contributor:** Injoon · **Tool:** OpenAI Codex with a separate AI reviewer · **Model:** not recorded
+
+- **Human decisions:** Injoon selected B09, requested a separate branch, regression tests and before/after PPT evidence, and asked to define intended behavior before testing. Existing PR31 remains the demo baseline. The device was reported connected; no human fix acceptance or code edit is recorded.
+- **Output and use:** Codex wrote [the focused spec and evidence record](b09-retry-recording.md), reproduced the first-Redo error with the real screen/capture/service/take flow against synthetic native boundaries and real SQLite attempt storage, and added five regressions. The two-line production change remounts the single-use capture engine after a saved take. Retained on branch `fix/retry-recording`, based on `c4a3f48`; no merge or Wiki/slide publication is claimed.
+- **Verification:** Before fix, four of five new regressions fail; after fix all five pass. Local Node24 typecheck/lint/mobile checks pass 553 tests with one existing lint warning; Android export passes. Separate AI review found no blocking production finding. These are agent-operated local checks, not new GitHub CI or human acceptance. Device capture and native timer-jump verification remain pending: the Galaxy S25 briefly appeared during setup, locked before the test, and then disappeared from ADB. No provider call or completed real-device retry recording is claimed.
+- **Errors and revisions:** An initial test searched for a nonexistent separate Cancel button; source inspection showed cancellation uses the recording button. Codex corrected the test before storing baseline results. A helper-edit command used the wrong working directory, failed without changing source, then was corrected. The timer assertion initially targeted an inactive rotated timer; the final case explicitly rotates before checking elapsed display. These were agent test/tool mistakes, not user findings. Repair cost is not recorded.
+- **Limits:** Device videos, audio playback verification, timer-jump closure, team review and publication remain pending. Automated fixture results must not close those checks. No existing user audio or unrelated checkout changes were removed.
+
+### Prompts — verbatim, in order
+
+```text
+Can you investigate and fix B09 in a separate branch, add the tests, and prepare the before and after evidence for the PPT? Should we first describe the intended behavior as a spec then you create the test? How does the order work
+```
+
+Device-connection follow-up:
+
+```text
+It should be connected
+```
+
+
+### B09 device follow-up — October 20, 2026
+
+- **Prompt, verbatim:** `connected`
+- **Output and verification:** After USB reconnection, Codex reproduced the first-Redo error on the Galaxy S25 (`SM-S931N`, Android17), serving exact baseline source `c4a3f48`. Restored committed fix `e423010`, reloaded the existing native development app and completed three consecutive retakes on the same rehearsal screen: two slide retakes and a full redo across two slides. Keep current retained the displayed 27-second original, Overwrite selected a 9-second new take, and playback advanced to 0:03 / 0:09. Local comparison clips, screenshots, execution record and PPT notes are in `project/outloud/reviews/b09-retry-recording-2026-10-20/` in the course workspace, outside the repository. The final source matches the previously checked fix; no new runtime change or repeated suite is needed solely for this documentation update.
+- **Revised limits:** This supersedes the earlier pending-device/clip status. The exact 0:00-to-0:07 freeze was not reproduced on baseline or in fixed retakes, so it remains an open observation. Backend/provider services were offline; no provider result, audible-quality judgment or human acceptance is claimed. UI selection and playback were verified on the phone; file/ID retention remains automated-test evidence. No existing recording or presentation was deleted, no merge occurred and no Wiki/deck publication is claimed.
+- **Errors and handling:** During setup, a Home gesture reached an existing presentation; Codex stopped the visible capture UI and returned to Home without selecting Overwrite/Delete for that presentation. Subsequent evidence uses only the B09 test deck. A server start inside the sandbox did not listen; the authorized local server was started with escalation. Automatic review rejected a proposed whole-app SQLite directory copy because it could include unrelated private data; that command did not execute. Codex used the test deck's UI instead and did not export the database. A video contact-sheet command used an unavailable text-overlay filter; reran without it for analysis. No UI/timer text was added to evidence. Raw baseline footage includes an unrelated notification panel; the presentation excerpt excludes it. Repair cost not recorded.
+
+
+### B09 presentation follow-up — October 20, 2026
+
+**Contributor:** Injoon · **Tool:** OpenAI Codex, Google Slides connector · **Model:** not recorded
+
+- **Output and use:** Updated the existing nine-slide TA deck in place: simple B09 before/fix/retest on slide 7, detailed notes, later-fix status on slide 4, separate local test/device evidence in slide 6 notes, and review/open-timer TODO on slide 9. Other findings and unrelated user slide edits remain. Clip paths are in notes; clips were not uploaded or embedded. Branch-per-distinct-fix or small related group was explained as a recommendation, not imposed as team policy.
+- **Verification and limits:** Full native before/after readback matched all text and notes changes; all slide IDs, count, element sizes and transforms remain. Unaffected slides are unchanged. Fresh native thumbnails of changed visible slides 4/7/9 were visually inspected with no overflow. PDF export failed because the connector returned an unmaterialized reference; native thumbnails were used and old PDF snapshots marked stale. Local output checker ran. No new application test, fix, merge, Wiki publication, external message or submission occurred in this deck edit.
+- **Errors/revisions:** Preview download initially hit sandbox DNS restrictions; the authorized read succeeded with escalation. No incorrect test outcome or timer-jump closure was added. Human acceptance, provider quality and fix PR remain pending; repair cost not recorded.
+
+Prompt, verbatim:
+
+```text
+Ok then can you update the PPT so we can briefly talk about this. Make it simpel like the rest of the slides. Also, are we going ot mak these focused branches for every single bug/fix
+```
+
+
+### B09 slide clarity revision — October 20, 2026
+
+- **Human feedback:** Injoon found the combined slide unclear: the process did not explicitly mention writing the spec and appeared to be part of the overall findings.
+- **Output and use:** Split the existing findings/fix slide into findings-only slide 7 and a dedicated B09 process slide 8, reusing its native text-only layout. Four steps say Write spec, Add failing test, Fix code and Retest. Detailed spec/order/results/clip paths and the un-reproduced timer limit stay in the new notes. Updated the testing-note cross-reference. The deck now has 10 slides; no new course requirement or application result is claimed.
+- **Verification:** Native final readback matches the new process and notes, slide order is correct, and unrelated slides are unchanged. All ten native previews were inspected; a final wording repair made the Write spec/Add failing test actions explicit and its preview was rechecked. Structural checker reports zero issues. Existing PDF export limitation remains; native previews provide visual verification. No app tests, code fix, merge, Wiki publication, external message or submission occurred in this revision.
+- **Error/revision:** The first deck update was rejected because the connector catalog changed; readback confirmed no mutation. Refreshed the tool metadata and retried successfully. This was a connector failure, not human approval rejection. Repair cost is not recorded.
+
+Prompt, verbatim:
+
+```text
+But the way it is written doesn't mention like writing spec and the way it's layed out is not clear because it looks  like part of overall findings
+```

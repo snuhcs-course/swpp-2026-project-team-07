@@ -275,6 +275,8 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
       const whole = fullRedo.current;
       fullRedo.current = false;
       const { run: next, compare } = commitTake(deck, take, live.get().spoken, whole, model.stats?.coverage ?? null);
+      // OpenAI Codex, B09: each finished take must release its recorder before a redo.
+      setEngineKey(k => k + 1);
       hideRing();
       setBurst({ total: take.durationMs / 1000, compare: !!compare });
       setPhase('burst');

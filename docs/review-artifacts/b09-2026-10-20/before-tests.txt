@@ -1,0 +1,94 @@
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✖ B09: first redo after returning from review starts a fresh capture and preserves the original (20.965292ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✖ B09: successive redos use a new audio clock and support overwrite and keep current (9.235291ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✖ B09: cancelling a redo countdown preserves the saved take and permits the next redo (11.681417ms)
+react-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+✔ B09: repeated record taps while the native recorder prepares start only one capture (3.154458ms)
+✖ B09: holding redo restarts the full presentation and overwrite replaces its selected run (10.15225ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 1
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 335.751917
+
+✖ failing tests:
+
+test at tests/retry-recording.test.mjs:57:1
+✖ B09: first redo after returning from review starts a fresh capture and preserves the original (20.965292ms)
+  AssertionError [ERR_ASSERTION]: first redo must not reuse the finished capture
+
+  true !== false
+
+      at TestContext.<anonymous> (file:///Users/jun/Documents/ChatGPT/Software%20Development/project/outloud/worktrees/b09-retry-recording/mobile/tests/retry-recording.test.mjs:68:10)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/retry-recording.test.mjs:87:1
+✖ B09: successive redos use a new audio clock and support overwrite and keep current (9.235291ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+
+  + 'Redo slide 1. Hold 3 seconds to redo the whole presentation'
+  - 'Stop recording'
+
+      at TestContext.<anonymous> (file:///Users/jun/Documents/ChatGPT/Software%20Development/project/outloud/worktrees/b09-retry-recording/mobile/tests/retry-recording.test.mjs:97:12)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'Redo slide 1. Hold 3 seconds to redo the whole presentation',
+    expected: 'Stop recording',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/retry-recording.test.mjs:112:1
+✖ B09: cancelling a redo countdown preserves the saved take and permits the next redo (11.681417ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+
+  + 'Redo slide 1. Hold 3 seconds to redo the whole presentation'
+  - 'Stop recording'
+
+      at TestContext.<anonymous> (file:///Users/jun/Documents/ChatGPT/Software%20Development/project/outloud/worktrees/b09-retry-recording/mobile/tests/retry-recording.test.mjs:127:10)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'Redo slide 1. Hold 3 seconds to redo the whole presentation',
+    expected: 'Stop recording',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/retry-recording.test.mjs:145:1
+✖ B09: holding redo restarts the full presentation and overwrite replaces its selected run (10.15225ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+
+  + 'Redo slide 1. Hold 3 seconds to redo the whole presentation'
+  - 'Stop recording'
+
+      at TestContext.<anonymous> (file:///Users/jun/Documents/ChatGPT/Software%20Development/project/outloud/worktrees/b09-retry-recording/mobile/tests/retry-recording.test.mjs:162:10)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'Redo slide 1. Hold 3 seconds to redo the whole presentation',
+    expected: 'Stop recording',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
