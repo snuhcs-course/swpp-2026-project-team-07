@@ -3707,3 +3707,55 @@ Request, verbatim:
 ```text
 Fix those four issues and update PR #31. Keep the original prompts unchanged and don't merge it.
 ```
+
+## Coverage setup and first measurement — October 22, 2026
+
+**Contributor:** Injoon · **Tool:** OpenAI Codex · **Model:** GPT-6 (exact variant not recorded)
+
+### Prompt — verbatim
+
+```text
+I made changes. Check the changes and ask for any other uncertainties. Then set up coverage for mobile and backend, run the existing tests, and show me the results before you push.
+```
+
+### Clarifications
+
+Injoon assigned Jooyoung to mobile logic/storage, Jaewon to mobile screens/components, Seoyeon to backend logic/services and Injoon to backend API/runtime. The edited plan assigns manual testing to all four members; this is planned responsibility, not evidence of completed personal tests.
+
+Replies to the target/exclusion, CI and reviewer questions, verbatim and in order:
+
+```text
+Use these targets and exclusions
+```
+
+```text
+Enforce the proposed targets
+```
+
+```text
+Is it not recommended if the same person does it
+```
+
+- **Human decisions:** Approved line/branch targets of 85%/75% for mobile logic and backend logic, 70%/60% for mobile UI and 80%/70% for backend API/runtime, with the documented exclusions and CI enforcement. Codex recommended another teammate for final human review; the reviewer remains unassigned. Results must be shown before any push.
+- **Generated and retained:** Pinned c8 12.0.0 and coverage.py 7.16.2; source-map test loaders, full-file scope validation, grouped native metrics, threshold checks and CI artifacts. Application source and existing test assertions remain unchanged. The separate B09 branch stays outside this baseline.
+- **Errors and repairs:** Initial mobile validation needed canonical macOS temporary paths. An extracted transcript fragment initially mapped into the application source tree; a distinct helper module URL and original-relative import context isolate it. Independent AI review found incompatible mapping in spawned Node children, fixed by an inherited preload with parent/child validation; it also found .coveragerc hidden by an ignore rule and local dependency environments entering backend scope. Corrections narrow the ignore rule and exclude dependencies. Strict report validation exposed an unimported management command that coverage.py skipped; namespace-package discovery now retains it at zero. No application behavior repair is claimed. Repair cost: not recorded.
+- **Verification in progress:** Collector validation checks original TypeScript line mapping, spawned-child maps, missed branches and never-imported files. Three reporting/collection tests pass. An initial application run passed 548 mobile tests and 554 PostgreSQL tests; corrected full runs are in progress. Mobile type checking, lint (one existing warning) and Android JavaScript export passed. No device checks, live provider calls, human review, commit or push occurred. Final counts/coverage and separate AI review will be recorded below.
+
+
+### Final coverage result
+
+- **Corrected full runs:** 548 mobile tests passed with zero failures/skips; 554 PostgreSQL tests passed with zero failures/skips. Ordinary mobile tests also pass 548. Collector validation includes spawned children with matching mapped offsets and a helper-only transcript fragment; the complete original screen remains in scope. Three reporting/collector checks pass. Typecheck, lint (one existing warning), Android JavaScript export, backend system and migration-drift checks pass.
+- **Coverage:** Mobile logic 80.73% lines / 86.26% branches; mobile UI 61.78% / 70.89%; backend logic 94.67% / 87.84%; backend API/runtime 87.62% / 78.00%. Both mobile line targets are missed; targets/exclusions remain as approved. Mobile enforcement exits 1, backend enforcement exits 0. Reports remain available after failure. The final separate AI review found no remaining actionable blockers; the human reviewer remains unassigned.
+- **Retained evidence and limits:** [Counts, source scope and tooling hashes](testing-evidence/coverage-2026-10-22.json), screenshots and current Testing Documentation; full native reports/logs and pre-run approval/configuration snapshots remain local. The application matches `c4a3f48`; no app test assertions changed. A namespace-package command missing from initial report discovery is now included at zero. Prepared CI has not run remotely, and GitHub required checks remain unverified. No live provider calls, new phone tests, human acceptance, commit or push occurred.
+
+### Testing-only publication — October 22, 2026
+
+**Follow-up prompt — verbatim:**
+
+```text
+Ok can you do 1 and do 2 after we review the other documentaiton
+```
+
+- **Human decision:** Publish the reproducible testing/coverage setup and existing evidence now. Publish the separate Testing Documentation Wiki page after reviewing the other documentation.
+- **Generated and retained:** A testing-only snapshot based on merged PR #31 (`c4a3f48`). Coverage configuration, pinned dependencies, collectors/reporting tools, CI workflow, testing sources, existing screenshots/counts and this disclosure entry. Other unreviewed documentation stays in the existing local checkout. Original prompts, application source, test assertions and measured evidence are preserved.
+- **Verification:** All 17 tooling hashes match the recorded measurement. In the isolated snapshot, Node.js 24 collector validation and three Python 3.12 coverage-report tests pass. Relative testing links and application-source preservation checks pass. Dependencies were reused locally for these publication checks; no new full application run was needed. The existing full runs remain 548 mobile tests and 554 backend tests passing; both mobile line targets remain missed. The existing independent AI review covers the unchanged setup; publication scope was self-reviewed. Remote CI remains unverified before publication. No new phone tests, application fixes, human acceptance, Wiki publication or eTL submission is claimed.

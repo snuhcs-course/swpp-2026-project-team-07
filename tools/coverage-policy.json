@@ -1,0 +1,13 @@
+{
+  "approved_by": "Injoon",
+  "approved_on": "2026-10-22",
+  "application_baseline": "c4a3f48d2a635bb2edb44828c62fb286b55f8d94",
+  "ci_mode": "enforce",
+  "human_reviewer": null,
+  "groups": {
+    "mobile_logic": {"name": "Mobile logic and storage", "maintainer": "Jooyoung", "lines": 85, "branches": 75},
+    "mobile_ui": {"name": "Mobile screens and components", "maintainer": "Jaewon", "lines": 70, "branches": 60},
+    "backend_logic": {"name": "Backend logic and services", "maintainer": "Seoyeon", "lines": 85, "branches": 75},
+    "backend_api": {"name": "Backend API and runtime", "maintainer": "Injoon", "lines": 80, "branches": 70}
+  }
+}

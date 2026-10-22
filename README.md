@@ -117,6 +117,7 @@ docker compose exec api python manage.py makemigrations --check --dry-run
 ```
 
 - [Verification guide](docs/verification.md) covers local Python/SQLite commands, PostgreSQL concurrency tests, worker recovery and historical evidence.
+- Coverage: `npm run test:coverage` in `mobile/` requires Node.js 24 and Python 3.12. [Testing Documentation](docs/testing.md) gives backend commands, environment, targets and results. CI enforces `tools/coverage-policy.json` on pushes and pull requests, and saves reports when targets fail. The October 22 measurement passes all application tests and backend targets; both mobile line targets remain missed.
 - SQLite tests skip PostgreSQL-specific races. An Android JavaScript export does not establish APK, physical-device or human-usefulness results.
 
 ## Documentation
