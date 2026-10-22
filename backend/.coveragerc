@@ -1,0 +1,38 @@
+# AI-generated with OpenAI Codex, 2026-10-22.
+# Attribution: docs/ai-collaboration-prompts-iteration-2.md#coverage-setup-and-first-measurement--october-22-2026
+[run]
+branch = True
+source = .
+relative_files = True
+data_file = coverage/.coverage
+omit =
+    .venv/*
+    */.venv/*
+    venv/*
+    */venv/*
+    node_modules/*
+    */node_modules/*
+    */test_*.py
+    */tests.py
+    */tests/*
+    config/test_settings.py
+    rehearsals/migrations/0001_*.py
+    rehearsals/migrations/0002_*.py
+    rehearsals/migrations/0003_*.py
+    rehearsals/migrations/0005_*.py
+    rehearsals/migrations/0006_*.py
+    rehearsals/migrations/0007_*.py
+    rehearsals/migrations/0009_*.py
+    rehearsals/migrations/0010_*.py
+    rehearsals/migrations/0011_*.py
+
+[report]
+show_missing = True
+precision = 2
+include_namespace_packages = True
+
+[html]
+directory = coverage/html
+
+[json]
+output = coverage/coverage.json

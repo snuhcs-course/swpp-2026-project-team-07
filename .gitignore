@@ -22,3 +22,6 @@ local.properties
 /mobile/ios/
 /tmp/
 /output/
+coverage/
+.coverage
+.coverage.*
