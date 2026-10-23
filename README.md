@@ -8,7 +8,7 @@ An Android presentation rehearsal app that connects PDF slides, recordings, slid
 
 ## Current status
 
-Documentation baseline: merged PR31 (`c4a3f48`, October 20). The [current requirements status](docs/requirements-and-specifications.md#october-21-implementation-status), [Iteration 2 design](docs/design-iteration-2.md) and [Testing Documentation](docs/testing.md) distinguish merged features, separate fixes and remaining acceptance checks. B09’s first-Redo repair is published on `fix/retry-recording` and remains unmerged.
+The [requirements status](docs/requirements-and-specifications.md#iteration-2-implementation-status), [Iteration 2 design](Design-Documentation.md) and [Testing Documentation](docs/testing.md) describe merged PR31 (`c4a3f48`, October 20). B09's first-Redo fix remains on the separate `fix/retry-recording` branch.
 
 - **This copy has the redesigned mobile UI** (design prototype rebuild, October 14, 2026). See [REDESIGN.md](REDESIGN.md) for setup, the screen-to-feature map and verification limits.
 - **Iteration 2 is current.** Iteration 1 features were merged into `main` on October 11, 2026 (PRs #17–#21).
@@ -119,6 +119,7 @@ docker compose exec api python manage.py makemigrations --check --dry-run
 ```
 
 - [Verification guide](docs/verification.md) covers local Python/SQLite commands, PostgreSQL concurrency tests, worker recovery and historical evidence.
+- [Testing Documentation](docs/testing.md#environment-and-commands) gives reproducible commands for the published [coverage setup](https://github.com/snuhcs-course/swpp-2026-project-team-07/tree/testing-setup-documentation). The October 22 run passes all application tests and meets backend targets; mobile CI fails its two line-coverage targets. Reports remain available after failure.
 - SQLite tests skip PostgreSQL-specific races. An Android JavaScript export does not establish APK, physical-device or human-usefulness results.
 
 ## Documentation
@@ -126,7 +127,7 @@ docker compose exec api python manage.py makemigrations --check --dry-run
 | Need | Document |
 | --- | --- |
 | Requirements and implementation context | [Requirements and current status](docs/requirements-and-specifications.md) · [Story-to-Test Matrix](docs/story-test-matrix.md) · [GitHub Wiki](https://github.com/snuhcs-course/swpp-2026-project-team-07/wiki) |
-| Design and TA review artifacts | [Current Iteration 2 design](docs/design-iteration-2.md) · [historical Iteration 1 design](Design-Documentation.md) and [export tools](docs/design-tools/README.md) |
+| Design and TA review artifacts | [Current Iteration 2 design](Design-Documentation.md) · [historical Iteration 1 design](Design-Documentation-Iteration-1.md) and [export tools](docs/design-tools/README.md) |
 | Setup and repository layout | [Local development guide](docs/local-development.md) |
 | Data boundaries and recovery | [API contract](docs/api-contract.md) · [rehearsal review](docs/rehearsal-review.md) |
 | Feedback behavior and quality limits | [AI feedback reference](docs/ai-feedback.md) · [controlled evaluation](docs/feedback-evaluation.md) |
@@ -136,6 +137,6 @@ docker compose exec api python manage.py makemigrations --check --dry-run
 | Meeting records | [Meeting-log workflow](docs/meeting-log-workflow.md) · [reusable template](docs/daily-standup-meeting-log-template.md); Wiki publication follows approval |
 | Historical setup rationale | [Original scaffold walkthrough](docs/setup-explained.md); its scaffold-only status and branch instructions describe the earlier stage |
 
-- Existing design and requirements PDFs are Iteration 1 snapshots. Export current Wiki deliverables separately for Iteration 2; publication does not establish eTL submission.
+- Existing design and requirements PDFs describe Iteration 1. Iteration 2 needs current exports and a separate eTL submission.
 - Preserve dated evidence and confirm current task ownership.
 - Expo template assets/license remain under `mobile/`.

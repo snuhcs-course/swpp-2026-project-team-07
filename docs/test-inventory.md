@@ -2,7 +2,7 @@
 
 Updated October 21, 2026 · Current automated suite from PR31, merged main `c4a3f48`.
 
-[CI run](https://github.com/snuhcs-course/swpp-2026-project-team-07/actions/runs/39344748984): **548 mobile tests passed; 554 backend tests OK on PostgreSQL**. Type/lint, Android JavaScript export and backend system/migration checks passed. Read [Testing Documentation](testing.md) for commands, dates and limits.
+[CI run](https://github.com/snuhcs-course/swpp-2026-project-team-07/actions/runs/39344748984): **548 mobile tests passed; 554 backend tests OK on PostgreSQL**. Type/lint, Android JavaScript export and backend system/migration checks passed. See [Testing Documentation](testing.md) for commands, dates and limits.
 
 Unit tests check isolated logic. Integration tests exercise connected modules, storage or API/worker boundaries. Component/UI tests use simulated native interfaces. Use separate device records for microphone, playback and Android behavior.
 
@@ -110,6 +110,6 @@ Unit tests check isolated logic. Integration tests exercise connected modules, s
 
 Counts include parameterized cases. Full test names and assertions remain in the linked files. CI reports execution results; this file groups the existing source tests. [Story-to-Test Matrix](story-test-matrix.md) lists remaining acceptance checks.
 
-## Separate B09 branch
+## B09 Branch
 
-[Five retry-recording regressions](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/3ae9d162d53088a129bffaf15a915400480a6483/mobile/tests/retry-recording.test.mjs) passed on October 20. The full branch suite passed 553 mobile tests; this is a separate local run, not the 548-test main CI or measured coverage. Native audio and UI boundaries use fixtures. [Spec and test logs](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/3ae9d162d53088a129bffaf15a915400480a6483/docs/b09-retry-recording.md).
+[Five retry-recording regressions](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/3ae9d162d53088a129bffaf15a915400480a6483/mobile/tests/retry-recording.test.mjs) passed on October 20. The separate local branch run passed 553 mobile tests. October 20 main CI remains 548 tests and collected no coverage. October 22 local coverage is recorded in [Testing Documentation](testing.md#october-22-local-coverage). Native audio and UI boundaries use fixtures. [Spec and test logs](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/3ae9d162d53088a129bffaf15a915400480a6483/docs/b09-retry-recording.md).

@@ -1,223 +1,184 @@
 # Testing Documentation
 
-Team 07 · Iteration 2 · Updated October 21, 2026
+Team 07 · Iteration 2 · October 23, 2026
 
-**Code baseline:** PR #31. The manual walkthrough took place on October 19, before the October 20 merge into main (`c4a3f48`). The exact installed app commit remains unrecorded. The recorded demo uses PR31; B09 has separate October 20 branch/device evidence below; other fixes need their own version and retest evidence.
+[Test Inventory](test-inventory.md) lists test files. [Story-to-Test Matrix](story-test-matrix.md) maps tests to acceptance criteria.
 
-This report brings together the test plan, verified CI results, manual findings and remaining checks. The [Test Inventory](test-inventory.md) lists existing test files. The [Story-to-Test Matrix](story-test-matrix.md) maps requirements to existing evidence and remaining acceptance checks.
-
-## 1. Test responsibility and schedule
+## 1. Test Responsibility & Schedule (Iteration 2)
 
 ### Plan
 
-| Area | Tools / test boundary | Maintainer |
-| --- | --- | --- |
-| Backend logic and validation | Django test runner; isolated service tests | Team to confirm |
-| Backend API, persistence and concurrency | Django/DRF tests with PostgreSQL; controlled provider responses | Team to confirm |
-| Mobile logic and storage | Node test runner; mocks/fakes for network and native interfaces | Team to confirm |
-| Mobile screens and hooks | React test renderer and native test loaders | Team to confirm |
-| Physical Android walkthrough | Manual checks, recording/screenshots and issue records | Team to confirm individual case executors |
+| Component | Test maintainer |
+| --- | --- |
+| Mobile logic and storage | Jooyoung |
+| Mobile screens and components | Jaewon |
+| Backend logic and services | Seoyeon |
+| Backend API and runtime | Injoon |
+| Manual Android testing | All four members |
 
-CI runs on pushes and pull requests. Its jobs run mobile checks/export and backend checks/migrations/tests. The repository's agent guidance calls for relevant tests when behavior changes and reuse of results for unchanged code. A regression test should demonstrate a fix where a repeatable automated check fits the defect. The team still needs to confirm named maintainers and its human merge-approval policy; no protected-branch rule is claimed here.
+Maintainers write and maintain tests for new or changed behavior and regression fixes. Coordinate integration tests that span components.
+
+Run CI on each push and pull request. Before merge, require mobile type/lint checks, collector validation, tests, coverage thresholds and Android JavaScript export; require backend system/migration checks, coverage-tool tests, application tests and coverage thresholds. Retain reports on failure. Rerun affected suites after changes and update results before each iteration submission.
 
 ### Results
 
-| Date / target | Activity | Status |
-| --- | --- | --- |
-| October 19 | Galaxy S25 exploratory walkthrough | Findings recorded in section 3 |
-| October 20 | Merged-main automated checks | Passed; CI evidence in section 2 |
-| Before the October 21 TA meeting | Present the demo and testing findings, including B09 | B09 evidence recorded below; demo video link still pending |
-| October 22, internal target | Complete coverage measurement and testing records | Pending |
-| October 23, 23:59 KST | Submit Iteration 2 Testing Documentation PDF with the required package | Pending |
+Main CI passed on October 20. [October 22 coverage CI](https://github.com/snuhcs-course/swpp-2026-project-team-07/actions/runs/39718480282) passed the backend job; the mobile job failed its line-coverage targets. GitHub merge enforcement remains unverified.
 
-Named test maintainers and per-case executors still need confirmation. The internal targets come from the current team schedule; October 23 is the official submission deadline.
-
-## 2. Unit and integration testing
+## 2. Unit Testing & Integration Testing (starting from Iteration 2)
 
 ### Plan
 
-Test the recording timeline, speech-to-slide alignment, PDF/audio storage, evidence validation, scoring, settings/corrections, feedback and Q&A. Test normal flows and relevant error, boundary and recovery cases. Component/UI tests use simulated audio, PDF and lifecycle interfaces; use the physical phone for native behavior. Provider fixtures test application contracts without establishing recognition accuracy or useful feedback.
+Test recording timelines, speech-to-slide alignment, PDF/audio storage, evidence validation, scoring, settings/corrections, feedback and Q&A. Include normal, error, boundary and recovery cases.
 
-Use Node.js 24 and Python 3.12 with the committed lockfiles. CI uses PostgreSQL 16-alpine. See the [local development guide](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/c4a3f48d2a635bb2edb44828c62fb286b55f8d94/docs/local-development.md) for Python setup, Android JDK/SDK and services, and the [CI workflow](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/c4a3f48d2a635bb2edb44828c62fb286b55f8d94/.github/workflows/checks.yml) for its exact environment.
+**Frameworks:** mobile logic/storage uses the Node test runner with native/network mocks and fakes. Screen/component tests add React test renderer and custom native loaders. Both groups use [c8](https://github.com/bcoe/c8#sourcemap-support) 12.0.0. Both backend groups use Django's test runner, `unittest.mock`, provider fixtures and a disposable PostgreSQL test database; API tests use DRF request-response checks. Backend coverage uses [coverage.py](https://coverage.readthedocs.io/en/latest/branch.html) 7.16.2.
 
-From the repository root, run each block separately:
+#### Coverage targets
+
+| Component | Source scope | Target: line / branch | Reason |
+| --- | --- | --- | --- |
+| Mobile logic and storage | `mobile/src/**/*.ts` | 85% / 75% | Recording, saved-take selection and recovery need strong coverage. |
+| Mobile screens and components | `mobile/src/**/*.tsx` | 70% / 60% | Tests simulate native interfaces and lifecycle behavior; phone checks cover microphone, playback and Android behavior. |
+| Backend logic and services | `backend/rehearsals/services/**/*.py`, plus `models.py`, `limits.py` and `tasks.py` under `backend/rehearsals/` | 85% / 75% | Evidence validation, scoring and persistence errors can corrupt feedback or saved results. |
+| Backend API and runtime | Remaining application Python under `backend/` | 80% / 70% | Request/error paths need strong checks; configuration and operational paths need extra setup. |
+
+Include untested files at zero coverage, including application code replaced by mocks. Exclude dependencies, build output, generated native projects, type declarations, tests/helpers and generated schema migrations. Include handwritten repair logic and mixed schema/data migrations. The [file-scope record](testing-evidence/coverage-2026-10-22.json) lists exact inclusions/exclusions.
+
+Calculate group coverage from summed covered/total counts across files. Use the union of unit/integration execution so shared lines count once. c8 uses V8 line/block metrics; coverage.py uses statement/branch metrics.
+
+#### Environment and commands
+
+Use Node.js 24.20.0, Python 3.12.13 and Docker. The [coverage snapshot](https://github.com/snuhcs-course/swpp-2026-project-team-07/tree/f0d7148c23a1f754f54b18a86f6f4a581856b356), `f0d7148c23a1f754f54b18a86f6f4a581856b356`, contains the coverage tooling and lockfiles for application baseline `c4a3f48`. Clone it into a new directory:
+
+```sh
+git clone --no-checkout https://github.com/snuhcs-course/swpp-2026-project-team-07.git outloud-iter2-coverage
+cd outloud-iter2-coverage
+git checkout --detach f0d7148c23a1f754f54b18a86f6f4a581856b356
+python3.12 -m venv .venv
+. .venv/bin/activate
+```
+
+Start a separate PostgreSQL 16 instance. Its initial role can create test databases:
+
+```sh
+docker run --detach --name outloud-iter2-coverage-db \
+  --publish 127.0.0.1:55432:5432 \
+  --env POSTGRES_DB=outloud \
+  --env POSTGRES_USER=outloud \
+  --env POSTGRES_PASSWORD=outloud-local-only \
+  postgres:16-alpine
+docker exec outloud-iter2-coverage-db pg_isready -U outloud -d outloud
+```
+
+Repeat the readiness check until PostgreSQL reports that it accepts connections. Start each check block below from the cloned repository root with the virtual environment active. Export these values for backend commands; blank provider keys override `.env` credentials. The [local development guide](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f0d7148c23a1f754f54b18a86f6f4a581856b356/docs/local-development.md) covers application setup.
+
+```sh
+export POSTGRES_HOST=127.0.0.1
+export POSTGRES_PORT=55432
+export POSTGRES_DB=outloud
+export POSTGRES_USER=outloud
+export POSTGRES_PASSWORD=outloud-local-only
+export DJANGO_DEBUG=1
+export OPENAI_API_KEY= GEMINI_API_KEY= ELEVENLABS_API_KEY=
+```
+
+Mobile checks and coverage:
 
 ```sh
 cd mobile
 npm ci
-npm run check
+npm run typecheck
+npm run lint
+node tools/validate-coverage.mjs
+npm run test:coverage
 npm run bundle:android
 ```
 
-With the backend Python environment activated and a disposable PostgreSQL test database configured:
+Backend checks and coverage:
 
 ```sh
 cd backend
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-test.txt
+python -m unittest discover -s ../tools -p 'test_coverage_report.py' -v
 python manage.py check
 python manage.py makemigrations --check --dry-run
 python manage.py migrate
-python manage.py test
+python -m coverage run manage.py test --noinput
+python -m coverage json
+python -m coverage html
+python ../tools/coverage_report.py backend --check
 ```
 
-The PostgreSQL role needs test-database creation permission. Configure `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`, `POSTGRES_USER` and `POSTGRES_PASSWORD` for that disposable environment. Use blank provider keys for automated fixture runs. Do not run migrations against shared data as part of test setup. For a local SQLite alternative, use `--settings=config.test_settings`; record its PostgreSQL-only skips rather than treating it as concurrency evidence.
-
-Coverage collection is not configured in the inspected CI workflow. Choose client/service or layer-specific targets, tools and exclusions before measuring, and retain submitted targets if they change. The team has not yet confirmed targets or measured percentages. Generated native/build output, dependencies and test helpers are proposed exclusions, pending agreement; no exclusions have been applied to a report.
+Each component directory receives `coverage/groups.json` and `coverage/groups.html`. Native reports: `mobile/coverage/index.html` and `backend/coverage/html/index.html`. Coverage checks return 1 after generating reports if a group misses a target.
 
 ### Results
 
-**Date:** October 20, 2026, KST · **Commit:** `c4a3f48d2a635bb2edb44828c62fb286b55f8d94` · **Run:** [GitHub Actions 39344748984](https://github.com/snuhcs-course/swpp-2026-project-team-07/actions/runs/39344748984).
+#### October 22 local coverage
 
-| Check / command | Actual result | Evidence |
-| --- | --- | --- |
-| Mobile `npm run check` | 548 passed; 0 failed; 0 skipped. Type checking passed; lint passed with an existing warning. | [Mobile job](https://github.com/snuhcs-course/swpp-2026-project-team-07/actions/runs/39344748984/job/118374547570) |
-| Mobile `npm run bundle:android` | Passed JavaScript export; this is not an APK/device test. | Same mobile job |
-| Backend `python manage.py test` | 554 tests OK on PostgreSQL; no skips reported. | [Backend job](https://github.com/snuhcs-course/swpp-2026-project-team-07/actions/runs/39344748984/job/118374547787) |
-| Backend system check | No issues | Same backend job |
-| Migration-drift check / fresh migrations | No changes detected; migrations applied | Same backend job |
+**Date:** October 22, 2026, KST · **Application baseline:** [merged PR #31](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/31), `c4a3f48d2a635bb2edb44828c62fb286b55f8d94` · **Executor:** Codex.
 
-| Component | Coverage target | Actual coverage | Next action |
+B09's separate fix branch is excluded from these test counts and coverage results.
+
+**Environment:** macOS, Node.js 24.20.0, Python 3.12.13, PostgreSQL 16-alpine. Commands: the coverage blocks above. [Configuration hashes and file scope](testing-evidence/coverage-2026-10-22.json) identify the measured setup.
+
+| Suite | Passed | Failed | Skipped |
 | --- | --- | --- | --- |
-| Mobile logic, storage and UI | Team to confirm by Iteration 2 close | Not measured | Select tools/targets; collect report and screenshot |
-| Backend services and API | Team to confirm by Iteration 2 close | Not measured | Select tools/targets; collect report and screenshot |
+| Mobile | 548 | 0 | 0 |
+| Backend, PostgreSQL | 554 | 0 | 0 |
 
-Use the [Test Inventory](test-inventory.md) to find source cases and the [Story-to-Test Matrix](story-test-matrix.md) to identify acceptance gaps. Tests passing does not close the separate device, quality or requirement decisions in the matrix. Do not add the older baseline counts to the current suite totals. Earlier integration records include a 549-mobile-test snapshot; cleanup removed one obsolete component test, leaving 548. The local phone-demo checkout's 556 backend tests describe separate local fixes, not this 554-test main run.
+Percentages: **line / branch**.
 
-[Earlier integration verification](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/c4a3f48d2a635bb2edb44828c62fb286b55f8d94/docs/scribe-only-integration-verification.md) · [Final cleanup verification](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/c4a3f48d2a635bb2edb44828c62fb286b55f8d94/docs/scribe-integration-cleanup-verification.md).
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+| --- | --- | --- | --- | --- | --- |
+| Mobile logic and storage | Node; mocks/fakes; c8 | 85% / 75% | 80.73% / 86.26%; **Fail: lines** | 2026-10-22 | `npm run test:coverage`; [report](testing-evidence/mobile-native-coverage-2026-10-22.jpg) |
+| Mobile screens and components | Node; React test renderer; native loaders; c8 | 70% / 60% | 61.78% / 70.89%; **Fail: lines** | 2026-10-22 | `npm run test:coverage`; [report](testing-evidence/mobile-native-coverage-2026-10-22.jpg) |
+| Backend logic and services | Django; `unittest.mock`; coverage.py | 85% / 75% | 94.67% / 87.84%; **Pass** | 2026-10-22 | `python -m coverage run manage.py test --noinput`; [report](testing-evidence/backend-native-coverage-2026-10-22.jpg) |
+| Backend API and runtime | Django/DRF; `unittest.mock`; coverage.py | 80% / 70% | 87.62% / 78.00%; **Pass** | 2026-10-22 | `python -m coverage run manage.py test --noinput`; [report](testing-evidence/backend-native-coverage-2026-10-22.jpg) |
 
-### Reported AI and data-processing repairs
+**Mobile coverage report (c8)**
 
-Injoon supplied Seoyeon’s findings dated October 20 that summarize earlier checks. Report authorship does not establish who implemented each fix. The table preserves those reported results. Original run dates, revisions, commands and evidence links still need confirmation. These checks are separate from the October 19 Galaxy S25 session and the verified CI totals above.
+![Mobile c8 coverage report, October 22](testing-evidence/mobile-native-coverage-2026-10-22.jpg)
 
-| Check | Type | Reported result | Evidence still needed |
+**Backend coverage report (coverage.py)**
+
+![Backend coverage.py report, October 22](testing-evidence/backend-native-coverage-2026-10-22.jpg)
+
+Screenshots show whole-component totals; the table separates architectural groups. The backend headline, 92.05%, combines statement and branch opportunities.
+
+**Shortfall:** mobile tests leave feedback/media hooks and parts of Home/AppShell/Upload unexecuted. Add tests for these paths and rerun coverage. Mobile coverage exited 1; backend coverage exited 0.
+
+Type checking, Android JavaScript export, backend system/migration checks, collector validation and three coverage-tool tests passed. Lint reported one existing warning. The export verifies JavaScript bundling; device behavior requires phone tests. [Earlier CI and detailed test records](testing-evidence/iteration-2-supporting-records.md).
+
+#### Additional focused checks
+
+A separate October 22 run on `f1af9dd` reports **456 backend passes, 19 PostgreSQL-dependent skips under SQLite, and 477 client passes**, with zero failures/errors. Its narrower scopes, tools and targets differ from the full-suite run above. Companion logs/reports were not supplied. [Focused-run results and limits](testing-evidence/iteration-2-supporting-records.md#seoyeon-focused-automated-checks).
+
+## 3. AI Module Testing (starting from Iteration 3)
+
+To be completed in Iteration 3.
+
+## 4. Acceptance Testing (starting from Iteration 3)
+
+Plan to be completed in Iteration 3; results in Iteration 4.
+
+## 5. Alpha & Beta Testing (Iteration 5)
+
+To be completed in Iteration 5.
+
+## Supplementary Manual Testing
+
+### Plan
+
+All four members check import/settings, recording/transcription, feedback/evidence playback, retake/comparison, spoken Q&A and reopening saved results. Record device/OS, build, date, tester, steps, expected/actual behavior, outcome and evidence.
+
+### Results
+
+| Contributor | Test date (2026) | Device | Recorded outcome |
 | --- | --- | --- | --- |
-| Feedback evidence validation repair | Saved-job replay and backend tests | Saved job 56 recovered one finding with zero rejections and no new provider call. A focused PostgreSQL suite passed 139 tests. | Fix commit, replay record and original test output |
-| Gemini schema compatibility repair | Live-provider integration | Four HTTP 200 calls over two fixtures; backend validation still rejected an invalid finding. | Fix commit and evaluation output |
-| Cue-length policy repair | Live integration and manual device observation | A seven-slide deck produced 17 validated cues; longest 19 words. Cues appeared on a phone. | Fix commit, run date, phone/tester and screenshot |
-| Extracted PDF NUL-character repair | Automated PostgreSQL regression | The test reproduced the database failure before the fix and passed afterward. | Test case, fix commit and before/after output |
+| Injoon | October 19 | Galaxy S25 | [B01–B09](testing-evidence/iteration-2-supporting-records.md#october-19-manual-testing): nine walkthrough findings. |
+| Jaewon (JJ) | Not recorded | Galaxy S22 | [JJ01–JJ06](testing-evidence/iteration-2-supporting-records.md#jaewon-galaxy-s22-findings): navigation/alignment/setup/numbering observations and UI/onboarding proposals. |
+| Jooyoung | October 23 | Galaxy Tab S7 FE | [JY01–JY05](testing-evidence/iteration-2-supporting-records.md#jooyoung-pdf-upload-failure): two PDF-upload HTTP 500 responses with a surrogate-character encoding error, plus related UI/retry observations. |
+| Seoyeon | October 15–16 | Phone model not recorded | [SY01–SY07](testing-evidence/iteration-2-supporting-records.md#seoyeon-phone-observations): cues and short playback/transcription worked after initial failures; visit display, controls, corrections, playback and Q&A had reported issues. |
 
-The teammate describes these as fixed in the earlier work. Their inclusion in the demo/submission revision still needs commit evidence. These results do not close B01–B09. The 139-test focused suite is an earlier subset/run, not an additional 139 tests to add to the 554-test CI total.
+Exact installed builds and Android versions are unrecorded; per-case evidence is incomplete. Jooyoung's log/video/input PDF are referenced but were not supplied; the causal link between the upload failure and later UI symptoms needs investigation. No complete personal retest of Seoyeon's fixes is recorded. Jaewon's backward-navigation restriction and onboarding suggestions remain proposals.
 
-### Exploratory provider experiment
-
-The same supplied notes report an eight-pair comparison of normal and compact feedback requests:
-
-| Measure | Normal requests | Compact requests |
-| --- | --- | --- |
-| Median API latency | 15.607 seconds | 18.443 seconds |
-| Usage-derived warm-cache cost | USD 0.00674171 | USD 0.00679283 |
-| Reviews retaining accepted findings | 7 of 8 | 7 of 8 |
-
-Compact requests reduced input tokens by 62.9%. Cost figures come from returned usage, rather than confirmed invoices. AI reviewers supplied the quality judgments; human usefulness remains unmeasured.
-
-Two compact responses exhausted the original 2,500-token output allowance. A 10,000-token rerun completed without truncation, but the application defaults stayed unchanged and generated content also varied between runs. Record this as an experiment outcome, not a completed application fix.
-
-The notes recommend reverting the compact format. That recommendation needs a team decision and, if implemented, checks of feedback generation, evidence handling and saved-result compatibility. Original experiment dates, versions, commands and output links remain to be attached.
-
-Source for these two subsections: teammate personal notes supplied October 20, “PR31: Bugs and Improvements for Testing Documentation”. The notes themselves report no new test execution when preparing the summary.
-
-## 3. Manual testing
-
-### Plan
-
-Record device/OS, build/commit, date, executor, steps, expected/actual behavior, outcome and a screenshot/video timestamp for each checked flow. Cover import/settings, recording/transcription, feedback/evidence playback, retake/comparison, spoken Q&A and reopening saved results. These are current exploratory checks, not the later frozen UAT plan.
-
-### Results
-
-| Session field | Recorded information |
-| --- | --- |
-| Test date | October 19, 2026 |
-| Device | Samsung Galaxy S25 |
-| Connection | USB to Injoon's Mac |
-| Version | PR31 application; exact installed commit/build pending |
-| Method | Exploratory manual walkthrough and demo recording |
-| Reporter | Injoon; per-case operators/other participants pending |
-| Android version | Not recorded |
-| Evidence | Demo video finished; file/link and timestamps pending |
-
-Injoon confirmed the date and device on October 20. The following findings come from his walkthrough report. The session has no recorded pass result for every other feature. Detailed per-case steps, expected/actual results and evidence references remain incomplete.
-
-| ID | Finding | Type | Suggested priority | Status |
-| --- | --- | --- | --- | --- |
-| B01 | Presentation swipes move too fast. | Usability | Medium | Open |
-| B02 | Scores and unexpected components appear after importing slides. | UI-state bug | High | Open |
-| B03 | Time display and duration slider are cramped. | Layout / usability | Medium | Open |
-| B04 | Cues are difficult to find without scrolling. | Improvement | Low–medium | Proposed |
-| B05 | Edit time and audience controls are difficult to tap. | Interaction bug | High | Open |
-| B06 | Overall-score-unavailable text overflows its circle. | Layout bug | Medium | Open |
-| B07 | Opening slide feedback lacks the expected transition animation. | Consistency improvement | Low | Expected behavior to confirm |
-| B08 | Feedback takes time to arrive; observation is outside the video. | Performance observation | Unrated | Duration not measured |
-| B09 | Retry reports a take already started; another retry freezes at 0:00 then jumps to 0:07. | Recording / retry bug | High | First-Redo fix verified on Galaxy S25; timer jump not reproduced |
-
-Priorities are recommendations. The team has not assigned individual findings. B09 contains two reported symptoms. The first-Redo error is reproduced and fixed on a local branch; the fix has now passed focused Galaxy S25 retry, Keep/Overwrite and selected-audio playback checks. The exact native timer jump was not reproduced and is not closed as fixed. For B08, measure the wait and record the loading/error UI before assigning a latency threshold failure.
-
-### Selected bug and retest record
-
-B09 was selected on October 20. Preserve the October 19 PR31 demo as the original observation. The following results belong to the local fix branch; they are not merged-main CI results or human acceptance.
-
-| Field | Record |
-| --- | --- |
-| Bug ID and tester | B09; original report by Injoon; new checks operated by Codex |
-| Steps | Record and stop; return from Review; confirm the first Redo |
-| Expected / actual before fix | A fresh recording should start; the regression instead displays “This take has already started.” |
-| Before evidence | Baseline `c4a3f48`: first-Redo error reproduced on Galaxy S25; 30-second before excerpt captured. Five new automated tests: 4 fail, 1 passes. Original main demo timestamp still needed. |
-| Cause and fix | Successful stop left the single-use capture engine mounted in `done`; remount after saving. [Published fix branch](https://github.com/snuhcs-course/swpp-2026-project-team-07/tree/fix/retry-recording), public code/evidence commit `3ae9d16` (same code as original local `e423010`); no merge. |
-| Regression check | Five B09 tests pass: first redo and original preservation, repeated retakes/timer wiring, cancellation, duplicate taps, full-presentation redo. Full mobile check: 553 pass; typecheck/lint pass with one existing warning; Android export passes. |
-| Device retest | Completed after reconnection on October 20: Galaxy S25, Android 17, fix `e423010`; three consecutive retakes including a full redo across two slides succeed. Keep current retains original selection; Overwrite selects new 9-second take; selected playback advances to 0:03 / 0:09. The exact 0:00-to-0:07 freeze was not reproduced on baseline or fix and stays open. |
-| After evidence | Automated logs plus 30-second before/after device clips and screenshots available in the local B09 evidence pack; audible quality not assessed. |
-
-[Published B09 spec, commands and test logs](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/3ae9d162d53088a129bffaf15a915400480a6483/docs/b09-retry-recording.md). Native audio/UI boundaries in the automated tests are fixtures; timer assertions inject durations. The separate agent-operated phone retest uses the real native recorder/player with backend services offline. Device UI selection/playback passes; unselected-file/ID retention remains automated SQLite evidence, with no private database export. Device clips and speaker notes remain in the private course-workspace B09 evidence pack; no public clip link has been published. The linked branch spec identifies the files and their limits. Separate AI review found no blocking findings; human review is pending. No other B01–B09 fix or new human retest is claimed.
-
-## 4. AI module testing — Iteration 3
-
-### Plan
-
-To be completed in Iteration 3: commit at least 30 frozen cases with expected behavior/reference labels and thresholds before running the evaluation. Record models/prompts/settings, judgment method and commands. Discuss uncertain ground truth with the TA. Existing exploratory speech/provider records keep their original scope and dates.
-
-### Results
-
-Formal frozen-set results are not yet recorded. The teammate's earlier checks and AI-reviewed experiment remain exploratory evidence. Planned evaluations include:
-
-- Human rubric ratings for feedback correctness, supporting evidence, usefulness, false positives and missed issues.
-- Independent human scores on the same recordings, compared with the AI's criterion selections and overall/per-slide scores.
-- Repeated evaluations of unchanged recordings to measure consistency and identify unsupported or duplicate deductions.
-- Replay of the rejected citation cases: an omitted word within a cited speech range and an unsupported slide-fact reference. Invalid evidence should continue to fail validation.
-
-Agree the method, reviewers and thresholds before running these evaluations. Their results remain pending.
-
-## 5. Acceptance testing — plan in Iteration 3, results in Iteration 4
-
-### Plan
-
-Choose at least five UAT stories with observable criteria and tester procedures, then freeze the stories after Iteration 3. The current matrix is preparation, not a claim that this plan has been approved or frozen.
-
-### Results
-
-To be completed in Iteration 4 with tester, date, pass/fail and deviations.
-
-## 6. Alpha and beta testing — Iteration 5
-
-### Plan
-
-To be completed in Iteration 5: recruit testers, define scenarios, distribution/version and issue handling. Run course alpha first, fix serious issues, then beta with external users on their own devices without the team present. Preserve the course's full-week beta period.
-
-### Results
-
-No alpha/beta participation or results are claimed.
-
-## 7. Remaining work before the Iteration 2 submission
-
-- Confirm test maintainers, component coverage targets, tools and exclusions.
-- Add measured coverage and screenshots, then compare results against the agreed targets.
-- Attach the completed demo video and add per-case manual results/timestamps.
-- Obtain teammate review and integrate B09 if approved; rerun affected checks after integration. Keep its unreproduced timer symptom open.
-- Link the teammate's reported checks to their original revisions, dates and test artifacts.
-- Keep open requirement differences visible and export this page to PDF at iteration close.
-
-## Sources and AI assistance
-
-Course requirements: Testing Documentation Guidelines, eTL file 9410502, read October 20. The guideline requires English Wiki Plan/Results sections. Preserve submitted targets and explain later revisions.
-
-Implementation/test evidence: pinned repository and CI links in section 2. Manual evidence: Injoon's findings and date/device clarification received October 20. Additional reported checks: Seoyeon’s findings supplied October 20; original execution details remain to be attached.
-
-OpenAI Codex organized the evidence and edited the English report. The B09 follow-up records a local AI-assisted fix and automated checks; the follow-up also records focused native-device checks, but does not establish provider evaluation, audible quality or human approval. This October 21 edit reuses the cited results; it adds no application test run. The submission PDF remains pending.
+On October 20, Codex verified B09's first-Redo fix on a separate branch: five regression tests and agent-operated Galaxy S25 checks passed. The fix remains unmerged. The reported 0:00-to-0:07 timer jump remains open and unreproduced; audible quality was not assessed.

@@ -1,24 +1,26 @@
 # Story-to-Test Matrix
 
-Updated October 21, 2026 · Requirements baseline: repository v2.0 (October 9). PR31 case links point to `f1af9dd`; merged-main CI ran `c4a3f48`.
+Reported bugs are scheduled for Iteration 3 follow-up. Numerical performance, recognition, feedback-quality and cost targets will come from Iteration 3 pilot measurements; owners, exact dates and target values remain unset.
 
-[CI](https://github.com/snuhcs-course/swpp-2026-project-team-07/actions/runs/39344748984) passed 548 mobile and 554 PostgreSQL backend tests. The rows below distinguish automated evidence from remaining acceptance checks. The final-product requirements do not mean every feature is due in Iteration 2. No requirement is marked accepted from CI alone.
+Updated October 23, 2026 · Acceptance-criteria baseline: repository v2.0 (October 9); current requirements: v3.0 (October 23). PR31 case links point to `f1af9dd`; merged-main CI ran `c4a3f48`.
 
-Use this page to select current increment scope and record manual/quality results. See [Testing Documentation](testing.md) for findings and execution records.
+[CI](https://github.com/snuhcs-course/swpp-2026-project-team-07/actions/runs/39344748984) passed 548 mobile and 554 PostgreSQL backend tests. The rows below distinguish automated evidence from remaining acceptance checks. The final-product requirements do not mean every feature is due in Iteration 2. The team has not recorded acceptance from these automated results.
 
-## B09 follow-up: tested October 20, published October 21
+Use this page to choose increment scope and record manual/quality results. [Teammate findings](testing-evidence/iteration-2-supporting-records.md#jaewon-galaxy-s22-findings) add device observations and proposals; exact builds, complete case evidence and final retests remain incomplete. See [Testing Documentation](testing.md) for execution records.
+
+## B09 Follow-up (Tested October 20; Published October 21)
 
 Published October 21: [fix/retry-recording](https://github.com/snuhcs-course/swpp-2026-project-team-07/tree/fix/retry-recording), code/evidence commit `3ae9d16`; original device/test evidence below remains dated October 20. No new CI or acceptance result is inferred.
 
-B09 adds regression coverage for first Redo, repeated retakes and timer wiring, cancellation, duplicate taps and full-presentation Redo. Five new tests pass; the local mobile suite now passes 553 tests on `fix/retry-recording`. These results are separate from the 548-test merged-main CI above. Native audio/UI boundaries are fixtures; no acceptance criterion is newly accepted. A subsequent agent-operated Galaxy S25 retest passed three consecutive retakes, Keep/Overwrite selection and selected-audio playback; before/after clips are available. The exact seven-second timer freeze was not reproduced and remains open. Device storage/ID export and human acceptance are not claimed. See [Testing Documentation](testing.md) and the [published B09 spec](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/3ae9d162d53088a129bffaf15a915400480a6483/docs/b09-retry-recording.md) for the selected bug record and evidence.
+B09 adds five regressions for first Redo, repeated retakes/timer wiring, cancellation, duplicate taps and full-presentation Redo. All five passed; the separate local mobile run passed 553 tests. The automated tests use native audio/UI fixtures. Codex's Galaxy S25 check passed three consecutive retakes, Keep/Overwrite selection and selected-audio playback. The seven-second timer freeze remains unreproduced. SQLite tests cover file/ID retention; human acceptance remains pending. See [Testing Documentation](testing.md) and the [B09 spec](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/3ae9d162d53088a129bffaf15a915400480a6483/docs/b09-retry-recording.md).
 
 ## Acceptance criteria
 
-### AC-01a — Import a valid PDF (Positive)
+### AC-01a: Import a valid PDF (Positive)
 
 - Existing tests: PDF import, storage and page preparation.
 - Remaining: On the phone, import three numbered pages and confirm their order after reopening.
-- Acceptance status: Partial evidence. Individual owners/results remain to be recorded.
+- Acceptance status: Partial evidence.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L104)
 
 <details>
@@ -29,12 +31,14 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-01b — Reject an unusable file (Negative)
+### AC-01b: Reject an unusable file (Negative)
 
 - Existing tests: Empty, oversized, disguised files and invalid uploads.
 - Remaining: Check encrypted/corrupt PDFs and the Android error/retry path.
-- Acceptance status: Partial evidence. Individual owners/results remain to be recorded.
+- Acceptance status: Partial evidence; reported device failure JY01 needs a fix/retest.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L108)
+
+- Device evidence: JY01 records two malformed-PDF upload HTTP 500 responses on Galaxy Tab S7 FE. Raw log/input and controlled-error regression/retest remain missing. [Record](testing-evidence/iteration-2-supporting-records.md#jooyoung-pdf-upload-failure).
 
 <details>
 <summary>Linked tests</summary>
@@ -44,11 +48,11 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-01c — Cancel file selection (Negative)
+### AC-01c: Cancel file selection (Negative)
 
 - Existing tests: Picker cancellation without a new presentation.
 - Remaining: Confirm cancellation in the Android file picker.
-- Acceptance status: Evidence present. Individual owners/results remain to be recorded.
+- Acceptance status: Evidence present.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L112)
 
 <details>
@@ -58,12 +62,14 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-02a — Record repeated slide visits (Positive)
+### AC-02a: Record repeated slide visits (Positive)
 
 - Existing tests: Repeated/backward visits and word-to-slide alignment.
 - Remaining: Record slides 1, 2, then 1 on the phone. Check timing and spoken content.
-- Acceptance status: Evidence present. Individual owners/results remain to be recorded.
+- Acceptance status: Evidence present.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L123)
+
+- Device evidence: JJ02 raises backward-visit alignment concerns; SY01 records indistinguishable first/return visits. Retest recorded timestamps and displayed visits. Disabling backward navigation remains a proposal. [Record](testing-evidence/iteration-2-supporting-records.md#jaewon-galaxy-s22-findings).
 
 <details>
 <summary>Linked tests</summary>
@@ -74,11 +80,11 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-02b — Microphone permission denied (Negative)
+### AC-02b: Microphone permission denied (Negative)
 
 - Existing tests: Denied permission blocks recording setup.
 - Remaining: Deny/revoke microphone access on Android and check recovery instructions.
-- Acceptance status: Evidence present. Individual owners/results remain to be recorded.
+- Acceptance status: Evidence present.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L127)
 
 <details>
@@ -88,11 +94,11 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-02c — Recording interrupted (Negative)
+### AC-02c: Recording interrupted (Negative)
 
 - Existing tests: Saved checkpoints and interruption recovery with fixtures.
 - Remaining: Check calls, lock/background and process termination. Play the recovered audio.
-- Acceptance status: Partial evidence. Individual owners/results remain to be recorded.
+- Acceptance status: Partial evidence.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L131)
 
 <details>
@@ -104,11 +110,11 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-02d — Leave while recording (Negative)
+### AC-02d: Leave while recording (Negative)
 
 - Existing tests: The app blocks Back during recording.
-- Remaining: Agree whether to add the required stop/save/discard confirmation or record a scope change.
-- Acceptance status: Implementation/spec gap. Individual owners/results remain to be recorded.
+- Remaining: Implement and test stop/save/discard confirmation in Iteration 3.
+- Acceptance status: Implementation/spec gap.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L135)
 
 <details>
@@ -117,12 +123,14 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-03a — Play a transcript segment (Positive)
+### AC-03a: Play a transcript segment (Positive)
 
 - Existing tests: Evidence ranges and ordered playback seeks.
 - Remaining: Listen on the phone and check slide/audio timing and seeking.
-- Acceptance status: Evidence present. Individual owners/results remain to be recorded.
+- Acceptance status: Evidence present.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L146)
+
+- Device evidence: SY02 records inconsistent Play controls; SY04 records intermittent audio with a blank screen, not reproduced in the later investigation. [Record](testing-evidence/iteration-2-supporting-records.md#seoyeon-phone-observations).
 
 <details>
 <summary>Linked tests</summary>
@@ -132,11 +140,11 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-03b — Slide without recognized speech (Negative)
+### AC-03b: Slide without recognized speech (Negative)
 
 - Existing tests: No-speech states preserve audio.
-- Remaining: The criterion also asks for a spoken-summary view; confirm its scope.
-- Acceptance status: Partial evidence. Individual owners/results remain to be recorded.
+- Remaining: Implement and test the spoken-summary no-speech state in Iteration 3.
+- Acceptance status: Partial evidence.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L150)
 
 <details>
@@ -147,12 +155,14 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-03c — Repeated visits to one slide (Positive)
+### AC-03c: Repeated visits to one slide (Positive)
 
 - Existing tests: Repeated visits and exact playback boundaries.
 - Remaining: Confirm the phone plays the requested visit, including silent transitions.
-- Acceptance status: Evidence present. Individual owners/results remain to be recorded.
+- Acceptance status: Evidence present.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L154)
+
+- Device evidence: SY01 records indistinguishable first/return visits in the transcript view. A final-build personal retest is not retained. [Record](testing-evidence/iteration-2-supporting-records.md#seoyeon-phone-observations).
 
 <details>
 <summary>Linked tests</summary>
@@ -162,11 +172,11 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-03d — Separate key ideas (Positive)
+### AC-03d: Separate key ideas (Positive)
 
 - Existing tests: Original transcript words and slide-derived key ideas.
-- Remaining: Confirm or implement a separate summary of what the presenter said.
-- Acceptance status: Implementation/spec gap. Individual owners/results remain to be recorded.
+- Remaining: Implement and test a separate summary of what the presenter said in Iteration 3.
+- Acceptance status: Implementation/spec gap.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L158)
 
 <details>
@@ -176,11 +186,11 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-03e — Summary could not be generated (Negative)
+### AC-03e: Summary could not be generated (Negative)
 
 - Existing tests: Audio and transcript survive later failures.
-- Remaining: Define the speech-summary failure path after agreeing the summary feature.
-- Acceptance status: Implementation/spec gap. Individual owners/results remain to be recorded.
+- Remaining: Implement and test the speech-summary failure path in Iteration 3.
+- Acceptance status: Implementation/spec gap.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L162)
 
 <details>
@@ -190,11 +200,11 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-05a — Feedback for a selected slide, with evidence (Positive)
+### AC-05a: Feedback for a selected slide, with evidence (Positive)
 
 - Existing tests: Evidence bounds, quoted speech and feedback actions.
 - Remaining: Check that feedback explains a real slide/speech contradiction, such as increase versus decrease.
-- Acceptance status: Needs quality pilot. Individual owners/results remain to be recorded.
+- Acceptance status: Needs quality pilot.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L173)
 
 <details>
@@ -206,11 +216,11 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-05b — Reject invalid evidence (Negative)
+### AC-05b: Reject invalid evidence (Negative)
 
 - Existing tests: Foreign/out-of-range evidence rejection and disabled invalid playback.
 - Remaining: Reuse passing CI. Record a valid peer finding beside invalid evidence if claiming that UI behavior.
-- Acceptance status: Evidence present. Individual owners/results remain to be recorded.
+- Acceptance status: Evidence present.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L177)
 
 <details>
@@ -222,11 +232,11 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-05c — Respect the practiced slides (Negative)
+### AC-05c: Respect the practiced slides (Negative)
 
 - Existing tests: Selected-visit scope and partial-attempt score rules.
 - Remaining: Check how the provider treats unpracticed slides and decorative content.
-- Acceptance status: Partial evidence. Individual owners/results remain to be recorded.
+- Acceptance status: Partial evidence.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L181)
 
 <details>
@@ -237,11 +247,11 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-07a — Plain wording for nontechnical clients (Positive)
+### AC-07a: Plain wording for nontechnical clients (Positive)
 
 - Existing tests: Audience context and audience-feedback validation.
 - Remaining: Have a human judge the nontechnical-client explanation, including the p95 example.
-- Acceptance status: Needs quality pilot. Individual owners/results remain to be recorded.
+- Acceptance status: Needs quality pilot.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L190)
 
 <details>
@@ -252,11 +262,11 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-07b — No audience described (Negative)
+### AC-07b: No audience described (Negative)
 
 - Existing tests: Cleared audience settings and rejected absent-audience findings.
 - Remaining: Clear the default General audience; check the resulting provider output and UI.
-- Acceptance status: Evidence present. Individual owners/results remain to be recorded.
+- Acceptance status: Evidence present.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L194)
 
 <details>
@@ -267,11 +277,11 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-07c — Simpler explanation for students (Positive)
+### AC-07c: Simpler explanation for students (Positive)
 
 - Existing tests: Saved audience settings reach feedback generation.
 - Remaining: Have a human judge whether the explanation fits the chosen student level.
-- Acceptance status: Needs quality pilot. Individual owners/results remain to be recorded.
+- Acceptance status: Needs quality pilot.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L198)
 
 <details>
@@ -282,11 +292,11 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-06a — Pace and duration for one slide (Positive)
+### AC-06a: Pace and duration for one slide (Positive)
 
 - Existing tests: Pace arithmetic, timing summaries and source measurements.
 - Remaining: Add/check the exact per-slide example: 60 words in 30 seconds gives 120 WPM.
-- Acceptance status: Partial evidence. Individual owners/results remain to be recorded.
+- Acceptance status: Partial evidence.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L209)
 
 <details>
@@ -297,11 +307,11 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-06b — Pace or pauses unavailable (Negative)
+### AC-06b: Pace or pauses unavailable (Negative)
 
 - Existing tests: Silent/invalid audio and zero-duration evidence handling.
 - Remaining: Check pause rules and unavailable labels in the phone UI.
-- Acceptance status: Partial evidence. Individual owners/results remain to be recorded.
+- Acceptance status: Partial evidence.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L213)
 
 <details>
@@ -312,11 +322,11 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-06c — Filler results unavailable (Negative)
+### AC-06c: Filler results unavailable (Negative)
 
 - Existing tests: Pending/failed results and text-based filler counts.
 - Remaining: Check that unavailable filler results do not appear as zero or Spot On.
-- Acceptance status: Partial evidence. Individual owners/results remain to be recorded.
+- Acceptance status: Partial evidence.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L217)
 
 <details>
@@ -327,12 +337,14 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-06d — Total time for a revisited slide (Positive)
+### AC-06d: Total time for a revisited slide (Positive)
 
 - Existing tests: Repeated slide intervals and timing summaries.
 - Remaining: Add/check the displayed example: two visits of 10 and 20 seconds total 30 seconds.
-- Acceptance status: Partial evidence. Individual owners/results remain to be recorded.
+- Acceptance status: Partial evidence.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L221)
+
+- Device evidence: JJ02 concerns slide/transcript alignment during backward visits; no measured per-slide duration failure was supplied. Keep the timing check open. [Record](testing-evidence/iteration-2-supporting-records.md#jaewon-galaxy-s22-findings).
 
 <details>
 <summary>Linked tests</summary>
@@ -342,11 +354,11 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-06e — Flag filler words and pauses (Positive)
+### AC-06e: Flag filler words and pauses (Positive)
 
 - Existing tests: Whole-word filler matching, Scribe filler tokens and internal pause measurements.
 - Remaining: Check visible filler/pause flags and detector accuracy against human audio.
-- Acceptance status: Partial evidence. Individual owners/results remain to be recorded.
+- Acceptance status: Partial evidence.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L225)
 
 <details>
@@ -358,13 +370,15 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-08a — Retry one slide (Positive)
+### AC-08a: Retry one slide (Positive)
 
 - Existing tests: New retake identity and restoration of the previous run.
 - Follow-up: B09’s agent-operated Galaxy S25 check verified consecutive retakes, Keep/Overwrite UI selection and selected-audio playback on the separate fix. Automated SQLite tests cover original-file/ID retention.
 - Remaining: Integrate/retest the fix and check original transcript/feedback access; the full criterion remains unaccepted.
-- Acceptance status: Evidence present. Individual owners/results remain to be recorded.
+- Acceptance status: Evidence present.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L238)
+
+- Device evidence: JY04 records Rerecord playing audio on a valid PDF. Its relation to B09 is unconfirmed; keep separate until reproduced. [Record](testing-evidence/iteration-2-supporting-records.md#jooyoung-pdf-upload-failure).
 
 <details>
 <summary>Linked tests</summary>
@@ -374,11 +388,11 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-08b — No slide selected (Negative)
+### AC-08b: No slide selected (Negative)
 
 - Existing tests: Retry starts from a selected slide or whole rehearsal.
-- Remaining: The requirement expects an empty-selection checklist. Agree the intended behavior.
-- Acceptance status: Implementation/spec gap. Individual owners/results remain to be recorded.
+- Remaining: Implement and test the required empty-selection checklist in Iteration 3.
+- Acceptance status: Implementation/spec gap.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L242)
 
 <details>
@@ -387,11 +401,11 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-08c — Compare slide 2 in two attempts (Positive)
+### AC-08c: Compare slide 2 in two attempts (Positive)
 
 - Existing tests: Comparison navigation and Keep/Overwrite decisions.
-- Remaining: The current cards do not provide the full two-attempt audio/transcript/feedback viewer. Confirm scope.
-- Acceptance status: Implementation/spec gap. Individual owners/results remain to be recorded.
+- Remaining: Implement and test the full two-attempt audio/transcript/feedback viewer in Iteration 3.
+- Acceptance status: Implementation/spec gap.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L246)
 
 <details>
@@ -402,11 +416,11 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-08d — No shared slide (Negative)
+### AC-08d: No shared slide (Negative)
 
 - Existing tests: Run parts stay bound to their presentation.
-- Remaining: No arbitrary-attempt picker or no-shared-slide error check was found. Confirm scope.
-- Acceptance status: No direct test found. Individual owners/results remain to be recorded.
+- Remaining: Implement the attempt picker and test the no-shared-slide error in Iteration 3.
+- Acceptance status: No direct test found.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L250)
 
 <details>
@@ -416,11 +430,11 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-08e — Feedback missing for one attempt (Negative)
+### AC-08e: Feedback missing for one attempt (Negative)
 
 - Existing tests: Pending comparison states and original-run selection.
-- Remaining: Check missing-feedback labels and access to both attempts.
-- Acceptance status: Partial evidence. Individual owners/results remain to be recorded.
+- Remaining: Check missing-feedback labels and access to both attempts with the Iteration 3 comparison work.
+- Acceptance status: Partial evidence.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L254)
 
 <details>
@@ -430,11 +444,11 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-10a — Reopen a saved attempt (Positive)
+### AC-10a: Reopen a saved attempt (Positive)
 
 - Existing tests: SQLite reopening, review history and retained media.
 - Remaining: Terminate/relaunch the phone app and check offline restoration.
-- Acceptance status: Evidence present. Individual owners/results remain to be recorded.
+- Acceptance status: Evidence present.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L265)
 
 <details>
@@ -445,11 +459,11 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-10b — Retry failed analysis (Positive)
+### AC-10b: Retry failed analysis (Positive)
 
 - Existing tests: Same-recording retries, lost acknowledgements and uncertain-request controls.
 - Remaining: Check real worker recovery and close the recorded scoring-retry findings.
-- Acceptance status: Evidence present. Individual owners/results remain to be recorded.
+- Acceptance status: Evidence present.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L269)
 
 <details>
@@ -461,11 +475,11 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-10c — Later stage fails (Negative)
+### AC-10c: Later stage fails (Negative)
 
 - Existing tests: Earlier results survive offline and late responses.
 - Remaining: Check the phone recovery action for each failed stage the demo claims.
-- Acceptance status: Evidence present. Individual owners/results remain to be recorded.
+- Acceptance status: Evidence present.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L273)
 
 <details>
@@ -477,12 +491,14 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-11a — Cancel or confirm deletion (Positive)
+### AC-11a: Cancel or confirm deletion (Positive)
 
 - Existing tests: PDF removal and presentation hiding with Undo.
-- Remaining: Full attempt/audio/result deletion needs implementation or an explicit scope decision.
-- Acceptance status: Implementation/spec gap. Individual owners/results remain to be recorded.
+- Remaining: Implement and test full attempt/audio/result deletion in Iteration 3.
+- Acceptance status: Implementation/spec gap.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L282)
+
+- Device evidence: JJ04 records stale display numbering after deletion. This report does not establish complete data removal or identity corruption. [Record](testing-evidence/iteration-2-supporting-records.md#jaewon-galaxy-s22-findings).
 
 <details>
 <summary>Linked tests</summary>
@@ -491,11 +507,11 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-11b — Delete a deck with several attempts (Positive)
+### AC-11b: Delete a deck with several attempts (Positive)
 
 - Existing tests: PDF removal and presentation hiding with Undo.
-- Remaining: Full presentation deletion, including its attempts and media, needs implementation or a scope decision.
-- Acceptance status: Implementation/spec gap. Individual owners/results remain to be recorded.
+- Remaining: Implement and test full presentation deletion, including its attempts and media, in Iteration 3.
+- Acceptance status: Implementation/spec gap.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L286)
 
 <details>
@@ -505,11 +521,11 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### AC-11c — Deletion cannot finish (Negative)
+### AC-11c: Deletion cannot finish (Negative)
 
 - Existing tests: PDF removal and presentation hiding with Undo.
-- Remaining: Define and test recovery from incomplete data deletion if this feature is included.
-- Acceptance status: Implementation/spec gap. Individual owners/results remain to be recorded.
+- Remaining: Implement and test recovery from incomplete data deletion in Iteration 3.
+- Acceptance status: Implementation/spec gap.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L290)
 
 <details>
@@ -521,11 +537,13 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 ## Additional implemented flows
 
-### PR31-SETUP — Presentation audience and time settings
+### PR31-SETUP: Presentation audience and time settings
 
 - Existing tests: Offline settings, validation and exact time allocation.
 - Remaining: Check Save/clear/conflicts on the phone and stale-result handling.
-- Acceptance status: Partial evidence. Individual owners/results remain to be recorded.
+- Acceptance status: Partial evidence.
+
+- Device evidence: JJ03 raises visibility/optionality concerns for duration and audience controls. Existing persistence tests do not verify phone discoverability. [Record](testing-evidence/iteration-2-supporting-records.md#jaewon-galaxy-s22-findings).
 
 <details>
 <summary>Linked tests</summary>
@@ -535,11 +553,13 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### PR31-CUES — Reusable slide cues
+### PR31-CUES: Reusable slide cues
 
 - Existing tests: Cue categories, evidence, length limits and cached reads.
 - Remaining: Check graph/image-only slides and access to long cues on the phone.
-- Acceptance status: Partial evidence. Individual owners/results remain to be recorded.
+- Acceptance status: Partial evidence.
+
+- Device evidence: Seoyeon observed cues working after initial failures on October 15. This confirms limited display behavior, not cue usefulness or an all-flow pass. [Record](testing-evidence/iteration-2-supporting-records.md#seoyeon-phone-observations).
 
 <details>
 <summary>Linked tests</summary>
@@ -549,11 +569,13 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### PR31-CORRECTIONS — Recognition corrections
+### PR31-CORRECTIONS: Recognition corrections
 
 - Existing tests: Recognition edits, conflicts, original words and stale results.
 - Remaining: Check correction, sync and refreshed advice/scores; resolve the recorded admission race.
-- Acceptance status: Partial evidence. Individual owners/results remain to be recorded.
+- Acceptance status: Partial evidence.
+
+- Device evidence: SY03 records inaccessible recognition choices for “Tajumulco”; exact installed build and final personal retest are missing. [Record](testing-evidence/iteration-2-supporting-records.md#seoyeon-phone-observations).
 
 <details>
 <summary>Linked tests</summary>
@@ -564,11 +586,11 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### PR31-SCORING — Automatic scores and per-slide results
+### PR31-SCORING: Automatic scores and per-slide results
 
 - Existing tests: Score arithmetic, evidence rules, request admission and UI states.
 - Remaining: Verify fixes for provider/model-switch recovery and the correction-revision race. Review the separate local phone-demo fixes.
-- Acceptance status: Partial evidence. Individual owners/results remain to be recorded.
+- Acceptance status: Partial evidence.
 
 <details>
 <summary>Linked tests</summary>
@@ -579,11 +601,13 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### US-17 (repository optional) — Audience Q&A
+### US-17 (repository optional): Audience Q&A
 
 - Existing tests: Saved Q&A identity, consent, retries and screen navigation.
 - Remaining: Check a spoken answer, reopening and provider failures. Have a human judge question/follow-up relevance.
-- Acceptance status: Partial evidence. Individual owners/results remain to be recorded.
+- Acceptance status: Partial evidence.
+
+- Device evidence: SY06 records offline/unavailable Q&A; SY07 records a blank screen when swiping to an unfinished question. Service conditions and recovery need retest. [Record](testing-evidence/iteration-2-supporting-records.md#seoyeon-phone-observations).
 
 <details>
 <summary>Linked tests</summary>
@@ -596,11 +620,13 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 ## Quality requirements
 
-### NFR-01 — Data integrity
+### NFR-01: Data integrity
 
 - Existing tests: Recording identity and invalid-source rejection.
 - Remaining: Check preservation through retakes, corrections, failures and restart on the phone.
-- Acceptance status: Check needed. Individual owners/results remain to be recorded.
+- Acceptance status: Check needed.
+
+- Device evidence: JJ02/SY01 concern visit association/display; JJ04 concerns display numbering. The reports do not establish lost saved data or changed presentation identity. [Record](testing-evidence/iteration-2-supporting-records.md#jaewon-galaxy-s22-findings).
 
 <details>
 <summary>Linked tests</summary>
@@ -610,11 +636,13 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### NFR-02 — Responsiveness
+### NFR-02: Responsiveness
 
 - Existing tests: Pending/offline UI states.
-- Remaining: Agree response-time targets and measure them on the target device.
-- Acceptance status: Check needed. Individual owners/results remain to be recorded.
+- Remaining: Set response-time targets from Iteration 3 pilot measurements on the target devices.
+- Acceptance status: Check needed.
+
+- Device evidence: JJ01 records Home/transition stutter; JY02/JY05 record lag and unresponsive controls around the upload error. No latency/FPS threshold measurement or causal isolation was supplied. [Record](testing-evidence/iteration-2-supporting-records.md#jooyoung-pdf-upload-failure).
 
 <details>
 <summary>Linked tests</summary>
@@ -624,11 +652,11 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### NFR-03 — AI quality and transparency
+### NFR-03: AI quality and transparency
 
 - Existing tests: Grounding rules, malformed-result rejection and ungraded UI.
 - Remaining: Evaluate correctness, false positives, audience usefulness and score calibration with humans.
-- Acceptance status: Check needed. Individual owners/results remain to be recorded.
+- Acceptance status: Check needed.
 
 <details>
 <summary>Linked tests</summary>
@@ -638,11 +666,13 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### NFR-04 — Recovery
+### NFR-04: Recovery
 
 - Existing tests: PostgreSQL tests and simulated queue/receipt recovery.
 - Remaining: Check real worker termination and Android interruptions.
-- Acceptance status: Check needed. Individual owners/results remain to be recorded.
+- Acceptance status: Check needed.
+
+- Device evidence: JY01 records unhandled upload errors; JY03–JY05 record later upload/retry/input symptoms. A shared cause and recovery pass remain unconfirmed. [Record](testing-evidence/iteration-2-supporting-records.md#jooyoung-pdf-upload-failure).
 
 <details>
 <summary>Linked tests</summary>
@@ -652,11 +682,11 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### NFR-05 — Privacy
+### NFR-05: Privacy
 
 - Existing tests: Scribe audio/hint consent and Q&A consent recovery.
-- Remaining: Resolve full deletion and review consent for the provider actions you claim.
-- Acceptance status: Check needed. Individual owners/results remain to be recorded.
+- Remaining: Implement full deletion and pre-upload rehearsal disclosure in Iteration 3; test cancellation and review consent for the claimed provider actions.
+- Acceptance status: Check needed.
 
 <details>
 <summary>Linked tests</summary>
@@ -666,11 +696,13 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### NFR-06 — Compatibility, usability and accessibility
+### NFR-06: Compatibility, usability and accessibility
 
 - Existing tests: Component labels, reduced motion and layout fixtures.
 - Remaining: Record target-device checks with large text and TalkBack. Prior agent phone checks have a narrower scope.
-- Acceptance status: Check needed. Individual owners/results remain to be recorded.
+- Acceptance status: Check needed.
+
+- Device evidence: JJ05 proposes a UI consistency pass; JJ06 proposes tutorial/help onboarding. SY02/SY05 report control/navigation issues. Proposals do not change the current acceptance criteria. [Record](testing-evidence/iteration-2-supporting-records.md#jaewon-galaxy-s22-findings).
 
 <details>
 <summary>Linked tests</summary>
@@ -680,11 +712,11 @@ B09 adds regression coverage for first Redo, repeated retakes and timer wiring, 
 
 </details>
 
-### NFR-07 — Cost and maintainability
+### NFR-07: Cost and maintainability
 
 - Existing tests: Cached reads, duplicate-request guards, receipts and quotas.
 - Remaining: Record costs, response times and provider-call counts for the tested flows.
-- Acceptance status: Check needed. Individual owners/results remain to be recorded.
+- Acceptance status: Check needed.
 
 <details>
 <summary>Linked tests</summary>

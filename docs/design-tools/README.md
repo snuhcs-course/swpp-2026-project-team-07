@@ -1,8 +1,8 @@
 # Design Documentation production
 
-These tools produce the historical Iteration 1 document and its matching figures/exports. The [current Iteration 2 design](../design-iteration-2.md) has a separate source; these commands do not export that revision. Do not present an existing Iteration 1 PDF as the current design.
+The current source is [Design-Documentation.md](../../Design-Documentation.md), Rev.3.1 for Iteration 2.
 
-`Design-Documentation.md` is the primary source. Edit it first; the PDF, HTML preview and Wiki-ready package derive from it. The document now uses two major revision entries: 1.0 (initial design) and 2.0 (Iteration 1 design). Earlier Rev.4.x drafts remain in Git history and local archives.
+The tools below reproduce [Design-Documentation-Iteration-1.md](../../Design-Documentation-Iteration-1.md), Rev.2.0, with its original figure manifest. Their PDF, HTML and Wiki outputs remain Iteration 1 artifacts. Exporting Rev.3.1 needs a separate update to the export pipeline. Earlier drafts remain in Git history and local archives.
 
 ```sh
 python docs/design-tools/build_design_pdf.py

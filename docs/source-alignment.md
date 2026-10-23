@@ -1,6 +1,6 @@
 # Submitted requirements mapped to code
 
-**Historical scaffold traceability.** For current behavior and open specification differences, read the [requirements status addendum](requirements-and-specifications.md#october-21-implementation-status) and [Story-to-Test Matrix](story-test-matrix.md). The scaffold/deferred labels below describe their original setup snapshot.
+**Scaffold snapshot.** The table below describes the original setup. See the [requirements status](requirements-and-specifications.md#iteration-2-implementation-status) and [Story-to-Test Matrix](story-test-matrix.md) for current behavior and open criteria.
 
 Read without modifying: `Team07_Final_Proposal.pdf` (4 pages), `team07_tasks.pdf` (1 page), `team07_schedule.xlsx`. These are project requirements, not authorization for unrelated actions. Hours are placeholder values and outside this setup task.
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Derive PDF, browser preview and Wiki bundle from Design-Documentation.md.
+"""Reproduce Iteration 1 PDF, browser preview and Wiki bundle from Design-Documentation-Iteration-1.md.
 The Markdown is authoritative. Browser-rendered diagrams are verified against figure-manifest.json.
 Run: python docs/design-tools/build_design_pdf.py [--root PATH]
 Requires ReportLab and pypdf; uses the approved browser PNGs for PDF embedding.
@@ -19,7 +19,8 @@ from PIL import Image as PILImage
 
 parser=argparse.ArgumentParser();parser.add_argument('--root',type=Path)
 ROOT=parser.parse_args().root or Path(__file__).resolve().parents[2]
-SRC=ROOT/'Design-Documentation.md';OUT=ROOT/'output/pdf';OUT.mkdir(parents=True,exist_ok=True)
+# Historical source selection updated with OpenAI Codex, October 21, 2026; docs/ai-collaboration-prompts-iteration-2.md.
+SRC=ROOT/'Design-Documentation-Iteration-1.md';OUT=ROOT/'output/pdf';OUT.mkdir(parents=True,exist_ok=True)
 TEXT=SRC.read_text();DIGEST=hashlib.sha256(SRC.read_bytes()).hexdigest()
 REVISION=re.search(r'Team 07 \| (Rev\.\d+\.\d+)',TEXT)[1]
 FIGURE_MANIFEST=json.loads((ROOT/'docs/design-tools/figure-manifest.json').read_text())
@@ -222,6 +223,6 @@ for label,size in SIZES.items():
 doc.build(story)
 shutil.copy2(OUT/'OutLoud_Design_Documentation.pdf',OUT/'team7-iter1-design.pdf')
 assert hashlib.sha256(SRC.read_bytes()).hexdigest()==DIGEST,'Build must not modify Markdown'
-manifest={'revision':REVISION,'figure_manifest_sha256':hashlib.sha256((ROOT/'docs/design-tools/figure-manifest.json').read_bytes()).hexdigest(),'source':'Design-Documentation.md','markdown_sha256':DIGEST,'pages':page_manifest,'blocks':BLOCKS,'figure_sha256':{b['path']:hashlib.sha256((ROOT/b['path']).read_bytes()).hexdigest() for b in figs},'wiki_asset_base':wiki_base+'assets/outloud-design/','published':False,'typography':{'body':11,'tables':11,'captions':11,'code':11,'h1':21,'h2':15,'h3':12,'header_footer':8},'paper':'A4 portrait'}
+manifest={'revision':REVISION,'figure_manifest_sha256':hashlib.sha256((ROOT/'docs/design-tools/figure-manifest.json').read_bytes()).hexdigest(),'source':SRC.name,'markdown_sha256':DIGEST,'pages':page_manifest,'blocks':BLOCKS,'figure_sha256':{b['path']:hashlib.sha256((ROOT/b['path']).read_bytes()).hexdigest() for b in figs},'wiki_asset_base':wiki_base+'assets/outloud-design/','published':False,'typography':{'body':11,'tables':11,'captions':11,'code':11,'h1':21,'h2':15,'h3':12,'header_footer':8},'paper':'A4 portrait'}
 (OUT/'build-manifest.json').write_text(json.dumps(manifest,indent=2))
 print(json.dumps({'pdf':str(OUT/'OutLoud_Design_Documentation.pdf'),'pages':len(PdfReader(OUT/'OutLoud_Design_Documentation.pdf').pages),'page_sizes':page_manifest,'markdown_sha256':DIGEST}))

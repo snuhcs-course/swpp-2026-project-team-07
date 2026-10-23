@@ -3724,3 +3724,259 @@ Can we update our testing, design and requirements documentaiton on repo and wik
 - **Verification:** Documentation accuracy, diff review, 40 relative links, 218 pinned source paths/line references, five source-to-Wiki page pairs, all 46 matrix rows and nine findings passed. Exact comparisons preserve the original requirements body, design body and prior collaboration log. Re-read the original main CI job logs: 548 mobile pass, 554 backend OK. No fresh app execution. October 20 CI, B09 branch tests and device records remain attributed to their original revisions/dates; no application test, provider call or device run occurred here.
 - **Errors and corrections:** The managed-worktree tool could not find a Git repository because the course workspace is not itself a repository; Codex created an isolated checkout from the verified application main. The initial Wiki fetch hit the network sandbox; an authorized network retry retrieved it. A stale prepared addendum misdescribed the repository’s old PDF/slide limits; source comparison corrected the description and identified the actual Wiki/repo drift. No app data changed.
 - **Limits:** Named test maintainers, coverage targets/measurement, original links for reported repairs, remaining scope decisions, current submission PDFs and human review remain open. [Draft PR #32](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/32) publishes the 11-file documentation update on `docs/iteration-2-documentation`; GitHub’s created tree matched the reviewed local tree exactly. Main remains unchanged. Wiki publication is blocked by unavailable Git credentials and a signed-out browser; the user was asked to sign in. Matching pages and a recoverable Wiki bundle are retained in the course workspace review packet.
+
+
+### Local-first correction — October 21, 2026
+
+Follow-up prompt, verbatim:
+
+```text
+Delete the branch and let's work on it locally firt
+```
+
+- **Confirmed human decision:** Continue this documentation task locally. Do not push, create another PR, or publish the Wiki until Injoon explicitly asks. Remove the previously published documentation branch and close draft PR32, preserving the local documents and commits.
+- **Output and use:** Retained the complete local checkout and ready Wiki packet; removed the local branch's upstream tracking link. Updated current workspace status to local-first. Main remains unchanged.
+- **Remote cleanup:** Attempted PR closure through the connected GitHub app, which returned HTTP 403 (resource not accessible by integration). The CLI sign-in is invalid; existing SSH access failed public-key authentication; the Codex browser remains signed out. Branch deletion and PR closure remain pending GitHub authentication. No remote deletion/closure is claimed.
+- **Verification and limits:** Confirmed the local branch retains both documentation commits through `4558406`; the original repo checkout remains separate. This follow-up changes local records only and runs no app tests. A GitHub connection link is supplied solely to complete the requested remote cleanup; it does not authorize republishing this documentation.
+
+
+### Style and language review — October 21, 2026
+
+Follow-up prompt, verbatim:
+
+```text
+Can you make sure the documnets follow the style of previous versions, if any, and then apply anti-slop skill to make language seem direct and natural. Give me a list of all documents that are modified in this branch
+```
+
+- **Human direction:** Match earlier document styles where available, apply the Stop Slop skill, and list all changed branch documents. The earlier local-only restriction remains in force.
+- **Output and use:** Codex compared the earlier design and requirements with the current drafts. The new design now follows the original eight-section outline, revision-table format and title case. Testing keeps Plan/Results sections; proposed AI evaluations now sit under Plan. Codex shortened the requirements addendum, removed repeated matrix notices and tightened entry-point prose. Original criteria, historical source text and verbatim prompts remain intact.
+- **Verification:** The first seven design section titles match the earlier version; section 8 retains Planned Design without the old iteration label. Exact comparisons preserved both diagrams, testing tables/commands, all 46 criterion IDs and linked test sections, inventory rows, earlier prompts and historical source bodies. All 40 relative links and 218 pinned source paths/line references pass; five derived Wiki pages match both local copies. The branch differs from main in 11 Markdown files (four new, seven updated). Whitespace checks pass. No app tests, commit, push or Wiki publication occurred.
+
+
+### Correct the current design path — October 21, 2026
+
+Follow-up prompt, verbatim:
+
+```text
+In the deisng-documentation.md file it says version 2.0,are the files actuallu updated
+```
+
+- **Human correction:** Injoon noticed that the main design filename still showed version 2.0. Codex had put the current content in a second file and left the old source at the expected path. The earlier file list overstated the update to the main design file: it had only received a notice.
+- **Correction and use:** Codex moved the complete Rev.3.0 content into `Design-Documentation.md`, preserved the original Rev.2.0 bytes in `Design-Documentation-Iteration-1.md`, removed the duplicate current draft and updated current links. Legacy export scripts now read the preserved Iteration 1 source that matches their figure manifest. Existing PDF/HTML exports remain historical; no new export is claimed.
+- **Verification:** Confirmed full current content and Rev.3.0 at the canonical path, exact Rev.2.0 source preservation, unchanged diagrams, 40 local links, 218 pinned sources and five matching Wiki drafts. The [builder](design-tools/build_design_pdf.py) and [checker](design-tools/check_design.py) parse and select the Rev.2.0 source matching their figure manifest. The branch now has 14 changed files: 12 Markdown documents and two export scripts. No new export, app test, commit, push or Wiki publication occurred.
+
+
+### Testing guideline format — October 22, 2026
+
+Follow-up prompt, verbatim:
+
+```text
+let's first revise the testing document. Make sure to follow the guidelines strictly, especially the format. Use anti ai slop skill when wriitng
+```
+
+- **Human direction:** Revise the testing documentation first, follow the official format and use Stop Slop. Keep review before push; this request does not authorize publication.
+- **Output and use:** Rechecked eTL Testing Documentation Guidelines file 9410502. The source and matching local Wiki now use the five required activities in order, each with Plan/Results; separate future dates from completed work; add the suggested coverage summary columns, tools/environment/commands; and keep manual checks in a supplementary section. Owners, approved targets/reasons and actual results/evidence remain intact.
+- **Verification and limits:** Documentation accuracy, shell syntax, links, preservation and diff checks only. The original four command blocks, eleven unchanged tables, manual records and supporting appendices remain intact; source/Wiki drafts match after link conversion. No app tests or builds rerun, code/tooling changes, provider calls, phone checks, human approval, commit, push, Wiki publication or PDF export. Mobile line gaps, missing human/source evidence and remote checks remain open.
+
+
+### Submission-style wording — October 22, 2026
+
+Follow-up prompt, verbatim:
+
+```text
+When you write the document you keep saying like "injoon said" or "approved". Instead of marking these logs, the testing.md file should be like a final submission. It should not contain bloat and it should only contain what is absolutely needed
+```
+
+- **Human direction and use:** Keep submission-facing testing content in `testing.md`; remove conversation/approval history, editing notes and repeated status. Required plans/results, owners, thresholds, commands and evidence limits remain. Detailed historical results, original target reasons and original check commands move intact to a linked supporting record with a matching local Wiki page. Earlier prompts and evidence artifacts remain unchanged.
+- **Verification and limits:** Checked source/Wiki agreement, the required Iteration 2 Plan/Results format, allowed later-iteration placeholders, preserved test counts/coverage/defect records, shell syntax, links and documentation diff. No app tests/builds rerun, application/tooling changes, human approval, commit, push, Wiki publication or PDF export. Current shortfalls and missing evidence remain explicit.
+
+
+### Native coverage report screenshots — October 22, 2026
+
+Follow-up prompt, verbatim:
+
+```text
+Okay, replace the duplicate table screenshot with screenshots of the actual mobile and backend coverage reports. Let me review it before you push.
+```
+
+- **Output and verification:** Replaced the duplicated summary image with the existing native c8 and coverage.py screenshots in Testing Documentation and its local Wiki draft. Each table row links to the matching report image. Visually checked both screenshots; test/coverage values, image files and earlier prompts remain unchanged. Image links, Wiki agreement and documentation diff checks pass.
+- **Limits:** Presentation change only. No test reruns, commit, push or Wiki publication; user review remains required.
+
+
+### Submission document writing rule — October 22, 2026
+
+Follow-up prompt, verbatim:
+
+```text
+I previously requested:
+When you write the document you keep saying like "injoon said" or "approved". Instead of marking these logs, the testing.md file should be like a final submission. It should not contain bloat and it should only contain what is absolutely needed
+
+
+Can we make this like a rule when writing submission documents
+```
+
+- **Output and use:** Added the same submission-writing rule to the course workspace and local project `AGENTS.md`. Final documents use the required format and only necessary content; conversation, routine approval/publication notes and editing history stay in working records. Required attribution, real results, evidence, limitations and AI disclosures remain. Clarified where source/date provenance belongs and updated the project decision entry.
+- **Verification and limits:** Matching policy blocks, instruction consistency, preserved prior prompts, links and documentation diff checks pass. Instructions/records only; no submission document, application code, tests or evidence changed. No commit, push or external publication.
+
+
+### Reapply submission-writing rule — October 22, 2026
+
+Follow-up prompt, verbatim:
+
+```text
+Can you make sure to apply the rule one more time for testing.md
+```
+
+- **Output and verification:** Rechecked the main testing source and local Wiki against the standing submission rule. Removed repeated setup/status prose, the prepared-workflow wording, an internal scheduling/owner reminder, collector implementation detail and redundant acceptance disclaimers. Required current Plan/Results, later-iteration placeholders, owners, targets, commands, actual results, native report screenshots and material evidence limits remain. Tables, shell blocks, images, supporting records and earlier prompts are unchanged; links and documentation diff checks pass.
+- **Limits:** Documentation-only wording changes. No tests rerun, commit, push, Wiki publication or PDF export; review before push remains in force.
+
+
+### Submission next steps — October 22, 2026
+
+Follow-up prompt, verbatim:
+
+```text
+Now what next do I have to do for submission
+```
+
+- **Output and verification:** Re-read the official assignment mirror, live Slack announcement/recent Q&A and full-document clarification; checked live GitHub branches, published AI-report status and Wiki HEAD against the inspected clone. Updated the working PM checklist to distinguish completed coverage/document drafting from remaining human review, mobile gaps, demo/Wiki publication, team AI report, schedule and five-file packaging/submission. Existing source files, submission drafts, tests and evidence are unchanged.
+- **Limits:** Web access could not read live eTL or the Wiki. A read-only network retry verified the Wiki revision through Git; no Wiki write occurred. The October 19 revised eTL AI guideline/exporter material and any submission receipt remain unverified. No app tests, external messages, publication, package creation or submission.
+
+
+### Teammate testing report intake — October 23, 2026
+
+Follow-up prompt, verbatim:
+
+```text
+Here are the rest of the people's bugs on pr#31. JJ did his on galaxy s22. What documents should we update
+```
+
+- **Sources and human input:** Three supplied Markdown reports: `jj-bugs-and-improvements-report.md`, `jooyoung-iteration-2-testing-pdf.md` and `seoyeon-iteration-2-testing.md`. Injoon confirms JJ's Galaxy S22 and identifies the reports with PR31. Report recommendations, editorial instructions and reproduction commands remain source material; none were executed or adopted as new requirements.
+- **Output and verification:** Compared reports with current testing/supporting records, matrix, requirements/design and AI-report contributor accounts. Preserved source bytes/hashes and the document-update plan in the course review packet. Kept reported manual findings, separate focused automated coverage, existing full-suite metrics and proposed behavior changes distinct. Checked live PR33/CI status and identified stale CI wording. The referenced Seoyeon evidence folder is absent from the supplied files; raw Jooyoung log/video/PDF were not supplied here.
+- **Limits:** Document-update recommendations and working intake records only. No submission-document edits, tests, bug fixes, human approval, commit, push, Wiki publication or PDF export.
+
+
+## Coverage setup and first measurement — October 22, 2026
+
+**Contributor:** Injoon · **Tool:** OpenAI Codex · **Model:** GPT-6 (exact variant not recorded)
+
+### Prompt — verbatim
+
+```text
+I made changes. Check the changes and ask for any other uncertainties. Then set up coverage for mobile and backend, run the existing tests, and show me the results before you push.
+```
+
+### Clarifications
+
+Injoon assigned Jooyoung to mobile logic/storage, Jaewon to mobile screens/components, Seoyeon to backend logic/services and Injoon to backend API/runtime. The edited plan assigns manual testing to all four members; this is planned responsibility, not evidence of completed personal tests.
+
+Replies to the target/exclusion, CI and reviewer questions, verbatim and in order:
+
+```text
+Use these targets and exclusions
+```
+
+```text
+Enforce the proposed targets
+```
+
+```text
+Is it not recommended if the same person does it
+```
+
+- **Human decisions:** Approved line/branch targets of 85%/75% for mobile logic and backend logic, 70%/60% for mobile UI and 80%/70% for backend API/runtime, with the documented exclusions and CI enforcement. Codex recommended another teammate for final human review; the reviewer remains unassigned. Results must be shown before any push.
+- **Generated and retained:** Pinned c8 12.0.0 and coverage.py 7.16.2; source-map test loaders, full-file scope validation, grouped native metrics, threshold checks and CI artifacts. Application source and existing test assertions remain unchanged. The separate B09 branch stays outside this baseline.
+- **Errors and repairs:** Initial mobile validation needed canonical macOS temporary paths. An extracted transcript fragment initially mapped into the application source tree; a distinct helper module URL and original-relative import context isolate it. Independent AI review found incompatible mapping in spawned Node children, fixed by an inherited preload with parent/child validation; it also found .coveragerc hidden by an ignore rule and local dependency environments entering backend scope. Corrections narrow the ignore rule and exclude dependencies. Strict report validation exposed an unimported management command that coverage.py skipped; namespace-package discovery now retains it at zero. No application behavior repair is claimed. Repair cost: not recorded.
+- **Verification in progress:** Collector validation checks original TypeScript line mapping, spawned-child maps, missed branches and never-imported files. Three reporting/collection tests pass. An initial application run passed 548 mobile tests and 554 PostgreSQL tests; corrected full runs are in progress. Mobile type checking, lint (one existing warning) and Android JavaScript export passed. No device checks, live provider calls, human review, commit or push occurred. Final counts/coverage and separate AI review will be recorded below.
+
+
+### Final coverage result
+
+- **Corrected full runs:** 548 mobile tests passed with zero failures/skips; 554 PostgreSQL tests passed with zero failures/skips. Ordinary mobile tests also pass 548. Collector validation includes spawned children with matching mapped offsets and a helper-only transcript fragment; the complete original screen remains in scope. Three reporting/collector checks pass. Typecheck, lint (one existing warning), Android JavaScript export, backend system and migration-drift checks pass.
+- **Coverage:** Mobile logic 80.73% lines / 86.26% branches; mobile UI 61.78% / 70.89%; backend logic 94.67% / 87.84%; backend API/runtime 87.62% / 78.00%. Both mobile line targets are missed; targets/exclusions remain as approved. Mobile enforcement exits 1, backend enforcement exits 0. Reports remain available after failure. The final separate AI review found no remaining actionable blockers; the human reviewer remains unassigned.
+- **Retained evidence and limits:** [Counts, source scope and tooling hashes](testing-evidence/coverage-2026-10-22.json), screenshots and current Testing Documentation; full native reports/logs and pre-run approval/configuration snapshots remain local. The application matches `c4a3f48`; no app test assertions changed. A namespace-package command missing from initial report discovery is now included at zero. Prepared CI has not run remotely, and GitHub required checks remain unverified. No live provider calls, new phone tests, human acceptance, commit or push occurred.
+
+### Testing-only publication — October 22, 2026
+
+**Follow-up prompt — verbatim:**
+
+```text
+Ok can you do 1 and do 2 after we review the other documentaiton
+```
+
+- **Human decision:** Publish the reproducible testing/coverage setup and existing evidence now. Publish the separate Testing Documentation Wiki page after reviewing the other documentation.
+- **Generated and retained:** An isolated testing-only snapshot of 27 files based on merged PR #31 (`c4a3f48`). It contains coverage configuration, pinned dependencies, collectors/reporting tools, CI workflow, testing sources, existing screenshots/counts, a README link and the unchanged coverage disclosure entry plus this follow-up. Other unreviewed design/requirements edits remain local. Application source, existing test assertions, original prompts and measured evidence are preserved.
+- **Verification:** All 17 measured tooling hashes match; 19 relative testing links pass. Node.js 24.19.0 collector validation and three Python 3.12.14 report tests pass using existing local dependencies and cached coverage.py 7.16.2. The setup already passed a separate AI review; publication scope was self-reviewed. The earlier full runs remain 548 mobile and 554 backend tests passing, zero failures/skips. Both mobile line targets remain missed; thresholds were not lowered.
+- **Publication and errors:** The connected GitHub app denied Git-blob writes with HTTP 403. Normal authenticated Git push succeeded on `codex/testing-coverage-pr31`, commit `f0d7148c23a1f754f54b18a86f6f4a581856b356`. GitHub confirms the exact commit parent and tree (`664cfd70c6f17f3e6d386af3ff64a61b726f01c0`). CI run 39718480282 started and was in progress at this check. No PR/merge, Wiki publication, eTL submission, new phone tests or human acceptance occurred. The publication receipt is kept in the course working records.
+
+### Rename published testing branch — October 22, 2026
+
+**Follow-up prompt — verbatim:**
+
+```text
+Let's change name to just something like testing-setup-documentation
+```
+
+- **Tool/model:** OpenAI Codex, GPT-6 (exact variant not recorded).
+- **Human decision and retained work:** Rename the published branch to `testing-setup-documentation`. The authenticated GitHub branch-rename API confirms the original commit `f0d7148c23a1f754f54b18a86f6f4a581856b356`; no file content or evidence changed. Renamed the isolated local branch, updated its remote tracking and corrected current publication links/receipt. Earlier prompts and publication history remain intact.
+- **Verification and limits:** GitHub returned the requested branch name and unchanged commit. This changes branch metadata only; application tests were not rerun. Wiki publication remains deferred until the other documentation is reviewed.
+
+### Open testing setup PR — October 22, 2026
+
+**Follow-up prompt — verbatim:**
+
+```text
+Make the PR
+```
+
+- **Tool/model:** OpenAI Codex, GPT-6 (exact variant not recorded).
+- **Human decision and retained work:** Open a PR for the published `testing-setup-documentation` branch. Created [PR #33: Add testing setup and documentation](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/33) against `main`, following the repository PR template and Stop Slop wording. No application, coverage configuration or evidence files changed.
+- **Verification:** The live comparison shows one commit and 27 files ahead of `main`, with no commits behind. CI logs for run 39718480282 confirm 548 mobile and 554 PostgreSQL tests pass, with zero failures/skips. Backend coverage meets its targets. Mobile CI fails the two line thresholds at 80.73%/85% and 61.78%/70%; branch targets pass, and both coverage artifacts upload. The PR description reports these results, AI contribution, device-test limits and pending human review. GitHub confirms the exact title/body, head `f0d7148c23a1f754f54b18a86f6f4a581856b356`, base, file count and open state.
+- **Errors and limits:** The connector denied PR creation with HTTP403; authenticated GitHub CLI creation succeeded. Attempting to attach it in the Codex app returned “thread not found” for this temporary side chat. The PR URL is verified. No merge, Wiki publication or eTL submission occurred.
+
+### Specifications for zero-coverage mobile files — October 22, 2026
+
+**Tool/model:** OpenAI Codex, GPT-6 (exact variant not recorded).
+
+**Context prompts — verbatim, in order:**
+
+```text
+It keeps failing mobile
+```
+
+```text
+Ok but how do we make more tests
+```
+
+**Specification prompt — verbatim:**
+
+```text
+Then can you write specs based on the areas with 0% coverage
+```
+
+- **Human decision:** Prepare test specifications based on measured zero-coverage areas. Test implementation and a further push were not requested.
+- **Generated and retained:** [Mobile coverage test specifications](mobile-zero-coverage-test-specs.md): 64 planned scenario IDs, fixtures/method, implementation order, responsibility from the existing testing plan, setup/actions/assertions and a complete 23-file zero-coverage inventory. Twenty-two files receive runtime scenarios; the type-only contracts index receives a separate scope-review question. Cases cover success, failure, cancellation, data retention, request duplication, revisions, consent, background work, screens and native adapter callbacks. Known requirement differences remain open; late-picker cleanup is an explicit requirement check.
+- **Verification:** Read the relevant baseline modules and existing test/fixture patterns. Matched all 23 zero-coverage paths and native line totals, checked relative links/anchor and whitespace/fences, and preserved all 25 published files outside the entry README/active log. The 17 measured tooling hashes match; application source still matches PR31. The earlier PR CI run confirms 548 passing mobile tests and the line-coverage gaps. No application tests were rerun for this specification-only task. Stop Slop guided the prose; self-review 42/50.
+- **Errors and limits:** The native report counts 83 lines in the type-only contracts index; coverage-scope correction remains unapproved and unimplemented. No tests, application code, measured results, targets or exclusions changed. The proposed cases have not run; they establish no new pass/coverage or phone-quality result. No commit, push, PR update, Wiki publication or eTL submission occurred. Detailed check/provenance records remain in the course workspace.
+
+
+### Testing submission reproducibility correction — October 23, 2026
+
+**Contributor:** Injoon · **Tool/model:** OpenAI Codex, GPT-6 (exact variant not recorded).
+
+**Review prompt — verbatim JSON string (preserves the final space):**
+
+```json
+"look at our testing documentation. Does it meet our requirements? "
+```
+
+**Correction prompt — verbatim:**
+
+```text
+Can you do the required corrections with the submission report writing style and make sure to check again for any missing requirements.
+```
+
+- **Source and decision:** Original eTL Testing Documentation Guidelines, file 9410502, reread October 23; original publication date not recorded. The guidelines require reproducible commands, component coverage goals/results and screenshots, named responsibility and execution policy. The correction request authorizes local documentation changes; review before publication remains required.
+- **Generated and retained:** Updated `docs/testing.md` and the matching local Wiki draft. Pinned the published coverage snapshot `f0d7148c23a1f754f54b18a86f6f4a581856b356` separately from application baseline `c4a3f48`; added a fresh checkout, Python virtual environment, isolated PostgreSQL container/readiness check and matching port. Removed routine human-review status from submission prose. Stop Slop guided the wording. No coverage targets, exclusions, results or evidence changed.
+- **Verification:** The original guideline permits later-iteration placeholders and linked supporting detail with an outcome summary. Rechecked required headings, Plan/Results, maintainers, execution/merge policy, frameworks, scope, architectural targets/reasons, environment/commands, dated commit/results, counts, coverage table/screenshots and shortfall action. Local links/anchors and five shell blocks pass; the local Wiki text matches after its three existing link conversions. The full results section is byte-identical to the pre-edit copy. All 17 measured tooling hashes remain unchanged. GitHub reads confirm the pinned snapshot's mobile coverage command and matching reporting tool, test requirements, CI workflow and setup guide. Existing unrelated repository changes remain untouched.
+- **Limits and remaining work:** Documentation checks only; no application tests, containers, clone commands, device tests or provider calls were run. One initial in-memory snapshot parse failed because the command output was truncated; a temporary on-disk snapshot succeeded before any edits. Both mobile line targets remain missed; supplementary manual/focused-run evidence gaps remain disclosed. No further missing Iteration 2 content requirement was identified. Separate Wiki publication and final PDF export/visual inspection remain pending. No staging, commit, push, Wiki edit or eTL submission occurred.
