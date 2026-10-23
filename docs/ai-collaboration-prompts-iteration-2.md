@@ -3980,3 +3980,39 @@ Can you do the required corrections with the submission report writing style and
 - **Generated and retained:** Updated `docs/testing.md` and the matching local Wiki draft. Pinned the published coverage snapshot `f0d7148c23a1f754f54b18a86f6f4a581856b356` separately from application baseline `c4a3f48`; added a fresh checkout, Python virtual environment, isolated PostgreSQL container/readiness check and matching port. Removed routine human-review status from submission prose. Stop Slop guided the wording. No coverage targets, exclusions, results or evidence changed.
 - **Verification:** The original guideline permits later-iteration placeholders and linked supporting detail with an outcome summary. Rechecked required headings, Plan/Results, maintainers, execution/merge policy, frameworks, scope, architectural targets/reasons, environment/commands, dated commit/results, counts, coverage table/screenshots and shortfall action. Local links/anchors and five shell blocks pass; the local Wiki text matches after its three existing link conversions. The full results section is byte-identical to the pre-edit copy. All 17 measured tooling hashes remain unchanged. GitHub reads confirm the pinned snapshot's mobile coverage command and matching reporting tool, test requirements, CI workflow and setup guide. Existing unrelated repository changes remain untouched.
 - **Limits and remaining work:** Documentation checks only; no application tests, containers, clone commands, device tests or provider calls were run. One initial in-memory snapshot parse failed because the command output was truncated; a temporary on-disk snapshot succeeded before any edits. Both mobile line targets remain missed; supplementary manual/focused-run evidence gaps remain disclosed. No further missing Iteration 2 content requirement was identified. Separate Wiki publication and final PDF export/visual inspection remain pending. No staging, commit, push, Wiki edit or eTL submission occurred.
+
+### PR #32 documentation review and Hide/Undo evidence correction — October 23, 2026
+
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex desktop with read-only reviewer agents · **Model:** GPT-6 (exact variant not recorded).
+
+**Prompts — verbatim, in order:**
+
+```text
+Summarize current iteration 2 final documentation review pr
+```
+
+```text
+Review PR #32 for discrepancies with the implementation and tell me what needs fixing before merge. Don't edit anything yet.
+```
+
+```text
+We're not trying to fix nor implement anythign that is going to be done on iteration 3
+```
+
+```text
+I thought going back during slide recording is allowed. fix 1
+```
+
+```text
+hence should1 be fixed?
+```
+
+```text
+Ok commit and push the finding 1 wording fix to PR #32.
+```
+
+- **Review and human decision:** Reviewed PR #32 head `e75854d` against implementation `c4a3f48`, using frozen source and independent read-only checks of requirements, design and test traceability. The user excludes Iteration 3 implementation and authorizes only finding 1: correcting current Hide/Undo test-evidence wording. Finding 2 remains unchanged. Previous-slide navigation during recording is allowed; the earlier Back-blocking finding referred to leaving the recording screen, and the assistant clarified its ambiguous wording.
+- **Generated and retained:** Corrected the three AC-11 rows in `docs/story-test-matrix.md` to identify existing PDF service-removal tests and link pending Hide/Undo scenarios H04–H05. Kept all acceptance criteria, deferred work, test results, application source and tests unchanged. This entry records the related review prompts after the earlier read-only instruction was lifted for the specific correction.
+- **Verification:** The prior read-only review reconciled the 548 mobile/554 backend inventory and matched all 17 recorded tooling SHA-256 values to snapshot `f0d7148`. For this correction, an independent reviewer checked the proposed wording and `#h-home-screen` anchor. Local assertions confirm exactly three replacements, the H04/H05 link target, unchanged finding 2 and all other matrix content, the unchanged original log prefix and balanced Markdown fences. Diff review and `git diff --check` pass; only the matrix and this required log entry changed.
+- **Publication authorization and scope:** The user confirmed the finding 1 correction and explicitly authorized committing and pushing it to PR #32. At commit preparation, both the live PR and remote branch point to `e75854d` on `docs/iteration-2-documentation`. A separate read-only reviewer found no blockers in the exact staged three matrix replacements and append-only log; staged files match the working tree. The coordinator then updated only this verification sentence and rechecked the final staged scope. Remote readback after the authorized push is reported in the chat handoff.
+- **Limits:** Documentation-only changes; no application/device/provider tests or Iteration 3 implementation. Finding 2, the Wiki and unrelated local work remain unchanged. No merge or submission is authorized; human teammate review remains pending.
