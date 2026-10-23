@@ -6,28 +6,32 @@ An Android presentation rehearsal app that connects PDF slides, recordings, slid
 - **Backend:** Django / Celery, with PostgreSQL and Redis.
 - **Repository:** `mobile/` for the app, `backend/` for the API and workers, `docs/` for guides and evidence, `compose.yaml` for local services.
 
-## Current status
+## Iteration 2 demo
 
-The [requirements status](docs/requirements-and-specifications.md#iteration-2-implementation-status), [Iteration 2 design](Design-Documentation.md) and [Testing Documentation](docs/testing.md) describe merged PR31 (`c4a3f48`, October 20). B09's first-Redo fix remains on the separate `fix/retry-recording` branch.
+Application baseline: merged PR31, `c4a3f48d2a635bb2edb44828c62fb286b55f8d94`. This branch retains that application and includes the current Requirements, Design and Testing documents. B09's first-Redo fix remains on the separate `fix/retry-recording` branch.
 
-- **This copy has the redesigned mobile UI** (design prototype rebuild, October 14, 2026). See [REDESIGN.md](REDESIGN.md) for setup, the screen-to-feature map and verification limits.
-- **Iteration 2 is current.** Iteration 1 features were merged into `main` on October 11, 2026 (PRs #17–#21).
-- Available features include PDF import, recording with slide tracking, saved audio playback, ElevenLabs Scribe v2 transcription, synchronized transcript review and AI feedback.
-- Local import, recording and saved-media playback work without the backend. Upload, transcription and feedback require the configured server; provider work requires internet and credentials.
-- Iteration 2 Phase 2 adds cached image-aware slide profiles with zero to three essential Must Cover points and zero to three optional Further Insight suggestions per slide, aiming for 8–16 words (maximum 25) with expandable supporting details. PDF upload admits them automatically when feedback is configured; the permanent Cues panel shows both categories, progress and saved results beside selected-slide playback. Historical description/coaching functionality remains separate. See the [phase ledger](docs/iteration-2-ai-feedback.md).
-- Phase 3 derives exact-sum per-slide timing from explicitly saved duration requirements and uses mono AAC at 64 kbps for new captures up to thirty minutes. Missing duration retains labeled suggested timing; time and audience are editable through the shared presentation setup overlay. See [Phase 3 evidence](docs/phase-3-verification.md).
-- Phase 5 adds automatic initial selected-slide feedback in Review: up to four prioritized evidence-linked findings, with separate pending, failed, insufficient-evidence, successful and outdated states. The evaluator also critiques idea ordering/connections and can suggest a clearer way to express the same meaning for a future rehearsal, without editing the transcript. Accepted transcript corrections invalidate results without automatically regenerating them. Audience/time checks require explicit requirements; the shared setup overlay saves those requirements. See [Phase 5 evidence](docs/phase-5-verification.md).
-- Phase 6 adds durable audience Q&A using saved presentation audience and selected slide takes. New recording workflows admit one initial question set; changes mark it outdated and require an explicit update. Answers retain their own recording identity and cached transcription through retries. Saved Q&A remains playable in the existing screen. Apply backend migrations before loading this client against an older API. See [Phase 6 evidence and device limits](docs/phase-6-verification.md).
-- New imports initialize saved requirements to **General audience** and **5 minutes**, using existing context APIs and labeled defaults in the current screens. Existing presentation preferences are preserved; the shared setup overlay can edit these values. [Verification](docs/presentation-defaults-verification.md).
-- Feedback supports Gemini or OpenAI through backend configuration and is **disabled by default**. Suggestions link to evidence; they still require human judgment.
-- Limited agent-operated physical-phone checks are recorded in the active prompt log. Full device flow and human usefulness testing remain pending. This is a local development setup; authentication and production deployment remain separate work.
-- [Verification evidence and remaining limits](docs/verification.md) distinguish automated tests, agent-operated emulator checks and controlled provider evaluation. Sample previews remain separate from real results.
+### Implemented features
+
+- Import PDF slides and save presentation audience/time settings.
+- Record while visiting slides forward or backward; save audio and review it locally.
+- Transcribe with ElevenLabs Scribe v2 and replay synchronized transcript words.
+- Show slide cues, evidence-linked feedback and presentation/per-slide scores.
+- Save transcript corrections and maintain audience Q&A state.
+- Retain recordings and explicit recovery states through network/provider failures.
+
+### Major progress in Iteration 2
+
+Integrated the redesigned rehearsal/review screens with Scribe, saved settings, reusable cues, automatic initial feedback/scoring, transcript corrections and durable Q&A. Added test-to-requirement mapping, coverage measurements and team device findings. [Testing Documentation](docs/testing.md) separates automated results, coverage shortfalls and manual observations.
+
+### Demo video
+
+[Watch or download the demo (MP4, 1 min 19 sec)](assets/demo/iteration-2-demo.mp4). The walkthrough shows presentation setup, recording, review/feedback, retake comparison and audience Q&A.
+
+### Known limitations
+
+PR31 retains the first-Redo recorder bug; its separate B09 fix is excluded. Back confirmation, spoken summaries, complete attempt comparison, full deletion and pre-upload rehearsal disclosure remain Iteration 3 work. Reported PDF-upload, navigation/playback and Q&A bugs remain open. Human advice usefulness and Korean recognition quality are unverified. [Requirements status](docs/requirements-and-specifications.md#iteration-2-implementation-status) records the remaining scope.
 
 ## Quick start
-
-Automatic presentation scoring now uses the existing durable feedback jobs. It produces validated overall and per-slide scores, refreshes after synchronized input changes, and retains explicit failure/uncertainty recovery. Existing review screens show level colors, direct advice and evidence; Home shows the overall score, total findings, duration and WPM. See the [v2 contract](docs/presentation-score-v2.md) and [source snapshot verification](docs/presentation-scoring-source-verification.md). Scores remain provisional; provider usefulness requires human testing.
-
-Step 1 compact feedback requests and cue/feedback reliability are integrated alongside scoring. Cached cues reconnect after connection failures, pause in the background or while covered, and resume on return. New feedback remains independent per slide; discontinued grouping and experiment tools are removed. See [compact context](docs/feedback-compact-context.md) and [retained-feature verification](docs/retained-features-verification.md).
 
 ### 1. Prerequisites and clone
 
@@ -37,7 +41,7 @@ Step 1 compact feedback requests and cue/feedback reliability are integrated alo
 - Set both shell `JAVA_HOME` and Android Studio's project Gradle JDK to **JDK 17**.
 
 ```sh
-git clone https://github.com/snuhcs-course/swpp-2026-project-team-07.git
+git clone --branch iteration-2-demo https://github.com/snuhcs-course/swpp-2026-project-team-07.git
 cd swpp-2026-project-team-07
 ```
 
@@ -47,6 +51,11 @@ From the repository root, copy the example only on first setup; preserve any exi
 
 ```sh
 cp -n backend/.env.example backend/.env
+```
+
+For transcription, set `ELEVENLABS_API_KEY` in `backend/.env`. For cues, feedback, scoring and Q&A, enable and configure the analysis provider as described in [Configuration and limits](#configuration-and-limits), including its key, project identity and positive RPM/TPM allowances. Keep the real keys outside Git.
+
+```sh
 docker compose up --build
 ```
 
@@ -89,7 +98,7 @@ npm run android
 7. In Review, the transcript appears directly below Play and above AI feedback, highlighting the original timed words as audio plays. Confirmed suggestions, restore, synchronization and sentence playback stay inline. Recording tools retain original-word playback, transcription retries and slide descriptions; remote audio can be downloaded on the same page. Full Review retains saved audio and transcripts; Full Review is also accessible from the Home assessment ring. Home and Full Review share a verified overall score for an exact complete original recording; slide rings and tiles show validated per-slide scores. Home also shows total current findings, recording duration and WPM. Scores start after transcription and refresh after saved corrections/settings synchronize. Failures and uncertain requests require explicit Retry. Full Review warns before playing a run with missing source audio.
 
 - Previously saved local media and cached results remain stored through network or provider failures. Download uncached remote audio directly in Review when needed.
-- Refreshing, downloading and replaying do not start transcription or feedback. Opening a presentation may automatically score its selected recordings; unused history is not backfilled. Indicator GET requests never admit work. PDF upload may generate the reusable AI cue profile; failed/uncertain generation requires explicit recovery. Rehearsal coaching generation remains explicit and does not retranscribe audio.
+- Refreshing, downloading and replaying do not start transcription or feedback. Opening a presentation may automatically score its selected recordings; unused history is not backfilled. Indicator GET requests never admit work. PDF upload may generate the reusable AI cue profile; failed/uncertain generation requires explicit recovery. Initial selected-slide feedback starts automatically when usable transcription and saved settings are ready. Updates and failed/uncertain retries require explicit actions; feedback does not retranscribe audio.
 - History covers locally known presentations for the selected API, not an account-wide archive. [Recording, playback and recovery details](docs/rehearsal-review.md).
 
 ## Configuration and limits
