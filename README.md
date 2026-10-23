@@ -25,7 +25,7 @@ Integrated the redesigned rehearsal/review screens with Scribe, saved settings, 
 
 ### Demo video
 
-[Watch or download the demo (MP4, 1 min 19 sec)](assets/demo/iteration-2-demo.mp4). The walkthrough shows presentation setup, recording, review/feedback, retake comparison and audience Q&A.
+[Download the demo video (MP4, 1 min 19 sec)](https://github.com/snuhcs-course/swpp-2026-project-team-07/raw/refs/heads/iteration-2-demo/assets/demo/iteration-2-demo.mp4). The walkthrough shows presentation setup, recording, review/feedback, retake comparison and audience Q&A.
 
 ### Known limitations
 
