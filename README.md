@@ -8,7 +8,7 @@ An Android presentation rehearsal app that connects PDF slides, recordings, slid
 
 ## Iteration 2 demo
 
-Application baseline: merged PR31, `c4a3f48d2a635bb2edb44828c62fb286b55f8d94`. This branch retains that application and includes the current Requirements, Design and Testing documents. B09's first-Redo fix remains on the separate `fix/retry-recording` branch.
+Application baseline: merged PR31, `c4a3f48d2a635bb2edb44828c62fb286b55f8d94`. This branch retains that application and includes the current Requirements, Design and Testing documents.
 
 ### Implemented features
 
@@ -29,7 +29,7 @@ Integrated the redesigned rehearsal/review screens with Scribe, saved settings, 
 
 ### Known limitations
 
-PR31 retains the first-Redo recorder bug; its separate B09 fix is excluded. Back confirmation, spoken summaries, complete attempt comparison, full deletion and pre-upload rehearsal disclosure remain Iteration 3 work. Reported PDF-upload, navigation/playback and Q&A bugs remain open. Human advice usefulness and Korean recognition quality are unverified. [Requirements status](docs/requirements-and-specifications.md#iteration-2-implementation-status) records the remaining scope.
+Some bugs remain unresolved. See [Testing Documentation](docs/testing.md) for details.
 
 ## Quick start
 
