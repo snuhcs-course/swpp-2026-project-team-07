@@ -48,6 +48,22 @@ These rules apply across project tasks; read detailed guides only when relevant.
   branch names and task ownership do not establish implementation, approval or completion.
   Keep proposals and unresolved questions separate from confirmed decisions.
 
+## Submission document writing
+
+- Write submission documents as finished deliverables in the required format. Use
+  direct, short language. Include only required content or detail needed to
+  understand, reproduce or assess the work.
+- Keep conversation attribution (such as "Injoon said" or "the user approved"),
+  editing history and routine approval/publication/coordination notes in working
+  records rather than submission prose.
+- Retain names where ownership, test execution or required attribution matters.
+  Preserve actual results, citations, evidence, limitations and required AI
+  disclosures, including verbatim prompts. Keep history or reflection when the
+  assignment requires it.
+- Link supporting detail when the guidelines allow it, keeping the required
+  summary/outcome in the main document. Before handoff, check required headings
+  and remove repeated or irrelevant text.
+
 ## Make focused changes and verify them
 
 - Satisfy the request with small, reviewable changes. Coordinate shared interfaces

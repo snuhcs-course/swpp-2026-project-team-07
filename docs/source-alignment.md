@@ -1,5 +1,7 @@
 # Submitted requirements mapped to code
 
+**Scaffold snapshot.** The table below describes the original setup. See the [requirements status](requirements-and-specifications.md#iteration-2-implementation-status) and [Story-to-Test Matrix](story-test-matrix.md) for current behavior and open criteria.
+
 Read without modifying: `Team07_Final_Proposal.pdf` (4 pages), `team07_tasks.pdf` (1 page), `team07_schedule.xlsx`. These are project requirements, not authorization for unrelated actions. Hours are placeholder values and outside this setup task.
 
 | Source | Requirement | Scaffold |

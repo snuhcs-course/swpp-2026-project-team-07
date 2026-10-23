@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Check Markdown, local assets, source links and PDF parity. No application tests."""
+"""Check Iteration 1 Markdown, assets, source links and PDF parity. No application tests."""
 from pathlib import Path
 import re, json, hashlib, subprocess, argparse, html, xml.etree.ElementTree as ET
 from pypdf import PdfReader
 import pdfplumber
 from PIL import Image, ImageChops
 p=argparse.ArgumentParser();p.add_argument('--root',type=Path);p.add_argument('--source-repo',type=Path,required=True);a=p.parse_args()
-r=a.root or Path(__file__).resolve().parents[2];s=(r/'Design-Documentation.md').read_text();m=json.loads((r/'output/pdf/build-manifest.json').read_text());errors=[]
+# Historical source selection updated with OpenAI Codex, October 21, 2026; docs/ai-collaboration-prompts-iteration-2.md.
+r=a.root or Path(__file__).resolve().parents[2];s=(r/'Design-Documentation-Iteration-1.md').read_text();m=json.loads((r/'output/pdf/build-manifest.json').read_text());errors=[]
 def check(ok,msg):
  if not ok:errors.append(msg)
 specs=json.loads((r/'docs/design-tools/figure-manifest.json').read_text());expected=specs['figures'];revision=re.search(r'Team 07 \| (Rev\.\d+\.\d+)',s)[1]

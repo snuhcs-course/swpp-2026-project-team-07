@@ -1,5 +1,7 @@
 # Verification commands and evidence
 
+See [Testing Documentation](testing.md) for the current plan, October 20 CI, October 22 local coverage (548 mobile / 554 PostgreSQL backend), B09 results and open checks. The [Test Inventory](test-inventory.md) and [Story-to-Test Matrix](story-test-matrix.md) link tests to requirements. The snapshots below retain their original dates and scope.
+
 - Commands and dated evidence relocated from README on October 13, 2026.
 - Historical counts below describe separate snapshots; they are not new test runs or a combined total.
 - Automated checks and agent-operated emulator/provider checks do not establish human approval or physical-phone validation.

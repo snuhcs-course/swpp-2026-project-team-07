@@ -1,0 +1,775 @@
+{
+  "date": "2026-10-22",
+  "collected_at": "2026-10-22T02:30:15.717184+00:00",
+  "application_commit": "c4a3f48d2a635bb2edb44828c62fb286b55f8d94",
+  "checkout_head": "455840670b4ddbdde00c63110374bb14f10fe7f6",
+  "configuration_status": "Uncommitted local coverage setup; no push",
+  "policy": {
+    "approved_by": "Injoon",
+    "approved_on": "2026-10-22",
+    "application_baseline": "c4a3f48d2a635bb2edb44828c62fb286b55f8d94",
+    "ci_mode": "enforce",
+    "human_reviewer": null,
+    "groups": {
+      "mobile_logic": {
+        "name": "Mobile logic and storage",
+        "maintainer": "Jooyoung",
+        "lines": 85,
+        "branches": 75
+      },
+      "mobile_ui": {
+        "name": "Mobile screens and components",
+        "maintainer": "Jaewon",
+        "lines": 70,
+        "branches": 60
+      },
+      "backend_logic": {
+        "name": "Backend logic and services",
+        "maintainer": "Seoyeon",
+        "lines": 85,
+        "branches": 75
+      },
+      "backend_api": {
+        "name": "Backend API and runtime",
+        "maintainer": "Injoon",
+        "lines": 80,
+        "branches": 70
+      }
+    }
+  },
+  "tools": {
+    "node": "24.20.0",
+    "c8": "12.0.0",
+    "python": "3.12.13",
+    "coverage.py": "7.16.2",
+    "database": "PostgreSQL 16-alpine, separate disposable container"
+  },
+  "tests": {
+    "mobile": {
+      "tests": 548,
+      "pass": 548,
+      "fail": 0,
+      "skipped": 0
+    },
+    "backend": {
+      "tests": 554,
+      "pass": 554,
+      "fail": 0,
+      "skipped": 0
+    }
+  },
+  "groups": {
+    "mobile_logic": {
+      "name": "Mobile logic and storage",
+      "maintainer": "Jooyoung",
+      "lines": 85,
+      "branches": 75,
+      "files": [
+        "src/contracts/index.ts",
+        "src/design/tokens.ts",
+        "src/domain/analysis.ts",
+        "src/domain/corrections.ts",
+        "src/domain/format.ts",
+        "src/domain/gestures.ts",
+        "src/domain/hues.ts",
+        "src/domain/lines.ts",
+        "src/domain/presentationRequirements.ts",
+        "src/domain/run.ts",
+        "src/domain/slides.ts",
+        "src/domain/words.ts",
+        "src/features/feedback/automaticFeedback.ts",
+        "src/features/feedback/automaticPresentationScore.ts",
+        "src/features/feedback/evidence.ts",
+        "src/features/feedback/presentationScore.ts",
+        "src/features/feedback/presentationScoreDisplay.ts",
+        "src/features/feedback/presentationScoreStore.ts",
+        "src/features/feedback/selectedPresentationScores.ts",
+        "src/features/feedback/selectedSlideFeedback.ts",
+        "src/features/feedback/slideReview.ts",
+        "src/features/feedback/slideReviewStore.ts",
+        "src/features/feedback/storage.ts",
+        "src/features/feedback/useFeedbackReview.ts",
+        "src/features/feedback/usePresentationScore.ts",
+        "src/features/feedback/useRunFeedbackStatus.ts",
+        "src/features/feedback/useRunPresentationScores.ts",
+        "src/features/feedback/useSlideReview.ts",
+        "src/features/feedback/validation.ts",
+        "src/features/pdf/service.ts",
+        "src/features/presentations/contextClient.ts",
+        "src/features/presentations/contextWriter.ts",
+        "src/features/presentations/correctionLines.ts",
+        "src/features/presentations/correctionStore.ts",
+        "src/features/presentations/defaultRequirements.ts",
+        "src/features/presentations/defaultRequirementsState.ts",
+        "src/features/presentations/importer.ts",
+        "src/features/presentations/requirementsDraft.ts",
+        "src/features/presentations/requirementsStore.ts",
+        "src/features/presentations/serverDeck.ts",
+        "src/features/presentations/slideProfiles.ts",
+        "src/features/presentations/store.ts",
+        "src/features/presentations/timing.ts",
+        "src/features/presentations/transcriptSuggestions.ts",
+        "src/features/presentations/useDeckModel.ts",
+        "src/features/presentations/useSlideProfiles.ts",
+        "src/features/presentations/useTranscriptCorrections.ts",
+        "src/features/qa/automatic.ts",
+        "src/features/qa/client.ts",
+        "src/features/qa/state.ts",
+        "src/features/qa/store.ts",
+        "src/features/qa/useDurableQa.ts",
+        "src/features/recording/limits.ts",
+        "src/features/recording/recovery.ts",
+        "src/features/recording/service.ts",
+        "src/features/recording/stopCapture.ts",
+        "src/features/recording/storage.ts",
+        "src/features/recording/upload.ts",
+        "src/features/rehearsal/takes.ts",
+        "src/features/rehearsal/useSegmentPlayer.ts",
+        "src/features/transcription/analysisStorage.ts",
+        "src/features/transcription/client.ts",
+        "src/features/transcription/playback.ts",
+        "src/features/transcription/resultValidation.ts",
+        "src/features/transcription/reviewHistory.ts",
+        "src/features/transcription/reviewMedia.ts",
+        "src/features/transcription/reviewStorage.ts",
+        "src/features/transcription/reviewValidation.ts",
+        "src/features/transcription/service.ts",
+        "src/features/transcription/useAttemptAnalysis.ts",
+        "src/features/transcription/useReviewDeck.ts",
+        "src/features/transcription/useReviewMedia.ts",
+        "src/features/transcription/useReviewPdf.ts",
+        "src/features/transcription/useReviewPlayerStatus.ts",
+        "src/fixtures/whisperTranscript.ts",
+        "src/screens/shared.ts",
+        "src/services/api.ts",
+        "src/services/storage.ts"
+      ],
+      "counts": {
+        "lines": {
+          "covered": 5573,
+          "total": 6903,
+          "pct": 80.73,
+          "target": 85,
+          "passed": false
+        },
+        "branches": {
+          "covered": 3822,
+          "total": 4431,
+          "pct": 86.26,
+          "target": 75,
+          "passed": true
+        }
+      },
+      "passed": false
+    },
+    "mobile_ui": {
+      "name": "Mobile screens and components",
+      "maintainer": "Jaewon",
+      "lines": 70,
+      "branches": 60,
+      "files": [
+        "src/app/_layout.tsx",
+        "src/app/index.tsx",
+        "src/design/PanView.tsx",
+        "src/design/ScoreRing.tsx",
+        "src/design/SlideCard.tsx",
+        "src/design/ThemeToggle.tsx",
+        "src/design/frame.tsx",
+        "src/design/iconData.tsx",
+        "src/design/icons.tsx",
+        "src/design/theme.tsx",
+        "src/design/ui.tsx",
+        "src/features/feedback/InitialFeedbackHost.tsx",
+        "src/features/feedback/InitialPresentationScoreHost.tsx",
+        "src/features/feedback/PresentationScorePanel.tsx",
+        "src/features/feedback/SlideReviewSummary.tsx",
+        "src/features/presentations/CueGuidancePanel.tsx",
+        "src/features/presentations/DefaultRequirementsHost.tsx",
+        "src/features/qa/AnswerRecorder.tsx",
+        "src/features/qa/InitialQaHost.tsx",
+        "src/features/rehearsal/CaptureEngine.tsx",
+        "src/features/rehearsal/analysis.tsx",
+        "src/features/rehearsal/coaching.tsx",
+        "src/features/transcription/nativeMediaValidation.tsx",
+        "src/screens/AppShell.tsx",
+        "src/screens/CompareScreen.tsx",
+        "src/screens/FullReviewScreen.tsx",
+        "src/screens/HomeFeedbackStats.tsx",
+        "src/screens/HomeScreen.tsx",
+        "src/screens/PresentationSetup.tsx",
+        "src/screens/QAScreen.tsx",
+        "src/screens/RehearseScreen.tsx",
+        "src/screens/ReviewRecordingTools.tsx",
+        "src/screens/ReviewScreen.tsx",
+        "src/screens/ReviewSlidePlayback.tsx",
+        "src/screens/TakePlayback.tsx",
+        "src/screens/TranscriptCorrections.tsx",
+        "src/screens/UploadScreen.tsx"
+      ],
+      "counts": {
+        "lines": {
+          "covered": 3809,
+          "total": 6165,
+          "pct": 61.78,
+          "target": 70,
+          "passed": false
+        },
+        "branches": {
+          "covered": 1405,
+          "total": 1982,
+          "pct": 70.89,
+          "target": 60,
+          "passed": true
+        }
+      },
+      "passed": false
+    },
+    "backend_logic": {
+      "name": "Backend logic and services",
+      "maintainer": "Seoyeon",
+      "lines": 85,
+      "branches": 75,
+      "files": [
+        "rehearsals/limits.py",
+        "rehearsals/models.py",
+        "rehearsals/services/__init__.py",
+        "rehearsals/services/alignment.py",
+        "rehearsals/services/audience_qa.py",
+        "rehearsals/services/coaching.py",
+        "rehearsals/services/corrections.py",
+        "rehearsals/services/descriptions.py",
+        "rehearsals/services/evidence.py",
+        "rehearsals/services/feedback.py",
+        "rehearsals/services/feedback_config.py",
+        "rehearsals/services/feedback_images.py",
+        "rehearsals/services/feedback_provider.py",
+        "rehearsals/services/feedback_quota.py",
+        "rehearsals/services/keyterms.py",
+        "rehearsals/services/metrics.py",
+        "rehearsals/services/pdf.py",
+        "rehearsals/services/presentation_eligibility.py",
+        "rehearsals/services/presentation_evidence_selection.py",
+        "rehearsals/services/presentation_measurements.py",
+        "rehearsals/services/presentation_rubric.py",
+        "rehearsals/services/presentation_rubric_v2.py",
+        "rehearsals/services/presentation_score.py",
+        "rehearsals/services/presentation_score_v2.py",
+        "rehearsals/services/presentation_scoring.py",
+        "rehearsals/services/presentation_visit_evidence.py",
+        "rehearsals/services/processing.py",
+        "rehearsals/services/qa.py",
+        "rehearsals/services/review_timing.py",
+        "rehearsals/services/slide_profile_schema.py",
+        "rehearsals/services/slide_profiles.py",
+        "rehearsals/services/slide_review.py",
+        "rehearsals/services/speech_gate.py",
+        "rehearsals/services/storage.py",
+        "rehearsals/services/transcript_suggestions.py",
+        "rehearsals/services/transcription.py",
+        "rehearsals/tasks.py"
+      ],
+      "counts": {
+        "lines": {
+          "covered": 4742,
+          "total": 5009,
+          "pct": 94.67,
+          "target": 85,
+          "passed": true
+        },
+        "branches": {
+          "covered": 1481,
+          "total": 1686,
+          "pct": 87.84,
+          "target": 75,
+          "passed": true
+        }
+      },
+      "passed": true
+    },
+    "backend_api": {
+      "name": "Backend API and runtime",
+      "maintainer": "Injoon",
+      "lines": 80,
+      "branches": 70,
+      "files": [
+        "config/__init__.py",
+        "config/celery.py",
+        "config/settings.py",
+        "config/urls.py",
+        "config/wsgi.py",
+        "manage.py",
+        "rehearsals/__init__.py",
+        "rehearsals/correction_views.py",
+        "rehearsals/description_views.py",
+        "rehearsals/durable_qa_views.py",
+        "rehearsals/feedback_views.py",
+        "rehearsals/management/commands/revalidate_review_evidence.py",
+        "rehearsals/migrations/0004_preserve_existing_attempts.py",
+        "rehearsals/migrations/0008_transcriptcorrection_feedbackanalysis_analysis_type_and_more.py",
+        "rehearsals/migrations/__init__.py",
+        "rehearsals/presentation_context_views.py",
+        "rehearsals/presentation_score_views.py",
+        "rehearsals/qa_views.py",
+        "rehearsals/serializers.py",
+        "rehearsals/slide_profile_views.py",
+        "rehearsals/slide_review_views.py",
+        "rehearsals/urls.py",
+        "rehearsals/views.py"
+      ],
+      "counts": {
+        "lines": {
+          "covered": 637,
+          "total": 727,
+          "pct": 87.62,
+          "target": 80,
+          "passed": true
+        },
+        "branches": {
+          "covered": 156,
+          "total": 200,
+          "pct": 78.0,
+          "target": 70,
+          "passed": true
+        }
+      },
+      "passed": true
+    }
+  },
+  "limits": [
+    "Automated execution coverage; no new phone, human acceptance or AI-quality evaluation.",
+    "c8 V8 line/block metrics and coverage.py statement/branch metrics retain their native definitions.",
+    "The extracted transcript-row helper receives no application coverage credit; the original screen remains included.",
+    "CI workflow prepared locally; remote CI execution and required-check settings unverified."
+  ],
+  "independent_ai_review": "No remaining actionable blockers after corrections; human reviewer unassigned.",
+  "scope": {
+    "mobile": {
+      "included": {
+        "src/app/_layout.tsx": "mobile_ui",
+        "src/app/index.tsx": "mobile_ui",
+        "src/contracts/index.ts": "mobile_logic",
+        "src/design/PanView.tsx": "mobile_ui",
+        "src/design/ScoreRing.tsx": "mobile_ui",
+        "src/design/SlideCard.tsx": "mobile_ui",
+        "src/design/ThemeToggle.tsx": "mobile_ui",
+        "src/design/frame.tsx": "mobile_ui",
+        "src/design/iconData.tsx": "mobile_ui",
+        "src/design/icons.tsx": "mobile_ui",
+        "src/design/theme.tsx": "mobile_ui",
+        "src/design/tokens.ts": "mobile_logic",
+        "src/design/ui.tsx": "mobile_ui",
+        "src/domain/analysis.ts": "mobile_logic",
+        "src/domain/corrections.ts": "mobile_logic",
+        "src/domain/format.ts": "mobile_logic",
+        "src/domain/gestures.ts": "mobile_logic",
+        "src/domain/hues.ts": "mobile_logic",
+        "src/domain/lines.ts": "mobile_logic",
+        "src/domain/presentationRequirements.ts": "mobile_logic",
+        "src/domain/run.ts": "mobile_logic",
+        "src/domain/slides.ts": "mobile_logic",
+        "src/domain/words.ts": "mobile_logic",
+        "src/features/feedback/InitialFeedbackHost.tsx": "mobile_ui",
+        "src/features/feedback/InitialPresentationScoreHost.tsx": "mobile_ui",
+        "src/features/feedback/PresentationScorePanel.tsx": "mobile_ui",
+        "src/features/feedback/SlideReviewSummary.tsx": "mobile_ui",
+        "src/features/feedback/automaticFeedback.ts": "mobile_logic",
+        "src/features/feedback/automaticPresentationScore.ts": "mobile_logic",
+        "src/features/feedback/evidence.ts": "mobile_logic",
+        "src/features/feedback/presentationScore.ts": "mobile_logic",
+        "src/features/feedback/presentationScoreDisplay.ts": "mobile_logic",
+        "src/features/feedback/presentationScoreStore.ts": "mobile_logic",
+        "src/features/feedback/selectedPresentationScores.ts": "mobile_logic",
+        "src/features/feedback/selectedSlideFeedback.ts": "mobile_logic",
+        "src/features/feedback/slideReview.ts": "mobile_logic",
+        "src/features/feedback/slideReviewStore.ts": "mobile_logic",
+        "src/features/feedback/storage.ts": "mobile_logic",
+        "src/features/feedback/useFeedbackReview.ts": "mobile_logic",
+        "src/features/feedback/usePresentationScore.ts": "mobile_logic",
+        "src/features/feedback/useRunFeedbackStatus.ts": "mobile_logic",
+        "src/features/feedback/useRunPresentationScores.ts": "mobile_logic",
+        "src/features/feedback/useSlideReview.ts": "mobile_logic",
+        "src/features/feedback/validation.ts": "mobile_logic",
+        "src/features/pdf/service.ts": "mobile_logic",
+        "src/features/presentations/CueGuidancePanel.tsx": "mobile_ui",
+        "src/features/presentations/DefaultRequirementsHost.tsx": "mobile_ui",
+        "src/features/presentations/contextClient.ts": "mobile_logic",
+        "src/features/presentations/contextWriter.ts": "mobile_logic",
+        "src/features/presentations/correctionLines.ts": "mobile_logic",
+        "src/features/presentations/correctionStore.ts": "mobile_logic",
+        "src/features/presentations/defaultRequirements.ts": "mobile_logic",
+        "src/features/presentations/defaultRequirementsState.ts": "mobile_logic",
+        "src/features/presentations/importer.ts": "mobile_logic",
+        "src/features/presentations/requirementsDraft.ts": "mobile_logic",
+        "src/features/presentations/requirementsStore.ts": "mobile_logic",
+        "src/features/presentations/serverDeck.ts": "mobile_logic",
+        "src/features/presentations/slideProfiles.ts": "mobile_logic",
+        "src/features/presentations/store.ts": "mobile_logic",
+        "src/features/presentations/timing.ts": "mobile_logic",
+        "src/features/presentations/transcriptSuggestions.ts": "mobile_logic",
+        "src/features/presentations/useDeckModel.ts": "mobile_logic",
+        "src/features/presentations/useSlideProfiles.ts": "mobile_logic",
+        "src/features/presentations/useTranscriptCorrections.ts": "mobile_logic",
+        "src/features/qa/AnswerRecorder.tsx": "mobile_ui",
+        "src/features/qa/InitialQaHost.tsx": "mobile_ui",
+        "src/features/qa/automatic.ts": "mobile_logic",
+        "src/features/qa/client.ts": "mobile_logic",
+        "src/features/qa/state.ts": "mobile_logic",
+        "src/features/qa/store.ts": "mobile_logic",
+        "src/features/qa/useDurableQa.ts": "mobile_logic",
+        "src/features/recording/limits.ts": "mobile_logic",
+        "src/features/recording/recovery.ts": "mobile_logic",
+        "src/features/recording/service.ts": "mobile_logic",
+        "src/features/recording/stopCapture.ts": "mobile_logic",
+        "src/features/recording/storage.ts": "mobile_logic",
+        "src/features/recording/upload.ts": "mobile_logic",
+        "src/features/rehearsal/CaptureEngine.tsx": "mobile_ui",
+        "src/features/rehearsal/analysis.tsx": "mobile_ui",
+        "src/features/rehearsal/coaching.tsx": "mobile_ui",
+        "src/features/rehearsal/takes.ts": "mobile_logic",
+        "src/features/rehearsal/useSegmentPlayer.ts": "mobile_logic",
+        "src/features/transcription/analysisStorage.ts": "mobile_logic",
+        "src/features/transcription/client.ts": "mobile_logic",
+        "src/features/transcription/nativeMediaValidation.tsx": "mobile_ui",
+        "src/features/transcription/playback.ts": "mobile_logic",
+        "src/features/transcription/resultValidation.ts": "mobile_logic",
+        "src/features/transcription/reviewHistory.ts": "mobile_logic",
+        "src/features/transcription/reviewMedia.ts": "mobile_logic",
+        "src/features/transcription/reviewStorage.ts": "mobile_logic",
+        "src/features/transcription/reviewValidation.ts": "mobile_logic",
+        "src/features/transcription/service.ts": "mobile_logic",
+        "src/features/transcription/useAttemptAnalysis.ts": "mobile_logic",
+        "src/features/transcription/useReviewDeck.ts": "mobile_logic",
+        "src/features/transcription/useReviewMedia.ts": "mobile_logic",
+        "src/features/transcription/useReviewPdf.ts": "mobile_logic",
+        "src/features/transcription/useReviewPlayerStatus.ts": "mobile_logic",
+        "src/fixtures/whisperTranscript.ts": "mobile_logic",
+        "src/screens/AppShell.tsx": "mobile_ui",
+        "src/screens/CompareScreen.tsx": "mobile_ui",
+        "src/screens/FullReviewScreen.tsx": "mobile_ui",
+        "src/screens/HomeFeedbackStats.tsx": "mobile_ui",
+        "src/screens/HomeScreen.tsx": "mobile_ui",
+        "src/screens/PresentationSetup.tsx": "mobile_ui",
+        "src/screens/QAScreen.tsx": "mobile_ui",
+        "src/screens/RehearseScreen.tsx": "mobile_ui",
+        "src/screens/ReviewRecordingTools.tsx": "mobile_ui",
+        "src/screens/ReviewScreen.tsx": "mobile_ui",
+        "src/screens/ReviewSlidePlayback.tsx": "mobile_ui",
+        "src/screens/TakePlayback.tsx": "mobile_ui",
+        "src/screens/TranscriptCorrections.tsx": "mobile_ui",
+        "src/screens/UploadScreen.tsx": "mobile_ui",
+        "src/screens/shared.ts": "mobile_logic",
+        "src/services/api.ts": "mobile_logic",
+        "src/services/storage.ts": "mobile_logic"
+      },
+      "excluded": [
+        {
+          "path": "src/contracts/feedback.ts",
+          "reason": "Type declaration"
+        }
+      ]
+    },
+    "backend": {
+      "included": {
+        "config/__init__.py": "backend_api",
+        "config/celery.py": "backend_api",
+        "config/settings.py": "backend_api",
+        "config/urls.py": "backend_api",
+        "config/wsgi.py": "backend_api",
+        "manage.py": "backend_api",
+        "rehearsals/__init__.py": "backend_api",
+        "rehearsals/correction_views.py": "backend_api",
+        "rehearsals/description_views.py": "backend_api",
+        "rehearsals/durable_qa_views.py": "backend_api",
+        "rehearsals/feedback_views.py": "backend_api",
+        "rehearsals/limits.py": "backend_logic",
+        "rehearsals/management/commands/revalidate_review_evidence.py": "backend_api",
+        "rehearsals/migrations/0004_preserve_existing_attempts.py": "backend_api",
+        "rehearsals/migrations/0008_transcriptcorrection_feedbackanalysis_analysis_type_and_more.py": "backend_api",
+        "rehearsals/migrations/__init__.py": "backend_api",
+        "rehearsals/models.py": "backend_logic",
+        "rehearsals/presentation_context_views.py": "backend_api",
+        "rehearsals/presentation_score_views.py": "backend_api",
+        "rehearsals/qa_views.py": "backend_api",
+        "rehearsals/serializers.py": "backend_api",
+        "rehearsals/services/__init__.py": "backend_logic",
+        "rehearsals/services/alignment.py": "backend_logic",
+        "rehearsals/services/audience_qa.py": "backend_logic",
+        "rehearsals/services/coaching.py": "backend_logic",
+        "rehearsals/services/corrections.py": "backend_logic",
+        "rehearsals/services/descriptions.py": "backend_logic",
+        "rehearsals/services/evidence.py": "backend_logic",
+        "rehearsals/services/feedback.py": "backend_logic",
+        "rehearsals/services/feedback_config.py": "backend_logic",
+        "rehearsals/services/feedback_images.py": "backend_logic",
+        "rehearsals/services/feedback_provider.py": "backend_logic",
+        "rehearsals/services/feedback_quota.py": "backend_logic",
+        "rehearsals/services/keyterms.py": "backend_logic",
+        "rehearsals/services/metrics.py": "backend_logic",
+        "rehearsals/services/pdf.py": "backend_logic",
+        "rehearsals/services/presentation_eligibility.py": "backend_logic",
+        "rehearsals/services/presentation_evidence_selection.py": "backend_logic",
+        "rehearsals/services/presentation_measurements.py": "backend_logic",
+        "rehearsals/services/presentation_rubric.py": "backend_logic",
+        "rehearsals/services/presentation_rubric_v2.py": "backend_logic",
+        "rehearsals/services/presentation_score.py": "backend_logic",
+        "rehearsals/services/presentation_score_v2.py": "backend_logic",
+        "rehearsals/services/presentation_scoring.py": "backend_logic",
+        "rehearsals/services/presentation_visit_evidence.py": "backend_logic",
+        "rehearsals/services/processing.py": "backend_logic",
+        "rehearsals/services/qa.py": "backend_logic",
+        "rehearsals/services/review_timing.py": "backend_logic",
+        "rehearsals/services/slide_profile_schema.py": "backend_logic",
+        "rehearsals/services/slide_profiles.py": "backend_logic",
+        "rehearsals/services/slide_review.py": "backend_logic",
+        "rehearsals/services/speech_gate.py": "backend_logic",
+        "rehearsals/services/storage.py": "backend_logic",
+        "rehearsals/services/transcript_suggestions.py": "backend_logic",
+        "rehearsals/services/transcription.py": "backend_logic",
+        "rehearsals/slide_profile_views.py": "backend_api",
+        "rehearsals/slide_review_views.py": "backend_api",
+        "rehearsals/tasks.py": "backend_logic",
+        "rehearsals/urls.py": "backend_api",
+        "rehearsals/views.py": "backend_api"
+      },
+      "excluded": [
+        {
+          "path": "config/test_settings.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/migrations/0001_initial.py",
+          "reason": "Generated schema migration"
+        },
+        {
+          "path": "rehearsals/migrations/0002_attempt_upload_hash_deck_content_hash_and_more.py",
+          "reason": "Generated schema migration"
+        },
+        {
+          "path": "rehearsals/migrations/0003_attempt_analysis_outcome_attempt_claim_token_and_more.py",
+          "reason": "Generated schema migration"
+        },
+        {
+          "path": "rehearsals/migrations/0005_descriptionset_descriptionjob_feedbackquotabucket_and_more.py",
+          "reason": "Generated schema migration"
+        },
+        {
+          "path": "rehearsals/migrations/0006_durable_coaching.py",
+          "reason": "Generated schema migration"
+        },
+        {
+          "path": "rehearsals/migrations/0007_presentationcontext.py",
+          "reason": "Generated schema migration"
+        },
+        {
+          "path": "rehearsals/migrations/0007_provider_request_options.py",
+          "reason": "Generated schema migration"
+        },
+        {
+          "path": "rehearsals/migrations/0009_qaanswer.py",
+          "reason": "Generated schema migration"
+        },
+        {
+          "path": "rehearsals/migrations/0010_slide_review_membership.py",
+          "reason": "Generated schema migration"
+        },
+        {
+          "path": "rehearsals/migrations/0011_merge_scribe_scoring.py",
+          "reason": "Generated schema migration"
+        },
+        {
+          "path": "rehearsals/test_alignment.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_coaching.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_coaching_migration.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_correction_migration.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_corrections.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_cue_guidance.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_description_migration.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_descriptions.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_durable_qa.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_evidence.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_feedback.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_feedback_provider.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_feedback_quota_policy.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_keyterms.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_long_recordings.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_presentation_contexts.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_presentation_eligibility.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_presentation_evidence_selection.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_presentation_rubric_v2.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_presentation_score.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_presentation_score_v2.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_presentation_score_v2_boundaries.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_presentation_scoring.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_presentation_scoring_lifecycle.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_presentation_visit_evidence.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_processing.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_processing_migration.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_qa.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_review_evidence.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_saved_feedback_images.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_scribe_contract.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_singleton_review_admission.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_slide_profiles.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_slide_review.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_slide_review_context.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_speech_gate.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_storage.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/test_transcription.py",
+          "reason": "Test or test helper"
+        },
+        {
+          "path": "rehearsals/tests.py",
+          "reason": "Test or test helper"
+        }
+      ]
+    }
+  },
+  "tooling_sha256": {
+    "tools/coverage-policy.json": "db91bb8fff31ce49248b5e7975c101d4967cabf738dee119432a0120c9c2f7ae",
+    "tools/coverage_report.py": "74bafad8a42fb0a916b69230364fbe9121de9538b76244c34e2fda3b6f0dc629",
+    "tools/test_coverage_report.py": "cc982650acd0408273cb7439e739d1b4759846375a7d7643c76bb0cfe902f806",
+    "mobile/.c8rc.json": "f7d4b04e66224f889c75a263a65e9c0f27df3563cf640df84d7ba5b4c027a575",
+    "backend/.coveragerc": "239ba11844ed57db548b3fc1a216e3f4f8112f4f8d83ea20646ca81d8fa9e0ee",
+    "backend/requirements-test.txt": "045915d9f460e5b6cedea5873b86e4789c059fc268207a52d62e4f4a9657b5c2",
+    "mobile/package.json": "39e52f9c2f9365237fc662706906fbf07bfe181a1c5a97d726a04008ab8444e8",
+    "mobile/package-lock.json": "05db2373007a34237fa7386d83441541c482c7a1d9408d6322dd7061737d346c",
+    "mobile/tools/run-coverage.mjs": "362a11dce467cc23ed39c63cd7dccb7b9c58af1d8e74be0df9fc983527cb9186",
+    "mobile/tools/validate-coverage.mjs": "8c569b8cd8d41dad8f930b61080b6827604f5c93fe6500931eb39e59b3cc303b",
+    "mobile/tests/helpers/transpile.mjs": "eb5d69183c391fd16b08355a8cf460c9fcce803c0e73ecda60e21aeb30a29a2b",
+    "mobile/tests/helpers/coverage-register.mjs": "8b000c7606b5f6db7cd7d5e821e979ccfe7dacee434ce37f807ca21455d2321f",
+    "mobile/tests/helpers/domain-loader.mjs": "dd68fb78d39bf4e114cc0f5514afb0db063b4a9a4f505eb2d73ee59be57e2a4c",
+    "mobile/tests/helpers/recording-screen-loader.mjs": "32076824b133f6014ead0a40bcdda8541fcc9a1cdbf8097c2bb4ccd0a0317b6b",
+    "mobile/tests/helpers/transcript-row-loader.mjs": "b30875214ca67315ed42ba6b17aa60990addfd63c4946814677f65e1a73d89c6",
+    ".github/workflows/checks.yml": "7adab0e25998961658481b856e195f20726971109ce811d03ba01fe9582b4194",
+    ".gitignore": "ce292b8c146992d60693e3ebdc624c789d7c2a51ca578eda3206b08c9ad965ed"
+  },
+  "app_source_diff": "",
+  "additional_checks": {
+    "ordinary_mobile_tests": {
+      "passed": 548,
+      "failed": 0,
+      "skipped": 0
+    },
+    "typecheck": "passed",
+    "lint": "passed with one existing warning",
+    "android_javascript_export": "passed",
+    "backend_system_check": "passed",
+    "migration_drift": "no changes",
+    "coverage_tool_tests": 3,
+    "mobile_collector_validation": "passed including spawned child",
+    "workflow_syntax": "passed",
+    "human_review": "pending",
+    "remote_ci": "not run"
+  }
+}

@@ -8,6 +8,8 @@ An Android presentation rehearsal app that connects PDF slides, recordings, slid
 
 ## Current status
 
+The [requirements status](docs/requirements-and-specifications.md#iteration-2-implementation-status), [Iteration 2 design](Design-Documentation.md) and [Testing Documentation](docs/testing.md) describe merged PR31 (`c4a3f48`, October 20). B09's first-Redo fix remains on the separate `fix/retry-recording` branch.
+
 - **This copy has the redesigned mobile UI** (design prototype rebuild, October 14, 2026). See [REDESIGN.md](REDESIGN.md) for setup, the screen-to-feature map and verification limits.
 - **Iteration 2 is current.** Iteration 1 features were merged into `main` on October 11, 2026 (PRs #17–#21).
 - Available features include PDF import, recording with slide tracking, saved audio playback, ElevenLabs Scribe v2 transcription, synchronized transcript review and AI feedback.
@@ -117,23 +119,24 @@ docker compose exec api python manage.py makemigrations --check --dry-run
 ```
 
 - [Verification guide](docs/verification.md) covers local Python/SQLite commands, PostgreSQL concurrency tests, worker recovery and historical evidence.
+- [Testing Documentation](docs/testing.md#environment-and-commands) gives reproducible commands for the published [coverage setup](https://github.com/snuhcs-course/swpp-2026-project-team-07/tree/testing-setup-documentation). The October 22 run passes all application tests and meets backend targets; mobile CI fails its two line-coverage targets. Reports remain available after failure.
 - SQLite tests skip PostgreSQL-specific races. An Android JavaScript export does not establish APK, physical-device or human-usefulness results.
 
 ## Documentation
 
 | Need | Document |
 | --- | --- |
-| Requirements and implementation context | [Submitted requirements traceability](docs/source-alignment.md) · [GitHub Wiki](https://github.com/snuhcs-course/swpp-2026-project-team-07/wiki) |
-| Design and TA review artifacts | [Proposed Wiki design revision](Design-Documentation.md) · [reading PDF](output/pdf/OutLoud_Design_Documentation.pdf) · [submission copy](output/pdf/team7-iter1-design.pdf) · [reference comparison](Design-Comparison.md) |
+| Requirements and implementation context | [Requirements and current status](docs/requirements-and-specifications.md) · [Story-to-Test Matrix](docs/story-test-matrix.md) · [GitHub Wiki](https://github.com/snuhcs-course/swpp-2026-project-team-07/wiki) |
+| Design and TA review artifacts | [Current Iteration 2 design](Design-Documentation.md) · [historical Iteration 1 design](Design-Documentation-Iteration-1.md) and [export tools](docs/design-tools/README.md) |
 | Setup and repository layout | [Local development guide](docs/local-development.md) |
 | Data boundaries and recovery | [API contract](docs/api-contract.md) · [rehearsal review](docs/rehearsal-review.md) |
 | Feedback behavior and quality limits | [AI feedback reference](docs/ai-feedback.md) · [controlled evaluation](docs/feedback-evaluation.md) |
-| Verification evidence | [Verification guide](docs/verification.md) · [historical scaffold review](docs/review.md) |
+| Testing plan and evidence | [Testing Documentation](docs/testing.md) · [Test Inventory](docs/test-inventory.md) · [verification commands and historical evidence](docs/verification.md) |
 | Contributor rules and earlier ownership context | [Shared instructions](AGENTS.md) · [Iteration 1 work division](docs/team-work-division.md) · [Iteration 1 handoff](docs/iteration-1-handoff.md) |
 | AI contribution and disclosure | [Iteration 2 collaboration log](docs/ai-collaboration-prompts-iteration-2.md) · [reporting guide](docs/ai-collaboration-guidelines.md) |
 | Meeting records | [Meeting-log workflow](docs/meeting-log-workflow.md) · [reusable template](docs/daily-standup-meeting-log-template.md); Wiki publication follows approval |
 | Historical setup rationale | [Original scaffold walkthrough](docs/setup-explained.md); its scaffold-only status and branch instructions describe the earlier stage |
 
-- The design draft, PDF copies and published Wiki have separate version/publication status; confirm the relevant version before review or submission.
+- Existing design and requirements PDFs describe Iteration 1. Iteration 2 needs current exports and a separate eTL submission.
 - Preserve dated evidence and confirm current task ownership.
 - Expo template assets/license remain under `mobile/`.

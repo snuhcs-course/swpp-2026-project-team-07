@@ -1,7 +1,30 @@
 # OutLoud Requirements & Specifications
 
 Team 07 (치르치르), Software Development Principles and Practice, Seoul National University<br>
-Version 2.0, 9 October 2026
+Version 3.0, 23 October 2026
+
+## Iteration 2 implementation status
+
+**Application baseline:** [merged PR31](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/31) (`c4a3f48`). **Evidence updated:** October 23, 2026.
+
+PR31 includes recording/review, Scribe v2 transcription, saved audience/time settings, cues, transcript corrections, evidence-linked feedback, scoring and audience Q&A. New presentations start with General audience and a 5-minute duration. Users can edit or clear these settings. [Design Documentation](../Design-Documentation.md) describes the implementation.
+
+The October 22 full-suite run passed 548 mobile and 554 PostgreSQL backend tests, with zero failures or skips. Both backend coverage groups meet their targets; both mobile groups miss their line targets. Device reports contain unresolved failures. See [Testing Documentation](testing.md) for the separate runs, coverage and source limitations.
+
+| Area | Current status and remaining work |
+| --- | --- |
+| PDF import, AC-01a/b | Jooyoung reports two upload HTTP 500 responses for a PDF whose extracted text triggered a surrogate-character encoding error. A controlled error and device retest remain missing. [JY01](testing-evidence/iteration-2-supporting-records.md#jooyoung-pdf-upload-failure). |
+| Repeated slide visits, AC-02a | PR31 supports forward, backward and repeated visits. Jaewon and Seoyeon report visit association/display concerns; verify timing, transcript order and displayed visit identities. [JJ02 / SY01](testing.md#supplementary-manual-testing). |
+| Leave while recording, AC-02d | PR31 blocks Back. Stop/save/discard confirmation is planned for Iteration 3. |
+| Spoken key ideas, AC-03b/d/e | Current cues describe slides. Spoken summaries and their failure states are planned for Iteration 3. |
+| Retry and comparison, AC-08 | Redo and Keep/Overwrite cover part of the flow. Complete two-attempt audio/transcript/feedback comparison and the empty-selection checklist are planned for Iteration 3. B09's first-Redo fix has separate checks and remains outside PR31. [Results](testing.md#supplementary-manual-testing). |
+| Full deletion, AC-11a–c | Hide/Undo and local PDF removal leave server media/results and partial-deletion recovery unfinished. Full deletion is planned for Iteration 3. |
+| Disclosure before upload, NFR-05 / Section 7.2 | Rehearsal asks for transcription consent after audio upload; Q&A checks before a new answer upload. Pre-upload rehearsal disclosure is planned for Iteration 3. |
+| Feedback trigger | PR31 starts initial selected-slide feedback after usable transcription and saved settings are ready. Users request updates or retries. This is the current product behavior; the acceptance criteria retain their existing request scenarios. |
+| Q&A and Korean, US-17 / US-20 | Both remain in semester scope. PR31 includes Q&A, with reported offline/unfinished-question failures. Korean quality remains unverified; Section 8 retains the proposed criteria. |
+| Quality, recovery and device requirements | Reports include slow transitions, inaccessible controls and playback/recovery failures. Galaxy S22/S25 and tablet observations do not establish complete S22/S23 acceptance, accessibility, recognition quality or useful advice. [Findings](testing.md#supplementary-manual-testing). |
+
+The [Story-to-Test Matrix](story-test-matrix.md) links criteria to available evidence and remaining checks. The four feature gaps and disclosure fix above remain requirements for Iteration 3. Other reported bugs are scheduled for Iteration 3 follow-up. The team will set numerical performance, recognition, feedback-quality and cost targets from Iteration 3 pilot measurements. Fix owners, exact dates and target values remain unset. Backward-navigation restrictions and onboarding remain proposals.
 
 ## Table of Contents
 
@@ -22,7 +45,7 @@ Version 2.0, 9 October 2026
 7. [User Interface Requirements](#7-user-interface-requirements)
    - [7.1 Navigation flow](#71-navigation-flow)
    - [7.2 Screen descriptions](#72-screen-descriptions)
-8. [Optional Future Features](#8-optional-future-features)
+8. [Additional Features](#8-additional-features)
 
 ## 1. Document Revision History
 
@@ -30,10 +53,11 @@ Version 2.0, 9 October 2026
 | --- | --- | --- |
 | 1.0 | 2026-09-28 | Initial specification: scope, eleven user stories with acceptance criteria, quality requirements and low-fidelity UI flows. |
 | 2.0 | 2026-10-09 | Merged closely related stories into nine mandatory stories in seven functional groups, and added the team's stories on filler words, pauses and student knowledge levels. Added failure and recovery scenarios. Separated automatic transcription from requested AI feedback. Added a competitor comparison table. Replaced text wireframes with Figma screens and navigation flow diagrams. |
+| 3.0 | 2026-10-23 | Added Iteration 2 status and device findings. Updated recording limits and initial-feedback behavior to PR31. Scheduled feature gaps, pre-upload disclosure, bug follow-up and pilot-based target setting for Iteration 3. Clarified Q&A/Korean scope. Acceptance criteria unchanged. |
 
 ## 2. Project Abstract
 
-OutLoud is an Android application that helps students, professionals, founders and educators rehearse presentations with their own PDF slides. A presenter imports a deck, optionally describes the intended audience, and records a rehearsal while moving through the slides. OutLoud connects the recording to the slides shown during practice, so the presenter can revisit each slide with its audio and transcript. After the presenter accepts a data disclosure, the recording is transcribed automatically. A separate summary of key ideas helps users review what they said without replacing their original words. On request, AI feedback points out possible inconsistencies between slides and speech, unclear explanations, and language that may be difficult for the stated audience. Each suggestion links to the relevant slide and recording interval, so users can judge the advice themselves. Delivery feedback covers speaking pace, time spent on each slide, filler words and pauses. Users can practice the full presentation or selected slides again, keep earlier attempts, and compare the same slide across attempts. Saved recordings stay available when analysis fails, so users can retry processing without recording again. OutLoud is for practice, not live presentations, and it does not fact-check claims against external sources.
+OutLoud is an Android application that helps students, professionals, founders and educators rehearse presentations with their PDF slides. A presenter imports a deck, optionally describes the intended audience, and records a rehearsal while moving through the slides. OutLoud connects the recording to the visited slides, so the presenter can revisit each slide with its audio and transcript. After the presenter accepts a data disclosure, the recording is transcribed automatically. A separate summary of key ideas helps users review what they said without replacing their original words. Initial AI feedback starts after usable transcription and saved settings are ready. It points out possible inconsistencies between slides and speech, unclear explanations, and language that may be difficult for the stated audience. Each suggestion links to the relevant slide and recording interval, so users can judge the advice themselves. Delivery feedback covers speaking pace, time spent on each slide, filler words and pauses. Users can practice the full presentation or selected slides again, keep attempts, and compare the same slide across attempts. Saved recordings stay available when analysis fails, so users can retry processing without recording again. OutLoud is for practice, not live presentations, and it does not fact-check claims against external sources.
 
 ## 3. Customer
 
@@ -48,15 +72,15 @@ OutLoud is an Android application that helps students, professionals, founders a
 
 **Example.** A student imports a three-slide deck and records a full rehearsal. During review, feedback on slide 2 notes that the spoken explanation does not make the chart's meaning clear and plays the related part of the recording. The student rehearses slide 2 again and compares the two attempts. If analysis fails, the saved recording stays available for playback and later processing.
 
-**Core constraints:** Android phone, PDF input and English-first rehearsal. Transcription starts automatically after the presenter accepts the data disclosure; AI feedback is generated when the presenter requests it. No feedback is given in real time during a presentation.
+**Core constraints:** Android phone, PDF input and English-first rehearsal. Transcription starts after the presenter accepts the data disclosure. Initial selected-slide feedback starts when its prerequisites are ready; users request updates or retries. No feedback is given in real time during a presentation.
 
-**Outside the core product:** real-time coaching during a live presentation, fact-checking against external sources, any requirement to read every slide element aloud, PPTX input and export. Optional extensions are listed in [Section 8](#8-optional-future-features).
+**Outside the core product:** real-time coaching during a live presentation, fact-checking against external sources, any requirement to read every slide element aloud, PPTX input and export. Section 8 lists [additional semester features and optional extensions](#8-additional-features).
 
 ## 4. Competitive Landscape
 
 The table compares OutLoud with a general AI assistant and two presentation-practice tools. Competitor entries come only from each provider's public help pages, checked on 2026-10-09.
 
-**Legend.** O = documented by the provider. X = the provider's documentation states that it is not available. – = not found in the documentation we checked; the feature may exist. For OutLoud, O = required by this specification, Opt. = optional future feature, X = not planned.
+**Legend.** O = documented by the provider. X = the provider's documentation states that it is not available. – = not found in the documentation we checked; the feature may exist. For OutLoud, O = required by this specification, Planned = semester scope with proposed criteria in Section 8, Opt. = optional future feature, X = not planned.
 
 | Capability | ChatGPT | Microsoft Speaker Coach | Yoodli | OutLoud |
 | --- | :---: | :---: | :---: | :---: |
@@ -70,7 +94,7 @@ The table compares OutLoud with a general AI assistant and two presentation-prac
 | Feedback adapted to a described audience | – | – | – | O |
 | Re-record only selected slides as a new attempt | – | – | – | O |
 | Compare the same slide across attempts | – | – | – | O |
-| Practice answering audience questions | – | – | O | Opt. |
+| Practice answering audience questions | – | – | O | Planned |
 
 ¹ Learners can share their screen, such as presentation materials, while practicing.<br>
 ² Users can upload PDF or PPTX slides and audio files and ask for feedback in a conversation.<br>
@@ -305,7 +329,7 @@ The team's user-story exercise produced the four stories below. Their original w
 
 ## 6. Non-functional Requirements
 
-Each requirement below states testable behavior and how the team will verify it. Numerical targets will be set later; the table at the end of this section lists the measures that need a team-approved value or pilot data.
+Each requirement below states testable behavior and how the team will verify it. The team will set numerical targets from Iteration 3 pilot measurements. The table below lists the measures; target values remain unset.
 
 - **NFR-01. Data integrity:** A new attempt never overwrites an earlier attempt. Every evidence link resolves to the correct deck, slide, attempt and a valid time interval within that recording.
   *Verification:* compare stored attempts before and after a retry; test invalid references and repeated slide visits.
@@ -322,22 +346,22 @@ Each requirement below states testable behavior and how the team will verify it.
 - **NFR-07. Cost and maintainability:** Reopening saved results does not repeat paid analysis. Each processing run records the model version, duration, failed stage and cost where available. Retries reuse successful intermediate results.
   *Verification:* compare provider requests during replay, refresh and retry; produce a pilot report per rehearsal and stage.
 
-**Numerical targets awaiting team approval or pilot data**
+**Numerical targets: Iteration 3 pilot measurements**
 
 | Measure | How it will be measured | Status |
 | --- | --- | --- |
-| Slide-change response during recording | Time from tapping Next to the next slide appearing, on Galaxy S22/S23 | Team to approve a target |
-| Save time after Stop | Time from Stop to the saved-session state | Team to approve a target |
-| Processing time | Time from upload to completed transcript, and from Generate feedback to completed feedback, per minute of audio | Set from pilot results |
-| Transcription quality | Word error rate on annotated English sample rehearsals | Set from pilot results |
-| Feedback quality | Share of suggestions that human reviewers rate correct and useful | Set from pilot results |
-| Cost per rehearsal | Provider cost per rehearsal minute | Set from pilot results |
+| Slide-change response during recording | Time from tapping Next to the next slide appearing, on Galaxy S22/S23 | Iteration 3 pilot; target unset |
+| Save time after Stop | Time from Stop to the saved-session state | Iteration 3 pilot; target unset |
+| Processing time | Time from upload to completed transcript, and from feedback start to completed feedback, per minute of audio | Iteration 3 pilot; target unset |
+| Transcription quality | Word error rate on annotated English sample rehearsals | Iteration 3 pilot; target unset |
+| Feedback quality | Share of suggestions that human reviewers rate correct and useful | Iteration 3 pilot; target unset |
+| Cost per rehearsal | Provider cost per rehearsal minute | Iteration 3 pilot; target unset |
 
-**Provisional limits.** The current design allows PDFs up to 50 MiB with at least one slide and no fixed slide-count cap. Recordings remain limited to 10 minutes and audience text to 500 characters. These are provisional implementation constraints, not product requirements, and may change.
+**Current limits (PR31).** PDFs allow up to 50 MiB, at least one slide and no fixed slide-count cap. Recordings allow up to 30 minutes; audio uploads allow up to 25,000,000 bytes. Saved duration settings allow 1–30 minutes and audience text up to 500 characters.
 
 ## 7. User Interface Requirements
 
-The wireframes come from the team's [OutLoud Figma file](https://www.figma.com/design/e8pS6NF8Jqwjnj3QWkDUKl?node-id=2-2) and show the intended interface with sample content. Screen IDs (S01, P02, ...) match the Figma frames.
+The wireframes come from the team's [OutLoud Figma file](https://www.figma.com/design/e8pS6NF8Jqwjnj3QWkDUKl?node-id=2-2) and show the intended tasks and failure states with sample content. Screen IDs (S01, P02, ...) match the Figma frames. The drawings retain the earlier Generate feedback control; the text below specifies initial feedback, updates and retries. Back confirmation, spoken summaries, complete comparison and full deletion remain Iteration 3 work.
 
 ### 7.1 Navigation flow
 
@@ -374,9 +398,9 @@ Figures 1 to 3 show how users move between screens. Arrow labels name the user a
 <p align="center"><img src="https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2026-project-team-07/assets/requirements/s07-review-overview.png" width="200" alt="S07 Review overview with duration, words per minute, time on each slide and Generate feedback"> &nbsp; <img src="https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2026-project-team-07/assets/requirements/s07p-processing.png" width="200" alt="S07P Processing with a saved partial transcript and Generate feedback unavailable"> &nbsp; <img src="https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2026-project-team-07/assets/requirements/s07n-no-speech.png" width="200" alt="S07N No speech detected, with the saved recording still playable"></p>
 
 - **Purpose:** Overview (S07) summarizes one attempt: duration, speaking rate, time on each slide, processing status and the entry point for AI feedback. S07P and S07N show the processing and no-speech states.
-- **Input:** The Overview, Slides and Transcript tabs; Refresh analysis; Generate feedback; the shared player (Play or Pause, -5 s, +5 s).
-- **Transitions:** Before the first upload, a transcription disclosure explains which data is sent for external processing. Continue uploads the recording and starts transcription automatically; Cancel keeps the attempt on the device for audio playback. Generate feedback shows a feedback disclosure (S10F); Continue requests AI feedback and opens the feedback result (S07F) when it is ready, and Cancel sends no request. Switching tabs keeps the playback position. Leaving review pauses audio, and returning does not start it automatically.
-- **Errors and input not allowed:** While processing (S07P), partial results are labeled and Generate feedback is unavailable. When no speech is recognized (S07N), the app says so and keeps the recording playable; it does not create a transcript or feedback. Failed or unavailable measures are labeled, never shown as normal scores. Reopening saved results does not repeat paid analysis.
+- **Input:** The Overview, Slides and Transcript tabs; Refresh analysis; Update feedback or Retry feedback; the shared player (Play or Pause, -5 s, +5 s).
+- **Transitions:** Before the first upload, a transcription disclosure explains which data is sent for external processing. Continue uploads the recording and starts transcription automatically; Cancel keeps the attempt on the device for audio playback. Initial selected-slide feedback starts after usable transcription and saved settings are ready. Update feedback requests new results after changes; Retry feedback retries a failed request. Feedback opens in S07F when ready. Switching tabs keeps the playback position. Leaving review pauses audio, and returning does not start it automatically.
+- **Errors and input not allowed:** While processing (S07P), partial results are labeled and feedback waits for usable transcription. When no speech is recognized (S07N), the app says so and keeps the recording playable; it does not create a transcript or feedback. Failed or unavailable measures are labeled, never shown as normal scores. Reopening saved results does not repeat paid analysis.
 
 #### Slide feedback (S07F)
 
@@ -423,9 +447,9 @@ Figures 1 to 3 show how users move between screens. Arrow labels name the user a
 - **Transitions:** The confirmation names the attempt or deck and the data affected (audio, transcript, timing and feedback); deck deletion also lists its attempts. Cancel returns to history with nothing deleted. Confirm removes the app-owned data and returns to history.
 - **Errors and input not allowed:** If deletion cannot finish, history reports the incomplete deletion and offers recovery instead of claiming success.
 
-## 8. Optional Future Features
+## 8. Additional Features
 
-The features below are outside the mandatory scope. The team may adopt them later; their criteria are proposals.
+Audience Q&A and separate English/Korean rehearsal sessions remain in semester scope. Quality evaluation remains incomplete. Slide-description editing, script attachment and team sharing remain optional extensions. The criteria below retain their proposed status.
 
 **US-13. Correct slide descriptions.** As a presenter, I want to inspect and correct saved slide descriptions, so that coaching uses slide information I can review.
 
