@@ -1,30 +1,29 @@
 // OpenAI Codex review routing: docs/ai-collaboration-prompts-iteration-2.md#first-recording-review-navigation-october-16-2026
 // AI-assisted Nakajima integration: verified selected-slide feedback in the normal Review page.
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, type GestureResponderEvent, type PanResponderGestureState } from 'react-native';
+// OpenAI Codex compact slide review and scrubber label: docs/ai-collaboration-prompts-iteration-2.md#compact-slide-review-card-and-slider-label-november-1-2026
+// OpenAI Codex Review exit underlay and duration colours: docs/ai-collaboration-prompts-iteration-2.md#review-to-qa-fade-underlay-and-time-bar-colours-november-1-2026
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Pressable, StyleSheet, View, type GestureResponderEvent, type PanResponderGestureState } from 'react-native';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Enter, Txt, useFrame } from '../design/frame';
 import { Glyph, UIIcon } from '../design/icons';
 import { PanView } from '../design/PanView';
-import { EASE_SCREEN, F } from '../design/tokens';
+import { EASE_SCREEN, F, FRAME_W } from '../design/tokens';
 import { useTheme } from '../design/theme';
 import { HintRow, PageSurface } from '../design/ui';
+import { MiniSlide } from '../design/SlideCard';
 import { fmt, relativeDay } from '../domain/format';
 import { BACK_FADE_Y, BACK_T } from '../domain/gestures';
 import { runLabel } from '../domain/run';
+import { feedbackRows } from '../domain/analysis';
 import { slideText } from '../domain/lines';
 import { fillerTotal } from '../domain/words';
 import { useSegmentPlayer } from '../features/rehearsal/useSegmentPlayer';
-import { useDeckModel, type DeckModel } from '../features/presentations/useDeckModel';
-import { SlideReviewSummary } from '../features/feedback/SlideReviewSummary';
-import { PresentationScorePanel, PresentationScoreRing, type ScoreDisplay } from '../features/feedback/PresentationScorePanel';
-import { useRunPresentationScores } from '../features/feedback/useRunPresentationScores';
-import { currentScoreEvidence, scoreAudioEvidence } from '../features/feedback/presentationScoreDisplay';
-import type { ScoreEvidence } from '../features/feedback/presentationScore';
-import type { ReviewEvidence } from './ReviewRecordingTools';
 import { audioOf } from '../features/rehearsal/analysis';
+import { useDeckModel, type DeckModel } from '../features/presentations/useDeckModel';
+import { PresentationScoreRing, type ScoreDisplay } from '../features/feedback/PresentationScorePanel';
+import { useRunPresentationScores } from '../features/feedback/useRunPresentationScores';
 import { useRunFeedbackStatus } from '../features/feedback/useRunFeedbackStatus';
-import { ReviewSlidePlayback, ReviewSlidePreview } from './ReviewSlidePlayback';
 import { useBack, useNow, useShell } from './shared';
 
 const EMPTY_SCORE:ScoreDisplay={score:null,level:null,status:'Not graded',state:null,result:null,target:null};
@@ -38,23 +37,22 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
  const {c}=useTheme(),{go,nav}=useShell(),frame=useFrame();
  const n=model?.n??0;
  const s=Math.max(0,Math.min(Math.max(0,n-1),nav.sel));
+ const [scrubSlide,setScrubSlide]=useState(s),scrubSlideRef=useRef(s);
  const feedback=useRunFeedbackStatus(model,active),item=feedback.items[s];
  const scores=useRunPresentationScores(model,active,s),scoreItem=scores.items[s]??EMPTY_SCORE;
- const scoreSource=useRef({item:scoreItem,target:scores.target,part:model?.state.run?.parts[s],active});
- const scorePart=model?.state.run?.parts[s];
- useLayoutEffect(()=>{scoreSource.current={item:scoreItem,target:scores.target,part:scorePart,active};return()=>{scoreSource.current.active=false;};},[scoreItem,scores.target,scorePart,active]);
  const player=useSegmentPlayer(),stopPlayback=player.stop;
- const dy=useSharedValue(0),backExiting=useRef(false),scrollY=useRef(0),scroll=useRef<ScrollView>(null);
- const [headerBottom,setHeaderBottom]=useState(176);
- const [evidence,setEvidence]=useState<{finding:ReviewEvidence;request:number;scoreIdentity?:string}|null>(null);
- const [scoreAudioNote,setScoreAudioNote]=useState('');
- const currentEvidence=evidence?.scoreIdentity&&(!scoreItem.state||scoreItem.state.stale||scoreItem.state.state!=='completed'||scoreItem.state.source_identity!==evidence.scoreIdentity)?null:evidence;
- useEffect(()=>{if(evidence&&!currentEvidence)stopPlayback();},[evidence,currentEvidence,stopPlayback]);
+ const dy=useSharedValue(0),backExiting=useRef(false);
  const now=useNow();
- const showEvidence=useCallback((y:number)=>scroll.current?.scrollTo({y,animated:true}),[]);
- useEffect(()=>{if(!active){dy.set(0);stopPlayback();}},[active,dy,stopPlayback]);
+ const previewSlideAt=(pageX:number)=>{
+  if(n<=1)return 0;
+  const x=Math.max(0,Math.min(1,((pageX-frame.left)/frame.s-16)/(FRAME_W-32)));
+  return Math.min(n-1,Math.floor(x*n));
+ };
+ const previewSlide=(pageX:number)=>{const next=previewSlideAt(pageX);scrubSlideRef.current=next;setScrubSlide(next);};
+ const commitSlide=()=>{const next=scrubSlideRef.current;if(next!==s){stopPlayback();go('review',{deckId:nav.deckId,sel:next});}};
+ useEffect(()=>{if(!active){backExiting.current=false;dy.set(0);stopPlayback();}},[active,dy,stopPlayback]);
  useEffect(()=>()=>stopPlayback(),[stopPlayback]);
- const toBack=useCallback(()=>{stopPlayback();if(nav.from==='full')go('full',{deckId:nav.deckId,sel:s});else go('rehearse',{nav:null,deckId:nav.deckId,slide:s});},[go,nav.deckId,nav.from,s,stopPlayback]);
+ const toBack=useCallback(()=>{stopPlayback();go('rehearse',{nav:null,deckId:nav.deckId,slide:s});},[go,nav.deckId,s,stopPlayback]);
  const toQA=useCallback(()=>{stopPlayback();go('qa',{nav:'fade',deckId:nav.deckId,sel:s});},[go,nav.deckId,s,stopPlayback]);
  const toFull=useCallback(()=>{stopPlayback();go('full',nav.from==='full'?{deckId:nav.deckId,sel:s}:{nav:'fade',deckId:nav.deckId,sel:s,from:'review'});},[go,nav.deckId,nav.from,s,stopPlayback]);
  useBack(active,()=>{toBack();return true;});
@@ -62,66 +60,93 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
   onMoveShould:(e:GestureResponderEvent,g:PanResponderGestureState)=>{
    const y=(e.nativeEvent.pageY-frame.top)/frame.s;
    return !backExiting.current&&Math.abs(g.dy)>8&&Math.abs(g.dy)>Math.abs(g.dx)&&
-    (g.dy>0&&scrollY.current<=0 || g.dy<0&&(y<headerBottom||y>777));
+    !(y>264&&y<360&&Math.abs(g.dx)>4);
   },
   onMove:(_e:GestureResponderEvent,g:PanResponderGestureState)=>dy.set(Math.max(-BACK_FADE_Y,Math.min(BACK_FADE_Y,g.dy/frame.s))),
-  onRelease:()=>{if(dy.get()>BACK_T){backExiting.current=true;dy.set(withTiming(BACK_FADE_Y,{duration:220,easing:EASE_SCREEN},done=>{if(done)runOnJS(toBack)();}));}else if(dy.get() < -BACK_T)toQA();else dy.set(withTiming(0,{duration:220,easing:EASE_SCREEN}));},
+  onRelease:()=>{
+   if(dy.get()>BACK_T){backExiting.current=true;dy.set(withTiming(BACK_FADE_Y,{duration:220,easing:EASE_SCREEN},done=>{if(done)runOnJS(toBack)();}));}
+   else if(dy.get() < -BACK_T){backExiting.current=true;dy.set(withTiming(-BACK_FADE_Y,{duration:220,easing:EASE_SCREEN},done=>{if(done)runOnJS(toQA)();}));}
+   else dy.set(withTiming(0,{duration:220,easing:EASE_SCREEN}));
+  },
   onTerminate:()=>{if(!backExiting.current)dy.set(withTiming(0,{duration:220,easing:EASE_SCREEN}));},
  };
- const screen=useAnimatedStyle(()=>({opacity:Math.max(0,1-Math.max(0,dy.value)/BACK_FADE_Y)}));
+ const screen=useAnimatedStyle(()=>({opacity:Math.max(0,1-Math.abs(dy.value)/BACK_FADE_Y)}));
  if(!model||!model.state.run)return null;
- const {deck,times,state}=model,run=state.run!,part=run.parts[s],partId=part?.attemptId??null;
+ const {deck,times,state}=model,run=state.run!;
  const t=times[s]??0,target=deck.targets[s]??0,source=deck.requirementsDefault?'default':deck.timing.source==='required'?'required':'suggested';
- const pending=!!partId&&!model.transcripts.has(partId)&&model.stages.get(partId)!=='no_speech';
- const maxT=Math.max(1,...times),a=feedback.aggregate;
- const onScoreEvidence=(refs:ScoreEvidence[])=>{
-  const current=scoreSource.current,sourceTarget=current.target;
-  if(!current.active||!sourceTarget||!currentScoreEvidence(current.item.state,sourceTarget,refs)||current.part?.attemptId!==sourceTarget.id)return;
-  const fact=refs.find(ref=>ref.kind==='slide');
-  if(fact?.kind==='slide'){stopPlayback();go('review',{deckId:deck.id,sel:fact.slide_index});return;}
-  const audio=scoreAudioEvidence(refs),duration=sourceTarget.review?.duration_ms??0;
-  if(!audio.length||audio.some(ref=>ref.attempt_id!==sourceTarget.id||ref.end_ms>duration))return;
-  stopPlayback();setScoreAudioNote('');
-  const first=audio[0];
-  setEvidence(previous=>({finding:{start_ms:first.start_ms,end_ms:first.end_ms,speech_quote:first.kind==='speech'?first.quote:undefined,observation:first.kind==='measurement'?first.measurement_id:first.kind==='full_attempt'?'Full original recording':undefined},request:(previous?.request??0)+1,scoreIdentity:current.item.state!.source_identity!}));
-  if(audio.length>1){const uri=audioOf(sourceTarget.id);if(!uri){setScoreAudioNote('Original recording audio is not on this phone. Download it with the recording tools.');return;}void player.playSegments(`score-evidence:${sourceTarget.id}:${audio.map(ref=>`${ref.start_ms}:${ref.end_ms}`).join(',')}`,audio.map(ref=>({uri,startMs:ref.start_ms,endMs:ref.end_ms})));}
+ const maxT=Math.max(1,...times);
+ const part=run.parts[s],slidePlayKey=`slide:${deck.id}:${s}`;
+ const slideAudioUri=part?audioOf(part.attemptId):null;
+ const isSlideSelected=player.playingKey===slidePlayKey,slidePlaying=isSlideSelected&&!player.paused;
+ const slideReviewRows=feedbackRows(s,{times,targets:deck.targets,lines:model.lines,points:model.points,ai:model.ai,
+  haveText:!!deck.slides[s]?.text.trim(),pending:t>0&&item?.status==='transcribing',
+  worker:{stage:item?.status==='transcribing'?'processing':undefined}});
+ const playSlide=()=>{
+  if(!part||!slideAudioUri)return;
+  void player.playSegments(slidePlayKey,part.segments.filter(segment=>segment.endMs>segment.startMs)
+   .map(segment=>({uri:slideAudioUri,...segment})));
  };
 
  return <Enter kind={nav.nav}><PanView style={StyleSheet.absoluteFill} {...pan}>
-  <Animated.View style={[StyleSheet.absoluteFill,screen]}><PageSurface hue={deck.hue}/>
-   <View style={styles.header} onLayout={e=>setHeaderBottom(e.nativeEvent.layout.y+e.nativeEvent.layout.height+12)}>
+  <PageSurface hue={deck.hue}/>
+  <Animated.View style={[StyleSheet.absoluteFill,screen]}>
+   <View style={styles.header}>
     <Txt numberOfLines={1} style={[styles.title,{color:c.text}]}>{deck.title}</Txt><Txt style={[styles.label,{color:c.secondary}]}>{runLabel(run,now,relativeDay)}</Txt>
-    <Pressable accessibilityRole="button" accessibilityLabel="Full review" accessibilityHint="Review all slides in this presentation" onPress={toFull} style={[styles.fullReview,{backgroundColor:c.strong}]}>
-     <View style={styles.fullReviewTitle}><Glyph name="h-review-bars" size={18} color={c.bg}/><Txt style={[styles.actionText,{color:c.bg}]}>Full Review</Txt></View>
-     <Txt style={[styles.fullReviewSummary,{color:c.bg}]}>{`All slides · ${a.assessed}/${a.recorded} assessed · ${a.findings} findings`}</Txt>
-    </Pressable>
    </View>
-   <ScrollView ref={scroll} style={[styles.scroll,{top:headerBottom}]} contentContainerStyle={styles.content} showsVerticalScrollIndicator
-    onScroll={e=>{scrollY.current=e.nativeEvent.contentOffset.y;}} scrollEventThrottle={16}>
+   <View style={styles.content}>
     <View style={styles.ringRow}>
      <PresentationScoreRing id="gSlideStatus" label="Slide score" item={scoreItem}/>
      <View style={styles.ringRight}><Txt style={[styles.slideLabel,{color:c.secondary}]}>{`Slide ${s+1} of ${n}`}</Txt>
       <Stat icon="i-clock" value={t>0?fmt(t):'—'} unit={`${fmt(target)} ${source} target`}/>
-      <Stat icon="i-bubble" value={pending||t<=0?'—':String(fillerTotal(slideText(model.lines,s)))} unit="fillers"/>
+      <Stat icon="i-bubble" value={t<=0?'—':String(fillerTotal(slideText(model.lines,s)))} unit="fillers"/>
       <Stat icon="i-flag" value={item?.findingCount?String(item.findingCount):item?.assessed?'0':'—'} unit="verified findings"/>
      </View>
     </View>
-    <View><View style={styles.row}><Txt style={[styles.section,{color:c.text}]}>Times per slide</Txt><Txt style={[styles.label,{color:c.secondary}]}>Tap a bar</Txt></View>
-     <View style={styles.bars}>{times.map((value,i)=><Pressable key={i} accessibilityRole="button" accessibilityState={{selected:i===s}}
-      accessibilityLabel={`Slide ${i+1}, ${value>0?fmt(value):'not recorded'}, ${scores.items[i]?.score??scores.items[i]?.status??'Not graded'}${scores.items[i]?.score!=null?' points':''}`} onPress={()=>{stopPlayback();go('review',{sel:i});}}
-      style={{flex:1,minWidth:0,height:value?Math.max(6,78*value/maxT):4,borderRadius:4,backgroundColor:i===s?c.strong:c.ink28}}/>)}</View>
-     <View style={styles.nums}>{times.map((_,i)=><Txt key={i} style={[styles.number,{color:i===s?c.text:c.secondary}]}>{`${i+1} · ${scores.items[i]?.score??'—'}`}</Txt>)}</View>
+    <View style={styles.timesBlock}><View style={styles.row}><Txt style={[styles.section,{color:c.text}]}>Times per slide</Txt><Txt style={[styles.label,{color:c.secondary}]}>{`${scrubSlide+1} of ${n}`}</Txt></View>
+     <PanView style={styles.bars} accessibilityRole="adjustable" accessibilityLabel="Times per slide"
+      accessibilityValue={{min:1,max:Math.max(1,n),now:scrubSlide+1,text:`Slide ${scrubSlide+1} of ${n}`}}
+      accessibilityActions={[{name:'increment'},{name:'decrement'}]}
+      onAccessibilityAction={e=>{const next=Math.max(0,Math.min(n-1,scrubSlide+(e.nativeEvent.actionName==='increment'?1:-1)));stopPlayback();go('review',{deckId:nav.deckId,sel:next});}}
+      onStartShould={()=>n>0} onGrant={e=>previewSlide(e.nativeEvent.pageX)} onMove={e=>previewSlide(e.nativeEvent.pageX)}
+      onRelease={commitSlide} onTerminate={commitSlide} onTerminationRequest={()=>false}>
+     <View style={styles.barRow}>{times.map((value,i)=>{
+      const target=deck.targets[i]??0;
+      const tooLong=value>0&&target>0&&value>=target*1.15;
+      const tooShort=value>0&&target>0&&value<=target*.85;
+      const selected=i===scrubSlide;
+      return <View key={i} style={styles.barHit}>
+       <View style={{width:'100%',height:value?Math.max(6,Math.round(40*value/maxT)):4,borderRadius:4,backgroundColor:selected?c.strong:tooLong?c.badAlt:tooShort?c.warnAlt:value?c.ink28:c.ink08}}/>
+      </View>;
+     })}</View></PanView>
     </View>
-    {active&&partId&&<ReviewSlidePlayback model={model} id={partId} slide={s} player={player} evidence={currentEvidence?.finding??null} evidenceRequest={currentEvidence?.request??0} onCloseEvidence={()=>setEvidence(null)} onEvidenceShown={showEvidence}/>}
-    {!partId&&<View style={{borderWidth:1,borderRadius:20,padding:14,gap:12,borderColor:c.hair,backgroundColor:c.surface06}}><ReviewSlidePreview model={model} slide={s}/><Txt style={[styles.note,{color:c.secondary}]}>No saved audio for this slide.</Txt></View>}
-    {!!scoreAudioNote&&<Txt accessibilityRole="alert" style={[styles.note,{color:c.secondary}]}>{scoreAudioNote}</Txt>}
-    <PresentationScorePanel key={`${partId}:${s}:${scores.target?.contextId??''}`} item={scoreItem} controller={scores.controller} target={scores.target} active={active} notice={scores.notice} refresh={scores.refresh} onEvidence={onScoreEvidence}/>
-    {!!feedback.notice&&<Txt accessibilityLiveRegion="polite" style={[styles.note,{color:c.secondary}]}>{feedback.notice}</Txt>}
-    {active&&partId&&part?<SlideReviewSummary key={`${partId}:${s}:${JSON.stringify(part.segments)}`} slide={s} part={part} localDeckId={deck.id}
-      onEvidence={finding=>{stopPlayback();setEvidence(previous=>({finding,request:(previous?.request??0)+1}));}}/>:
-     <Txt style={[styles.note,{color:c.secondary}]}>Record this slide to receive AI feedback.</Txt>}
-   </ScrollView>
-   <HintRow hints={[{icon:'h-dn',text:nav.from==='full'?'Full review':'Back to slides',nudge:'down',onPress:toBack},{icon:'h-up',text:'Audience Q&A',nudge:'up',onPress:toQA}]}/>
+    <View style={[styles.slideCard,{borderColor:c.hair,backgroundColor:c.surface06}]}>
+     <View style={styles.slidePreviewRow}>
+      <MiniSlide hue={deck.hue} page={deck.pages[s]} title={deck.slides[s]?.title??''} width={160} height={90} radius={12}/>
+      <View style={styles.slideFacts}>
+       <Txt style={[styles.slideLabel,{color:c.secondary}]}>{`Slide ${s+1}`}</Txt>
+       <Txt numberOfLines={2} style={[styles.previewTitle,{color:c.text}]}>{deck.slides[s]?.title??`Slide ${s+1}`}</Txt>
+       <Txt numberOfLines={1} style={[styles.slideTime,{color:c.text}]}>{`${fmt(t)} of ${fmt(target)}`}</Txt>
+       <Txt style={[styles.targetStatus,{color:target>0&&Math.abs(t-target)>=15?c.warn:c.good}]}>{target>0&&Math.abs(t-target)>=15?`${fmt(Math.abs(t-target))} ${t>target?'over':'under'} target`:'On target'}</Txt>
+      </View>
+     </View>
+     <Pressable accessibilityRole="button" accessibilityLabel={slidePlaying?`Pause slide ${s+1} playback`:isSlideSelected?`Resume slide ${s+1} playback`:`Play slide ${s+1} recording`}
+      accessibilityState={{disabled:!slideAudioUri||!part}} disabled={!slideAudioUri||!part} onPress={playSlide} style={styles.playbackStrip}>
+      <Glyph name={slidePlaying?'p-pause':'p-play'} size={15} color={c.text}/>
+      <View style={[styles.playTrack,{backgroundColor:c.ink18}]}><View style={[styles.playProgress,{width:`${isSlideSelected?player.progress*100:0}%`,backgroundColor:c.text}]}/></View>
+      <Txt style={[styles.playTime,{color:c.secondary}]}>{isSlideSelected?fmt(player.elapsedMs/1000):fmt(t)}</Txt>
+     </Pressable>
+     {player.error&&isSlideSelected&&<Txt accessibilityRole="alert" style={[styles.playError,{color:c.secondary}]}>{player.error}</Txt>}
+     <View style={styles.feedbackRows}>{slideReviewRows.map((row,index)=><View key={`${row.icon}-${index}`} style={styles.feedbackRow}>
+      <UIIcon name={row.icon} size={18} color={row.status==='spot'?c.good:row.status==='finding'?c.warn:c.secondary}/>
+      <Txt numberOfLines={1} style={[styles.feedbackText,{color:row.status==='spot'?c.good:row.status==='finding'?c.text:c.secondary}]}>{row.text}</Txt>
+     </View>)}</View>
+    </View>
+   </View>
+   <Pressable accessibilityRole="button" accessibilityLabel="Full review" accessibilityHint="Review all slides in this presentation" onPress={toFull}
+    style={[styles.fullReview,{borderColor:c.hair,backgroundColor:c.surface06}]}>
+    <View style={styles.fullReviewTitle}><Glyph name="h-review-bars" size={18} color={c.text}/><Txt style={[styles.actionText,{color:c.text}]}>Full Review</Txt></View>
+   </Pressable>
+   <HintRow hints={[{icon:'h-up',text:'Audience Q&A',nudge:'up',onPress:toQA},{icon:'h-dn',text:'Back to recording',nudge:'down',onPress:toBack}]}/>
   </Animated.View></PanView>
 </Enter>;
 }
@@ -130,9 +155,10 @@ function Stat({icon,value,unit}:{icon:'i-clock'|'i-bubble'|'i-flag';value:string
 }
 const styles=StyleSheet.create({
  header:{position:'absolute',left:30,right:30,top:46,alignItems:'center'},title:{fontFamily:F.display,fontSize:18,lineHeight:23},label:{fontFamily:F.medium,fontSize:12,lineHeight:17},
- scroll:{position:'absolute',left:16,right:16,top:106,bottom:67},content:{gap:20,paddingBottom:20,paddingTop:10},
+ content:{position:'absolute',left:16,right:16,top:140,gap:4},
  ringRow:{flexDirection:'row',alignItems:'center',gap:18,paddingHorizontal:8},ringRight:{flex:1,minWidth:0,gap:10},slideLabel:{fontFamily:F.semibold,fontSize:13},
  stat:{flexDirection:'row',alignItems:'center',gap:7},statValue:{fontFamily:F.display,fontSize:18,fontVariant:['tabular-nums']},statUnit:{flexShrink:1,fontFamily:F.medium,fontSize:12,lineHeight:16},
- row:{flexDirection:'row',justifyContent:'space-between',alignItems:'baseline'},section:{fontFamily:F.bold,fontSize:14},bars:{height:78,marginTop:10,flexDirection:'row',alignItems:'flex-end',gap:3},nums:{flexDirection:'row',gap:3,marginTop:5},number:{flex:1,minWidth:0,textAlign:'center',fontFamily:F.bold,fontSize:10},
- fullReview:{alignSelf:'stretch',minHeight:56,borderRadius:16,paddingHorizontal:14,paddingVertical:10,marginTop:12,gap:3,alignItems:'center'},fullReviewTitle:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8},fullReviewSummary:{fontFamily:F.medium,fontSize:11,lineHeight:16,opacity:.8,textAlign:'center'},actionText:{fontFamily:F.semibold,fontSize:14},note:{fontFamily:F.medium,fontSize:12,lineHeight:18},
+ timesBlock:{height:88},row:{flexDirection:'row',justifyContent:'space-between',alignItems:'baseline'},section:{fontFamily:F.bold,fontSize:14},bars:{height:44,marginTop:4},barRow:{height:44,flexDirection:'row',alignItems:'flex-end',gap:1},barHit:{position:'relative',flex:1,minWidth:0,height:44,alignItems:'center',justifyContent:'flex-end'},
+ slideCard:{marginTop:18,borderWidth:1,borderRadius:20,padding:14,gap:11},slidePreviewRow:{flexDirection:'row',alignItems:'center',gap:12},slideFacts:{flex:1,minWidth:0,gap:4},previewTitle:{fontFamily:F.display,fontSize:15,lineHeight:18},slideTime:{fontFamily:F.semibold,fontSize:12,lineHeight:15,fontVariant:['tabular-nums']},targetStatus:{fontFamily:F.semibold,fontSize:11,lineHeight:14},feedbackRows:{gap:8},feedbackRow:{minHeight:22,flexDirection:'row',alignItems:'center',gap:8},feedbackText:{flex:1,minWidth:0,fontFamily:F.medium,fontSize:12,lineHeight:16},playbackStrip:{minHeight:36,flexDirection:'row',alignItems:'center',gap:8},playTrack:{height:5,flex:1,borderRadius:3,overflow:'hidden'},playProgress:{height:5},playTime:{fontFamily:F.medium,fontSize:11,fontVariant:['tabular-nums']},playError:{fontFamily:F.medium,fontSize:11,lineHeight:14},
+ fullReview:{position:'absolute',left:16,right:16,bottom:68,height:58,borderWidth:1,borderRadius:18,overflow:'hidden',alignItems:'center',justifyContent:'center'},fullReviewTitle:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8},actionText:{fontFamily:F.semibold,fontSize:14},
 });

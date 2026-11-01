@@ -9,7 +9,7 @@ import { runTimes, type Run } from './run';
 import { covers, fillerCounts, fillerTotal, scorablePoints, wordCount } from './words';
 
 export type IconKey = 'i-timer' | 'i-clock' | 'i-faster' | 'i-slower' | 'i-plus' | 'i-doc' | 'i-mic' | 'i-replay' | 'i-bubble' |
-  'i-flag' | 'i-arrow' | 'i-loop' | 'i-wave' | 'i-check' | 'i-gauge' | 'i-bulb' | 'i-chart' | 'i-slides' | 'i-text' | 'i-trash';
+  'i-flag' | 'i-arrow' | 'i-loop' | 'i-wave' | 'i-check' | 'i-gauge' | 'i-bulb' | 'i-chart' | 'i-slides' | 'i-text' | 'i-trash' | 'i-sliders';
 export type Row = { icon: IconKey; text: string };
 export type Tone = 'good' | 'warn' | 'info' | 'bad' | 'plain';
 export type ChipModel = { icon: IconKey; text: string; tone: Tone };

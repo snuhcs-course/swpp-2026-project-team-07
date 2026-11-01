@@ -11,7 +11,7 @@ import { PresentationScorePanel, PresentationScoreRing } from '../features/feedb
 import { useRunPresentationScores } from '../features/feedback/useRunPresentationScores';
 import { currentScoreEvidence, scoreAudioEvidence, scoreLevelColor, scoreLevelLabel, scorePlaybackSource } from '../features/feedback/presentationScoreDisplay';
 import type { ScoreEvidence } from '../features/feedback/presentationScore';
-import { EASE_SCREEN, F } from '../design/tokens';
+import { EASE_SCREEN, F, FRAME_W } from '../design/tokens';
 import { useTheme } from '../design/theme';
 import { Dialog, HintRow, PageSurface } from '../design/ui';
 import { useRunFeedbackStatus } from '../features/feedback/useRunFeedbackStatus';
@@ -38,7 +38,7 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
   const scores = useRunPresentationScores(model, active);
   const scoreSource = useRef({item:scores.overall,target:scores.target,active});
   useLayoutEffect(()=>{scoreSource.current={item:scores.overall,target:scores.target,active};return()=>{scoreSource.current.active=false;};},[scores.overall,scores.target,active]);
-  const [missingAudio, setMissingAudio] = useState<{slides:number[];signature:string}|null>(null);
+  const [missingAudio, setMissingAudio] = useState<{slides:number[];signature:string;startSlide:number}|null>(null);
   const now = useNow();
   const player = useSegmentPlayer();
   const stopPlayback = player.stop;
@@ -50,6 +50,10 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
   const dy = useSharedValue(0);
   const backExiting = useRef(false);
   const [mode, setMode] = useState<Mode>(null);
+  const [sliderSlide,setSliderSlide]=useState(Math.max(0,nav.sel));
+  const sliderSlideRef=useRef(Math.max(0,nav.sel));
+  const [scrubbing,setScrubbing]=useState(false);
+  const sectionTrack=useRef({x:26,width:FRAME_W-58});
   const [plan, setPlan] = useState<RunAudioPlanEntry[]>([]);
   const [audioNote, setAudioNote] = useState('');
   const noteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -139,9 +143,10 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
     setAudioNote('Playing cited intervals from the original recording');setMode(null);setPlan([]);
     void player.playSegments(`score-evidence:${current.target!.id}:${audio.map(ref=>`${ref.start_ms}:${ref.end_ms}`).join(',')}`,audio.map(ref=>({uri,startMs:ref.start_ms,endMs:ref.end_ms})));
   };
-  const wholeAudio = (): { segments: Segment[]; entries: RunAudioPlanEntry[]; missing:number[] } => {
+  const wholeAudio = (startSlide=0): { segments: Segment[]; entries: RunAudioPlanEntry[]; missing:number[] } => {
     const segments: Segment[] = [], entries: RunAudioPlanEntry[] = [], missing: number[] = [];
     times.forEach((t, i) => {
+      if(i<startSlide)return;
       if (t <= 0) return;
       const part = run.parts[i], uri = part && audioOf(part.attemptId);
       if (!uri || !part) { missing.push(i); return; }
@@ -152,24 +157,35 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
     });
     return { segments, entries, missing };
   };
-  const toggleWhole = (allowPartial = false) => {
-    if (player.playingKey===runKey) { void player.playSegments(runKey,[]); return; }
-    const { segments, entries, missing } = wholeAudio();
+  const startWholeAt = (startSlide:number,allowPartial = false) => {
+    const { segments, entries, missing } = wholeAudio(startSlide);
     if (!segments.length) { note('Audio for this run isn’t on this phone'); return; }
     if (missing.length && !allowPartial) {
-      setMissingAudio({slides:missing,signature:JSON.stringify(run.parts)}); return;
+      setMissingAudio({slides:missing,signature:JSON.stringify(run.parts),startSlide}); return;
     }
-    setAudioNote(missing.length ? `Playing available audio · ${missing.length} slide${missing.length===1?'':'s'} missing` : '');
+    if(player.playingKey)player.stop();
+    const skipped=entries[0]?.slide;
+    setSliderSlide(skipped??startSlide);sliderSlideRef.current=skipped??startSlide;
+    setAudioNote(missing.length ? `Playing available audio · ${missing.length} slide${missing.length===1?'':'s'} missing` : skipped!==startSlide?`Slide ${startSlide+1} has no audio · starting at slide ${skipped!==undefined?skipped+1:'—'}`:'');
     setPlan(entries); setMode({ kind: 'run' });
     void player.playSegments(runKey, segments);
   };
-  const toggleSection = (i: number) => {
-    const part = run.parts[i], uri = part && audioOf(part.attemptId);
-    if (!uri || !part || !part.segments.length) { note('Audio for this slide isn’t on this phone'); return; }
-    setAudioNote('');
-    setMode({ kind: 'slide', slide: i });
-    void player.playSegments(`slide:${deck.id}:${i}`, part.segments.map(seg => ({ uri, ...seg })));
+  const toggleWhole = () => {
+    if (runPlaying) { void player.playSegments(runKey,[]); return; }
+    startWholeAt(0);
   };
+  const sliderIndexAt=(pageX:number)=>{
+    if(times.length<=1)return 0;
+    const stageX=(pageX-frame.left)/frame.s;
+    const left=16+sectionTrack.current.x;
+    const fraction=Math.max(0,Math.min(1,(stageX-left)/Math.max(1,sectionTrack.current.width)));
+    return Math.min(times.length-1,Math.floor(fraction*times.length));
+  };
+  const previewSlider=(pageX:number)=>{
+    const next=sliderIndexAt(pageX);
+    sliderSlideRef.current=next;setSliderSlide(next);setAudioNote('');setScrubbing(true);
+  };
+  const commitSlider=()=>{setScrubbing(false);startWholeAt(sliderSlideRef.current);};
   const a=feedback.aggregate;
   const source=deck.requirementsDefault?'default':deck.timing.source==='required'?'required':'suggested';
   const over=total-model.targetSum;
@@ -178,10 +194,11 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
     ['Outdated',a.outdated],['Needs recovery',a.recoveryNeeded],['Insufficient evidence',a.insufficient],['Not analyzed',a.notAnalyzed],
   ] as const;
   const rightText = audioNote || ((runPlaying || slidePlaying) && playbackSlide != null
-    ? runPlaying ? `${fmt(player.elapsedMs/1000)} / ${fmt(plan.reduce((sum,p)=>sum+p.durMs,0)/1000)}` : `${fmt(pos - starts[playbackSlide])} / ${fmt(times[playbackSlide])}`
-    : 'Tap a section to hear it');
+    ? runPlaying ? `${fmt(pos)} / ${fmt(total)}` : `${fmt(pos - starts[playbackSlide])} / ${fmt(times[playbackSlide])}`
+    : `Slide ${sliderSlide+1} of ${times.length} · drag to seek`);
   const headerText = (runPlaying || slidePlaying) && playbackSlide != null
     ? `Slide ${playbackSlide + 1} · ${deck.slides[playbackSlide]?.title ?? 'Slide ' + (playbackSlide + 1)}` : 'Whole run';
+  const visibleSliderSlide=scrubbing?sliderSlide:playbackSlide??sliderSlide;
 
   return <Enter kind={nav.nav}>
     <PanView style={StyleSheet.absoluteFill} {...pan}>
@@ -214,17 +231,25 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
               onPress={() => toggleWhole()} style={styles.wholePlay}>
               <Glyph name={runPlaying && !player.paused ? 'p-pause' : 'p-play'} size={20} color={c.text} />
             </Pressable>
-            <View style={styles.sections}>
-              {times.map((t, i) => t <= 0 ? null : <Pressable key={i} accessibilityRole="button"
-                accessibilityLabel={slidePlaying && playbackSlide === i && !player.paused ? `Pause slide ${i + 1}`
-                  : `Play slide ${i + 1}, ${deck.slides[i]?.title ?? 'Slide ' + (i + 1)}, ${fmt(t)}`}
-                onPress={() => toggleSection(i)} style={[styles.sectionHit, { flex: t, opacity: slidePlaying && playbackSlide !== i ? 0.35 : 1 }]}>
-                <View style={[styles.sectionTrack, { backgroundColor: c.ink18 }]}>
-                  <View style={[styles.sectionFill, { backgroundColor: c.text,
-                    width: `${100 * ((runPlaying || slidePlaying) && (runPlaying || playbackSlide === i) ? clamp((pos - starts[i]) / t) : 0)}%` }]} />
-                </View>
-              </Pressable>)}
-            </View>
+            <PanView style={styles.sections} accessibilityRole="adjustable" accessibilityLabel="Whole run audio review"
+              accessibilityValue={{min:1,max:Math.max(1,times.length),now:visibleSliderSlide+1,text:`Slide ${visibleSliderSlide+1} of ${times.length}`}}
+              accessibilityActions={[{name:'increment'},{name:'decrement'}]}
+              onAccessibilityAction={e=>startWholeAt(Math.max(0,Math.min(times.length-1,visibleSliderSlide+(e.nativeEvent.actionName==='increment'?1:-1))))}
+              onLayout={e=>{sectionTrack.current={x:e.nativeEvent.layout.x,width:e.nativeEvent.layout.width};}}
+              onStartShould={()=>times.length>0} onGrant={e=>previewSlider(e.nativeEvent.pageX)}
+              onMove={e=>previewSlider(e.nativeEvent.pageX)} onRelease={commitSlider} onTerminate={commitSlider}
+              onTerminationRequest={()=>false}>
+              {times.map((t,i)=>{
+                const current=visibleSliderSlide;
+                const progress=t>0&&(runPlaying||slidePlaying)?clamp((pos-starts[i])/t):0;
+                return <View key={i} style={[styles.sectionHit,{opacity:t>0?1:0.28}]}>
+                  <View style={[styles.sectionTrack,{backgroundColor:c.ink18}]}>
+                    {progress>0&&<View style={[styles.sectionFill,{backgroundColor:c.text,width:`${100*progress}%`}]}/>}
+                  </View>
+                  {current===i&&<View pointerEvents="none" style={[styles.sectionMarker,{backgroundColor:c.text}]} />}
+                </View>;
+              })}
+            </PanView>
           </View>
         </View>
         <ScrollView ref={transcriptRef} style={styles.transcript} contentContainerStyle={styles.transcriptContent}
@@ -281,7 +306,7 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
           { icon: 'h-tap', text: 'Tap a slide to review it' }]} />
       </Animated.View>
     </PanView>
-    {active&&missingAudio&&<Dialog title="Some run audio is missing" body={`Audio for slide${missingAudio.slides.length===1?'':'s'} ${missingAudio.slides.map(i=>i+1).join(', ')} is not on this phone. Play only the available recordings?`} confirm="Play available audio" onCancel={()=>setMissingAudio(null)} onConfirm={()=>{const captured=missingAudio;setMissingAudio(null);if(!active||captured.signature!==JSON.stringify(run.parts)){note('Selected recordings changed. Start playback again.');return;}toggleWhole(true);}}/>}
+    {active&&missingAudio&&<Dialog title="Some run audio is missing" body={`Audio for slide${missingAudio.slides.length===1?'':'s'} ${missingAudio.slides.map(i=>i+1).join(', ')} is not on this phone. Play only the available recordings?`} confirm="Play available audio" onCancel={()=>setMissingAudio(null)} onConfirm={()=>{const captured=missingAudio;setMissingAudio(null);if(!active||captured.signature!==JSON.stringify(run.parts)){note('Selected recordings changed. Start playback again.');return;}startWholeAt(captured.startSlide,true);}}/>}
   </Enter>;
 }
 
@@ -337,10 +362,11 @@ const styles = StyleSheet.create({
   wholeHint: { flexShrink: 1, fontFamily: F.medium, fontSize: 12, fontVariant: ['tabular-nums'] },
   controls: { marginTop: 6, height: 32, flexDirection: 'row', alignItems: 'center', gap: 6 },
   wholePlay: { width: 32, height: 32, marginLeft: -12, alignItems: 'center', justifyContent: 'center' },
-  sections: { flex: 1, height: 28, flexDirection: 'row', alignItems: 'center' },
-  sectionHit: { flexBasis: 0, minWidth: 0, height: 28, justifyContent: 'center' },
+  sections: { flex: 1, height: 32, flexDirection: 'row', alignItems: 'center', position: 'relative' },
+  sectionHit: { flex: 1, flexBasis: 0, minWidth: 0, height: 28, justifyContent: 'center' },
   sectionTrack: { height: 6, marginHorizontal: 1, borderRadius: 3, overflow: 'hidden' },
   sectionFill: { height: 6, borderRadius: 3 },
+  sectionMarker: { position: 'absolute', top: 1, bottom: 1, width: 2, alignSelf: 'center', borderRadius: 1 },
   transcript: { position: 'absolute', left: 16, right: 16, top: 343, bottom: 169 },
   transcriptContent: { paddingVertical: 8, gap: 6 },
   assessmentSummary:{gap:10,marginBottom:12},assessmentCounts:{flexDirection:'row',flexWrap:'wrap',gap:8},assessmentCount:{fontFamily:F.medium,fontSize:12,lineHeight:17},refresh:{minHeight:44,alignSelf:'flex-start',justifyContent:'center',paddingHorizontal:10},

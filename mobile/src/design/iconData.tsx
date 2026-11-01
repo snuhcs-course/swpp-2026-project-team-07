@@ -5,6 +5,7 @@
 // OpenAI Codex landscape rotate glyphs: docs/ai-collaboration-prompts-iteration-2.md#landscape-rehearsal-implementation-october-15-2026
 // OpenAI Codex Review bars: docs/ai-collaboration-prompts-iteration-2.md#rehearse-review-bars-icon-october-15-2026
 // OpenAI Codex removed unused coloured status artwork: docs/ai-collaboration-prompts-iteration-2.md#minimal-status-icons-october-15-2026
+// OpenAI Codex centered three-bar review glyph: docs/ai-collaboration-prompts-iteration-2.md#compact-slide-review-card-and-slider-label-november-1-2026
 import type { ReactElement } from 'react';
 import { Circle, Ellipse, G, Path, Rect } from 'react-native-svg';
 type Shape = (c: string) => ReactElement;
@@ -38,12 +39,11 @@ export const GLYPHS: Record<string, { viewBox: string; body: Shape }> = {
   </> },
   'h-landscape': { viewBox: '0 0 24 24', body: (c: string) => <><Rect x="2.5" y="6.5" width="19" height="11" rx="2.5" fill="none" stroke={c} strokeWidth="2" /><Path d="M18 10.5 V13.5" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" /></> },
   'h-portrait': { viewBox: '0 0 24 24', body: (c: string) => <><Rect x="6.5" y="2.5" width="11" height="19" rx="2.5" fill="none" stroke={c} strokeWidth="2" /><Path d="M10.5 18 H13.5" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" /></> },
-  // Rehearse Review: three rounded bars and baseline from the supplied reference.
+  // Rehearse Review: three centered rounded bars.
   'h-review-bars': { viewBox: '0 0 32 32', body: (c: string) => <>
-    <Rect x="3.5" y="12.5" width="6.5" height="14.5" rx="2.8" fill={c} />
-    <Rect x="12.75" y="2" width="6.5" height="25" rx="2.8" fill={c} />
-    <Rect x="22" y="7.5" width="6.5" height="19.5" rx="2.8" fill={c} />
-    <Rect x="1.5" y="29" width="29" height="2.5" rx="1.25" fill={c} />
+    <Rect x="3.5" y="14" width="6.5" height="14.5" rx="2.8" fill={c} />
+    <Rect x="12.75" y="3.5" width="6.5" height="25" rx="2.8" fill={c} />
+    <Rect x="22" y="9" width="6.5" height="19.5" rx="2.8" fill={c} />
   </> },
   'h-hold': { viewBox: '0 0 24 24', body: (c: string) => <><Circle cx="12" cy="12" r="3.2" fill={c} /><Path d="M12 4.2 A7.8 7.8 0 1 1 4.6 14.6" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" /></> },
   'g-redo': { viewBox: '0 0 24 24', body: (c: string) => <><Path d="M18.6 13.2a6.8 6.8 0 1 1 -1.9 -6.1" fill="none" stroke={c} strokeWidth="2.3" strokeLinecap="round" /><Path d="M17.6 3.6v4.3h-4.3" fill="none" stroke={c} strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" /></> },
