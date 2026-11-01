@@ -8,7 +8,7 @@ export function emitSetupKeyboard(name,screenY){setupNative.keyboard=name==='key
 export const StyleSheet={create:v=>v,absoluteFill:{}};
 export const Enter=({children})=>React.createElement('enter',null,children), Txt='text';
 export const useFrame=()=>setupNative.frame;
-export const Glyph='glyph',PanView='pan',SlideCard='slide-card',CARD_H=196,CARD_W=358;
+export const Glyph='glyph',UIIcon='icon',PanView='pan',SlideCard='slide-card',CARD_H=196,CARD_W=358;
 export const Chip='chip',Confetti='confetti',Dialog='dialog',HintRow='hints',OrbitalCaption='orbital-caption',PageSurface='page-surface',RecordButton='record-button',RecordRing='record-ring',RoundButton='round-button',Waveform='waveform',IDLE_WAVE=[];
 export const Easing={linear:v=>v,cubic:v=>v,bezier:()=>v=>v,inOut:f=>f};
 export const cancelAnimation=()=>{},runOnJS=f=>f,withTiming=v=>v;

@@ -260,8 +260,8 @@ function Particle({ b, t, origin }: { b: (typeof BURST)[number]; t: SharedValue<
 }
 
 // ── Dialog (redo confirm and the few essential prompts) ──────────────────────
-export function Dialog({ title, body, confirm, cancel = 'Cancel', onConfirm, onCancel, icon = 'redo', tone = 'red', style }: {
-  title: string; body: string; confirm: string; cancel?: string | null; onConfirm: () => void; onCancel: () => void; icon?: 'redo' | IconKey; tone?: 'red' | 'neutral'; style?: StyleProp<ViewStyle>;
+export function Dialog({ title, body, confirm, cancel = 'Cancel', onConfirm, onCancel, icon = 'redo', tone = 'red', style, showScrim = true }: {
+  title: string; body: string; confirm: string; cancel?: string | null; onConfirm: () => void; onCancel: () => void; icon?: 'redo' | IconKey; tone?: 'red' | 'neutral'; style?: StyleProp<ViewStyle>; showScrim?: boolean;
 }) {
   const { c } = useTheme();
   const frame = useFrame();
@@ -272,7 +272,7 @@ export function Dialog({ title, body, confirm, cancel = 'Cancel', onConfirm, onC
   return (
     <View style={[StyleSheet.absoluteFill, { zIndex: 40 }]}>
       <Animated.View style={[StyleSheet.absoluteFill, scrim]}>
-        <Pressable accessibilityLabel={cancel ?? 'Close'} onPress={onCancel} style={[StyleSheet.absoluteFill, { backgroundColor: c.scrim }]} />
+        <Pressable accessibilityLabel={cancel ?? 'Close'} onPress={onCancel} style={[StyleSheet.absoluteFill, { backgroundColor: showScrim ? c.scrim : 'transparent' }]} />
       </Animated.View>
       <Animated.View accessibilityRole="alert" accessibilityViewIsModal style={[s.dialog,
         frame.width > frame.height && { left: 242, right: 242, top: 50 }, style, card]}>

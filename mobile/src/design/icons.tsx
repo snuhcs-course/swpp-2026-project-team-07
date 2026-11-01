@@ -65,14 +65,15 @@ const MINIMAL_UI: Record<IconKey, () => ReactNode> = {
   'i-slides': () => <><Rect x={7} y={4} width={14} height={15} rx={1.5} /><Path d="M4 7H3v14h14v-1 M10 9h8 M10 13h6" /></>,
   'i-text': () => <Path d="M4 6h16 M4 11h16 M4 16h11 M4 20h7" />,
   'i-trash': () => <><Path d="M4 6h16 M9 6V4h6v2 M6.5 6l1 14h9l1-14 M10 10v7 M14 10v7" /></>,
+  'i-sliders': () => <><Path d="M4 6h16 M4 12h16 M4 18h16" /><Circle cx={9} cy={6} r={2} fill="none" /><Circle cx={15} cy={12} r={2} fill="none" /><Circle cx={8} cy={18} r={2} fill="none" /></>,
 };
 
-export const UIIcon = memo(function UIIcon({ name, size, style }: { name: IconKey; size: number; style?: StyleProp<ViewStyle> }) {
+export const UIIcon = memo(function UIIcon({ name, size, style, color }: { name: IconKey; size: number; style?: StyleProp<ViewStyle>; color?: string }) {
   const { c } = useTheme();
   const icon = MINIMAL_UI[name];
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" style={style}>
-      <G fill="none" stroke={c.secondary} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">{icon()}</G>
+      <G fill="none" stroke={color ?? c.secondary} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">{icon()}</G>
     </Svg>
   );
 });
