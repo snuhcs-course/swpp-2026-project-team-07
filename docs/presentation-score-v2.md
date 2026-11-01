@@ -26,7 +26,7 @@ All deck slides are represented exactly once. Default applicable. Only first/las
 
 Each applicable slide needs all three criteria; whole needs all four. Criteria select `assessed` with a valid level, justification, usable references, limitations, deductions; or `insufficient_evidence` with null level and explicit limitations. Invalid score evidence suppresses that slide/whole component and overall, but other valid slides survive. Unknown/duplicate criteria or slide identities fail closed. Insufficient evidence is different from demonstrated missing essential meaning; omissions require full-attempt review and an identified essential fact or requirement.
 
-Prompt `presentation-score-prompt-v2.1` explicitly requires assessed delivery and its weaknesses/deductions to cite supporting speech alongside an eligible non-signal measurement; duration requirements or measurements alone cannot establish it.
+Prompt `presentation-score-prompt-v2.2` requires every slide entry's speech and slide-fact references to belong to that slide, including criteria, feedback and deductions. Whole-presentation evidence may span slides. It also retains the assessed-delivery requirement for supporting speech alongside an eligible non-signal measurement; duration requirements or measurements alone cannot establish delivery. The validator rejects cross-slide evidence independently of the prompt.
 
 Audio unavailable/corrupted/insufficient suppresses overall; do not invent measurements or renormalize away delivery. Pauses/rate/fillers/repetitions need explained communication consequences for deductions. Relative signal levels describe recording context. No confidence, emotion, pronunciation, vocal expressiveness, gestures, eye contact or Q&A grading.
 

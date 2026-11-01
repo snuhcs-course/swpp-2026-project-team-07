@@ -1,0 +1,103 @@
+{
+  "evidence_date_local": "2026-11-02",
+  "timezone": "Asia/Seoul",
+  "summary_generated_at_utc": "2026-11-01T16:55:50.087100+00:00",
+  "verification_operator": "agent-operated automated checks",
+  "human_acceptance_claimed": false,
+  "recorded_at_utc": "2026-11-01T16:47:21.682751+00:00",
+  "status": "passed",
+  "artifact_name": "OutLoud-public-demo-20261102-feedback.apk",
+  "bytes": 143224470,
+  "sha256": "9f1e1cbaba83f6c3ea7aef326c2ae163d815ffdedb414658acc29d489d573ffe",
+  "package": "com.team07.outloud",
+  "version_code": 5,
+  "version_name": "0.1.0",
+  "min_sdk": 24,
+  "target_sdk": 36,
+  "architectures": [
+    "arm64-v8a",
+    "armeabi-v7a",
+    "x86",
+    "x86_64"
+  ],
+  "debuggable": false,
+  "signature_valid": true,
+  "matches_previous_signer": true,
+  "bundle_matches_final_build": true,
+  "bundle_sha256": "15fe64ccfda6fb9b194e6e66cedb2d6867bd34d8d20993f92eccfbc4c112af12",
+  "public_https_embedded": true,
+  "tailnet_hostname_absent": true,
+  "private_values_checked": 6,
+  "private_scan_includes_existing_openrouter_key": true,
+  "private_value_matches": 0,
+  "packaged_bytes_scanned": 174977914,
+  "securestore_native_present": true,
+  "securestore_js_present": true,
+  "securestore_native_and_js_present": true,
+  "seoul_pdf_exact_in_apk": true,
+  "seoul_pdf_entries": [
+    {
+      "entry": "res/gD.pdf",
+      "bytes": 6793649,
+      "sha256": "48e673f2dce98c5b4a67a1ad52fcb68092bdc5d606c03d68892e6b187be1f9aa"
+    }
+  ],
+  "ui_source_commit": "c43ab1fdcabb285327a5c1618e61e4cbf10b400f",
+  "five_unchanged_production_ui_files_equal_pinned_source": true,
+  "rehearse_ui_preserved_except_lifecycle_delta": true,
+  "review_ui_preserved_except_computed_data": true,
+  "frozen_reviewed_source_matches": true,
+  "commands": [
+    [
+      "aapt",
+      "dump",
+      "badging",
+      "<apk>"
+    ],
+    [
+      "apksigner",
+      "verify",
+      "--print-certs",
+      "<apk>"
+    ]
+  ],
+  "checks_method": [
+    "Verify APK certificate and compare it with the prior version4 and November1 APK certificates.",
+    "Compare packaged assets/index.android.bundle byte-for-byte with the final Gradle-generated release bundle.",
+    "Hash unpacked PDF entries and require the exact bundled Seoul source hash.",
+    "Hash five unchanged production UI files against pinned PR34; normalize only the reviewed recorder lifecycle and Review computed-data expressions in the other two screens.",
+    "Scan every unpacked APK entry and the generated bundle for six known credential values in UTF8, UTF16LE and Base64 forms; record only count and matches."
+  ],
+  "ui_files": [
+    {
+      "path": "mobile/src/design/iconData.tsx",
+      "sha256": "f7e23d544a524c367c5e199b775b64a1adc113cf130409401127631d857db637",
+      "equals_pinned_source": true
+    },
+    {
+      "path": "mobile/src/design/icons.tsx",
+      "sha256": "824d5d2b350792831c27fd63353ef5e0f7f2787e1aaebce57572750a43bd899f",
+      "equals_pinned_source": true
+    },
+    {
+      "path": "mobile/src/design/ui.tsx",
+      "sha256": "f7e6ec47af5f1ac6e509be361e248597b9be1be04e83a3c0a90258aef4c29c08",
+      "equals_pinned_source": true
+    },
+    {
+      "path": "mobile/src/domain/analysis.ts",
+      "sha256": "30852ad7855628097d54bd3ab8c69ac80e7e1ab25d9482c0c0a26152b1fa2094",
+      "equals_pinned_source": true
+    },
+    {
+      "path": "mobile/src/screens/FullReviewScreen.tsx",
+      "sha256": "668b9fbfb5bb5730e4e261e2e13fcb8d4808c9452ecbde38031489731b83f182",
+      "equals_pinned_source": true
+    }
+  ],
+  "limitations": [
+    "Artifact inspection does not establish microphone, playback, navigation or live feedback acceptance.",
+    "Known-value scanning does not establish absence of unknown credentials.",
+    "Live-provider and version5 native acceptance remained pending when this summary was generated."
+  ]
+}

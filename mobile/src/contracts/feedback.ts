@@ -1,6 +1,6 @@
 /** Explicit description/coaching contracts. No generation is implied by a GET. */
 export type SafeFeedbackError = { code: string; message: string };
-export type FeedbackProvider = 'gemini' | 'openai';
+export type FeedbackProvider = 'gemini' | 'openai' | 'openrouter';
 export type DescriptionFact = { text: string; uncertain: boolean; uncertainty: string };
 export type SlideDescription = { deck_id: string; slide_index: number; source_id: string;
   summary: DescriptionFact; key_ideas: DescriptionFact[]; visual_facts: DescriptionFact[] };

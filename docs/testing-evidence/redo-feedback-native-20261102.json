@@ -1,0 +1,62 @@
+{
+  "artifact": "OutLoud-public-demo-20261102-feedback.apk",
+  "version_code": 5,
+  "serial": "emulator-5580",
+  "agent_operated": true,
+  "host_microphone_enabled": false,
+  "offline_default_network": "none",
+  "app_pid_during_take_sequence": "3431",
+  "observed": {
+    "bundled_seoul_seven_pages": true,
+    "first_take_saved_full_review": true,
+    "first_redo_same_process_no_already_started_error": true,
+    "first_redo_compare": true,
+    "keep_current_duration_seconds": 17,
+    "third_take_same_process_compare": true,
+    "overwrite_duration_seconds": 11,
+    "other_two_selected_slides_preserved": true,
+    "combined_recordings_no_whole_grade": true,
+    "whole_run_playback_progress_seconds": 2,
+    "wrong_code_rejected": true,
+    "correct_code_unlock": true,
+    "offline_cold_secure_restore": true,
+    "real_generated_seoul_cues_rendered": true,
+    "native_synthetic_capture_saved_and_uploaded": true,
+    "native_no_speech_status_correct": true,
+    "compact_no_speech_dash_rows_no_false_spot_on": true
+  },
+  "not_claimed": [
+    "physical phone",
+    "audible quality",
+    "live provider result"
+  ],
+  "evidence": [
+    "06-full-review-first.png",
+    "10-first-redo-active.png",
+    "11-first-redo-compare.png",
+    "12-third-take-active.png",
+    "13-third-take-compare.png",
+    "14-overwrite-review.png",
+    "15-combined-playback.png",
+    "16-wrong-code.png",
+    "17-offline-secure-restore.png",
+    "26-no-speech-review.png",
+    "27-live-generated-cues.png"
+  ],
+  "failed_test_setup": {
+    "synthetic_microphone_injection_16khz": "RPC succeeded but actual uploaded AAC was near silent; no native speech/feedback success claimed",
+    "captured_duration_seconds": 65.132,
+    "rms_normalized": 1.56355e-05,
+    "synthetic_microphone_injection_48khz": "Also near silent:16.60225 seconds decoded,RMS0.0000295128; no native speech pass",
+    "later_no_recording_routing_probe": "Emulator process disappeared; no application source change or proven app crash"
+  },
+  "scope": "Agent-operated version5 native lifecycle/access/cue/no-speech checks; speech-to-feedback device acceptance is not claimed",
+  "cleanup": {
+    "owned_emulator_stopped": true,
+    "test_ports_closed": true,
+    "temporary_jwk_files_removed": true,
+    "original_avd_files_checked": 6,
+    "all_original_avd_hashes_unchanged": true
+  },
+  "human_acceptance_claimed": false
+}

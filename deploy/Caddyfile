@@ -1,0 +1,36 @@
+# AI-assisted public demo edge, OpenAI Codex, Iteration 2 (2026-11-01).
+{
+	servers {
+		timeouts {
+			read_header 15s
+			idle 2m
+		}
+	}
+	# Access logging is not enabled. Remove request metadata from error logs too.
+	log {
+		format filter {
+			wrap json
+			fields {
+				request delete
+			}
+		}
+	}
+}
+
+# Explicit HTTPS prevents an accidental http:// site from exposing demo codes.
+https://{$OUTLOUD_PUBLIC_HOST} {
+	request_body {
+		max_size 64MiB
+	}
+	# No matcher: API, health, files, HEAD and range requests all require the code.
+	basic_auth bcrypt {
+		reviewer {$OUTLOUD_DEMO_PASSWORD_HASH}
+	}
+	reverse_proxy proxy:8080 {
+		header_up Host {http.request.host}
+		header_up X-Forwarded-Proto https
+		# The demo credential is consumed here, never sent to the application.
+		header_up -Authorization
+		header_up -Proxy-Authorization
+	}
+}

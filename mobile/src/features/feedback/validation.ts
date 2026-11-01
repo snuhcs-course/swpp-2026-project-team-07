@@ -33,9 +33,12 @@ function times(v: ObjectValue): FeedbackTimes { return { created_at: date(v.crea
 function retry(v: ObjectValue): FeedbackRetry { return { retry_at: date(v.retry_at), retry_available: bool(v.retry_available),
   requires_confirmation: bool(v.requires_confirmation), error: error(v.error) }; }
 function provenance(v: unknown): DescriptionProvenance { const r = object(v);
-  const result = { provider: choice(r.provider, ['gemini', 'openai']), project_id: text(r.project_id, 160, 1),
+  const result = { provider: choice(r.provider, ['gemini', 'openai', 'openrouter']), project_id: text(r.project_id, 160, 1),
     model: text(r.model, 100, 1), prompt_version: nonblank(r.prompt_version, 40), schema_version: nonblank(r.schema_version, 40) };
-  if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(result.project_id) || !/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(result.model)) fail();
+  // OpenAI Codex: OpenRouter provenance, docs/ai-collaboration-prompts-iteration-2.md#openrouter-luna-migration-october-29-2026
+  const modelPattern = result.provider === 'openrouter'
+    ? /^[a-zA-Z0-9][a-zA-Z0-9._-]*\/[a-zA-Z0-9][a-zA-Z0-9._-]*$/ : /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(result.project_id) || !modelPattern.test(result.model)) fail();
   return result;
 }
 function coachingProvenance(v: unknown): CoachingProvenance { const r = object(v); return { ...provenance(r),

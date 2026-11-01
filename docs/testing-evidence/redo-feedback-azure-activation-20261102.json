@@ -1,0 +1,28 @@
+{
+  "activated": true,
+  "image": "sha256:206766469239134bdcbbcbc138823a25d72a7ddebbcf2a721666a0f0876ba569",
+  "services": {
+    "api": "healthy",
+    "worker": "healthy",
+    "scheduler": "healthy",
+    "db": "healthy",
+    "redis": "healthy",
+    "proxy": "healthy",
+    "caddy": "healthy"
+  },
+  "configuration": {
+    "enabled": true,
+    "provider": "openrouter",
+    "model": "openai/gpt-6-luna",
+    "daily_limit": 300,
+    "personal_openai_key_present": false
+  },
+  "original_inventory_unchanged": true,
+  "private_consistent_backup_created": true,
+  "provider_calls_during_activation": 0,
+  "byok_settings_verified": false,
+  "temporary_ssh_rule_removed": true,
+  "scope": "Deployment activation; live inference and native acceptance recorded separately",
+  "verification_operator": "agent-operated",
+  "human_acceptance_claimed": false
+}

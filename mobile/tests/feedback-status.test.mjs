@@ -19,7 +19,7 @@ test('current successful and partial findings replace quality scores; failures n
  assert.equal(typeof status.feedbackStatusItem,'function','shared AI status derivation must exist');
  const finding={...review.feedback_analysis.result.suggestions[0],category:'content',priority:1};
  const successful=state();successful.result.slides[0].findings=[finding];
- assert.deepEqual({...derive(successful)}, {slide:0,status:'reviewed',label:'1 finding',findingCount:1,assessed:true,hasFindings:true,tone:'warn'});
+ assert.deepEqual({...derive(successful)}, {slide:0,status:'reviewed',label:'1 finding',findingCount:1,assessed:true,hasFindings:true,tone:'warn',findings:[finding]});
  const partial=structuredClone(successful);partial.result.slides[0].status='partial';
  assert.equal(derive(partial).status,'partial');assert.equal(derive(partial).findingCount,1);assert.equal(derive(partial).assessed,false);
  for(const summary of ['insufficient_evidence','invalid_evidence','model_error']){const s=state();s.result.slides[0].status=summary;

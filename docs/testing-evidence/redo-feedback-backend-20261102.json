@@ -1,0 +1,62 @@
+{
+  "evidence_date_local": "2026-11-02",
+  "timezone": "Asia/Seoul",
+  "summary_generated_at_utc": "2026-11-01T17:19:03.875615+00:00",
+  "verification_operator": "agent-operated automated checks",
+  "human_acceptance_claimed": false,
+  "recorded_at_utc": "2026-11-01T17:17:33.747837+00:00",
+  "status": "passed",
+  "environment": {
+    "database": "PostgreSQL 16 disposable task database",
+    "storage": "temporary",
+    "dotenv_loading": "disabled",
+    "provider_inference": "blocked",
+    "network": "only task PostgreSQL connections allowed"
+  },
+  "commands": [
+    {
+      "command": "python manage.py check",
+      "working_directory": "backend",
+      "exit_code": 0,
+      "status": "passed"
+    },
+    {
+      "command": "python manage.py makemigrations --check --dry-run",
+      "working_directory": "backend",
+      "exit_code": 0,
+      "status": "passed"
+    },
+    {
+      "command": "python manage.py migrate --noinput",
+      "working_directory": "backend",
+      "exit_code": 0,
+      "status": "passed"
+    },
+    {
+      "command": "python manage.py test --noinput",
+      "working_directory": "backend",
+      "exit_code": 0,
+      "status": "passed"
+    }
+  ],
+  "tests": {
+    "total": 597,
+    "passed": 596,
+    "skipped": 1,
+    "failed": 0
+  },
+  "cleanup": "Task database and disposable storage removed.",
+  "limitations": [
+    "One local packaged speech-model dependency case was skipped; the separate production-image test exercises the packaged model offline.",
+    "Mocks and local database tests do not establish live OpenRouter/Scribe behavior or Android acceptance."
+  ],
+  "scope": "Final scoring prompt v2.2 source; supersedes the earlier 593-test run for this branch.",
+  "prompt_version": "presentation-score-prompt-v2.2",
+  "source_archive_sha256": "b02cfb20f13d0695789730342e57bd35c8923af44547d2a3eeade287f1ae2909",
+  "source_files_sha256": {
+    "backend/rehearsals/services/presentation_score_v2.py": "ea6e2e5dfd5bee53ddca9f20715c0dba54b5f0c6c128daf7f961053f219799b2",
+    "backend/rehearsals/services/presentation_scoring.py": "b1676fa3b7530f1501fd4b76ad608fb5ee2d1ed7ffd5c731398578aea96d7c4a",
+    "backend/rehearsals/test_presentation_score_v2_boundaries.py": "18ced4b09ca9c52b136666e5bba5161d287bf113f8e9de48a672f171dcc9ec67",
+    "backend/rehearsals/test_presentation_scoring_lifecycle.py": "ad82d6d9cf6752c853bb5dafa50e357d1bd7717063e5112b28f896a27b7ceb65"
+  }
+}

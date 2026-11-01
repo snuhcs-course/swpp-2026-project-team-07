@@ -1,0 +1,6 @@
+# The deployment is x86 Linux and uses the speech gate on CPU only.
+--extra-index-url https://download.pytorch.org/whl/cpu
+-r requirements.txt
+torch==2.10.0+cpu
+torchaudio==2.10.0+cpu
+gunicorn==26.2.0

@@ -261,7 +261,7 @@ class PresentationScoreV2BoundaryTests(TestCase):
             scorer.source_identity(altered)
 
     def test_delivery_instructions_require_direct_speech_and_eligible_measurement(self):
-        self.assertEqual(scorer.PROMPT_VERSION, 'presentation-score-prompt-v2.1')
+        self.assertEqual(scorer.PROMPT_VERSION, 'presentation-score-prompt-v2.2')
         for phrase in ('direct supporting speech selection',
                        'Measurements and duration requirements alone',
                        'delivery weakness and delivery deduction'):
@@ -296,3 +296,20 @@ class PresentationScoreV2BoundaryTests(TestCase):
             scorer.normalize(self.bundle, prepared, receipt)
         self.assertEqual(caught.exception.code, 'source_mismatch')
         self.assertEqual(receipt.body, original)
+
+    def test_slide_scope_rule_reaches_request_and_cross_slide_evidence_stays_rejected(self):
+        prepared = scorer.prepare(self.bundle, self.config)
+        instructions = ' '.join(json.loads(prepared.payload)['instructions'].split())
+        self.assertIn('same registry slide_index as that slide entry', instructions)
+        self.assertIn('top-level evidence, criteria, deductions and feedback', instructions)
+        self.assertIn('Whole-presentation criteria may cite across slides', instructions)
+        raw = output(self.bundle)
+        # Actual failure shape: an otherwise valid slide cites a neighboring visit.
+        raw['slides'][1]['evidence'].insert(0, speech('v0', 0, 0))
+        result = scorer.validate_output(self.bundle, raw)
+        self.assertEqual(result['validation']['score_critical']['reasons'],
+                         ['slides.1: cross_slide_evidence'])
+        self.assertEqual(result['slides'][1]['status'], 'invalid_evidence')
+        self.assertEqual(result['slides'][0]['score'], 100)
+        self.assertEqual(result['slides'][2]['score'], 100)
+        self.assertIsNone(result['overall']['score'])

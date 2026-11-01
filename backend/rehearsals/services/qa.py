@@ -112,7 +112,7 @@ def _check_cooldown(selection):
 
 def _payload(config, stage, instructions, context, schema):
     text = json_bytes(context).decode("utf-8")
-    if config.provider == "openai":
+    if config.provider in provider.RESPONSES_PROVIDERS:
         payload = {"model": config.model, "instructions": instructions,
                    "input": [{"role": "user", "content": [{"type": "input_text", "text": text}]}],
                    "text": {"format": {"type": "json_schema", "name": stage, "strict": True, "schema": schema}},

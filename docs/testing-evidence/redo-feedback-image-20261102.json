@@ -1,0 +1,91 @@
+{
+  "evidence_date_local": "2026-11-02",
+  "timezone": "Asia/Seoul",
+  "summary_generated_at_utc": "2026-11-01T17:19:03.875615+00:00",
+  "verification_operator": "agent-operated automated checks",
+  "human_acceptance_claimed": false,
+  "recorded_at_utc": "2026-11-01T17:17:32.839047+00:00",
+  "status": "passed",
+  "environment": {
+    "architecture": "amd64",
+    "os": "linux",
+    "torch": "2.10.0+cpu",
+    "cuda": null,
+    "uid": 10001,
+    "media_writable": true,
+    "provider_keys_present": false,
+    "network": "none"
+  },
+  "commands": {
+    "build": [
+      "docker",
+      "build",
+      "--platform",
+      "linux/amd64",
+      "--tag",
+      "outloud-backend:score-scope-20261102",
+      "--file",
+      "backend/Dockerfile.production",
+      "backend"
+    ],
+    "build_working_directory": "repository root",
+    "test_runtime": [
+      "docker",
+      "run",
+      "--rm",
+      "-i",
+      "--network",
+      "none",
+      "--platform",
+      "linux/amd64",
+      "<fixed nonsecret test-mode environment flags>",
+      "outloud-backend:score-scope-20261102",
+      "python",
+      "-"
+    ],
+    "test_entrypoint": [
+      "manage.py",
+      "test",
+      "rehearsals.test_openrouter",
+      "rehearsals.test_openrouter_cutover",
+      "config.test_production_settings",
+      "rehearsals.test_speech_gate",
+      "rehearsals.test_presentation_score_v2_boundaries",
+      "rehearsals.test_presentation_scoring_lifecycle",
+      "rehearsals.test_presentation_score_v2",
+      "--noinput",
+      "--settings=config.test_settings"
+    ],
+    "stdin_wrapper_conditions": [
+      "Remove all four provider key variables.",
+      "Disable dotenv loading and socket connections.",
+      "Assert x86_64, CPU Torch, UID 10001 and writable media before Django tests."
+    ],
+    "reproduction_note": "The module selection and runtime constraints are recorded; the original orchestration wrapper is not included in this portable summary."
+  },
+  "checks": [
+    {
+      "name": "production_image_build",
+      "exit_code": 0
+    },
+    {
+      "name": "offline_production_image_tests",
+      "exit_code": 0
+    }
+  ],
+  "tests": {
+    "total": 86,
+    "passed": 86,
+    "skipped": 0,
+    "failed": 0
+  },
+  "image_id": "sha256:5e6ee52c11223d936e294f647f764f1a5fa684553fa65e238e1e9a7852c145d6",
+  "image_size_bytes": 407648148,
+  "limitations": [
+    "This is an offline production-image check; no provider inference occurred.",
+    "Successful image tests do not establish live cloud rollout or Android acceptance."
+  ],
+  "scope": "Final scoring prompt v2.2 image; retains the original 34 checks and adds 52 scoring/core/lifecycle checks.",
+  "prompt_version": "presentation-score-prompt-v2.2",
+  "source_archive_sha256": "b02cfb20f13d0695789730342e57bd35c8923af44547d2a3eeade287f1ae2909"
+}

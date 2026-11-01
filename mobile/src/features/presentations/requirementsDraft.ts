@@ -1,3 +1,4 @@
+import { backendFetch } from '../../services/backendFetch';
 // Confirmed local choices are separate from server-accepted requirements and never admit AI work.
 import { validateRequirementValues, type PresentationRequirements } from '../../domain/presentationRequirements';
 import { readStored, removeStored, writeStored } from '../../services/storage';
@@ -49,7 +50,7 @@ function accept(id: string, api: string, sent: RequirementsDraft, server: Presen
   if (latest.localVersion === sent.localVersion || same(latest.desired, server)) acceptServerRequirements(id, api);
   else save(id, api, { ...latest, base: server, pending: true, conflict: false, error: '' });
 }
-export function synchronizeRequirements(id: string, deckId: string, api: string, transport: typeof globalThis.fetch = globalThis.fetch): Promise<void> {
+export function synchronizeRequirements(id: string, deckId: string, api: string, transport: typeof globalThis.fetch = backendFetch): Promise<void> {
   const k = key(id, api), existing = locks.get(k); if (existing) return existing;
   const promise = serializeContextWrite(id, api, async () => {
     const client = createPresentationContextClient(api, (url, options) => transport(url, { ...options, signal: AbortSignal.timeout(15000) }));

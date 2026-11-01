@@ -51,8 +51,8 @@ test('countdown/capture keep Cues visible, disable Play and update both slide di
  t.mock.timers.enable({apis:['Date','setInterval'],now:0});setup();const r=await mount();assertFirst(r);assert.equal(button(r,'Play slide 1 recording').props.disabled,false);
  await tap(r.root.findByType('record-button'));
  await act(async()=>r.root.findByType('dialog').props.onConfirm());
- assert.match(r.root.findByType('record-button').props.label,/Starting in/);assertFirst(r);assert.equal(button(r,'Play slide 1 recording').props.disabled,true);assert.equal(!!button(r,'Edit presentation time and audience'),false);assert.doesNotMatch(text(r),/Edit time & audience/);
- await act(async()=>{t.mock.timers.tick(3000);await Promise.resolve();});assert.equal(r.root.findByType('record-button').props.label,'Stop recording');assertFirst(r);assert.equal(runtime.captures[0].started,1);assert.equal(button(r,'Play slide 1 recording').props.disabled,true);assert.equal(!!button(r,'Edit presentation time and audience'),false);assert.doesNotMatch(text(r),/Edit time & audience/);
+ assert.match(r.root.findByType('record-button').props.label,/Starting in/);assertFirst(r);assert.equal(button(r,'Play slide 1 recording').props.disabled,true);assert.equal(button(r,'Edit presentation time and audience').props.disabled,true);
+ await act(async()=>{t.mock.timers.tick(3000);await Promise.resolve();});assert.equal(r.root.findByType('record-button').props.label,'Stop recording');assertFirst(r);assert.equal(runtime.captures[0].started,1);assert.equal(button(r,'Play slide 1 recording').props.disabled,true);assert.equal(button(r,'Edit presentation time and audience').props.disabled,true);
  await navigate(r,'Next');assert.match(text(r),/Recap how the final result/);await navigate(r,'Previous');assertFirst(r);assert.deepEqual(runtime.captures[0].slides,[0,1,0]);assert.equal(requests.length,1);
 });
 
@@ -75,12 +75,12 @@ test('interrupted recovery preserves the current slide cues through the existing
  await act(async()=>r.root.findByType('take-playback').props.onRecovered(recovered));assert.equal(r.root.findAllByType('take-playback').length,0);assert.match(text(r),/Slide 2 of 2/);assert.match(text(r),/Recap how the final result/);assert.deepEqual(runtime.routes[0],['review',{nav:'fade',deckId:runtime.model.deck.id,sel:1,slide:1,from:null}]);assert.equal(requests.length,1);
 });
 test('existing presentation opens the shared setup without changing the selected slide or cue set',async()=>{
- setup({slide:1});const r=await mount();const edit=button(r,'Edit presentation time and audience');assert.ok(edit);assert.equal(edit.findByType('text').props.children,'Edit time & audience');assert.ok(edit.findByType('text').props.style.color);await tap(edit);assert.ok(button(r,'Other audience'));assert.match(text(r),/Slide 2 of 2/);assert.ok(runtime.stops>0);assert.equal(requests.filter(q=>q.method==='POST').length,0);
+ setup({slide:1});const r=await mount();const edit=button(r,'Edit presentation time and audience');assert.ok(edit);assert.equal(edit.findByType('icon').props.name,'i-sliders');await tap(edit);assert.ok(button(r,'Other audience'));assert.match(text(r),/Slide 2 of 2/);assert.ok(runtime.stops>0);assert.equal(requests.filter(q=>q.method==='POST').length,0);
 });
 
 test('Review opens the currently selected slide while automatic completion keeps its own initial review',async()=>{setup({slide:1});const r=await mount();const control=round(r,'Review current slide');assert.ok(control);await tap(control);assert.deepEqual(runtime.routes.at(-1),['review',{nav:'rise',deckId:runtime.model.deck.id,sel:1,slide:1,from:null}]);assert.equal(requests.length,1);});
 
-test('covered rehearsal does not expose the edit requirements action',async()=>{setup();const r=await mount(false);assert.equal(!!button(r,'Edit presentation time and audience'),false);assert.doesNotMatch(text(r),/Edit time & audience/);});
+test('covered rehearsal keeps edit requirements unavailable',async()=>{setup();const r=await mount(false);assert.equal(button(r,'Edit presentation time and audience').props.disabled,true);});
 
 
 test('covered rehearsal stops cue reconnects and reopening reads immediately without generation',async t=>{
@@ -128,4 +128,36 @@ test('recovering the first interrupted recording opens Full Review without waiti
 
 test('reopening a saved pending comparison carries the candidate review slide',async()=>{
  setup();runtime.model.state.compare={slides:[1],next:{sel:1}};await mount();assert.equal(runtime.routes[0][0],'compare');assert.equal(runtime.routes[0][1].sel,1);
+});
+
+// A provider switch must not treat an unresolved saved request as fresh admission.
+test('stale profile cutover retains its revision and asks before an uncertain replacement',async()=>{
+ const old=profiles();
+ Object.assign(old,{state:'needs_confirmation',stale:true,retry_available:true,requires_confirmation:true,descriptions:null,available_data:false,processing_revision:3});
+ Object.assign(old.provenance,{provider:'openai',model:'gpt-6-luna',schema_version:'slide-profile-v5'});
+ old.selection={provider:'openrouter',project_id:'synthetic-router',model:'openai/gpt-6-luna',stage:'descriptions',
+  prompt_version:'slide-profile-v5',schema_version:'slide-profile-v5',disclosure_version:'feedback-v1',prompt_digest:'e'.repeat(64),token:'a'.repeat(64)};
+ const admitted=profiles();Object.assign(admitted,{description_set_id:'44444444-4444-4444-8444-444444444444',selection:old.selection});
+ Object.assign(admitted.provenance,{provider:'openrouter',project_id:'synthetic-router',model:'openai/gpt-6-luna',schema_version:'slide-profile-v5'});
+ setup({saved:false,state:old});
+ let response=old;
+ globalThis.fetch=async(url,options={})=>{
+  requests.push({url,method:options.method??'GET',body:options.body?JSON.parse(options.body):null});
+  if(options.method==='POST')response=admitted;
+  return new Response(JSON.stringify(response));
+ };
+ const r=await mount();
+ const confirm=()=>button(r,'Confirm AI cue retry');
+ assert.ok(confirm(),'unresolved provider history must expose confirmation, not fresh Generate');
+ assert.equal(requests.filter(q=>q.method==='POST').length,0);
+ await tap(confirm());assert.equal(requests.filter(q=>q.method==='POST').length,0);
+ assert.match(r.root.findByType('dialog').props.body,/charged|charge/);
+ await act(async()=>r.root.findByType('dialog').props.onCancel());
+ assert.equal(requests.filter(q=>q.method==='POST').length,0);
+ await tap(confirm());
+ await act(async()=>r.root.findByType('dialog').props.onConfirm());
+ const posts=requests.filter(q=>q.method==='POST');assert.equal(posts.length,1);
+ assert.deepEqual(posts[0].body,{description_set_id:old.description_set_id,processing_revision:3,
+  expected_selection:'a'.repeat(64),acknowledge_uncertain:true});
+ assert.match(text(r),/Explain how measured growth/);
 });

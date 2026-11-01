@@ -19,7 +19,7 @@ export type PageImage = { uri: string; w: number; h: number };
 export type Presentation = {
   id: string; title: string; uri: string; order: number; hue: HueName; icon: IconId;
   pageCount: number; pages: PageImage[]; slides: SlideText[];
-  /** ready: slide text from the server; pending: not fetched yet (offline); none: the PDF has no text layer. */
+  /** ready: extracted slide text; pending: not fetched yet (offline); none: the PDF has no text layer. */
   text: 'ready' | 'pending' | 'none';
   target: number; targets: number[]; audience?: string; createdAt: string;
 };
@@ -79,8 +79,19 @@ function sanitize(value: unknown, pdf: LocalPdf, fallbackOrder: number, usedHues
   };
 }
 
+// OpenAI Codex, 2026-11-02: serialized startup/demo loading; see docs/ai-collaboration-prompts-iteration-2.md.
+let loading: Promise<void> | null = null;
+/** Share startup/foreground loads so the bundled demo and catalog publish only once at a time. */
+export function loadPresentations(): Promise<void> {
+  if (!loading) loading = readPresentations().finally(() => { loading = null; });
+  return loading;
+}
+
 /** Read the PDF catalog and each presentation's look. PDFs imported before the redesign get a look now. */
-export async function loadPresentations() {
+async function readPresentations() {
+  let demoError = '';
+  try { await (await import('./bundledDemo')).ensureBundledDemo(); }
+  catch (error) { demoError = error instanceof Error ? error.message : 'Could not prepare the bundled presentation.'; }
   try {
     const pdfs = await getImportedPdfs();
     const hidden = readStored<string[]>(HIDDEN) ?? [];
@@ -94,7 +105,7 @@ export async function loadPresentations() {
       decks.push(deck);
     });
     decks.sort((a, b) => a.order - b.order);
-    emit({ loaded: true, decks, hidden: hidden.filter(id => decks.some(d => d.id === id)), error: '' });
+    emit({ loaded: true, decks, hidden: hidden.filter(id => decks.some(d => d.id === id)), error: demoError });
   } catch (error) {
     emit({ loaded: true, error: error instanceof Error ? error.message : 'Could not read your presentations.' });
   }

@@ -1,8 +1,8 @@
 // AI-generated/modified with OpenAI Codex, Iteration 1 (2026-09-26 to 2026-10-09).
 // Attribution/review scope: docs/history/ai-collaboration-validation-iteration-1-retired-2026-10-09.md#ai-code-markers
-export const API_URL = (
-  process.env.EXPO_PUBLIC_API_URL ?? "http://10.0.2.2:8000/api"
-).replace(/\/$/, "");
+import { API_URL } from './apiConfig';
+import { backendFetch as fetch } from './backendFetch';
+export { API_URL } from './apiConfig';
 
 export async function checkBackend(apiUrl = API_URL): Promise<string> {
   const controller = new AbortController();

@@ -22,7 +22,7 @@ from .feedback import (FeedbackError, PrivateModel, has_nul, json_bytes,
                        strict_json, validated, MAX_CONTEXT_BYTES)
 
 VERSION = 'presentation-score-v2'
-PROMPT_VERSION = 'presentation-score-prompt-v2.1'
+PROMPT_VERSION = 'presentation-score-prompt-v2.2'
 SCHEMA_VERSION = 'presentation-score-selection-v2'
 Text = Annotated[str, Field(min_length=1, max_length=1000)]
 Index = Annotated[int, Field(ge=0)]
@@ -143,6 +143,13 @@ intervals yourself; the server never clips, splits, fuzzy matches or repairs.
 Certain slide selection ONLY {kind:"slide",fact_id}, using an enumerated handle.
 Other selections ONLY {kind:"measurement",measurement_id},
 {kind:"requirement",field}, or {kind:"full_attempt"}. Do not invent handles.
+For each slide entry, speech visits and slide facts must use the same registry
+slide_index as that slide entry. Apply this to its top-level evidence, criteria,
+deductions and feedback, and to weaknesses whose primary_criterion names that
+slide. Do not cite another slide's speech or facts for context in a slide-level
+judgment. Shared requirement, full_attempt and measurement references remain
+allowed without authorizing cross-slide speech or facts. Whole-presentation
+criteria may cite across slides.
 Each assessed criterion needs a valid level, rubric-specific justification,
 usable supporting speech evidence, explicit limitations and deductions. A
 sub-Advanced anchor does not automatically require a deduction. Insufficient
@@ -627,7 +634,7 @@ def prepare(bundle, config):
     v1._check_bundle(bundle)
     if bundle.measurements['status'] != 'available':
         raise FeedbackError('audio_unavailable')
-    if config.provider not in ('openai', 'gemini') or type(config.model) is not str or not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9._-]{0,99}', config.model):
+    if not provider.valid_model(config.provider, config.model):
         raise FeedbackError('invalid_configuration')
     registry = visits.registry(bundle)
     context = {'source_id': source_identity(bundle), 'rubric': rubric.descriptor(),
@@ -649,7 +656,7 @@ def prepare(bundle, config):
     base = adapter.prepare_coaching(bundle.analysis, descriptions)
     payload = strict_json(base.payload, provider.MAX_REQUEST_BYTES)
     schema = _schema(registry, len(bundle.analysis.source.slides))
-    if config.provider == 'openai':
+    if config.provider in provider.RESPONSES_PROVIDERS:
         payload['instructions'] = RULES
         payload['input'][0]['content'] = [{'type': 'input_text', 'text': encoded_context.decode()}]
         payload['text']['format'].update(name='presentation_score_v2', schema=schema)

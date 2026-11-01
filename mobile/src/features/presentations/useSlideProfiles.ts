@@ -58,14 +58,16 @@ export function useSlideProfiles(localId: string, pages: number, visible = true)
   }, [api, deck, pages, refresh, visible]));
   const recover = useCallback(async (acknowledge = false, expected = value) => {
     if (!deck || locked.current) return;
-    if (expected?.description_set_id !== value?.description_set_id || expected?.processing_revision !== value?.processing_revision) {
+    if (expected?.description_set_id !== value?.description_set_id || expected?.processing_revision !== value?.processing_revision ||
+        expected?.selection?.token !== value?.selection?.token) {
       setRefresh(r => r + 1); return;
     }
+    if (value?.requires_confirmation && (!acknowledge || !value.retry_available)) return;
     locked.current = true;
     setBusy(true); setFailure({ deck, message: '' });
     try {
       const client = createProfileClient(api);
-      const next = value && !value.stale && value.retry_available ? await client.retry(value, pages, acknowledge) : await client.generate(deck, pages);
+      const next = value?.description_set_id && value.retry_available ? await client.retry(value, pages, acknowledge) : await client.generate(deck, pages);
       if (mounted.current && selected.current === deck) { setSnapshot({ deck, value: next }); setRefresh(r => r + 1); }
     } catch { if (mounted.current && selected.current === deck) setFailure({ deck, message: 'AI cue request failed. Tap to refresh before retrying.' }); }
     finally { locked.current = false; if (mounted.current) setBusy(false); }

@@ -15,18 +15,19 @@ from .test_coaching import SyntheticCoaching
 
 
 class ProviderDefaultTests(SimpleTestCase):
-    def test_omitted_provider_is_openai_at_both_entry_points_without_fallback(self):
+    def test_omitted_provider_is_openrouter_at_both_entry_points_without_fallback(self):
         env = {'FEEDBACK_ENABLED': 'true', 'FEEDBACK_OPENAI_PROJECT_ID': 'synthetic-openai',
                'FEEDBACK_GEMINI_PROJECT_ID': 'synthetic-gemini', 'GEMINI_API_KEY': 'synthetic-gemini-key',
-               'OPENAI_API_KEY': 'synthetic-openai-key'}
-        for selected, model in [('openai', 'gpt-6-luna'), ('gemini', 'gemini-3.1-flash-lite')]:
+               'OPENAI_API_KEY': 'synthetic-openai-key', 'OPENROUTER_API_KEY': 'synthetic-router-key',
+               'FEEDBACK_OPENROUTER_PROJECT_ID': 'synthetic-router'}
+        for selected, model in [('openrouter', 'openai/gpt-6-luna'), ('openai', 'gpt-6-luna'), ('gemini', 'gemini-3.1-flash-lite')]:
             with self.subTest(provider=selected):
-                settings = {**env, **({'FEEDBACK_PROVIDER': selected} if selected == 'gemini' else {})}
+                settings = {**env, **({'FEEDBACK_PROVIDER': selected} if selected != 'openrouter' else {})}
                 selection = Selection.current(settings)
                 config = provider.ProviderConfig.from_env(settings)
                 self.assertEqual((selection.provider, selection.model), (selected, model))
                 self.assertEqual((config.provider, config.model), (selected, model))
-        del env['OPENAI_API_KEY']
+        del env['OPENROUTER_API_KEY']
         for resolve in [provider.ProviderConfig.from_env, lambda e: Selection.current(e).credentials(e)]:
             with self.assertRaises(FeedbackError) as caught:
                 resolve(env)

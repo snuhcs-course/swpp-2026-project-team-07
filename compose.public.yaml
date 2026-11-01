@@ -1,0 +1,44 @@
+# AI-assisted public demo edge, OpenAI Codex, Iteration 2 (2026-11-01).
+# Optional overlay: use after compose.production.yaml, once auth/config is reviewed.
+services:
+  proxy:
+    networks:
+      - default
+      - public_edge
+
+  caddy:
+    image: caddy:2.11.7-alpine@sha256:e70b164da81ef698b3ad19af799ea6086ce6d9e48ed4079eb9fe26f6fbf14ee5
+    environment:
+      OUTLOUD_PUBLIC_HOST: ${OUTLOUD_PUBLIC_HOST:?Set the public HTTPS hostname}
+      OUTLOUD_DEMO_PASSWORD_HASH: ${OUTLOUD_DEMO_PASSWORD_HASH:?Set the private bcrypt demo-code hash}
+    ports:
+      - "${OUTLOUD_PUBLIC_BIND_IP:?Set the VM primary private IPv4}:80:80"
+      - "${OUTLOUD_PUBLIC_BIND_IP:?Set the VM primary private IPv4}:443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - public_edge
+    depends_on:
+      proxy:
+        condition: service_healthy
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: [CMD, wget, -q, --spider, http://127.0.0.1:2019/config/]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+networks:
+  public_edge:
+
+volumes:
+  caddy_data:
+  caddy_config:

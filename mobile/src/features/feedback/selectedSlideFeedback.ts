@@ -6,17 +6,17 @@ import { requirementsDirty } from '../presentations/requirementsDraft';
 import { readCorrections } from '../presentations/correctionStore';
 import { readReview } from '../transcription/reviewStorage';
 import { readStored } from '../../services/storage';
-import { reviewActive, reviewScope, reviewStatus, type SlideReview } from './slideReview';
+import { reviewActive, reviewScope, reviewStatus, type Finding, type SlideReview } from './slideReview';
 import { effectiveSlideReview, readSlideReview, slideReviewInitialKey, type SlideReviewTarget } from './slideReviewStore';
 
 export type FeedbackStatus = 'not_recorded' | 'transcribing' | 'not_analyzed' | 'pending' | 'outdated' | 'recovery_needed' | 'insufficient' | 'partial' | 'reviewed' | 'unavailable';
 export type FeedbackTone = 'good' | 'warn' | 'bad' | 'info' | 'muted';
-export type FeedbackStatusItem = { slide: number; status: FeedbackStatus; label: string; findingCount: number; assessed: boolean; hasFindings: boolean; tone: FeedbackTone };
+export type FeedbackStatusItem = { slide: number; status: FeedbackStatus; label: string; findingCount: number; assessed: boolean; hasFindings: boolean; tone: FeedbackTone; findings: readonly Finding[] };
 export type FeedbackAggregate = { recorded: number; assessed: number; findings: number; slidesWithFindings: number; partial: number;
   pending: number; outdated: number; recoveryNeeded: number; insufficient: number; notAnalyzed: number };
 export function feedbackStatusItem(slide: number, recorded: boolean, stage: string | null, state: SlideReview | null): FeedbackStatusItem {
-  const item = (status: FeedbackStatus, label: string, tone: FeedbackTone, count = 0, assessed = false): FeedbackStatusItem =>
-    ({ slide, status, label, tone, findingCount: count, assessed, hasFindings: count > 0 });
+  const item = (status: FeedbackStatus, label: string, tone: FeedbackTone, count = 0, assessed = false, findings: readonly Finding[] = []): FeedbackStatusItem =>
+    ({ slide, status, label, tone, findingCount: count, assessed, hasFindings: count > 0, findings });
   if (!recorded) return item('not_recorded', 'Not recorded', 'muted');
   if (stage === 'untimed') return item('insufficient', 'No usable word timing', 'muted');
   if (stage === 'no_speech') return item('insufficient', 'No speech detected', 'muted');
@@ -32,9 +32,10 @@ export function feedbackStatusItem(slide: number, recorded: boolean, stage: stri
     if (!summary) return item('recovery_needed', reviewStatus(state, slide), 'bad');
     if (summary.status === 'insufficient_evidence') return item('insufficient', reviewStatus(state, slide), 'muted');
     if (summary.status === 'invalid_evidence' || summary.status === 'model_error') return item('recovery_needed', summary.status === 'invalid_evidence' ? 'Feedback could not be verified' : 'AI response could not be processed', 'bad');
-    if (summary.status === 'partial') return item('partial', 'Partially assessed', 'warn', summary.findings.length);
+    // OpenAI Codex, 2026-11-02: expose only current parsed findings; see docs/ai-collaboration-prompts-iteration-2.md.
+    if (summary.status === 'partial') return item('partial', 'Partially assessed', 'warn', summary.findings.length, false, summary.findings);
     const count = summary.findings.length;
-    return item('reviewed', count ? `${count} finding${count === 1 ? '' : 's'}` : 'No issues found', count ? 'warn' : 'good', count, true);
+    return item('reviewed', count ? `${count} finding${count === 1 ? '' : 's'}` : 'No issues found', count ? 'warn' : 'good', count, true, summary.findings);
   }
   if (state.state === 'disabled' || state.state === 'unavailable' || state.availability.state !== 'available') return item('unavailable', 'AI feedback unavailable', 'muted');
   return item('not_analyzed', 'Not analyzed', 'muted');

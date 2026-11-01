@@ -308,7 +308,9 @@ class FeedbackProviderTests(TestCase):
             if body is not None:
                 return httpx.Response(status, content=body, headers=headers)
             return httpx.Response(status, json=envelope(prepared.config.provider, value), headers=headers)
-        return request_raw(prepared, _transport=httpx.MockTransport(handle))
+        # These historical-provider tests explicitly select the transport under test.
+        with patch.dict('os.environ', {'FEEDBACK_PROVIDER': prepared.config.provider}):
+            return request_raw(prepared, _transport=httpx.MockTransport(handle))
 
     def coaching(self, provider='gemini'):
         adapter = self.adapter(provider)
@@ -492,7 +494,7 @@ class FeedbackProviderTests(TestCase):
                        'X-Private: 비공개 ' + FAKE_KEY, '비공개: ' + FAKE_KEY]:
             for prepared, value in [(descriptions, description_value(self.analysis)),
                                     (coaching, {'suggestions': [suggestion(self.analysis)]})]:
-                with self.subTest(header=header, stage=prepared.stage), patch.dict('os.environ', {'OPENAI_CUSTOM_HEADERS': header}):
+                with self.subTest(header=header, stage=prepared.stage), patch.dict('os.environ', {'OPENAI_CUSTOM_HEADERS': header, 'FEEDBACK_PROVIDER': 'openai'}):
                     before = len(self.calls)
 
                     def handle(request):
@@ -538,7 +540,7 @@ class FeedbackProviderTests(TestCase):
                     self.calls.append(request)
                     raise ValueError(PRIVATE + FAKE_KEY)
 
-                with self.assertRaises(FeedbackError) as caught:
+                with patch.dict('os.environ', {'FEEDBACK_PROVIDER': provider}), self.assertRaises(FeedbackError) as caught:
                     request_raw(self.coaching(provider), _transport=httpx.MockTransport(handle))
                 self.assertTrue(caught.exception.uncertain)
                 self.assertNotEqual(caught.exception.code, 'invalid_request')

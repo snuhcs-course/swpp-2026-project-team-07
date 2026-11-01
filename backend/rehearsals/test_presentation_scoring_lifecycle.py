@@ -308,3 +308,84 @@ class PresentationScoreLifecycleTests(SyntheticCoaching, TestCase):
         self.assertEqual(response.status_code, 503, response.content)
         self.assertEqual(response.json()['error']['code'], 'snapshot_unavailable')
         self.assertEqual(owner.jobs.count(), 1)
+
+    def prior_v21_protocol(self, job):
+        previous = deepcopy(scoring.protocol())
+        previous['prompt_version'] = 'presentation-score-prompt-v2.1'
+        previous['definition']['prompt_version'] = 'presentation-score-prompt-v2.1'
+        previous['definition']['prompt_sha256'] = '052cb290d412b5a0bebc927465c08e3391edca140a189bcfb0504356a6a715fd'
+        self.assertEqual(coaching._digest(previous),
+                         'cfd48a4c2992dc175a115b7739dc226b6c961a07c292ac8dc4ae0e5a549e4510')
+        self.assertEqual(scoring.v1._digest(previous),
+                         '8320b6497c480dc642ecd87a372e57e58317a351d5288b00d8c30e4eaaf3754f')
+        job.prompt_version = 'presentation-score-prompt-v2.1'
+        job.prompt_digest = coaching._digest(previous)
+        job.source_snapshot['presentation_score']['protocol'] = json.loads(json.dumps(previous, sort_keys=True))
+        job.save(update_fields=['prompt_version', 'prompt_digest', 'source_snapshot'])
+
+    def test_v21_rejected_result_upgrades_only_explicitly_and_keeps_old_receipt(self):
+        owner = self.rejected_score()
+        old = self.job(owner)
+        self.prior_v21_protocol(old)
+        snapshot, result = deepcopy(old.source_snapshot), deepcopy(old.result)
+        request = FeedbackRequest.objects.get(coaching_job=old)
+        receipt = bytes(request.raw_body)
+        state = self.client.get(self.url).json()
+        self.assertTrue(state['stale'])
+        self.assertTrue(state['retry_available'])
+        self.assertIsNone(state['result'])
+        self.assertEqual(self.post_score().status_code, 409)
+        response = self.post_score(feedback_revision=1, expected_selection=state['selection']['token'])
+        self.assertEqual(response.status_code, 202, response.content)
+        fresh = self.job(owner)
+        self.assertEqual(fresh.prompt_version, 'presentation-score-prompt-v2.2')
+        self.assertEqual(fresh.source_snapshot['presentation_score']['protocol'], scoring.protocol())
+        self.assertNotEqual(fresh.prompt_digest, old.prompt_digest)
+        old.refresh_from_db(); request.refresh_from_db()
+        self.assertEqual(old.source_snapshot, snapshot)
+        self.assertEqual(old.result, result)
+        self.assertEqual(bytes(request.raw_body), receipt)
+        with self.assertRaises(FeedbackError) as caught:
+            scoring.prepared(old.description_set, old)
+        self.assertEqual(caught.exception.code, 'snapshot_unavailable')
+        with self.assertRaises(FeedbackError) as caught:
+            scoring.normalize(old.description_set, old, None, None)
+        self.assertEqual(caught.exception.code, 'snapshot_unavailable')
+        owner.refresh_from_db()
+        self.assertEqual(self.execute_score(owner), (1, 1))
+        self.assertEqual(self.client.get(self.url).json()['result']['overall']['score'], 100)
+        self.assertEqual(self.post_score(feedback_revision=1).status_code, 409)
+        old.refresh_from_db(); request.refresh_from_db()
+        self.assertEqual(old.source_snapshot, snapshot)
+        self.assertEqual(old.result, result)
+        self.assertEqual(bytes(request.raw_body), receipt)
+
+    def test_unsent_v21_job_fails_closed_without_measurement_or_provider(self):
+        self.complete(); self.assertEqual(self.post_score().status_code, 202)
+        owner = self.owner(); old = self.job(owner)
+        self.prior_v21_protocol(old)
+        snapshot = deepcopy(old.source_snapshot)
+        self.assertEqual(self.execute_score(owner), (0, 0))
+        old.refresh_from_db()
+        # Existing freshness fences leave superseded unsent jobs untouched.
+        self.assertEqual(old.state, 'queued')
+        self.assertEqual(old.source_snapshot, snapshot)
+        self.assertFalse(FeedbackRequest.objects.filter(coaching_job=old).exists())
+        state = self.client.get(self.url).json()
+        self.assertTrue(state['stale'])
+        self.assertIsNone(state['result'])
+        with self.assertRaises(FeedbackError) as caught:
+            scoring.prepared(old.description_set, old)
+        self.assertEqual(caught.exception.code, 'snapshot_unavailable')
+
+    def test_v21_upgrade_rejects_a_changed_protocol_with_the_known_digest(self):
+        owner = self.rejected_score(); old = self.job(owner)
+        self.prior_v21_protocol(old)
+        old.source_snapshot['presentation_score']['protocol']['definition']['prompt_sha256'] = 'f' * 64
+        old.save(update_fields=['source_snapshot'])
+        state = self.client.get(self.url).json()
+        self.assertFalse(state['retry_available'])
+        response = self.post_score(feedback_revision=1)
+        self.assertEqual(response.status_code, 503, response.content)
+        self.assertEqual(response.json()['error']['code'], 'snapshot_unavailable')
+        self.assertEqual(owner.jobs.count(), 1)

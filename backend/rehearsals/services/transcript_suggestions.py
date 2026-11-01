@@ -55,7 +55,7 @@ original words. Corrections may span visits; consider every affected slide and t
 surrounding context. Never invent word timings for rewritten text.
 """
     schema = SuggestionOutput.model_json_schema()
-    if prepared.config.provider == 'openai':
+    if prepared.config.provider in provider.RESPONSES_PROVIDERS:
         payload['instructions'] = rules
         payload['input'][0]['content'].append({'type': 'input_text', 'text': json_bytes(context).decode()})
         if analysis_type == 'transcription_suggestions':

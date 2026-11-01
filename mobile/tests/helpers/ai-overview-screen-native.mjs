@@ -19,7 +19,7 @@ export function useSegmentPlayer(){const[,render]=React.useState(0);const[p]=Rea
  x.stop=()=>{runtime.stops++;x.playingKey=null;x.positionMs=null;x.uri=null;};
  x.playSegments=async(key,segments)=>{runtime.plays.push({key,segments});if(x.playingKey===key)x.paused=!x.paused;else{x.playingKey=key;x.paused=false;x.uri=segments[0]?.uri;x.positionMs=segments[0]?.startMs;}render(n=>n+1);};
  x.play=(key,segment)=>x.playSegments(key,[segment]);return x;});if(!runtime.players.includes(p))runtime.players.push(p);return p;}
-export const Easing={bezier:()=>v=>v},withTiming=v=>v,runOnJS=f=>f;
+export const Easing={bezier:()=>v=>v},withTiming=(v,_config,complete)=>{complete?.(true);return v;},runOnJS=f=>f;
 export const useSharedValue=value=>{const r=React.useRef({value,get(){return this.value},set(v){this.value=v}});return r.current;};
 export const useAnimatedStyle=()=>({}),useAnimatedProps=()=>({}),useReducedMotion=()=>true;
 export const createThemedStyles=x=>x;

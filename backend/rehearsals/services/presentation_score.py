@@ -481,7 +481,7 @@ def prepare(bundle, config):
     _check_bundle(bundle)
     if bundle.measurements.get('status') != 'available': raise FeedbackError('audio_unavailable')
     if not bundle.eligibility['eligible']: raise FeedbackError('presentation_'+bundle.eligibility['status'])
-    if config.provider not in ('openai', 'gemini'): raise FeedbackError('invalid_configuration')
+    if not provider.valid_model(config.provider, config.model): raise FeedbackError('invalid_configuration')
     adapter = provider.FeedbackAdapter(config, preparation_only=True)
     descriptions = provider.DescriptionResult(config.provider, config.model, bundle.analysis.deck.input_id, bundle.descriptions)
     base = adapter.prepare_coaching(bundle.analysis, descriptions)
@@ -496,7 +496,7 @@ def prepare(bundle, config):
     context['source']['audience'] = bundle.requirements['audience']
     payload = strict_json(base.payload, provider.MAX_REQUEST_BYTES)
     schema = Output.model_json_schema()
-    if config.provider == 'openai':
+    if config.provider in provider.RESPONSES_PROVIDERS:
         payload['instructions'] = RULES
         payload['input'][0]['content'] = [{'type': 'input_text', 'text': json_bytes(context).decode()}]
         payload['text']['format'].update(name='presentation_score', schema=schema)

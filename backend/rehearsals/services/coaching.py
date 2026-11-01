@@ -21,7 +21,7 @@ from . import descriptions as descriptions_service, feedback_provider as provide
 from . import corrections
 from .alignment import align_words
 from .descriptions import (Conflict, StaleClaim, LEASE_SECONDS, _private_database_logging,
-                           effective_retry_at, saved_receipt)
+                           effective_retry_at, saved_receipt, uncertain_submission as _uncertain)
 from .feedback import (FeedbackError, Transcript, validated, analysis_source, restore_analysis, json_bytes)
 from .feedback_config import Selection, QuotaPolicy, coaching_digest, check_coaching_versions, enabled, selection_descriptor, assert_selection
 from .feedback_quota import locked_bucket, reserve, cooldown, stop_legacy_gemini_wait, QUOTA_STOPPED_MESSAGE
@@ -164,15 +164,6 @@ def _fresh(value, analysis, job, token):
         raise StaleClaim()
 
 
-def _uncertain(request):
-    return bool(request and (request.outcome == 'uncertain' or
-        # A description edit can make work retryable between save and normalize.
-        # A durable receipt alone does not establish a certain provider outcome.
-        (request.received_at and not request.completed_at and
-         provider.receipt_is_uncertain(request.status_code, request.body_complete)) or
-        (request.submitted_at and not request.received_at and not request.completed_at)))
-
-
 def _attach(value, job):
     # Called only with set and job locks. Copy exact revision, including edits.
     if value.descriptions is not None and job.descriptions_snapshot is None:
@@ -212,20 +203,23 @@ def generate(attempt_id, payload, analysis_type='coaching', review_scope=None):
         from . import slide_review
         review_input = slide_review.capture(attempt, review_scope)
     existing = FeedbackAnalysis.objects.filter(attempt=attempt, analysis_type=analysis_type).first()
+    replacement = None
     if existing:
-        # Existing analysis always retries its captured selection/source. Never
-        # prepare media, select the current provider or retry its dependency here.
+        # Same-provider retries retain their snapshot. The explicit OpenRouter
+        # cutover creates a new generation and leaves old requests unchanged.
         with transaction.atomic():
             value, analysis, old = _locked(existing.pk, existing.feedback_revision)
             if 'transcript_revision' in payload and payload['transcript_revision'] != corrections.snapshot(attempt)['revision']:
                 raise Conflict('correction_conflict')
             if old.generation != analysis.feedback_revision:
                 raise Conflict('stale_revision')
-            assert_selection(payload, selection_descriptor(value=value, job=old, coaching=True))
+            replacement = descriptions_service.replacement_selection(value)
+            assert_selection(payload, selection_descriptor(replacement, coaching=True) if replacement else
+                             selection_descriptor(value=value, job=old, coaching=True))
             revision = payload.get('feedback_revision')
             if revision is not None and revision != analysis.feedback_revision:
                 raise Conflict('stale_revision')
-            stale = _stale(value, old) or not _source_current(old)
+            stale = bool(replacement) or _stale(value, old) or not _source_current(old)
             if not stale and (old.state in ACTIVE or old.state == 'completed'):
                 return analysis
             if revision is None:
@@ -233,30 +227,36 @@ def generate(attempt_id, payload, analysis_type='coaching', review_scope=None):
             request = FeedbackRequest.objects.filter(coaching_job=old).first()
             if _uncertain(request) and not payload.get('acknowledge_uncertain'):
                 raise Conflict('confirmation_required')
-            retry_at = effective_retry_at(value, old)
-            if retry_at and retry_at > timezone.now():
-                raise Conflict('retry_not_available')
-            snapshot = old.source_snapshot
-            if not _source_current(old):
-                if attempt_identity(attempt) != snapshot['attempt_identity']:
+            if replacement:
+                if descriptions_service.replacement_requires_confirmation(value, old) and not payload.get('acknowledge_uncertain'):
+                    raise Conflict('confirmation_required')
+                if attempt_identity(attempt) != old.source_snapshot['attempt_identity']:
                     raise Conflict('source_changed')
-                snapshot = {**snapshot, **correction_input(attempt)}
-            if qa_input is not None:
-                snapshot = {**snapshot, 'qa_answer' if analysis_type == 'qa_answer' else 'audience_qa': qa_input}
-            if review_input is not None:
-                snapshot = {**snapshot, 'slide_review': review_input}
-            selection = Selection.saved(value)
-            selection.check_versions(value.prompt_digest)
-            check_coaching_versions(old)
-            selection.credentials()
-            QuotaPolicy.current(selection)
-            return _queue(analysis, value, snapshot, old)
+            else:
+                retry_at = effective_retry_at(value, old)
+                if retry_at and retry_at > timezone.now():
+                    raise Conflict('retry_not_available')
+                snapshot = old.source_snapshot
+                if not _source_current(old):
+                    if attempt_identity(attempt) != snapshot['attempt_identity']:
+                        raise Conflict('source_changed')
+                    snapshot = {**snapshot, **correction_input(attempt)}
+                if qa_input is not None:
+                    snapshot = {**snapshot, 'qa_answer' if analysis_type == 'qa_answer' else 'audience_qa': qa_input}
+                if review_input is not None:
+                    snapshot = {**snapshot, 'slide_review': review_input}
+                selection = Selection.saved(value)
+                selection.check_versions(value.prompt_digest)
+                check_coaching_versions(old)
+                selection.credentials()
+                QuotaPolicy.current(selection)
+                return _queue(analysis, value, snapshot, old)
     initial_controls = {'expected_selection', 'transcript_revision'}
     if review_input is not None and payload.get('acknowledge_uncertain') is True:
         # A lost initial reply can reconcile to no server owner. Confirmation
         # permits that singleton admission; existing-owner retry fences stay above.
         initial_controls.add('acknowledge_uncertain')
-    if set(payload) - initial_controls:  # Revision controls never create an initial analysis.
+    if not replacement and set(payload) - initial_controls:  # Revision controls never create an initial analysis.
         raise Conflict('stale_revision')
     source = prepare_attempt(attempt)
     if review_input is None and qa_input is None:
@@ -290,16 +290,24 @@ def generate(attempt_id, payload, analysis_type='coaching', review_scope=None):
         # second caller that observed no analysis before preparing its input.
         current = FeedbackAnalysis.objects.filter(attempt_id=attempt_id, analysis_type=analysis_type).first()
         if current:
-            # Recheck active/completed vs failed/stale and retry requirements if
-            # another caller admitted while this caller prepared its snapshots.
-            return generate(attempt_id, payload, analysis_type, review_scope)
+            if not replacement:
+                return generate(attempt_id, payload, analysis_type, review_scope)
+            old_value, analysis, old = _locked(current.pk, current.feedback_revision)
+            if payload['feedback_revision'] != analysis.feedback_revision:
+                raise Conflict('stale_revision')
+            if replacement != descriptions_service.replacement_selection(old_value):
+                raise Conflict('selection_mismatch')
+            if descriptions_service.replacement_requires_confirmation(old_value, old) and not payload.get('acknowledge_uncertain'):
+                raise Conflict('confirmation_required')
         assert_selection(payload, selection_descriptor(profile_selection(attempt.deck_id, source=deck.input_id) if review_input is not None or qa_input is not None else Selection.current(), coaching=True))
         if qa_input is not None and analysis_type != 'qa_answer' and not audience_qa.current(current_attempt, qa_input):
             raise Conflict('requirements_changed')
         if review_input is not None and not slide_review.current(current_attempt, review_input):
             raise Conflict('requirements_changed')
-        value = descriptions_service.admit_prepared(selection, deck, snapshot, dependency=True, candidate=description_request)
-        analysis = FeedbackAnalysis.objects.create(attempt=current_attempt, analysis_type=analysis_type)
+        value = descriptions_service.admit_prepared(selection, deck, snapshot, dependency=True, candidate=description_request,
+            replacement_of=old_value if replacement else None)
+        if not current:
+            analysis = FeedbackAnalysis.objects.create(attempt=current_attempt, analysis_type=analysis_type)
         return _queue(analysis, value, captured)
 
 
@@ -645,7 +653,7 @@ def _result(value, job, current_job):
         'feedback_revision': job.generation, 'description_set_id': str(value.pk),
         'description_revision': job.description_revision, 'provenance': _provenance(value, job),
         'description_origin': job.source_snapshot.get('description_origin') if job.source_snapshot.get('description_origin') in {'generated', 'edited'} else 'unavailable',
-        'completed_at': job.completed_at, 'stale': job.pk != current_job.pk or _stale(value, job) or not _source_current(job),
+        'completed_at': job.completed_at, 'stale': job.pk != current_job.pk or bool(descriptions_service.replacement_selection(value)) or _stale(value, job) or not _source_current(job),
         'transcript_revision': job.source_snapshot.get('transcript_revision', 0),
         'analysis_type': job.analysis.analysis_type, 'analysis_version': job.source_snapshot.get('correction_analysis_version', 'legacy'),
         'evidence': {'attempt_id': source['attempt_id'], 'deck_id': source['deck_id'],
@@ -657,8 +665,17 @@ def _result(value, job, current_job):
             'descriptions': job.descriptions_snapshot}}
 
 
-@_private_database_logging()
 def read(attempt_id, analysis_type='coaching'):
+    while True:
+        try:
+            return _read(attempt_id, analysis_type)
+        except StaleClaim:
+            # Release old-scope locks before reading a replacement generation.
+            continue
+
+
+@_private_database_logging()
+def _read(attempt_id, analysis_type='coaching'):
     Attempt.objects.only('id').get(pk=attempt_id)
     analysis = FeedbackAnalysis.objects.filter(attempt_id=attempt_id, analysis_type=analysis_type).first()
     if analysis is None:
@@ -673,14 +690,15 @@ def read(attempt_id, analysis_type='coaching'):
             'error': availability['error'], 'result': None, 'last_output': None}
     with transaction.atomic():
         value, analysis, job = _locked(analysis.pk, analysis.feedback_revision)
-        # An admission between the initial read and lock can only advance within
-        # this same immutable set. Reload the current job under its analysis lock.
+        # A provider cutover can advance to another immutable description set.
+        # Restart outside this transaction rather than pair it with the old set.
         if job.generation != analysis.feedback_revision:
-            job = analysis.jobs.select_for_update().get(generation=analysis.feedback_revision)
+            raise StaleClaim()
         request = FeedbackRequest.objects.filter(coaching_job=job).first()
-        stale = _stale(value, job) or not _source_current(job)
+        replacement = descriptions_service.replacement_selection(value)
+        stale = bool(replacement) or _stale(value, job) or not _source_current(job)
         state = 'stale' if stale else job.state
-        retry_at = effective_retry_at(value, job)
+        retry_at = None if replacement else effective_retry_at(value, job)
         dependency = None
         if job.descriptions_snapshot is None:
             dep = descriptions_service.public_state(value.deck_id, value, source=value.source_fingerprint)
@@ -691,7 +709,7 @@ def read(attempt_id, analysis_type='coaching'):
             result__isnull=False).exclude(result__status='all_invalid').order_by('-generation').first()
         if prior is None and job.result:
             prior = job
-        result = _result(value, prior, job)
+        result = _result(value, prior, job) if prior is None or prior.description_set_id == value.pk else None
         error = job.error_code or ('descriptions_changed' if stale else '')
         if dependency and dependency['error'] and not error:
             error = 'description_dependency_failed'
@@ -705,8 +723,8 @@ def read(attempt_id, analysis_type='coaching'):
             'transcript_revision': job.source_snapshot.get('transcript_revision', 0),
             'analysis_type': analysis.analysis_type, 'analysis_version': job.source_snapshot.get('correction_analysis_version', 'legacy'),
             'state': state, 'stage': 'descriptions' if job.descriptions_snapshot is None else 'coaching',
-            'selection': selection_descriptor(value=value, job=job, coaching=True),
-            'availability': _availability(Selection.saved(value)), 'provenance': _provenance(value, job),
+            'selection': selection_descriptor(replacement, coaching=True) if replacement else selection_descriptor(value=value, job=job, coaching=True),
+            'availability': _availability(replacement or Selection.saved(value)), 'provenance': _provenance(value, job),
             'description_set_id': str(value.pk), 'description_revision': job.description_revision,
             'dependency': dependency, 'created_at': analysis.created_at,
             'updated_at': max(updates),
@@ -714,5 +732,6 @@ def read(attempt_id, analysis_type='coaching'):
             'received_at': request.received_at if request else None, 'completed_at': job.completed_at,
             'retry_at': retry_at, 'retry_available': state in {'failed', 'needs_confirmation', 'stale'} and
                 (not retry_at or retry_at <= timezone.now()),
-            'requires_confirmation': bool(request and (request.outcome == 'uncertain' or (stale and _uncertain(request)))), 'stale': stale, 'error': safe_error(error),
+            'requires_confirmation': bool(request and (request.outcome == 'uncertain' or (stale and _uncertain(request)))) or
+                bool(replacement and descriptions_service.replacement_requires_confirmation(value, job)), 'stale': stale, 'error': safe_error(error),
             'result': result, 'last_output': {k: job.result[k] for k in ('status', 'accepted_count', 'discarded_count')} if job.result else None}

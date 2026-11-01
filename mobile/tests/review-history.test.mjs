@@ -36,9 +36,11 @@ test('offline failures preserve cached history, and late aborted responses canno
   network.respond = () => { throw Error('offline'); };
   await assert.rejects(refreshHistory(api, knownHistory(api, [], [local])[0], new AbortController().signal));
   assert.deepEqual(readHistory(api, deckId), before); assert.deepEqual(readDeck(api, deckId), deck);
-  const controller = new AbortController(); let finish;
-  network.respond = () => new Promise(resolve => { finish = resolve; });
+  const controller = new AbortController(); let finish, started;
+  const reachedTransport = new Promise(resolve => { started = resolve; });
+  network.respond = () => new Promise(resolve => { finish = resolve; started(); });
   const pending = refreshHistory(api, knownHistory(api, [], [local])[0], controller.signal);
+  await reachedTransport;
   controller.abort(); finish(response(200, { ...deckWire, title: 'stale title' }));
   await assert.rejects(pending); assert.equal(readDeck(api, deckId).title, deck.title);
 });

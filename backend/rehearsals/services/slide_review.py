@@ -254,7 +254,7 @@ def augment(prepared, snapshot):
     if compact:
         rules += COMPACT_CONTEXT_RULES
     schema = Output.model_json_schema()
-    if prepared.config.provider == 'openai':
+    if prepared.config.provider in provider.RESPONSES_PROVIDERS:
         payload['instructions'] = rules
         part = {'type': 'input_text', 'text': json_bytes(context).decode()}
         if compact:

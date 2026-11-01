@@ -1,0 +1,36 @@
+{
+  "activated": true,
+  "image": "sha256:2169f60d6c4104bc3f45e1aea5643ee2b67b29655961788ba3579ece9e1a62f5",
+  "services": {
+    "api": "healthy",
+    "worker": "healthy",
+    "scheduler": "healthy",
+    "db": "healthy",
+    "redis": "healthy",
+    "proxy": "healthy",
+    "caddy": "healthy"
+  },
+  "configuration": {
+    "scoring_prompt": "presentation-score-prompt-v2.2",
+    "provider": "openrouter",
+    "model": "openai/gpt-6-luna",
+    "daily_limit": 300,
+    "personal_openai_key_present": false
+  },
+  "staged_image_offline_tests_passed": true,
+  "staged_offline_test_count": 86,
+  "staged_offline_skips": 0,
+  "staged_test_modules": 7,
+  "network": "none",
+  "provider_keys_during_image_tests": "unset",
+  "original_history_unchanged": true,
+  "all_media_unchanged": true,
+  "media_file_count": 46,
+  "rollback_environment_and_source_private_on_vm": true,
+  "provider_calls_during_deployment": 0,
+  "temporary_ssh_rule_removed": true,
+  "verification_operator": "agent-operated",
+  "human_acceptance_claimed": false,
+  "byok_settings_verified": false,
+  "deployment_checker_error": "First rollout checker omitted Django initialization and triggered a successful rollback; corrected helper verified offline before successful retry."
+}

@@ -4,7 +4,7 @@
 // Uses the existing deck API (POST /decks/, GET /decks/{id}/) and the same local
 // mapping key as features/recording/upload.ts, so later attempt uploads reuse this deck.
 import { File } from 'expo-file-system';
-import { fetch } from 'expo/fetch';
+import { backendExpoFetch as fetch } from '../../services/backendFetch';
 import { API_URL } from '../../services/api';
 import { readStored, writeStored } from '../../services/storage';
 import { normalizeApi } from '../transcription/analysisStorage';

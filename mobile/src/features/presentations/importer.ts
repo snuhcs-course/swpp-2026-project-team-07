@@ -7,8 +7,8 @@
 //   Setting slide timing → per-slide targets from the amount of text
 // Updated PDF and slide limits by OpenAI Codex, Iteration 2 (2026-10-14).
 import * as FileSystem from 'expo-file-system/legacy';
-import PdfThumbnail from 'react-native-pdf-thumbnail';
 import { pdfService, type LocalPdf } from '../pdf/service';
+import { renderPages } from '../pdf/renderPages';
 import { API_URL } from '../../services/api';
 import { requestPresentationDefaults,cancelPresentationDefaults } from './defaultRequirements';
 import { serverSlides } from './serverDeck';
@@ -18,25 +18,12 @@ import { deckById, forgetPresentation, nextHue, nextOrder, savePresentation, typ
 export type Progress = { progress: number; status: string; pages: number | null; textOffline?: boolean };
 
 export function pickPdf(): Promise<LocalPdf | null> { return pdfService.importPdf(); }
+// OpenAI Codex, 2026-11-02: shared renderer extraction; see docs/ai-collaboration-prompts-iteration-2.md.
+export { renderPages } from '../pdf/renderPages';
 
 function pagesDir(id: string) {
   if (!FileSystem.documentDirectory) throw new Error('Local storage is unavailable on this device.');
   return `${FileSystem.documentDirectory}outloud-slides/${id}/`;
-}
-
-/** Render every page to a JPEG kept with the app's documents (the thumbnail cache can be cleared by Android). */
-export async function renderPages(pdf: { id: string; uri: string }): Promise<PageImage[]> {
-  const rendered = await PdfThumbnail.generateAllPages(pdf.uri, { quality: 85, maxWidth: 1280, maxHeight: 1280 });
-  const dir = pagesDir(pdf.id);
-  await FileSystem.makeDirectoryAsync(dir, { intermediates: true }).catch(() => undefined);
-  const out: PageImage[] = [];
-  for (let i = 0; i < rendered.length; i++) {
-    const to = `${dir}${i}-${Date.now()}.jpg`;
-    await FileSystem.copyAsync({ from: rendered[i].uri, to });
-    FileSystem.deleteAsync(rendered[i].uri, { idempotent: true }).catch(() => undefined);
-    out.push({ uri: to, w: rendered[i].width, h: rendered[i].height });
-  }
-  return out;
 }
 
 const STATUS = ['Rendering slides', 'Reading slide text', 'Setting slide timing', 'Ready'];
