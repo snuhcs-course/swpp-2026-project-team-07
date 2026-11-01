@@ -78,8 +78,8 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
  const part=run.parts[s],slidePlayKey=`slide:${deck.id}:${s}`;
  const slideAudioUri=part?audioOf(part.attemptId):null;
  const isSlideSelected=player.playingKey===slidePlayKey,slidePlaying=isSlideSelected&&!player.paused;
- const slideReviewRows=feedbackRows(s,{times,targets:deck.targets,lines:model.lines,points:model.points,ai:model.ai,
-  haveText:!!deck.slides[s]?.text.trim(),pending:t>0&&item?.status==='transcribing',
+ const slideReviewRows=feedbackRows(s,{times,targets:deck.targets,lines:model.lines??[],points:model.points??[],ai:model.ai??[],
+  haveText:!!deck.slides[s]?.text?.trim(),pending:t>0&&item?.status==='transcribing',
   worker:{stage:item?.status==='transcribing'?'processing':undefined}});
  const playSlide=()=>{
   if(!part||!slideAudioUri)return;
@@ -98,7 +98,7 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
      <PresentationScoreRing id="gSlideStatus" label="Slide score" item={scoreItem}/>
      <View style={styles.ringRight}><Txt style={[styles.slideLabel,{color:c.secondary}]}>{`Slide ${s+1} of ${n}`}</Txt>
       <Stat icon="i-clock" value={t>0?fmt(t):'—'} unit={`${fmt(target)} ${source} target`}/>
-      <Stat icon="i-bubble" value={t<=0?'—':String(fillerTotal(slideText(model.lines,s)))} unit="fillers"/>
+      <Stat icon="i-bubble" value={t<=0?'—':String(fillerTotal(slideText(model.lines??[],s)))} unit="fillers"/>
       <Stat icon="i-flag" value={item?.findingCount?String(item.findingCount):item?.assessed?'0':'—'} unit="verified findings"/>
      </View>
     </View>

@@ -51,8 +51,8 @@ test('countdown/capture keep Cues visible, disable Play and update both slide di
  t.mock.timers.enable({apis:['Date','setInterval'],now:0});setup();const r=await mount();assertFirst(r);assert.equal(button(r,'Play slide 1 recording').props.disabled,false);
  await tap(r.root.findByType('record-button'));
  await act(async()=>r.root.findByType('dialog').props.onConfirm());
- assert.match(r.root.findByType('record-button').props.label,/Starting in/);assertFirst(r);assert.equal(button(r,'Play slide 1 recording').props.disabled,true);assert.equal(!!button(r,'Edit presentation time and audience'),false);assert.doesNotMatch(text(r),/Edit time & audience/);
- await act(async()=>{t.mock.timers.tick(3000);await Promise.resolve();});assert.equal(r.root.findByType('record-button').props.label,'Stop recording');assertFirst(r);assert.equal(runtime.captures[0].started,1);assert.equal(button(r,'Play slide 1 recording').props.disabled,true);assert.equal(!!button(r,'Edit presentation time and audience'),false);assert.doesNotMatch(text(r),/Edit time & audience/);
+ assert.match(r.root.findByType('record-button').props.label,/Starting in/);assertFirst(r);assert.equal(button(r,'Play slide 1 recording').props.disabled,true);assert.equal(button(r,'Edit presentation time and audience').props.disabled,true);
+ await act(async()=>{t.mock.timers.tick(3000);await Promise.resolve();});assert.equal(r.root.findByType('record-button').props.label,'Stop recording');assertFirst(r);assert.equal(runtime.captures[0].started,1);assert.equal(button(r,'Play slide 1 recording').props.disabled,true);assert.equal(button(r,'Edit presentation time and audience').props.disabled,true);
  await navigate(r,'Next');assert.match(text(r),/Recap how the final result/);await navigate(r,'Previous');assertFirst(r);assert.deepEqual(runtime.captures[0].slides,[0,1,0]);assert.equal(requests.length,1);
 });
 
@@ -75,12 +75,12 @@ test('interrupted recovery preserves the current slide cues through the existing
  await act(async()=>r.root.findByType('take-playback').props.onRecovered(recovered));assert.equal(r.root.findAllByType('take-playback').length,0);assert.match(text(r),/Slide 2 of 2/);assert.match(text(r),/Recap how the final result/);assert.deepEqual(runtime.routes[0],['review',{nav:'fade',deckId:runtime.model.deck.id,sel:1,slide:1,from:null}]);assert.equal(requests.length,1);
 });
 test('existing presentation opens the shared setup without changing the selected slide or cue set',async()=>{
- setup({slide:1});const r=await mount();const edit=button(r,'Edit presentation time and audience');assert.ok(edit);assert.equal(edit.findByType('text').props.children,'Edit time & audience');assert.ok(edit.findByType('text').props.style.color);await tap(edit);assert.ok(button(r,'Other audience'));assert.match(text(r),/Slide 2 of 2/);assert.ok(runtime.stops>0);assert.equal(requests.filter(q=>q.method==='POST').length,0);
+ setup({slide:1});const r=await mount();const edit=button(r,'Edit presentation time and audience');assert.ok(edit);assert.equal(edit.findByType('icon').props.name,'i-sliders');await tap(edit);assert.ok(button(r,'Other audience'));assert.match(text(r),/Slide 2 of 2/);assert.ok(runtime.stops>0);assert.equal(requests.filter(q=>q.method==='POST').length,0);
 });
 
 test('Review opens the currently selected slide while automatic completion keeps its own initial review',async()=>{setup({slide:1});const r=await mount();const control=round(r,'Review current slide');assert.ok(control);await tap(control);assert.deepEqual(runtime.routes.at(-1),['review',{nav:'rise',deckId:runtime.model.deck.id,sel:1,slide:1,from:null}]);assert.equal(requests.length,1);});
 
-test('covered rehearsal does not expose the edit requirements action',async()=>{setup();const r=await mount(false);assert.equal(!!button(r,'Edit presentation time and audience'),false);assert.doesNotMatch(text(r),/Edit time & audience/);});
+test('covered rehearsal keeps edit requirements unavailable',async()=>{setup();const r=await mount(false);assert.equal(button(r,'Edit presentation time and audience').props.disabled,true);});
 
 
 test('covered rehearsal stops cue reconnects and reopening reads immediately without generation',async t=>{
