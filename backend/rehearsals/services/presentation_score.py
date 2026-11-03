@@ -18,7 +18,6 @@ from .feedback import (PrivateModel, FeedbackError, validated, json_bytes, stric
 from .evidence import quotes_equal, authoritative_quote, span_in_visit
 from . import feedback_provider as provider
 from . import presentation_rubric as rubric
-from .presentation_measurements import VERSION as MEASUREMENT_VERSION
 
 Text = Annotated[str, Field(min_length=1, max_length=1000)]
 Index = Annotated[int, Field(ge=0)]
@@ -117,6 +116,12 @@ class Measurements(PrivateModel):
     duration_ms: Annotated[int, Field(gt=0)]
     items: Annotated[tuple[Measurement, ...], Field(max_length=20000)]
     limitations: Annotated[tuple[Text, ...], Field(min_length=1, max_length=10)]
+
+
+class MeasurementsV2(Measurements):
+    version: Literal['presentation-measurements-v2']
+    reason: Literal['audio_missing', 'audio_decode_failed', 'audio_measurement_failed', 'audio_invalid',
+                    'audio_duration_mismatch', 'insufficient_audio_evidence'] | None
 
 
 class Deduction(PrivateModel):
@@ -248,7 +253,18 @@ def capture(analysis, descriptions, *, measurements, requirements, correction, r
     """
     from .corrections import effective_text, normalize
     validated(Revisions, revisions)
-    measurements = validated(Measurements, measurements).model_dump(mode='json')
+    models = {'presentation-measurements-v1': Measurements, 'presentation-measurements-v2': MeasurementsV2}
+    version = measurements.get('version') if isinstance(measurements, dict) else None
+    model = models.get(version) if isinstance(version, str) else None
+    if model is None:
+        raise FeedbackError('invalid_score_input')
+    measurements = validated(model, measurements).model_dump(mode='json')
+    if model is MeasurementsV2:
+        reason = measurements['reason']
+        if ((measurements['status'] == 'available' and reason is not None)
+                or (measurements['status'] == 'insufficient_evidence' and reason != 'insufficient_audio_evidence')
+                or (measurements['status'] == 'unavailable' and reason in (None, 'insufficient_audio_evidence'))):
+            raise FeedbackError('invalid_score_input')
     requirements = validated(Requirements, requirements).model_dump(mode='json')
     if bool(requirements['purpose'].strip()) != (requirements['purpose_source']=='user_confirmed_experiment'):
         raise FeedbackError('invalid_score_input')
@@ -268,7 +284,6 @@ def capture(analysis, descriptions, *, measurements, requirements, correction, r
             or correction['revision'] != revisions['transcript_revision']):
         raise FeedbackError('invalid_corrections')
     if (requirements.get('revision') != revisions.get('requirements_revision')
-            or measurements.get('version') != MEASUREMENT_VERSION
             or measurements.get('attempt_id') != analysis.source.attempt_id
             or measurements.get('audio_hash') != revisions.get('audio_hash')
             or measurements.get('duration_ms') != analysis.source.duration_ms):

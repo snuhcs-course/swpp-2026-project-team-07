@@ -8,12 +8,12 @@ from math import isfinite
 from functools import lru_cache
 from threading import Lock
 import av
-from rehearsals.limits import MAX_DURATION_MS
+from rehearsals.limits import MAX_DURATION_MS, AUDIO_DURATION_TOLERANCE_MS
 from .transcription import TranscriptionError
 
 _model_lock = Lock()  # Silero keeps stream state; serialize inference within a process.
 SAMPLE_RATE = 16000
-MAX_SAMPLES = (MAX_DURATION_MS // 1000 + 1) * SAMPLE_RATE  # codec tail only
+MAX_SAMPLES = (MAX_DURATION_MS + AUDIO_DURATION_TOLERANCE_MS) * SAMPLE_RATE // 1000  # codec tail only
 
 
 @lru_cache(maxsize=1)

@@ -5,39 +5,58 @@ from pathlib import Path
 
 import numpy as np
 
+from rehearsals.limits import MAX_DURATION_MS, AUDIO_DURATION_TOLERANCE_MS
 from .metrics import timing_metrics
 from .speech_gate import SAMPLE_RATE, MAX_SAMPLES
 
-VERSION = 'presentation-measurements-v1'
+VERSION = 'presentation-measurements-v2'
 
 
-def _empty(status, attempt_id, audio_hash, duration_ms, reason):
+def _empty(status, attempt_id, audio_hash, duration_ms, reason, limitation):
     return {'version': VERSION, 'status': status, 'attempt_id': attempt_id, 'audio_hash': audio_hash,
-            'duration_ms': duration_ms, 'items': [], 'limitations': [reason]}
+            'duration_ms': duration_ms, 'items': [], 'reason': reason, 'limitations': [limitation]}
 
 
 def measure_waveform(waveform, speech_samples, *, attempt_id, audio_hash, duration_ms, text, language):
     """speech_samples are Silero sample intervals on the unchanged 16 kHz waveform."""
-    unavailable = lambda reason: _empty('unavailable', attempt_id, audio_hash, duration_ms, reason)
-    values = np.asarray(waveform, dtype=np.float32)
+    # AI-assisted #49 repair; decisions/evidence: docs/ai-collaboration-prompts-iteration-2.md.
+    unavailable = lambda reason, limitation: _empty('unavailable', attempt_id, audio_hash, duration_ms, reason, limitation)
+    try:
+        values = np.asarray(waveform, dtype=np.float32)
+    except (TypeError, ValueError):
+        return unavailable('audio_invalid', 'Audio samples are invalid.')
+    if (type(duration_ms) is not int or not 0 < duration_ms <= MAX_DURATION_MS
+            or values.ndim != 1 or not len(values) or len(values) > MAX_SAMPLES or not np.isfinite(values).all()):
+        return unavailable('audio_invalid', 'Audio samples or capture duration are invalid.')
     expected = duration_ms * SAMPLE_RATE // 1000
-    if (type(duration_ms) is not int or duration_ms <= 0 or values.ndim != 1 or not len(values)
-            or len(values) > MAX_SAMPLES or not np.isfinite(values).all()
-            or abs(len(values) - expected) > SAMPLE_RATE // 10):
-        return unavailable('Audio is invalid or its duration does not match the capture (100 ms tolerance).')
+    if abs(len(values) - expected) > AUDIO_DURATION_TOLERANCE_MS * SAMPLE_RATE // 1000:
+        return unavailable('audio_duration_mismatch',
+                           f'Audio duration does not match the capture ({AUDIO_DURATION_TOLERANCE_MS} ms tolerance).')
     spans, cursor = [], 0
+    if not isinstance(speech_samples, (list, tuple)):
+        return unavailable('audio_invalid', 'Speech intervals do not match decoded audio.')
     for span in speech_samples:
+        if not isinstance(span, dict):
+            return unavailable('audio_invalid', 'Speech intervals do not match decoded audio.')
         start, end = span.get('start'), span.get('end')
         if (type(start) is not int or type(end) is not int or not cursor <= start < end <= len(values)):
-            return unavailable('Speech intervals do not match decoded audio.')
+            return unavailable('audio_invalid', 'Speech intervals do not match decoded audio.')
         spans.append((start, end)); cursor = end
+    # Diagnostics share only real audio within the unchanged capture timeline.
+    window_end = min(expected, len(values))
+    values = values[:window_end]
+    spans = [(start, min(end, window_end)) for start, end in spans
+             if start * 1000 // SAMPLE_RATE < min(end, window_end) * 1000 // SAMPLE_RATE]
     if not spans or not np.any(values):
-        return _empty('insufficient_evidence', attempt_id, audio_hash, duration_ms, 'No usable speech intervals.')
+        return _empty('insufficient_evidence', attempt_id, audio_hash, duration_ms,
+                      'insufficient_audio_evidence', 'No usable speech intervals within the capture.')
     items = []
     def add(kind, start, end, value, unit):
+        start_ms, end_ms = start * 1000 // SAMPLE_RATE, min(end, window_end) * 1000 // SAMPLE_RATE
+        if start_ms >= end_ms:
+            return
         items.append({'id': f'{kind}_{sum(i["kind"] == kind for i in items)}', 'kind': kind,
-                      'start_ms': min(duration_ms, start * 1000 // SAMPLE_RATE),
-                      'end_ms': min(duration_ms, end * 1000 // SAMPLE_RATE), 'value': value, 'unit': unit})
+                      'start_ms': start_ms, 'end_ms': end_ms, 'value': value, 'unit': unit})
     for start, end in spans:
         add('speech', start, end, (end-start)*1000//SAMPLE_RATE, 'ms')
     for (_, end), (start, _) in zip(spans, spans[1:]):
@@ -52,7 +71,7 @@ def measure_waveform(waveform, speech_samples, *, attempt_id, audio_hash, durati
     db = 20*np.log10(np.maximum(frames, 1e-12))
     add('signal_variation', 0, expected, round(float(np.percentile(db, 90)-np.percentile(db, 10)), 3), 'dB p90-p10 of 1s RMS')
     return {'version': VERSION, 'status': 'available', 'attempt_id': attempt_id, 'audio_hash': audio_hash,
-            'duration_ms': duration_ms, 'items': items, 'limitations': [
+            'duration_ms': duration_ms, 'items': items, 'reason': None, 'limitations': [
                 'VAD is approximate; pauses and speaking rates are not quality penalties.',
                 'Rates use whole capture time. English words and Korean Hangul runs are different units; other languages have no rate estimate.',
                 'Signal statistics reflect gain, microphone and noise; they do not establish confidence, emotion, pronunciation or vocal expressiveness.']}
@@ -67,12 +86,21 @@ def measure_audio(path, *, attempt_id, duration_ms, text, language):
         with Path(path).open('rb') as stream:
             while chunk := stream.read(65536): digest.update(chunk)
         audio_hash = digest.hexdigest()
+    except Exception:
+        return _empty('unavailable', attempt_id, audio_hash, duration_ms,
+                      'audio_missing', 'Audio could not be read.')
+    try:
         waveform = decode_waveform(path)
+    except Exception:
+        return _empty('unavailable', attempt_id, audio_hash, duration_ms,
+                      'audio_decode_failed', 'Audio decoding failed.')
+    try:
         with _model_lock:
             model, detect = load_gate()
             spans = detect(waveform, model, sampling_rate=SAMPLE_RATE,
                            min_speech_duration_ms=100, speech_pad_ms=30, threshold=.5)
-        return measure_waveform(waveform, spans, attempt_id=attempt_id, audio_hash=audio_hash,
-                                duration_ms=duration_ms, text=text, language=language)
     except Exception:
-        return _empty('unavailable', attempt_id, audio_hash, duration_ms, 'Audio decoding or speech measurement failed.')
+        return _empty('unavailable', attempt_id, audio_hash, duration_ms,
+                      'audio_measurement_failed', 'Speech measurement failed.')
+    return measure_waveform(waveform, spans, attempt_id=attempt_id, audio_hash=audio_hash,
+                            duration_ms=duration_ms, text=text, language=language)

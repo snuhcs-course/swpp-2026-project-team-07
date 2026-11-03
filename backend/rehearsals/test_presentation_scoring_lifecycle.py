@@ -5,7 +5,8 @@ import json
 from unittest.mock import patch
 from django.test import TestCase
 from django.utils import timezone
-from .models import FeedbackAnalysis, FeedbackJob, FeedbackRequest, PresentationContext, SlideReviewMembership
+from .models import (FeedbackAnalysis, FeedbackJob, FeedbackRequest, PresentationContext,
+                     SlideReviewMembership, TranscriptCorrection)
 from .services import coaching, feedback_provider as provider, presentation_scoring as scoring
 from .services.feedback import FeedbackError
 from .test_coaching import SyntheticCoaching
@@ -20,7 +21,7 @@ class PresentationScoreLifecycleTests(SyntheticCoaching, TestCase):
     def setUp(self):
         super().setUp()
         self.url = f'/api/attempts/{self.attempt.pk}/presentation-score/'
-        self.measurements = {'version': 'presentation-measurements-v1', 'status': 'available',
+        self.measurements = {'version': 'presentation-measurements-v2', 'status': 'available', 'reason': None,
             'audio_hash': 'a' * 64, 'attempt_id': str(self.attempt.pk), 'duration_ms': 2000,
             'items': [{'id': 'speech_0', 'kind': 'speech', 'start_ms': 100, 'end_ms': 1500,
                        'value': 1400, 'unit': 'ms'}], 'limitations': ['Synthetic audio measurements.']}
@@ -203,6 +204,7 @@ class PresentationScoreLifecycleTests(SyntheticCoaching, TestCase):
 
     def prior_protocol(self, job):
         previous = deepcopy(scoring.protocol())
+        previous['measurement_version'] = 'presentation-measurements-v1'
         previous['prompt_version'] = 'presentation-score-v2'
         previous['definition']['prompt_version'] = 'presentation-score-prompt-v2'
         previous['definition']['prompt_sha256'] = 'b34ba4784daae6fdaf8d06d7714d81889c6d35e07a0217bdcc12a147e9592037'
@@ -311,6 +313,7 @@ class PresentationScoreLifecycleTests(SyntheticCoaching, TestCase):
 
     def prior_v21_protocol(self, job):
         previous = deepcopy(scoring.protocol())
+        previous['measurement_version'] = 'presentation-measurements-v1'
         previous['prompt_version'] = 'presentation-score-prompt-v2.1'
         previous['definition']['prompt_version'] = 'presentation-score-prompt-v2.1'
         previous['definition']['prompt_sha256'] = '052cb290d412b5a0bebc927465c08e3391edca140a189bcfb0504356a6a715fd'
@@ -393,6 +396,7 @@ class PresentationScoreLifecycleTests(SyntheticCoaching, TestCase):
     # OpenAI Codex, 2026-11-03: #45 prompt-upgrade receipt preservation.
     def prior_v22_protocol(self, job):
         previous = deepcopy(scoring.protocol())
+        previous['measurement_version'] = 'presentation-measurements-v1'
         previous['prompt_version'] = 'presentation-score-prompt-v2.2'
         previous['definition']['prompt_version'] = 'presentation-score-prompt-v2.2'
         previous['definition']['prompt_sha256'] = 'ce6eebac47b75479d9fc7945e106b91f0e33d5e24798b20f093b9c6aac42dce1'
@@ -406,9 +410,7 @@ class PresentationScoreLifecycleTests(SyntheticCoaching, TestCase):
         job.save(update_fields=['prompt_version', 'prompt_digest', 'source_snapshot'])
 
     def test_v22_feedback_upgrade_keeps_old_result_and_receipt_until_fresh_generation(self):
-        self.complete(); self.assertEqual(self.post_score().status_code, 202)
-        owner = self.owner(); self.assertEqual(self.execute_score(owner), (1, 1))
-        old = self.job(owner); self.prior_v22_protocol(old)
+        owner, old = self.legacy_score('v2.2')
         snapshot, result = deepcopy(old.source_snapshot), deepcopy(old.result)
         request = FeedbackRequest.objects.get(coaching_job=old)
         receipt = bytes(request.raw_body)
@@ -416,11 +418,18 @@ class PresentationScoreLifecycleTests(SyntheticCoaching, TestCase):
              patch('rehearsals.services.presentation_measurements.measure_audio') as measure:
             for _ in range(2):
                 state = self.client.get(self.url).json()
-                self.assertTrue(state['stale'])
-                self.assertTrue(state['retry_available'])
-                self.assertIsNone(state['result'])
+                self.assertFalse(state['stale'])
+                self.assertEqual(state['result']['overall']['score'], 100)
             call.assert_not_called(); measure.assert_not_called()
-        self.assertEqual(self.post_score().status_code, 409)
+        self.assertEqual(self.post_score().status_code, 200)
+        self.assertEqual(self.post_score(feedback_revision=1).status_code, 200)
+        self.assertEqual(owner.jobs.count(), 1)
+        # A real profile revision makes the historical result stale; explicit Update can replace it.
+        old.description_set.description_revision += 1
+        old.description_set.save(update_fields=['description_revision'])
+        state = self.client.get(self.url).json()
+        self.assertTrue(state['stale'])
+        self.assertIsNone(state['result'])
         response = self.post_score(feedback_revision=1, expected_selection=state['selection']['token'])
         self.assertEqual(response.status_code, 202, response.content)
         fresh = self.job(owner)
@@ -435,6 +444,170 @@ class PresentationScoreLifecycleTests(SyntheticCoaching, TestCase):
         self.assertEqual(old.source_snapshot, snapshot)
         self.assertEqual(old.result, result)
         self.assertEqual(bytes(request.raw_body), receipt)
+
+    def legacy_score(self, version='v2.3', *, failed=False, context_id=None):
+        self.complete()
+        current = self.measurements
+        self.measurements = {k: v for k, v in current.items() if k != 'reason'}
+        self.measurements['version'] = 'presentation-measurements-v1'
+        if failed:
+            self.measurements.update(status='unavailable', items=[], limitations=['Historical 100 ms duration mismatch.'])
+        try:
+            with patch('rehearsals.services.presentation_measurements.VERSION', 'presentation-measurements-v1'):
+                self.assertEqual(self.post_score(context_id=context_id).status_code, 202)
+                owner = self.owner()
+                self.assertEqual(self.execute_score(owner), (1, 0 if failed else 1))
+        finally:
+            self.measurements = current
+        old = self.job(owner)
+        if version == 'v2.2':
+            self.prior_v22_protocol(old)
+        return owner, old
+
+    def test_v23_v1_completed_history_reads_without_regeneration_and_keeps_identity(self):
+        owner, old = self.legacy_score()
+        snapshot, result = deepcopy(old.source_snapshot), deepcopy(old.result)
+        request = FeedbackRequest.objects.get(coaching_job=old)
+        receipt = bytes(request.raw_body)
+        with patch.object(provider, 'request_raw') as call, \
+             patch('rehearsals.services.presentation_measurements.measure_audio') as measure:
+            state = self.client.get(self.url).json()
+            self.assertEqual((state['state'], state['stale']), ('completed', False))
+            self.assertEqual(state['source_identity'], snapshot['presentation_score']['source_identity'])
+            self.assertEqual(state['result']['overall']['score'], 100)
+            self.assertEqual(self.post_score(feedback_revision=1).status_code, 200)
+            coaching.run_coaching(owner.pk, 1)
+            call.assert_not_called(); measure.assert_not_called()
+        with self.assertRaises(FeedbackError): scoring.prepared(old.description_set, old)
+        with self.assertRaises(FeedbackError): scoring.normalize(old.description_set, old, None, None)
+        old.refresh_from_db(); request.refresh_from_db()
+        self.assertEqual((old.source_snapshot, old.result, bytes(request.raw_body)), (snapshot, result, receipt))
+        self.assertEqual(owner.jobs.count(), 1)
+
+    def test_legacy_failed_generation_stays_failed_and_explicit_retry_remeasures_v2(self):
+        for version in ('v2.2', 'v2.3'):
+            with self.subTest(version=version):
+                if version == 'v2.3':
+                    # Independent attempt avoids sharing the owner generated above.
+                    self.attempt = self.new_attempt(self.deck)
+                    self.url = f'/api/attempts/{self.attempt.pk}/presentation-score/'
+                    self.measurements['attempt_id'] = str(self.attempt.pk)
+                owner, old = self.legacy_score(version, failed=True)
+                snapshot = deepcopy(old.source_snapshot)
+                with patch.object(provider, 'request_raw') as call, \
+                     patch('rehearsals.services.presentation_measurements.measure_audio') as measure:
+                    state = self.client.get(self.url).json()
+                    self.assertEqual((state['state'], state['stale']), ('failed', False))
+                    self.assertEqual(state['error']['code'], 'audio_unavailable')
+                    self.assertTrue(state['retry_available'])
+                    self.assertEqual(self.post_score().status_code, 409)
+                    self.assertEqual(self.post_score(feedback_revision=0).status_code, 409)
+                    self.assertEqual(self.post_score(feedback_revision=1).status_code, 202)
+                    call.assert_not_called(); measure.assert_not_called()
+                fresh = self.job(owner)
+                self.assertNotIn('measurements', fresh.source_snapshot['presentation_score'])
+                self.assertEqual(fresh.source_snapshot['presentation_score']['protocol']['measurement_version'],
+                                 'presentation-measurements-v2')
+                owner.refresh_from_db(); self.assertEqual(self.execute_score(owner), (1, 1))
+                fresh.refresh_from_db()
+                self.assertEqual(fresh.source_snapshot['presentation_score']['measurements']['version'], 'presentation-measurements-v2')
+                self.assertNotEqual(fresh.source_snapshot['presentation_score']['source_identity'],
+                                    snapshot['presentation_score']['source_identity'])
+                old.refresh_from_db(); self.assertEqual(old.source_snapshot, snapshot)
+                self.assertFalse(FeedbackRequest.objects.filter(coaching_job=old).exists())
+
+    def test_terminal_legacy_read_preserves_correction_source_profile_and_provider_fences(self):
+        owner, old = self.legacy_score()
+        snapshot, result = deepcopy(old.source_snapshot), deepcopy(old.result)
+        self.assertTrue(coaching._source_current(old))
+        for overrides in ({'FEEDBACK_GEMINI_PROJECT_ID': 'another-project'},
+                          {'FEEDBACK_GEMINI_MODEL': 'gemini-2.5-flash'}, {'FEEDBACK_PROVIDER': 'openai'}):
+            with self.subTest(overrides=overrides), patch.dict('os.environ', overrides):
+                state = self.client.get(self.url).json()
+                self.assertTrue(state['stale']); self.assertIsNone(state['result'])
+        self.attempt.upload_hash = 'f'*64
+        self.attempt.save(update_fields=['upload_hash'])
+        self.assertFalse(coaching._source_current(old))
+        self.attempt.upload_hash = ''; self.attempt.save(update_fields=['upload_hash'])
+        row = TranscriptCorrection.objects.create(attempt=self.attempt,
+            base_transcript_id=coaching.transcript_identity(self.attempt), revision=1, edits=[])
+        self.assertFalse(coaching._source_current(old))
+        row.delete()
+        value = old.description_set
+        value.processing_revision += 1; value.save(update_fields=['processing_revision'])
+        self.assertTrue(self.client.get(self.url).json()['stale'])
+        value.processing_revision -= 1; value.save(update_fields=['processing_revision'])
+        slide = self.deck.slides.get()
+        original_text = slide.extracted_text
+        slide.extracted_text = 'Changed source'; slide.save(update_fields=['extracted_text'])
+        self.assertFalse(coaching._source_current(old))
+        slide.extracted_text = original_text; slide.save(update_fields=['extracted_text'])
+        self.assertTrue(coaching._source_current(old))
+        old.refresh_from_db(); self.assertEqual((old.source_snapshot, old.result), (snapshot, result))
+        self.assertEqual(owner.jobs.count(), 1)
+
+    def test_legacy_requirements_change_requires_explicit_update(self):
+        context = PresentationContext.objects.create(deck=self.deck, audience='Students')
+        context_id = str(context.pk)
+        owner, old = self.legacy_score(context_id=context_id)
+        old_snapshot = deepcopy(old.source_snapshot)
+        self.assertFalse(self.client.get(self.url, {'context_id': context_id}).json()['stale'])
+        context.revision += 1; context.required_duration_seconds = 120; context.save()
+        state = self.client.get(self.url, {'context_id': context_id}).json()
+        self.assertTrue(state['stale']); self.assertIsNone(state['result'])
+        self.assertEqual(self.post_score(context_id=context_id).status_code, 409)
+        self.assertEqual(self.post_score(context_id=context_id, feedback_revision=1).status_code, 202)
+        fresh = self.job(owner)
+        self.assertEqual(fresh.source_snapshot['presentation_score']['requirements']['required_duration_seconds'], 120)
+        self.assertNotIn('measurements', fresh.source_snapshot['presentation_score'])
+        old.refresh_from_db(); self.assertEqual(old.source_snapshot, old_snapshot)
+
+    def test_v23_legacy_protocol_tampering_rejects_known_and_recomputed_digests(self):
+        owner, old = self.legacy_score()
+        old.source_snapshot['presentation_score']['protocol']['definition']['prompt_sha256'] = 'f'*64
+        for recompute_digest in (False, True):
+            if recompute_digest:
+                old.prompt_digest = coaching._digest(old.source_snapshot['presentation_score']['protocol'])
+            old.save(update_fields=['prompt_digest', 'source_snapshot'])
+            state = self.client.get(self.url).json()
+            self.assertTrue(state['stale']); self.assertIsNone(state['result'])
+            self.assertFalse(state['retry_available'])
+            self.assertEqual(self.post_score(feedback_revision=1).status_code, 503)
+        self.assertEqual(owner.jobs.count(), 1)
+
+    def test_unsent_v23_v1_job_and_current_worker_with_v1_measurements_fail_closed(self):
+        self.complete()
+        with patch('rehearsals.services.presentation_measurements.VERSION', 'presentation-measurements-v1'):
+            self.assertEqual(self.post_score().status_code, 202)
+        owner = self.owner(); old = self.job(owner)
+        snapshot = deepcopy(old.source_snapshot)
+        self.assertEqual(self.execute_score(owner), (0, 0))
+        old.refresh_from_db(); self.assertEqual(old.source_snapshot, snapshot)
+        self.assertEqual(old.state, 'queued')
+        with self.assertRaises(FeedbackError): scoring.prepared(old.description_set, old)
+        with self.assertRaises(FeedbackError): scoring.normalize(old.description_set, old, None, None)
+        self.assertEqual(self.post_score(feedback_revision=1).status_code, 202)
+        self.measurements = {k:v for k,v in self.measurements.items() if k!='reason'}
+        self.measurements['version'] = 'presentation-measurements-v1'
+        owner.refresh_from_db(); self.assertEqual(self.execute_score(owner), (1, 0))
+        fresh = self.job(owner)
+        self.assertEqual((fresh.state, fresh.error_code), ('failed', 'snapshot_unavailable'))
+        self.assertNotIn('measurements', fresh.source_snapshot['presentation_score'])
+        self.assertFalse(FeedbackRequest.objects.filter(coaching_job=fresh).exists())
+
+    def test_current_frozen_measurement_version_cannot_be_downgraded_for_receipt_replay(self):
+        self.complete(); self.assertEqual(self.post_score().status_code, 202)
+        owner = self.owner(); self.assertEqual(self.execute_score(owner), (1, 1))
+        job = self.job(owner)
+        measured = job.source_snapshot['presentation_score']['measurements']
+        measured['version'] = 'presentation-measurements-v1'; measured.pop('reason')
+        job.save(update_fields=['source_snapshot'])
+        state = self.client.get(self.url).json()
+        self.assertTrue(state['stale']); self.assertIsNone(state['result'])
+        with self.assertRaises(FeedbackError): scoring.prepared(job.description_set, job)
+        with self.assertRaises(FeedbackError): scoring.normalize(job.description_set, job, None, None)
+        job.source_snapshot['presentation_score']['measurements'] = []
+        self.assertFalse(scoring.current(self.attempt, job))
 
     def test_unsent_v22_job_cannot_dispatch_under_feedback_prompt_v23(self):
         self.complete(); self.assertEqual(self.post_score().status_code, 202)

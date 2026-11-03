@@ -4799,3 +4799,112 @@ combine all fixes and check before uploading
 - **Preparation:** Existing release metadata and older v7 bytes were read before mutation; a read-only independent audit confirmed the older APK's CRC/signature/manifest and complete source provenance. No release had been created when the user requested combining fixes. CLI network access required a narrow sandbox escalation; release uploads are unavailable in the GitHub connector. Prepare an isolated source snapshot and exact staged review rather than commit the user's dirty checkout. Actual combined verification/publication receipts will be appended before handoff.
 
 - **Combined pre-publication verification:** The exact isolated snapshot passed fresh607mobile tests/typecheck/lint and public-config Android export; backend system/migration checks and601tests passed with25PostgreSQL-only skips. Independent review of staged tree`b9ea1b92fe440d7e9d1c528aa5ce9fcbf712c005` found no concrete defect and independently passed69focused tests. No application code changed after review. Production Gradle build and byte-identical capture-forward proof build passed; final packagecom.team07.outloud/code7/non-debuggable/all4ABIs passes CRC/signature/manifest checks. All11changed application sources and116mounted sources match the source map. APK SHA256`24df70866369ef4af2a55513765f5daa364463896b97a848c29c2436c553f55b`,143234646bytes, differs from the preserved earlier v7. Public HTTPS/demo-code gating is compiled into the actual input; no secret code or QA harness was bundled. [Combined report](demo-v7-combined-verification-20261103.md) distinguishes prior native fixture checks, untested phone/voice/model quality and backend source-only delivery.
+
+
+## Issue #49 investigation — November 3, 2026
+
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex desktop · **Model:** GPT-6 (exact variant not recorded)
+
+### Request — verbatim
+
+```text
+let's go over issue 49 try recreating the problem and seeing whats the issue
+```
+
+- **Scope:** Diagnose/reproduce only using Ponytail full and investigate-first. Read issue49 and comments, trace backend/mobile paths, use isolated mocked reproduction where useful, inspect relevant live/device state if needed. No product fixes, commit/push, deployment, issue comments or bulk evaluation. Preserve dirty root/demo checkouts and existing phone data. Normal online processing remains allowed by the prior clarification; targeted reproduction should still avoid unnecessary provider work.
+- **Observed report:** GitHub issue49 is open, with no comments. Reporter saw v5 Full Review grading fail with `Rehearsal feedback unavailable (audio_unavailable)` after a nonbundled10slide full run;9slidesassessed/1needsrecovery. This is issue evidence, not yet an independently reproduced cause. Connected physical phone currently has v7, so cross-version/device limits must be explicit.
+- **Progress/evidence:** Bounded read-only backend and mobile investigators are tracing independent paths; root handles issue evidence and live/device checks. Local evidence is under `outputs/issue49-investigation-20261103/`.
+
+- **Controlled reproduction:** Backend investigation passed2/2 focused tests with real valid WAV decoding, controlled VAD and mocked providers/broker. A271120ms recording declared271000ms reproduced the exact error across three fresh grading generations, retaining nine independent completed slide reviews. Matching duration became available;±100ms passed and±101ms failed. Mobile investigation passed24/24 focused tests, including two task-only API/screen reproductions; three Retry clicks only POSTed presentation-score with successive revision fences. An additional8/8 existing capture-stop tests passed. These are controlled tests, not a recreation of the original GalaxyS25 capture.
+- **Actual source/cause confirmed:** Used the existing Azure CLI/auth session and three VM Run Command probes, with PostgreSQL `SET TRANSACTION READ ONLY`; no firewall, deployment, source, environment, job or provider action. Located the issue's only matching10slide Team7progressreport attempt. Saved duration271073ms versus decoded4335259samples@16000Hz=270953.6875ms:119.3125ms shorter. File exists(2223020bytes/M4A), finite/nonzero and within bounds. Upload already accepts±1000ms; grading alone rejects beyond100ms. Latest four snapshots explicitly record that duration limitation. All nine failed grading generations match the current file hash; there are zero grading provider-request records. No private audio/transcript content was exported.
+- **Retry/UI findings:** Whole grading and singleton slide feedback have independent inputs/status. Retry grading creates a fresh score generation over the same immutable recording/metadata, so it cannot remove this deterministic validation failure. Full Review surfaces the misleading generic audio_unavailable error and aggregate recovery count; the failed slide is chiefly identified through its accessibility label, and the existing feedback-recovery component is unmounted. Current live per-slide job rows are completed; this does not prove all current result-level assessments usable or identify the historical9/10count's separate cause. V5/v7 parity checks confirm the relevant measurement/preparation/retry code is unchanged.
+- **Capture trace and future direction:** Uploaded duration freezes native recorder status before stop. Installed expo-audio Android uses elapsed MediaRecorder/system-clock timing rather than decoded sample duration. The exact startup/pause/codec cause of this capture's drift remains inferred. A future patch should align playable-upload and grading tolerances, preserve original captures/history, keep waveform/VAD bounds, and clip/drop diagnostic intervals that become empty at an accepted longer-audio tail. Version/protocol changes must retain exact historical retry compatibility. No fix is authorized or applied in this investigation.
+- **Review, preservation and limits:** Separate backend review confirmed the live arithmetic/causal proof and flagged the longer-audio-tail edge case for a future fix; mobile review confirmed retry ownership/capture timing. All389tracked mobile/backend product and test files match the previously published v7 source. Only task evidence, this log and [the investigation report](issue49-investigation-20261103.md) were added. No phone UI interaction, real provider request, issue mutation, commit/push or deployment. An overbroad historical-path lookup stalled; its identified helper process was terminated and bounded metadata lookup reused the existing Azure session instead. This was investigation tooling, not the app failure.
+
+
+## Issue #49 fix — November 3, 2026
+
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex desktop and native delegated agents · **Model:** GPT-6 (exact variant not recorded)
+
+### Planning discussion — actual prompts and selected answers
+
+```text
+plan a fix for issue 49
+```
+
+```text
+whats the difference?
+```
+
+Selected scope answer:
+
+```text
+Include slide recovery
+```
+
+The user selected grading repair plus targeted slide recovery after the distinction was explained. The agreed plan retains the current screens/design, preserves historical results and excludes deployment/publication. Planning was read-only; this entry is being recorded when authorized implementation begins.
+
+### Implementation request — verbatim
+
+```text
+PLEASE IMPLEMENT THIS PLAN:
+# Fix #49: grading and slide recovery
+
+## Summary
+
+Fix the confirmed 119 ms audio-duration mismatch and add targeted slide recovery within the existing review screens. Preserve recordings, historical results, scoring arithmetic and the current visual design.
+
+## Changes
+
+- **Align audio validation:** Share the upload’s existing **±1,000 ms tolerance** with grading. Keep waveform, duration-limit and VAD validation. Clip diagnostic intervals to the common decoded/capture window and discard empty intervals, including codec-tail speech. Preserve original audio, timestamps and the capture-duration denominator for rates.
+- **Version diagnostics:** Introduce `presentation-measurements-v2` with typed failure reasons. Keep v1 validation and serialization unchanged so historical identities remain reproducible. Update measurement validation, eligibility and protocol consumers together; fresh jobs require v2.
+- **Preserve saved grades:** Freeze the exact existing v2.3/v1 protocol identity alongside supported predecessors. Allow terminal legacy results to remain readable when all other source/provider/settings guards pass. Opening them must not generate replacement assessments. Explicit retries of failed or rejected assessments create fresh generations and remeasure audio; old snapshots and receipts remain intact.
+- **Explain grading failures:** Use the existing `{code,message}` error fields to distinguish missing/unreadable audio, decoding failure, measurement failure, excessive duration mismatch and insufficient evidence. Preserve a cautious generic explanation for historical failures whose cause is unknown.
+- **Identify affected slides:** In Full Review’s existing assessment summary, show affected slide numbers as links to their selected recordings. Keep status refresh read-only; recover one slide at a time.
+- **Expose recovery in existing details:** Allow feedback details to open for every recorded slide, including zero findings. Show status, a safe explanation, retained verified findings, Refresh and the applicable **Retry feedback**, **Update feedback** or profile-recovery action. Mount one manual recovery controller only while details are open.
+- **Make completed failures retryable:** Add one shared backend predicate limited to singleton slide reviews with missing summaries, `invalid_evidence` or `model_error`. Apply it to retry eligibility and generation admission, requiring the matching feedback revision. Mirror the exception in the client. For missing summaries, return `result:null` with an explanatory error while preserving stored output.
+- **Retain retry safeguards:** Keep fresh-state checks, selection tokens, revision fences, synchronization, cooldowns, quotas and uncertainty confirmation. Also bind profile-retry confirmation to its description-set ID and processing revision. Successful zero findings show **“No issue flagged”**; partial, insufficient and unavailable states remain distinct.
+
+## Verification
+
+- Regress the actual **271,073 ms capture / 270,953.6875 ms decoded** case. Test both drift directions, inclusive ±1,000 ms boundaries and one sample beyond, codec-tail VAD, empty intervals, corrupt/missing audio and silence.
+- Verify unchanged v1 identities, exact predecessor checks, strict current-version workers, preserved receipts and no automatic regeneration of terminal results. Test failed and completed-invalid retries, concurrency and duplicate submissions with mocked providers.
+- Exercise correct slide/take selection, repeated visits, missing summaries, zero findings, partial results, unavailable states, cooldowns, uncertain requests, closing/backgrounding and changed profile generations.
+- Run backend system checks, full tests and migration dry-run; PostgreSQL/Redis/worker integration checks; mobile `npm run check` and `npm run bundle:android`; and Android recovery-flow checks using isolated failure fixtures.
+
+## Delivery and assumptions
+
+- Use an isolated `codex/issue-49` branch containing published v7 and current main. Preserve unrelated local work. Record this discussion, decisions and actual verification in the active Iteration 2 collaboration log when implementation begins.
+- Keep the existing prompt, rubric, weights, dependencies and public API shapes. No database migration, commit, push, deployment or publication is included.
+- Document rollout prerequisites: pause new score admissions and drain current legacy generations under their original workers. Defer deployment if unresolved work cannot drain safely. A live retry of the reported rehearsal follows deployment and is recorded separately from automated checks.
+```
+
+- **Start and preservation:** Created the native managed worktree `/Users/seoyeonpark/.codex/worktrees/issue-49/OnLoud` on `codex/issue-49` at published v7 `64e6484e4496950d47b3999fb62522f122d09bab`. Live GitHub comparison confirmed it contains current `main` (`7b7ef3b`) with no commits behind. Root and earlier demo dirty work were left in place. Reused installed mobile dependencies; no dependency changes. Bounded agents own diagnostics/scoring, backend singleton recovery and mobile recovery; root owns integration, verification and this log.
+- **Planned retained work:** Shared duration tolerance and versioned diagnostics; exact legacy terminal-read compatibility; safe error explanations; affected-slide links and manual recovery in existing details. Fresh retries preserve revision/selection/uncertainty/cooldown protections and old receipts. Verification is pending; no success is claimed yet.
+- **Tooling:** Read-only Docker inventory initially lacked socket access in the sandbox; a narrow escalation verified local Docker and the attached Samsung phone. Native worktree setup and local import of the already-published commit used approved filesystem escalation. No remote writes, deployment or provider calls occurred.
+
+- **Implementation retained:** Shared 1,000 ms tolerance; versioned typed diagnostics with clipped common-window intervals/RMS and unchanged original rate denominator; exact v1 identities/predecessors and terminal history handling; safe errors; targeted singleton recovery in the existing screens. New generations retain old snapshots/receipts, and manual retries keep revision/selection/settings/corrections/uncertainty/cooldown guards. Profile confirmations additionally bind the description-set processing generation. No prompt, rubric, weight, dependency or app-config change.
+- **Verification completed so far:** Final `npm run check` passed typecheck/lint and 617 tests, retaining one pre-existing unchanged-player lint warning; Android export passed. Backend system check and migration dry-run passed; final 630-test SQLite suite passed with 26 skips, and final full PostgreSQL suite passed with one packaged-model dependency skip. That skipped VAD check and two sibling checks passed in the existing local backend Docker image with read-only final source and network disabled. Real Redis/Celery/PostgreSQL integration passed with controlled VAD and mocked/blocked provider transport: actual sample-count/duration synthetic decode completed grading, a completed-model-error slide explicitly recovered, duplicate delivery did not repeat inference, and old receipts/source stayed unchanged. Task-labelled disposable databases/broker were cleaned up without touching the existing local database.
+- **Review and corrections:** Independent review found a queued missing-summary retry projected its malformed prior `slides:[]` result. The author reproduced that failure, suppressed only the public malformed fallback, and added HTTP202/queuedGET/preserved-receipt regression coverage. The reviewer independently rechecked it with no unresolved findings; both full backend suites and real-worker probe were rerun after the correction. The final 17-file product manifest matches the reviewed snapshot. Mobile self-review also caught a no-cached-transcript controller mounting gap; details now retain prerequisite information without a controller/network request. Agent-operated Android fixture checks remain in progress; no human testing is claimed.
+
+- **Final physical-phone observations:** 20/20 native synthetic-fixture checks passed on Samsung SM-S918N. Exact source proof covers 15 mounted/16 mirrored modules, including real feedback controllers/parsers/stores. Read-only open/refresh, selected take/repeated visits, failed/rejected/missing retries, completed zero, uncertainty Cancel/Close/Back/Confirm, honest unavailable/partial/outdated/cooldown states, untimed prerequisites and the second selected recording passed. Model/recordings, score/audio readers, task-only navigation, in-process transport and fixture-only footer animation are explicit substitutions. No production AppShell/live backend/provider/audio-quality claim is made; physical profile recovery/network-race checks remain automated-only.
+- **Native tooling corrections and cleanup:** Fixed a fixture selector that inspected the enabled text child instead of its disabled button, and used normal slide navigation for partial results that correctly have no recovery link. Provenance/UID tooling assumptions were corrected too; no product rebuild/change was needed for these. The QA package/shared snapshot were removed, production APK checksum/path stayed unchanged, production process stayed stopped, and phone animation/launcher/shade/keyguard/dozing state matched its original state. No security settings were weakened or APK sent for a cloud scan.
+- **Handoff:** Implementation and scoped verification are complete locally on `codex/issue-49`. [Final repair/verification report](issue49-fix-verification-20261103.md) contains commands, results, boundaries and deployment-drain prerequisites. No commit, push, deployment, production installation, external issue message or real provider call occurred. The original rehearsal's live retry awaits separately authorized backend/client rollout; no human testing or generation usefulness assessment is claimed.
+
+
+## Publish demo v8 with issue #49 recovery — November 3, 2026
+
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex desktop and native delegated agents · **Model:** GPT-6 (exact variant not recorded)
+
+### Request — verbatim
+
+```text
+make new apk version and put it on git
+```
+
+- **Authorization and scope:** This request authorizes the new APK build plus commit/push and GitHub release publication of the tested #49 work. It supersedes the prior task's exclusion of publication for this new task. It does not authorize backend deployment, main merge, real provider calls or a production phone update. Continue on the existing issue-49 branch; preserve earlier releases and unrelated checkouts.
+- **Preparation:** Live GitHub release inventory shows v7 is latest, so set Android versionCode8 while keeping package, versionName and signing-certificate continuity. Reuse existing local build/dependency tools. The grading-duration repair remains backend source until separately deployed; the release will say so. Previous implementation/source/worker/phone-fixture evidence will be reused only after byte-parity checks; version/build-specific checks will be fresh.
+- **Progress:** Preparing the production v8 build, checksum, install notes and reviewable source. Publication and new native APK verification are pending.
+
+- **Fresh v8 checks/build:** Mobile typecheck/lint and617tests passed (same pre-existing unchanged-player warning); public-config Android export passed. Isolated offline Expo prebuild derived code8, then production Gradle/all4ABIs passed in4m22s and bounded capture-forward rebuild in37s. Final APK143240104bytes/SHA256`3ad854aff6fecb823e4ed7c5364aa52d86a497611551134d8343d6f1a0e22a4b`; same v6/v7certificate, nondebuggable, correct normal package/code8, API24–36, CRC/signature/Hermes match. Actual compiler-input proof confirms publicHTTPS/demo-code guard with no reviewer code supplied; all125inventory/118mounted modules match, six changed modules mounted plus one legacy module mirrored. Exact15-source parity reuses the20native fixture checks; no production install or live-provider result is claimed.
+- **Source preparation:** All17previously independently reviewed product modules still match the prior review; no new behavior changes beyond the approved #49 implementation. Staged38intendedsource/docsfiles, excluding ignored APK/build/dependencies/private media/environment data. High-signal credential-pattern check found no matching files. Initial cached-diff check additionally covered the new untracked regression file and found one extra EOF blank; removed/restaged it with no runtime change. Final staged-source and independent artifact audits are the publication gate; no main merge/backend activation is included.

@@ -1,6 +1,6 @@
 // OpenAI Codex reliability fixes: docs/ai-collaboration-prompts-iteration-2.md#cue-and-feedback-reliability-october-16-2026
 import { useMemo, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { Txt } from '../../design/frame';
 import { createThemedStyles, useTheme } from '../../design/theme';
 import { C, F } from '../../design/tokens';
@@ -14,6 +14,7 @@ import { useStore } from '../presentations/store';
 import { reviewScope, reviewStatus, type Finding } from './slideReview';
 import { initialFeedbackEnabled } from './automaticFeedback';
 import { useSlideReview } from './useSlideReview';
+import { SlideReviewAction as Action, SlideReviewRecoveryControls } from './SlideReviewRecoveryControls';
 
 export function SlideReviewSummary({slide,part,localDeckId,onEvidence}:{slide:number;part:SlidePart;localDeckId:string;onEvidence:(f:Finding)=>void}) {
  useTheme();
@@ -31,8 +32,6 @@ export function SlideReviewSummary({slide,part,localDeckId,onEvidence}:{slide:nu
  const ready=!!review?.transcript?.words.length;
  const eligible=initialFeedbackEnabled(API_URL,part.attemptId);
  const noSpeech=review?.processing_result?.analysis_outcome==='no_speech';
- const disabled=dirty || fb.busy || !ready || !!state&&state.availability.state!=='available' ||
-   (!!state?.feedback_revision&&!state.retry_available&&!state.dependency?.retry_available&&!state.stale&&state.state!=='completed');
  return <View style={styles.root}>
   <View style={styles.heading}><Txt style={styles.headingText}>AI feedback</Txt>
    <Action label="Refresh slide feedback status" text="Refresh" onPress={()=>void fb.refresh()} disabled={fb.busy}/></View>
@@ -53,13 +52,7 @@ export function SlideReviewSummary({slide,part,localDeckId,onEvidence}:{slide:nu
     <Txt style={styles.category}>ILLUSTRATIVE IDEA</Txt><Txt style={styles.advice}>{idea.idea}</Txt>
    </View>)}
   </View>}
-  {!!fb.notice&&<Txt accessibilityRole="alert" style={styles.note}>{fb.notice}</Txt>}
-  {!!state?.error&&!fb.notice&&state.state==='failed'&&<Txt style={styles.note}>{state.error.message}</Txt>}
-  {state?.stale||state?.feedback_revision&&state.state!=='completed'||fb.initial==='failed' ? <Action label={state?.stale?'Update feedback':'Retry feedback'}
-   text={fb.busy?'Preparing…':state?.dependency?.retry_action?'Retry slide profiles':state?.stale?'Update feedback':'Retry feedback'}
-   disabled={disabled} onPress={()=>void fb.generate()}/>:null}
-  {fb.ask&&<View style={styles.card}><Txt style={styles.note}>A previous request may have reached the provider. Retrying may incur another charge.</Txt>
-   <Action label="Confirm feedback retry" text="Retry anyway" onPress={fb.confirm}/><Action label="Cancel feedback retry" text="Cancel" onPress={fb.cancel}/></View>}
+  <SlideReviewRecoveryControls feedback={fb} slide={slide} ready={ready} dirty={dirty}/>
  </View>;
 }
 export function FindingCard({finding:f,onEvidence}:{finding:Finding;onEvidence:()=>void}) {
@@ -76,10 +69,6 @@ export function FindingCard({finding:f,onEvidence}:{finding:Finding;onEvidence:(
   </>}
  </View>;
 }
-function Action({label,text,onPress,disabled=false}:{label:string;text:string;onPress:()=>void;disabled?:boolean}) {
- return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{disabled}} disabled={disabled} onPress={onPress}
-  style={[styles.action,disabled&&{opacity:.45}]}><Txt style={styles.actionText}>{text}</Txt></Pressable>;
-}
 const styles=createThemedStyles({
  root:{gap:10,marginTop:14},heading:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},
  headingText:{fontFamily:F.display,fontSize:18,color:C.text},status:{fontFamily:F.semibold,fontSize:14,color:C.text},
@@ -87,6 +76,4 @@ const styles=createThemedStyles({
  card:{paddingTop:12,gap:8,borderTopWidth:1,borderTopColor:'rgba(255,255,255,.12)'},
  category:{fontFamily:F.bold,fontSize:10,letterSpacing:1,color:C.warn},
  problem:{fontFamily:F.semibold,fontSize:15,lineHeight:21,color:C.text},advice:{fontFamily:F.medium,fontSize:13,lineHeight:19,color:C.body},
- action:{minHeight:44,paddingHorizontal:14,paddingVertical:10,borderRadius:18,alignSelf:'flex-start',justifyContent:'center',backgroundColor:'rgba(255,255,255,.10)'},
- actionText:{fontFamily:F.semibold,fontSize:12,color:C.text},
 });

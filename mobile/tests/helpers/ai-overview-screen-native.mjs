@@ -14,7 +14,10 @@ export const SlideReviewSummary='slide-feedback',TakePlayback='take-playback',Tr
 export const subscribePlaybackId=()=>()=>{};
 export const useStore=select=>select({version:0});
 export const API_URL='https://synthetic.invalid';
-export const getSavedAttempt=()=>null,readReview=()=>null;
+export const getSavedAttempt=()=>null,readReview=()=>runtime.review??null;
+export const readRequirements=()=>runtime.requirements??{deckId:null,contextId:null,revision:0};
+export const requirementsDirty=()=>!!runtime.requirementsDirty;
+export function useSlideReview(...args){runtime.slideReviewCalls?.push(args);return runtime.slideReview??{state:null,busy:false,initial:null,notice:'',ask:false,refresh:async()=>{},generate:async()=>{},confirm(){},cancel(){}};}
 export function useReviewAudio(_api,id){return {audio:{uri:runtime.audio.get(id)??null,busy:false,error:''},audioSpec:null,validators:null,download:async()=>{}};}
 export const useShell=()=>({nav:runtime.nav,go:(...args)=>runtime.routes.push(args)}),useBack=(_active,callback)=>{runtime.back=callback;},useNow=()=>Date.now(),useFrame=()=>({top:0,left:0,s:1});
 export const audioOf=id=>runtime.audio.get(id)??null,useWorkers=()=>new Map();

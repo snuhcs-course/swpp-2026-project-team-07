@@ -13,13 +13,18 @@ export type SlideReview = {attempt_id: string; feedback_revision: number; transc
  review_version: string; scope: ReviewScope; updated_at: string|null;
  requirements: {context_id: string|null; revision: number|null; audience: string; required_duration_seconds: number|null};
  selection: {token: string}|null; retry_available: boolean; requires_confirmation: boolean; retry_at: string|null;
- availability: {state: string}; error: {message:string}|null;
+ availability: {state: string}; error: {code?:string;message:string}|null;
  dependency: {state?:string; retry_action: string|null; retry_available: boolean; description_set_id: string; processing_revision: number; requires_confirmation:boolean}|null;
  result: {review_version:string; transcript_revision:number; stale:boolean; evidence: FeedbackEvidence; slides:SlideSummary[]}|null};
 export function reviewScope(slide: number, part: SlidePart, context: string|null): ReviewScope {
  return {context_id:context,slides:[{slide_index:slide,segments:part.segments.map(s=>({start_ms:s.startMs,end_ms:s.endMs}))}]};
 }
 export const reviewActive = (s: SlideReview|null) => !!s && !s.stale && !s.dependency?.retry_action && ['queued','waiting_descriptions','preparing','submitted','normalizing','waiting_quota'].includes(s.state);
+export function completedReviewNeedsRecovery(s: SlideReview|null, slide:number) {
+ if(s?.state!=='completed')return false;
+ const summary=s.result?.slides.find(value=>value.slide_index===slide);
+ return !summary||summary.status==='invalid_evidence'||summary.status==='model_error';
+}
 export function reviewStatus(s: SlideReview|null, slide:number, now = Date.now()) {
  if (!s) return 'Not analyzed';
  if (s.stale || s.state==='stale') return 'Feedback outdated';
@@ -37,13 +42,13 @@ export function reviewStatus(s: SlideReview|null, slide:number, now = Date.now()
  if (s.state==='needs_confirmation') return 'Retry needs confirmation';
  if (s.state==='completed') {
   const summary=s.result?.slides.find(x=>x.slide_index===slide);
-  if (!summary) return 'Slide feedback is missing · Refresh status';
+  if (!summary) return 'Slide feedback is missing';
   if (summary.status==='insufficient_evidence') return summary.validation && summary.validation.speech_word_count<2
    ? 'Not enough recorded speech for this slide' : 'The AI could not assess this slide from the available evidence';
   if(summary.status==='invalid_evidence')return 'Feedback couldn’t be verified';
   if(summary.status==='model_error')return 'AI response couldn’t be processed';
   if(summary.status==='partial')return 'Some feedback couldn’t be verified';
-  return summary.findings.length ? 'Focus on these' : 'Looks good!';
+  return summary.findings.length ? 'Focus on these' : 'No issue flagged';
  }
  return s.state==='disabled'||s.state==='unavailable' ? 'Analysis unavailable' : 'Not analyzed';
 }

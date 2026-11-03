@@ -25,6 +25,7 @@ import { useDeckModel, type DeckModel } from '../features/presentations/useDeckM
 import { PresentationScoreRing, type ScoreDisplay } from '../features/feedback/PresentationScorePanel';
 import { useRunPresentationScores } from '../features/feedback/useRunPresentationScores';
 import { useRunFeedbackStatus } from '../features/feedback/useRunFeedbackStatus';
+import { SlideReviewDetails } from '../features/feedback/SlideReviewDetails';
 import { useBack, useNow, useShell } from './shared';
 
 const EMPTY_SCORE:ScoreDisplay={score:null,level:null,status:'Not graded',state:null,result:null,target:null};
@@ -48,7 +49,8 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
  const slideReviewRows=compactFeedbackRows(s,item,{durationSeconds:duration,allocationSeconds:allocation,fillerCount});
  const [feedbackOpen,setFeedbackOpen]=useState(false);
  const findingRows=slideReviewRows.flatMap(row=>row.findings);
- const detailsOpen=active&&feedbackOpen&&findingRows.length>0;
+ const recorded=!!model?.state.run?.parts[s]?.segments.some(segment=>segment.endMs>segment.startMs);
+ const detailsOpen=active&&feedbackOpen&&recorded;
  if(feedbackOpen&&!detailsOpen)setFeedbackOpen(false);
  const scores=useRunPresentationScores(model,active,s),scoreItem=scores.items[s]??EMPTY_SCORE;
  const player=useSegmentPlayer(),stopPlayback=player.stop;
@@ -146,13 +148,13 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
       <Txt style={[styles.playTime,{color:c.secondary}]}>{isSlideSelected?fmt(player.elapsedMs/1000):fmt(t)}</Txt>
      </Pressable>
      {player.error&&isSlideSelected&&<Txt accessibilityRole="alert" style={[styles.playError,{color:c.secondary}]}>{player.error}</Txt>}
-     <Pressable style={styles.feedbackRows} disabled={!findingRows.length} accessible={!!findingRows.length}
-      accessibilityRole={findingRows.length?'button':undefined} accessibilityLabel={findingRows.length?`Read slide ${s+1} feedback: ${item?.label??'Findings'}`:undefined}
-      accessibilityHint="Opens the complete feedback text" onPress={()=>setFeedbackOpen(true)}>
+     <Pressable style={styles.feedbackRows} disabled={!recorded} accessible={recorded}
+      accessibilityRole={recorded?'button':undefined} accessibilityLabel={recorded?`Read slide ${s+1} feedback: ${item?.label??'Not analyzed'}`:undefined}
+      accessibilityHint="Opens complete feedback and recovery controls" onPress={()=>setFeedbackOpen(true)}>
       {slideReviewRows.map((row,index)=><View key={`${row.icon}-${index}`} style={styles.feedbackRow}>
       <UIIcon name={row.icon} size={18} color={row.status==='spot'?c.good:row.status==='finding'?c.warn:c.secondary}/>
       <Txt numberOfLines={1} style={[styles.feedbackText,{color:row.status==='spot'?c.good:row.status==='finding'?c.text:c.secondary}]}>{row.text}</Txt>
-      {row.findings.length>0&&<UIIcon name="i-arrow" size={14} color={c.secondary}/>}
+      {(row.findings.length>0||index===2&&recorded&&!item?.assessed)&&<UIIcon name="i-arrow" size={14} color={c.secondary}/>}
      </View>)}</Pressable>
     </View>
    </View>
@@ -169,11 +171,13 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
       <Txt style={[styles.actionText,{color:c.text}]}>Close</Txt>
      </Pressable></View>
     <ScrollView style={styles.detailsScroll} contentContainerStyle={styles.detailsBody} accessibilityLabel="Full slide feedback">
+     <SlideReviewDetails slide={s} part={part!} localDeckId={deck.id} status={item?.label??'Not analyzed'}>
      {findingRows.map((finding,index)=><View key={`${finding.category}-${index}`} style={styles.detailsFinding}>
       <UIIcon name={slideReviewRows.find(row=>row.findings.includes(finding))!.icon} size={18} color={c.warn}/>
       <Txt style={[styles.detailsText,{color:c.text}]}>{finding.observation}</Txt>
       <Txt style={[styles.detailsText,{color:c.text}]}>{finding.suggestion}</Txt>
      </View>)}
+     </SlideReviewDetails>
     </ScrollView>
    </View>
   </View>}

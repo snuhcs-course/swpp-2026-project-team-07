@@ -22,8 +22,8 @@ PROMPT_VERSION = 'presentation-score-prompt-v2.3'
 SCHEMA_VERSION = VERSION
 
 # Exact prior protocols, including rubric, evidence, measurements and schema.
-# These only authorize fresh generation; old receipts remain bound to their own
-# immutable protocol and are never normalized using the replacement prompt.
+# Old receipts remain bound to their immutable protocol, never normalized using
+# replacement measurements. Only the two most recent terminal protocols can read through.
 # Canonical fingerprints also verify values after JSONB reorders object fields.
 _PREVIOUS_PROTOCOLS = (
     ('presentation-score-v2',
@@ -36,7 +36,12 @@ _PREVIOUS_PROTOCOLS = (
     ('presentation-score-prompt-v2.2',
      '842ef8c656c1bf7042bfb4f312424a303d3b8f530dc33792b735f323b01cd8a7',
      '9fda083caf1af6c4927025f148bdd5df773184846d311baba2fbb31af9ab1f07'),
+    ('presentation-score-prompt-v2.3',
+     'c7ae3c9576e57a2729054563292ae1816a8e187b580e72d90d9f6f72475e65ba',
+     'c35712151598808fef66e27f4f34132fe3f797e05ac05578959c4470695d288b'),
 )
+_TERMINAL_READ_PROTOCOLS = tuple(p for p in _PREVIOUS_PROTOCOLS
+                               if p[0] in ('presentation-score-prompt-v2.2', 'presentation-score-prompt-v2.3'))
 
 
 def context_for(attempt, context_id):
@@ -86,6 +91,23 @@ def _replacement_supported(job):
                 (job.prompt_version, job.prompt_digest, v1._digest(captured)) in _PREVIOUS_PROTOCOLS)
 
 
+def _read_protocol_supported(job):
+    captured = job.source_snapshot.get('presentation_score')
+    if not isinstance(captured, dict) or not isinstance(captured.get('protocol'), dict):
+        return False
+    measurements = captured.get('measurements')
+    if measurements is not None and (not isinstance(measurements, dict)
+            or measurements.get('version') != captured['protocol'].get('measurement_version')):
+        return False
+    try:
+        check_versions(job)
+        return True
+    except FeedbackError:
+        captured = captured.get('protocol')
+        return (job.state in ('completed', 'failed') and job.schema_version == SCHEMA_VERSION
+                and (job.prompt_version, job.prompt_digest, v1._digest(captured)) in _TERMINAL_READ_PROTOCOLS)
+
+
 def _rejected_completion(job):
     return (job.state == 'completed' and job.result is not None and
             job.result.get('presentation_score', {}).get('assessment_status') == 'invalid_evidence')
@@ -106,7 +128,7 @@ def current(attempt, job):
     """Database-only fence; never decode/read media under admission/job locks."""
     captured = job.source_snapshot.get('presentation_score')
     try:
-        if (not captured or captured['protocol'] != protocol() or
+        if (not captured or not _read_protocol_supported(job) or
                 requirements(attempt, captured['context_id']) != captured['requirements'] or
                 job.description_set.processing_revision != job.description_generation):
             return False
@@ -248,6 +270,12 @@ def _bundle(value, job, measurements):
         correction=correction, measurements=measurements, revisions=revisions, slide_events=captured['slide_events'])
 
 
+def _current_measurements(job, measurements):
+    if (not isinstance(measurements, dict)
+            or measurements.get('version') != job.source_snapshot['presentation_score']['protocol']['measurement_version']):
+        raise FeedbackError('snapshot_unavailable')
+
+
 def prepared(value, job):
     from . import presentation_score_v2 as core, presentation_measurements
     check_versions(job)
@@ -260,6 +288,7 @@ def prepared(value, job):
         measurements = presentation_measurements.measure_audio(attempt.audio.path,
             attempt_id=str(attempt.pk), duration_ms=job.source_snapshot['source']['duration_ms'],
             text=job.source_snapshot['effective_text'], language=job.source_snapshot['source']['speaker_language'])
+        _current_measurements(job, measurements)
         bundle = _bundle(value, job, measurements)
         identity = core.source_identity(bundle)
         with transaction.atomic():
@@ -273,6 +302,7 @@ def prepared(value, job):
                     **locked_job.source_snapshot['presentation_score'], 'measurements': measurements, 'source_identity': identity}}
                 locked_job.save(update_fields=['source_snapshot', 'updated_at'])
             job.source_snapshot = locked_job.source_snapshot
+    _current_measurements(job, measurements)
     bundle = _bundle(value, job, measurements)
     if core.source_identity(bundle) != job.source_snapshot['presentation_score']['source_identity']:
         raise FeedbackError('snapshot_unavailable')
@@ -296,6 +326,7 @@ class ScoreResult:
 def normalize(value, job, prepared_request, receipt):
     from . import presentation_score_v2 as core
     check_versions(job)
+    _current_measurements(job, job.source_snapshot['presentation_score']['measurements'])
     bundle = _bundle(value, job, job.source_snapshot['presentation_score']['measurements'])
     result, audit = core.normalize_with_audit(bundle, prepared_request, receipt)
     audit = {**audit, 'binding': {'input_hash': prepared_request.input_hash, 'protocol': protocol(),

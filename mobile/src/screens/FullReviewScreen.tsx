@@ -228,6 +228,7 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
     if(target)seekWholeAt(target,!player.playingKey||player.paused,false,!player.paused?player.playingKey:null);
   };
   const a=feedback.aggregate;
+  const recoverySlides=feedback.items.filter(item=>item.status==='recovery_needed'||item.status==='unavailable');
   const source=deck.requirementsDefault?'default':deck.timing.source==='required'?'required':'suggested';
   const over=total-model.targetSum;
   const assessmentCounts=[
@@ -307,6 +308,10 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
           <View style={styles.assessmentSummary} accessibilityLabel="AI assessment summary">
             <Txt style={[styles.slidesTitle,{color:c.text}]}>{`${a.assessed} of ${a.recorded} recorded slides assessed`}</Txt>
             <View style={styles.assessmentCounts}>{assessmentCounts.map(([label,count])=><Txt key={label} style={[styles.assessmentCount,{color:c.secondary}]}>{`${count} ${label.toLowerCase()}`}</Txt>)}</View>
+            {!!recoverySlides.length&&<View style={styles.assessmentCounts}>{recoverySlides.map(item=><Pressable key={item.slide}
+              accessibilityRole="button" accessibilityLabel={`Review slide ${item.slide+1}: ${item.label}`} onPress={()=>openSlide(item.slide)} style={styles.refresh}>
+              <Txt style={[styles.assessmentCount,{color:c.text}]}>{`Slide ${item.slide+1} · ${item.label}`}</Txt>
+            </Pressable>)}</View>}
             {!!feedback.notice&&<Txt style={[styles.emptyTranscript,{color:c.secondary}]}>{feedback.notice}</Txt>}
             <Pressable accessibilityRole="button" accessibilityLabel="Refresh AI assessment status" onPress={()=>void feedback.refresh()} style={styles.refresh}><Txt style={[styles.assessmentCount,{color:c.text}]}>Refresh status</Txt></Pressable>
             <Txt style={[styles.slidesTitle,{color:c.text}]}>Transcript</Txt>

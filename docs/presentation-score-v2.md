@@ -20,6 +20,14 @@ Evaluate communicated meaning, not resemblance to slide text. Reading bullets, l
 | audience_suitability | Framing substantially obstructs the supplied audience | Consequential assumptions remain unexplained | Context and terminology suit the supplied audience | Framing consistently anticipates audience needs |
 | delivery | Supported continuity or timing problems materially obstruct communication | Supported disruptions sometimes impede understanding | Continuity and time allocation support understanding | Intentional continuity and pacing consistently aid processing and emphasis |
 
+## Audio diagnostics and historical results — issue #49
+
+New assessments use `presentation-measurements-v2`. Audio admission and grading share an inclusive ±1,000 ms decoded/capture duration tolerance. Original waveform and VAD bounds are validated before diagnostic intervals and signal statistics are restricted to their common audio/capture window; empty millisecond intervals are discarded. Rates retain the original capture-duration denominator. Source audio, transcript timing and slide events are never rescaled or rewritten.
+
+V2 diagnostics carry a typed private failure reason, exposed through the existing safe error code/message fields. Missing/unreadable audio, decoding failure, speech-measurement failure, invalid samples, excessive duration mismatch and insufficient speech remain distinct. Historical `audio_unavailable` errors do not imply a known cause.
+
+The v1 measurement schema and serialization remain unchanged. Exact v2.2/v1 and v2.3/v1 terminal protocols remain readable when all other source/provider/profile/requirements checks pass; opening those saved results does not replace them. Explicit retries of failed/rejected assessments create fresh v2 measurements and a new generation. Workers prepare and normalize only the current protocol; saved legacy receipts must finish under their original workers before rollout. The prompt, rubric and score arithmetic are unchanged by this repair.
+
 ## Eligibility and validation
 
 All deck slides are represented exactly once. Default applicable. Only first/last slide may be `not_applicable`, with explicit evidence and justification that no essential communication is required. Unvisited applicable slides are `not_recorded`; no overall total. All positive-duration visits to a slide are reviewed chronologically, including backwards/repeated visits. Do not use the legacy 1000ms eligibility threshold to reject concise sufficient speech. Its report remains diagnostic for v1.

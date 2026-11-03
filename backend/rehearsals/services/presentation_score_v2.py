@@ -647,7 +647,8 @@ def prepare(bundle, config):
     """Construct one bounded existing-adapter request, with no inference."""
     v1._check_bundle(bundle)
     if bundle.measurements['status'] != 'available':
-        raise FeedbackError('audio_unavailable')
+        raise FeedbackError(bundle.measurements['reason'] if bundle.measurements['version'] == 'presentation-measurements-v2'
+                            else 'audio_unavailable')
     if not provider.valid_model(config.provider, config.model):
         raise FeedbackError('invalid_configuration')
     registry = visits.registry(bundle)

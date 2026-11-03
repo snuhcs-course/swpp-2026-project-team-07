@@ -40,6 +40,21 @@ def safe_error(code):
         return {'code': code, 'message': 'Grouped feedback generation is no longer supported.'}
     if code == 'quota_stopped':
         return {'code': code, 'message': QUOTA_STOPPED_MESSAGE}
+    # OpenAI Codex, issue #49: safe diagnostics use the existing error shape.
+    messages = {
+        'audio_unavailable': 'Could not validate audio for grading. Retry to check it again.',
+        'audio_missing': 'The saved audio could not be read. Restore access to the recording, then retry grading.',
+        'audio_decode_failed': 'The saved audio could not be decoded. Check that the recording plays, then retry grading.',
+        'audio_measurement_failed': 'Speech measurements could not be completed. Retry grading to check the recording again.',
+        'audio_invalid': 'The recording could not be validated for grading. Check that the recording plays before retrying.',
+        'audio_duration_mismatch': 'Audio and capture durations differ by more than one second. Check the recording before retrying grading.',
+        'insufficient_audio_evidence': 'There is not enough usable speech for grading. Try a recording with more speech.',
+        'review_invalid_evidence': 'The feedback citations could not be verified against this recording and slide. Retry feedback to request a new assessment.',
+        'review_model_error': 'The AI returned feedback we could not process. Retry feedback to request a new assessment.',
+        'review_summary_missing': 'Feedback for this slide is missing. Retry feedback to request a new assessment.',
+    }
+    if code in messages:
+        return {'code': code, 'message': messages[code]}
     return {'code': code, 'message': f'Rehearsal feedback unavailable ({code}).'} if code else None
 
 
@@ -220,7 +235,9 @@ def generate(attempt_id, payload, analysis_type='coaching', review_scope=None):
             if revision is not None and revision != analysis.feedback_revision:
                 raise Conflict('stale_revision')
             stale = bool(replacement) or _stale(value, old) or not _source_current(old)
-            if not stale and (old.state in ACTIVE or old.state == 'completed'):
+            explicit_recovery = (revision is not None and review_input is not None and
+                                 slide_review.recovery_error(old))
+            if not stale and (old.state in ACTIVE or old.state == 'completed' and not explicit_recovery):
                 return analysis
             if revision is None:
                 raise Conflict('revision_required')
@@ -711,6 +728,15 @@ def _read(attempt_id, analysis_type='coaching'):
             prior = job
         result = _result(value, prior, job) if prior is None or prior.description_set_id == value.pk else None
         error = job.error_code or ('descriptions_changed' if stale else '')
+        recovery_error = None
+        if analysis.analysis_type.startswith('review_'):
+            from .slide_review import recovery_error as review_recovery_error
+            recovery_error = review_recovery_error(job)
+            if recovery_error == 'review_summary_missing' or (prior and
+                    review_recovery_error(prior) == 'review_summary_missing'):
+                result = None  # Keep a malformed saved summary out of the public parser; retain its receipt.
+            if recovery_error and not error:
+                error = recovery_error
         if dependency and dependency['error'] and not error:
             error = 'description_dependency_failed'
         # A current-generation receipt can resolve uncertainty after an edit
@@ -730,7 +756,7 @@ def _read(attempt_id, analysis_type='coaching'):
             'updated_at': max(updates),
             'queued_at': job.queued_at, 'claimed_at': job.claimed_at, 'submitted_at': request.submitted_at if request else None,
             'received_at': request.received_at if request else None, 'completed_at': job.completed_at,
-            'retry_at': retry_at, 'retry_available': state in {'failed', 'needs_confirmation', 'stale'} and
+            'retry_at': retry_at, 'retry_available': (state in {'failed', 'needs_confirmation', 'stale'} or bool(recovery_error)) and
                 (not retry_at or retry_at <= timezone.now()),
             'requires_confirmation': bool(request and (request.outcome == 'uncertain' or (stale and _uncertain(request)))) or
                 bool(replacement and descriptions_service.replacement_requires_confirmation(value, job)), 'stale': stale, 'error': safe_error(error),

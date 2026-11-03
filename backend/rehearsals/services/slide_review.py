@@ -75,6 +75,32 @@ def capture(attempt, scope):
     check_snapshot(review)
     return review
 
+
+def recovery_error(job):
+    """Classify only a saved singleton's unusable completed assessment."""
+    # OpenAI Codex, issue #49: see the active Iteration 2 collaboration log.
+    if not job.analysis.analysis_type.startswith('review_') or job.state != 'completed':
+        return None
+    try:
+        review = job.source_snapshot['slide_review']
+        check_snapshot(review)
+        scope = validated(Scope, review['scope'], 'snapshot_unavailable').model_dump(mode='json')
+        if review['version'] != VERSION or analysis_type(scope) != job.analysis.analysis_type:
+            return None
+        selected = scope['slides'][0]['slide_index']
+        summaries = (job.result or {}).get('slides', [])
+        if not isinstance(summaries, (list, tuple)):
+            return None
+        matches = [s for s in summaries if isinstance(s, dict) and s.get('slide_index') == selected]
+        if not matches:
+            return 'review_summary_missing'
+        if len(matches) != 1:
+            return None
+        return {'invalid_evidence': 'review_invalid_evidence', 'model_error': 'review_model_error'}.get(matches[0].get('status'))
+    except (KeyError, TypeError, FeedbackError):
+        return None
+
+
 def current(attempt, captured):
     if captured['version'] != VERSION or requirements(attempt, captured['scope']) != captured['requirements']:
         return False

@@ -285,3 +285,72 @@ test('singleton uncertain retry requires a new confirmation when its selection t
   await act(async()=>{value.confirm();await new Promise(r=>setTimeout(r,10));});assert.equal(posts,1);assert.equal(value.state.feedback_revision,4);
  }finally{if(renderer)await act(async()=>renderer.unmount());globalThis.fetch=old;}
 });
+
+function completed(id,status,retry=true) {
+ const result=status==='missing'?null:{...original.feedback_analysis.result,review_version:'slide-review-v3',transcript_revision:0,
+  evidence:{...original.feedback_analysis.result.evidence,attempt_id:id},slides:[{slide_index:0,status,evaluation_mode:'informative_descriptive',findings:[],enrichments:[]}]};
+ return state(id,{state:'completed',feedback_revision:3,retry_available:retry,result});
+}
+test('completed rejected or missing singleton feedback admits only an explicit revision-fenced retry; double taps admit once',async()=>{
+ const old=globalThis.fetch;let serial=0;
+ try{for(const status of ['invalid_evidence','model_error','missing']) {
+  const id=`91919191-9191-4191-8191-${String(++serial).padStart(12,'0')}`;let renderer,posts=0,admitted=false;
+  globalThis.fetch=async(url,init={})=>{
+   if(url.endsWith('/corrections/'))return response(correction(id));
+   if(init.method==='POST') {posts++;assert.deepEqual(JSON.parse(init.body),{scope,expected_selection:'1'.repeat(64),transcript_revision:0,feedback_revision:3});admitted=true;return response(state(id,{feedback_revision:4,state:'queued'}));}
+   return response(admitted?state(id,{feedback_revision:4,state:'queued'}):completed(id,status));
+  };
+  try{
+   await act(async()=>{renderer=create(React.createElement(Probe,{id}));});assert.equal(posts,0);
+   await act(async()=>value.refresh());assert.equal(posts,0);
+   await act(async()=>{await Promise.all([value.generate(),value.generate()]);});assert.equal(posts,1);assert.equal(value.state.feedback_revision,4);
+   await act(async()=>value.generate());assert.equal(posts,1);
+  }finally{if(renderer)await act(async()=>renderer.unmount());}
+ }}finally{globalThis.fetch=old;}
+});
+
+test('successful, partial, insufficient and cooldown-blocked completed feedback never starts another generation',async()=>{
+ const old=globalThis.fetch;let serial=0;
+ try{for(const [status,retry] of [['successful',true],['partial',true],['insufficient_evidence',true],['invalid_evidence',false],['model_error',false],['missing',false]]) {
+  const id=`92929292-9292-4292-8292-${String(++serial).padStart(12,'0')}`;let renderer,posts=0;
+  globalThis.fetch=async(url,init={})=>{if(init.method==='POST')posts++;return response(url.endsWith('/corrections/')?correction(id):completed(id,status,retry));};
+  try{await act(async()=>{renderer=create(React.createElement(Probe,{id}));});await act(async()=>value.generate());assert.equal(posts,0,status);}
+  finally{if(renderer)await act(async()=>renderer.unmount());}
+ }}finally{globalThis.fetch=old;}
+});
+
+test('profile retry confirmation cannot acknowledge a changed description set or processing generation',async()=>{
+ const old=globalThis.fetch;let serial=0;
+ try{for(const changed of ['set','generation','removed']) {
+  const id=`93939393-9393-4393-8393-${String(++serial).padStart(12,'0')}`;let renderer,posts=0;
+  let dependency={state:'needs_confirmation',retry_action:'generate_descriptions',retry_available:true,description_set_id:'33333333-3333-4333-8333-333333333333',processing_revision:3,requires_confirmation:true};
+  globalThis.fetch=async(url,init={})=>{if(init.method==='POST')posts++;return response(url.endsWith('/corrections/')?correction(id):state(id,{state:'waiting_descriptions',feedback_revision:3,retry_available:true,dependency}));};
+  try{
+   await act(async()=>{renderer=create(React.createElement(Probe,{id}));});await act(async()=>value.generate());assert.equal(value.ask,true);assert.equal(posts,0);
+   dependency=changed==='removed'?null:{...dependency,...(changed==='set'?{description_set_id:'44444444-4444-4444-8444-444444444444'}:{processing_revision:4})};
+   await act(async()=>{value.confirm();await new Promise(resolve=>setImmediate(resolve));});
+   assert.equal(posts,0,changed);assert.match(value.notice,/status changed/);assert.equal(value.ask,false);
+  }finally{if(renderer)await act(async()=>renderer.unmount());}
+ }}finally{globalThis.fetch=old;}
+});
+
+test('closing the details controller or backgrounding during retry preflight cannot submit later',async()=>{
+ const old=globalThis.fetch,{backgroundApp}=await import('./helpers/recording-screen-ui.mjs');let serial=0;
+ try{for(const leave of ['close','background']) {
+  const id=`94949494-9494-4494-8494-${String(++serial).padStart(12,'0')}`;let renderer,finish,posts=0,pending,delay=false;
+  globalThis.fetch=async(url,init={})=>{
+   if(init.method==='POST')posts++;
+   if(url.endsWith('/corrections/'))return response(correction(id));
+   if(delay)return new Promise(resolve=>{finish=()=>resolve(response(state(id,{feedback_revision:3,state:'failed',retry_available:true})));});
+   return response(state(id,{feedback_revision:3,state:'failed',retry_available:true}));
+  };
+  try{
+   await act(async()=>{renderer=create(React.createElement(Probe,{id}));});
+   delay=true;
+   await act(async()=>{pending=value.generate();});assert.equal(typeof finish,'function');
+   if(leave==='close'){await act(async()=>renderer.unmount());renderer=null;}
+   else await act(async()=>backgroundApp('background'));
+   await act(async()=>{finish();await pending;});assert.equal(posts,0,leave);
+  }finally{if(renderer)await act(async()=>renderer.unmount());backgroundApp('active');}
+ }}finally{globalThis.fetch=old;}
+});

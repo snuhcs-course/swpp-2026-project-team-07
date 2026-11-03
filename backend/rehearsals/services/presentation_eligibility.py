@@ -41,11 +41,15 @@ def evaluate(*, attempt_id, page_count, duration_ms, slide_events, transcript, a
         if visits != aligned_visits or any(v['slide_index']>=page_count for v in visits):
             raise ValueError('invalid_alignment')
         # Validate the measurements generated locally, never a client claim of speech.
-        if (measurements.get('version')!='presentation-measurements-v1'
+        if (measurements.get('version') not in ('presentation-measurements-v1', 'presentation-measurements-v2')
                 or measurements.get('attempt_id')!=attempt_id or measurements.get('duration_ms')!=duration_ms
                 or not re.fullmatch('[0-9a-f]{64}',measurements.get('audio_hash') or '')
                 or measurements.get('status') not in ('available','insufficient_evidence')):
             raise ValueError('audio_unavailable')
+        if (measurements['version'] == 'presentation-measurements-v2'
+                and ('reason' not in measurements or measurements['reason'] != (
+                    None if measurements['status'] == 'available' else 'insufficient_audio_evidence'))):
+            raise ValueError('invalid_measurements')
         items=measurements['items']
         if not isinstance(items,list) or (measurements['status']=='insufficient_evidence' and items):
             raise ValueError('invalid_measurements')

@@ -154,7 +154,7 @@ test('long feedback opens complete text in a bounded scroll area and closes with
   });
 });
 
-test('feedback details close when validation, selected slide, source recording or active screen changes', async () => {
+test('feedback details show changed status honestly and close when selected slide, source recording or active screen changes', async () => {
   for (const change of ['stale', 'slide', 'source', 'inactive']) {
     setup({ findings: [finding('content', 1, 'Only the current verified observation may be expanded')] });
     await render(async renderer => {
@@ -164,8 +164,11 @@ test('feedback details close when validation, selected slide, source recording o
       if (change === 'slide') runtime.nav = { ...runtime.nav, sel: 1 };
       if (change === 'source') runtime.model.state.run.parts[0] = { ...runtime.model.state.run.parts[0], attemptId: 'different-recording' };
       await act(async () => renderer.update(React.createElement(ReviewScreen, { active: change !== 'inactive' })));
-      assert.equal(renderer.root.findAllByType('scroll').length, 0, change);
+      assert.equal(renderer.root.findAllByType('scroll').length, change === 'stale' ? 1 : 0, change);
       if (change === 'stale') {
+        assert.match(text(renderer), /Feedback out of date/);
+        assert.doesNotMatch(text(renderer), /Only the current verified observation may be expanded/);
+        await act(async () => button(renderer, 'Close feedback details').props.onPress());
         runtime.feedback = currentFeedback;
         await act(async () => renderer.update(React.createElement(ReviewScreen)));
         assert.equal(renderer.root.findAllByType('scroll').length, 0, 'revalidated feedback stays closed until requested');

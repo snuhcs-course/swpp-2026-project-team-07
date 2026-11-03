@@ -13,7 +13,9 @@ import { requirementsDirty, requirementsPending } from '../presentations/require
 import { defaultRequirementsPending } from '../presentations/defaultRequirements';
 import { getRequirementsVersion, subscribeRequirements, readRequirements } from '../presentations/requirementsStore';
 import { createSlideReviewReader, effectiveSlideReview, publishSlideReview, readSlideReview, slideReviewIdentity, slideReviewInitialClaims as initialClaims, slideReviewInitialKey, slideReviewKey, slideReviewInitialPreflights, slideReviewPreflightObservation } from './slideReviewStore';
-import { parseSlideReview, reviewActive, type ReviewScope, type SlideReview } from './slideReview';
+import { completedReviewNeedsRecovery, parseSlideReview, reviewActive, type ReviewScope, type SlideReview } from './slideReview';
+
+type RetryConfirmation={revision:number;token:string;dependency?:{id:string;revision:number}};
 
 export function useSlideReview(id:string,scope:ReviewScope,review:ReviewAttempt|null,requirementsRevision:number|null, automatic=false, localDeckId?:string) {
  const api=String(normalizeApi(API_URL)), identity=String(slideReviewIdentity(api,id,scope)), scopeKey=JSON.stringify(scope);
@@ -27,7 +29,7 @@ export function useSlideReview(id:string,scope:ReviewScope,review:ReviewAttempt|
  const [value,setValue]=useState<{identity:string;state:SlideReview|null}>({identity,state:null});
  const [message,setMessage]=useState({identity,text:''}), [busy,setBusy]=useState(false);
  const [readFailed,setReadFailed]=useState(false);
- const [ask,setAsk]=useState<{identity:string;revision:number;token:string}|null>(null);
+ const [ask,setAsk]=useState<(RetryConfirmation&{identity:string})|null>(null);
  const reviewRef=useRef(review);
  useLayoutEffect(()=>{reviewRef.current=review;},[review]);
  const initialKey=String(slideReviewInitialKey(api,id,scope));
@@ -83,7 +85,7 @@ export function useSlideReview(id:string,scope:ReviewScope,review:ReviewAttempt|
  useEffect(()=>{if(!reviewActive(raw)&&!readFailed)return;const timer=setInterval(()=>void refresh(),readFailed?5000:2000);return()=>clearInterval(timer);},[raw,readFailed,refresh]);
  // Subscribe to correction changes without admitting any analysis.
  void version;
- const generate=async(confirmed?:{revision:number;token:string})=>{
+ const generate=async(confirmed?:RetryConfirmation)=>{
   if(!enabled.current||lock.current||live.current!==identity)return;
   if(localDeckId&&requirementsDirty(localDeckId,api)){setMessage({identity,text:'Synchronize presentation settings before updating feedback.'});return;}
   const op=++operation.current;lock.current=true;setBusy(true);setAsk(null);
@@ -104,11 +106,14 @@ export function useSlideReview(id:string,scope:ReviewScope,review:ReviewAttempt|
    if(automatic && (fresh.feedback_revision>0||fresh.state!=='absent'||fresh.stale||readStored(pendingKey)||fresh.requires_confirmation||fresh.dependency?.requires_confirmation||fresh.dependency?.retry_action))return;
    if(scope.slides.length!==1)throw new Error('Select one slide before updating feedback.');
    const selected=fresh.selection;
-   if(confirmed&&(fresh.feedback_revision!==confirmed.revision||selected?.token!==confirmed.token))throw new Error('Feedback status changed. Review it before retrying.');
-   if(reviewActive(fresh)||(fresh.state==='completed'&&!fresh.stale))return;
+   if(confirmed&&(fresh.feedback_revision!==confirmed.revision||selected?.token!==confirmed.token||
+     (confirmed.dependency? !fresh.dependency?.retry_action||fresh.dependency.description_set_id!==confirmed.dependency.id||fresh.dependency.processing_revision!==confirmed.dependency.revision : !!fresh.dependency?.retry_action)))throw new Error('Feedback status changed. Review it before retrying.');
+   if(reviewActive(fresh)||(fresh.state==='completed'&&!fresh.stale&&
+     !(fresh.retry_available&&completedReviewNeedsRecovery(fresh,scope.slides[0].slide_index))))return;
    if(fresh.availability.state!=='available'||!selected)throw new Error('Feedback is unavailable on this server.');
    const uncertain=readStored<{revision:number;dependency?:number}|boolean>(pendingKey)||fresh.requires_confirmation||fresh.dependency?.requires_confirmation;
-   if(uncertain&&!confirmed){setAsk({identity,revision:fresh.feedback_revision,token:selected.token});return;}
+   if(uncertain&&!confirmed){setAsk({identity,revision:fresh.feedback_revision,token:selected.token,
+     ...(fresh.dependency?.retry_action?{dependency:{id:fresh.dependency.description_set_id,revision:fresh.dependency.processing_revision}}:{})});return;}
    if(fresh.dependency?.retry_action){
     if(!fresh.dependency.retry_available)throw new Error('Slide profile retry is not available yet.');
     // Explicit dependency recovery uses its own generation and receipt protocol.

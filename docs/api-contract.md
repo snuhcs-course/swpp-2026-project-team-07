@@ -1194,6 +1194,12 @@ original IDs. Playback's positive-duration filtering must not renumber citations
 Private receipts, model selections and reconstruction audits are never public.
 
 
+### Issue #49 audio validation and targeted slide recovery
+
+Grading uses the upload contract's inclusive ±1,000 ms decoded/capture duration tolerance and private `presentation-measurements-v2` diagnostics. Public routes and response shapes are unchanged. The existing error object distinguishes `audio_missing`, `audio_decode_failed`, `audio_measurement_failed`, `audio_invalid`, `audio_duration_mismatch` and `insufficient_audio_evidence`; historical `audio_unavailable` retains a cautious generic explanation. Exact supported legacy terminal scoring protocols remain readable without automatic regeneration, subject to all other freshness checks. Explicit failed/rejected grading retries create new current-version measurements; historical snapshots and receipts are retained. See [diagnostic and history rules](presentation-score-v2.md#audio-diagnostics-and-historical-results--issue-49).
+
+Singleton slide reviews may be `completed` while their selected summary has `invalid_evidence` or `model_error`, or is missing. These cases expose `retry_available` subject to the existing cooldown, and safe `review_invalid_evidence`, `review_model_error` or `review_summary_missing` errors. A missing summary projects `result:null` for parser compatibility without editing the stored result. A matching explicit `feedback_revision` is required to replace such a completed assessment; normal selection, correction/settings, uncertainty, quota and source checks still apply. Successful, partial and insufficient-evidence results are outside this exception. Reads do not generate work.
+
 ### Automatic scoring and rejected-total recovery — October 17, 2026
 
 The Android app-level scoring host admits first assessments for new selected recordings and selected saved recordings after opening their presentation. It reuses the existing POST shape after transcripts and confirmed settings/corrections synchronize. Later synchronized input changes coalesce for one second. Persistent per-input intent and shared submission locks prevent repeated navigation, cache publications, concurrent screens and remounts from admitting duplicate work. GET remains read-only. Unresolved POST intent reconciles through foreground GET polling; failures and uncertain outcomes require explicit recovery rather than automatic same-input paid retries. Singleton feedback and Q&A remain independent.
