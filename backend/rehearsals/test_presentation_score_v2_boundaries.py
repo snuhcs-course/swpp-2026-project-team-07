@@ -261,7 +261,7 @@ class PresentationScoreV2BoundaryTests(TestCase):
             scorer.source_identity(altered)
 
     def test_delivery_instructions_require_direct_speech_and_eligible_measurement(self):
-        self.assertEqual(scorer.PROMPT_VERSION, 'presentation-score-prompt-v2.2')
+        self.assertEqual(scorer.PROMPT_VERSION, 'presentation-score-prompt-v2.3')
         for phrase in ('direct supporting speech selection',
                        'Measurements and duration requirements alone',
                        'delivery weakness and delivery deduction'):
@@ -296,6 +296,34 @@ class PresentationScoreV2BoundaryTests(TestCase):
             scorer.normalize(self.bundle, prepared, receipt)
         self.assertEqual(caught.exception.code, 'source_mismatch')
         self.assertEqual(receipt.body, original)
+
+    # OpenAI Codex, 2026-11-03: synthetic advice transport, not an AI-quality test.
+    def test_actionable_text_retains_its_own_quote_and_invalid_advice_cannot_change_scores(self):
+        raw = output(self.bundle)
+        strength = 'The greeting welcomes the audience.'
+        improvement = ('The closing fragment leaves its purpose unclear. Explain the takeaway so the '
+                       'audience knows what to retain; try one sentence linking it to the main point.')
+        raw['feedback']['strengths'] = [{'text': strength, 'evidence': [speech()]}]
+        raw['feedback']['improvements'] = [
+            {'text': improvement, 'evidence': [speech('v2')]},
+            {'text': 'Unusable source must not reach the screen.', 'evidence': [speech('v999')]}]
+        prepared = scorer.prepare(self.bundle, self.config)
+        instructions = json.loads(prepared.payload)['instructions']
+        self.assertIn('one concrete feasible next step', instructions)
+        self.assertIn('not every cited interval needs criticism', instructions)
+        result = scorer.normalize(self.bundle, prepared, self.receipt(prepared, raw))
+        feedback = result['feedback']
+        self.assertEqual(set(feedback), {'summary', 'strengths', 'weaknesses', 'improvements', 'improvement_shortage'})
+        self.assertEqual([item['text'] for item in feedback['strengths']], [strength])
+        self.assertEqual([item['text'] for item in feedback['improvements']], [improvement])
+        self.assertEqual(set(feedback['improvements'][0]), {'text', 'evidence'})
+        evidence = feedback['improvements'][0]['evidence'][0]
+        self.assertEqual((evidence['slide_index'], evidence['quote'], evidence['start_ms'], evidence['end_ms']),
+                         (2, 'Return.', 2200, 2500))
+        self.assertEqual(feedback['strengths'][0]['evidence'][0]['quote'], 'Hello,')
+        self.assertEqual(result['validation']['optional']['rejected_count'], 1)
+        self.assertEqual(result['validation']['score_critical']['rejected_count'], 0)
+        self.assertEqual(result['overall']['score'], 100)
 
     def test_slide_scope_rule_reaches_request_and_cross_slide_evidence_stays_rejected(self):
         prepared = scorer.prepare(self.bundle, self.config)

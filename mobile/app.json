@@ -25,7 +25,7 @@
         "android.permission.DOWNLOAD_WITHOUT_NOTIFICATION"
       ],
       "predictiveBackGestureEnabled": false,
-      "versionCode": 5
+      "versionCode": 7
     },
     "plugins": [
       "expo-router",

@@ -35,7 +35,7 @@ test('fresh offline startup seeds the exact seven-page PDF with durable images/t
   assert.equal(deck.title, 'Seoul'); assert.equal(deck.pageCount, 7); assert.equal(deck.text, 'ready');
   assert.equal(deck.pages.length, 7); assert.equal(deck.slides.length, 7);
   assert.ok(deck.slides.every(slide => slide.text.trim())); assert.equal(deck.slides[0].title, 'Seoul');
-  assert.equal(deck.target, 300); assert.equal(deck.targets.reduce((a, b) => a + b, 0), 300);
+  assert.equal(deck.target, 600); assert.equal(deck.targets.reduce((a, b) => a + b, 0), 600);
   assert.equal(deck.audience, 'General audience');
   assert.equal(digest(await fs.readFile(new URL(deck.uri))), expectedHash);
   for (const page of deck.pages) { assert.ok(page.uri.startsWith(documentDirectory)); assert.ok((await fs.stat(new URL(page.uri))).size > 0); }

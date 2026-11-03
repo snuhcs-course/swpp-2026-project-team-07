@@ -45,6 +45,12 @@ Review prefers existing local audio/PDF. Use **Download audio for offline review
 
 The native audio position drives PDF pages and timed word highlighting. Tap a timed word or visit, use previous/next visit or ±5 seconds; seeks preserve playing/paused intent. Backgrounding or leaving the screen pauses playback, and returning requires Play. Repeated/backward and instantaneous visits remain listed; simultaneous events use the last event. Missing alignment falls back to **Recorded navigation**. Partial/untimed text remains readable, and saved EN/KO rates explicitly use total rehearsal time including silence. See the [review contract](api-contract.md#mobile-rehearsal-review).
 
+## Current compact Review controls — November 3, 2026
+
+The selected demo retains its existing layout. Per-slide timing labels and bar colors use one inclusive ±15% allocation range: Under time, On time, or Over time. The filler row reports the count from available selected-source transcript text; unavailable text shows a dash. Completed content/delivery categories with no finding say No issue flagged. Opening the existing feedback details retains every verified observation and suggestion, including timing/filler advice. These labels do not change rubric scores.
+
+Full Review keeps its equal-width slide sections. Dragging previews an exact position within a section; release seeks within the saved source segments, including repeated visits and retakes. Playing audio continues, while paused or idle seeks stay paused. Accessibility adjustments move five seconds. Interrupted gestures cancel, and leaving/backgrounding or changing the selected source invalidates pending seeks. Missing source audio remains disclosed; unavailable target audio never silently seeks elsewhere. The selected run still plays in slide order, retaining each slide's chronological source segments.
+
 ## App connection and transcription disclosure
 
 - Emulator: `EXPO_PUBLIC_API_URL=http://10.0.2.2:8000/api` in `mobile/.env`.

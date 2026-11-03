@@ -338,7 +338,7 @@ class PresentationScoreLifecycleTests(SyntheticCoaching, TestCase):
         response = self.post_score(feedback_revision=1, expected_selection=state['selection']['token'])
         self.assertEqual(response.status_code, 202, response.content)
         fresh = self.job(owner)
-        self.assertEqual(fresh.prompt_version, 'presentation-score-prompt-v2.2')
+        self.assertEqual(fresh.prompt_version, 'presentation-score-prompt-v2.3')
         self.assertEqual(fresh.source_snapshot['presentation_score']['protocol'], scoring.protocol())
         self.assertNotEqual(fresh.prompt_digest, old.prompt_digest)
         old.refresh_from_db(); request.refresh_from_db()
@@ -389,3 +389,75 @@ class PresentationScoreLifecycleTests(SyntheticCoaching, TestCase):
         self.assertEqual(response.status_code, 503, response.content)
         self.assertEqual(response.json()['error']['code'], 'snapshot_unavailable')
         self.assertEqual(owner.jobs.count(), 1)
+
+    # OpenAI Codex, 2026-11-03: #45 prompt-upgrade receipt preservation.
+    def prior_v22_protocol(self, job):
+        previous = deepcopy(scoring.protocol())
+        previous['prompt_version'] = 'presentation-score-prompt-v2.2'
+        previous['definition']['prompt_version'] = 'presentation-score-prompt-v2.2'
+        previous['definition']['prompt_sha256'] = 'ce6eebac47b75479d9fc7945e106b91f0e33d5e24798b20f093b9c6aac42dce1'
+        self.assertEqual(coaching._digest(previous),
+                         '842ef8c656c1bf7042bfb4f312424a303d3b8f530dc33792b735f323b01cd8a7')
+        self.assertEqual(scoring.v1._digest(previous),
+                         '9fda083caf1af6c4927025f148bdd5df773184846d311baba2fbb31af9ab1f07')
+        job.prompt_version = 'presentation-score-prompt-v2.2'
+        job.prompt_digest = coaching._digest(previous)
+        job.source_snapshot['presentation_score']['protocol'] = json.loads(json.dumps(previous, sort_keys=True))
+        job.save(update_fields=['prompt_version', 'prompt_digest', 'source_snapshot'])
+
+    def test_v22_feedback_upgrade_keeps_old_result_and_receipt_until_fresh_generation(self):
+        self.complete(); self.assertEqual(self.post_score().status_code, 202)
+        owner = self.owner(); self.assertEqual(self.execute_score(owner), (1, 1))
+        old = self.job(owner); self.prior_v22_protocol(old)
+        snapshot, result = deepcopy(old.source_snapshot), deepcopy(old.result)
+        request = FeedbackRequest.objects.get(coaching_job=old)
+        receipt = bytes(request.raw_body)
+        with patch.object(provider, 'request_raw') as call, \
+             patch('rehearsals.services.presentation_measurements.measure_audio') as measure:
+            for _ in range(2):
+                state = self.client.get(self.url).json()
+                self.assertTrue(state['stale'])
+                self.assertTrue(state['retry_available'])
+                self.assertIsNone(state['result'])
+            call.assert_not_called(); measure.assert_not_called()
+        self.assertEqual(self.post_score().status_code, 409)
+        response = self.post_score(feedback_revision=1, expected_selection=state['selection']['token'])
+        self.assertEqual(response.status_code, 202, response.content)
+        fresh = self.job(owner)
+        self.assertEqual(fresh.prompt_version, 'presentation-score-prompt-v2.3')
+        self.assertNotEqual(fresh.prompt_digest, old.prompt_digest)
+        with self.assertRaises(FeedbackError) as caught:
+            scoring.normalize(old.description_set, old, None, None)
+        self.assertEqual(caught.exception.code, 'snapshot_unavailable')
+        owner.refresh_from_db(); self.assertEqual(self.execute_score(owner), (1, 1))
+        self.assertEqual(self.client.get(self.url).json()['result']['overall']['score'], 100)
+        old.refresh_from_db(); request.refresh_from_db()
+        self.assertEqual(old.source_snapshot, snapshot)
+        self.assertEqual(old.result, result)
+        self.assertEqual(bytes(request.raw_body), receipt)
+
+    def test_unsent_v22_job_cannot_dispatch_under_feedback_prompt_v23(self):
+        self.complete(); self.assertEqual(self.post_score().status_code, 202)
+        owner = self.owner(); old = self.job(owner); self.prior_v22_protocol(old)
+        snapshot = deepcopy(old.source_snapshot)
+        self.assertEqual(self.execute_score(owner), (0, 0))
+        old.refresh_from_db()
+        self.assertEqual(old.state, 'queued')
+        self.assertEqual(old.source_snapshot, snapshot)
+        self.assertFalse(FeedbackRequest.objects.filter(coaching_job=old).exists())
+
+    def test_v22_feedback_upgrade_requires_both_frozen_fingerprints(self):
+        self.complete(); self.assertEqual(self.post_score().status_code, 202)
+        owner = self.owner(); old = self.job(owner); self.prior_v22_protocol(old)
+        old.source_snapshot['presentation_score']['protocol']['definition']['prompt_sha256'] = 'f' * 64
+        for recompute_digest in (False, True):
+            with self.subTest(recompute_digest=recompute_digest):
+                if recompute_digest:
+                    old.prompt_digest = coaching._digest(old.source_snapshot['presentation_score']['protocol'])
+                old.save(update_fields=['prompt_digest', 'source_snapshot'])
+                state = self.client.get(self.url).json()
+                self.assertFalse(state['retry_available'])
+                response = self.post_score(feedback_revision=1)
+                self.assertEqual(response.status_code, 503, response.content)
+                self.assertEqual(response.json()['error']['code'], 'snapshot_unavailable')
+                self.assertEqual(owner.jobs.count(), 1)

@@ -4,12 +4,13 @@
 // OpenAI Codex faster presentation exit: docs/ai-collaboration-prompts-iteration-2.md#presentation-to-home-pause-october-15-2026
 // OutLoud redesign: play one sentence (a stretch of one take's audio).
 // OpenAI Codex Review and Full review: docs/ai-collaboration-prompts-iteration-2.md#review-and-full-review-redesign-october-15-2026
+// OpenAI Codex #44: exact queued seeks preserve original visits and playback intent.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
 
 export type Segment = { uri: string; startMs: number; endMs: number };
-type Playback = { key: string; segments: Segment[]; index: number; token: number; advancing: boolean; paused: boolean };
+type Playback = { key: string; segments: Segment[]; index: number; token: number; advancing: boolean; paused: boolean; atEnd: boolean };
 type PlaybackState = { key: string | null; progress: number; elapsedMs: number; paused: boolean; positionMs: number | null; uri: string | null };
 const idle: PlaybackState = { key: null, progress: 0, elapsedMs: 0, paused: false, positionMs: null, uri: null };
 
@@ -37,7 +38,7 @@ export function useSegmentPlayer() {
     setError('Audio playback failed. Tap Play to retry.');
   }, [stop]);
 
-  const startSegment = useCallback((mine: number, seg: Segment) => {
+  const startSegment = useCallback((mine: number, seg: Segment, positionMs = seg.startMs) => {
     const next = operations.current.catch(() => undefined).then(async () => {
       if (token.current !== mine) return;
       player.pause();
@@ -45,7 +46,7 @@ export function useSegmentPlayer() {
       for (let i = 0; i < 40 && !player.isLoaded && token.current === mine; i++) await new Promise(r => setTimeout(r, 50));
       if (token.current !== mine) return;
       if (!player.isLoaded) throw new Error('Audio did not load');
-      await player.seekTo(seg.startMs / 1000);
+      await player.seekTo(positionMs / 1000);
       if (token.current !== mine) return;
       if (!current.current?.paused) player.play();
     });
@@ -53,28 +54,44 @@ export function useSegmentPlayer() {
     return next;
   }, [player]);
 
-  const playSegments = useCallback(async (key: string, segments: Segment[]) => {
-    if (current.current?.key === key) {
-      const active = current.current;
-      active.paused = !active.paused;
-      if (active.paused) { try { player.pause(); } catch { /* loading */ } }
-      else if (!active.advancing && player.isLoaded) player.play();
-      setState(s => ({ ...s, paused: active.paused }));
-      return;
-    }
+  const seekSegments = useCallback(async (key: string, segments: Segment[], elapsedMs: number, paused: boolean) => {
     const valid = segments.filter(s => s.endMs > s.startMs);
-    if (!valid.length) return;
+    if (!valid.length || !Number.isFinite(elapsedMs)) return;
+    const span = valid.reduce((sum, seg) => sum + seg.endMs - seg.startMs, 0);
+    const target = Math.max(0, Math.min(span, elapsedMs));
+    let index = 0, offset = target;
+    while (index < valid.length - 1 && offset >= valid[index].endMs - valid[index].startMs) {
+      offset -= valid[index].endMs - valid[index].startMs; index++;
+    }
+    const positionMs = valid[index].startMs + offset;
     setError(null);
     const mine = ++token.current;
-    const active: Playback = { key, segments: valid, index: 0, token: mine, advancing: true, paused: false };
+    const active: Playback = { key, segments: valid, index, token: mine, advancing: true, paused: paused || target === span, atEnd: target === span };
     current.current = active;
-    setState({ key, progress: 0, elapsedMs: 0, paused: false, positionMs: null, uri: null });
+    try { player.pause(); } catch { /* loading */ }
+    setState({ key, progress: target / span, elapsedMs: target, paused: active.paused, positionMs, uri: valid[index].uri });
     try {
       await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
-      await startSegment(mine, valid[0]);
+      await startSegment(mine, valid[index], positionMs);
       if (current.current === active) active.advancing = false;
     } catch { if (token.current === mine) failed(); }
   }, [failed, player, startSegment]);
+  const setPaused = useCallback((paused: boolean) => {
+    const active = current.current;
+    if (!active) return;
+    active.paused = paused || active.atEnd;
+    if (active.paused) { try { player.pause(); } catch { /* loading */ } }
+    else if (!active.advancing && player.isLoaded) player.play();
+    setState(s => s.key === active.key ? { ...s, paused: active.paused } : s);
+  }, [player]);
+  const playSegments = useCallback(async (key: string, segments: Segment[]) => {
+    const active = current.current;
+    if (active?.key === key) {
+      if (active.atEnd) return seekSegments(key, active.segments, 0, false);
+      setPaused(!active.paused); return;
+    }
+    return seekSegments(key, segments, 0, false);
+  }, [seekSegments, setPaused]);
   // Existing sentence and Q&A taps retain their tap-again-to-stop behavior.
   const play = useCallback((key: string, seg: Segment) => {
     if (current.current?.key === key) { stop(); return Promise.resolve(); }
@@ -108,5 +125,5 @@ export function useSegmentPlayer() {
     return () => { sub.remove(); token.current++; current.current = null; try { player.pause(); } catch { /* released */ } };
   }, [player, stop]);
 
-  return { playingKey: state.key, progress: state.progress, elapsedMs: state.elapsedMs, paused: state.paused, positionMs: state.positionMs, uri: state.uri, error, play, playSegments, stop };
+  return { playingKey: state.key, progress: state.progress, elapsedMs: state.elapsedMs, paused: state.paused, positionMs: state.positionMs, uri: state.uri, error, play, playSegments, seekSegments, setPaused, stop };
 }

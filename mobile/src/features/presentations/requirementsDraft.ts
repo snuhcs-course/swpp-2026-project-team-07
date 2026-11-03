@@ -5,7 +5,7 @@ import { readStored, removeStored, writeStored } from '../../services/storage';
 import { normalizeApi } from '../transcription/analysisStorage';
 import { createPresentationContextClient } from './contextClient';
 import { serializeContextWrite } from './contextWriter';
-import { hasDefaultRequirements } from './defaultRequirementsState';
+import { cancelPresentationDefaults, defaultRequirementsPending, hasDefaultRequirements } from './defaultRequirementsState';
 import { notifyRequirementsChanged, readRequirements } from './requirementsStore';
 export type RequirementValues = Pick<PresentationRequirements, 'requiredDurationSeconds' | 'audience'>;
 export type RequirementsDraft = {
@@ -35,6 +35,8 @@ export function confirmRequirements(id: string, api: string, desired: Requiremen
   const current = readRequirementsDraft(id, api);
   save(id, api, { version: 1, base: current?.pending ? current.base : base, desired: { ...desired },
     localVersion: (current?.localVersion ?? 0) + 1, pending: true, conflict: current?.conflict ?? false, error: '' });
+  // An explicit choice, including clearing both values, replaces untouched import defaults.
+  if (defaultRequirementsPending(id, api)) cancelPresentationDefaults(id, api);
 }
 export function acceptServerRequirements(id: string, api: string) { removeStored(key(id, api)); notifyRequirementsChanged(); }
 export function keepLocalRequirements(id: string, api: string) {

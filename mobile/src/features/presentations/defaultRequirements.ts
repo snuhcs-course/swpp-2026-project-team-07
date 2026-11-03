@@ -12,7 +12,7 @@ export function synchronizePresentationDefaults(id:string,deckId:string,api:stri
  if(!defaultRequirementsPending(id,api))return Promise.resolve();
  const client=createPresentationContextClient(api,(url,options)=>transport(url,{...options,signal:AbortSignal.timeout(15000)}));
  const promise=serializeContextWrite(id,api,async()=>{
-  if(requirementsDirty(id,api))return;
+  if(!defaultRequirementsPending(id,api)||requirementsDirty(id,api))return;
   let r=await client.ensure(id,deckId);
   // An idempotent ensure can reveal a previously completed save or someone else's preferences.
   if(requirementsDirty(id,api))return;

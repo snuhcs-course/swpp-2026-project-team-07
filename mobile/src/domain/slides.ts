@@ -60,6 +60,14 @@ export function requiredSlideTargets(texts: readonly string[], total: number | n
   return total === null ? null : slideTargets(texts, total);
 }
 
+/** OpenAI Codex, 2026-11-03: one inclusive ±15% allocation rule for issue #46. */
+export function slideTimingLabel(actualSeconds: number, allocationSeconds: number): 'Not recorded' | 'No allocation' | 'Under time' | 'On time' | 'Over time' {
+  if (!Number.isFinite(actualSeconds) || actualSeconds <= 0) return 'Not recorded';
+  if (!Number.isFinite(allocationSeconds) || allocationSeconds <= 0) return 'No allocation';
+  const actual = Math.round(actualSeconds * 1000), allocation = Math.round(allocationSeconds * 1000);
+  return actual * 100 < allocation * 85 ? 'Under time' : actual * 100 > allocation * 115 ? 'Over time' : 'On time';
+}
+
 export type PresentationTiming = {
   source: 'required' | 'legacy_default'; total: number; targets: number[]; requirementsRevision: number | null;
 };

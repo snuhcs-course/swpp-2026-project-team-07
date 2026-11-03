@@ -18,7 +18,7 @@ from .feedback import FeedbackError, json_bytes, restore_analysis
 from .feedback_config import Selection, QuotaPolicy, assert_selection, selection_descriptor
 
 VERSION = 'presentation-score-v2'
-PROMPT_VERSION = 'presentation-score-prompt-v2.2'
+PROMPT_VERSION = 'presentation-score-prompt-v2.3'
 SCHEMA_VERSION = VERSION
 
 # Exact prior protocols, including rubric, evidence, measurements and schema.
@@ -32,6 +32,10 @@ _PREVIOUS_PROTOCOLS = (
     ('presentation-score-prompt-v2.1',
      'cfd48a4c2992dc175a115b7739dc226b6c961a07c292ac8dc4ae0e5a549e4510',
      '8320b6497c480dc642ecd87a372e57e58317a351d5288b00d8c30e4eaaf3754f'),
+    # OpenAI Codex, 2026-11-03: exact pre-#45 identity, not a permissive version match.
+    ('presentation-score-prompt-v2.2',
+     '842ef8c656c1bf7042bfb4f312424a303d3b8f530dc33792b735f323b01cd8a7',
+     '9fda083caf1af6c4927025f148bdd5df773184846d311baba2fbb31af9ab1f07'),
 )
 
 

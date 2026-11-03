@@ -6,7 +6,7 @@ import { resolve, load } from './helpers/domain-loader.mjs';
 registerHooks({ resolve, load });
 
 const { GRADE_ORDER, slideGrade, feedbackRows } = await import('../src/domain/analysis.ts');
-const { runPosition } = await import('../src/domain/run.ts');
+const { runPosition,runScrubPosition,runSeekPosition } = await import('../src/domain/run.ts');
 const { buildLines, buildVocabulary } = await import('../src/domain/lines.ts');
 
 const ctx = (overrides = {}) => ({
@@ -77,6 +77,17 @@ test('runPosition maps concatenated audio to true slide starts, including a miss
   const missingMiddle = [all[0], all[2]];
   assert.equal(runPosition(35000, missingMiddle), 75);
   assert.equal(runPosition(50000, missingMiddle), 90);
+});
+
+// OpenAI Codex #44: slider sections are equal width while their recorded durations differ.
+test('continuous scrub mapping keeps exact offsets and does not invent audio for empty slides',()=>{
+ assert.deepEqual(runScrubPosition(.25,[20,40,0]),{slide:0,offsetMs:15000,positionMs:15000});
+ assert.deepEqual(runScrubPosition(.5,[20,40,0]),{slide:1,offsetMs:20000,positionMs:40000});
+ assert.deepEqual(runScrubPosition(1,[20,40,0]),{slide:2,offsetMs:0,positionMs:60000});
+ assert.deepEqual(runScrubPosition(.375,[8]),{slide:0,offsetMs:3000,positionMs:3000});
+ assert.deepEqual(runSeekPosition(20000,[20,0,40]),{slide:2,offsetMs:0,positionMs:20000});
+ assert.deepEqual(runSeekPosition(999999,[20,0,40]),{slide:2,offsetMs:40000,positionMs:60000});
+ assert.equal(runSeekPosition(0,[0,0]),null);assert.equal(runScrubPosition(0,[]),null);
 });
 
 test('real merged-run lines mark a sentence crossing adjacent slide recordings', () => {

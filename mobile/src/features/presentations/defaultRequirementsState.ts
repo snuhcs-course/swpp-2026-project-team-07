@@ -1,9 +1,10 @@
 // Persisted default intent/provenance. Independent of context writers and confirmed drafts.
+// OpenAI Codex, 2026-11-03: #36 defaults; see docs/ai-collaboration-prompts-iteration-2.md.
 import {readStored,writeStored,removeStored} from '../../services/storage';
 import {normalizeApi} from '../transcription/analysisStorage';
 import {readRequirements} from './requirementsStore';
 export const DEFAULT_AUDIENCE='General audience';
-export const DEFAULT_DURATION_SECONDS=300;
+export const DEFAULT_DURATION_SECONDS=600;
 type Intent={pending:boolean;appliedRevision:number|null;contextId:string|null};
 export const defaultRequirementsKey=(id:string,api:string)=>`presentation-defaults:v1:${normalizeApi(api)}:${encodeURIComponent(id)}`;
 export function requestPresentationDefaults(id:string,api:string){
@@ -16,6 +17,7 @@ export function hasDefaultRequirements(id:string,api:string){
  const intent=readStored<Intent>(defaultRequirementsKey(id,api));if(!intent)return false;
  const r=readRequirements(id,api);
  return !!intent&&!intent.pending&&intent.contextId===r.contextId&&intent.appliedRevision===r.revision&&
-  r.audience===DEFAULT_AUDIENCE&&r.requiredDurationSeconds===DEFAULT_DURATION_SECONDS;
+  // Retain provenance for accepted five-minute defaults from before the policy change.
+  r.audience===DEFAULT_AUDIENCE&&(r.requiredDurationSeconds===DEFAULT_DURATION_SECONDS||r.requiredDurationSeconds===300);
  }catch{return false;}
 }

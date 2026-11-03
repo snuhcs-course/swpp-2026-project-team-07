@@ -7,7 +7,7 @@ Version 3.0, 23 October 2026
 
 **Application baseline:** [merged PR31](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/31) (`c4a3f48`). **Evidence updated:** October 23, 2026.
 
-PR31 includes recording/review, Scribe v2 transcription, saved audience/time settings, cues, transcript corrections, evidence-linked feedback, scoring and audience Q&A. New presentations start with General audience and a 5-minute duration. Users can edit or clear these settings. [Design Documentation](../Design-Documentation.md) describes the implementation.
+PR31 includes recording/review, Scribe v2 transcription, saved audience/time settings, cues, transcript corrections, evidence-linked feedback, scoring and audience Q&A. As of November 3, new presentations start with General audience and a 10-minute duration. Users can edit or clear these settings. [Design Documentation](../Design-Documentation.md) describes the implementation.
 
 The October 22 full-suite run passed 548 mobile and 554 PostgreSQL backend tests, with zero failures or skips. Both backend coverage groups meet their targets; both mobile groups miss their line targets. Device reports contain unresolved failures. See [Testing Documentation](testing.md) for the separate runs, coverage and source limitations.
 

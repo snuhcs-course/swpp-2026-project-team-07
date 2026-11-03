@@ -4,6 +4,9 @@ export const ScrollView=React.forwardRef(function ScrollView(props,ref){React.us
 export const StyleSheet={create:x=>x,absoluteFill:{}};
 export const Enter=({children})=>React.createElement('enter',null,children),PanView='pan',Glyph='glyph',UIIcon='icon',MiniSlide='mini-slide',ScoreRing='score-ring',PageSurface='page-surface',Pill='pill',IconRow='icon-row',Dialog='dialog';
 export const runtime={model:null,feedback:null,nav:null,routes:[],audio:new Map(),plays:[],stops:0,players:[],scrolls:[]};
+// OpenAI Codex #44: expose background cancellation and exact queued-seek intent.
+const appListeners=new Set();
+export const AppState={currentState:'active',addEventListener(_event,listener){appListeners.add(listener);return {remove(){appListeners.delete(listener);}};},emit(state){this.currentState=state;for(const listener of appListeners)listener(state);}};
 export function useDeckModel(){return runtime.model;}
 export function useRunFeedbackStatus(_model,active){return {...runtime.feedback,active};}
 export function useRunPresentationScores(model,active,slide){runtime.scoreSelections??=[];runtime.scoreSelections.push(slide);if(runtime.scores)return runtime.scores;const empty={score:null,level:null,status:'Not graded',state:null,result:null,target:null};return {items:Array.from({length:model?.n??0},(_,slide)=>({...empty,slide})),overall:empty,target:null,controller:{state:null,busy:false,notice:'',ask:false,refresh:async()=>{},generate:async()=>{},confirm:()=>{},cancel:()=>{}},notice:'',refresh:async()=>{}};}
@@ -18,6 +21,8 @@ export const audioOf=id=>runtime.audio.get(id)??null,useWorkers=()=>new Map();
 export function useSegmentPlayer(){const[,render]=React.useState(0);const[p]=React.useState(()=>{const x={playingKey:null,paused:false,error:null,progress:0,elapsedMs:0,positionMs:null,uri:null};
  x.stop=()=>{runtime.stops++;x.playingKey=null;x.positionMs=null;x.uri=null;};
  x.playSegments=async(key,segments)=>{runtime.plays.push({key,segments});if(x.playingKey===key)x.paused=!x.paused;else{x.playingKey=key;x.paused=false;x.uri=segments[0]?.uri;x.positionMs=segments[0]?.startMs;}render(n=>n+1);};
+ x.seekSegments=async(key,segments,elapsedMs,paused)=>{runtime.plays.push({key,segments,elapsedMs,paused});Object.assign(x,{playingKey:key,elapsedMs,paused,uri:segments[0]?.uri,positionMs:segments[0]?.startMs});render(n=>n+1);};
+ x.setPaused=paused=>{if(x.playingKey){x.paused=paused;render(n=>n+1);}};
  x.play=(key,segment)=>x.playSegments(key,[segment]);return x;});if(!runtime.players.includes(p))runtime.players.push(p);return p;}
 export const Easing={bezier:()=>v=>v},withTiming=(v,_config,complete)=>{complete?.(true);return v;},runOnJS=f=>f;
 export const useSharedValue=value=>{const r=React.useRef({value,get(){return this.value},set(v){this.value=v}});return r.current;};

@@ -2,13 +2,14 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import {registerHooks} from 'node:module';
 import {resolve,load} from './helpers/ai-overview-screen-loader.mjs';registerHooks({resolve,load});
 const React=await import('react');const {act,create}=await import('react-test-renderer');
-const {runtime}=await import('./helpers/ai-overview-screen-native.mjs');
+const {runtime,AppState}=await import('./helpers/ai-overview-screen-native.mjs');
 const {DARK_PALETTE,LIGHT_PALETTE}=await import('../src/design/tokens.ts');runtime.palettes={dark:DARK_PALETTE,light:LIGHT_PALETTE};
 const {ReviewScreen}=await import('../src/screens/ReviewScreen.tsx');
 const {FullReviewScreen}=await import('../src/screens/FullReviewScreen.tsx');
 const {HomeFeedbackStats}=await import('../src/screens/HomeFeedbackStats.tsx');
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;
 function setup(){
+ AppState.currentState='active';
  runtime.scores=null;runtime.scoreSelections=[];runtime.routes=[];runtime.plays=[];runtime.players=[];runtime.scrolls=[];runtime.audio=new Map([['a','file://a.m4a']]);runtime.theme='dark';
  runtime.nav={deckId:'deck',sel:0,slide:0,from:null,nav:null};
  const parts=[{attemptId:'a',segments:[{startMs:0,endMs:1000},{startMs:2000,endMs:3000}]},{attemptId:'b',segments:[{startMs:0,endMs:2000}]},null];
@@ -127,3 +128,85 @@ test('restored comparison ignores an unrelated inherited slide selection',async(
 
 test('Home restores the same verified overall score and level as Full Review while retaining findings and duration',async()=>{for(const theme of ['dark','light']){setup();runtime.theme=theme;runtime.scores={overall:{score:67,level:'competent',status:'Graded',state:null,result:null,target:null}};await render(HomeFeedbackStats,{deckId:'deck',active:true,home:{p:{value:0},vy:{value:0}}},async r=>{const ring=r.root.findByType('score-ring');assert.equal(ring.props.value,'67');assert.deepEqual(ring.props.gradient,[runtime.palettes[theme].good,runtime.palettes[theme].good]);assert.match(ring.props.label,/Overall score\nCompetent/);assert.match(text(r),/4/);assert.match(text(r),/total findings/);assert.match(text(r),/0:04/);assert.match(text(r),/130/);});}});
 test('Home retains pending and partial findings notices without inventing a composed overall score',async()=>{setup();runtime.feedback.aggregate.pending=1;runtime.feedback.aggregate.partial=1;runtime.feedback.items[0]={...runtime.feedback.items[0],status:'pending',label:'Feedback pending'};await render(HomeFeedbackStats,{deckId:'deck',active:true,home:{p:{value:0},vy:{value:0}}},async r=>{assert.equal(r.root.findByType('score-ring').props.value,'—');assert.match(text(r),/Feedback pending/);assert.match(text(r),/1 partial/);});});
+
+// OpenAI Codex #44: exact seeking retains the existing equal-width slide sections.
+test('Full Review dragging within a slide previews and seeks that exact offset without starting idle audio',async()=>{
+ setup();runtime.audio.set('b','file://b.m4a');runtime.model.times=[20,40,0];runtime.model.total=60;
+ runtime.model.state.run.parts[0].segments=[{startMs:1000,endMs:11000},{startMs:20000,endMs:30000}];
+ runtime.model.state.run.parts[1].segments=[{startMs:5000,endMs:45000}];
+ await render(FullReviewScreen,{},async r=>{
+  const track=()=>r.root.findAllByType('pan').find(n=>n.props.accessibilityLabel==='Whole run audio review');
+  await act(async()=>track().props.onLayout({nativeEvent:{layout:{x:0,width:300}}}));
+  await act(async()=>track().props.onGrant({nativeEvent:{pageX:91}}));
+  assert.match(text(r),/0:15/,'drag preview shows the intra-slide timestamp');
+  assert.equal(runtime.plays.length,0,'preview never commits native playback');
+  await act(async()=>track().props.onRelease());
+  const p=runtime.players[0];assert.equal(p.elapsedMs,15000);assert.equal(p.paused,true);
+  assert.deepEqual(runtime.plays.at(-1).segments,[{uri:'file://a.m4a',startMs:1000,endMs:11000},{uri:'file://a.m4a',startMs:20000,endMs:30000},{uri:'file://b.m4a',startMs:5000,endMs:45000}]);
+ });
+});
+
+const runTrack=r=>r.root.findAllByType('pan').find(n=>n.props.accessibilityLabel==='Whole run audio review');
+async function prepareTrack(r){await act(async()=>runTrack(r).props.onLayout({nativeEvent:{layout:{x:0,width:300}}}));}
+function longRun(){setup();runtime.audio.set('b','file://b.m4a');runtime.model.times=[20,40,0];runtime.model.total=60;runtime.model.state.run.parts[0].segments=[{startMs:1000,endMs:11000},{startMs:20000,endMs:30000}];runtime.model.state.run.parts[1].segments=[{startMs:5000,endMs:45000}];}
+test('Full Review commits playing seeks, keeps paused seeks paused and cancels a gesture without seeking',async()=>{
+ longRun();await render(FullReviewScreen,{},async r=>{
+  await prepareTrack(r);await act(async()=>r.root.findAllByType('pressable').find(n=>n.props.accessibilityLabel?.startsWith('Play the whole run')).props.onPress());
+  await act(async()=>runTrack(r).props.onGrant({nativeEvent:{pageX:91}}));assert.equal(runtime.players[0].paused,true);
+  await act(async()=>runTrack(r).props.onRelease());assert.equal(runtime.plays.at(-1).elapsedMs,15000);assert.equal(runtime.players[0].paused,false);
+  await act(async()=>button(r,'Pause').props.onPress());
+  await act(async()=>{runTrack(r).props.onGrant({nativeEvent:{pageX:166}});});
+  await act(async()=>runTrack(r).props.onRelease());assert.equal(runtime.players[0].elapsedMs,40000);assert.equal(runtime.players[0].paused,true);
+  await act(async()=>r.root.findAllByType('pressable').find(n=>n.props.accessibilityLabel?.startsWith('Play the whole run')).props.onPress());const before=runtime.plays.length;
+  await act(async()=>runTrack(r).props.onGrant({nativeEvent:{pageX:91}}));
+  await act(async()=>runTrack(r).props.onTerminate());assert.equal(runtime.plays.length,before);assert.equal(runtime.players[0].paused,false);
+ });
+});
+test('Full Review does not silently jump a missing target and partial confirmation retains its exact offset',async()=>{
+ longRun();runtime.audio.delete('b');await render(FullReviewScreen,{},async r=>{
+  await prepareTrack(r);await act(async()=>runTrack(r).props.onGrant({nativeEvent:{pageX:166}}));await act(async()=>runTrack(r).props.onRelease());
+  assert.equal(runtime.plays.length,0);assert.match(text(r),/Audio for slide 2/);assert.equal(r.root.findAllByType('dialog').length,0);
+  await act(async()=>runTrack(r).props.onGrant({nativeEvent:{pageX:91}}));await act(async()=>runTrack(r).props.onRelease());
+  assert.equal(runtime.plays.length,0);await act(async()=>r.root.findByType('dialog').props.onConfirm());
+  assert.equal(runtime.plays.at(-1).elapsedMs,15000);assert.equal(runtime.players[0].paused,true);assert.equal(runtime.plays.at(-1).segments.length,2);
+ });
+});
+test('Full Review discards scrub and missing-audio confirmation after selected recordings change',async()=>{
+ longRun();await render(FullReviewScreen,{},async r=>{
+  await prepareTrack(r);await act(async()=>runTrack(r).props.onGrant({nativeEvent:{pageX:91}}));const release=runTrack(r).props.onRelease;
+  runtime.model={...runtime.model,state:{...runtime.model.state,run:{...runtime.model.state.run,parts:[{attemptId:'new',segments:[{startMs:0,endMs:20000}]},...runtime.model.state.run.parts.slice(1)]}}};
+  await act(async()=>r.update(React.createElement(FullReviewScreen)));await act(async()=>release());assert.equal(runtime.plays.length,0);
+ });
+ longRun();runtime.audio.delete('b');await render(FullReviewScreen,{},async r=>{
+  await prepareTrack(r);await act(async()=>runTrack(r).props.onGrant({nativeEvent:{pageX:91}}));await act(async()=>runTrack(r).props.onRelease());const confirm=r.root.findByType('dialog').props.onConfirm;
+  runtime.model={...runtime.model,state:{...runtime.model.state,run:{...runtime.model.state.run,parts:[null,...runtime.model.state.run.parts.slice(1)]}}};
+  await act(async()=>r.update(React.createElement(FullReviewScreen)));await act(async()=>confirm());assert.equal(runtime.plays.length,0);
+ });
+});
+test('Full Review cancels scrub on background or navigation and exposes five-second accessible seeks',async()=>{
+ for(const leave of ['background','navigation','back']){
+  longRun();await render(FullReviewScreen,{},async r=>{
+   await prepareTrack(r);await act(async()=>runTrack(r).props.onGrant({nativeEvent:{pageX:91}}));const release=runTrack(r).props.onRelease;
+   if(leave==='background')await act(async()=>{AppState.emit('background');AppState.emit('active');});
+   else if(leave==='back')await act(async()=>runtime.back());
+   else await act(async()=>r.update(React.createElement(FullReviewScreen,{active:false})));
+   await act(async()=>release());assert.equal(runtime.plays.length,0);
+  });
+ }
+ longRun();await render(FullReviewScreen,{},async r=>{
+  await act(async()=>runTrack(r).props.onAccessibilityAction({nativeEvent:{actionName:'increment'}}));
+  assert.equal(runtime.players[0].elapsedMs,5000);assert.equal(runtime.players[0].paused,true);assert.equal(runTrack(r).props.accessibilityValue.now,5);assert.match(runTrack(r).props.accessibilityValue.text,/0:05 of 1:00/);
+  await act(async()=>runTrack(r).props.onAccessibilityAction({nativeEvent:{actionName:'decrement'}}));assert.equal(runtime.players[0].elapsedMs,0);
+ });
+});
+
+test('a retained accessibility action cannot seek the previous selected recording after source change',async()=>{
+ longRun();await render(FullReviewScreen,{},async r=>{
+  const oldAction=runTrack(r).props.onAccessibilityAction;
+  runtime.audio.set('new','file://new.m4a');
+  runtime.model={...runtime.model,state:{...runtime.model.state,run:{...runtime.model.state.run,parts:[{attemptId:'new',segments:[{startMs:1000,endMs:21000}]},...runtime.model.state.run.parts.slice(1)]}}};
+  await act(async()=>r.update(React.createElement(FullReviewScreen)));
+  await act(async()=>oldAction({nativeEvent:{actionName:'increment'}}));
+  assert.equal(runtime.plays.length,0,'the stale handler must not load or seek the old audio source');
+ });
+});

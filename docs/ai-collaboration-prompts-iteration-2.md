@@ -4283,3 +4283,519 @@ Approve Azure activation and bounded live tests
 - **Final live scoring acceptance:** One fresh generation under scoring v2.2/OpenRouter/`openai/gpt-6-luna` completed with all seven slides scored, overall 60 and zero score-critical evidence rejections. The private validator first stopped before admission because it incorrectly expected a stale old-generation GET to retain state completed; correcting that harness assertion consumed no provider call. The remaining single authorized v2.2 admission was then submitted once, without transport retries or further generation. Prior invalid generations remain stored. This establishes route/evidence acceptance, not calibrated grades or human usefulness. The final summary records usage and original-history preservation separately; physical speech-to-feedback acceptance remains unverified.
 - **Final verification and publication preparation:** Live checks retain seven harness-reserved OpenRouter admissions and 67.573 seconds of declared Scribe files. The observed shared-key OpenRouter usage delta was USD 0.014676075, with possible accounting lag/concurrent use and Scribe excluded; it is not a combined invoice. Original 17 attempts were fingerprinted unchanged after the final live call. Five final normal-TLS/no-proxy/no-redirect GETs passed: health/readiness 200, missing/wrong code 401 and browser Origin 403. Current report/install/evidence links, JSON and `git diff --check` pass. The publication manifest pins 103 source/configuration deltas; known-value scanning checks eight actual private values and finds zero matches. APK/generated native/dependencies/private history and media remain excluded. Version 5 APK and reviewed mobile hashes are unchanged. Separate AI review cleared the meaningful code changes; native microphone/physical-phone, audible quality, long recordings and human usefulness remain unverified. Source-only publication to the authorized new branch follows these checks; it is not a main merge or course submission.
 - **Actual branch publication:** Exact staged tree `4b056ea29a0251e4d1ef42621ca06f22d105d70d` was independently cleared and committed as `c5869981718b9579cba4e55e07518c5a92fcb396`, then pushed successfully to new branch `codex/demo-redo-feedback-20261102`. Remote main remained `7b7ef3b`; no force push or merge occurred. GitHub Actions [run 188](https://github.com/snuhcs-course/swpp-2026-project-team-07/actions/runs/41331832614) was observed queued for that exact source commit at publication; its later/current status is available in the run and final handoff. A documentation-only follow-up records this receipt. The ignored delivery folder's stale version 4 INSTALL notes were retained as historical and replaced with version 5 instructions/checksum. The APK remains a local delivery file, not a Git binary or completed course submission.
+
+
+## 2026-11-02 — Demo issue 35 physical-phone reproduction and repair
+
+- **Context:** Contributor unconfirmed; Codex desktop, GPT-6 (exact variant not recorded), Ponytail full. Investigate-first workflow. Isolated task checkout from published demo v5 `947715c`, containing current `origin/main` `7b7ef3b`; unrelated dirty original checkout preserved.
+
+### Requests — verbatim, in order
+
+```text
+Check demo issues on github i have physical phone connected hence check if it is reprooducible then fix it\
+```
+
+```text
+you have to install new demo on phone 
+```
+
+- **Output and use:** GitHub search found one open demo issue, [#35](https://github.com/snuhcs-course/swpp-2026-project-team-07/issues/35). An independent AI diagnosis identified one-line text clamping and absent tap handling. Compact Review now opens all current finding observations in a bounded scrollable details view. Close and Android Back dismiss first; underlying touches/navigation/accessibility are blocked while details are open. Stale feedback and recording/slide/activity changes close details. Existing compact row geometry is preserved, and the accessible button retains partial-assessment status. `mobile/app.json` increments Android version code to 6; no dependency/backend/API contract change.
+- **Agent-operated phone checks, November 2–3 (Asia/Seoul):** Connected physical Samsung SM-S918N, Android 16, initially had version code 1. Installed v5 in place. Its saved rehearsals lacked completed current feedback, so no reproduction claim is made for the issue reporter's original Seoul result. A clearly labelled temporary synthetic native probe rendered the exact v5 screen from `947715c` and the final changed screen, with real native Frame/theme/fonts/PanView/ScrollView/Back handling and mocked model/feedback/player/storage only. All probe storage was in memory; it made no recording, media or server/provider request. A 600-character observation reproduced v5 truncation and inert tapping. The fixed screen opened it; scrolling visibly reached `UNIQUE END: COMPLETE FEEDBACK 35.` without navigation. Close, hardware Back, stale invalidation and revalidation staying closed passed. UIAutomator could not reach idle because of ongoing animations; fresh screenshots and ADB input were used instead. This verifies the display/interaction repair with synthetic data, not speech recognition or AI advice quality.
+- **Errors and review revisions:** The first effect-based stale reset failed the React lint rule and was replaced by a guarded selection reset. Full tests caught two existing row-container assertions affected by the first implementation. Independent review also found that taller individual row targets could overlap Full Review when playback shows an error. The final implementation keeps original 22-unit rows and makes the whole feedback block one adequately sized button. Review then caught a lost partial-status accessibility label; it is retained and tested. A repeated independent review of the final changed scope found no remaining concrete defect. Initial sandboxed ADB/Gradle access required approved execution; an attempted read/use of a reviewer credential from a backup file was rejected by automatic approval review and did not execute. The agent did not retry that source; the user reported `Connected` after being asked to sign in on the phone. No human test/approval is inferred from that reply.
+- **Verification:** Agent ran `npm run check` on final source: typecheck, lint and 578/578 tests pass; the existing `useSegmentPlayer.ts:108` cleanup-ref warning remains. Added regressions fail against v5 and pass after repair; the 38 related compact/overview/score UI tests pass. `npm run bundle:android -- --max-workers 2` and the final offline Gradle `:app:assembleRelease --no-daemon --max-workers=4` pass using JDK 17 and the installed Android SDK. The standalone final APK is 143,226,154 bytes, SHA-256 `d68281474a0859a07a3ac907e5e0c7f81b9afd9963611b1a034dd686a7b92a21`; synthetic probe markers are absent from its bundle. Installed this normal v6 APK with `adb install --no-incremental -r`, opened it, and verified package version code 6 and retained seven local presentations/existing Guatemala rehearsal. The temporary probe is no longer installed. Final normal launch initially showed a server-access-locked banner. The user then reported `Reconnected`; a fresh final screenshot showed Home without the lock banner. No new live speech/feedback generation was attempted.
+- **Handoff and limits:** Source, APK, hashes, synthetic screenshots and command logs are retained locally under `outputs/demo-issue35-20261102/` in the original workspace; the isolated task checkout carries this log on `codex/demo-feedback-details-20261102`. No microphone/new speech-to-feedback, real-provider, backend or broad TalkBack check was run for this UI-only fix. The original dirty checkout and existing recordings were preserved; no app-data clear/uninstall was used. No staging, commit, push, GitHub comment/issue closure, merge or deployment occurred.
+
+
+- **Follow-up answer — verbatim:** `Connected` (demo sign-in; not human test acceptance).
+
+- **Final follow-up answer — verbatim:** `Reconnected`. Agent observed the normal v6 Home screen without the access-lock banner after this human sign-in.
+
+
+## 2026-11-03 — Orca physical-phone QA and GitHub issue reporting
+
+- **Context:** Contributor Seoyeon; Codex desktop coordinator, GPT-6 (exact variant not recorded), Ponytail full. Approved90-minute validation-only workflow with two Codex/two Claude workers through Orca, configured agent models. Verified v6 isolated source checkout; no application edits or deployment authorized.
+
+### Planning requests and decisions — verbatim
+
+```text
+Using the actual phone use orca to prompt various agents to test various features of the app and find issues with it
+```
+
+- **Selected answers — verbatim:** `Full demo flows (Recommended)`; `About 90 minutes`; `Automatic samples (Recommended)`; `Codex + Claude (Recommended)`.
+
+```text
+where are these issues if found gonna be save d? i think uploading them in git as issues is best
+```
+
+### Implementation request — verbatim
+
+```text
+PLEASE IMPLEMENT THIS PLAN:
+# Physical-phone testing with GitHub issue reporting
+
+## Summary
+
+Run a roughly **90-minute sweep** of installed demo v6 using **two Codex and two Claude agents through Orca**, with their configured models. Exercise live transcription, feedback and Q&A using labelled English/Korean speech played from the Mac into the phone’s microphone.
+
+## Test assignments
+
+| Agent | Coverage | Phone time |
+|---|---|---:|
+| Claude A | PDF import, navigation, settings, Delete/Undo | 15 min |
+| Codex B | Recording, slide transitions, Redo, comparison, interruption recovery | 25 min |
+| Codex C | Playback, transcript seeking, feedback, scoring, #35 retest | 20 min |
+| Claude D | Q&A, offline/reconnection, accessibility, restart persistence | 15 min |
+
+Allow approximately 15 additional minutes for preflight, reproduction and reporting.
+
+- Use the verified v6 source checkout and installed app. Agents inspect source in parallel; the coordinator grants exclusive phone access in the order above.
+- Use at most two valid test presentations, five rehearsal recordings and two Q&A answers. Include invalid imports, repeated/backward slide visits, silence and interrupted recording.
+- Preserve existing presentations and recordings. Restore device settings after testing.
+- Reuse successful analyses; treat quota limits and uncertain provider outcomes as blockers.
+
+## GitHub reporting
+
+The coordinator reviews and deduplicates findings before publication.
+
+- Create **one GitHub issue per distinct confirmed defect**.
+- Include device/Android/build, reproduction steps, expected and actual behavior, frequency, severity and observed evidence. Identify testing as agent-operated.
+- Add new reproduction evidence to an existing matching issue rather than creating a duplicate.
+- Include sanitized screenshots where attachment upload is available. Keep credentials, private recordings and raw logs local.
+- Keep uncertain observations and AI-quality concerns labelled provisional in the local report until supported sufficiently for an issue.
+
+Save the coverage matrix, evidence and published issue URLs under `/Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/phone-qa-20261103/`. Record actual prompts and results in the active Iteration 2 collaboration log.
+
+## Completion
+
+All workers must report and settle. Deliver a ranked summary linking the GitHub issues, with blocked and untested cases identified. Leave demo v6 installed and device settings restored.
+
+Application code, APIs and deployment remain unchanged; fixes are a separate task.
+```
+
+- **In progress:** Created Orca Run `run_7416471bf3ed` in the registered verified v6 source workspace; coordinator owns one new terminal and serial phone grants. Actual worker briefs are retained verbatim in the private local `outputs/phone-qa-20261103/prompts/` artifact directory and will be linked/summarized here at handoff. Baseline: physical Samsung SM-S918N/Android16, installed versionCode6, seven preexisting presentations, network on, font1.0, timeout30000. Temporary timeout600000 is recorded for restoration. Labelled fictional park slides and English/Korean speech scripts prepared; existing user recordings remain untouched.
+- **Early corrections/errors:** Initial Codex startup was fenced by a changed-hooks review; using the built-in continue-without-trusting choice, without trusting/running new hooks. An initial PDF preview failed due missing font configuration/CID language mapping; embedded Korean font and task-local fontconfig corrected the fixture. Source inspection by Claude A caught the stale ten-slide-limit assumption; v6 has no slide cap, so an actual51MiB fixture tests the50MiB size gate instead. Duplicate import is permitted by source and skipped within the two-valid-deck budget. No product issue is inferred from these test-setup errors.
+- **Results:** Testing, review, publication and device restoration remain in progress; do not treat this checkpoint as a pass or human acceptance.
+
+### Scope correction — verbatim
+
+```text
+gave access to files also, voice recording dont do those test no more, the text to voice is bad
+```
+
+```text
+run all tests except doing synthetic voice transctiption tests
+```
+
+- **Human decision applied:** Immediately broadcast stop to all active Orca workers. B confirmed no active playback/capture and restored Mac output to 6/unmuted; C and D confirmed no voice processes or phone actions. Four rehearsal captures had finished before receipt (86-second full run, 16-second Redo kept original, 23-second Redo overwritten, 9-second silence); the remaining interruption capture and both Q&A answer captures are user-cancelled. No further synthetic speech, new recording/transcription, or Q&A answer capture will run. Continue all other planned UI, saved-media, feedback-display, recovery and accessibility checks. Synthetic-input speech/advice quality is excluded from product conclusions.
+
+- **Fresh automated checks for the expanded test request:** Agent-operated `npm run check` passed typecheck, lint (one existing `useSegmentPlayer.ts:108` cleanup-ref warning), and 578/578 tests. `npm run bundle:android -- --max-workers 2` passed Android JS export. Backend using the existing project Python environment: `python manage.py check --settings=config.test_settings` passed; `python manage.py test --settings=config.test_settings --noinput` passed 597 tests with 25 infrastructure-specific skips; `python manage.py makemigrations --check --dry-run --settings=config.test_settings` reported no changes. These deterministic checks use mocks and SQLite, not a live microphone/synthetic-voice integration. No new provider or native APK rebuild was run. Initial mobile check failed because this checkout lacked dependencies; a temporary link to the installed demo environment with an identical lockfile was used for checks and then removed. Application/config/test-file SHA-256 values match preflight.
+- **Publication checkpoint:** Reviewed F1 and posted [#36](https://github.com/snuhcs-course/swpp-2026-project-team-07/issues/36), including the clean labelled phone screenshot. The GitHub connector's create operation returned HTTP 403 (no issue created); signed-in Chrome successfully posted the reviewed report after the user enabled file access. F2 remains under reproduction/review.
+
+### Actual Orca worker briefs
+
+Initial briefs below are verbatim except the explicitly labelled device-serial redaction. These describe the initially authorized voice coverage; the later human scope correction above cancels that coverage. Tools: Orca-supervised Codex B/C (`gpt-6.1-sol` observed) and Claude A/D (configured defaults; exact model not recorded). All work is AI agent-operated.
+
+
+<details>
+<summary>claude-a — initial task prompt, device serial redacted</summary>
+
+```text
+You are an Orca supervised worker in the approved OutLoud physical-phone QA sweep. Apply Ponytail FULL; primary workflow is validation/exploratory testing -> reproduce -> evidence/report, READ ONLY application code. Read README, mobile/AGENTS.md and relevant contracts/source in /Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/demo-issue35-20261102/source (verified v6), NOT another checkout/main. Existing uncommitted code belongs to completed issue35 task and must stay unchanged. Root coordinator owns active Iteration2 collaboration logging and GitHub publication; do not edit that log or create/comment/close GitHub issues yourself. Write only your assigned report/evidence directory. Do not stage, commit, push, deploy, install/uninstall/replace APKs, clear app data, change API/provider settings, use keys/backups/private credentials, or alter existing user presentations/recordings. User explicitly authorized actual phone test operations, new test recordings/uploads/live configured Scribe+OpenRouter work, and Mac spoken English/Korean samples played into phone microphone. Do not use mock UI/feedback as a substitute for actual app testing.
+PHONE: Samsung SM-S918N, Android16, demo package com.team07.outloud versionCode6, ADB /Users/seoyeonpark/Library/Android/sdk/platform-tools/adb -s [DEVICE SERIAL REDACTED]. ONLY the worker with an explicit PHONE_GRANTED coordinator message may run ANY ADB or phone actions. Before that prepare by source inspection then ask coordinator for phone access using the exact Orca ask command in your injected preamble. All four workers prepare concurrently; phone order CLAUDE_A -> CODEX_B -> CODEX_C -> CLAUDE_D. Do not assume an empty mailbox grants access. Respect active Dispatch identity; send heartbeat/check messages exactly as preamble directs and worker_done once.
+ARTIFACT ROOT /Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/phone-qa-20261103. Fixtures will be in fixtures/; root will notify readiness. Global limits max2 valid test presentations, max5 rehearsal recordings, max2 QA answers across the team. Only create/modify clearly labelled QA-20261103 test content, never user decks. Existing7 local presentations are baseline. No paid fallback/key changes, repeated Regenerate attempts, or acknowledgment of uncertain provider submissions. One ordinary retry only after a confirmed retryable failure; quota/unknown outcomes are blockers. Capture exact tested app state; never label source suspicion as reproduced phone defect.
+EVIDENCE: save screenshot PNGs, bounded relevant logs privately, case matrix (case_id, expected, observed, status pass/fail/blocked/untested, evidence paths), findings with exact steps/frequency/severity/expected/actual, and handoff.json (current screen/test deck/run/recording count, pending jobs, settings changed, test data created). Avoid credentials/private user media in reports/screenshots. UIAutomator dump often cannot idle because app animations loop; use fresh ADB screenshot/input coordinates and native UI when dump fails. Do not change animation settings to work around this without recording/restoring original settings. Phone original screen_off_timeout30000,font_scale1.0,wifi1,mobile_data1. Coordinator can establish a longer test timeout before first grant. Screenrecord can be used only for labelled test app flow, never unrelated apps.
+STOP/HANDOFF: record your findings honestly; mark blockers/untested. Release PHONE via Orca status message with your handoff path before worker_done. Stop using ADB immediately after release. Do not fix code. Your report must distinguish AI operated checks from human acceptance and actual microphone/provider observations from text-only inference. Coordinator will independently review/reproduce and publish deduplicated confirmed issues.
+
+ROLE CLAUDE_A: Own import/navigation/settings/Delete-Undo tests; target15min PHONE time after grant. Prepare import-invalid and oversized-deck expectations from source and phone workflow before grant. Use fixtures/QA-20261103-primary.pdf as primary live test deck, and fixtures/QA-20261103-disposable.pdf as second valid deck; never import a third valid deck. Test picker cancel, invalid renamed text PDF and11-page input (both invalid imports do not count as saved valid decks), duplicate import rejection if supported without saving a third, audience/time defaults and changes persistence, Home presentation selection, back/navigation, deletion+Undo on DISPOSABLE ONLY. Leave PRIMARY imported/configured with General audience, required2minutes (if supported, else minimum valid UI choice and report), and DISPOSABLE available for silence/interruption tests. Track exact deck names and local state. Do not record anything (0 rehearsal allocations). Hand off current screen preferably primary Rehearse ready. Report/evidence ONLY artifactroot/claude-a/.
+```
+
+</details>
+
+
+<details>
+<summary>codex-b — initial task prompt, device serial redacted</summary>
+
+```text
+You are an Orca supervised worker in the approved OutLoud physical-phone QA sweep. Apply Ponytail FULL; primary workflow is validation/exploratory testing -> reproduce -> evidence/report, READ ONLY application code. Read README, mobile/AGENTS.md and relevant contracts/source in /Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/demo-issue35-20261102/source (verified v6), NOT another checkout/main. Existing uncommitted code belongs to completed issue35 task and must stay unchanged. Root coordinator owns active Iteration2 collaboration logging and GitHub publication; do not edit that log or create/comment/close GitHub issues yourself. Write only your assigned report/evidence directory. Do not stage, commit, push, deploy, install/uninstall/replace APKs, clear app data, change API/provider settings, use keys/backups/private credentials, or alter existing user presentations/recordings. User explicitly authorized actual phone test operations, new test recordings/uploads/live configured Scribe+OpenRouter work, and Mac spoken English/Korean samples played into phone microphone. Do not use mock UI/feedback as a substitute for actual app testing.
+PHONE: Samsung SM-S918N, Android16, demo package com.team07.outloud versionCode6, ADB /Users/seoyeonpark/Library/Android/sdk/platform-tools/adb -s [DEVICE SERIAL REDACTED]. ONLY the worker with an explicit PHONE_GRANTED coordinator message may run ANY ADB or phone actions. Before that prepare by source inspection then ask coordinator for phone access using the exact Orca ask command in your injected preamble. All four workers prepare concurrently; phone order CLAUDE_A -> CODEX_B -> CODEX_C -> CLAUDE_D. Do not assume an empty mailbox grants access. Respect active Dispatch identity; send heartbeat/check messages exactly as preamble directs and worker_done once.
+ARTIFACT ROOT /Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/phone-qa-20261103. Fixtures will be in fixtures/; root will notify readiness. Global limits max2 valid test presentations, max5 rehearsal recordings, max2 QA answers across the team. Only create/modify clearly labelled QA-20261103 test content, never user decks. Existing7 local presentations are baseline. No paid fallback/key changes, repeated Regenerate attempts, or acknowledgment of uncertain provider submissions. One ordinary retry only after a confirmed retryable failure; quota/unknown outcomes are blockers. Capture exact tested app state; never label source suspicion as reproduced phone defect.
+EVIDENCE: save screenshot PNGs, bounded relevant logs privately, case matrix (case_id, expected, observed, status pass/fail/blocked/untested, evidence paths), findings with exact steps/frequency/severity/expected/actual, and handoff.json (current screen/test deck/run/recording count, pending jobs, settings changed, test data created). Avoid credentials/private user media in reports/screenshots. UIAutomator dump often cannot idle because app animations loop; use fresh ADB screenshot/input coordinates and native UI when dump fails. Do not change animation settings to work around this without recording/restoring original settings. Phone original screen_off_timeout30000,font_scale1.0,wifi1,mobile_data1. Coordinator can establish a longer test timeout before first grant. Screenrecord can be used only for labelled test app flow, never unrelated apps.
+STOP/HANDOFF: record your findings honestly; mark blockers/untested. Release PHONE via Orca status message with your handoff path before worker_done. Stop using ADB immediately after release. Do not fix code. Your report must distinguish AI operated checks from human acceptance and actual microphone/provider observations from text-only inference. Coordinator will independently review/reproduce and publish deduplicated confirmed issues.
+
+ROLE CODEX_B: Own physical microphone recording, timing, slide transitions, first/repeated Redo, Compare choices, interruptions; target25min PHONE time after grant. Prepare source expectations while A owns phone. You own ALL5 rehearsal allocations: (1) primary3slide full capture up to90sec using Mac spoken samples with forward, backward and repeated visits; (2) primary one-slide Redo Keep current; (3) primary one-slide Redo Overwrite; (4) disposable silence capture about8sec; (5) disposable interrupted capture about15sec (background/force-stop then recovery). Only start each after preceding save/compare is settled; keep separate IDs and never repeatedly retry recorder if outcome unknown. Before recording use actual mic signal/sample playback check within the first allowed capture, do not consume a hidden extra rehearsal. Read fixtures/README/test-speech scripts provided by root. Play samples from Mac using say/afplay; user authorized sounds. Record any Mac output volume/mute changes and restore by handoff; use moderate loudness. Verify audio was actually captured via playback/recognition, not just elapsed timer. Observe consent as app asks; normal in-app analysis allowed. Do not read reviewer-code backups/keys; if demo locks, ask coordinator for user sign-in. If source/recognition fails retain evidence, no mock substitution. Ensure actual main full recording retains useful speech/transcript for C and D, preserving Repeat/back visit timeline. Hand off primary Review or Rehearse with live processing state, count5 allocations consumed/unused exact, and observed provider progress. Report/evidence ONLY artifactroot/codex-b/.
+```
+
+</details>
+
+
+<details>
+<summary>codex-c — initial task prompt, device serial redacted</summary>
+
+```text
+You are an Orca supervised worker in the approved OutLoud physical-phone QA sweep. Apply Ponytail FULL; primary workflow is validation/exploratory testing -> reproduce -> evidence/report, READ ONLY application code. Read README, mobile/AGENTS.md and relevant contracts/source in /Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/demo-issue35-20261102/source (verified v6), NOT another checkout/main. Existing uncommitted code belongs to completed issue35 task and must stay unchanged. Root coordinator owns active Iteration2 collaboration logging and GitHub publication; do not edit that log or create/comment/close GitHub issues yourself. Write only your assigned report/evidence directory. Do not stage, commit, push, deploy, install/uninstall/replace APKs, clear app data, change API/provider settings, use keys/backups/private credentials, or alter existing user presentations/recordings. User explicitly authorized actual phone test operations, new test recordings/uploads/live configured Scribe+OpenRouter work, and Mac spoken English/Korean samples played into phone microphone. Do not use mock UI/feedback as a substitute for actual app testing.
+PHONE: Samsung SM-S918N, Android16, demo package com.team07.outloud versionCode6, ADB /Users/seoyeonpark/Library/Android/sdk/platform-tools/adb -s [DEVICE SERIAL REDACTED]. ONLY the worker with an explicit PHONE_GRANTED coordinator message may run ANY ADB or phone actions. Before that prepare by source inspection then ask coordinator for phone access using the exact Orca ask command in your injected preamble. All four workers prepare concurrently; phone order CLAUDE_A -> CODEX_B -> CODEX_C -> CLAUDE_D. Do not assume an empty mailbox grants access. Respect active Dispatch identity; send heartbeat/check messages exactly as preamble directs and worker_done once.
+ARTIFACT ROOT /Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/phone-qa-20261103. Fixtures will be in fixtures/; root will notify readiness. Global limits max2 valid test presentations, max5 rehearsal recordings, max2 QA answers across the team. Only create/modify clearly labelled QA-20261103 test content, never user decks. Existing7 local presentations are baseline. No paid fallback/key changes, repeated Regenerate attempts, or acknowledgment of uncertain provider submissions. One ordinary retry only after a confirmed retryable failure; quota/unknown outcomes are blockers. Capture exact tested app state; never label source suspicion as reproduced phone defect.
+EVIDENCE: save screenshot PNGs, bounded relevant logs privately, case matrix (case_id, expected, observed, status pass/fail/blocked/untested, evidence paths), findings with exact steps/frequency/severity/expected/actual, and handoff.json (current screen/test deck/run/recording count, pending jobs, settings changed, test data created). Avoid credentials/private user media in reports/screenshots. UIAutomator dump often cannot idle because app animations loop; use fresh ADB screenshot/input coordinates and native UI when dump fails. Do not change animation settings to work around this without recording/restoring original settings. Phone original screen_off_timeout30000,font_scale1.0,wifi1,mobile_data1. Coordinator can establish a longer test timeout before first grant. Screenrecord can be used only for labelled test app flow, never unrelated apps.
+STOP/HANDOFF: record your findings honestly; mark blockers/untested. Release PHONE via Orca status message with your handoff path before worker_done. Stop using ADB immediately after release. Do not fix code. Your report must distinguish AI operated checks from human acceptance and actual microphone/provider observations from text-only inference. Coordinator will independently review/reproduce and publish deduplicated confirmed issues.
+
+ROLE CODEX_C: Own saved review/playback/transcript seeking, selected slide feedback/scoring states and #35 repair retest; target20min PHONE time after grant. NO new rehearsal recordings, reuse B saved primary captures and current source selections. Inspect source/readiness while waiting. Verify actual audible playback, pause/resume/seek, transcript-word seek slide/time alignment including backward visit, selected-slide feedback evidence accuracy/complete text, score availability and per-slide/combined-source honesty, full review navigation/Back. Test #35 with actual generated long feedback if available; if unavailable mark original-live-data retest blocked (prior synthetic native evidence is historical and not your current pass). Analyze AI claims against supplied test PDF and actual spoken samples; separate clear mechanical defects from provisional AI-quality concerns, never infer grade calibration. Reuse cached results, no Regenerate hunting. Mark quotas/waits/failure states accurately and preserve media. You may use one in-app retry only after a confirmed safe retryable failure and coordinator agreement. Report/evidence ONLY artifactroot/codex-c/. Hand off PRIMARY run ready for QA, or exact pending/blocked analysis state.
+```
+
+</details>
+
+
+<details>
+<summary>claude-d — initial task prompt, device serial redacted</summary>
+
+```text
+You are an Orca supervised worker in the approved OutLoud physical-phone QA sweep. Apply Ponytail FULL; primary workflow is validation/exploratory testing -> reproduce -> evidence/report, READ ONLY application code. Read README, mobile/AGENTS.md and relevant contracts/source in /Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/demo-issue35-20261102/source (verified v6), NOT another checkout/main. Existing uncommitted code belongs to completed issue35 task and must stay unchanged. Root coordinator owns active Iteration2 collaboration logging and GitHub publication; do not edit that log or create/comment/close GitHub issues yourself. Write only your assigned report/evidence directory. Do not stage, commit, push, deploy, install/uninstall/replace APKs, clear app data, change API/provider settings, use keys/backups/private credentials, or alter existing user presentations/recordings. User explicitly authorized actual phone test operations, new test recordings/uploads/live configured Scribe+OpenRouter work, and Mac spoken English/Korean samples played into phone microphone. Do not use mock UI/feedback as a substitute for actual app testing.
+PHONE: Samsung SM-S918N, Android16, demo package com.team07.outloud versionCode6, ADB /Users/seoyeonpark/Library/Android/sdk/platform-tools/adb -s [DEVICE SERIAL REDACTED]. ONLY the worker with an explicit PHONE_GRANTED coordinator message may run ANY ADB or phone actions. Before that prepare by source inspection then ask coordinator for phone access using the exact Orca ask command in your injected preamble. All four workers prepare concurrently; phone order CLAUDE_A -> CODEX_B -> CODEX_C -> CLAUDE_D. Do not assume an empty mailbox grants access. Respect active Dispatch identity; send heartbeat/check messages exactly as preamble directs and worker_done once.
+ARTIFACT ROOT /Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/phone-qa-20261103. Fixtures will be in fixtures/; root will notify readiness. Global limits max2 valid test presentations, max5 rehearsal recordings, max2 QA answers across the team. Only create/modify clearly labelled QA-20261103 test content, never user decks. Existing7 local presentations are baseline. No paid fallback/key changes, repeated Regenerate attempts, or acknowledgment of uncertain provider submissions. One ordinary retry only after a confirmed retryable failure; quota/unknown outcomes are blockers. Capture exact tested app state; never label source suspicion as reproduced phone defect.
+EVIDENCE: save screenshot PNGs, bounded relevant logs privately, case matrix (case_id, expected, observed, status pass/fail/blocked/untested, evidence paths), findings with exact steps/frequency/severity/expected/actual, and handoff.json (current screen/test deck/run/recording count, pending jobs, settings changed, test data created). Avoid credentials/private user media in reports/screenshots. UIAutomator dump often cannot idle because app animations loop; use fresh ADB screenshot/input coordinates and native UI when dump fails. Do not change animation settings to work around this without recording/restoring original settings. Phone original screen_off_timeout30000,font_scale1.0,wifi1,mobile_data1. Coordinator can establish a longer test timeout before first grant. Screenrecord can be used only for labelled test app flow, never unrelated apps.
+STOP/HANDOFF: record your findings honestly; mark blockers/untested. Release PHONE via Orca status message with your handoff path before worker_done. Stop using ADB immediately after release. Do not fix code. Your report must distinguish AI operated checks from human acceptance and actual microphone/provider observations from text-only inference. Coordinator will independently review/reproduce and publish deduplicated confirmed issues.
+
+ROLE CLAUDE_D: Own live audience QA, offline/reconnection, accessibility and restart persistence; target15min PHONE time after grant. NO new rehearsal recordings. Up to2 QA answer captures allocated; generate at most1 initial question set for PRIMARY using existing selected speech. Play question/TTS audio, record up to2 short answered English/Korean samples via Mac speaker->actual phone mic, verify retained answer playback/transcription/evaluation and restart/history persistence. If prerequisite speech/transcription is unavailable, report QA blocked and do remaining tests, no faked data. Test offline playback on saved test capture, network loss/reconnect during read/processing where safe, recovery/error visibility, navigation/Android Back, large font/theme/readability and available accessibility labels/focus. Do not install accessibility services or change security/accessibility broadly; any temporary font/network/app permission setting change must record baseline and restore before release. Snapshot app settings first; restore changed theme/volume/font/network/permissions. No generating new question sets after source edit or repeated regeneration. Report/evidence ONLY artifactroot/claude-d/. Final handoff normal demo Home, network restored, no active recording/player and exact outstanding provider jobs/blockers.
+```
+
+</details>
+
+- **Recording-worker handoff reviewed:** B's report, 18-case matrix, source ledger and saved primary slide-2 screenshot were reviewed. Twelve passes, zero confirmed failures, one unresolved scoring outcome and five untested cases are recorded; the interrupted-capture cases are user-cancelled. Observed first/repeated Redo, Keep, Overwrite and non-recording restart persistence passed. Four capture allocations were consumed before the stop; no further captures followed. A 23-second selected slide-3 source shows `Slide score Failed` without a diagnosed cause or safe retry evidence; it remains provisional. B disclosed a roughly three-second sample/navigation overlap and one accidental opening of an existing deck's idle screen, immediately backed out without recording, editing or playback; its screenshot was removed from B evidence for privacy. No user media mutation is claimed. B's valid `worker_done` was accepted; Orca retained its terminal as `user_takeover` and performed no process action. C received exclusive phone access after B's explicit release.
+- **Second confirmed defect published:** [#37](https://github.com/snuhcs-course/swpp-2026-project-team-07/issues/37) records the intermittent Home/Upload overlap with observed frequency, workaround and unknown trigger. Raw evidence containing unrelated saved-presentation statistics stays local. No deterministic reproduction or code cause is implied.
+
+- **Fresh #35 retest evidence:** C exercised the installed normal v6 with a saved generated finding. The complete paragraph opens; Close/Android Back return to the same slide; underlying navigation is blocked. The coordinator independently viewed open, Close and Back screenshots. [Retest comment with screenshot](https://github.com/snuhcs-course/swpp-2026-project-team-07/issues/35#issuecomment-6581980971) was published and read back successfully. The finding fits the panel, so viewport-overflow scrolling is not freshly validated; no speech/advice-quality or original-Seoul-recording claim is made. Issue35 remains open; this does not publish or merge the prior local repair. Playback UI pause/resume and whole-run seeking passed; exact audible output and transcript-word seek alignment remain unverified/unavailable in the tested normal Review route. Combined-source overall scoring correctly shows unavailable; the existing slide3 Failed state remains provisional, with no retry or additional provider generation. C explicitly released the phone; D received exclusive access at the actual Orca receipt time 01:09:12 KST for the revised non-voice cases.
+
+- **Cosmetic count-label finding reviewed:** A's minor `1 slides` observation was independently confirmed in the one-page setup screenshot and the unconditional count labels in PresentationSetup/Home source. Published as the separate low-severity cosmetic issue [#38](https://github.com/snuhcs-course/swpp-2026-project-team-07/issues/38), with labelled screenshot and no functional/data-loss or screen-reader-testing claim. This is distinct from #36.
+- **C settlement:** Reviewed C's full report, 18-case matrix/validation and handoff. Thirteen passes, zero new confirmed failures, three blocked and two untested cases; all 28 screenshot paths exist. Valid `worker_done` accepted. Orca retained C's terminal as `user_takeover` without process action, matching B; neither holds the phone.
+
+### Coordinator follow-up prompt excerpts — verbatim
+
+Tool: Orca orchestration; coordinator model GPT-6 (exact variant not recorded). These are the operative scope/handoff messages, not reconstructed worker reasoning. Exact initial briefs are above; routine heartbeat/status receipts are recorded as results.
+
+**Immediate user-scope correction broadcast:**
+
+```text
+USER STEERING IMMEDIATE: "voice recording dont do those test no more, the text to voice is bad" and "run all tests except doing synthetic voice transctiption tests". STOP any active synthetic Mac speech playback immediately. If app recording is active, stop it safely through app and preserve existing audio; then NO MORE new voice/TTS recording/transcription tests, no more synthetic speech playback, no Q&A answer captures. B: acknowledge promptly, cancel remaining speech capture allocations, restore Macoutput6/mutedfalse, do remaining non-speech controls/recovery inspection using saved data. C/D: continue non-speech UI, playback controls, saved feedback/scoring display, offline/reconnection/accessibility/persistence; use existing results read-only, make no conclusions about speech recognition/advice quality from the poor synthetic input. Mark excluded scenarios user-cancelled, not failed. Do not stop all testing. Phone ownership still B until explicit release. Send immediate acknowledgment and any active voice process/recording state.
+```
+
+**C grant — `msg_2be869b13477`:**
+
+```text
+PHONE_GRANTED exclusively to CODEX_C at 01:00 KST, target20min. B explicitly released and revoked helper grant; no other agent may use ADB. Current primary slide2 compact Review, original30s score58, one finding with arrow, paused. Handoff codex-b/handoff.json. No new voice/TTS/capture or provider regeneration. Exercise saved controls, #35 details, feedback/scoring display/navigation; note slide3 scoring Failed as provisional until cause/evidence sufficient, do not retry uncertain provider work. Write phone window, cases, evidence and handoff. Release phone promptly when UI checks finish before report-writing; send PHONE_RELEASED, then worker_done only after report is complete.
+```
+
+**D grant — `msg_09ad04fbcb0a` (actual send receipt 01:09:12 KST; the prompt's rounded time is preserved verbatim):**
+
+```text
+PHONE_GRANTED exclusively to CLAUDE_D at01:08 KST,target15min. C explicitly released and revoked helper. Current primary compact Review slide2,score58,onefinding,paused,same savedsources; Q&A link ready. Read codex-c/handoff.json. Continue revised non-voice plan including saved Q&A display/navigation, offline/reconnection, font/accessibility, Must Cover scroll reachability and restart persistence. No new TTS/voice/capture/answer or question generation, no provider retry/regenerate. Record original network/font/motion/theme before changes and restore exactly; root restores coordinator timeout at final cleanup. Release phone before final report writing; no phone actions after PHONE_RELEASED. If time remains, repeat rejected invalid/oversize imports from labelled primary front without any new valid deck, to check intermittent #37 and obtain a clean screenshot; fresh picker screenshot before every selection. Do not touch original user decks/media. Report configured model only if exposed without changing it.
+```
+
+### Final QA review, publication and restoration
+
+- **D results reviewed and settled:** Final report/matrix: 33 pass, 3 failed expectations, 2 blocked, 10 user-cancelled and one negative reproduction. D’s configured model was reported as `claude-opus-5-5`; Codex B/C were observed as `gpt-6.1-sol`; A’s exact configured Claude model is not recorded. Root reviewed the normal/light Q&A badge, 200%/130% Review comparison, font-change Home result, clean oversize retest and final Home screenshots. All four logical worker completions have matching task/dispatch identities and were accepted. A/D resources were released with transcript archives; B/C are completed and phone-released but Orca retains their idle terminals as `user_takeover`. Two failed startup dispatches were superseded and own no materialized resource; no arbitrary terminal was closed.
+- **Coordinator triage:** D’s 200% Review overlap and repeated font-change navigation reset are confirmed observed defects. The Q&A panelist clipping, initially a minor observation, is also independently confirmed at normal font in dark/light. D’s below-fold offline cue warning is reachable; an above-fold warning requirement is not established, so that failed expectation remains provisional. Must Cover and Details scroll fully, resolving A’s preliminary clipping concern. Dump/source concerns about targets, focus and screen-reader activation remain provisional because TalkBack was not operated. Speech/advice quality is excluded under the human scope correction.
+- **Published confirmed issues:** [#36 missing import defaults](https://github.com/snuhcs-course/swpp-2026-project-team-07/issues/36), [#39 200% text overlap](https://github.com/snuhcs-course/swpp-2026-project-team-07/issues/39), [#40 font-change navigation reset](https://github.com/snuhcs-course/swpp-2026-project-team-07/issues/40), [#37 intermittent import overlap](https://github.com/snuhcs-course/swpp-2026-project-team-07/issues/37), [#41 Q&A avatar clipping](https://github.com/snuhcs-course/swpp-2026-project-team-07/issues/41), and [#38 singular slide-count copy](https://github.com/snuhcs-course/swpp-2026-project-team-07/issues/38). Each issue states device/build, agent operation, steps, expected/actual, severity, frequency and evidence limits. Clean labelled screenshots are attached where available; unrelated saved-presentation screenshots, recordings and raw logs remain local. The original #35 remains open with the successful local-v6 retest comment above; no duplicate was created.
+- **Additional #37 evidence:** D repeated picker Cancel → invalid PDF → 51 MiB PDF from the primary deck, with no extra valid import. Both rejection views were clean at 3 and 7 seconds. [Independent negative retest and clean comparison](https://github.com/snuhcs-course/swpp-2026-project-team-07/issues/37#issuecomment-6582574201) was posted and read back. Across the sweep, two overlaps were seen in six rejection observations; the trigger is unknown and the negative retest does not clear it.
+- **Final coverage:** `outputs/phone-qa-20261103/coverage-matrix.csv` contains 112 case checks: 79 pass, 7 failed expectations, 6 blocked, 19 untested and one negative reproduction. Fourteen untested cases are user-cancelled. Checks overlap between agents and are not unique features or a population failure rate. Seven failed expectations yielded six confirmed issues; the remaining warning-placement concern stays provisional. The local README, worker reports, evidence, provisional classifications and published URLs are retained under the requested artifact directory. Existing synthetic-native scrolling evidence is historical; current actual feedback fits the panel. Audible output, original word/visit seeking, failed-score cause, older Q&A history, active-processing outage, fresh consent/raw UUID timing, overflow stress, TalkBack and real Settings-app font changes remain blocked/untested as described there.
+- **Independent cleanup verification:** After D’s explicit phone release, root restored the coordinator timeout to 30000 and verified installed versionCode6, font1.0, Wi-Fi/data1/1, airplane0, transition/window1.0/1.0, animator key null, dark theme, Mac output6/input71/alert100/unmuted, and no task speech process. Final phone screenshot shows primary Home, nine decks and the retained 1:27 combined run. D created zero recordings, answers or question sets, and no TTS/provider retry. The task-only caffeinate process was stopped. All seven original decks and existing user recordings were preserved; two labelled test decks and four pre-stop captures remain. No app-data clear/uninstall was used.
+- **Scope preserved:** Fresh automated checks and final app/config/test hashes remain as recorded above. Application code, APIs, deployment and prior dirty v6 repair files are unchanged by QA. Only artifacts and this active log entry were added. No staging, commit, push, merge or public release/deployment occurred. Fixes are a separate task. Results are AI agent-operated; no human testing or acceptance is implied.
+
+- **Handoff receipt:** Final artifact/link/evidence/hash audit passed at 01:43 KST (about 83 minutes from preflight). Six issue URLs and both retest comments were verified, GitHub proof screenshot saved, and only the task-owned coordinator terminal was closed after empty-inbox/final worker accounting. B/C retained terminal status above is unchanged.
+
+
+## 2026-11-03 — Repository-wide demo issue triage
+
+- **Context:** Contributor Seoyeon; Codex desktop coordinator with three bounded Codex source-review agents, exact model variant not recorded. Ponytail full; review/verification only. Target is the installed v6 demo, with fresh remote-main comparison where it changes the recommendation. Earlier dirty original/v6 source work is preserved.
+
+**Prompt — verbatim:**
+
+```text
+Look at all issues mine and others and see which are worth fixing which are not
+```
+
+- **Read-only scope:** Review all authors and states in `snuhcs-course/swpp-2026-project-team-07`; decide whether issues warrant immediate fixes, focused reproduction, cheap polish, enhancement work or deferral. No application/GitHub changes, new phone/voice/TTS/provider tests, commits or deployments were authorized or performed by this request.
+- **Actual review:** Live issue search returned ten issues, #35–#44; each issue and its comments were individually fetched and all ten were open. Six were authored by gabdeguate and four by BonjourInjoon. Reviewed current v6 implementation/callers, earlier labelled phone evidence, the written section-bar specification and fresh default-main files. Attached reporter videos were not played. Three agents independently covered gestures/seeking, TTS and import/layout/lifecycle issues; all reported and settled.
+- **Generated/retained result:** Local `outputs/phone-qa-20261103/issue-triage-20261103.md` and `issue-triage-snapshot-20261103.json` record all ten decisions and source/evidence limits. Recommended immediate fixes: #36 defaults, #43 explicit speech language, #39 compact-demo large-text layout; reuse/release-verify existing #35 repair. Reproduce #42 on v6 before a narrow gesture fix. #38/#41 are cheap related polish, #44 is a deliberate section-navigation enhancement request, #37 needs a repeatable trigger before repair, and #40 is a low-return lifecycle follow-up with saved data preserved. These recommendations do not change tracker labels or close issues.
+- **Evidence and limits:** TTS omits language/voice in the shared Q&A callback on both v6 and fresh main. Official Expo SDK57 Android implementation falls back to the device locale, a credible explanation rather than fresh audible proof. Questions support Korean/mixed languages, so hardcoding English is not recommended; voice naturalness alone does not justify a new provider. Demo Full Review explicitly maps dragging to slide indexes; the written spec describes section taps, not continuous seeking. Continuous merged-run time seeking requires correct source/segment mapping. Demo Review has a 220ms pre-navigation fade; a second 220ms entrance fade is not evidence of a 440ms input lock. Nested gesture ownership also warrants focused reproduction. Native font-scale recreation is plausible from APK/config inspection, not traced in a new test.
+- **Version correction:** Fresh GitHub main has a different scrollable Review/full feedback card layout and tappable Full Review sections. Demo-specific #35/#39 and parts of #42/#44 cannot be blindly applied to main. Main retains the same missing speech-language option and identical relevant defaults/Home/Upload/AppShell mechanisms. An initial empty-query PR search returned no entries; a properly repository-qualified query corrected that lookup, and no claim of zero open PRs was retained. The old primary-workspace README describes an older prototype and was not treated as the current demo baseline.
+- **Verification:** Checked current issue bodies/comments, source/specs and official upstream implementation; independent agents compared fresh default-main contents with local file hashes. Earlier phone checks are attributed as historical. No new test-suite or device result is claimed. Local report links and all ten issue entries were checked before handoff. App code, prior v6 repair and GitHub state remain unchanged; only local report/snapshot and this active log entry are retained. Human acceptance remains unconfirmed.
+
+### Delegated prompt excerpts — verbatim
+
+These are labelled excerpts of the actual task/follow-up prompts; routine tool/status output is summarized above.
+
+**Gestures/seeking initial scope:**
+
+```text
+Investigate #42 https://github.com/snuhcs-course/swpp-2026-project-team-07/issues/42 (human reports v5 repeated vertical swipes between individual Review/slide and Q&A delayed/ignored, every time, video attached) and #44 https://github.com/snuhcs-course/swpp-2026-project-team-07/issues/44 (human v5 Review audio slider snaps between interval centers; requests continuous seeking, unsure intentional). Inspect current gesture/nav/slider code and callers.
+```
+
+**TTS initial scope:**
+
+```text
+Focus #43 https://github.com/snuhcs-course/swpp-2026-project-team-07/issues/43: human tester of demo v5 says English Q&A questions are read with Korean-style pronunciation every time; actual voice/language/root cause unverified, video attached. Inspect QAScreen speak call, language selection/detection, other speech callers/configs/dependencies, any tests. Determine whether worthwhile functional fix vs subjective TTS-engine quality; what code establishes and what needs real human/device confirmation without synthesizing voice.
+```
+
+**Existing UI issue initial scope:**
+
+```text
+Assess ROI, severity and whether worthwhile for #36 missing import defaults (3 observations; untouched-save/server values untested), #37 intermittent Home/Upload overlap after rejection (2/6 observations, final 0/2 retest, trigger unknown), #39 Review overlaps at font_scale2.0 (1 observed, 1.3 clean), #40 font_scale changes return to Home (ADB 3/3, Settings app/active capture untested).
+```
+
+**Gesture/seeking main-branch follow-up:**
+
+```text
+Important new evidence: freshly fetched GitHub default-main ReviewScreen.tsx differs materially from installed demo v6: it imports ReviewSlidePlayback/SlideReviewSummary, has ScrollView/headerBottom, and older/different UI. Please quickly read current remote default-main FullReviewScreen/ReviewScreen gesture/slider relevant sections via GitHub fetch_file and report whether #42/#44 are demo-specific or also present in main. Keep your recommendation grounded in demo v6; no edits. Do not assume local origin/main is fresh. Root checks #35/#39 main differences.
+```
+
+**TTS main-branch follow-up:**
+
+```text
+Fresh GitHub default-main Review UI differs from local demo branch. Quickly verify current remote default-main QAScreen.tsx Speech.speak call via GitHub fetch_file (repository_full_name snuhcs-course/swpp-2026-project-team-07, ref omitted). Is language omission still present there? One bounded remote check; no playback/edits. Root handles overall branch distinction.
+```
+
+**Existing UI main-branch follow-up:**
+
+```text
+Fresh GitHub default-main ReviewScreen.tsx has scrollable different layout (imports SlideReviewSummary, ReviewSlidePlayback, ScrollView/headerBottom), so #39 may be demo-only. Quickly verify remote default-main PresentationSetup defaults #36 and AppShell/Home/Upload relevant #37/#40, using GitHub fetch_file (ref omitted), not local origin/main. Need only tell whether same mechanisms remain vs materially changed. Root checks main Review #35/#39. No edits.
+```
+
+
+## 2026-11-03 — Demo fixes #36 and #43
+
+- **Context:** Contributor Seoyeon; Codex desktop coordinator and native Codex implementation/build-investigation/review workers; exact model variants not recorded. Ponytail full with the surgical-patch workflow. The user selected the installed demo v6 source, not current main. Existing #35 local work is the preserved baseline.
+- **Human decisions:** Only #36/#43 are authorized. The user set the new default to ten minutes and General audience, chose demo v6, approved the implementation plan, and subsequently required every check to remain silent. No microphone recording, synthetic-speech transcription or audible phone TTS test is authorized for this run.
+
+**User request (verbatim):**
+
+```text
+lets implement the following fixes 
+
+36: Set as default 10 min time limit as default and general audience. update documentation as well , 
+43: Correct language handling: if question is in english it should use a english tts not a korean one
+
+dont fix anything else
+```
+
+**Target clarification (actual question and answer):**
+
+```text
+Which version should receive only #36 and #43? The installed demo v6 and GitHub main use different UI versions.
+Demo v6 (Recommended)
+```
+
+**Approved AI-written plan and implementation request (verbatim):**
+
+```text
+PLEASE IMPLEMENT THIS PLAN:
+# Demo fixes #36 and #43
+
+## Summary
+
+Apply only these two fixes to the **demo v6 source**, preserving its existing local work. No changes have been applied in this Plan-mode turn.
+
+## Changes
+
+- **#36 — Import defaults:** Set the shared default to **600 seconds (10:00)** and **General audience**. Use those constants throughout setup. Show defaults for untouched new imports even when a server-context ID has already been reserved. Refresh untouched controls when asynchronous settings arrive; preserve user edits, pending drafts, saved preferences and explicitly cleared values. Existing five-minute presentations remain unchanged.
+- **Documentation:** Update current defaults documentation to ten minutes, including README, requirements and handoff guidance. Preserve historical prompts and test results; add dated verification for the new behavior.
+- **#43 — Q&A speech:** Set language in the shared speech callback used by questions and follow-ups: `en` for Latin text without Hangul, `ko` when Hangul is present, and existing fallback for other text. Preserve speech stopping and playback coordination. Use the installed Expo Speech API; no new provider or dependency. [Expo SDK 57 reference](https://docs.expo.dev/versions/v57.0.0/sdk/speech/).
+
+## Verification
+
+- Add regression tests for new imports before/after context reservation, delayed synchronization, untouched Save, offline recovery, user edits, existing five-minute settings and cleared settings.
+- Assert speech options for English, Korean and independently selected follow-up text; verify repeated taps and navigation still stop speech.
+- Run `npm run check`, `npm run bundle:android` and one independent review of the two-fix diff.
+- Build an identifiable updated demo and install it over v6 while preserving app data. Check import defaults and question playback on the connected phone.
+- Run **no microphone recording or synthetic-speech transcription tests**. Restore any temporary device settings.
+
+## Boundaries and handoff
+
+No other issue fixes, backend/API changes or deployment. Keep historical evidence intact and record actual prompts, changes and verification in the active Iteration 2 log.
+
+Mixed Korean/English text retains Korean speech under the stated rule. Phone verification must confirm an English voice is available; report any blocker without claiming audible acceptance.
+```
+
+**Device question and human scope correction (verbatim):**
+
+```text
+ADB currently sees no connected phone. Please reconnect and unlock the phone, keep USB debugging enabled, and accept any USB-debugging prompt. Tell me when it’s connected; I’ll continue the fixes and automated checks meanwhile.
+i can't make sound right now everything has to be silent
+```
+
+**Actual worker prompts (verbatim excerpts; implementation instructions retained, not a reconstruction):**
+
+```text
+Implement ONLY approved #43 in demo v6 source /Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/demo-issue35-20261102/source. Primary workflow surgical-patch, Ponytail FULL (read skills ~/.agents/skills/ponytail/SKILL.md and surgical-patch). Read applicable AGENTS/mobile/AGENTS and README; preserve existing dirty work. You own ONLY mobile/src/screens/QAScreen.tsx and directly relevant existing speech test harness/tests (qa-screen-runtime.test.mjs, helpers/qa-screen-runtime-native.mjs as needed). Root owns all docs/logs/defaults/build, so do not edit those. Approved exact behavior in shared speak callback: language='en' for Latin text without Hangul, 'ko' when Hangul present, existing unset fallback for other text. All main and follow-up Hear controls use this callback. Preserve stop/callbacks/player/navigation/recording guards. Use base en/ko per Expo57 native implementation, no dependencies/provider/backend changes. Conservative mixed text uses ko; include brief shortcut limit/upgrade trigger comment if appropriate. Add meaningful regression assertions on actual Speech.speak options including follow-up independent language, mixed Korean/acronym, fallback, repeated tap stop, and navigation/unmount stopping (reuse existing). Run focused tests if dependencies accessible; do not install/mutate dependency locks. No microphone/phone/provider/TTS audio calls, no GitHub writes, no commits/staging/push. Root records your exact prompt in active log; report files, tests, failures and final diff scope.
+```
+
+```text
+Read-only bounded task under Ponytail FULL / surgical-patch workflow supporting approved #36/#43 demo v6 update. Source /Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/demo-issue35-20261102/source with prior dirty #35 repair and app versionCode6. Root will edit defaults/build; worker43 QAScreen. Find exact successful native build pipeline from outputs/demo-issue35-20261102, logs/scripts and azure-team-hosting worktree, dependencies available, Metro/Gradle stale bundle avoidance, signing/in-place installation procedure; inspect AGENTS/README as relevant. Do NOT write or execute builds, phone actions, tests, git modifications, no secrets/.env printing. Need actionable minimum commands and environment prerequisites, whether need copy patched source into established build area vs native build locally. Preserve unrelated files/worktrees. Report source-to-artifact verification method, paths and any block. No file edits/logs; root records prompt centrally.
+```
+
+```text
+Independent read-only review of final approved fixes ONLY #36/#43 in /Users/seoyeonpark/Documents/ChatGPT/OnLoud/outputs/demo-issue35-20261102/source. Apply Ponytail FULL / ponytail-review criteria within surgical-patch workflow; read applicable AGENTS/contracts. Author intent/spec: new imports default600seconds/General audience even reserved empty context; untouched controls refresh async; preserve edits/drafts/saved/cleared values and existing5min presentations. Shared Q&A speak selects en for Latin without Hangul, ko for any Hangul, unset otherwise; preserve lifecycle, no other fixes. Examine exact diff and connected code/tests for concrete failures independently. Application files in scope: mobile/src/features/presentations/defaultRequirementsState.ts; mobile/src/screens/PresentationSetup.tsx; mobile/src/screens/QAScreen.tsx. Relevant tests: presentation-defaults, presentation-setup, bundled-demo, qa-screen-runtime and helper native mock. app.json versionCode7 is build identity only. Docs updatedREADME,Design-Documentation,requirements-and-specifications,outloud-implementation-handoff,iteration-2-ai-feedback,presentation-defaults-verification; root owns active log. Existing ReviewScreen.tsx/compact-feedback.test.mjs changes are prior #35 baseline and MUST NOT be treated as this patch; baseline at outputs/demo-fixes36-43-20261103/evidence/baseline.json/.diff. Focus current diff only plus callers. npmruncheck is running; focused defaults25/25, QAruntime/navigation12/12 reported. You may run silent focused tests; no phone, sound, microphone, provider/network calls, GitHubwrites, dependency changes, file edits, staging/commits/push. Report concrete must-fix defects with reproduction evidence or no findings and coverage limits. Do not silently waive user-data/async behavior. Root records exact review prompt centrally.
+```
+
+- **Generated/retained work so far:** Shared 600-second default and setup refresh/initialization repair; historical five-minute provenance preserved at its matching context/revision. Shared Q&A language option with the approved Hangul/Latin rule; focused tests and current-default documentation. Build identity advances from versionCode6 to7. No backend/API/provider/dependency changes. Existing native stage is reused; a temporary source node_modules link points at already installed dependencies with byte-identical package-lock.
+- **Regression evidence:** Initial defaults/visual setup tests failed against old source; after the repair defaults/setup/drafts passed25/25. Worker43 reported two language failures before the change and12/12 runtime/navigation passes afterward, without generating sound. Full checks/review/build/install results follow below when observed.
+- **Operational errors/limits:** The first focused-test log command used a wrong output path and did not execute; corrected to the absolute evidence path. One exploratory search also used the prototype-root cwd and was corrected to the selected demo source. Initial sandbox ADB startup lacked socket access; authorized escalated ADB worked but reported no connected devices. The user's silence response is not a connection confirmation. No app data or device settings have been changed at this stage.
+
+### Review correction and silent APK handoff decision
+
+- **Independent AI review:** The reviewer found a concrete #36 acceptance failure: clearing both values before default initialization could leave the initializer pending after the clear draft was accepted, then restore600/General audience. Root added real synchronization tests; two failed with600insteadnull before the correction. Confirmed choices now cancel only still-pending default intent after their draft is durably saved; the serialized default operation rechecks that intent. Already accepted/in-flight default provenance remains available for revision-safe subsequent clears. Three race cases cover clear-before-default, a queued initializer behind a clear, and a clear during an already submitted PATCH. Focused defaults/setup/draft checks pass28/28; reviewer independently repeated28/28 and found no unresolved findings. Speech runtime/navigation proof remains12/12.
+- **Actual review follow-up (verbatim):**
+
+```text
+Clear correction ready. Added 3 real synchronization cases in requirements-draft.test.mjs. Before: 11tests9pass2fail, both restores600 insteadnull. After: defaults/setup/draft28/28. confirmRequirements now cancels only pending intent after successful draft save; existing accepted provenance retained. synchronizePresentationDefaults rechecks intent inside serialized callback. In-flight submitted default PATCH -> clear preserves expected revisions[0,1]. Please inspect final affected diff and rerun focused proof, then final verdict. First queued-test scaffold awaited a POST with no draft and hung; root stopped it and corrected to explicit serializeContextWrite gate (with timeout); no app code changed for scaffolding.
+```
+
+- **Final automated checks:** `EXPO_NO_DOTENV=1 EXPO_NO_TELEMETRY=1 EXPO_OFFLINE=1 npm run check` passes typechecking, lint (one pre-existing useSegmentPlayer cleanup-ref warning) and591/591tests. Android export with the retained public demo API/code-required configuration passes, bundle`entry-8c1d71deccd06c791517f0b6c4d5b9fe.hbc`. Application/tests/current documentation whitespace check passes. Blanket whitespace checking intentionally retains trailing spaces in verbatim user prompt quotations, including a pre-existing entry; no exact prompt was trimmed to manufacture a clean result.
+- **Device follow-up (actual question/answer, verbatim):**
+
+```text
+The fixes can be installed and checked silently, but ADB still lists no phone. Please reconnect the USB cable and unlock/authorize debugging, then confirm when connected. I won’t play speech or record audio.
+Finish with APK; phone unavailable
+```
+
+- **Updated completion boundary:** Finish with an APK only; phone installation, phone UI/defaults, English voice availability and audible pronunciation are unverified. The phone was never connected during this task; no device/app data/settings were changed. All checks remain silent. No code beyond #36/#43 and the build identity is changed. Prior #35 application/test hashes and package-lock remain byte-identical to the baseline. No backend checks are required for this client-only patch, and none were run. No staging, commit, push, issue update/closure, merge or deployment.
+- **Build operations:** Reused the existing native stage after verifying exactly five changed production files. The standard Expo prebuild regenerated its ignored Android directory despite omitting`--clean`; source native configuration remains in app.json/plugins. The regenerated signing certificate SHA256 matchesv6. Gradle's sandbox cache-lock write was blocked, so the same authorized offline build was rerun with cache access. Final build/artifact results are recorded below when complete.
+
+**Additional actual worker follow-ups (verbatim):**
+
+```text
+Root established temporary mobile/node_modules symlink to Azure installed dependencies after exact package-lock bytes match; ready for focused checks. Baseline saved before changes. ADB currently lists no devices; root asking user to reconnect while we continue.
+```
+
+```text
+Latest user steering: “i can't make sound right now everything has to be silent”. Root will not perform phone speech playback. Continue silent deterministic tests only; audible pronunciation will remain explicitly unverified. Please send exact tests counts and no sound assertion in handoff.
+```
+
+```text
+Confirmed within #36 preserve-clears acceptance. Root will add the 3 real sync regressions, cancel only still-pending default intent after confirmed draft is durably saved, and recheck pending inside serialized defaults callback. Accepted provenance and in-flight PATCH finalization retained. Please hold for final affected diff/test results, then re-review this correction only; no code edits.
+```
+
+### Final artifact and handoff
+
+- **Native result:** Offline Gradle release build passed in3m21s (944actionable tasks). Archived `OutLoud-demo-v7-issues36-43.apk` (143,227,126bytes), versionName0.1.0/versionCode7, packagecom.team07.outloud, non-debuggable. SHA256`c44bebc27d804c65451807a43f0ac1f5db5cf6ee572ded5270996ccf36e098c7`. `apksigner verify` passes with the same v6certificate; manifest comparison differs only in versionCode. APK embedded Hermes bytes equal the final Gradle bundle; packager source-map content matches all five final changed application files exactly.
+- **Artifacts:** Workspace `outputs/demo-fixes36-43-20261103/` contains APK/checksum, report, focused patch excluding pre-existing #35 work, build/source hashes, before/after regression logs, final591-test/export/native logs and independent review evidence. Current documentation and actual prompt/result records are updated.
+- **Cleanup and limits:** Removed only the task-created temporary source node_modules symlink; installed dependency locks and original #35 application/test hashes remain unchanged. All three native workers reported and settled. User changed completion to APK-only, so no installation, phone UI/default check, voice-availability check or audible acceptance is claimed. No sound, microphone capture, real transcription/provider calls, device settings/data changes, backend/API edits, commit/push/merge, GitHub issue changes or deployment occurred.
+
+### GitHub availability follow-up — November 3, 2026
+
+**User prompt (verbatim):**
+
+```text
+where can i find demo v7 on github
+```
+
+- **Observed result:** Read the live repository releases collection through the GitHub connector. It contains the published v5 prerelease (`outloud-demo-v5-20261102`); no v7 release is present. The generated v7 APK remains local in the task artifact directory. No GitHub publication, tag, source push or release-asset upload was performed. An initial read-only `gh release list` invocation rejected unsupported JSON field`url`; the connector read then succeeded. No application or device changes.
+
+## Fix issues #44–46 while preserving the design — November 3, 2026
+
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex desktop · **Model:** GPT-6 (exact variant not recorded)
+
+### Planning prompts and decisions — verbatim, in order
+
+```text
+44 and 46 seem like ui fixes i think a fix for 45 is by adding to feedback a specific explanation or concrete suggestion what do u think
+```
+
+**Answer to #46 scope choice — verbatim:**
+
+```text
+I just dont want to touch the ui
+```
+
+**Selected UI-boundary answer — verbatim:**
+
+```text
+Keep design, fix behavior
+```
+
+**Answer about simple labels — verbatim:**
+
+```text
+That portion should be a simple label but informative, for time, we could say too slow or too fast or on time, for filler words just a filler word count might be better
+```
+
+**Selected timing-label answer — verbatim:**
+
+```text
+Under / On / Over time (Recommended)
+```
+
+```text
+How are we planning on showing the actionalble feedback will it be included alongside the normal feedback?
+```
+
+### Approved implementation request — verbatim
+
+```text
+PLEASE IMPLEMENT THIS PLAN:
+# Fix #44–46 while preserving the current design
+
+## Changes
+
+**#44 — Continuous audio seeking**
+
+- Keep the existing slider and slide sections. Let the marker move smoothly within each section and seek to that exact position on release.
+- Preserve playback state: playing continues; paused or idle stays paused.
+- Map positions through the selected recordings, including retakes and repeated slide visits. Preserve missing-audio warnings.
+- Cancel interrupted drags and outdated seeks. Support seeking through accessibility actions.
+
+**#45 — Specific, actionable feedback**
+
+- Strengthen generated feedback using the existing text and evidence fields; no new screen or response schema.
+- Each improvement should explain **what needs attention, why it matters, and one concrete next step**, supported by relevant cited intervals.
+- Keep the overall summary brief. Citations supporting strengths should remain positive; do not manufacture criticism for every excerpt.
+- Version the revised prompt and preserve historical results. Existing feedback changes only when a new assessment is generated.
+
+**#46 — Simple, informative labels**
+
+- Replace the timing row with **Under time / On time / Over time**.
+- Use the same rule for per-slide timing labels and bar colors: **On time includes ±15% of the allocation**. Thus 17 seconds against 28 seconds shows **Under time**.
+- Replace the filler verdict with **“3 fillers”**, using the actual count. Show unavailable data honestly.
+- Describe per-slide targets as **allocations**, rather than strict individual requirements.
+- Use **“No issue flagged”** for assessed content/delivery categories without findings. Keep actual timing/filler advice accessible in the existing details view.
+- Keep the numerical rubric and score weights unchanged.
+
+## Verification
+
+- Test seeking within slides, boundaries, paused playback, retakes, repeated visits, missing audio and rapid/cancelled gestures.
+- Test timing boundaries, the reported 17/28-second example, filler counts and unavailable states.
+- Verify feedback text remains paired with its supporting evidence, with unchanged scoring arithmetic and historical-result handling.
+- Run required mobile/backend checks and Android playback checks. Use mocked providers for automated tests; assess generated-feedback usefulness separately before claiming quality improvement.
+
+## Constraints
+
+Preserve layout, typography, icons and navigation. Reuse existing components and dependencies, preserve unrelated local work, and record the discussion and decisions in the collaboration log when implementation begins. No commit, push, deployment or paid evaluation is included.
+```
+
+### Scope, implementation and verification
+
+- **Selected workflow and baseline:** Approved-plan execution with Ponytail full, bounded parallel playback/backend work and one consolidated independent review. Continue in this existing demo task checkout (`codex/demo-feedback-details-20261102`), preserving prior #35 and #36/#43 work; the older root checkout is not the implementation target. Saved pre-task diff/source snapshots under `/private/tmp/outloud-issues44-46-20261103-eibm8xyq`. Reused installed dependencies only after confirming an identical package lock; no new dependency or native configuration is planned.
+- **Progress:** New #46 regressions first reproduced the old Spot On/timing behavior; the focused metric/render tests now pass, including 17/28 seconds, exact ±15% boundaries, unavailable counts and preserved advice. The backend worker advanced both prompt constants to v2.3 and froze the exact v2.2 predecessor identities; focused mocked tests verify old receipts/results remain unchanged and actionable text retains authoritative evidence. Playback implementation, whole-scope checks, native checks and final review are still in progress. No paid generation, commit, push, release or deployment has occurred.
+- **Implemented behavior:** Continuous Full Review seeking keeps equal-width slide sections and the complete selected-source queue, preserves idle/paused/playing intent, maps repeated visits/retakes, retains missing-audio confirmation, and cancels stale/cancelled/background gestures. Accessibility adjusts by five seconds. Compact Review uses shared inclusive ±15% allocation labels, raw known filler counts, No issue flagged for assessed content/delivery without findings, and the existing details dialog retains observations and practical suggestions. The v2.3 prompt strengthens actionable text in existing fields; all score weights, schemas and evidence validators remain unchanged.
+- **Automated verification and review:** Mobile `npm run check` passed 607/607 tests, typecheck and lint (one existing player cleanup-ref warning); `npm run bundle:android -- --max-workers 2` passed. Backend system check and migration dry run passed; the complete SQLite suite passed 601 tests with 25 PostgreSQL-only skips. Initial regressions were observed failing before fixes, including a retained old accessibility callback that needed the final selected-source signature fence. Separate read-only AI review found no concrete defect after independently running 59 focused mobile and 40 backend tests. These are agent/automated checks, not human acceptance. Native Android fixture verification remains in progress.
+- **Preservation and limits:** Pre-task snapshots and a task-only patch separate these changes from the existing dirty #35/#36/#43 work; unrelated tracked diffs match the original snapshot. Original v2.2 protocol digests are frozen in the predecessor allowlist, and lifecycle tests preserve historical snapshots/results/receipts. No real model response was generated, so prompt adherence/usefulness is not established. No account, provider, production backend, recording or historical saved result was mutated.
+
+- **Final native result and cleanup:** Ten of ten silent Android 16/API36 native component-fixture checks passed: arbitrary/repeated-visit seeking, paused/playing intent, cross-slide coordinates, Under/On/Over labels, three fillers, existing actionable feedback/citations and cited-source playback. All six changed mobile sources matched the QA APK's source map exactly; root visually inspected compact/advice screenshots. The task-only harness required generated package/provider corrections and reduced-motion automation settings; no production source fix was needed. Restored runtime settings, stopped the read-only emulator and verified all eight original AVD disk/config file hashes/sizes unchanged. Retake/missing-audio, cancellation/rapid races, boundary/EOF and accessibility cases remain unit-only, not native acceptance. No live model/provider call, microphone capture or audible-quality test occurred.
+- **Final handoff:** [Verification report](issues44-46-verification-20261103.md) records commands, source/receipt preservation, independent review and explicit limits. Reviewed application/test hashes remain unchanged after checks; previous log text and unrelated dirty changes are preserved. Removed only the task-created dependency link. Changes remain local and uncommitted; no GitHub issue mutation, push, merge, deployment or production APK publication. Generated-advice usefulness still needs separate real-model/human assessment; the native advice example was a labelled fixture.
+
+## Combined v7 GitHub publication — November 3, 2026
+
+**Contributor:** Seoyeon · **Tool:** OpenAI Codex desktop · **Model:** GPT-6 (exact variant not recorded)
+
+### Requests — verbatim, in order
+
+```text
+uplaod ver 7 in git 
+```
+
+```text
+combine all fixes and check before uploading
+```
+
+- **Authorization and scope:** The second request supersedes uploading the older v7-only APK. Prepare one combined versionCode7 demo containing the implemented #35/#36/#43 and #44–46 fixes, verify the exact combined source/build, then publish its source branch and APK/checksum on GitHub. No previous v7 release exists. Preserve the earlier v7 APK and dirty original checkouts. Backend prompt v2.3 is included as source only; no running-server deployment, merge or paid evaluation is authorized.
+- **Preparation:** Existing release metadata and older v7 bytes were read before mutation; a read-only independent audit confirmed the older APK's CRC/signature/manifest and complete source provenance. No release had been created when the user requested combining fixes. CLI network access required a narrow sandbox escalation; release uploads are unavailable in the GitHub connector. Prepare an isolated source snapshot and exact staged review rather than commit the user's dirty checkout. Actual combined verification/publication receipts will be appended before handoff.
+
+- **Combined pre-publication verification:** The exact isolated snapshot passed fresh607mobile tests/typecheck/lint and public-config Android export; backend system/migration checks and601tests passed with25PostgreSQL-only skips. Independent review of staged tree`b9ea1b92fe440d7e9d1c528aa5ce9fcbf712c005` found no concrete defect and independently passed69focused tests. No application code changed after review. Production Gradle build and byte-identical capture-forward proof build passed; final packagecom.team07.outloud/code7/non-debuggable/all4ABIs passes CRC/signature/manifest checks. All11changed application sources and116mounted sources match the source map. APK SHA256`24df70866369ef4af2a55513765f5daa364463896b97a848c29c2436c553f55b`,143234646bytes, differs from the preserved earlier v7. Public HTTPS/demo-code gating is compiled into the actual input; no secret code or QA harness was bundled. [Combined report](demo-v7-combined-verification-20261103.md) distinguishes prior native fixture checks, untested phone/voice/model quality and backend source-only delivery.

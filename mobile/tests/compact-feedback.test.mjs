@@ -48,14 +48,21 @@ async function render(run) {
 const text = renderer => JSON.stringify(renderer.toJSON());
 const rows = renderer => renderer.root.findAllByType('view').filter(node => node.props.style?.minHeight === 22);
 const rowTexts = renderer => rows(renderer).map(row => row.findByType('text').props.children);
+const button = (renderer,label) => renderer.root.findAllByType('pressable').find(node => node.props.accessibilityLabel === label);
+const openFinding = async renderer => {
+  const finding = renderer.root.findAllByType('pressable').find(node => node.props.accessibilityLabel?.startsWith('Read slide 1 feedback'));
+  assert.ok(finding, 'findings provide a discoverable details button');
+  assert.ok(finding.props.style.minHeight >= 44, 'the complete feedback block is a usable touch target');
+  await act(async () => finding.props.onPress());
+};
 
-test('verified selected-slide observations reach the same four compact rows with the existing icons', async () => {
+test('measured metrics and verified advice reach the same four compact rows with the existing icons', async () => {
   const findings = [finding('timing', 1, 'Verified timing observation'), finding('fillers', 2, 'Verified filler observation'),
     finding('content', 3, 'Verified content observation'), finding('delivery', 4, 'Verified delivery observation')];
   const { item } = setup({ findings }); assert.equal(item.status, 'reviewed');
   await render(renderer => {
-    assert.deepEqual(rowTexts(renderer), findings.map(value => value.observation));
-    assert.deepEqual(rows(renderer).map(row => row.findByType('icon').props.name), ['i-clock', 'i-bubble', 'i-flag', 'i-wave']);
+    assert.deepEqual(rowTexts(renderer), ['On time', '—', 'Verified content observation', 'Verified delivery observation']);
+    assert.deepEqual(rows(renderer).map(row => row.findAllByType('icon')[0].props.name), ['i-clock', 'i-bubble', 'i-flag', 'i-wave']);
     assert.doesNotMatch(text(renderer), /Legacy observation/);
     assert.equal(rows(renderer).length, 4); assert.equal(renderer.root.findAllByType('slide-feedback').length, 0);
     assert.ok(renderer.root.findAllByType('pressable').some(node => node.props.accessibilityLabel === 'Full review'));
@@ -82,9 +89,91 @@ test('stale, failed, disabled, no-speech and untimed states never show clean cla
   }
 });
 
-test('partial assessments display only their verified findings; a complete empty assessment may show Spot On', async () => {
+test('partial assessments display only verified advice; a complete empty assessment says no issue flagged', async () => {
   const { item } = setup({ status: 'partial', findings: [finding('content', 1, 'Verified partial observation')] });
   assert.equal(item.assessed, false);
-  await render(renderer => { assert.equal(rowTexts(renderer)[2], 'Verified partial observation'); assert.doesNotMatch(text(renderer), /Spot On!/); });
-  setup(); await render(renderer => assert.deepEqual(rowTexts(renderer), ['Spot On!', 'Spot On!', 'Spot On!', 'Spot On!']));
+  await render(renderer => { assert.equal(rowTexts(renderer)[2], 'Verified partial observation'); assert.doesNotMatch(text(renderer), /Spot On!/);
+    assert.ok(button(renderer, 'Read slide 1 feedback: Partially assessed'), 'the accessible button preserves the partial-assessment warning'); });
+  setup(); await render(renderer => assert.deepEqual(rowTexts(renderer), ['On time', '—', 'No issue flagged', 'No issue flagged']));
+});
+
+test('the reported 17/28-second slide consistently shows under time and three fillers without a positive filler verdict', async () => {
+  const { model } = setup();
+  model.times[0] = 17; model.deck.targets[0] = 28;
+  model.lines = [{ slide: 0, text: 'Um, uh, like, this is a synthetic example.' }];
+  await render(renderer => {
+    assert.deepEqual(rowTexts(renderer), ['Under time', '3 fillers', 'No issue flagged', 'No issue flagged']);
+    assert.match(text(renderer), /0:28 allocation/);
+    assert.doesNotMatch(text(renderer), /required target|On target|Spot On!/);
+    const rows = renderer.root.findAllByType('text').filter(node => node.props.children === 'Under time');
+    assert.equal(rows.length, 2, 'the compact timing row and slide card share the same rule');
+    assert.equal(renderer.root.findAllByType('icon').filter(node => node.props.name === 'i-arrow').length, 0, 'a duration status alone is not generated advice');
+  });
+});
+
+test('compact metric labels preserve full timing and filler advice in the existing details view', async () => {
+  const timing = finding('timing', 1, 'Verified timing observation');
+  const fillers = finding('fillers', 2, 'Verified filler observation');
+  timing.suggestion = 'Shorten the example before the next rehearsal.';
+  fillers.suggestion = 'Use a brief pause between these ideas.';
+  setup({ findings: [timing, fillers] });
+  await render(async renderer => {
+    await openFinding(renderer);
+    const details = renderer.root.findByType('scroll');
+    for (const value of [timing.observation, timing.suggestion, fillers.observation, fillers.suggestion]) {
+      assert.ok(details.findAllByType('text').some(node => node.props.children === value), value);
+    }
+  });
+});
+
+test('long feedback opens complete text in a bounded scroll area and closes without navigation', async () => {
+  const observation = 'The sentence repeats the location and capital information. ' + 'Explain the important distinction clearly. '.repeat(10);
+  const otherObservation = 'A second finding must also be readable in full.';
+  setup({ findings: [finding('content', 1, observation), finding('delivery', 2, otherObservation)] });
+  await render(async renderer => {
+    await openFinding(renderer);
+    const scroll = renderer.root.findByType('scroll');
+    const detail = scroll.findAllByType('text').find(node => node.props.children === observation);
+    assert.ok(detail); assert.equal(detail.props.numberOfLines, undefined);
+    assert.ok(scroll.findAllByType('text').some(node => node.props.children === otherObservation));
+    const card = renderer.root.findAllByType('view').find(node => node.props.accessibilityViewIsModal);
+    assert.ok(card.props.style[0].top > 0 && card.props.style[0].bottom > 0, 'scroll parent is bounded inside the design frame');
+    assert.equal(scroll.props.style.flex, 1);
+    const background = renderer.root.findAllByType('animated').find(node => node.props.pointerEvents === 'none');
+    assert.ok(background); assert.equal(background.props.importantForAccessibility, 'no-hide-descendants');
+    assert.equal(background.props.accessibilityElementsHidden, true);
+    const pan = renderer.root.findAllByType('pan')[0];
+    assert.equal(pan.props.onMoveShould({ nativeEvent: { pageY: 500 } }, { dx: 0, dy: 100 }), false);
+    await act(async () => button(renderer, 'Close feedback details').props.onPress());
+    assert.equal(renderer.root.findAllByType('scroll').length, 0); assert.deepEqual(runtime.routes, []);
+    await openFinding(renderer);
+    await act(async () => assert.equal(runtime.back(), true));
+    assert.equal(renderer.root.findAllByType('scroll').length, 0); assert.deepEqual(runtime.routes, []);
+    await act(async () => runtime.back());
+    assert.equal(runtime.routes[0][0], 'rehearse');
+  });
+});
+
+test('feedback details close when validation, selected slide, source recording or active screen changes', async () => {
+  for (const change of ['stale', 'slide', 'source', 'inactive']) {
+    setup({ findings: [finding('content', 1, 'Only the current verified observation may be expanded')] });
+    await render(async renderer => {
+      await openFinding(renderer);
+      const currentFeedback = runtime.feedback;
+      if (change === 'stale') runtime.feedback = { ...runtime.feedback, items: runtime.feedback.items.map(item => ({ ...item, status: 'outdated', assessed: false, findings: [], label: 'Feedback out of date' })) };
+      if (change === 'slide') runtime.nav = { ...runtime.nav, sel: 1 };
+      if (change === 'source') runtime.model.state.run.parts[0] = { ...runtime.model.state.run.parts[0], attemptId: 'different-recording' };
+      await act(async () => renderer.update(React.createElement(ReviewScreen, { active: change !== 'inactive' })));
+      assert.equal(renderer.root.findAllByType('scroll').length, 0, change);
+      if (change === 'stale') {
+        runtime.feedback = currentFeedback;
+        await act(async () => renderer.update(React.createElement(ReviewScreen)));
+        assert.equal(renderer.root.findAllByType('scroll').length, 0, 'revalidated feedback stays closed until requested');
+      }
+      if (change === 'inactive') {
+        await act(async () => renderer.update(React.createElement(ReviewScreen)));
+        assert.equal(renderer.root.findAllByType('scroll').length, 0);
+      }
+    });
+  }
 });

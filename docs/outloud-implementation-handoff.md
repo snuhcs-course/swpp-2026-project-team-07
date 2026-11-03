@@ -88,7 +88,7 @@ The diagram shows dependencies, not permission to regenerate on every dependency
 ### Requirements and timing
 
 - The existing setup overlay saves audience and required duration through revisioned presentation-context APIs.
-- New untouched imports initialize General audience and 300 seconds through a persisted, idempotent initialization intent. Existing presentations and customized or explicitly cleared preferences are not backfilled.
+- New untouched imports initialize General audience and 600 seconds through a persisted, idempotent initialization intent. Existing presentations and customized or explicitly cleared preferences are not backfilled.
 - Offline initialization and later edits remain pending until synchronization. Conflicts use the existing Use server / Keep mine flow; later local edits cannot be cleared by an earlier response.
 - The supported confirmed presentation-duration range is 60–1,800 seconds. Suggested timing is labeled separately from an explicitly saved requirement.
 - Per-slide targets use bounded extracted-text weights and deterministic remainder allocation. Integer target seconds sum exactly to the saved total, with slide order breaking ties. Empty/image-only slides get a base weight; the app does not invent image or graph complexity.

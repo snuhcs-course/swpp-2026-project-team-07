@@ -1,8 +1,9 @@
 // OpenAI Codex review routing: docs/ai-collaboration-prompts-iteration-2.md#first-recording-review-navigation-october-16-2026
 // OpenAI Codex Review and Full review: docs/ai-collaboration-prompts-iteration-2.md#review-and-full-review-redesign-october-15-2026
 // Real merged-run audio, timed transcript and verified AI assessment status.
+// OpenAI Codex #44: continuous within-section seeking preserves saved-source and pause intent.
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, type GestureResponderEvent, type PanResponderGestureState } from 'react-native';
+import { AppState, Pressable, ScrollView, StyleSheet, View, type GestureResponderEvent, type PanResponderGestureState } from 'react-native';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Enter, Txt, useFrame } from '../design/frame';
 import { Glyph, UIIcon } from '../design/icons';
@@ -17,7 +18,7 @@ import { Dialog, HintRow, PageSurface } from '../design/ui';
 import { useRunFeedbackStatus } from '../features/feedback/useRunFeedbackStatus';
 import { fmt, relativeDay } from '../domain/format';
 import { BACK_FADE_Y, BACK_T } from '../domain/gestures';
-import { runLabel, runPosition, runStarts, type RunAudioPlanEntry } from '../domain/run';
+import { runLabel, runPosition, runStarts, runScrubPosition, runSeekPosition, type RunAudioPlanEntry, type RunSeekPosition } from '../domain/run';
 import type { Line } from '../domain/lines';
 import { audioOf } from '../features/rehearsal/analysis';
 import { useSegmentPlayer, type Segment } from '../features/rehearsal/useSegmentPlayer';
@@ -38,7 +39,7 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
   const scores = useRunPresentationScores(model, active);
   const scoreSource = useRef({item:scores.overall,target:scores.target,active});
   useLayoutEffect(()=>{scoreSource.current={item:scores.overall,target:scores.target,active};return()=>{scoreSource.current.active=false;};},[scores.overall,scores.target,active]);
-  const [missingAudio, setMissingAudio] = useState<{slides:number[];signature:string;startSlide:number}|null>(null);
+  const [missingAudio, setMissingAudio] = useState<{slides:number[];signature:string;target:RunSeekPosition;paused:boolean;resumeKey:string|null}|null>(null);
   const now = useNow();
   const player = useSegmentPlayer();
   const stopPlayback = player.stop;
@@ -46,13 +47,17 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
   const scorePlaybackIdentity=scorePlaybackSource(scores.overall.state,scores.target);
   useEffect(()=>{if(player.playingKey?.startsWith('score-evidence:')&&scoreEvidenceSource.current!==scorePlaybackIdentity)stopPlayback();},[scorePlaybackIdentity,player.playingKey,stopPlayback]);
   const sourceIdentity=JSON.stringify(run?.parts??[]);
-  useEffect(()=>{stopPlayback();},[sourceIdentity,stopPlayback]);
+  const playbackSource=useRef({active,signature:sourceIdentity,foreground:AppState.currentState!=='background'&&AppState.currentState!=='inactive'});
+  const partialAccepted=useRef<string|null>(null);
   const dy = useSharedValue(0);
   const backExiting = useRef(false);
   const [mode, setMode] = useState<Mode>(null);
   const [sliderSlide,setSliderSlide]=useState(Math.max(0,nav.sel));
-  const sliderSlideRef=useRef(Math.max(0,nav.sel));
   const [scrubbing,setScrubbing]=useState(false);
+  const [viewSource,setViewSource]=useState(sourceIdentity);
+  const [scrubTarget,setScrubTarget]=useState<RunSeekPosition|null>(null);
+  const scrubTargetRef=useRef<RunSeekPosition|null>(null);
+  const scrubIntent=useRef<{signature:string;key:string|null;playing:boolean;positionMs:number}|null>(null);
   const sectionTrack=useRef({x:26,width:FRAME_W-58});
   const [plan, setPlan] = useState<RunAudioPlanEntry[]>([]);
   const [audioNote, setAudioNote] = useState('');
@@ -65,15 +70,26 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
   const rowLayouts = useRef(new Map<string, RowLayout>());
   const transcriptBounds = useRef({ top: 343, bottom: 675 });
 
-  useEffect(() => { if (!active) { dy.set(0); stopPlayback(); } }, [active, dy, stopPlayback]);
+  if(viewSource!==sourceIdentity||!active&&(scrubbing||missingAudio)){
+    setViewSource(sourceIdentity);setScrubbing(false);setScrubTarget(null);setMissingAudio(null);
+  }
+  useLayoutEffect(()=>{const source=playbackSource.current;source.active=active;source.signature=sourceIdentity;return()=>{source.active=false;};},[active,sourceIdentity]);
+  useLayoutEffect(()=>{stopPlayback();scrubIntent.current=null;scrubTargetRef.current=null;partialAccepted.current=null;},[sourceIdentity,stopPlayback]);
+  useEffect(() => { if (!active) { dy.set(0); stopPlayback();scrubIntent.current=null;scrubTargetRef.current=null; } }, [active, dy, stopPlayback]);
+  useEffect(()=>{const sub=AppState.addEventListener('change',state=>{
+    playbackSource.current.foreground=state==='active';
+    if(state!=='active'){stopPlayback();scrubIntent.current=null;scrubTargetRef.current=null;setScrubbing(false);setScrubTarget(null);setMissingAudio(null);}
+  });return()=>sub.remove();},[stopPlayback]);
   useEffect(() => () => { if (noteTimer.current) clearTimeout(noteTimer.current); stopPlayback(); }, [stopPlayback]);
   const toBack = useCallback(() => {
+    playbackSource.current.active=false;scrubIntent.current=null;scrubTargetRef.current=null;
     stopPlayback();
     if (nav.from === 'review') go('review', { deckId: nav.deckId, sel: nav.sel });
     else if (nav.from === 'rehearse') go('rehearse', { nav: null, deckId: nav.deckId, slide: nav.sel });
     else go('home');
   }, [go, nav.deckId, nav.from, nav.sel, stopPlayback]);
   const openSlide = useCallback((i: number) => {
+    playbackSource.current.active=false;scrubIntent.current=null;scrubTargetRef.current=null;
     stopPlayback();
     if (nav.from === 'review') go('review', { deckId: nav.deckId, sel: i });
     else go('review', { nav: 'fade', deckId: nav.deckId, sel: i, from: 'full' });
@@ -143,10 +159,9 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
     setAudioNote('Playing cited intervals from the original recording');setMode(null);setPlan([]);
     void player.playSegments(`score-evidence:${current.target!.id}:${audio.map(ref=>`${ref.start_ms}:${ref.end_ms}`).join(',')}`,audio.map(ref=>({uri,startMs:ref.start_ms,endMs:ref.end_ms})));
   };
-  const wholeAudio = (startSlide=0): { segments: Segment[]; entries: RunAudioPlanEntry[]; missing:number[] } => {
+  const wholeAudio = (): { segments: Segment[]; entries: RunAudioPlanEntry[]; missing:number[] } => {
     const segments: Segment[] = [], entries: RunAudioPlanEntry[] = [], missing: number[] = [];
     times.forEach((t, i) => {
-      if(i<startSlide)return;
       if (t <= 0) return;
       const part = run.parts[i], uri = part && audioOf(part.attemptId);
       if (!uri || !part) { missing.push(i); return; }
@@ -157,35 +172,61 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
     });
     return { segments, entries, missing };
   };
-  const startWholeAt = (startSlide:number,allowPartial = false) => {
-    const { segments, entries, missing } = wholeAudio(startSlide);
-    if (!segments.length) { note('Audio for this run isn’t on this phone'); return; }
-    if (missing.length && !allowPartial) {
-      setMissingAudio({slides:missing,signature:JSON.stringify(run.parts),startSlide}); return;
+  const seekWholeAt = (target:RunSeekPosition,paused:boolean,allowPartial=false,resumeKey:string|null=null) => {
+    if(!playbackSource.current.active||!playbackSource.current.foreground||playbackSource.current.signature!==sourceIdentity)return false;
+    const { segments, entries, missing } = wholeAudio();
+    const entry=entries.find(value=>value.slide===target.slide);
+    if(!entry){note(`Audio for slide ${target.slide+1} isn’t on this phone`);return false;}
+    if (missing.length && !allowPartial && partialAccepted.current!==sourceIdentity) {
+      setMissingAudio({slides:missing,signature:sourceIdentity,target,paused,resumeKey}); return true;
     }
-    if(player.playingKey)player.stop();
-    const skipped=entries[0]?.slide;
-    setSliderSlide(skipped??startSlide);sliderSlideRef.current=skipped??startSlide;
-    setAudioNote(missing.length ? `Playing available audio · ${missing.length} slide${missing.length===1?'':'s'} missing` : skipped!==startSlide?`Slide ${startSlide+1} has no audio · starting at slide ${skipped!==undefined?skipped+1:'—'}`:'');
+    if(allowPartial)partialAccepted.current=sourceIdentity;
+    const elapsedMs=entries.filter(value=>value.slide<target.slide).reduce((sum,value)=>sum+value.durMs,0)+Math.max(0,Math.min(entry.durMs,target.offsetMs));
+    setSliderSlide(target.slide);
+    setAudioNote(missing.length ? `Playing available audio · ${missing.length} slide${missing.length===1?'':'s'} missing` : '');
     setPlan(entries); setMode({ kind: 'run' });
-    void player.playSegments(runKey, segments);
+    void player.seekSegments(runKey, segments,elapsedMs,paused);
+    return true;
   };
   const toggleWhole = () => {
     if (runPlaying) { void player.playSegments(runKey,[]); return; }
-    startWholeAt(0);
+    const target=runSeekPosition(0,times);
+    if(target)seekWholeAt(target,false);else note('No recorded audio in this run');
   };
-  const sliderIndexAt=(pageX:number)=>{
-    if(times.length<=1)return 0;
+  const sliderTargetAt=(pageX:number)=>{
     const stageX=(pageX-frame.left)/frame.s;
     const left=16+sectionTrack.current.x;
     const fraction=Math.max(0,Math.min(1,(stageX-left)/Math.max(1,sectionTrack.current.width)));
-    return Math.min(times.length-1,Math.floor(fraction*times.length));
+    return runScrubPosition(fraction,times);
   };
   const previewSlider=(pageX:number)=>{
-    const next=sliderIndexAt(pageX);
-    sliderSlideRef.current=next;setSliderSlide(next);setAudioNote('');setScrubbing(true);
+    if(!scrubIntent.current)return;
+    const next=sliderTargetAt(pageX);if(!next)return;
+    scrubTargetRef.current=next;setScrubTarget(next);setSliderSlide(next.slide);setAudioNote('');setScrubbing(true);
   };
-  const commitSlider=()=>{setScrubbing(false);startWholeAt(sliderSlideRef.current);};
+  const beginSlider=(pageX:number)=>{
+    if(!playbackSource.current.active||!playbackSource.current.foreground)return;
+    scrubIntent.current={signature:sourceIdentity,key:player.playingKey,playing:!!player.playingKey&&!player.paused,positionMs:((runPlaying||slidePlaying)?pos:starts[sliderSlide]??0)*1000};
+    player.setPaused(true);previewSlider(pageX);
+  };
+  const restoreScrub=(intent:NonNullable<typeof scrubIntent.current>)=>{
+    if(playbackSource.current.active&&playbackSource.current.foreground&&intent.signature===playbackSource.current.signature&&intent.playing&&player.playingKey===intent.key)player.setPaused(false);
+  };
+  const cancelSlider=()=>{
+    const intent=scrubIntent.current;scrubIntent.current=null;scrubTargetRef.current=null;setScrubbing(false);setScrubTarget(null);
+    if(intent){setSliderSlide(runSeekPosition(intent.positionMs,times)?.slide??Math.max(0,nav.sel));restoreScrub(intent);}
+  };
+  const commitSlider=()=>{
+    const intent=scrubIntent.current,target=scrubTargetRef.current;
+    scrubIntent.current=null;scrubTargetRef.current=null;setScrubbing(false);setScrubTarget(null);
+    if(!intent||!target||intent.signature!==playbackSource.current.signature)return;
+    if(!seekWholeAt(target,!intent.playing,false,intent.playing?intent.key:null))restoreScrub(intent);
+  };
+  const adjustSlider=(direction:number)=>{
+    const current=(runPlaying||slidePlaying)?pos*1000:(starts[sliderSlide]??0)*1000;
+    const target=runSeekPosition(current+direction*5000,times);
+    if(target)seekWholeAt(target,!player.playingKey||player.paused,false,!player.paused?player.playingKey:null);
+  };
   const a=feedback.aggregate;
   const source=deck.requirementsDefault?'default':deck.timing.source==='required'?'required':'suggested';
   const over=total-model.targetSum;
@@ -193,12 +234,14 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
     ['With findings',a.slidesWithFindings],['Partial',a.partial],['Analyzing',a.pending],
     ['Outdated',a.outdated],['Needs recovery',a.recoveryNeeded],['Insufficient evidence',a.insufficient],['Not analyzed',a.notAnalyzed],
   ] as const;
-  const rightText = audioNote || ((runPlaying || slidePlaying) && playbackSlide != null
+  const rightText = audioNote || (scrubbing&&scrubTarget ? `${fmt(scrubTarget.positionMs/1000)} / ${fmt(total)}` : (runPlaying || slidePlaying) && playbackSlide != null
     ? runPlaying ? `${fmt(pos)} / ${fmt(total)}` : `${fmt(pos - starts[playbackSlide])} / ${fmt(times[playbackSlide])}`
     : `Slide ${sliderSlide+1} of ${times.length} · drag to seek`);
-  const headerText = (runPlaying || slidePlaying) && playbackSlide != null
+  const headerText = scrubbing&&scrubTarget?`Slide ${scrubTarget.slide+1} · ${deck.slides[scrubTarget.slide]?.title??'Slide '+(scrubTarget.slide+1)}`:(runPlaying || slidePlaying) && playbackSlide != null
     ? `Slide ${playbackSlide + 1} · ${deck.slides[playbackSlide]?.title ?? 'Slide ' + (playbackSlide + 1)}` : 'Whole run';
   const visibleSliderSlide=scrubbing?sliderSlide:playbackSlide??sliderSlide;
+  const visiblePosition=scrubbing&&scrubTarget?scrubTarget.positionMs/1000:(runPlaying||slidePlaying)?pos:starts[sliderSlide]??0;
+  const visibleOffset=(times[visibleSliderSlide]??0)>0?clamp((visiblePosition-(starts[visibleSliderSlide]??0))/times[visibleSliderSlide]):0;
 
   return <Enter kind={nav.nav}>
     <PanView style={StyleSheet.absoluteFill} {...pan}>
@@ -232,21 +275,21 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
               <Glyph name={runPlaying && !player.paused ? 'p-pause' : 'p-play'} size={20} color={c.text} />
             </Pressable>
             <PanView style={styles.sections} accessibilityRole="adjustable" accessibilityLabel="Whole run audio review"
-              accessibilityValue={{min:1,max:Math.max(1,times.length),now:visibleSliderSlide+1,text:`Slide ${visibleSliderSlide+1} of ${times.length}`}}
-              accessibilityActions={[{name:'increment'},{name:'decrement'}]}
-              onAccessibilityAction={e=>startWholeAt(Math.max(0,Math.min(times.length-1,visibleSliderSlide+(e.nativeEvent.actionName==='increment'?1:-1))))}
+              accessibilityValue={{min:0,max:total,now:Math.max(0,Math.min(total,visiblePosition)),text:`${fmt(visiblePosition)} of ${fmt(total)}, slide ${visibleSliderSlide+1} of ${times.length}`}}
+              accessibilityActions={[{name:'increment',label:'Seek forward 5 seconds'},{name:'decrement',label:'Seek backward 5 seconds'}]}
+              onAccessibilityAction={e=>adjustSlider(e.nativeEvent.actionName==='increment'?1:-1)}
               onLayout={e=>{sectionTrack.current={x:e.nativeEvent.layout.x,width:e.nativeEvent.layout.width};}}
-              onStartShould={()=>times.length>0} onGrant={e=>previewSlider(e.nativeEvent.pageX)}
-              onMove={e=>previewSlider(e.nativeEvent.pageX)} onRelease={commitSlider} onTerminate={commitSlider}
+              onStartShould={()=>times.some(time=>time>0)} onGrant={e=>beginSlider(e.nativeEvent.pageX)}
+              onMove={e=>previewSlider(e.nativeEvent.pageX)} onRelease={commitSlider} onTerminate={cancelSlider}
               onTerminationRequest={()=>false}>
               {times.map((t,i)=>{
                 const current=visibleSliderSlide;
-                const progress=t>0&&(runPlaying||slidePlaying)?clamp((pos-starts[i])/t):0;
+                const progress=t>0&&(runPlaying||slidePlaying||scrubbing)?clamp((visiblePosition-starts[i])/t):0;
                 return <View key={i} style={[styles.sectionHit,{opacity:t>0?1:0.28}]}>
                   <View style={[styles.sectionTrack,{backgroundColor:c.ink18}]}>
                     {progress>0&&<View style={[styles.sectionFill,{backgroundColor:c.text,width:`${100*progress}%`}]}/>}
                   </View>
-                  {current===i&&<View pointerEvents="none" style={[styles.sectionMarker,{backgroundColor:c.text}]} />}
+                  {current===i&&<View pointerEvents="none" style={[styles.sectionMarker,{backgroundColor:c.text,left:`${visibleOffset*100}%`}]} />}
                 </View>;
               })}
             </PanView>
@@ -306,7 +349,7 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
           { icon: 'h-tap', text: 'Tap a slide to review it' }]} />
       </Animated.View>
     </PanView>
-    {active&&missingAudio&&<Dialog title="Some run audio is missing" body={`Audio for slide${missingAudio.slides.length===1?'':'s'} ${missingAudio.slides.map(i=>i+1).join(', ')} is not on this phone. Play only the available recordings?`} confirm="Play available audio" onCancel={()=>setMissingAudio(null)} onConfirm={()=>{const captured=missingAudio;setMissingAudio(null);if(!active||captured.signature!==JSON.stringify(run.parts)){note('Selected recordings changed. Start playback again.');return;}startWholeAt(captured.startSlide,true);}}/>}
+    {active&&missingAudio&&<Dialog title="Some run audio is missing" body={`Audio for slide${missingAudio.slides.length===1?'':'s'} ${missingAudio.slides.map(i=>i+1).join(', ')} is not on this phone. Play only the available recordings?`} confirm="Play available audio" onCancel={()=>{const captured=missingAudio;setMissingAudio(null);if(captured.signature===playbackSource.current.signature&&captured.resumeKey===player.playingKey&&playbackSource.current.active&&playbackSource.current.foreground)player.setPaused(false);}} onConfirm={()=>{const captured=missingAudio;setMissingAudio(null);if(!playbackSource.current.active||!playbackSource.current.foreground||captured.signature!==playbackSource.current.signature){note('Selected recordings changed. Start playback again.');return;}seekWholeAt(captured.target,captured.paused,true);}}/>}
   </Enter>;
 }
 
@@ -366,7 +409,7 @@ const styles = StyleSheet.create({
   sectionHit: { flex: 1, flexBasis: 0, minWidth: 0, height: 28, justifyContent: 'center' },
   sectionTrack: { height: 6, marginHorizontal: 1, borderRadius: 3, overflow: 'hidden' },
   sectionFill: { height: 6, borderRadius: 3 },
-  sectionMarker: { position: 'absolute', top: 1, bottom: 1, width: 2, alignSelf: 'center', borderRadius: 1 },
+  sectionMarker: { position: 'absolute', top: 1, bottom: 1, width: 2, transform:[{translateX:-1}], borderRadius: 1 },
   transcript: { position: 'absolute', left: 16, right: 16, top: 343, bottom: 169 },
   transcriptContent: { paddingVertical: 8, gap: 6 },
   assessmentSummary:{gap:10,marginBottom:12},assessmentCounts:{flexDirection:'row',flexWrap:'wrap',gap:8},assessmentCount:{fontFamily:F.medium,fontSize:12,lineHeight:17},refresh:{minHeight:44,alignSelf:'flex-start',justifyContent:'center',paddingHorizontal:10},
