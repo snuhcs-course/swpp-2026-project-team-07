@@ -1,21 +1,22 @@
 # AI collaboration reporting guide
 
-Based on the [official AI Collaboration Report Guidelines](https://myetl.snu.ac.kr/courses/305891/files/9386035), pp. 1–3. Maintain one collaboration log per iteration and use it to write the team report.
+Based on the [official AI Collaboration Report Guidelines](https://myetl.snu.ac.kr/courses/305891/files/9386035), pp. 1–3. Maintain one collaboration log across iterations and use its relevant entries to write each iteration's team report.
 
 ## Working documents
 
-**Current iteration: 2.** Record new project-task prompts in the
-[Iteration 2 collaboration log](ai-collaboration-prompts-iteration-2.md).
+Record new project-task prompts in the
+[single active collaboration log](ai-collaboration-prompts.md).
 The [shared agent instructions](../AGENTS.md#current-iteration-and-prompt-logging)
-identify the active iteration; update both references at a confirmed transition.
+route all iterations to that file. Retain historical iteration labels and record a
+new task's iteration only when confirmed; dates do not determine the boundary.
 
 | Document | Purpose |
 | --- | --- |
-| [Iteration 2 collaboration log](ai-collaboration-prompts-iteration-2.md) | Actual prompts, tool/model metadata and concise task notes; update during work and at handoff |
+| [All-iteration collaboration log](ai-collaboration-prompts.md) | Actual prompts, tool/model metadata and concise task notes; update during work and at handoff |
 | Iteration report | The team's analysis of AI use, results, failures, revisions and human decisions; the [Iteration 1 report](ai-collaboration-report-iteration-1.md) is a prior-iteration reference |
 | [This guide](#human-review-before-submission) | Collection rules, report format and human review checklist |
 
-The earlier [AI-use record](history/ai-use-before-prompt-consolidation-2026-10-09.md) and [validation review](history/ai-collaboration-validation-iteration-1-retired-2026-10-09.md) are archived. Keep one collaboration log per iteration at `docs/ai-collaboration-prompts-iteration-N.md`. Do not recreate either retired document as an active log. Do not create an `ai-use.md` pointer file or second task diary. References to that path in historical prompts remain quotations; record current results in the matching collaboration entry.
+The earlier [AI-use record](history/ai-use-before-prompt-consolidation-2026-10-09.md) and [validation review](history/ai-collaboration-validation-iteration-1-retired-2026-10-09.md) are archived. The [Iteration 1](ai-collaboration-prompts-iteration-1.md) and [Iteration 2](ai-collaboration-prompts-iteration-2.md) log paths preserve old anchors through compatibility indexes; their prompt text is in the single active log. Keep new prompts and results in the matching active task entry. Frozen `docs/history/` records and historical prompt quotations remain unchanged. `docs/ai-use.md` remains retired, including pointer-only versions.
 
 ## Compact task entry
 

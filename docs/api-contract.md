@@ -1,9 +1,16 @@
 > October 16 keyterms follow-up: new Scribe requests include up to 100 validated vocabulary hints extracted from visited-slide text when available, with `no_verbatim=false`. Private `ProviderRequest.request_options` snapshots exact submitted options (migration 0007); public transcript/provenance shape is unchanged. Updated mobile consent discloses audio plus slide-derived hints and replaces audio-only consent. [Behavior, cost and verification](scribe-transcription.md#automatic-slide-keyterms--implemented-october-16-2026).
 
+**Documentation baseline — November 5, 2026:** published v8 [`cdb8055`](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/cdb8055f0fd5022aafccb47625889d3f9a403f5f). This documentation-only branch retains older main application source. The [evidence reconciliation](testing-evidence/iteration-3-reconciliation-20261105.md) distinguishes the release-reported deployed v2.4 backend patch from this published source and unreleased v2.5 work. No endpoint, public response shape or database schema changes are introduced here.
+
 # Initial API contract
 
 > Provider update, October 16, 2026: new transcription requests use ElevenLabs Scribe v2 with up to 100 keyterms derived from recorded slides when text is available. `no_verbatim=false` preserves recognized fillers. Migration 0007 privately snapshots submitted request options; the public transcript schema is unchanged. The updated client requests consent for audio plus slide-derived hints. October 17 Scribe-only integration supersedes the historical Whisper behavior below. Whisper receipts/provenance are unsupported; feedback/scoring/Q&A evaluation providers are unchanged. See [current adapter](scribe-transcription.md).
 
+
+> LLM routing update, October 29, 2026: the default is OpenRouter with
+> `openai/gpt-6-luna` for all app text/image prompts. Scribe transcription is unchanged.
+> The cutover section below supersedes older checkpoint statements about provider
+> defaults and retrying an old provider after configuration changes.
 
 Base path `/api/`. JSON uses `snake_case`, UUID strings and integer milliseconds. Mobile types: `src/contracts/index.ts`. Health/readiness, deck upload/retrieval/history, attempt upload/retrieval, and explicit hosted processing are implemented. Upload alone leaves a recording awaiting analysis.
 
@@ -39,6 +46,71 @@ Example metadata:
   ]
 }
 ```
+
+## Public demo access (November 1, 2026)
+
+The submission build targets public HTTPS and asks for a reviewer code once in the
+app. Its HTTPS edge requires HTTP Basic authentication (`reviewer` plus the entered
+code) for every API and media request, including health, PDF/image/audio GET and
+HEAD/Range requests. Missing or incorrect credentials return 401 before application
+work or file access. Response/data shapes and provider retry rules remain unchanged.
+The native client stores the entered code in Android secure storage, scoped to the
+HTTPS origin it validated. It never embeds a code/provider key in the APK, attaches
+credentials to another origin, or follows an authenticated redirect. A 401 requests
+code re-entry without replaying a POST or deleting local recordings and caches.
+
+This is a shared reviewer workspace: all code holders can access its server data;
+there is no per-user ownership. Local development keeps its existing loopback
+boundary. The HTTPS/authentication rollout and actual APK verification are recorded
+in the [hosting guide](azure-hosting.md); this contract alone is not deployment proof.
+
+## OpenRouter LLM routing and cutover
+
+`FEEDBACK_PROVIDER` defaults to `openrouter`; `FEEDBACK_OPENROUTER_MODEL` defaults to
+`openai/gpt-6-luna`. Configuration uses backend-only `OPENROUTER_API_KEY`, a nonsecret
+`FEEDBACK_OPENROUTER_PROJECT_ID`, positive `FEEDBACK_OPENROUTER_RPM` and
+`FEEDBACK_OPENROUTER_TPM`, and an optional positive daily request limit (UTC midnight).
+Feedback stays disabled until configured. Missing OpenRouter credentials never use
+`OPENAI_API_KEY`, even if the personal key is present.
+
+Public provider metadata accepts `openrouter` in addition to historical `openai`
+and `gemini`; model metadata accepts the bounded namespaced Luna ID. Routes and
+request fields remain unchanged. The mobile disclosure identifies OpenRouter and
+Luna, and provider-specific consent must be refreshed for the new recipient.
+OpenRouter receives the existing Responses payload at the fixed
+`https://openrouter.ai/api/v1/responses`: strict JSON schemas, image inputs,
+`store=false`, existing prompt/evidence/output bounds, no tools, redirects or
+automatic retry. Profiles use the existing OpenAI schema versions with separate
+OpenRouter cache/provenance identity. Token usage retains the Responses shape.
+
+The routing applies to descriptions/profiles, coaching, selected-slide reviews,
+transcript suggestions, both presentation-score versions, and legacy/durable Q&A
+question generation and answer assessment. Audio transcription remains ElevenLabs
+Scribe v2 and uses its existing separate consent.
+
+Old-provider result/receipt identities and stored data are never rewritten. While
+OpenRouter is selected, unsubmitted or retried old-provider jobs cannot call direct
+OpenAI (`provider_changed`). Saved receipt normalization/recovery remains available
+without another request. Existing Generate/Update controls can admit a fresh
+OpenRouter scope or generation from the current selection, preserving revision
+checks and uncertain submission acknowledgement; they never silently rebind an old
+request. GET remains read-only. Insufficient credits (402, `provider_credits`),
+authentication failures and rate limits fail safely without fallback; a 429 retains
+explicit cooldown/retry handling. OpenRouter HTTP 200 Responses failure/error bodies
+remain uncertain and require charge acknowledgement before another submission.
+
+Before the first OpenRouter description/profile scope is created, admission checks
+for an unresolved old-provider submission with the same source and schema family.
+If found, GET returns its historical set ID, processing revision and provenance,
+with the current OpenRouter `selection`, `stale=true`, `retry_available=true` and
+`needs_confirmation` / `requires_confirmation=true`. Retry sends that old
+`description_set_id` and `processing_revision`, the refreshed `expected_selection`
+token and `acknowledge_uncertain=true`. An empty initial request cannot bypass this
+acknowledgement; existing current-scope admission still deduplicates normally.
+
+API, workers and scheduler must use the same cutover configuration. See
+[activation, BYOK billing and rollback](ai-feedback.md#openrouter-activation-and-saved-job-cutover).
+No database migration is required for the added provider/model values.
 
 ## Iteration 2 Phase 1: presentation requirements
 
@@ -279,11 +351,12 @@ revision on failed work, stale revision, missing acknowledgement or future
 `retry_at` returns 409. An accepted failed retry consumes N → N+1 atomically, so
 concurrent replay wins once. It keeps the original saved scope, resolving the
 original provider's key only for its configured project; it cannot select a new
-model/provider via the request. A changed configuration/source creates a separate
+model/provider via the request. OpenRouter cutover blocks the old-provider
+submission and uses a new current scope instead, as described above. A changed configuration/source creates a separate
 scope via initial POST. Completed/edited sets cannot be paid-regenerated by POST.
 
 New slide-unbounded schemas use `description-gemini-v4` / `coaching-gemini-v3`
-for Gemini and `description-v2` / `coaching-v2` for OpenAI. The fixed prompt
+for Gemini and `description-v2` / `coaching-v2` for OpenAI/OpenRouter. The fixed prompt
 versions remain `description-v2` / `coaching-v1`. Local validation requires
 one or more slides, complete unique source coverage and at most five facts in
 each fact array. Existing context, output and provider limits still apply.
@@ -369,7 +442,7 @@ public. Source reference hashes in descriptions/provenance are the permitted
 slide evidence references, not private request input hashes.
 
 Database queue intent precedes best-effort broker publication. The existing
-30-second Beat recovery handles lost publication, eligible OpenAI local quota waits and
+30-second Beat recovery handles lost publication, eligible OpenAI/OpenRouter local quota waits and
 expired unsubmitted claims (360-second lease, 300-second task limit). Duplicate
 workers are fenced. Submission commits the application quota reservation and
 submitted marker before the sole provider call, outside transactions. Disabled
@@ -387,7 +460,8 @@ It finalizes only the original private request outcome without changing newer
 jobs, generated/edited descriptions or their revisions.
 Submitted-without-outcome work becomes `needs_confirmation`; it never
 automatically resubmits. Known provider failures/invalid output require explicit
-new-generation retry; only OpenAI local quota waiting resumes automatically.
+new-generation retry; OpenAI/OpenRouter local quota waiting can resume automatically
+within a current scope. OpenRouter cutover blocks old-provider submission.
 Gemini local RPM/TPM/daily exhaustion or shared cooldown ends the generation as
 `failed` with fixed safe `quota_stopped` guidance and the calculated `retry_at`.
 Current-generation legacy Gemini `waiting_quota` jobs (including queued jobs with
@@ -405,10 +479,10 @@ have no tier defaults. Reservation units are serialized UTF-8 bytes plus maximum
 output tokens, separately recorded from actual reported usage. Unknown usage is
 null, not zero; submitted reservations count through their windows. Requests
 larger than the configured per-request allowance fail locally. Gemini daily
-ceilings reset at America/Los_Angeles midnight; OpenAI's optional daily ceiling
-is an application UTC policy. A 429 Retry-After blocks the shared model scope.
+ceilings reset at America/Los_Angeles midnight; OpenAI/OpenRouter optional daily
+ceilings are an application UTC policy. A 429 Retry-After blocks the shared model scope.
 Actual provider 429 responses remain terminal `provider_rate_limit` failures for
-both providers and require an explicit retry after cooldown.
+all providers and require an explicit retry after cooldown.
 This is neither exact provider token accounting nor a money cap. See the
 [configuration and validation details](ai-feedback.md#checkpoint-2-persistence-and-quota-policy).
 
@@ -418,9 +492,10 @@ Explicit `POST /attempts/{id}/feedback/generate/` admits `{}` once for a validat
 saved transcript/alignment. The backend selects provider/project/model, description
 and coaching prompt/schema versions, deck/source identity, saved language (or
 `und`), audience (up to 500 characters), original transcript indexes and recording
-chronology. An omitted `FEEDBACK_PROVIDER` selects OpenAI for new work; explicit
-Gemini is supported, and saved selections/model defaults are unchanged. Feedback stays
-disabled until configured. Missing OpenAI credentials never fall back to Gemini.
+chronology. An omitted `FEEDBACK_PROVIDER` selects OpenRouter with
+`openai/gpt-6-luna` for new work. Feedback stays disabled until configured. Missing
+OpenRouter credentials never fall back to a personal OpenAI or Gemini key; saved
+provider identities remain readable under the cutover policy above.
 No client provider/model selection or fallback is accepted. Initial
 configuration and speech validation precede admission of either paid stage.
 No-speech, missing/inconsistent transcript, invalid alignment and U+0000 in sources
@@ -577,9 +652,11 @@ fields (before adding `token`); clients treat it as opaque. Prompt digests ident
 fixed rules/schema/output bounds. No key, input/source/audience hash, private
 receipt or claim data participates. Keys may rotate without changing it.
 
-New analyses describe current backend selection. Existing feedback and explicit
-saved-description reads describe their saved selection, even after the default
-changes. Both generation POST routes accept optional `expected_selection` (the
+New analyses describe current backend selection. Stored provenance continues to
+describe the original provider. After OpenRouter cutover, Generate/Update uses the
+current selection for a fresh scope/generation rather than submitting an old
+direct-provider job. Historical sets/results retain their saved provenance while
+the replacement selection identifies OpenRouter. Both generation POST routes accept optional `expected_selection` (the
 64-hex token). Assertion-only initial requests are valid. Supplied malformed tokens
 return 400; a different effective selection returns safe **409
 `selection_mismatch` before queue intent/publication, reservation or provider work**.
@@ -703,7 +780,7 @@ The response keeps at most three questions, and only those whose `slide_index` w
 
 ```json
 {"questions": [{"panelist": "P1", "role": "Methods reviewer", "slide_index": 0, "topic": "Survey size",
-  "question": "How many people answered?", "follow_up": "Was the sample random?"}], "provider": "openai", "model": "gpt-6-luna"}
+  "question": "How many people answered?", "follow_up": "Was the sample random?"}], "provider": "openrouter", "model": "openai/gpt-6-luna"}
 ```
 
 Answer `metadata`:
@@ -1119,11 +1196,17 @@ original IDs. Playback's positive-duration filtering must not renumber citations
 Private receipts, model selections and reconstruction audits are never public.
 
 
+### Issue #49 audio validation and targeted slide recovery
+
+Grading uses the upload contract's inclusive ±1,000 ms decoded/capture duration tolerance and private `presentation-measurements-v2` diagnostics. Public routes and response shapes are unchanged. The existing error object distinguishes `audio_missing`, `audio_decode_failed`, `audio_measurement_failed`, `audio_invalid`, `audio_duration_mismatch` and `insufficient_audio_evidence`; historical `audio_unavailable` retains a cautious generic explanation. Exact supported legacy terminal scoring protocols remain readable without automatic regeneration, subject to all other freshness checks. Explicit failed/rejected grading retries create new current-version measurements; historical snapshots and receipts are retained. See [diagnostic and history rules](presentation-score-v2.md#audio-diagnostics-and-historical-results--issue-49).
+
+Singleton slide reviews may be `completed` while their selected summary has `invalid_evidence` or `model_error`, or is missing. These cases expose `retry_available` subject to the existing cooldown, and safe `review_invalid_evidence`, `review_model_error` or `review_summary_missing` errors. A missing summary projects `result:null` for parser compatibility without editing the stored result. A matching explicit `feedback_revision` is required to replace such a completed assessment; normal selection, correction/settings, uncertainty, quota and source checks still apply. Successful, partial and insufficient-evidence results are outside this exception. Reads do not generate work.
+
 ### Automatic scoring and rejected-total recovery — October 17, 2026
 
 The Android app-level scoring host admits first assessments for new selected recordings and selected saved recordings after opening their presentation. It reuses the existing POST shape after transcripts and confirmed settings/corrections synchronize. Later synchronized input changes coalesce for one second. Persistent per-input intent and shared submission locks prevent repeated navigation, cache publications, concurrent screens and remounts from admitting duplicate work. GET remains read-only. Unresolved POST intent reconciles through foreground GET polling; failures and uncertain outcomes require explicit recovery rather than automatic same-input paid retries. Singleton feedback and Q&A remain independent.
 
-The scoring prompt is now `presentation-score-prompt-v2.1`; public schema, rubric, exact arithmetic and evidence validation remain v2. Assessed delivery must directly cite supporting original speech plus an eligible non-signal measurement. Measurements/requirements alone remain rejected. A completed `invalid_evidence` assessment exposes cooldown-aware `retry_available`; its Retry POST must include the matching `feedback_revision`. Current non-stale active/completed duplicate POSTs remain no-ops unless a rejected assessment receives an explicit revision-fenced Retry; failed/stale requests without a revision return a conflict. A fresh generation may replace the exact recognized previous v2 protocol, but old receipts cannot normalize under the replacement prompt; unsupported protocol snapshots remain unavailable. Stored JSON key ordering does not change protocol identity.
+The scoring prompt is now `presentation-score-prompt-v2.3`; public schema, rubric, exact arithmetic and evidence validation remain v2. Every slide entry must select its speech and slide-fact evidence from that same slide, including criteria, feedback and deductions; whole-presentation evidence may span slides. Assessed delivery must directly cite supporting original speech plus an eligible non-signal measurement. Measurements/requirements alone remain rejected. A completed `invalid_evidence` assessment exposes cooldown-aware `retry_available`; its Retry POST must include the matching `feedback_revision`. Current non-stale active/completed duplicate POSTs remain no-ops unless a rejected assessment receives an explicit revision-fenced Retry; failed/stale requests without a revision return a conflict. A fresh generation may replace the exact recognized previous v2, v2.1 and v2.2 protocols, but old receipts cannot normalize under the replacement prompt; unsupported protocol snapshots remain unavailable. Stored JSON key ordering does not change protocol identity. V2.3 asks each improvement to identify a supported issue, its consequence for communication and a concrete next action through the existing text/evidence fields. Summary/strength evidence is not automatically criticism. Saved results and provider receipts are retained unchanged; only a fresh generation produces new advice.
 
 Home, Full Review and slide reviews share validated score projection and level colors: Beginning red, Emerging amber, Competent green, Advanced blue; unavailable/stale/pending results remain neutral. Criteria and weights stay in this contract and backend validation but are hidden in product screens. Direct summaries, strengths, weaknesses, improvements and supporting playback remain available. Home displays the same selected-run overall score as Full Review, plus total current verified findings once, selected-run duration and WPM. Composite/incomplete sources cannot borrow another recording's overall score.
 
@@ -1151,3 +1234,7 @@ that migration has already been applied to the current local phone database.
 Read-only checks found zero membership rows and zero grouped-review snapshots in
 both known local phone datasets. No active code uses that table; no database
 rollback/deletion or live configuration change accompanies this source cleanup.
+
+## Later backend policy reported by the v8 release — November 3, 2026
+
+The [release record](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103) reports a deployed v2.4 grading policy with 24,000 output tokens, 128 KiB inner JSON and a grading-only 240-second response deadline. Prompt wording, rubric, weights and public request/response shapes are unchanged. The patch source remains uncommitted/unpushed; `cdb8055` identifies the APK source, not that later deployment. Earlier build-time failure records remain historical. No runtime verification was repeated for this documentation update. The local v2.5 requirement-citation/performance candidate remains unreleased.
