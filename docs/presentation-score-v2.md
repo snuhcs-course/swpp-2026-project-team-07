@@ -1,6 +1,6 @@
 # Unified presentation and slide scoring — presentation-score-v2
 
-Implementation contract approved October 17, 2026. This extends the existing feedback transport; v1 and all experiment receipts remain historical. No live grading reliability is claimed.
+Implementation contract approved October 17, 2026; documentation reconciled November 5. The published source baseline is v8 `cdb8055`; this documentation branch retains main application source. V1 and experiment receipts remain historical. The [v8 release](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103) later reports deployed v2.4 grading with 24,000 output tokens, 128 KiB inner JSON and a grading-only 240-second response deadline, preserving prompt wording, rubric, weights and public schema. That patch remains unpushed. Published v8 uses v2.3; local v2.5 work remains unreleased. A successful reported ten-slide retry and one phone smoke are bounded operational evidence, not calibrated scoring or general reliability. [Evidence and limits](testing-evidence/iteration-3-reconciliation-20261105.md).
 
 ## Frozen scoring
 
@@ -20,13 +20,21 @@ Evaluate communicated meaning, not resemblance to slide text. Reading bullets, l
 | audience_suitability | Framing substantially obstructs the supplied audience | Consequential assumptions remain unexplained | Context and terminology suit the supplied audience | Framing consistently anticipates audience needs |
 | delivery | Supported continuity or timing problems materially obstruct communication | Supported disruptions sometimes impede understanding | Continuity and time allocation support understanding | Intentional continuity and pacing consistently aid processing and emphasis |
 
+## Audio diagnostics and historical results — issue #49
+
+New assessments use `presentation-measurements-v2`. Audio admission and grading share an inclusive ±1,000 ms decoded/capture duration tolerance. Original waveform and VAD bounds are validated before diagnostic intervals and signal statistics are restricted to their common audio/capture window; empty millisecond intervals are discarded. Rates retain the original capture-duration denominator. Source audio, transcript timing and slide events are never rescaled or rewritten.
+
+V2 diagnostics carry a typed private failure reason, exposed through the existing safe error code/message fields. Missing/unreadable audio, decoding failure, speech-measurement failure, invalid samples, excessive duration mismatch and insufficient speech remain distinct. Historical `audio_unavailable` errors do not imply a known cause.
+
+The v1 measurement schema and serialization remain unchanged. Exact v2.2/v1 and v2.3/v1 terminal protocols remain readable when all other source/provider/profile/requirements checks pass; opening those saved results does not replace them. Explicit retries of failed/rejected assessments create fresh v2 measurements and a new generation. Workers prepare and normalize only the current protocol; saved legacy receipts must finish under their original workers before rollout. The prompt, rubric and score arithmetic are unchanged by this repair.
+
 ## Eligibility and validation
 
 All deck slides are represented exactly once. Default applicable. Only first/last slide may be `not_applicable`, with explicit evidence and justification that no essential communication is required. Unvisited applicable slides are `not_recorded`; no overall total. All positive-duration visits to a slide are reviewed chronologically, including backwards/repeated visits. Do not use the legacy 1000ms eligibility threshold to reject concise sufficient speech. Its report remains diagnostic for v1.
 
 Each applicable slide needs all three criteria; whole needs all four. Criteria select `assessed` with a valid level, justification, usable references, limitations, deductions; or `insufficient_evidence` with null level and explicit limitations. Invalid score evidence suppresses that slide/whole component and overall, but other valid slides survive. Unknown/duplicate criteria or slide identities fail closed. Insufficient evidence is different from demonstrated missing essential meaning; omissions require full-attempt review and an identified essential fact or requirement.
 
-Prompt `presentation-score-prompt-v2.1` explicitly requires assessed delivery and its weaknesses/deductions to cite supporting speech alongside an eligible non-signal measurement; duration requirements or measurements alone cannot establish it.
+Prompt `presentation-score-prompt-v2.3` requires every slide entry's speech and slide-fact references to belong to that slide, including criteria, feedback and deductions. Whole-presentation evidence may span slides. It also retains the assessed-delivery requirement for supporting speech alongside an eligible non-signal measurement; duration requirements or measurements alone cannot establish delivery. The validator rejects cross-slide evidence independently of the prompt. V2.3 also requests concise summaries and evidence-linked improvements that identify a specific issue, its communication consequence and one practical next step. Strength citations remain positive; a cited interval does not automatically require criticism. The advice schema, rubric and score arithmetic are unchanged.
 
 Audio unavailable/corrupted/insufficient suppresses overall; do not invent measurements or renormalize away delivery. Pauses/rate/fillers/repetitions need explained communication consequences for deductions. Relative signal levels describe recording context. No confidence, emotion, pronunciation, vocal expressiveness, gestures, eye contact or Q&A grading.
 
@@ -84,6 +92,6 @@ Full Review ring: integer, proportion 0–100, `Overall score`, derived performa
 
 A composed run may show per-slide scores from its original attempts but no overall total. Require one attempt with exact original visit selection and every applicable slide; `Run.full` alone is not proof. No old-attempt substitution. Home uses the same exact selected-run overall projection as Full Review, with no latest-old-attempt substitution. It displays total current verified findings once, selected-run duration and WPM. Home indicator reads do not grade.
 
-## Gates and boundaries
+## Historical implementation boundaries — October 17, 2026
 
-No paid inference, commits, pushes, merges or deployment. Preserve the historical $2 ledger: recorded settled $0.10330350, unresolved $0.08667250. Do not modify/release reservations or rerun old experiments. All automated/Android checks use mocked providers. New live work needs an exact-request cost dry run and separate authorization. Reliability needs the independent human pilot (10–20 diverse recordings, two blind reviewers on a shared subset, repeat unchanged calls, citation/support/usefulness/fairness audits), separate from correctness tests.
+The original implementation task excluded paid inference, commits, pushes, merges and deployment. Its historical $2 ledger recorded: recorded settled $0.10330350, unresolved $0.08667250. Do not modify/release reservations or rerun old experiments. All automated/Android checks use mocked providers. New live work needs an exact-request cost dry run and separate authorization. Reliability needs the independent human pilot (10–20 diverse recordings, two blind reviewers on a shared subset, repeat unchanged calls, citation/support/usefulness/fairness audits), separate from correctness tests.

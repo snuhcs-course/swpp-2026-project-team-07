@@ -1,5 +1,12 @@
 # AI feedback — checkpoints 1–5
 
+**November 5 documentation baseline:** this guide incorporates published v8 `cdb8055`. OpenRouter configuration below describes the release; source on this documentation branch remains at main. Earlier checkpoint sections describe their original provider/workflow scope. Current selected-slide feedback, scoring and durable Q&A are summarized in [Design Rev.4.0](../Design-Documentation.md) and the [dated evidence reconciliation](testing-evidence/iteration-3-reconciliation-20261105.md). Repository configuration defaults remain distinct from hosted enablement.
+
+> Current routing, October 29, 2026: app LLM prompts default to OpenRouter with
+> `openai/gpt-6-luna`. The configuration and cutover sections below apply to current
+> operation. Checkpoint evidence retains its original Gemini/OpenAI identities and
+> does not establish OpenRouter live-provider or device validation.
+
 Standalone adapters describe slides and validate at most three suggestions for
 one rehearsal. Checkpoint 2 added durable saved-deck descriptions; checkpoint 3
 adds explicit durable saved-rehearsal coaching and compatible mobile contracts,
@@ -141,19 +148,24 @@ successful empty result. No silent repairs or additional calls occur.
 
 | Setting | Default / accepted values |
 | --- | --- |
-| `FEEDBACK_ENABLED` | `false`; exact `true` permits explicit description/coaching generation |
-| `FEEDBACK_PROVIDER` | `openai` when omitted; `gemini` or `openai` |
-| `FEEDBACK_GEMINI_MODEL` | `gemini-3.1-flash-lite` |
-| `FEEDBACK_OPENAI_MODEL` | `gpt-6-luna` |
-| `GEMINI_API_KEY` / `OPENAI_API_KEY` | Backend only; only the selected key is required |
+| `FEEDBACK_ENABLED` | `false`; exact `true` permits configured LLM generation |
+| `FEEDBACK_PROVIDER` | `openrouter` when omitted; historical adapters retain `openai` / `gemini` identities |
+| `FEEDBACK_OPENROUTER_MODEL` | `openai/gpt-6-luna`; pinned Luna model, no latest alias |
+| `OPENROUTER_API_KEY` | Backend only; never read from or fall back to `OPENAI_API_KEY` |
+| `FEEDBACK_OPENROUTER_PROJECT_ID` | Required nonsecret account/workspace label, 1–160 ASCII letters/digits/dot/underscore/hyphen, starting with a letter/digit |
+| `FEEDBACK_OPENROUTER_RPM` / `FEEDBACK_OPENROUTER_TPM` | Required positive application allowances |
+| `FEEDBACK_OPENROUTER_DAILY_REQUEST_LIMIT` | Optional positive request/day ceiling; blank disables it; UTC midnight reset |
 
-Model identifiers are bounded to 100 ASCII letters/digits/dot/underscore/hyphen,
-starting with a letter/digit. No endpoint configuration is accepted. OpenAI uses
-SDK Responses at `https://api.openai.com/v1/responses`, `store=false`, strict
-`text.format` JSON schema, no tools and `max_retries=0`. Gemini uses HTTPX REST at
-`https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`,
-with a key header, JSON MIME/schema and one candidate. A description result from
-another selected provider/model or snapshot is rejected for coaching.
+OpenRouter model identifiers include the namespace slash and remain bounded to
+100 characters. The legacy OpenAI/Gemini identifier format and saved schemas stay
+readable. No client-selected endpoint is accepted. The existing OpenAI SDK sends
+Responses requests to the fixed `https://openrouter.ai/api/v1/responses` endpoint
+with the OpenRouter Bearer key, `store=false`, strict `text.format` JSON schema,
+no tools and `max_retries=0`. Images, instructions, source evidence and output
+budgets keep their existing format. OpenRouter uses the OpenAI schema family while
+retaining its own provider/model identity in scopes, receipts and public metadata.
+A description result from another selected provider/model or snapshot is rejected
+for coaching. There is no direct-OpenAI fallback.
 
 The adapter owns the HTTP client/transport: no redirects, retries, environment
 proxies, cookies, caller HTTP clients or caller URLs. A final destination guard
@@ -205,10 +217,13 @@ Configuration/input errors occur locally. Caught SDK request-preparation failure
 before entry into the outbound transport raise `invalid_request` with
 `uncertain=false`. Once that boundary is crossed, connection or serialization
 failures remain conservative uncertain outcomes. The durable caller additionally retains a submitted marker and reservation,
-including when the adapter classifies a local failure after that marker. HTTP auth and rate rejection are
-separate from other rejection; Retry-After accepts seconds or an HTTP date.
+including when the adapter classifies a local failure after that marker. HTTP
+authentication, insufficient OpenRouter credits (402, `provider_credits`) and rate
+rejection are reported safely without fallback; Retry-After accepts seconds or an
+HTTP date.
 HTTP 408/5xx, timeout, connection loss and unreadable/incomplete transport outcomes
-are uncertain. Complete refusal, token truncation, empty output, invalid JSON
+are uncertain. OpenRouter HTTP 200 Responses failure/error envelopes also require
+charge acknowledgement before another submission. Complete refusal, token truncation, empty output, invalid JSON
 (including duplicate keys/nonfinite numbers), tool outputs and invalid evidence
 fail explicitly. HTTP rejection classification is preserved even if its body is
 oversized/compressed. Refusal and truncation do not trigger retries.
@@ -374,8 +389,10 @@ retry time has expired or the environment now selects OpenAI. Saved receipts
 still normalize without a call; live claims, submitted uncertainty and newer
 revisions/edits retain precedence. No GET mutation, scheduler or migration is
 added. Saved jobs and explicit retries always retain their original provider/model.
-New work with no `FEEDBACK_PROVIDER` selects OpenAI; feedback stays disabled until
-configured, and a missing OpenAI key never falls back to an available Gemini key.
+At that checkpoint, new work with no `FEEDBACK_PROVIDER` selected OpenAI and a
+missing OpenAI key did not fall back to Gemini. Current work defaults to OpenRouter;
+[activation and cutover](#openrouter-activation-and-saved-job-cutover) supersede the
+old-provider submission/retry policy while preserving its saved evidence.
 
 Gemini's optional daily request ceiling resets at midnight America/Los_Angeles,
 including DST. OpenAI's optional ceiling is an **application UTC-midnight policy**,
@@ -739,6 +756,58 @@ check results and passed independent review are recorded in
 Coordinator PostgreSQL/worker verification and the full live Gemini evaluation also passed their integration assertions. The evaluation records semantic weaknesses; no general accuracy, safety or human-review claim follows.
 
 
+## OpenRouter activation and saved-job cutover
+
+This applies to every app LLM request: descriptions/profiles, coaching, selected-slide
+reviews, transcript suggestions, presentation scores, Q&A questions and answer
+assessment, including supported legacy endpoints. ElevenLabs Scribe audio
+transcription and its key/consent remain separate.
+
+1. Use an OpenRouter workspace/key with personal OpenAI BYOK credentials absent or
+   excluded from that key. OpenRouter attempts matching BYOK credentials before
+   shared capacity; changing the app endpoint alone does not guarantee that the
+   personal OpenAI account stops being billed. See [BYOK priority and filters](https://openrouter.ai/docs/guides/overview/auth/byok).
+2. Let in-flight requests finish where possible, then stop API, workers and scheduler
+   together: `docker compose stop api worker scheduler`. Preserve unresolved
+   submitted records and their uncertainty state; never reset them to unsubmitted.
+3. Preserve `backend/.env` and add the OpenRouter settings above. Use actual account
+   allowances with headroom; the project label is application scope, not proof of
+   provider-side key membership. Keep secrets out of Git and mobile configuration.
+4. Recreate all backend processes with the same code and environment:
+   `docker compose up -d --build --force-recreate api worker scheduler`.
+   A plain restart does not reload Compose `env_file` values. Leave feedback disabled
+   until ready to allow the app's configured initial-generation workflows.
+5. Refresh the client selection/disclosure before Generate or Update. A separately
+   authorized live smoke test uses synthetic material; no provider success is implied
+   by mocked checks. If activation fails, set `FEEDBACK_ENABLED=false` and recreate
+   the same services. Do not switch automatically to a personal OpenAI key.
+
+After OpenRouter cutover, old-provider jobs cannot submit or retry another request
+through their saved personal OpenAI credentials. Historical results, edited data,
+raw receipts, hashes and provenance remain unchanged and readable. Receipt-only
+normalization/recovery remains available without a key or another provider call.
+An explicit Generate/Update uses the current OpenRouter selection to create a fresh
+scope/generation, preserving revision checks and acknowledgement of uncertain prior
+submissions. Existing jobs are never silently relabelled or rebound. Old-provider
+consent does not authorize OpenRouter: the refreshed disclosure names OpenRouter,
+Luna and the text/image data sent, and sends no audio to the LLM.
+
+The first OpenRouter scope cannot bypass an unresolved old-provider submission for
+the same source and description/profile family. Reads expose that historical set
+and revision with the current OpenRouter selection and confirmation controls.
+Use the displayed retry and charge acknowledgement; an empty initial request cannot
+skip this step. An existing current scope still deduplicates normally. See the
+[cutover request contract](api-contract.md#openrouter-llm-routing-and-cutover).
+
+OpenRouter local quota waits use the existing rolling RPM/TPM reservation policy
+and optional UTC daily window. A provider 429 remains a terminal rate-limit failure
+requiring explicit retry after cooldown; insufficient credits also fail without
+fallback. Reservations remain application units rather than exact token or money
+accounting. Current transport remains bounded, stateless and without automatic
+retries. See [OpenRouter Responses](https://openrouter.ai/docs/api_reference/responses/overview),
+[SDK setup](https://openrouter.ai/docs/guides/community/openai-sdk) and
+[the pinned Luna model](https://openrouter.ai/openai/gpt-6-luna).
+
 ## Operator and review summary
 
 - Relocated from README on October 13, 2026 to preserve its configuration, API and UI details alongside the full feedback reference.
@@ -755,39 +824,24 @@ work. GET is read-only; PATCH saves a complete set with its current description
 revision. See the [wire contract](api-contract.md#durable-slide-descriptions-checkpoint-2).
 The saved-rehearsal feedback panel now exposes explicit generation, disclosure and description editing; checkpoint 3 supplies its coaching orchestration below.
 
-In backend configuration, set `FEEDBACK_ENABLED=true`; an omitted `FEEDBACK_PROVIDER`
-selects `openai`, while explicit `gemini` remains supported. Configure that provider's
-model, key and nonsecret `FEEDBACK_*_PROJECT_ID`.
-Positive `FEEDBACK_*_RPM` and `FEEDBACK_*_TPM` values are required for outbound work;
-missing values fail generation safely without breaking startup or Whisper.
-`FEEDBACK_*_DAILY_REQUEST_LIMIT` is optional. Use verified account allowances,
-with headroom for other callers; no free-tier values are assumed. Reservations
-use serialized UTF-8 request bytes plus maximum output tokens as conservative
-application units, not provider-perfect token counts or a monetary cap.
-Gemini daily windows use America/Los_Angeles midnight; OpenAI's optional daily
-ceiling is an application policy using UTC midnight.
+For current operation, configure the OpenRouter settings in the
+[configuration table](#provider-configuration-and-operational-bounds) and follow
+[activation and cutover](#openrouter-activation-and-saved-job-cutover). An omitted
+`FEEDBACK_PROVIDER` selects `openrouter` with `openai/gpt-6-luna`. The key is
+`OPENROUTER_API_KEY`; the project label and positive RPM/TPM allowances use the
+`FEEDBACK_OPENROUTER_` prefix. Missing settings fail generation safely without
+breaking startup or Scribe transcription. The optional daily ceiling resets at
+UTC midnight. No free-tier allowance or monetary cap is assumed.
 
-Gemini local RPM/TPM/daily exhaustion or shared cooldown stops that generation
-with `failed` / `quota_stopped` and preserves `retry_at`. After that time, refresh
-and explicitly retry with the current revision. Legacy Gemini quota waits also
-stop when claimed or recovered, even after expiry or a default-provider change.
-OpenAI local quota waits still resume automatically in the same generation.
+OpenRouter local quota waits can resume safely within the same generation.
 Actual provider 429 responses retain `provider_rate_limit`, Retry-After and explicit
-retry for both providers. Saved receipts recover without another call; uncertain
-submissions still require acknowledgement. Saved jobs/retries keep their provider.
-
-Defaults remain exactly `gemini-3.1-flash-lite` / `gpt-6-luna`, configurable, with
-feedback disabled until configured and no substitution or fallback. New Gemini
-requests use provider-specific wire schemas; local validation and OpenAI's strict
-schemas are unchanged. See [schema compatibility](ai-feedback.md#checkpoint-5-gemini-schema-compatibility).
-Saved retries retain provider/project/model/prompt/schema/source selection,
-including the legacy wire schema; retrying an old rejected set does not upgrade it.
-Project configuration changes block old submissions; same-project key rotation is
-allowed. Unknown submitted outcomes retain reservations and require explicit
-acknowledgement before a new generation. Saved receipts recover without another
-call, including after completion-write failure. After retry or editing supersedes
-a job (even one already awaiting confirmation), recovery finalizes its late saved
-receipt as private request evidence and preserves newer work and descriptions.
+retry after cooldown. A 402 returns `provider_credits` without fallback. Unknown
+submitted outcomes retain reservations and require acknowledgement before a new
+generation. At cutover, old unsent/retried provider scopes fail with
+`provider_changed`; Generate/Update uses a fresh OpenRouter scope/generation.
+Historical request identities and wire schemas remain unchanged. Saved receipts
+recover without another call, including after completion-write failure or after
+retry/edit supersession, without changing newer work and descriptions.
 Known invalid responses require explicit retry. Correct completed content
 with PATCH, not paid regeneration. Read the
 [recovery validation recipe](ai-feedback.md#checkpoint-2-coordinator-validation)
@@ -836,18 +890,19 @@ AI-use; they do not establish this new repair's live compatibility, quality or h
 ### Feedback review (checkpoint 4)
 
 In a saved rehearsal, **Generate feedback** refreshes the current revisions and
-provider selection before any submission. First use names Gemini or OpenAI and the
-configured model, explains the slide images/text, descriptions, saved transcript
+provider selection before any submission. First use names OpenRouter and Luna,
+explains the slide images/text, descriptions, saved transcript
 and optional audience context sent, and explicitly excludes audio. Continue/Cancel
 are separate from Whisper consent. Consent is local to the normalized API address,
 provider and disclosure version. Mobile supplies `expected_selection`; a changed
 selection returns 409 before admission. On a mismatch, review the refreshed disclosure
 and choose generation again. Legacy callers may omit that optional field and
-therefore do not get this disclosure-race comparison guard. Saved retries retain
-their original provider/model. There is no provider picker.
+therefore do not get this disclosure-race comparison guard. Historical results retain
+their provider/model; cutover generation follows the current OpenRouter selection.
+There is no provider picker.
 
 Cached suggestions and descriptions open immediately. Failed refreshes retain them
-with a stale/offline notice. Active jobs, description dependencies and OpenAI quota waits
+with a stale/offline notice. Active jobs, description dependencies and OpenRouter quota waits
 poll only while focused and foregrounded. A timeout leaves the submission unknown:
 refresh precedes another action, and an unresolved paid request needs a separate
 charge acknowledgement. Failed description dependencies use their own set and

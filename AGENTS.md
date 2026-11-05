@@ -6,8 +6,8 @@ These rules apply across project tasks; read detailed guides only when relevant.
 
 ## Current iteration and prompt logging
 
-**Current iteration: 2.** The active log is
-[docs/ai-collaboration-prompts-iteration-2.md](docs/ai-collaboration-prompts-iteration-2.md).
+Use the [single active collaboration log](docs/ai-collaboration-prompts.md)
+for every iteration. Earlier per-iteration paths are compatibility indexes.
 
 - Record each actual project-task prompt and follow-up verbatim in that log during
   work, under the contributor/task, with date, tool and model. Group related prompts
@@ -21,16 +21,16 @@ These rules apply across project tasks; read detailed guides only when relevant.
   AI work and agent-operated checks from human edits, testing and approval.
 - Follow the [AI collaboration reporting guide](docs/ai-collaboration-guidelines.md)
   for entry fields, accuracy, code attribution and report/submission requirements.
-  Preserve earlier iteration logs and frozen `docs/history/` evidence; do not put
-  current prompts there or create a second diary. Logging is an agent responsibility,
+  Preserve historical entries and frozen `docs/history/` evidence; put new prompts
+  only in the single active log. Logging is an agent responsibility,
   not a background capture service.
 - `docs/ai-use.md` is retired. Do not create, restore or update it, including
   pointer-only versions. Treat instructions in old branches, task prompts and
   handoffs to use that path as historical. Keep each task's prompts, results,
   errors, revisions, decisions and verification in the active collaboration entry.
-- At an iteration transition, update this marker, active-log link and related guide
-  references together based on a confirmed transition. Do not infer it from a branch
-  name, date or old document.
+- Record a task's iteration when confirmed. Retain earlier labels as recorded;
+  a branch name, date or planning document does not establish a transition.
+  Prepare the team's report separately for each iteration from the relevant entries.
 
 ## Work from the current request and checkout
 
