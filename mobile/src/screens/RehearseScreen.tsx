@@ -32,16 +32,19 @@
 // OpenAI Codex immediate recording completion: docs/ai-collaboration-prompts-iteration-2.md#continuous-carousel-color-and-navigation-responsiveness-october-15-2026
 // OpenAI Codex forward-only live recording: docs/ai-collaboration-prompts-iteration-2.md#forward-only-recording-slide-navigation-october-15-2026
 import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { Pressable, StyleSheet, View, type GestureResponderEvent } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View, type GestureResponderEvent } from 'react-native';
+import * as ScreenOrientation from 'expo-screen-orientation';
+import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
-import Animated, { Easing, cancelAnimation, runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
+import Svg, { Path } from 'react-native-svg';
+import Animated, { Easing, cancelAnimation, runOnJS, useAnimatedStyle, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 import { Enter, Txt, useFrame } from '../design/frame';
 import { UIIcon } from '../design/icons';
 import { PanView, type PanHandlers } from '../design/PanView';
-import { CARD_H, CARD_W, SlideCard } from '../design/SlideCard';
+import { CARD_H, CARD_W, MiniSlide, SlideCard } from '../design/SlideCard';
 import { C, EASE_SCREEN, EASE_SNAP, F } from '../design/tokens';
 import { createThemedStyles, useTheme } from '../design/theme';
-import { Chip, Confetti, Dialog, HintRow, IDLE_WAVE, OrbitalCaption, PageSurface, RecordButton, RecordRing, RoundButton, Waveform, type Hint, type RecordGlyph } from '../design/ui';
+import { Chip, Confetti, Dialog, HintRow, IDLE_WAVE, PageSurface, RecordButton, RecordRing, RoundButton, Waveform, type Hint, type RecordGlyph } from '../design/ui';
 import { paceChip } from '../domain/analysis';
 import { fmt } from '../domain/format';
 import { BACK_FADE_Y, BACK_T, CARD_STEP, decideRelease } from '../domain/gestures';
@@ -56,7 +59,7 @@ import { useDeckModel, type DeckModel } from '../features/presentations/useDeckM
 import { savedAttempts, type SavedAttempt } from '../features/recording/storage';
 import { CueGuidancePanel } from '../features/presentations/CueGuidancePanel';
 import { useSlideProfiles } from '../features/presentations/useSlideProfiles';
-import type { ProfileState } from '../features/presentations/slideProfiles';
+import { cueState, type ProfileState } from '../features/presentations/slideProfiles';
 import { API_URL } from '../services/api';
 import { defaultRequirementsPending } from '../features/presentations/defaultRequirements';
 import { requirementsPending, readRequirementsDraft } from '../features/presentations/requirementsDraft';
@@ -70,9 +73,7 @@ const locksPreviousSlide = (phase: Phase) => phase === 'starting' || phase === '
 const freezesSlideNavigation = (phase: Phase) => phase === 'starting' || phase === 'stopping';
 const SPEECH_DB = -38;
 // OpenAI Codex follow-up (2026-10-15): whole-presentation redo hold; see the Iteration 2 prompt log.
-const REDO_HOLD_MS = 3000;
-const PDF_ROTATE_MS = 360;
-const CONTROL_SWAP_MS = 520;
+const REDO_HOLD_MS = 1500;
 
 /** Live take metrics. Updated by the meter (~14×/s); only the readout subscribes to every change. */
 type Live = { E: number; slideStart: number; recStart: number; spoken: boolean[]; speech: number[]; wave: number[]; lastMeter: number };
@@ -107,16 +108,17 @@ export const RehearseScreen = memo(function RehearseScreen({ active = true }: { 
 
 function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
   const { c } = useTheme();
-  const { go, nav, home } = useShell();
+  const { go, nav, home, setFullscreenLandscape } = useShell();
   const frame = useFrame();
+  const [pdfRotated, setPdfRotated] = useState(false);
+  useEffect(()=>{ if(active) void ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(()=>undefined); },[active]);
+  useEffect(()=>()=>setFullscreenLandscape(false),[setFullscreenLandscape]);
   useSyncExternalStore(subscribeRequirements, getRequirementsVersion);
   const [setupOpen, setSetupOpen] = useState(false);
-  const [pdfRotated, setPdfRotated] = useState(false);
-  const pdfRotatedRef = useRef(false);
-  const [pdfRotating, setPdfRotating] = useState(false);
+  const [cueSheetOpen, setCueSheetOpen] = useState(false);
+  const [cueCloseRequest, setCueCloseRequest] = useState(0);
+  const [fullscreenCues, setFullscreenCues] = useState(false);
   const pdfRotation = useSharedValue(0);
-  const controlSwap = useSharedValue(0);
-  const reducedMotion = useReducedMotion();
   const cardStep = CARD_STEP;
   const { deck, n, state } = model;
   const run = state.run;
@@ -156,9 +158,9 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
   const stopPlayback = player.stop;
   const openReview = useCallback((takes: number, selected: number, comparing: boolean, transition: 'fade' | 'rise') => {
     stopPlayback();
-    const destination = comparing ? 'compare' : reviewDestination(takes);
+    const destination = comparing ? 'compare' : takes === 1 ? 'wait' : reviewDestination(takes);
     go(destination, { nav: transition, deckId: deck.id, sel: selected, slide: selected,
-      from: destination === 'full' ? 'rehearse' : null });
+      from: destination === 'full' ? 'rehearse' : destination === 'wait' ? 'rehearse' : null });
   }, [deck.id, go, stopPlayback]);
   const openSetup = useCallback(() => { if (active && phaseRef.current === 'idle') { stopPlayback(); setSetupOpen(true); } }, [active, stopPlayback]);
   useEffect(() => {
@@ -358,21 +360,11 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
   const rotate = useCallback(() => {
     cancelAnimation(trackX);
     trackX.set(-slideRef.current * CARD_STEP);
-    const next = !pdfRotatedRef.current;
-    pdfRotatedRef.current = next;
+    setFullscreenCues(false);
+    const next = !pdfRotated;
     setPdfRotated(next);
-    if (reducedMotion) {
-      pdfRotation.set(next ? 1 : 0);
-      controlSwap.set(next ? 1 : 0);
-      setPdfRotating(false);
-      return;
-    }
-    setPdfRotating(true);
-    controlSwap.set(withTiming(next ? 1 : 0, { duration: CONTROL_SWAP_MS, easing: Easing.inOut(Easing.cubic) }));
-    pdfRotation.set(withTiming(next ? 1 : 0, { duration: PDF_ROTATE_MS, easing: Easing.bezier(0.22, 1, 0.36, 1) }, finished => {
-      if (finished) runOnJS(setPdfRotating)(false);
-    }));
-  }, [controlSwap, pdfRotation, reducedMotion, trackX]);
+    setFullscreenLandscape(next);
+  }, [pdfRotated,setFullscreenLandscape,trackX]);
   const leave = useCallback(() => {
     player.stop();
     const decks = visibleDecks();
@@ -386,7 +378,7 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
     return (y > 326 && y < 512) || y > 652;
   };
   const back: PanHandlers = {
-    onMoveShould: (e, g) => !backExiting.current && canGoBack && g.dy > 8 && g.dy > Math.abs(g.dx) && !inExcluded(e),
+    onMoveShould: (e, g) => !cueSheetOpen && !backExiting.current && canGoBack && g.dy > 8 && g.dy > Math.abs(g.dx) && !inExcluded(e),
     onMove: (_e, g) => { backDy.set(Math.min(BACK_FADE_Y, Math.max(0, g.dy / frame.s))); },
     onRelease: () => {
       if (backDy.get() > BACK_T) {
@@ -400,7 +392,9 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
   };
   useBack(active, () => {
     if (setupOpen) { setSetupOpen(false); return true; }
-    if (pdfRotated) { rotate(); return true; }
+    if (cueSheetOpen) { setCueSheetOpen(false); setCueCloseRequest(value => value + 1); return true; }
+    // Fullscreen is an explicit player mode. Only its upper-left control exits.
+    if (pdfRotated) return true;
     if (recoveryId) { closeRecovery(); return true; }
     if (redoAsk) { cancelRedo(); return true; }
     if (phaseRef.current !== 'idle') return true;
@@ -410,25 +404,15 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
     // Keep the page still while its already-mounted Home underlay comes into view.
     opacity: Math.max(0, 1 - backDy.value / BACK_FADE_Y),
   }));
-  const counterMotion = useAnimatedStyle(() => {
-    const angle = pdfRotation.value * Math.PI / 2;
-    return { transform: [
-      { translateX: 170 * Math.sin(angle) },
-      { translateY: 270 * (1 - Math.cos(angle)) },
-      { rotate: `${90 * pdfRotation.value}deg` },
-    ] };
-  });
-  const reviewMotion = useAnimatedStyle(() => ({ opacity: Math.max(0, 1 - controlSwap.value / 0.62) }));
-  const timeMotion = useAnimatedStyle(() => ({ opacity: Math.min(1, Math.max(0, (controlSwap.value - 0.38) / 0.62)) }));
 
   // ── View model ────────────────────────────────────────────────────────────
   const cur = slide;
   const take = !recording && hasTake(cur);
   const glyph: RecordGlyph = phase === 'count' ? (count as 3 | 2 | 1) : recording ? 'stop' : take ? 'redo' : 'mic';
   const btnLabel = phase === 'count' ? `Starting in ${count}. Tap to cancel` : recording ? 'Stop recording'
-    : (take ? 'Redo slide ' + (cur + 1) : 'Record slide ' + (cur + 1)) + (anyTake ? '. Hold 3 seconds to redo the whole presentation' : '');
+    : (take ? 'Redo slide ' + (cur + 1) : 'Record slide ' + (cur + 1)) + (anyTake ? '. Hold 1.5 seconds to redo the whole presentation' : '');
   const idleHint: Hint = take ? { icon: 'h-hold', text: 'Hold to redo all' } : { icon: 'h-tap', text: 'Tap to record' };
-  const homeHint: Hint = { icon: 'h-dn', text: 'Home', hidden: pdfRotated };
+  const homeHint: Hint = { icon: 'h-dn', text: 'Home' };
   const showIdleHints = phase !== 'count' && !recording && phase !== 'burst';
   const hints: Hint[] = phase === 'count' ? [{ icon: 'h-tap', text: 'Tap to cancel' }]
     : recording ? [{ icon: 'h-tap', text: 'Tap to stop' }, { icon: 'h-spin', text: 'Swipe slides' }]
@@ -448,10 +432,24 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
     openReview(next.takeNo, next.sel, !!compare, 'fade');
   };
 
+  const captureEngine = <CaptureEngine key={engineKey} ref={engine} deck={deck} audience={deck.audience ?? ''} onMeter={onMeter}
+    onInterrupted={m => { setError(m); bump(); }} onMustStop={() => { void stopRec(); }} />;
+
+  if (pdfRotated) return <>
+    {captureEngine}
+    <LandscapeRehearse model={model} live={live} slide={cur} phase={phase} glyph={glyph} btnLabel={btnLabel}
+        recording={recording} take={take} disabled={phase==='starting'||phase==='stopping'} onRecord={toggleRec} onRecordDown={recDown} onRecordUp={recUp}
+        ringProgress={ringP} ringVisible={ringV}
+        onExit={rotate} onPrevious={()=>goSlide(cur-1,'animate')} onNext={()=>goSlide(cur+1,'animate')}
+        cueState={profiles.value} cueBusy={profiles.busy} onCueRecovery={()=>profiles.refresh()}
+        onReview={()=>run&&openReview(state.takes,cur,!!state.compare,'rise')}
+        redoAsk={redoAsk} onConfirmRedo={confirmRedo} onCancelRedo={cancelRedo}
+        cues={fullscreenCues} onCuesChange={setFullscreenCues} />
+  </>;
+
   return (
     <Enter kind={nav.nav}>
-      <CaptureEngine key={engineKey} ref={engine} deck={deck} audience={deck.audience ?? ''} onMeter={onMeter}
-        onInterrupted={m => { setError(m); bump(); }} onMustStop={() => { void stopRec(); }} />
+      {captureEngine}
       <PanView style={StyleSheet.absoluteFill} {...back} pointerEvents={setupOpen ? 'none' : 'auto'}
         accessibilityElementsHidden={setupOpen} importantForAccessibility={setupOpen ? 'no-hide-descendants' : 'auto'}>
         <Animated.View style={[StyleSheet.absoluteFill, screen]}>
@@ -465,23 +463,23 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
           <View style={styles.header} pointerEvents="none">
             <Txt numberOfLines={1} style={styles.deckTitle}>{deck.title}</Txt>
           </View>
-          <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.headerBalance}>
-            <UIIcon name="i-wave" size={21} color={c.text} />
-          </View>
-          <Animated.View pointerEvents="none" style={[styles.counterWrap, counterMotion]}>
+          <Pressable accessibilityRole="button" accessibilityLabel={player.playingKey === `slide:${deck.id}:${cur}` && !player.paused ? 'Pause saved slide audio' : 'Play saved slide audio'}
+            accessibilityState={{ disabled: phase !== 'idle' || !partId || !audioOf(partId) }}
+            disabled={phase !== 'idle' || !partId || !audioOf(partId)} onPress={playSlide} style={styles.headerBalance} hitSlop={8}>
+            <UIIcon name="i-wave" size={21} color={phase === 'idle' && partId && audioOf(partId) ? c.text : c.muted2} />
+          </Pressable>
+          <Animated.View pointerEvents="none" style={styles.counterWrap}>
             <Txt style={styles.counter}>{'Slide ' + (cur + 1) + ' of ' + n}</Txt>
           </Animated.View>
           <SlideTrack model={model} slide={cur} trackX={trackX} onSlide={goSlide}
             previousLocked={locksPreviousSlide(phase)} isPreviousLocked={isPreviousLocked}
             navigationFrozen={freezesSlideNavigation(phase)} isNavigationFrozen={isNavigationFrozen}
-            rotated={pdfRotated} rotating={pdfRotating} rotation={pdfRotation} />
-          {!pdfRotated && <>
+            rotated={false} rotating={false} rotation={pdfRotation} />
           <TickStrip n={n} cur={cur} disabled={freezesSlideNavigation(phase)} onPick={i => goSlide(i, 'jump')} />
-          <CueGuidancePanel state={profiles.value} slide={cur} error={profiles.error} busy={profiles.busy}
-            canPlayback={phase === 'idle' && !!partId && !!audioOf(partId)}
-            slidePlaying={player.playingKey === `slide:${deck.id}:${cur}` && !player.paused}
+          <CueGuidancePanel key={cueCloseRequest} state={profiles.value} slide={cur} error={profiles.error} busy={profiles.busy}
+            onSheetOpenChange={setCueSheetOpen}
             requirementsNotice={requirementsPending(deck.id, API_URL) ? (readRequirementsDraft(deck.id, API_URL)?.conflict ? 'Presentation choices conflict · tap the title to resolve' : 'Presentation choices saved on phone · sync pending. Targets use last synchronized time.') : defaultRequirementsPending(deck.id, API_URL) ? 'Presentation requirements · sync pending' : null}
-            onPlaySlide={playSlide} playbackNotice={player.error || playbackNotice || (partId && !audioOf(partId) ? 'Audio for this slide isn’t on this phone' : null)}
+            playbackNotice={player.error || playbackNotice || (partId && !audioOf(partId) ? 'Audio for this slide isn’t on this phone' : null)}
             onRecover={action => {
               if (action === 'refresh') profiles.refresh();
               else if (action === 'confirm') setCueRetryAsk(profiles.value);
@@ -490,41 +488,33 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
           <Readout live={live} phase={phase} cur={cur} take={take} deck={deck} burst={burst} error={error}
             recoveryCount={recoveryAttempts.length} recoveryNumber={recoveryAttempts.length ? recoveryCursor % recoveryAttempts.length + 1 : 0}
             onRecovery={() => recoveryAttempt && setRecoveryId(recoveryAttempt.id)} />
-          </>}
-          {pdfRotated && <>
-            <RotatedReadout phase={phase} error={error} burst={burst}
-              recoveryCount={recoveryAttempts.length} onRecovery={() => recoveryAttempt && setRecoveryId(recoveryAttempt.id)} />
-            <RotatedWaveform live={live} phase={phase} />
-          </>}
-          <RoundButton glyph={pdfRotated ? 'h-portrait' : 'h-landscape'} active={pdfRotated}
-            label={pdfRotated ? 'Return the PDF to normal view' : 'Rotate only the PDF for a bigger view'}
-            caption="Rotate" captionRotation={controlSwap} onPress={rotate} style={{ left: 49 }} />
-          <Animated.View pointerEvents={pdfRotated ? 'none' : 'box-none'} accessibilityElementsHidden={pdfRotated}
-            importantForAccessibility={pdfRotated ? 'no-hide-descendants' : 'auto'} style={[styles.rightControlLayer, reviewMotion]}>
-            <RoundButton glyph="h-review-bars" label={reviewDestination(state.takes) === 'full' ? 'Review full presentation' : 'Review current slide'} caption="Review" captionRotation={controlSwap}
+          <RoundButton glyph="h-landscape" active={pdfRotated}
+            label="Open full-screen landscape player" caption="Rotate" onPress={rotate} style={{ left: 49 }} />
+          <View pointerEvents="box-none" style={[styles.rightControlLayer, frame.compact && { top: 621 }]}>
+            <RoundButton glyph="h-review-bars" label={reviewDestination(state.takes) === 'full' ? 'Review full presentation' : 'Review current slide'} caption="Review"
               disabled={!run || recording || phase === 'count'}
               onPress={() => run && openReview(state.takes, cur, !!state.compare, 'rise')}
               style={{ left: 0, top: 0 }} />
-          </Animated.View>
-          <Animated.View pointerEvents="none" accessibilityElementsHidden={!pdfRotated}
-            importantForAccessibility={!pdfRotated ? 'no-hide-descendants' : 'auto'} style={[styles.rightControlLayer, timeMotion]}>
-            <RotatedTimer live={live} phase={phase} rotation={controlSwap} active={pdfRotated} />
-          </Animated.View>
+          </View>
           <RecordRing progress={ringP} visible={ringV} />
-          <RecordButton glyph={glyph} glyphRotation={pdfRotation} label={btnLabel} onPress={toggleRec} onPressIn={recDown} onPressOut={recUp} disabled={phase === 'starting' || phase === 'stopping'} />
+          <RecordButton glyph={glyph} label={btnLabel} onPress={toggleRec} onPressIn={recDown} onPressOut={recUp}
+            style={frame.compact ? { top: 607 } : undefined}
+            accessibilityActions={anyTake ? [{ name: 'redoAllSlides', label: 'Redo all slides' }] : undefined}
+            onAccessibilityAction={event => {
+              if (event.nativeEvent.actionName !== 'redoAllSlides' || !anyTake || phaseRef.current !== 'idle' || redoAsk) return;
+              player.stop();
+              setRedoAsk('all');
+            }}
+            disabled={phase === 'starting' || phase === 'stopping'} />
           <HintRow hints={showIdleHints ? [idleHint] : hints} />
           {showIdleHints && <HintRow hints={[homeHint]} style={styles.homeHintRight} />}
         </Animated.View>
       </PanView>
       {setupOpen && <View style={StyleSheet.absoluteFill}><PageSurface hue={deck.hue} /><PresentationRequirementsEditor deck={deck} active={active}
         onSaved={() => setSetupOpen(false)} onBackPan={{ onMoveShould: (_e, g) => g.dy > 12 && g.dy > Math.abs(g.dx), onRelease: (_e, g) => { if (g.dy > BACK_T) setSetupOpen(false); } }} /></View>}
-      {redoAsk && (
-        <Dialog title={redoAsk === 'all' ? 'Redo the whole presentation?' : 'Redo slide ' + (cur + 1) + '?'}
-          body={redoAsk === 'all' ? 'Recording starts again from slide 1. When you stop, you can compare it with your current run and keep either one.'
-            : 'Your recording and transcript for slide ' + (cur + 1) + ' will be replaced. You can compare the takes and keep the old one.'}
-          confirm={redoAsk === 'all' ? 'Redo all' : 'Redo'} onConfirm={confirmRedo} onCancel={cancelRedo} showScrim={false}
-          />
-      )}
+      {redoAsk && <Dialog title={redoAsk==='all'?'Redo all slides?':`Redo slide ${cur+1}?`}
+        body={redoAsk==='all'?'Your current take stays, so you can compare and keep either one.':'Your old take stays, so you can compare.'}
+        confirm={redoAsk==='all'?'Redo all':`Redo slide ${cur+1}`} onConfirm={confirmRedo} onCancel={cancelRedo} />}
       {cueRetryAsk && <Dialog title="Retry AI cues?" body="The previous provider request has an uncertain outcome. Retrying may incur another charge."
         confirm="Retry" onConfirm={() => { const captured = cueRetryAsk; setCueRetryAsk(null); void profiles.recover(true, captured); }} onCancel={() => setCueRetryAsk(null)} />}
       {phase === 'burst' && <Confetti />}
@@ -533,6 +523,94 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
     </Enter>
   );
 }
+
+function LandscapeRehearse({model,live,slide,phase,glyph,btnLabel,recording,take,disabled,onRecord,onRecordDown,onRecordUp,onExit,onPrevious,onNext,cueState:profile,cueBusy,onCueRecovery,onReview,redoAsk,onConfirmRedo,onCancelRedo,ringProgress,ringVisible,externalCorners=false,cues:controlledCues,onCuesChange}:{
+  model:DeckModel;live:LiveStore;slide:number;phase:Phase;glyph:RecordGlyph;btnLabel:string;recording:boolean;take:boolean;disabled:boolean;
+  onRecord:()=>void;onRecordDown:()=>void;onRecordUp:()=>void;onExit:()=>void;onPrevious:()=>void;onNext:()=>void;
+  cueState:ProfileState|null;cueBusy:boolean;onCueRecovery:()=>void;onReview:()=>void;redoAsk:false|'slide'|'all';onConfirmRedo:()=>void;onCancelRedo:()=>void;
+  ringProgress:SharedValue<number>;ringVisible:SharedValue<number>;externalCorners?:boolean;cues?:boolean;onCuesChange?:(open:boolean)=>void;
+}){
+  const {c}=useTheme();
+  const frame=useFrame();
+  const {width,height}=frame;
+  const insets={left:0,right:0,top:0,bottom:0};
+  const [controls,setControls]=useState(true),[localCues,setLocalCues]=useState(false);
+  const cues=controlledCues??localCues;
+  const setCues=(value:boolean)=>{setLocalCues(value);onCuesChange?.(value);};
+  const liveValue=useSyncExternalStore(live.subscribe,live.get);
+  useEffect(()=>{
+    if(!recording)return;
+    const timer=setTimeout(()=>setControls(false),3000);
+    return()=>clearTimeout(timer);
+  },[recording,slide]);
+  const controlsVisible=controls||!recording;
+  const must=cueState(profile,slide,'must_cover'),deeper=cueState(profile,slide,'go_deeper');
+  const cuePanelWidth=Math.min(width*0.46,390);
+  const cueWidth=cues?cuePanelWidth:0;
+  const cueProgress=useSharedValue(cues?1:0);
+  const cuePanelMotion=useAnimatedStyle(()=>({opacity:cueProgress.value,transform:[{translateX:cuePanelWidth*(1-cueProgress.value)}]}),[cuePanelWidth]);
+  useEffect(()=>{cueProgress.set(withTiming(cues?1:0,{duration:240,easing:Easing.out(Easing.cubic)}));},[cueProgress,cues]);
+  const cardLeft=cues?Math.max(20,insets.left+12):Math.max(68,insets.left+56);
+  const cardRight=cues?cueWidth+12:Math.max(12,insets.right+12);
+  const maxCardWidth=Math.max(120,width-cardLeft-cardRight);
+  const maxCardHeight=Math.max(100,height);
+  const cardWidth=Math.min(maxCardWidth,maxCardHeight*16/9);
+  const cardHeight=cardWidth*9/16;
+  const cardTop=Math.max(0,(height-cardHeight)/2);
+  const buttonSize=84;
+  const controlCenter=cues?(cardLeft+width-cueWidth)/2:width/2;
+  const centerLeft=controlCenter-buttonSize/2;
+  const centerTop=(height-buttonSize)/2;
+  const panelText=(items:ReturnType<typeof cueState>)=>items.cues.slice(0,4);
+  return <View style={[StyleSheet.absoluteFill,{backgroundColor:'#000000'}]}>
+    <StatusBar hidden />
+    <Pressable accessibilityRole="button" accessibilityLabel="Show or hide rehearsal controls" onPress={()=>setControls(v=>!v)}
+      style={{position:'absolute',left:cardLeft,top:cardTop,width:cardWidth,height:cardHeight,alignItems:'center',justifyContent:'center',overflow:'hidden',borderRadius:6}}>
+      <MiniSlide hue={model.deck.hue} page={model.deck.pages[slide]} title={model.deck.slides[slide]?.title??''} width={cardWidth} height={cardHeight} radius={6}/>
+    </Pressable>
+    {!externalCorners&&<Pressable accessibilityRole="button" accessibilityLabel="Return to portrait rehearsal" onPress={onExit}
+      style={landscapeStyles.returnButton}><Svg width={28} height={28} viewBox="0 0 24 24" accessible={false}>
+        <Path d="M9 3H3v6 M15 3h6v6 M21 15v6h-6 M9 21H3v-6" fill="none" stroke="#FFFFFF" strokeWidth={2.7} strokeLinecap="round" strokeLinejoin="round" />
+      </Svg></Pressable>}
+    {!externalCorners&&<Pressable accessibilityRole="button" accessibilityLabel={cues?'Close cue panel':'Open cue panel'} onPress={()=>setCues(!cues)}
+      style={[landscapeStyles.cuesButton,{top:Math.max(insets.top,8),right:Math.max(insets.right,12),backgroundColor:c.glass,borderColor:c.border12}]}><UIIcon name="i-bubble" size={22} color="#FFFFFF"/></Pressable>}
+    {controlsVisible&&<>
+      <Pressable accessibilityRole="button" accessibilityLabel="Previous slide" disabled={slide===0||disabled} onPress={onPrevious} style={[landscapeStyles.arrow,{left:8,top:centerTop,backgroundColor:c.glass}]}><Txt style={landscapeStyles.arrowText}>‹</Txt></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="Next slide" disabled={slide>=model.n-1||disabled} onPress={onNext} style={[landscapeStyles.arrow,{right:cues?cueWidth+8:8,top:centerTop,backgroundColor:c.glass}]}><Txt style={landscapeStyles.arrowText}>›</Txt></Pressable>
+      {recording&&<RecordRing progress={ringProgress} visible={ringVisible} size={buttonSize+20} style={{position:'absolute',left:centerLeft-10,top:centerTop-10}}/>}
+      <RecordButton quiet glyph={glyph} label={btnLabel} onPress={()=>{if(!recording)setControls(true);onRecord();}} onPressIn={onRecordDown} onPressOut={onRecordUp} disabled={disabled}
+        style={{position:'absolute',left:centerLeft,top:centerTop,width:buttonSize,height:buttonSize,borderRadius:buttonSize/2}}/>
+      <View pointerEvents="none" style={[landscapeStyles.readout,{left:Math.max(24,insets.left+16),bottom:Math.max(insets.bottom+38,34)}]}><Txt style={landscapeStyles.elapsed}>{`${fmt(liveValue.E)} / ${fmt(model.deck.target)}`}</Txt><Txt style={landscapeStyles.slideNumber}>{`· Slide ${slide+1} of ${model.n}`}</Txt></View>
+      <View style={[landscapeStyles.progress,{left:Math.max(24,insets.left+16),right:Math.max(24,insets.right+16),bottom:Math.max(insets.bottom+17,14)}]}>{model.times.map((seconds,i)=><View key={i} style={[landscapeStyles.segment,{backgroundColor:i===slide?c.accent:seconds>0?c.ink55:c.track}]}/>)}</View>
+    </>}
+    {!controlsVisible&&recording&&<View style={landscapeStyles.recordingPill}><View style={landscapeStyles.redDot}/><Txt style={landscapeStyles.pillTime}>{fmt(liveValue.E)}</Txt></View>}
+    <Animated.View pointerEvents={cues?'auto':'none'} accessibilityElementsHidden={!cues} importantForAccessibility={cues?'auto':'no-hide-descendants'}
+      style={[landscapeStyles.cuePanel,{width:cuePanelWidth,paddingTop:Math.max(insets.top+12,20),paddingBottom:Math.max(insets.bottom+12,20),backgroundColor:c.dialog,borderColor:c.hair},cuePanelMotion]}>
+      <View style={landscapeStyles.cueHeading}><Txt numberOfLines={1} style={[landscapeStyles.cueTitle,{color:c.text}]}>{`Slide ${slide+1} cues`}</Txt><Pressable accessibilityRole="button" accessibilityLabel="Close cues" onPress={()=>setCues(false)} style={landscapeStyles.cueClose}><Txt style={{color:c.text,fontSize:27,lineHeight:30}}>×</Txt></Pressable></View>
+      <ScrollView contentContainerStyle={{gap:18,paddingBottom:20}}>
+        <View style={{gap:8}}><Txt style={[landscapeStyles.cueKind,{color:c.accent}]}>MUST COVER</Txt>
+          {panelText(must).map((cue,i)=><View key={i} style={landscapeStyles.cueRow}><View style={[landscapeStyles.cueBullet,{backgroundColor:c.accent}]}/><View style={{flex:1,gap:4}}><Txt style={[landscapeStyles.cueStrong,{color:c.text}]}>{cue.text}</Txt>{'information_needed' in cue&&!!cue.information_needed&&<Txt style={[landscapeStyles.cueText,{color:c.secondary}]}>{cue.information_needed}</Txt>}</View></View>)}
+          {!must.cues.length&&<Txt style={[landscapeStyles.cueText,{color:c.secondary}]}>{cueBusy?'Cues are on the way':must.message||'No cues yet'}</Txt>}</View>
+        <View style={{gap:8}}><Txt style={[landscapeStyles.cueKind,{color:c.secondary}]}>FURTHER INSIGHT</Txt>
+          {panelText(deeper).map((cue,i)=><View key={i} style={landscapeStyles.cueRow}><View style={[landscapeStyles.cueBullet,{backgroundColor:c.secondary}]}/><View style={{flex:1,gap:4}}><Txt style={[landscapeStyles.cueStrong,{color:c.text}]}>{cue.text}</Txt>{'information_needed' in cue&&!!cue.information_needed&&<Txt style={[landscapeStyles.cueText,{color:c.secondary}]}>{cue.information_needed}</Txt>}</View></View>)}
+          {!deeper.cues.length&&<Txt style={[landscapeStyles.cueText,{color:c.secondary}]}>{deeper.message||'No further cues yet'}</Txt>}</View>
+        <Pressable accessibilityRole="button" onPress={onCueRecovery} style={landscapeStyles.refresh}><Txt style={{color:c.secondary}}>Refresh cues</Txt></Pressable>
+      </ScrollView>
+    </Animated.View>
+    {redoAsk&&<Dialog title={redoAsk==='all'?'Redo all slides?':`Redo slide ${slide+1}?`}
+      body={redoAsk==='all'?'Your current take stays, so you can compare and keep either one.':`Your recording and transcript for slide ${slide+1} will be replaced. This can’t be undone.`}
+      confirm={redoAsk==='all'?'Redo all':`Redo slide ${slide+1}`} onConfirm={onConfirmRedo} onCancel={onCancelRedo}
+      style={{left:24,right:24,top:'50%',marginTop:-116}} />}
+  </View>;
+}
+
+const landscapeStyles=StyleSheet.create({
+  topShade:{position:'absolute',left:0,right:0,top:0,backgroundColor:'rgba(0,0,0,0.24)'},bottomShade:{position:'absolute',left:0,right:0,bottom:0,backgroundColor:'rgba(0,0,0,0.28)'},
+  returnButton:{position:'absolute',right:16,bottom:24,width:48,height:48,alignItems:'center',justifyContent:'center'},cuesButton:{position:'absolute',right:14,top:12,width:48,height:48,borderRadius:24,borderWidth:1,alignItems:'center',justifyContent:'center'},
+  deckTitle:{position:'absolute',left:100,right:100,textAlign:'center',fontFamily:F.display,fontSize:19,color:'#FFFFFF'},slideCaption:{position:'absolute',left:100,right:100,textAlign:'center',fontFamily:F.medium,fontSize:14,color:'rgba(255,255,255,0.72)'},
+  arrow:{position:'absolute',width:48,height:48,borderRadius:24,alignItems:'center',justifyContent:'center'},arrowText:{fontFamily:F.medium,fontSize:38,lineHeight:42,color:'#FFFFFF'},readout:{position:'absolute',flexDirection:'row',alignItems:'baseline',gap:8},elapsed:{fontFamily:F.display,fontSize:16,color:'#FFFFFF',fontVariant:['tabular-nums']},slideNumber:{fontFamily:F.medium,fontSize:15,color:'rgba(255,255,255,0.72)'},progress:{position:'absolute',height:4,flexDirection:'row',gap:3},segment:{flex:1,minWidth:2,borderRadius:3},recordingPill:{position:'absolute',left:20,top:16,height:34,paddingHorizontal:12,borderRadius:17,backgroundColor:'rgba(0,0,0,0.58)',flexDirection:'row',alignItems:'center',gap:8},redDot:{width:9,height:9,borderRadius:5,backgroundColor:'#E0414B'},pillTime:{fontFamily:F.semibold,fontSize:16,color:'#FFFFFF',fontVariant:['tabular-nums']},
+  cuePanel:{position:'absolute',right:0,top:0,bottom:0,paddingHorizontal:20,borderLeftWidth:1},cueHeading:{minHeight:50,flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},cueTitle:{fontFamily:F.display,fontSize:20,lineHeight:26,flex:1},cueClose:{width:40,height:44,alignItems:'center',justifyContent:'center'},cueKind:{fontFamily:F.bold,fontSize:13.5,letterSpacing:0.7},cueRow:{flexDirection:'row',alignItems:'flex-start',gap:12},cueBullet:{width:8,height:8,borderRadius:4,marginTop:7},cueStrong:{fontFamily:F.semibold,fontSize:15.5,lineHeight:21},cueText:{fontFamily:F.medium,fontSize:14.5,lineHeight:20},refresh:{minHeight:40,alignItems:'center',justifyContent:'center'}
+});
 
 // Updated PDF and slide limits by OpenAI Codex, Iteration 2 (2026-10-14).
 // ── Slide carousel (render nearby slides on the track) ────────────────────
@@ -545,6 +623,7 @@ const SlideTrack = memo(function SlideTrack({ model, slide, trackX, onSlide, pre
   const { deck, n } = model;
   const step = CARD_STEP;
   const frame = useFrame();
+  const cardHeight = frame.compact ? 170 : CARD_H;
   const g = useRef<{ base: number; x: number; lastT: number; vel: number; caught: boolean } | null>(null);
   useEffect(() => { g.current = null; }, [rotated]);
   const responder: PanHandlers = {
@@ -598,14 +677,14 @@ const SlideTrack = memo(function SlideTrack({ model, slide, trackX, onSlide, pre
   const prev = () => onSlide(slide - 1, 'animate'), next = () => onSlide(slide + 1, 'animate');
   return (
     <View style={styles.slideStage} pointerEvents="box-none">
-      <Animated.View style={[styles.slidePosition, slidePosition]} pointerEvents="box-none">
-        <PanView style={[styles.slideZoom, slideRotation]} {...responder}
+      <Animated.View style={[styles.slidePosition, frame.compact && { height: cardHeight }, slidePosition]} pointerEvents="box-none">
+        <PanView style={[styles.slideZoom, frame.compact && { height: cardHeight }, slideRotation]} {...responder}
           accessible accessibilityRole="adjustable" accessibilityLabel={`Slide ${slide + 1} of ${n}: ${deck.slides[slide]?.title ?? ''}`}
           accessibilityActions={navigationFrozen ? [] : previousLocked ? [{ name: 'increment' }] : [{ name: 'increment' }, { name: 'decrement' }]}
           onAccessibilityAction={e => { if (rotating || isNavigationFrozen()) return; if (e.nativeEvent.actionName === 'increment') next(); else if (!isPreviousLocked()) prev(); }}>
-          <Animated.View style={[styles.track, track]}>
+          <Animated.View style={[styles.track, frame.compact && { height: cardHeight }, track]}>
             {Array.from({ length: Math.min(n - 1, slide + 2) - Math.max(0, slide - 2) + 1 }, (_, offset) => Math.max(0, slide - 2) + offset).map(i => (
-              <View key={i} style={[styles.cardSlot, { left: i * step }]}>
+              <View key={i} style={[styles.cardSlot, frame.compact && { height: cardHeight }, { left: i * step }]}>
                 <SlideCard hue={deck.hue} page={deck.pages[i]} deckTitle={deck.title} title={deck.slides[i]?.title ?? 'Slide ' + (i + 1)}
                   points={deck.slides[i]?.points ?? []} num={i + 1} foldL={false} foldR={i < n - 1} shadow={!rotated} />
               </View>
@@ -618,47 +697,12 @@ const SlideTrack = memo(function SlideTrack({ model, slide, trackX, onSlide, pre
       {!rotating && !navigationFrozen && rotated && slide < n - 1 && <Pressable accessibilityRole="button" accessibilityLabel={`Next slide, ${slide + 2}: ${deck.slides[slide + 1]?.title ?? ''}`}
         onPress={next} style={[styles.rotatedCorner, { bottom: 0 }]} />}
       {!rotating && !navigationFrozen && !previousLocked && !rotated && slide > 0 && <Pressable accessibilityRole="button" accessibilityLabel={`Previous slide, ${slide}: ${deck.slides[slide - 1]?.title ?? ''}`}
-        onPress={prev} style={[styles.corner, { left: 16, top: 16 + CARD_H - 60 }]} />}
+        onPress={prev} style={[styles.corner, { left: 16, top: 16 + cardHeight - 60 }]} />}
       {!rotating && !navigationFrozen && !rotated && slide < n - 1 && <Pressable accessibilityRole="button" accessibilityLabel={`Next slide, ${slide + 2}: ${deck.slides[slide + 1]?.title ?? ''}`}
-        onPress={next} style={[styles.corner, { right: 16, top: 16 + CARD_H - 60 }]} />}
+        onPress={next} style={[styles.corner, { right: 16, top: 16 + cardHeight - 60 }]} />}
     </View>
   );
 });
-
-/** Elapsed rehearsal time takes Review's place while only the PDF is rotated. */
-function RotatedTimer({ live, phase, rotation, active }: { live: LiveStore; phase: Phase; rotation: SharedValue<number>; active: boolean }) {
-  const { c } = useTheme();
-  const elapsed = useSyncExternalStore(live.subscribe, () => active ? fmt(live.get().E) : '0:00');
-  const shown = phase === 'recording' || phase === 'stopping' || phase === 'burst' ? elapsed : '0:00';
-  return (
-    <View accessible accessibilityRole="text" accessibilityLabel={`Elapsed rehearsal time ${shown}`} style={styles.rotatedTimerWrap}>
-      <View style={styles.rotatedTimerFace}>
-        <Txt style={[styles.rotatedTimerText, { color: phase === 'idle' || phase === 'count' || phase === 'starting' ? c.strong : c.text }]}>{shown}</Txt>
-      </View>
-      <OrbitalCaption text="Time" rotation={rotation} />
-    </View>
-  );
-}
-
-/** Compact recovery/completion status below the sideways PDF. */
-function RotatedReadout({ phase, error, burst, recoveryCount, onRecovery }: {
-  phase: Phase; error: string; burst: { total: number } | null;
-  recoveryCount: number; onRecovery: () => void;
-}) {
-  const { c } = useTheme();
-  const text = error || (recoveryCount && phase === 'idle' ? 'Recording interrupted · tap to inspect' :
-    phase === 'burst' && burst ? `Run complete · ${fmt(burst.total)}` : null);
-  if (!text) return null;
-  return <Txt numberOfLines={1} accessibilityRole={recoveryCount && phase === 'idle' ? 'button' : 'text'}
-    onPress={recoveryCount && phase === 'idle' ? onRecovery : undefined}
-    style={[styles.rotatedStatus, { color: error || recoveryCount ? c.bad : c.text }]}>{text}</Txt>;
-}
-
-function RotatedWaveform({ live, phase }: { live: LiveStore; phase: Phase }) {
-  const wave = useSyncExternalStore(live.subscribe, () => live.get().wave);
-  const recording = phase === 'recording' || phase === 'stopping';
-  return <Waveform bars={recording ? wave : IDLE_WAVE} live={recording} />;
-}
 
 function TickStrip({ n, cur, disabled, onPick }: { n: number; cur: number; disabled: boolean; onPick: (i: number) => void }) {
   const { c } = useTheme();
@@ -674,7 +718,7 @@ function TickStrip({ n, cur, disabled, onPick }: { n: number; cur: number; disab
   const ticks = Math.min(n, 48);
   const active = Math.floor((cur * ticks) / n);
   return (
-    <PanView style={styles.strip} {...responder} disabled={disabled}>
+    <PanView style={[styles.strip, frame.compact && { top: 286 }]} {...responder} disabled={disabled}>
       {Array.from({ length: ticks }, (_, i) => (
         <View key={i} accessible accessibilityRole="button" accessibilityLabel={'Go near slide ' + (Math.floor((i * n) / ticks) + 1)}
           style={{ flex: 1, height: i === active ? 12 : 6, borderRadius: 3, backgroundColor: i === active ? c.strong : i < active ? c.ink55 : c.ink16 }} />
@@ -689,6 +733,7 @@ function Readout({ live, phase, cur, take, deck, burst, error, recoveryCount, re
   recoveryCount: number; recoveryNumber: number; onRecovery: () => void;
 }) {
   const { c } = useTheme();
+  const frame = useFrame();
   const L = useSyncExternalStore(live.subscribe, live.get);
   const recording = phase === 'recording' || phase === 'stopping';
   const target = deck.targets[cur] ?? 0;
@@ -697,8 +742,8 @@ function Readout({ live, phase, cur, take, deck, burst, error, recoveryCount, re
     const pace = paceChip(L.E, cur, L.recStart, deck.targets);
     return <>
       <View style={styles.paceWrap} pointerEvents="none"><Chip chip={pace} size={14} /></View>
-      <Txt style={[styles.big, { color: c.text }]}>{fmt(L.E)}</Txt>
-      <Txt style={[styles.line, { color: onSlide > target ? c.coralText : c.secondary }]}>{'Slide ' + (cur + 1) + ' · ' + fmt(onSlide) + ' of ' + fmt(target)}</Txt>
+      <Txt style={[styles.big, frame.compact && { top: 490 }, { color: c.text }]}>{fmt(L.E)}</Txt>
+      <Txt style={[styles.line, frame.compact && { top: 546 }, { color: onSlide > target ? c.coralText : c.secondary }]}>{'Slide ' + (cur + 1) + ' · ' + fmt(onSlide) + ' of ' + fmt(target)}</Txt>
       <Waveform bars={L.wave} live />
     </>;
   }
@@ -706,22 +751,31 @@ function Readout({ live, phase, cur, take, deck, burst, error, recoveryCount, re
   const line = recovery && phase === 'idle' ? 'Recording interrupted' + (recoveryCount > 1 ? ` ${recoveryNumber} of ${recoveryCount}` : '') + ' · tap to inspect' : error ? error : phase === 'count' ? 'Get ready…' : phase === 'burst' ? 'Run complete'
     : take ? 'Redo slide ' + (cur + 1) : cur === 0 ? 'Full run · target ' + fmt(deck.target) : 'Record slide ' + (cur + 1);
   return <>
-    <Txt style={[styles.big, { color: phase === 'burst' ? c.text : c.strong }]}>{phase === 'burst' && burst ? fmt(burst.total) : '0:00'}</Txt>
+    <Txt style={[styles.big, frame.compact && { top: 490 }, { color: phase === 'burst' ? c.text : c.strong }]}>{phase === 'burst' && burst ? fmt(burst.total) : '0:00'}</Txt>
     <Txt numberOfLines={2} accessibilityRole={recovery && phase === 'idle' ? 'button' : 'text'}
       accessibilityLabel={recovery && phase === 'idle' ? 'Open interrupted recording for recovery' : undefined}
       onPress={recovery && phase === 'idle' ? onRecovery : undefined}
-      style={[styles.line, { color: error || recovery ? c.bad : c.secondary }]}>{line}</Txt>
+      style={[styles.line, frame.compact && { top: 546 }, { color: error || recovery ? c.bad : c.secondary }]}>{line}</Txt>
     <Waveform bars={IDLE_WAVE} live={false} />
   </>;
 }
 
 const styles = createThemedStyles({
+  redoScrim: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 },
+  redoSheet: { position: 'absolute', left: 0, right: 0, bottom: 0, minHeight: 328, paddingTop: 12, paddingHorizontal: 24, paddingBottom: 28, borderTopLeftRadius: 28, borderTopRightRadius: 28, borderWidth: 1, alignItems: 'stretch' },
+  sheetHandle: { alignSelf: 'center', width: 38, height: 4, borderRadius: 2, backgroundColor: C.muted2, marginBottom: 22 },
+  redoTitle: { fontFamily: F.display, fontSize: 24, lineHeight: 30, textAlign: 'center' },
+  redoBody: { marginTop: 8, fontFamily: F.medium, fontSize: 14, lineHeight: 20, textAlign: 'center' },
+  redoConfirm: { minHeight: 52, marginTop: 22, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
+  redoCancel: { minHeight: 48, marginTop: 8, borderRadius: 24, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  redoButtonText: { fontFamily: F.semibold, fontSize: 14 },
+  redoHint: { marginTop: 7, fontFamily: F.medium, fontSize: 13.5, textAlign: 'center' },
   homeHintRight: { left: 244, right: 0 },
   loading: { position: 'absolute', top: 400, left: 0, right: 0, textAlign: 'center', fontFamily: F.medium, fontSize: 14, color: C.secondary },
   header: { position: 'absolute', left: 64, right: 64, top: 50, alignItems: 'center' },
   deckTitle: { fontFamily: F.display, fontSize: 18, lineHeight: 21.6, letterSpacing: -0.3, color: C.text },
   counterWrap: { position: 'absolute', left: 120, top: 75, width: 150, height: 18, alignItems: 'center', justifyContent: 'center' },
-  counter: { fontFamily: F.medium, fontSize: 13, color: C.secondary },
+  counter: { fontFamily: F.medium, fontSize: 13.5, color: C.secondary },
   editRequirements: { position: 'absolute', left: 16, top: 39, width: 44, height: 44,
     alignItems: 'center', justifyContent: 'center', zIndex: 20 },
   headerBalance: { position: 'absolute', right: 16, top: 39, width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
@@ -729,13 +783,13 @@ const styles = createThemedStyles({
   slidePosition: { position: 'absolute', left: 16, top: 16, width: CARD_W, height: CARD_H },
   slideZoom: { width: CARD_W, height: CARD_H, overflow: 'hidden' },
   rotatedStatus: { position: 'absolute', left: 20, right: 20, top: 622, textAlign: 'center',
-    fontFamily: F.semibold, fontSize: 13 },
+    fontFamily: F.semibold, fontSize: 13.5 },
   rightControlLayer: { position: 'absolute', top: 690, left: 289, width: 52, height: 90 },
   rotatedTimerWrap: { position: 'absolute', top: 0, left: 0, width: 52, alignItems: 'center', gap: 6 },
   rotatedTimerFace: { width: 52, height: 52, borderRadius: 26, borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.12)', backgroundColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center', justifyContent: 'center' },
-  rotatedTimerText: { fontFamily: F.bold, fontSize: 13, fontVariant: ['tabular-nums'], color: C.text,
+  rotatedTimerText: { fontFamily: F.bold, fontSize: 13.5, fontVariant: ['tabular-nums'], color: C.text,
     transform: [{ rotate: '90deg' }] },
   track: { position: 'absolute', left: 0, top: 0, width: CARD_W, height: CARD_H },
   cardSlot: { position: 'absolute', top: 0, width: CARD_W, height: CARD_H },
@@ -743,6 +797,6 @@ const styles = createThemedStyles({
   rotatedCorner: { position: 'absolute', left: 55, width: 76, height: 76 },
   strip: { position: 'absolute', left: 16, right: 16, top: 330, height: 32, flexDirection: 'row', alignItems: 'center', gap: 4 },
   paceWrap: { position: 'absolute', left: 0, right: 0, top: 512, alignItems: 'center' },
-  big: { position: 'absolute', left: 0, right: 0, top: 548, textAlign: 'center', fontFamily: F.display, fontSize: 42, lineHeight: 44, letterSpacing: -1.3, fontVariant: ['tabular-nums'] },
-  line: { position: 'absolute', left: 30, right: 30, top: 596, textAlign: 'center', fontFamily: F.semibold, fontSize: 14 },
+  big: { position: 'absolute', left: 0, right: 0, top: 536, textAlign: 'center', fontFamily: F.display, fontSize: 52, lineHeight: 56, letterSpacing: -1.3, fontVariant: ['tabular-nums'] },
+  line: { position: 'absolute', left: 30, right: 30, top: 592, textAlign: 'center', fontFamily: F.semibold, fontSize: 14.5, lineHeight: 19 },
 });

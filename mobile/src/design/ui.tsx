@@ -16,14 +16,14 @@
 // OpenAI Codex semantic footer motion: docs/ai-collaboration-prompts-iteration-2.md#semantic-bottom-caption-motion-october-15-2026
 // OpenAI Codex precomposed ambient glow: docs/ai-collaboration-prompts-iteration-2.md#home-carousel-and-return-transition-performance-october-15-2026
 import { memo, useEffect, type ComponentProps, type ReactNode } from 'react';
-import { Image, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { Easing, type SharedValue, useAnimatedProps, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import type { ChipModel, IconKey } from '../domain/analysis';
 import type { HueName } from '../domain/hues';
 import { Txt, useFooterMotion, useFrame } from './frame';
 import { Glyph, type GlyphName, UIIcon } from './icons';
-import { C, F, FRAME_H, FRAME_W, HUES, TONE } from './tokens';
+import { C, F, FRAME_W, HUES, TONE } from './tokens';
 import { createThemedStyles, useTheme } from './theme';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -56,7 +56,8 @@ function MotionIcon({ children, kind }: { children: ReactNode; kind: IconMotion 
   return <Animated.View pointerEvents="none" style={motion}>{children}</Animated.View>;
 }
 export function HintRow({ hints, gap = 18, style }: { hints: Hint[]; gap?: number; style?: StyleProp<ViewStyle> }) {
-  return <View pointerEvents={hints.some(h => h.onPress && !h.hidden) ? 'box-none' : 'none'} style={[s.hints, { gap }, style]}>
+  const frame = useFrame();
+  return <View pointerEvents={hints.some(h => h.onPress && !h.hidden) ? 'box-none' : 'none'} style={[s.hints, frame.compact && { bottom: 12 }, { gap }, style]}>
     {hints.map(h => {
       const content = <><MotionIcon kind={h.nudge ? (h.nudge === 'down' ? 'drop' : 'rise') : motionFor(h.icon)}>
         <Glyph name={h.icon} size={18} /></MotionIcon><Txt style={s.hintText}>{h.text}</Txt></>;
@@ -69,7 +70,7 @@ export function HintRow({ hints, gap = 18, style }: { hints: Hint[]; gap?: numbe
 }
 
 // ── Chips ────────────────────────────────────────────────────────────────────
-export const Chip = memo(function Chip({ chip, size = 13 }: { chip: ChipModel; size?: number }) {
+export const Chip = memo(function Chip({ chip, size = 13.5 }: { chip: ChipModel; size?: number }) {
   const { c } = useTheme();
   const tone = TONE[chip.tone];
   const fg = chip.tone === 'plain' ? c.body : c[chip.tone];
@@ -82,11 +83,11 @@ export const Chip = memo(function Chip({ chip, size = 13 }: { chip: ChipModel; s
 });
 export function Pill({ text, tone, style }: { text: string; tone: keyof typeof TONE; style?: StyleProp<ViewStyle> }) {
   const { c } = useTheme();
-  return <View style={[s.pill, { backgroundColor: TONE[tone].bg }, style]}><Txt style={{ fontFamily: F.bold, fontSize: 12, color: tone === 'plain' ? c.body : c[tone] }}>{text}</Txt></View>;
+  return <View style={[s.pill, { backgroundColor: TONE[tone].bg }, style]}><Txt style={{ fontFamily: F.bold, fontSize: 13.5, color: tone === 'plain' ? c.body : c[tone] }}>{text}</Txt></View>;
 }
 
 /** Icon + text row used for findings and feedback lines. */
-export function IconRow({ icon, text, size = 13, tone = 'normal', singleLine = false }: {
+export function IconRow({ icon, text, size = 13.5, tone = 'normal', singleLine = false }: {
   icon: IconKey; text: string; size?: number; tone?: 'normal' | 'spot' | 'muted'; singleLine?: boolean;
 }) {
   const { c } = useTheme();
@@ -101,42 +102,49 @@ export function IconRow({ icon, text, size = 13, tone = 'normal', singleLine = f
 
 // ── Progress ring ────────────────────────────────────────────────────────────
 /** Ring around the record button: 112 dp, 4 dp, red gradient progress (0..1). */
-export function RecordRing({ progress, visible, style }: { progress: SharedValue<number>; visible: SharedValue<number>; style?: StyleProp<ViewStyle> }) {
+export function RecordRing({ progress, visible, style, size = 112 }: { progress: SharedValue<number>; visible: SharedValue<number>; style?: StyleProp<ViewStyle>; size?: number }) {
   const { c } = useTheme();
-  const len = 326.73;
+  const frame = useFrame();
+  const center = size / 2;
+  const radius = center - 4;
+  const len = 2 * Math.PI * radius;
   const props = useAnimatedProps(() => ({ strokeDashoffset: len * (1 - Math.max(0, Math.min(1, progress.value))), opacity: visible.value }));
   return (
-    <Svg width={112} height={112} viewBox="0 0 112 112" style={[s.ring, style]} pointerEvents="none">
+    <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={[s.ring, frame.compact && { top: 594 }, style]} pointerEvents="none">
       <Defs>
         <LinearGradient id="gRedRing" x1="0" y1="0" x2="0.35" y2="1"><Stop offset="0" stopColor="#FF9A7C" /><Stop offset="1" stopColor="#EC2A35" /></LinearGradient>
       </Defs>
-      <Circle cx={56} cy={56} r={52} fill="none" stroke={c.track} strokeWidth={4} />
-      <AnimatedCircle cx={56} cy={56} r={52} fill="none" stroke="url(#gRedRing)" strokeWidth={4} strokeLinecap="round"
-        strokeDasharray={`${len}`} animatedProps={props} transform="rotate(-90 56 56)" />
+      <Circle cx={center} cy={center} r={radius} fill="none" stroke={c.track} strokeWidth={4} />
+      <AnimatedCircle cx={center} cy={center} r={radius} fill="none" stroke="url(#gRedRing)" strokeWidth={4} strokeLinecap="round"
+        strokeDasharray={`${len}`} animatedProps={props} transform={`rotate(-90 ${center} ${center})`} />
     </Svg>
   );
 }
 
 // ── Red record button and green check (SPEC §2) ──────────────────────────────
 export type RecordGlyph = 'mic' | 'redo' | 'stop' | 3 | 2 | 1;
-export function RecordButton({ glyph, label, onPress, onPressIn, onPressOut, disabled, green, style, glyphRotation }: {
-  glyph: RecordGlyph | 'check'; label: string; onPress: () => void; onPressIn?: () => void; onPressOut?: () => void; disabled?: boolean; green?: boolean; style?: StyleProp<ViewStyle>;
+export function RecordButton({ glyph, label, onPress, onPressIn, onPressOut, onAccessibilityAction, accessibilityActions, disabled, green, quiet, style, glyphRotation }: {
+  glyph: RecordGlyph | 'check'; label: string; onPress: () => void; onPressIn?: () => void; onPressOut?: () => void; disabled?: boolean; green?: boolean; quiet?: boolean; style?: StyleProp<ViewStyle>;
   glyphRotation?: SharedValue<number>;
+  accessibilityActions?: ComponentProps<typeof Pressable>['accessibilityActions'];
+  onAccessibilityAction?: ComponentProps<typeof Pressable>['onAccessibilityAction'];
 }) {
+  const frame = useFrame();
   const stops = green ? ['#A8F8DB', '#22C98F', '#0A8F62'] : ['#FFB49E', '#FF5747', '#DD1C2C'];
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled} onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut}
-      android_disableSound style={[s.record, style, { boxShadow: green
+    <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityActions={accessibilityActions} onAccessibilityAction={onAccessibilityAction}
+      disabled={disabled} onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut}
+      android_disableSound style={[s.record, frame.compact && { top: 607 }, style, quiet && { backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' }, { boxShadow: quiet ? 'none' : green
         ? '0px 16px 30px rgba(14, 168, 119, 0.4), inset 0px -8px 14px rgba(0, 70, 44, 0.28), inset 0px 6px 10px rgba(255, 255, 255, 0.35)'
         : '0px 16px 30px rgba(236, 42, 53, 0.4), inset 0px -8px 14px rgba(110, 0, 12, 0.28), inset 0px 6px 10px rgba(255, 255, 255, 0.35)' }]}>
-      <Svg width={84} height={84} style={StyleSheet.absoluteFill}>
+      {!quiet && <Svg width={84} height={84} style={StyleSheet.absoluteFill}>
         <Defs>
           <RadialGradient id={green ? 'gBtnGreen' : 'gBtnRed'} cx="34%" cy="28%" r="97.7%" fx="34%" fy="28%">
             <Stop offset="0" stopColor={stops[0]} /><Stop offset="0.4" stopColor={stops[1]} /><Stop offset="1" stopColor={stops[2]} />
           </RadialGradient>
         </Defs>
         <Circle cx={42} cy={42} r={42} fill={`url(#${green ? 'gBtnGreen' : 'gBtnRed'})`} />
-      </Svg>
+      </Svg>}
       <ButtonGlyph glyph={glyph} glyphRotation={glyphRotation} />
     </Pressable>
   );
@@ -182,8 +190,9 @@ export function RoundButton({ icon, glyph, label, caption, onPress, disabled, ac
   captionRotation?: SharedValue<number>;
 }) {
   const { c, mode } = useTheme();
+  const frame = useFrame();
   return (
-    <View style={[s.roundWrap, { opacity: disabled ? 0.35 : 1 }, style]}>
+    <View style={[s.roundWrap, frame.compact && { top: 621 }, { opacity: disabled ? 0.35 : 1 }, style]}>
       <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: !!disabled, selected: !!active }} disabled={disabled}
         onPress={onPress} style={[s.round, active && { backgroundColor: 'rgba(255, 216, 102, 0.18)', borderColor: 'rgba(255, 216, 102, 0.45)' }]}>
         {glyph === 'h-review-bars' ? <Glyph name={glyph} size={28} color={mode === 'dark' ? '#FFFFFF' : '#000000'} />
@@ -216,8 +225,9 @@ export function OrbitalCaption({ text, rotation }: { text: string; rotation: Sha
 export const IDLE_WAVE: number[] = Array.from({ length: 28 }, () => 4);
 export const Waveform = memo(function Waveform({ bars, live }: { bars: readonly number[]; live: boolean }) {
   const { c } = useTheme();
+  const frame = useFrame();
   return (
-    <View pointerEvents="none" style={s.wave}>
+    <View pointerEvents="none" style={[s.wave, frame.compact && { top: 570 }]}>
       {bars.map((h, i) => (
         <View key={i} style={{ width: 4, height: Math.round(h), borderRadius: 2,
           backgroundColor: !live ? c.ink18 : i >= bars.length - 5 ? '#FF5A4E' : c.ink45 }} />
@@ -314,32 +324,33 @@ export function UndoToast({ text, onUndo }: { text: string; onUndo: () => void }
 // ── Ambient glow (SPEC §2) ───────────────────────────────────────────────────
 export const GlowLayer = memo(function GlowLayer({ hue, style }: { hue: HueName; style?: ComponentProps<typeof Animated.View>['style'] }) {
   const { mode } = useTheme();
+  const frame = useFrame();
   const tintColor = `rgb(${HUES[hue].rgb})`;
+  const size = 340 * frame.s;
   return (
-    <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, style]}>
-      <Image source={mode === 'light' ? require('../../assets/outloud-glow-light.png') : require('../../assets/outloud-glow-dark.png')}
-        resizeMode="stretch" style={[StyleSheet.absoluteFill, { tintColor }]} />
+    <Animated.View pointerEvents="none" style={[{ position: 'absolute', width: size, height: size,
+      left: frame.left + (FRAME_W / 2) * frame.s - size / 2,
+      top: frame.top + 360 * frame.s - size / 2 }, style]}>
+      <Svg width={size} height={size} viewBox="0 0 340 340">
+        <Defs>
+          <RadialGradient id={`deck-glow-${hue}-${mode}`} cx="50%" cy="50%">
+            <Stop offset="0%" stopColor={tintColor} stopOpacity={mode === 'light' ? 0.24 : 0.2} />
+            <Stop offset="52%" stopColor={tintColor} stopOpacity={mode === 'light' ? 0.1 : 0.08} />
+            <Stop offset="100%" stopColor={tintColor} stopOpacity="0" />
+          </RadialGradient>
+        </Defs>
+        <Rect x="0" y="0" width="340" height="340" fill={`url(#deck-glow-${hue}-${mode})`} />
+      </Svg>
     </Animated.View>
   );
 });
 
 /** Opaque page artwork that travels with a back swipe, exposing the mounted page below. */
-export const PageSurface = memo(function PageSurface({ hue }: { hue: HueName }) {
-  const { c, mode } = useTheme();
-  const frame = useFrame();
-  // The design canvas can be narrower than the phone; extend the moving sheet
-  // to the physical edges so carousel cards never peek around its sides.
-  const left = frame.left / frame.s;
-  const top = frame.top / frame.s;
-  const right = (frame.width - frame.left - FRAME_W * frame.s) / frame.s;
-  const bottom = (frame.height - frame.top - FRAME_H * frame.s) / frame.s;
-  const width = FRAME_W + left + right + 2;
-  const height = FRAME_H + top + bottom + 2;
-  return <View pointerEvents="none" style={{ position: 'absolute', left: -left - 1, top: -top - 1,
-    width, height, backgroundColor: c.bg }}>
-    <Image source={mode === 'light' ? require('../../assets/outloud-glow-light.png') : require('../../assets/outloud-glow-dark.png')}
-      resizeMode="stretch" style={{ width, height, tintColor: `rgb(${HUES[hue].rgb})` }} />
-  </View>;
+export const PageSurface = memo(function PageSurface(_props: { hue: HueName }) {
+  const { c } = useTheme();
+  // Page backgrounds stay neutral. Deck hue belongs on the local deck glow and
+  // slide face, never as a tint across the full screen.
+  return <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: c.bg }]} />;
 });
 
 /** Linear 135° slide-face gradient, as an absolute fill. */
@@ -354,9 +365,9 @@ export function FaceFill({ hue, radius = 0, id }: { hue: HueName; radius?: numbe
 }
 
 const s = createThemedStyles({
-  hints: { position: 'absolute', left: 0, right: 0, bottom: 30, height: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  hints: { position: 'absolute', left: 0, right: 0, bottom: 28, height: 22, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   hint: { flexDirection: 'row', alignItems: 'center' },
-  hintText: { fontFamily: F.medium, fontSize: 13, color: C.secondary },
+  hintText: { fontFamily: F.medium, fontSize: 14.5, lineHeight: 19, color: C.secondary },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingTop: 3, paddingBottom: 3, paddingLeft: 4, paddingRight: 11, borderRadius: 999 },
   pill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -367,7 +378,7 @@ const s = createThemedStyles({
   roundWrap: { position: 'absolute', top: 690, width: 52, alignItems: 'center', gap: 6 },
   round: { width: 52, height: 52, borderRadius: 26, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.12)', backgroundColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center', justifyContent: 'center' },
-  roundCaption: { fontFamily: F.semibold, fontSize: 11, color: C.secondary, width: 90, textAlign: 'center' },
+  roundCaption: { fontFamily: F.semibold, fontSize: 13.5, color: C.secondary, width: 90, textAlign: 'center' },
   orbitCaption: { position: 'absolute', left: -19, top: 58, width: 90, height: 16 },
   wave: { position: 'absolute', left: 0, right: 0, top: 618, height: 32, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
   dialog: { position: 'absolute', left: 32, right: 32, top: 286, paddingTop: 24, paddingHorizontal: 20, paddingBottom: 18, borderWidth: 1,

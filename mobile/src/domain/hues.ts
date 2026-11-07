@@ -2,10 +2,11 @@
 // Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
 // OutLoud redesign: presentation hues and icon ids.
 
-export type HueName = 'blue' | 'violet' | 'mint' | 'amber' | 'pink' | 'cyan' | 'coral' | 'lime' | 'indigo';
+export type HueName = 'blue' | 'violet' | 'mint' | 'amber' | 'pink' | 'cyan' | 'coral' | 'lime' | 'indigo' |
+  'rose' | 'orchid' | 'lilac' | 'periwinkle' | 'iris' | 'sky';
 
 /** Order in which new presentations take a hue (first one not already used). */
-export const NEW_HUE_ORDER: HueName[] = ['cyan', 'coral', 'lime', 'indigo', 'blue', 'violet', 'mint', 'amber', 'pink'];
+export const NEW_HUE_ORDER: HueName[] = ['rose', 'orchid', 'lilac', 'periwinkle', 'iris', 'sky'];
 
 export function pickHue(used: readonly HueName[]): HueName {
   const taken = new Set(used);
@@ -13,7 +14,7 @@ export function pickHue(used: readonly HueName[]): HueName {
   return NEW_HUE_ORDER[used.length % NEW_HUE_ORDER.length];
 }
 
-export const isHue = (value: unknown): value is HueName => typeof value === 'string' && (NEW_HUE_ORDER as string[]).includes(value);
+export const isHue = (value: unknown): value is HueName => typeof value === 'string' && [...NEW_HUE_ORDER, 'blue', 'violet', 'mint', 'amber', 'pink', 'cyan', 'coral', 'lime', 'indigo'].includes(value as HueName);
 
 export type IconId = 'present' | 'chart' | 'growth' | 'money' | 'bulb' | 'rocket' | 'cap' | 'book' | 'flask' | 'atom' |
   'globe' | 'computer' | 'math' | 'megaphone' | 'team' | 'heart' | 'briefcase' | 'target' | 'calendar' | 'palette';

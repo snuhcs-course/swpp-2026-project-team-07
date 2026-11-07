@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderRadius: 16, padding: 16, fontFamily: F.medium, fontSize: 18, minHeight: 56 },
   connect: { minHeight: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', padding: 14 },
   offline: { minHeight: 48, alignItems: 'center', justifyContent: 'center' },
-  note: { fontFamily: F.medium, fontSize: 13, lineHeight: 20 },
+  note: { fontFamily: F.medium, fontSize: 15, lineHeight: 21 },
   banner: { position: 'absolute', top: 40, left: 12, right: 12, zIndex: 100, borderWidth: 1, borderRadius: 14 },
   bannerButton: { minHeight: 48, alignItems: 'center', justifyContent: 'center', padding: 12 },
 });

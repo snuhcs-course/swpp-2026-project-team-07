@@ -49,5 +49,5 @@ function ReadySlideReviewDetails({slide,part,localDeckId,status,children,review}
 }
 const styles=createThemedStyles({
  status:{fontFamily:F.semibold,fontSize:14,color:C.text},
- note:{fontFamily:F.medium,fontSize:12,lineHeight:18,color:C.secondary},
+ note:{fontFamily:F.medium,fontSize:15,lineHeight:21,color:C.secondary},
 });

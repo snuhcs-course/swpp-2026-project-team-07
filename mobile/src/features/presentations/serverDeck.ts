@@ -29,11 +29,11 @@ function parse(value: unknown, pageCount: number, expectedId?: string): ServerSl
 
 /** Find or create the server copy of a local PDF and return its extracted slide text. */
 export async function serverSlides(local: { id: string; title: string; uri: string; pageCount: number }, apiUrl = API_URL,
-  signal?: AbortSignal): Promise<ServerSlides> {
+  signal?: AbortSignal, timeoutMs = 300_000): Promise<ServerSlides> {
   const api = normalizeApi(apiUrl);
   const key = `server-deck:${api}:${local.id}`;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 300_000);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   const abort = () => controller.abort();
   if (signal?.aborted) controller.abort();
   signal?.addEventListener('abort', abort, { once: true });

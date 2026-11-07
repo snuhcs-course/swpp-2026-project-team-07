@@ -10,7 +10,6 @@ import { Pressable, ScrollView, StyleSheet, View, type GestureResponderEvent, ty
 import * as Speech from 'expo-speech';
 import * as Haptics from 'expo-haptics';
 import Animated, { Easing, cancelAnimation, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { Enter, Txt, useFrame } from '../design/frame';
 import { Glyph, UIIcon } from '../design/icons';
 import { PanView } from '../design/PanView';
@@ -115,6 +114,14 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
   }, [hear, player, stopSpeak]);
   useEffect(() => () => { Speech.stop(); }, []);
   useEffect(() => { if (!active) { Speech.stop(); player.stop(); } }, [active, player]);
+  const autoSpoken = useRef<string | null>(null);
+  useEffect(() => {
+    if (!active || archived || !Q || rec || phase === 'review') return;
+    const identity = `${jobId}:${Q.id}:${part}`;
+    if (autoSpoken.current === identity) return;
+    autoSpoken.current = identity;
+    speak(part === 0 ? Q.question : Q.follow_up, `auto-${identity}`);
+  }, [active, archived, jobId, part, phase, Q, rec, speak]);
   const playAnswer = () => {
     if (!ans) return;
     stopSpeak();
@@ -222,8 +229,9 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
   const back = useCallback(() => {
     if (rec || count) return;
     stopSpeak(); player.stop();
-    go('review', { nav: null, deckId: deck.id, sel: nav.sel });
-  }, [count, deck.id, go, nav.sel, player, rec, stopSpeak]);
+    if(nav.from==='full')go('full',{nav:null,deckId:deck.id,sel:nav.sel});
+    else go('review', { nav: null, deckId: deck.id, sel: nav.sel, from:'full' });
+  }, [count, deck.id, go, nav.from, nav.sel, player, rec, stopSpeak]);
   const g = useRef<'x' | 'y' | null>(null);
   const busy = rec || !!count;
   const pan = {
@@ -266,19 +274,11 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
   const glyph: RecordGlyph = count ? (count as 3 | 2 | 1) : rec ? 'stop' : phase === 'review' ? 'redo' : 'mic';
   const btnLabel = archived?'Saved Q&A · playback only':count ? `Starting in ${count}. Tap to cancel` : rec ? 'Stop answering' : phase === 'review' ? (part ? 'Answer the follow-up again' : 'Answer the question again') : (part ? 'Answer the follow-up' : 'Answer the question');
   const hints: Hint[] = count ? [{ icon: 'h-tap', text: 'Tap to cancel' }] : rec ? [{ icon: 'h-tap', text: 'Tap when done' }]
-    : [...(!Q||last ? [] : [{ icon: 'h-spin' as const, text: 'Next',onPress:()=>goQ(1) }]), { icon: 'h-dn', text: 'Back', nudge: 'down', onPress: back }];
+    : [...(!Q||last ? [] : [{ icon: 'h-spin' as const, text: 'Next' }]), { icon: 'h-dn', text: 'Back', nudge: 'down' }];
   const result = ans?.status === 'done' ? ans.result : undefined;
   const short = result?.verdict === 'too_short';
-  const verdict = !result ? null : short ? { text: 'Too short', tone: TONE.bad, icon: 'i-clock' as IconKey }
+  const verdict = !result ? null : short ? { text: 'Too short', tone: TONE.plain, icon: 'i-clock' as IconKey }
     : result.verdict === 'answered' ? { text: 'Answered', tone: TONE.good, icon: 'i-check' as IconKey } : { text: 'Partly answered', tone: TONE.warn, icon: 'i-flag' as IconKey };
-  const rows: { icon: IconKey; k: string; t: string }[] = !result ? [] : short ? [
-    { icon: 'i-clock', k: 'Did it answer?', t: 'You stopped after ' + fmt((ans?.durationMs ?? 0) / 1000) + ' — not enough to judge.' },
-    { icon: 'i-bulb', k: 'Clarify', t: 'Aim for ' + (part ? '30–60' : '60–90') + ' seconds. Tap the red button to try again.' },
-  ] : ([
-    { icon: result.verdict === 'answered' ? 'i-check' : 'i-flag', k: 'Did it answer?', t: result.did },
-    { icon: 'i-chart', k: 'Evidence', t: result.evidence },
-    { icon: 'i-bulb', k: 'Clarify', t: result.clarify },
-  ] as { icon: IconKey; k: string; t: string }[]).filter(r => r.t);
   const ansLines = result ? sentences(result.transcript).map(s => ({ time: fmt(result.transcript.words[s.first].start_ms / 1000), text: s.text })) : [];
 
   return (
@@ -293,44 +293,33 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
           </View>
           {historyAvailable&&<Pressable accessibilityRole="button" accessibilityLabel={archived?'Next saved Q&A or return to current questions':'View saved Q&A'} onPress={()=>{if(rec||count)return;stopSpeak();player.stop();onHistory();}}
             style={{position:'absolute',top:18,left:16,zIndex:10,paddingVertical:6,paddingHorizontal:10}}>
-            <Txt style={{fontSize:12,color:c.secondary}}>{archived?'Next saved / Current Q&A':'Saved Q&A'}</Txt>
+            <Txt style={{fontSize:13.5,color:c.secondary}}>{archived?'Next saved / Current Q&A':'Saved Q&A'}</Txt>
           </Pressable>}
           {Q && (
             <Animated.View style={[styles.stage, slideStyle]}>
-              <View style={styles.panelist} pointerEvents="none">
-                <View style={[styles.avatar, { boxShadow: `0px 8px 16px ${hue.glow}` }]}>
-                  <Svg style={StyleSheet.absoluteFill}><Defs><LinearGradient id={'qaFace' + deck.hue} x1="0" y1="0" x2="1" y2="1"><Stop offset="0" stopColor={face[0]} /><Stop offset="1" stopColor={face[1]} /></LinearGradient></Defs>
-                    <Rect width="100%" height="100%" fill={`url(#qaFace${deck.hue})`} /></Svg>
-                  <Txt style={styles.who}>{Q.panelist}</Txt>
-                </View>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Txt style={styles.role}>{Q.role}</Txt>
-                  <Txt numberOfLines={1} style={styles.meta}>{'Asked after slide ' + (Q.slide_index + 1) + (Q.topic ? ' · ' + Q.topic : '')}</Txt>
-                </View>
-              </View>
-              <View style={[styles.col, { height: rec ? 370 : 490 }]}>
-                <ScrollView scrollEnabled={phase === 'review'} showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 14, paddingBottom: 24, flexGrow: 1 }}>
-                  {phase !== 'review' && part === 0 && (
+              {phase!=='review'&&<View style={styles.panelAvatars} pointerEvents="none">
+                {qs.slice(0,3).map((question,qi)=><View key={`${question.id}:${qi}`} style={[styles.panelAvatar,{backgroundColor:face[0],opacity:qi===i?1:0.48,boxShadow:qi===i?`0px 8px 16px ${hue.glow}`:undefined}]}>
+                  <Txt style={[styles.who,{color:'#14161D'}]}>{question.panelist.slice(0,1).toUpperCase()}</Txt>
+                </View>)}
+              </View>}
+              {phase!=='review'?<View style={[styles.col,styles.askBubble,{height:310,backgroundColor:c.surface06,borderColor:c.hair}]}>
+                <ScrollView scrollEnabled={false} showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 14, paddingBottom: 24, flexGrow: 1 }}>
+                  <View><Txt style={[styles.role,{color:c.secondary}]}>{Q.panelist+' · '+Q.role}</Txt><Txt style={[styles.meta,{color:c.tertiary}]}>{'Asked after slide '+(Q.slide_index+1)+(Q.topic?' · '+Q.topic:'')}</Txt></View>
+                  {part === 0 && (
                     <Pressable accessibilityRole="button" accessibilityLabel={(hearing('q' + i) ? 'Stop the question: ' : 'Hear the question: ') + Q.question}
                       onPress={() => !rec && speak(Q.question, 'q' + i)} style={{ gap: 10 }}>
                       <Txt style={[styles.qBig, { fontSize: rec ? 18 : 22, lineHeight: (rec ? 18 : 22) * 1.28 }]}>{quote(Q.question)}</Txt>
                       {!rec && <HearHint playing={hearing('q' + i)} />}
                     </Pressable>
                   )}
-                  {(phase === 'review' || part === 1) && (
+                  {part === 1 && (
                     <Pressable accessibilityRole="button" accessibilityLabel={part ? 'Back to the question: ' + Q.question : 'Hear the question: ' + Q.question}
                       onPress={() => { if (rec || count) return; if (part === 1) { stopSpeak(); setPart(0); } else speak(Q.question, 'q' + i); }}>
                       <Txt style={styles.over}>{part ? 'Question · tap to go back' : 'Question'}</Txt>
                       <Txt numberOfLines={3} style={styles.qSmall}>{quote(Q.question)}</Txt>
                     </Pressable>
                   )}
-                  {phase === 'review' && part === 1 && (
-                    <Pressable accessibilityRole="button" accessibilityLabel={'Hear the follow-up: ' + Q.follow_up} onPress={() => speak(Q.follow_up, 'f' + i)}>
-                      <Txt style={[styles.over, { color: c.warn }]}>{'Follow-up · ' + Q.panelist}</Txt>
-                      <Txt numberOfLines={3} style={styles.fSmall}>{quote(Q.follow_up)}</Txt>
-                    </Pressable>
-                  )}
-                  {part === 1 && phase !== 'review' && (
+                  {part === 1 && (
                     <Pressable accessibilityRole="button" accessibilityLabel={(hearing('f' + i) ? 'Stop the follow-up: ' : 'Hear the follow-up: ') + Q.follow_up}
                       onPress={() => !rec && speak(Q.follow_up, 'f' + i)} style={{ gap: 8 }}>
                       <Txt style={[styles.over, { color: c.warn }]}>{'Follow-up · ' + Q.panelist}</Txt>
@@ -340,41 +329,35 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
                   )}
                   {phase === 'ask' && (
                     <View style={styles.slideBox} pointerEvents="none">
-                      <MiniSlide hue={deck.hue} page={deck.pages[Q.slide_index]} title={deck.slides[Q.slide_index]?.title ?? ''} width={220} height={124} radius={16} num={Q.slide_index + 1} />
+                      <MiniSlide hue={deck.hue} page={deck.pages[Q.slide_index]} title={deck.slides[Q.slide_index]?.title ?? ''} width={160} height={90} radius={14} num={Q.slide_index + 1} />
                       <Txt style={styles.slideCap}>{'From slide ' + (Q.slide_index + 1)}</Txt>
                     </View>
                   )}
                   {rec && <View style={styles.listening}><Txt style={styles.listenText}>Listening…</Txt></View>}
-                  {phase === 'review' && ans && <>
-                    <Pressable accessibilityRole="button" accessibilityLabel="Play saved answer" onPress={playAnswer} style={styles.playChip}><Glyph name={player.playingKey==='a'+key?'p-pause':'p-play'} size={14}/><Txt style={styles.playText}>{'Saved audio · '+fmt(ans.durationMs/1000)}</Txt></Pressable>
-                    {ans.status === 'judging' && <Row icon="i-wave" k="Your answer" t="Transcribing and reviewing your answer…" />}
-                    {ans.status === 'error' && !archived && (
-                      <Pressable accessibilityRole="button" onPress={() => void judge(key, i, part, ans)}><Row icon="i-flag" k="Couldn’t review this answer" t={(ans.error || '') + ' Tap to try again.'} /></Pressable>
-                    )}
-                    {verdict && (
-                      <View style={styles.verdictRow}>
-                        <View style={[styles.verdict, { backgroundColor: verdict.tone.bg }]}><UIIcon name={verdict.icon} size={22} /><Txt style={[styles.verdictText, { color: verdict.tone.fg }]}>{verdict.text}</Txt></View>
-
-                      </View>
-                    )}
-                    {rows.map(r => <Row key={r.k} icon={r.icon} k={r.k} t={r.t} />)}
-                    {part === 0 && result && !short && Q.follow_up && (
-                      <Pressable accessibilityRole="button" accessibilityLabel={'Follow-up from ' + Q.panelist + ': ' + Q.follow_up}
-                        onPress={() => { if (count) return; stopSpeak(); setPart(1); }} style={styles.followCard}>
-                        <Txt style={[styles.over, { color: c.warn }]}>{'Follow-up · ' + Q.panelist}</Txt>
-                        <Txt style={styles.followText}>{quote(Q.follow_up)}</Txt>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><Glyph name="h-tap" size={16} /><Txt style={styles.followHint}>{set?.answers[answerKey(i, 1)] ? 'Answered · tap to view' : 'Tap to answer'}</Txt></View>
-                      </Pressable>
-                    )}
-                    {!!ansLines.length && (
-                      <View style={styles.ansBox} pointerEvents="none">
-                        {ansLines.map((l, k) => <View key={k} style={{ flexDirection: 'row', gap: 8 }}><Txt style={styles.ansTime}>{l.time}</Txt><Txt style={styles.ansText}>{l.text}</Txt></View>)}
-                      </View>
-                    )}
-                  </>}
                   {!rec&&<Txt style={styles.end}>{last?'Last question · swipe down for your review':'Swipe for the next question'}</Txt>}
                 </ScrollView>
-              </View>
+              </View>:<ScrollView style={styles.reviewLayout} contentContainerStyle={styles.reviewContent} showsVerticalScrollIndicator={false}>
+                <View style={styles.reviewVerdict}>
+                  <Txt style={[styles.reviewVerdictText,{color:short?c.tertiary:verdict?.tone.fg??c.secondary}]}>{verdict?.text??(ans?.status==='judging'?'Reviewing answer':'Answer saved')}</Txt>
+                  <View style={styles.reviewBar}>{(['Missed','Partly','Answered'] as const).map(label=>{
+                    const selected=!short&&((label==='Missed'&&verdict?.text==='Missed')||(label==='Partly'&&verdict?.text==='Partly answered')||(label==='Answered'&&verdict?.text==='Answered'));
+                    return <View key={label} style={[styles.reviewBarSegment,{backgroundColor:selected?(verdict?.tone.fg??c.secondary):c.ink14}]} />;
+                  })}</View>
+                  <View style={styles.verdictBarLabels}>{(['Missed','Partly','Answered'] as const).map(label=><Txt key={label} style={[styles.verdictBarLabel,{color:c.tertiary}]}>{label}</Txt>)}</View>
+                </View>
+                {ans&&<Pressable accessibilityRole="button" accessibilityLabel="Play your recorded answer" onPress={playAnswer} style={[styles.playChip,styles.reviewPlay]}><Glyph name={player.playingKey==='a'+key?'p-pause':'p-play'} size={15}/><Txt style={styles.playText}>{'Your answer · '+fmt(ans.durationMs/1000)}</Txt></Pressable>}
+                <View style={styles.nextTime}><Txt style={[styles.over,{color:c.tertiary}]}>NEXT TIME</Txt><Txt style={styles.nextTimeText}>{short?'Answer for at least 8 seconds.':result?.clarify||'Keep the answer clear and tied to the question.'}</Txt></View>
+                {ans?.status==='judging'&&<Row icon="i-wave" k="Answer review" t="Transcribing and reviewing your answer…"/>}
+                {ans?.status==='error'&&!archived&&<Pressable accessibilityRole="button" onPress={()=>void judge(key,i,part,ans)}><Row icon="i-flag" k="Couldn’t review this answer" t={(ans.error||'')+' Tap to try again.'}/></Pressable>}
+                {part===0&&result&&!short&&Q.follow_up&&<Pressable accessibilityRole="button" accessibilityLabel={'Answer the follow-up from '+Q.panelist} onPress={()=>{if(count)return;stopSpeak();setPart(1);}} style={styles.followDoor}>
+                  <View style={styles.followAvatar}><Txt style={styles.who}>{Q.panelist.slice(0,1)}</Txt></View><View style={{flex:1}}><Txt style={styles.followDoorTitle}>{`Answer ${Q.panelist}’s follow-up`}</Txt><Txt style={styles.meta}>{quote(Q.follow_up)}</Txt></View><UIIcon name="i-arrow" size={16}/>
+                </Pressable>}
+                {!!ansLines.length&&<View style={styles.ansBox}>{ansLines.map((line,k)=><View key={k} style={{flexDirection:'row',gap:8}}><Txt style={styles.ansTime}>{line.time}</Txt><Txt style={styles.ansText}>{line.text}</Txt></View>)}</View>}
+              </ScrollView>}
+              {phase!=='review'&&<View style={[styles.answerBubble,{backgroundColor:c.surface06,borderColor:c.hair}]}>
+                {rec?<><Txt style={[styles.role,{color:c.text}]}>{`Your answer · ${fmt(elapsed)}`}</Txt><Waveform bars={wave} live /></>
+                  :<><Txt style={[styles.role,{color:c.secondary}]}>Your answer</Txt><Txt style={[styles.answerPlaceholderText,{color:c.tertiary}]}>Your recorded answer will appear here.</Txt></>}
+              </View>}
             </Animated.View>
           )}
           {!Q && (
@@ -388,11 +371,6 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
             </View>
           )}
           {Q && load.kind === 'error' && <Txt style={styles.inlineError}>{load.message}</Txt>}
-          {rec && <>
-            <Txt style={styles.big}>{fmt(elapsed)}</Txt>
-            <Txt style={styles.line}>{(part ? 'Follow-up · ' : '') + (part ? '30–60' : '60–90') + ' seconds is typical'}</Txt>
-            <Waveform bars={wave} live />
-          </>}
           <RecordRing progress={ringP} visible={ringV} />
           {!archived&&<RecordButton glyph={glyph} label={btnLabel} onPress={toggleRec} disabled={!Q} />}
           <HintRow hints={hints} />
@@ -433,45 +411,64 @@ function Row({ icon, k, t }: { icon: IconKey; k: string; t: string }) {
 const styles = createThemedStyles({
   header: { position: 'absolute', left: 40, right: 40, top: 50, alignItems: 'center' },
   title: { fontFamily: F.display, fontSize: 18, lineHeight: 21.6, letterSpacing: -0.3, color: C.text },
-  label: { marginTop: 3, fontFamily: F.medium, fontSize: 13, color: C.secondary },
+  label: { marginTop: 3, fontFamily: F.medium, fontSize: 13.5, color: C.secondary },
   stage: { position: 'absolute', left: 0, top: 0, width: 390, height: 650 },
+  panelAvatars:{position:'absolute',left:0,right:0,top:112,flexDirection:'row',justifyContent:'center',alignItems:'center',gap:18},
+  panelAvatar:{width:48,height:48,borderRadius:24,alignItems:'center',justifyContent:'center',overflow:'hidden'},
   panelist: { position: 'absolute', left: 16, right: 16, top: 102, flexDirection: 'row', alignItems: 'center', gap: 12 },
   avatar: { width: 40, height: 40, borderRadius: 20, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   who: { fontFamily: F.display, fontSize: 14, color: '#FFFFFF' },
   role: { fontFamily: F.bold, fontSize: 15, color: C.text },
-  meta: { marginTop: 1, fontFamily: F.medium, fontSize: 12, color: C.secondary },
+  meta: { marginTop: 1, fontFamily: F.medium, fontSize: 13.5, color: C.secondary },
   col: { position: 'absolute', left: 16, right: 16, top: 158 },
+  askBubble:{top:196,borderWidth:1,borderRadius:22,padding:16},
+  answerBubble:{position:'absolute',left:16,right:16,top:520,height:100,borderWidth:1,borderRadius:20,paddingHorizontal:16,paddingVertical:14,justifyContent:'center',gap:8},
+  answerPlaceholderText:{fontFamily:F.medium,fontSize:15,lineHeight:21},
+  reviewLayout: { position: 'absolute', left: 24, right: 24, top: 132, bottom: 166 },
+  reviewContent: { gap: 16, paddingBottom: 24 },
+  reviewVerdict: { gap: 12 },
+  reviewVerdictText: { fontFamily: F.display, fontSize: 32, lineHeight: 40 },
+  reviewBar: { height: 9,flexDirection:'row',gap:3,borderRadius:5,overflow:'hidden' },
+  reviewBarSegment:{flex:1,borderRadius:5},
+  verdictBarLabels:{flexDirection:'row',justifyContent:'space-between'},
+  verdictBarLabel:{fontFamily:F.semibold,fontSize:13.5},
+  reviewPlay: { minHeight: 40, alignSelf: 'flex-start', paddingHorizontal: 12 },
+  nextTime: { marginTop: 6, gap: 10 },
+  nextTimeText: { fontFamily: F.medium, fontSize: 18, lineHeight: 25, color: C.text },
+  followDoor: { minHeight: 70, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, borderRadius: 18, borderWidth: 1, borderColor: C.hair, backgroundColor: C.surface06 },
+  followAvatar: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: C.surface12 },
+  followDoorTitle: { fontFamily: F.semibold, fontSize: 14, color: C.text },
   qBig: { fontFamily: F.display, letterSpacing: -0.3, color: C.text },
-  hear: { fontFamily: F.semibold, fontSize: 12, color: C.secondary },
-  over: { fontFamily: F.bold, fontSize: 11, letterSpacing: 0.6, textTransform: 'uppercase', color: C.tertiary },
+  hear: { fontFamily: F.semibold, fontSize: 13.5, color: C.secondary },
+  over: { fontFamily: F.bold, fontSize: 13.5, letterSpacing: 0.6, textTransform: 'uppercase', color: C.tertiary },
   qSmall: { marginTop: 4, fontFamily: F.medium, fontSize: 14, lineHeight: 19.6, color: C.secondary },
   fSmall: { marginTop: 4, fontFamily: F.semibold, fontSize: 14, lineHeight: 19.6, color: C.body },
   fBig: { fontFamily: F.display, fontSize: 20, lineHeight: 25.6, letterSpacing: -0.3, color: C.text },
   slideBox: { alignItems: 'center', gap: 10, marginTop: 8 },
-  slideCap: { fontFamily: F.semibold, fontSize: 12, color: C.tertiary },
+  slideCap: { fontFamily: F.semibold, fontSize: 13.5, color: C.tertiary },
   listening: { flexGrow: 1, justifyContent: 'flex-end', paddingBottom: 8 },
-  listenText: { textAlign: 'center', fontFamily: F.medium, fontSize: 13, color: C.tertiary },
+  listenText: { textAlign: 'center', fontFamily: F.medium, fontSize: 13.5, color: C.tertiary },
   verdictRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   verdict: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingTop: 3, paddingBottom: 3, paddingLeft: 4, paddingRight: 11, borderRadius: 999 },
-  verdictText: { fontFamily: F.bold, fontSize: 13 },
+  verdictText: { fontFamily: F.bold, fontSize: 13.5 },
   playChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 5, paddingLeft: 8, paddingRight: 11, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.12)',
     borderRadius: 999, backgroundColor: 'rgba(255, 255, 255, 0.06)' },
-  playText: { fontFamily: F.semibold, fontSize: 13, color: C.body, fontVariant: ['tabular-nums'] },
-  rowK: { fontFamily: F.bold, fontSize: 11, letterSpacing: 0.6, textTransform: 'uppercase', color: C.tertiary },
+  playText: { fontFamily: F.semibold, fontSize: 13.5, color: C.body, fontVariant: ['tabular-nums'] },
+  rowK: { fontFamily: F.bold, fontSize: 13.5, letterSpacing: 0.6, textTransform: 'uppercase', color: C.tertiary },
   rowT: { marginTop: 2, fontFamily: F.medium, fontSize: 13.5, lineHeight: 18.9, color: C.body },
   followCard: { gap: 6, paddingVertical: 12, paddingHorizontal: 14, borderWidth: 1, borderColor: 'rgba(255, 181, 71, 0.24)', borderRadius: 18, backgroundColor: 'rgba(255, 181, 71, 0.07)' },
   followText: { fontFamily: F.display, fontSize: 16, lineHeight: 20.8, color: C.text },
-  followHint: { fontFamily: F.semibold, fontSize: 12, color: C.secondary },
+  followHint: { fontFamily: F.semibold, fontSize: 13.5, color: C.secondary },
   ansBox: { gap: 6, paddingTop: 10, paddingBottom: 10, paddingRight: 12, paddingLeft: 4, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', borderRadius: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.04)' },
-  ansTime: { width: 34, paddingTop: 2, textAlign: 'center', fontFamily: F.semibold, fontSize: 11, color: C.tertiary, fontVariant: ['tabular-nums'] },
+  ansTime: { width: 44, paddingTop: 2, textAlign: 'center', fontFamily: F.semibold, fontSize: 13.5, color: C.tertiary, fontVariant: ['tabular-nums'] },
   ansText: { flex: 1, fontFamily: F.medium, fontSize: 13.5, lineHeight: 18.9, color: C.body },
-  end: { marginTop: 4, textAlign: 'center', fontFamily: F.semibold, fontSize: 13, color: C.tertiary },
+  end: { marginTop: 4, textAlign: 'center', fontFamily: F.semibold, fontSize: 13.5, color: C.tertiary },
   status: { position: 'absolute', left: 40, right: 40, top: 300, alignItems: 'center', gap: 14 },
   statusText: { textAlign: 'center', fontFamily: F.medium, fontSize: 14, lineHeight: 20, color: C.secondary },
   retry: { paddingVertical: 10, paddingHorizontal: 18, borderRadius: 999, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.14)', backgroundColor: 'rgba(255, 255, 255, 0.08)' },
   retryText: { fontFamily: F.bold, fontSize: 14, color: C.text },
-  inlineError: { position: 'absolute', left: 24, right: 24, top: 600, textAlign: 'center', fontFamily: F.medium, fontSize: 13, color: C.bad },
+  inlineError: { position: 'absolute', left: 24, right: 24, top: 600, textAlign: 'center', fontFamily: F.medium, fontSize: 13.5, color: C.bad },
   big: { position: 'absolute', left: 0, right: 0, top: 548, textAlign: 'center', fontFamily: F.display, fontSize: 42, lineHeight: 44, letterSpacing: -1.3, color: C.text, fontVariant: ['tabular-nums'] },
   line: { position: 'absolute', left: 0, right: 0, top: 596, textAlign: 'center', fontFamily: F.semibold, fontSize: 14, color: C.secondary },
 });

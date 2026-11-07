@@ -72,5 +72,5 @@ export function useSlideProfiles(localId: string, pages: number, visible = true)
     } catch { if (mounted.current && selected.current === deck) setFailure({ deck, message: 'AI cue request failed. Tap to refresh before retrying.' }); }
     finally { locked.current = false; if (mounted.current) setBusy(false); }
   }, [api, deck, pages, value]);
-  return { value, error, busy, recover, refresh: () => setRefresh(r => r + 1) };
+  return { value, error, busy, recover, available: !!deck, refresh: () => setRefresh(r => r + 1) };
 }

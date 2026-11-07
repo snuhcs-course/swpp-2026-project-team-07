@@ -4892,6 +4892,33 @@ Fix the confirmed 119 ms audio-duration mismatch and add targeted slide recovery
 - **Handoff:** Implementation and scoped verification are complete locally on `codex/issue-49`. [Final repair/verification report](issue49-fix-verification-20261103.md) contains commands, results, boundaries and deployment-drain prerequisites. No commit, push, deployment, production installation, external issue message or real provider call occurred. The original rehearsal's live retry awaits separately authorized backend/client rollout; no human testing or generation usefulness assessment is claimed.
 
 
+## UI overhaul v2 and Samsung APK preparation — November 7, 2026
+
+**Contributor:** unconfirmed · **Tool:** OpenAI Codex desktop · **Model:** GPT-6 (exact variant not recorded)
+
+### Request — verbatim
+
+```text
+swpp-2026-project-team-07-codex-issue-49
+this folder on desktop contains the latest implementation of our app.
+
+outloud-ui-spec
+this folder contains the UI OVERHAUL - i need you to implement this UI exactly whilst preserving all the functions of the app. any changes to the backend required, just leave a note. but change every aspect of the UI to look like this.
+
+read through all the files, implement 100% of everything thats been listed in the folder. it should be exactly the same.
+
+u can make changes in the swpp-2026-project-team-07-codex-issue-49 files directly. when you are done, prepare to offload/install the app as an apk onto my samsung device. I will connect the phone device when u tell me to.
+```
+
+- **Inputs reviewed:** Read `OUTLOUD_UI_SPEC.md`, `tokens.json`, and `layout.json`; inspected all 19 screen PNGs and five component/library boards in `/Users/just_aoj/Desktop/outloud-ui-spec`. Read the source copy's repository/mobile guidance, README, API contract, handoff/team boundaries, and inspected the existing mobile routes and data interfaces.
+- **Output incorporated:** Replaced the design token palette and six deck colors while preserving saved legacy hue names; updated Home score/critical/duration/WPM presentation and first-launch/help tutorial; rebuilt the icon picker presentation; added the time dial, haptic minute steps and audience chips (including the “Not sure” mapping); changed rehearsal cue cards to open a swipe-down detail sheet; updated the Home header, shared hint typography, rehearsal timer and slide-card radius; changed Compare to a one-take-at-a-time selector with selected-take playback. Existing recording, playback, transcript, feedback, review, compare, Q&A and undo flows remain in the app. No backend source was changed.
+- **Scope status:** These changes apply the new foundation and the highest-priority Home, setup and Rehearse elements, but do not yet reproduce every layout/state across all 19 screens pixel-for-pixel. Routes such as waiting, full review, slide review, feedback and Q&A still retain portions of their previous screen composition. This work therefore does not claim the requested 100% visual match; remaining UI specification work and physical-device visual review are pending.
+- **Backend/API notes (no backend edits):** “Not sure” is sent as `General audience` because blank audience blocks scoring/Q&A in the current contract. Cue-card short labels are derived client-side because the API has no cue-label field. Composed runs have no overall score and display an em dash. The spec's “critical” meaning still needs a product decision; the UI currently counts `beginning` and `emerging` levels using server levels. The API's `suggestion` is advice rather than guaranteed rewritten copy; Q&A has no `missed` verdict; wait ETA and notifications are not available. These require product/API decisions if the corresponding spec behavior is to be delivered literally.
+- **Verification:** `npm ci` completed from the committed lockfile (npm reported 27 dependency audit findings: 1 low, 18 moderate, 7 high, 1 critical). `npm run typecheck` passed. `npx eslint src --no-cache` passed with one existing warning in `features/rehearsal/useSegmentPlayer.ts:125`. `npm run bundle:android` passed and exported the Android bundle after the Compare update. `npx expo prebuild --platform android` passed. `JAVA_HOME=/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home ANDROID_HOME=/Users/just_aoj/Library/Android/sdk ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a` passed after the Compare update. The resulting 60 MiB APK is `mobile/android/app/build/outputs/apk/release/app-release.apk`, SHA-256 `de420d6dafaf07b98be685026d084c13b631ffe47a8506873c8bb1cf4b05e69c`, package `com.team07.outloud`, versionCode 8, min SDK 24, target SDK 36, signed with the local Android debug certificate (SHA-256 `fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c`); `apksigner verify` passed and the APK contains ARM64 native libraries only. No app tests or physical-device checks were run. ADB could not start inside the sandbox because it was denied permission to open its local server socket; the user has not connected the phone.
+- **Errors/corrections:** Initial TypeScript checks found invalid cue-panel types/styles and a missing model-state access; these were corrected and typecheck passed. The initial npm dependency install and Expo cache writes were sandbox-denied; the authorized workspace install/export/build completed under the local filesystem escalation. The initial all-ABI APK was replaced by the Samsung-focused ARM64 APK.
+- **Review and publication:** Self-reviewed the changed mobile source and checked the APK metadata/signature. No independent reviewer was requested because no commit or push is being prepared. No commit, push, merge, backend change, phone installation or publication was performed. Human review and device verification remain pending.
+
+
 ## Publish demo v8 with issue #49 recovery — November 3, 2026
 
 **Contributor:** Seoyeon · **Tool:** OpenAI Codex desktop and native delegated agents · **Model:** GPT-6 (exact variant not recorded)

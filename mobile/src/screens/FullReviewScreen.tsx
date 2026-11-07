@@ -29,7 +29,7 @@ const clamp = (v: number) => Math.max(0, Math.min(1, v));
 type Mode = { kind: 'run' } | { kind: 'slide'; slide: number } | null;
 type RowLayout = { y: number; h: number };
 
-export function FullReviewScreen({ active = true }: { active?: boolean }) {
+export function ListenBackScreen({ active = true }: { active?: boolean }) {
   const { c, mode: themeMode } = useTheme();
   const { go, nav } = useShell();
   const frame = useFrame();
@@ -84,7 +84,8 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
   const toBack = useCallback(() => {
     playbackSource.current.active=false;scrubIntent.current=null;scrubTargetRef.current=null;
     stopPlayback();
-    if (nav.from === 'review') go('review', { deckId: nav.deckId, sel: nav.sel });
+    if (nav.from === 'wait') go('wait', { deckId: nav.deckId, sel: nav.sel });
+    else if (nav.from === 'review') go('review', { deckId: nav.deckId, sel: nav.sel });
     else if (nav.from === 'rehearse') go('rehearse', { nav: null, deckId: nav.deckId, slide: nav.sel });
     else go('home');
   }, [go, nav.deckId, nav.from, nav.sel, stopPlayback]);
@@ -250,7 +251,7 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
         <PageSurface hue={deck.hue} />
         <View style={styles.header} pointerEvents="none">
           <Txt numberOfLines={1} style={[styles.title, { color: c.text }]}>{deck.title}</Txt>
-          <Txt numberOfLines={1} style={[styles.label, { color: c.secondary }]}>{'Full review · ' + runLabel(run, now, relativeDay)}</Txt>
+          <Txt numberOfLines={1} style={[styles.label, { color: c.secondary }]}>{'Listen back · ' + runLabel(run, now, relativeDay)}</Txt>
         </View>
         <View style={styles.ringRow}>
           <PresentationScoreRing id="gFullAssessment" label="Overall score" item={scores.overall}/>
@@ -350,7 +351,8 @@ export function FullReviewScreen({ active = true }: { active?: boolean }) {
             })}
           </ScrollView>
         </View>
-        <HintRow hints={[{ icon: 'h-dn', text: nav.from === 'review' ? 'Back to review' : nav.from === 'rehearse' ? 'Back to slides' : 'Back', nudge: 'down', onPress:toBack },
+        <HintRow hints={[{ icon: 'h-dn', text: nav.from === 'wait' ? 'Back to waiting' : nav.from === 'review' ? 'Back to review' : nav.from === 'rehearse' ? 'Back to slides' : 'Back', nudge: 'down', onPress:toBack },
+          { icon: 'h-review-bars', text: 'Full review', onPress:() => go('full', { deckId: nav.deckId, sel: nav.sel }) },
           { icon: 'h-tap', text: 'Tap a slide to review it' }]} />
       </Animated.View>
     </PanView>
@@ -397,17 +399,17 @@ const TranscriptRow = memo(function TranscriptRow({ line, first, active, playing
 const styles = StyleSheet.create({
   header: { position: 'absolute', left: 40, right: 40, top: 50, alignItems: 'center' },
   title: { fontFamily: F.display, fontSize: 18, lineHeight: 21.6, letterSpacing: -0.3 },
-  label: { marginTop: 3, fontFamily: F.medium, fontSize: 13 },
+  label: { marginTop: 3, fontFamily: F.medium, fontSize: 14 },
   ringRow: { position: 'absolute', left: 16, right: 16, top: 140, height: 120, paddingHorizontal: 12,
     flexDirection: 'row', alignItems: 'center', gap: 18 },
   ringStats: { width: 196, gap: 7 },
   statRow: { minHeight: 22, flexDirection: 'row', alignItems: 'center', gap: 8 },
   statValue: { fontFamily: F.display, fontSize: 18, lineHeight: 20, fontVariant: ['tabular-nums'] },
-  statUnit: { flexShrink: 1, fontFamily: F.medium, fontSize: 12, lineHeight: 15 },
+  statUnit: { flexShrink: 1, fontFamily: F.medium, fontSize: 13.5, lineHeight: 18 },
   whole: { position: 'absolute', left: 16, right: 16, top: 278, height: 55 },
   wholeHeader: { height: 17, flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 },
   wholeTitle: { flex: 1, minWidth: 0, fontFamily: F.bold, fontSize: 14 },
-  wholeHint: { flexShrink: 1, fontFamily: F.medium, fontSize: 12, fontVariant: ['tabular-nums'] },
+  wholeHint: { flexShrink: 1, fontFamily: F.medium, fontSize: 13.5, fontVariant: ['tabular-nums'] },
   controls: { marginTop: 6, height: 32, flexDirection: 'row', alignItems: 'center', gap: 6 },
   wholePlay: { width: 32, height: 32, marginLeft: -12, alignItems: 'center', justifyContent: 'center' },
   sections: { flex: 1, height: 32, flexDirection: 'row', alignItems: 'center', position: 'relative' },
@@ -417,11 +419,11 @@ const styles = StyleSheet.create({
   sectionMarker: { position: 'absolute', top: 1, bottom: 1, width: 2, transform:[{translateX:-1}], borderRadius: 1 },
   transcript: { position: 'absolute', left: 16, right: 16, top: 343, bottom: 169 },
   transcriptContent: { paddingVertical: 8, gap: 6 },
-  assessmentSummary:{gap:10,marginBottom:12},assessmentCounts:{flexDirection:'row',flexWrap:'wrap',gap:8},assessmentCount:{fontFamily:F.medium,fontSize:12,lineHeight:17},refresh:{minHeight:44,alignSelf:'flex-start',justifyContent:'center',paddingHorizontal:10},
+  assessmentSummary:{gap:10,marginBottom:12},assessmentCounts:{flexDirection:'row',flexWrap:'wrap',gap:8},assessmentCount:{fontFamily:F.medium,fontSize:13.5,lineHeight:18},refresh:{minHeight:44,alignSelf:'flex-start',justifyContent:'center',paddingHorizontal:10},
   transcriptRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   badge: { width: 20, height: 18, marginTop: 1, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
   badgeSpacer: { width: 20, height: 18 },
-  badgeText: { fontFamily: F.display, fontSize: 10.5, lineHeight: 18 },
+  badgeText: { fontFamily: F.display, fontSize: 13.5, lineHeight: 18 },
   transcriptText: { flex: 1, fontSize: 13.5, lineHeight: 20 },
   emptyTranscript: { fontFamily: F.medium, fontSize: 13.5, lineHeight: 20 },
   slidesHeader: { position: 'absolute', left: 16, right: 16, top: 693, height: 17, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -429,13 +431,13 @@ const styles = StyleSheet.create({
   legend: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
-  legendCount: { fontFamily: F.bold, fontSize: 11.5, fontVariant: ['tabular-nums'] },
-  legendName: { fontFamily: F.semibold, fontSize: 11.5 },
+  legendCount: { fontFamily: F.bold, fontSize: 13.5, fontVariant: ['tabular-nums'] },
+  legendName: { fontFamily: F.semibold, fontSize: 13.5 },
   stripCard: { position: 'absolute', left: 16, right: 16, top: 718, height: 58, borderWidth: 1, borderRadius: 18, overflow: 'hidden' },
   stripContent: { height: 56, paddingHorizontal: 8, alignItems: 'center', gap: 8 },
   tileWrap: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
   tileOutline: { position: 'absolute', top: -4, bottom: -4, left: -4, right: -4, borderWidth: 2, borderRadius: 15 },
   tile: { width: 42, height: 42, borderRadius: 11, alignItems: 'center', justifyContent: 'center', gap: 2 },
   tileNum: { fontFamily: F.display, fontSize: 15, lineHeight: 15 },
-  tileTime: { fontFamily: F.semibold, fontSize: 9.5, opacity: 0.72, fontVariant: ['tabular-nums'] },
+  tileTime: { fontFamily: F.semibold, fontSize: 13.5, opacity: 0.72, fontVariant: ['tabular-nums'] },
 });

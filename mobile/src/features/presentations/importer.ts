@@ -15,7 +15,7 @@ import { serverSlides } from './serverDeck';
 import { defaultTarget, parseSlideText, slideTargets } from '../../domain/slides';
 import { deckById, forgetPresentation, nextHue, nextOrder, savePresentation, type PageImage, type Presentation } from './store';
 
-export type Progress = { progress: number; status: string; pages: number | null; textOffline?: boolean };
+export type Progress = { progress: number; status: string; pages: number | null; textOffline?: boolean; imageOnlySlides?: boolean };
 
 export function pickPdf(): Promise<LocalPdf | null> { return pdfService.importPdf(); }
 // OpenAI Codex, 2026-11-02: shared renderer extraction; see docs/ai-collaboration-prompts-iteration-2.md.
@@ -47,7 +47,10 @@ export async function analyzePdf(pdf: LocalPdf, onProgress: (p: Progress) => voi
   onProgress({ progress: 0.34, status: STATUS[1], pages: pages.length });
 
   let texts: string[] | null = null;
-  try { texts = (await serverSlides({ id: pdf.id, title: pdf.title, uri: pdf.uri, pageCount: pages.length }, undefined, signal)).texts; }
+  // Local rendering is enough to finish importing. Keep the optional server
+  // text extraction bounded so an unreachable/slow backend cannot strand the
+  // user on the analysis screen; rehearsal can retry it in the background.
+  try { texts = (await serverSlides({ id: pdf.id, title: pdf.title, uri: pdf.uri, pageCount: pages.length }, undefined, signal, 20_000)).texts; }
   catch { check(); /* Offline or server error: slide text is fetched later. */ }
   check();
   onProgress({ progress: 0.67, status: STATUS[2], pages: pages.length, textOffline: !texts });
@@ -62,7 +65,8 @@ export async function analyzePdf(pdf: LocalPdf, onProgress: (p: Progress) => voi
   check();
   if(!deckById(deck.id))requestPresentationDefaults(deck.id,API_URL);
   savePresentation(deck);
-  onProgress({ progress: 1, status: STATUS[3], pages: pages.length, textOffline: !texts });
+  onProgress({ progress: 1, status: STATUS[3], pages: pages.length, textOffline: !texts,
+    imageOnlySlides: !!texts && slides.some(slide => !slide.text.trim()) });
   return deck;
 }
 

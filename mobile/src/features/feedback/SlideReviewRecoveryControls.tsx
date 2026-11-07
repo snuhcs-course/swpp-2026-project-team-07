@@ -30,8 +30,8 @@ export function SlideReviewAction({label,text,onPress,disabled=false}:{label:str
   style={[styles.action,disabled&&{opacity:.45}]}><Txt style={styles.actionText}>{text}</Txt></Pressable>;
 }
 const styles=createThemedStyles({
- note:{fontFamily:F.medium,fontSize:12,lineHeight:18,color:C.secondary},
+ note:{fontFamily:F.medium,fontSize:15,lineHeight:21,color:C.secondary},
  card:{paddingTop:12,gap:8,borderTopWidth:1,borderTopColor:'rgba(255,255,255,.12)'},
  action:{minHeight:44,paddingHorizontal:14,paddingVertical:10,borderRadius:18,alignSelf:'flex-start',justifyContent:'center',backgroundColor:'rgba(255,255,255,.10)'},
- actionText:{fontFamily:F.semibold,fontSize:12,color:C.text},
+ actionText:{fontFamily:F.semibold,fontSize:14,color:C.text},
 });

@@ -3,21 +3,23 @@
 // OpenAI Codex light-mode compare: docs/ai-collaboration-prompts-iteration-2.md#guide-based-light-mode-october-15-2026
 // Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
 // OpenAI Codex follow-up: docs/ai-collaboration-prompts-iteration-2.md#rehearsal-recording-choice-and-transcript-playback-october-14-2026
-// OutLoud redesign: Compare takes (SPEC §4.5). No swipes on this screen.
+// OutLoud redesign: Compare takes (SPEC §4.5).
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, View } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Enter, Txt } from '../design/frame';
-import { UIIcon } from '../design/icons';
-import { C, F, HUES } from '../design/tokens';
+import { Glyph } from '../design/icons';
+import { PanView } from '../design/PanView';
+import { C, F } from '../design/tokens';
 import { createThemedStyles, useTheme } from '../design/theme';
-import { Chip, IconRow, PageSurface, Pop, RecordButton } from '../design/ui';
-import { compareChips, compareRows, summarizeTake, type TakeSummary } from '../domain/analysis';
-import { fmt, quote } from '../domain/format';
+import { HintRow, PageSurface, RecordButton } from '../design/ui';
+import { summarizeTake } from '../domain/analysis';
+import { fmt } from '../domain/format';
 import { buildLines } from '../domain/lines';
 import { partSeconds, reviewDestination, runAttemptIds, type Run } from '../domain/run';
 import { scorablePoints } from '../domain/words';
 import { resolveCompare } from '../features/rehearsal/takes';
+import { audioOf } from '../features/rehearsal/analysis';
+import { useSegmentPlayer } from '../features/rehearsal/useSegmentPlayer';
 import { transcriptsFor, useDeckModel } from '../features/presentations/useDeckModel';
 import { useBack, useShell } from './shared';
 
@@ -26,6 +28,7 @@ export function CompareScreen() {
   const { go, nav } = useShell();
   const model = useDeckModel(nav.deckId);
   const [keep, setKeep] = useState<'old' | 'new'>('old');
+  const player = useSegmentPlayer();
   const c = model?.state.compare ?? null;
 
   const view = useMemo(() => {
@@ -45,12 +48,13 @@ export function CompareScreen() {
     return {
       title: c.whole ? deck.title : sl.length === 1 ? deck.slides[first]?.title ?? 'Slide ' + (first + 1) : 'Slides ' + (first + 1) + '–' + (last + 1),
       label: (c.whole ? 'Whole presentation' : sl.length === 1 ? 'Slide ' + (first + 1) : sl.length + ' slides') + ' · choose one recording',
-      A, B, tgt, points, first, whole: c.whole, many: sl.length > 1,
+      A, B, tgt, points, first, slides: sl, whole: c.whole, many: sl.length > 1,
     };
   }, [c, model]);
 
   const finish = useCallback((which: 'old' | 'new', reviewing = true) => {
     if (!model || !view) return;
+    player.stop();
     const resolved = resolveCompare(model.deck.id, which);
     const requested = Math.max(0, Math.min(model.n - 1, nav.sel));
     const inScope = c?.slides.includes(requested) || requested === c?.next.sel;
@@ -58,89 +62,95 @@ export function CompareScreen() {
     const selected = inScope && partSeconds(resolved?.parts[requested]) > 0 ? requested :
       fallback ?? Math.max(0, resolved?.parts.findIndex(part => partSeconds(part) > 0) ?? -1);
     go(reviewing ? reviewDestination(model.state.takes) : 'rehearse', { nav: 'fade', deckId: model.deck.id, slide: selected, sel: selected, from: null });
-  }, [c, go, model, nav.sel, view]);
-  // System Back leaves the current recording in place.
-  useBack(true, useCallback(() => { finish('old', false); return true; }, [finish]));
+  }, [c, go, model, nav.sel, player, view]);
+  // Leaving comparison keeps its pending take choice intact.
+  const back = useCallback(() => {
+    player.stop();
+    if(model)go('rehearse',{nav:'fade',deckId:model.deck.id,slide:Math.max(0,Math.min(model.n-1,nav.sel))});
+    else go('home');
+  },[go,model,nav.sel,player]);
+  useBack(true, useCallback(() => { back(); return true; }, [back]));
 
   if (!model || !view) return null;
-  const glow = HUES[model.deck.hue].glow;
-  const tone = (a: number | null, b: number | null, lowerBetter: boolean) => (a == null || b == null || a === b ? palette.text : (lowerBetter ? b < a : b > a) ? palette.good : palette.bad);
-  const card = (kind: 'old' | 'new', T: TakeSummary, O: TakeSummary) => {
-    const isNew = kind === 'new', kept = keep === kind;
-    const rows = [
-      { k: 'Fillers', v: T.ready ? String(T.ft) : '…', c: isNew && T.ready && O.ready ? tone(O.ft, T.ft, true) : palette.text },
-      { k: 'Points', v: view.points.length ? (T.ready ? T.said.length + ' / ' + view.points.length : '…') : '—', c: isNew && T.ready && O.ready && view.points.length ? tone(O.said.length, T.said.length, false) : palette.text },
-      { k: 'Pace', v: T.wpm != null ? T.wpm + ' wpm' : T.ready ? '—' : '…', c: palette.text },
-    ];
-    const open = !T.ready ? 'Transcribing…' : T.open ? quote(T.open) : 'Nothing said';
-    return (
-      <Pressable key={kind} accessibilityRole="button" accessibilityState={{ selected: kept }}
-        accessibilityLabel={(isNew ? 'Overwrite with new recording' : 'Keep current recording') + ', ' + fmt(T.time) + (T.ready ? ', ' + T.ft + ' filler words' : '') + (T.wpm ? ', ' + T.wpm + ' words per minute' : '') + '. ' + (kept ? 'Selected' : 'Tap to select')}
-        onPress={() => setKeep(kind)}
-        style={[styles.card, { borderColor: kept ? palette.border50 : palette.hair,
-          backgroundColor: kept ? palette.surface10 : palette.surface04,
-          opacity: kept ? 1 : 0.6, boxShadow: kept ? `0px 18px 36px ${glow}` : undefined }]}>
-        <View style={styles.cardHead}>
-          <Txt style={styles.cardLabel}>{isNew ? 'Overwrite' : 'Keep current'}</Txt>
-          {kept && <Pop><UIIcon name="i-check" size={22} /></Pop>}
-        </View>
-        <Txt style={styles.cardTime}>{fmt(T.time)}</Txt>
-        <View style={styles.cardRows}>
-          {rows.map(r => (
-            <View key={r.k} style={styles.cardRow}><Txt style={styles.k}>{r.k}</Txt><Txt style={[styles.v, { color: r.c }]}>{r.v}</Txt></View>
-          ))}
-        </View>
-        <View style={styles.openBox}>
-          <Txt style={styles.openLabel}>Opened with</Txt>
-          <Txt numberOfLines={5} style={styles.open}>{open}</Txt>
-        </View>
-      </Pressable>
-    );
+  const selected = keep === 'old' ? view.A : view.B;
+  const playKey = `compare:${model.deck.id}:${keep}`;
+  const playSelected = () => {
+    const source = keep === 'old' ? c?.prev : c?.next;
+    if (!source) return;
+    const segments = view.slides.flatMap(i => {
+      const part = source.parts[i], uri = part && audioOf(part.attemptId);
+      return part && uri ? part.segments.filter(s => s.endMs > s.startMs).map(s => ({ uri, ...s })) : [];
+    });
+    if (segments.length) void player.playSegments(playKey, segments);
   };
+  const other=keep==='old'?view.B:view.A;
+  const durationDelta=view.B.time-view.A.time;
+  const durationLabel=durationDelta===0?'Same time':`${fmt(Math.abs(durationDelta))} ${durationDelta<0?'faster':'slower'}`;
+  const statDelta=(value:number,otherValue:number,lowerBetter=false)=>{
+    if(value===otherValue)return 'No change';
+    const amount=Math.abs(value-otherValue);
+    return lowerBetter?`${amount} ${value<otherValue?'fewer':'more'}`:`${value>otherValue?'+':''}${value-otherValue}`;
+  };
+  const currentPoints=selected.ready?selected.said.length:null,otherPoints=other.ready?other.said.length:null;
+  const playActive=player.playingKey===playKey&&!player.paused;
+  const togglePlay=()=>{if(player.playingKey===playKey){player.setPaused(!player.paused);return;}playSelected();};
   return (
-    <Enter kind={nav.nav}>
+    <Enter kind={nav.nav}><PanView style={StyleSheet.absoluteFill}
+      onMoveShould={(_e,g)=>(Math.abs(g.dx)>18&&Math.abs(g.dx)>Math.abs(g.dy))||(g.dy>12&&g.dy>Math.abs(g.dx))}
+      onRelease={(_e,g)=>{if(g.dy>60){back();}else if(g.dx < -60 || g.vx < -0.6){player.stop();setKeep('new');}else if(g.dx > 60 || g.vx > 0.6){player.stop();setKeep('old');}}}>
       <PageSurface hue={model.deck.hue} />
       <View style={styles.header} pointerEvents="none">
         <Txt numberOfLines={1} style={styles.title}>{view.title}</Txt>
-        <Txt style={styles.label}>{view.label}</Txt>
+        <Txt style={styles.label}>Compare takes</Txt>
       </View>
-      <View style={styles.col}>
-        <View style={styles.bigRow} pointerEvents="none">
-          <Txt style={styles.big}>{fmt(view.B.time)}</Txt>
-          <Txt style={styles.sub}>{'/ ' + fmt(view.tgt)}</Txt>
-        </View>
-        <View style={styles.chips} pointerEvents="none">{compareChips(view.A, view.B, view.tgt).map(ch => <Chip key={ch.text} chip={ch} />)}</View>
-        <View style={styles.cards}>{card('old', view.A, view.B)}{card('new', view.B, view.A)}</View>
-        <View style={{ gap: 8, marginTop: 4 }} pointerEvents="none">
-          {compareRows(view.A, view.B, view.points).map(r => <IconRow key={r.text} icon={r.icon} text={r.text} />)}
-        </View>
+      <View style={[styles.segment, { backgroundColor: palette.raised, borderColor: palette.line }]}>
+          {(['old', 'new'] as const).map(kind => <Pressable key={kind} accessibilityRole="button" accessibilityState={{ selected: keep === kind }}
+            onPress={() => { player.stop(); setKeep(kind); }} style={[styles.segmentOption, keep === kind && { backgroundColor: palette.text }]}>
+            <Txt style={[styles.segmentText, { color: keep === kind ? palette.onAccent : palette.secondary }]}>{kind === 'old' ? 'Old take' : 'New take'}</Txt>
+          </Pressable>)}
       </View>
-      <Svg width={112} height={112} viewBox="0 0 112 112" style={styles.ring} pointerEvents="none"><Circle cx={56} cy={56} r={52} fill="none" stroke={palette.track} strokeWidth={4} /></Svg>
-      <RecordButton green glyph="check" label={keep === 'old' ? 'Keep current recording' : 'Overwrite with new recording'} onPress={() => finish(keep)} />
-    </Enter>
+      <View style={styles.bigRow} pointerEvents="none">
+        <Txt style={styles.big}>{fmt(selected.time)}</Txt>
+        <Txt style={[styles.change,{color:durationDelta<0?palette.good:durationDelta>0?palette.warn:palette.secondary}]}>{durationLabel}</Txt>
+      </View>
+      <View style={styles.metrics} pointerEvents="none">
+        <Metric label="Fillers" value={selected.ready?String(selected.ft):'—'} delta={selected.ready&&other.ready?statDelta(selected.ft,other.ft,true):'—'} />
+        <Metric label="Key points" value={currentPoints==null||!view.points.length?'—':`${currentPoints} of ${view.points.length}`} delta={currentPoints!=null&&otherPoints!=null?statDelta(currentPoints,otherPoints):'—'} />
+        <Metric label="Pace" value={selected.wpm==null?'—':`${selected.wpm} wpm`} delta={selected.wpm!=null&&other.wpm!=null?statDelta(selected.wpm,other.wpm):'—'} />
+      </View>
+      <Pressable accessibilityRole="button" accessibilityLabel={playActive?'Pause selected take':`Play ${keep} take`} onPress={togglePlay} style={[styles.playButton,{backgroundColor:palette.strong}]}>
+        <Glyph name={playActive?'p-pause':'p-play'} size={22} color={palette.onAccent}/>
+      </Pressable>
+      {!!player.error && <Txt accessibilityRole="alert" style={[styles.playError, { color: palette.secondary }]}>{player.error}</Txt>}
+      <RecordButton green glyph="check" label="Keep this take" onPress={() => finish(keep,false)} style={styles.keepButton}/>
+      <Txt pointerEvents="none" style={styles.keepLabel}>Keep this take</Txt>
+      <HintRow style={styles.hints} hints={[{icon:'h-spin',text:'Switch take'},{icon:'h-dn',text:'Back',nudge:'down'}]}/>
+    </PanView></Enter>
   );
 }
 
+function Metric({label,value,delta}:{label:string;value:string;delta:string}){
+  const{c}=useTheme();
+  return <View style={styles.metric}>
+    <Txt style={[styles.metricValue,{color:c.text}]}>{value}</Txt>
+    <Txt style={[styles.metricLabel,{color:c.secondary}]}>{label}</Txt>
+    <Txt style={[styles.metricDelta,{color:c.secondary}]}>{delta}</Txt>
+  </View>;
+}
+
 const styles = createThemedStyles({
-  header: { position: 'absolute', left: 40, right: 40, top: 50, alignItems: 'center' },
+  header: { position: 'absolute', left: 40, right: 40, top: 46, alignItems: 'center' },
   title: { fontFamily: F.display, fontSize: 18, lineHeight: 21.6, letterSpacing: -0.3, color: C.text },
-  label: { marginTop: 3, fontFamily: F.medium, fontSize: 13, color: C.secondary },
-  col: { position: 'absolute', left: 16, right: 16, top: 102, gap: 12 },
-  bigRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', gap: 8 },
-  big: { fontFamily: F.display, fontSize: 50, lineHeight: 52, letterSpacing: -1.6, color: C.text, fontVariant: ['tabular-nums'] },
-  sub: { fontFamily: F.semibold, fontSize: 17, color: C.secondary, fontVariant: ['tabular-nums'] },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 },
-  cards: { flexDirection: 'row', gap: 12, marginTop: 4 },
-  card: { flex: 1, minWidth: 0, paddingTop: 14, paddingHorizontal: 14, paddingBottom: 16, borderWidth: 1.5, borderRadius: 22, gap: 10 },
-  cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 22 },
-  cardLabel: { fontFamily: F.bold, fontSize: 11, letterSpacing: 0.6, textTransform: 'uppercase', color: C.secondary },
-  cardTime: { fontFamily: F.display, fontSize: 32, lineHeight: 34, letterSpacing: -0.8, color: C.text, fontVariant: ['tabular-nums'] },
-  cardRows: { gap: 7, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(255, 255, 255, 0.1)' },
-  cardRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 6 },
-  k: { fontFamily: F.medium, fontSize: 13, color: C.secondary },
-  v: { fontFamily: F.bold, fontSize: 13, fontVariant: ['tabular-nums'] },
-  openBox: { paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(255, 255, 255, 0.1)' },
-  openLabel: { fontFamily: F.bold, fontSize: 11, letterSpacing: 0.6, textTransform: 'uppercase', color: C.tertiary },
-  open: { marginTop: 5, minHeight: 90, fontFamily: F.medium, fontSize: 13, lineHeight: 17.9, color: '#D9DAE0' },
-  ring: { position: 'absolute', left: 139, top: 660 },
+  label: { marginTop: 3, fontFamily: F.medium, fontSize: 13.5, color: C.secondary },
+  bigRow: { position:'absolute',top:200,left:24,right:24,height:80,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:16 },
+  big: { fontFamily: F.display, fontSize: 52, lineHeight: 56, letterSpacing: -1.6, color: C.text, fontVariant: ['tabular-nums'] },
+  change:{fontFamily:F.semibold,fontSize:16},
+  metrics:{position:'absolute',top:330,left:24,right:24,flexDirection:'row',justifyContent:'space-between',gap:8},
+  metric:{flex:1,alignItems:'center',gap:4},metricValue:{fontFamily:F.display,fontSize:24,lineHeight:29,fontVariant:['tabular-nums']},metricLabel:{fontFamily:F.medium,fontSize:14},metricDelta:{fontFamily:F.semibold,fontSize:13.5},
+  segment:{position:'absolute',top:118,left:40,right:40,height:50,flexDirection:'row',borderWidth:1,borderRadius:25,padding:4,gap:4},
+  segmentOption: { flex: 1, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
+  segmentText: { fontFamily: F.bold, fontSize: 15, lineHeight: 20 },
+  playButton:{position:'absolute',left:167,top:470,width:56,height:56,borderRadius:28,alignItems:'center',justifyContent:'center'},
+  playError:{position:'absolute',top:538,left:24,right:24,textAlign:'center',fontFamily:F.medium,fontSize:13.5},
+  keepButton:{top:650,left:153},keepLabel:{position:'absolute',top:744,left:24,right:24,textAlign:'center',fontFamily:F.semibold,fontSize:16,color:C.text},hints:{bottom:24},
 });

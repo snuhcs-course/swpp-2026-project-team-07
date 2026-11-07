@@ -24,19 +24,20 @@ import * as Haptics from 'expo-haptics';
 import { GestureDetector, useLongPressGesture, usePanGesture, useSimultaneousGestures, useTapGesture } from 'react-native-gesture-handler';
 import Animated, { Easing, runOnJS, useAnimatedReaction, useAnimatedStyle, useSharedValue,
   withTiming, cancelAnimation, useAnimatedProps, useDerivedValue, useReducedMotion, withRepeat, type SharedValue } from 'react-native-reanimated';
-import Svg, { Circle, Defs, Ellipse, G, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, Ellipse, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { Txt, useFrame } from '../design/frame';
 import { PresentationIcon } from '../design/icons';
 import { PanView, type PanHandlers } from '../design/PanView';
-import { C, F } from '../design/tokens';
+import { C, DECK_COLORS, F, HUES } from '../design/tokens';
 import { createThemedStyles, useTheme } from '../design/theme';
 import { ThemeToggle } from '../design/ThemeToggle';
 import { HintRow, UndoToast } from '../design/ui';
+import { readStored, writeStored } from '../services/storage';
 import { coverFlow, HOLD_MS, PULL_T, PX_PER_CARD, rubber } from '../domain/gestures';
 import { ICONS, type HueName, type IconId } from '../domain/hues';
 import { mod, nearestSlot, pad2 } from '../domain/format';
 import { HomeFeedbackStats } from './HomeFeedbackStats';
-import { getDeckState, nextHue, setHidden, setIcon, useStore, visibleDecks, type Presentation } from '../features/presentations/store';
+import { getDeckState, nextHue, setHidden, setHue, setIcon, useStore, visibleDecks, type Presentation } from '../features/presentations/store';
 import { savedAttempts } from '../features/recording/storage';
 import { pdfService } from '../features/pdf/service';
 import { useBack, useHomeShell } from './shared';
@@ -53,6 +54,10 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode:
   const [front, setFront] = useState(() => (n ? mod(Math.round(home.p.value), n) : 0));
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const [creditsOpen, setCreditsOpen] = useState(false);
+  const [tutorialPage, setTutorialPage] = useState<number | null>(() => {
+    try { return readStored<boolean>('settings.tutorialSeen') ? null : 0; }
+    catch { return null; }
+  });
   const [undo, setUndo] = useState<{ deck: Presentation; at: number } | null>(null);
   const [pullLabel, setPullLabel] = useState<'' | 'add' | 'addPast' | 'del' | 'delPast' | 'keep'>('');
   const newHue = mode === 'upload' && uploadLook ? uploadLook.hue : nextHue();
@@ -65,6 +70,10 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode:
   }, [creditsOpen, creditsOpacity, reducedMotion]);
   const creditsFade = useAnimatedStyle(() => ({ opacity: creditsOpacity.value }));
   const floatEnabled = active && !reducedMotion;
+  const closeTutorial = () => {
+    setTutorialPage(null);
+    try { writeStored('settings.tutorialSeen', true); } catch { /* Tutorial can be opened again from Help. */ }
+  };
   const floatPhase = useSharedValue(0);
   useEffect(() => {
     cancelAnimation(floatPhase);
@@ -132,6 +141,7 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode:
   /** Which item a tap at (x, y) in carousel coordinates hit, front first. */
   const hitSlot = (x: number, y: number) => {
     if (!n) return x > 65 && x < 325 && y > SLOT_TOP && y < SLOT_TOP + SLOT_H ? -1 : null;
+    if (frame.compact) return y > SLOT_TOP && y < SLOT_TOP + SLOT_H ? mod(Math.round(home.p.value), n) : null;
     const order = decks.map((_, j) => ({ j, f: coverFlow(j, home.p.value, n, 0) })).filter(o => o.f.live).sort((a, b) => b.f.z - a.f.z);
     for (const { j, f } of order) {
       const half = (SLOT_W / 2) * f.scale * Math.cos((f.rotateY * Math.PI) / 180);
@@ -248,8 +258,9 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode:
   });
   const carouselGesture = useSimultaneousGestures(pan, longPress, tap);
 
-  useBack(mode === 'home' && (creditsOpen || !!pickerFor), () => {
+  useBack(mode === 'home' && (creditsOpen || !!pickerFor || tutorialPage !== null), () => {
     if (creditsOpen) setCreditsOpen(false);
+    else if (tutorialPage !== null) closeTutorial();
     else closePicker();
     return true;
   });
@@ -270,8 +281,9 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode:
   });
   // Keep controls mounted so they appear gradually when Upload fades back to Home.
   const homeControls = useAnimatedStyle(() => ({ opacity: 1 - home.uploadBlur.value }));
-  const visibleSlots = decks.map((deck, j) => ({ deck, j })).filter(({ j }) =>
-    Math.min(mod(j - shown, n || 1), mod(shown - j, n || 1)) <= 2);
+  const visibleSlots = decks.map((deck, j) => ({ deck, j })).filter(({ j }) => frame.compact
+    ? j === shown
+    : Math.min(mod(j - shown, n || 1), mod(shown - j, n || 1)) <= 2);
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents={mode === 'home' ? 'box-none' : 'none'}
@@ -280,8 +292,8 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode:
         style={[StyleSheet.absoluteFill, pickerFor || creditsOpen ? styles.overlayBlur : null, setupDim]}>
       <View pointerEvents="none" style={styles.logo}><Txt style={styles.logoText}>OutLoud</Txt></View>
       <Animated.View pointerEvents={mode === 'home' ? 'box-none' : 'none'} style={[StyleSheet.absoluteFill, homeControls]}>
-        {!pickerFor && <Pressable accessibilityRole="button" accessibilityLabel="About OutLoud" onPress={() => setCreditsOpen(true)}
-          style={styles.brandMarkButton}><BrandMark color={c.strong} /></Pressable>}
+        {!pickerFor && <Pressable accessibilityRole="button" accessibilityLabel="How OutLoud works" onPress={() => setTutorialPage(0)} onLongPress={() => setCreditsOpen(true)}
+          style={styles.brandMarkButton}><Txt style={[styles.helpGlyph, { color: c.text }]}>?</Txt></Pressable>}
         {!pickerFor && <ThemeToggle />}
       </Animated.View>
       <GestureDetector gesture={carouselGesture}><Animated.View style={[styles.carousel, homeLayer, mode === 'upload' && styles.addBlur]}
@@ -298,23 +310,21 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode:
           else if (a === 'delete') deleteFront();
         }}>
         {visibleSlots.map(({ deck, j }) => <Slot key={deck.id} deck={deck} j={j} n={n} home={home}
-          floatPhase={floatPhase} floatEnabled={floatEnabled} isFront={j === shown} />)}
+          floatPhase={floatPhase} floatEnabled={floatEnabled} isFront={j === shown} compact={frame.compact} showText={mode === 'home'} />)}
       </Animated.View></GestureDetector>
       <View pointerEvents="none" style={styles.ghostLayer}>
-        <Ghost home={home} hue={newHue} order={newOrder} empty={!n} />
+        <Ghost home={home} hue={newHue} order={newOrder} empty={!n} showText={mode !== 'upload'} />
       </View>
       <Animated.View pointerEvents={mode === 'home' ? 'box-none' : 'none'} style={[StyleSheet.absoluteFill, homeControls]}>
         <PullIndicator home={home} label={pullLabel} />
-        <HomeFeedbackStats deckId={frontDeck?.id ?? null} home={home} active={mode === 'home'} />
-        {frontDeck && getDeckState(frontDeck.id).run && <Pressable accessibilityRole="button"
-          accessibilityLabel={`Full review and AI assessment of ${frontDeck.title}`}
-          onPress={openFullReview} style={styles.fullReviewRingTarget} />}
+        <HomeFeedbackStats deckId={frontDeck?.id ?? null} home={home} active={mode === 'home'} onOpenReview={openFullReview} />
         <Dots n={n} front={shown} />
         <HomeHints home={home} empty={!n} />
         {undo && <UndoToast text={`Deleted “${undo.deck.title}”`} onUndo={undoDelete} />}
       </Animated.View>
       </Animated.View>
       {pickerFor && <IconPicker deckId={pickerFor} onClose={closePicker} />}
+      {tutorialPage !== null && <TutorialOverlay page={tutorialPage} onPage={setTutorialPage} onClose={closeTutorial} />}
       <Animated.View pointerEvents={creditsOpen ? 'auto' : 'none'} accessibilityElementsHidden={!creditsOpen}
         importantForAccessibility={creditsOpen ? 'yes' : 'no-hide-descendants'} accessibilityViewIsModal={creditsOpen}
         style={[styles.creditsOverlay, creditsFade]}>
@@ -326,27 +336,12 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode:
     </View>
   );
 });
-/** The supplied stopwatch mark without its dark tile, cropped for the Home header. */
-function BrandMark({ color }: { color: string }) {
-  return <Svg width={31} height={31} viewBox="26 22 63 62" accessibilityElementsHidden>
-    <G transform="translate(54 54) scale(0.94) translate(-54 -54)">
-      <Rect x={51} y={27} width={6} height={8} fill={color} />
-      <Rect x={44.5} y={23.6} width={19} height={7} rx={2.6} fill={color} />
-      <Circle cx={54} cy={59.1} r={22} fill="none" stroke={color} strokeWidth={6.5} />
-      <Path d="M49.43 80.62 Q39 79.6 30 82 Q35.2 74.5 32.75 64.79 A22 22 0 0 0 49.43 80.62 Z"
-        fill={color} stroke={color} strokeWidth={2} strokeLinejoin="round" />
-      <Path d="M54 59.1 L54 44.1 A15 15 0 1 0 69 59.1 Z" fill="#FF5A26" />
-      <Path d="M70.92 34.94 L73.50 31.25 M79.55 44.35 L83.44 42.10 M83.39 56.53 L87.87 56.14"
-        fill="none" stroke={color} strokeWidth={4.2} strokeLinecap="round" />
-    </G>
-  </Svg>;
-}
 function indexOfDeck(id: string) { return Math.max(0, visibleDecks().findIndex(d => d.id === id)); }
 
 // ── One carousel item: title, meta, icon, ground shadow ──────────────────────
-const Slot = memo(function Slot({ deck, j, n, home, floatPhase, floatEnabled, isFront }: {
+const Slot = memo(function Slot({ deck, j, n, home, floatPhase, floatEnabled, isFront, compact, showText }: {
   deck: Presentation; j: number; n: number; home: import('./shared').HomeShared;
-  floatPhase: SharedValue<number>; floatEnabled: boolean; isFront: boolean;
+  floatPhase: SharedValue<number>; floatEnabled: boolean; isFront: boolean; compact: boolean; showText: boolean;
 }) {
   // A memoized slot must subscribe to theme changes to refresh its text styles.
   const { mode, c } = useTheme();
@@ -384,10 +379,12 @@ const Slot = memo(function Slot({ deck, j, n, home, floatPhase, floatEnabled, is
   return (
     <Animated.View pointerEvents="none" style={[styles.slot, outer]}>
       <Animated.View style={[styles.item, body]}>
-        <Txt numberOfLines={2} style={[styles.title, mode === 'light' && { color: c.strong }]}>{deck.title}</Txt>
-        <Txt style={styles.meta}>{(deck.pageCount || '—') + ' slides · ' + pad2(j + 1)}</Txt>
+        {showText && <>
+          <Txt numberOfLines={2} style={[styles.title, mode === 'light' && { color: c.text }]}>{deck.title}</Txt>
+          <Txt style={styles.meta}>{(deck.pageCount || '—') + ' slides · ' + pad2(j + 1)}</Txt>
+        </>}
         <Animated.View renderToHardwareTextureAndroid style={[styles.icon, icon]}>
-          <PresentationIcon icon={deck.icon} hue={deck.hue} size={146} />
+          <PresentationIcon icon={deck.icon} hue={deck.hue} size={compact ? 120 : 146} />
         </Animated.View>
       </Animated.View>
       <Animated.View style={[styles.ground, shadow]}><GroundShadow icon={deck.icon} /></Animated.View>
@@ -437,8 +434,9 @@ function GroundShadow({ icon }: { icon: IconId }) {
 }
 
 /** The "New presentation" item that grows into the gap while pulling up, and on Upload. */
-function Ghost({ home, hue, order, empty }: { home: import('./shared').HomeShared; hue: HueName; order: number; empty: boolean }) {
+function Ghost({ home, hue, order, empty, showText }: { home: import('./shared').HomeShared; hue: HueName; order: number; empty: boolean; showText: boolean }) {
   const { mode, c } = useTheme();
+  const compact = useFrame().compact;
   const style = useAnimatedStyle(() => {
     const spread = empty ? Math.max(1, spreadOf(home)) : spreadOf(home);
     const gsc = (0.6 + 0.4 * Math.min(1, spread)) * (home.analyzing.value ? 1 - 0.42 * home.analyzing.value : 1);
@@ -447,11 +445,11 @@ function Ghost({ home, hue, order, empty }: { home: import('./shared').HomeShare
   return (
     <Animated.View pointerEvents="none" style={[styles.slot, { zIndex: 300 }, style]}>
       <View style={styles.item}>
-        <Txt numberOfLines={2} style={[styles.title, mode === 'light' && { color: c.strong }]}>
+        {showText && <Txt numberOfLines={2} style={[styles.title, mode === 'light' && { color: c.text }]}>
           New presentation
-        </Txt>
-        <Txt style={styles.meta}>{'New · ' + pad2(order)}</Txt>
-        <View style={styles.icon}><PresentationIcon icon="present" hue={hue} size={146} /></View>
+        </Txt>}
+        {showText && <Txt style={styles.meta}>{'New · ' + pad2(order)}</Txt>}
+        <View style={styles.icon}><PresentationIcon icon="present" hue={hue} size={compact ? 120 : 146} /></View>
       </View>
       <View style={styles.ground}><GroundShadow icon="present" /></View>
     </Animated.View>
@@ -536,15 +534,29 @@ function IconPicker({ deckId, onClose }: { deckId: string; onClose: () => void }
           <Txt style={styles.pickTitle}>Choose an icon</Txt>
           <Txt numberOfLines={1} style={styles.pickSub}>{deck.title}</Txt>
         </View>
+        <View style={styles.preview} pointerEvents="none"><PresentationIcon icon={deck.icon} hue={deck.hue} size={104} /></View>
+        <View style={styles.swatches}>
+          {(Object.keys(DECK_COLORS) as (keyof typeof DECK_COLORS)[]).map(name => {
+            const selected = name === deck.hue;
+            const swatch = DECK_COLORS[name].swatch;
+            const hue = name as HueName;
+            return <Pressable key={name} accessibilityRole="button" accessibilityLabel={`${name} colour`} accessibilityState={{ selected }}
+              onPress={() => setHue(deck.id, hue)} style={styles.swatchHit}>
+              <View style={styles.swatchOuter}>
+                {selected && <View pointerEvents="none" style={[styles.swatchRing, { borderColor: HUES[deck.hue].accent }]} />}
+                <View style={[styles.swatch, { backgroundColor: swatch }]} />
+              </View>
+            </Pressable>;
+          })}
+        </View>
         <View style={styles.grid}>
           {ICONS.map(([id, name]) => {
             const sel = id === deck.icon;
             return (
               <Pressable key={id} accessibilityRole="button" accessibilityLabel={name + (sel ? ', current icon' : '')} accessibilityState={{ selected: sel }}
-                onPress={() => { setIcon(deck.id, id as IconId); onClose(); }}
-                style={styles.tile}>
-                <PresentationIcon icon={id} hue={deck.hue} size={48} />
-                {sel && <View pointerEvents="none" style={[styles.selectedDot, { backgroundColor: c.strong }]} />}
+                onPress={() => setIcon(deck.id, id as IconId)}
+                style={[styles.tile, { backgroundColor: sel ? HUES[deck.hue].glow : c.surface06, borderColor: sel ? DECK_COLORS[deck.hue as keyof typeof DECK_COLORS]?.swatch ?? c.accent : c.line }, sel && { borderWidth: 2 }]}>
+                <PresentationIcon icon={id} hue={deck.hue} size={34} />
               </Pressable>
             );
           })}
@@ -555,13 +567,69 @@ function IconPicker({ deckId, onClose }: { deckId: string; onClose: () => void }
   );
 }
 
+function TutorialOverlay({ page, onPage, onClose }: { page: number; onPage: (page: number | null) => void; onClose: () => void }) {
+  const { c } = useTheme();
+  const reducedMotion = useReducedMotion();
+  const demo = useSharedValue(0);
+  useEffect(() => {
+    cancelAnimation(demo);
+    demo.set(0);
+    if (reducedMotion) return;
+    demo.set(withRepeat(withTiming(1, { duration: 1200, easing: Easing.inOut(Easing.cubic) }), -1, true));
+    return () => cancelAnimation(demo);
+  }, [demo, page, reducedMotion]);
+  const demoCard = useAnimatedStyle(() => {
+    const travel = (demo.value - 0.5) * 2;
+    if (page === 0) return { transform: [{ translateX: travel * 34 }, { rotate: `${travel * 5}deg` }] };
+    if (page === 3) return { transform: [{ translateY: -demo.value * 24 }, { scale: 1 - demo.value * 0.04 }] };
+    if (page === 4) return { transform: [{ translateY: demo.value * 24 }, { scale: 1 - demo.value * 0.04 }] };
+    if (page === 2) return { transform: [{ scale: 1 + demo.value * 0.08 }] };
+    return { transform: [{ scale: 1 - demo.value * 0.035 }] };
+  }, [page]);
+  const demoHand = useAnimatedStyle(() => {
+    const travel = (demo.value - 0.5) * 2;
+    const horizontal = page === 0 ? travel * 74 : 0;
+    const vertical = page === 3 ? (1 - demo.value) * 68 : page === 4 ? demo.value * 68 :
+      page === 2 ? -demo.value * 14 : (1 - demo.value) * 22;
+    const scale = page === 1 || page === 5 ? 0.88 + demo.value * 0.18 : 1;
+    return { transform: [{ translateX: horizontal }, { translateY: vertical }, { scale }] };
+  }, [page]);
+  const steps = [
+    ['Spin', 'to browse your presentations'], ['Open', 'tap a presentation to rehearse'],
+    ['Icon', 'hold to choose its icon and colour'], ['Add', 'swipe up to add a PDF'],
+    ['Delete', 'swipe down to delete with Undo'], ['Score', 'tap a score to see the full review'],
+  ];
+  const [title, detail] = steps[page] ?? steps[0];
+  const next = () => page >= steps.length - 1 ? onClose() : onPage(page + 1);
+  return <PanView accessibilityViewIsModal style={[StyleSheet.absoluteFill, styles.tutorial, { backgroundColor: c.bg }]}
+    onMoveShould={(_e,g)=>(Math.abs(g.dx)>18&&Math.abs(g.dx)>Math.abs(g.dy))||(g.dy>18&&g.dy>Math.abs(g.dx))}
+    onRelease={(_e,g)=>{
+      if(Math.abs(g.dx)>60||Math.abs(g.vx)>0.6){if(g.dx<0)next();else onPage(Math.max(0,page-1));}
+      else if(g.dy>90||g.vy>0.8)onClose();
+    }}>
+    <View style={styles.tutorialHeader}><Txt style={styles.tutorialTitle}>How OutLoud works</Txt><Txt style={styles.tutorialMeta}>{page + 1} of 6</Txt></View>
+    <View style={styles.tutorialArt}>
+      <View style={styles.tutorialNeighbours}><PresentationIcon icon="present" hue="rose" size={76} /><PresentationIcon icon="present" hue="sky" size={76} /></View>
+      <Animated.View style={demoCard}><PresentationIcon icon="present" hue="iris" size={150} /></Animated.View>
+      <Animated.View pointerEvents="none" style={[styles.tutorialHand, demoHand]}><Txt style={[styles.tutorialHandGlyph,{color:c.accent}]}>☝</Txt></Animated.View>
+    </View>
+    <View style={styles.tutorialWords}><Txt style={styles.tutorialAction}>{title}</Txt><Txt style={styles.tutorialDetail}>{detail}</Txt></View>
+    <View style={styles.tutorialDots}>{steps.map((_, i) => <View key={i} style={{ width: i === page ? 18 : 6, height: 6, borderRadius: 3, backgroundColor: i === page ? c.text : c.dotOff }} />)}</View>
+    <View style={styles.tutorialButtons}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Close tutorial" onPress={onClose}><Txt style={styles.tutorialButtonText}>↓  Close</Txt></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel={page === steps.length - 1 ? 'Finish tutorial' : 'Next tutorial page'} onPress={next}><Txt style={styles.tutorialButtonText}>Next  →</Txt></Pressable>
+    </View>
+  </PanView>;
+}
+
 const styles = createThemedStyles({
   overlayBlur: { filter: [{ blur: 18 }] },
   addBlur: { filter: [{ blur: 8 }] },
   logo: { position: 'absolute', left: 0, right: 0, top: 57, height: 36, alignItems: 'center', justifyContent: 'center' },
   logoText: { fontFamily: F.display, fontSize: 26, lineHeight: 27, letterSpacing: -0.5, color: C.text },
   // OpenAI Codex header alignment: docs/ai-collaboration-prompts-iteration-2.md#home-header-vertical-alignment-october-15-2026
-  brandMarkButton: { position: 'absolute', left: 14, top: 53, width: 44, height: 44, zIndex: 40, alignItems: 'center', justifyContent: 'center' },
+  brandMarkButton: { position: 'absolute', left: 18, top: 53, width: 44, height: 44, zIndex: 40, alignItems: 'center', justifyContent: 'center' },
+  helpGlyph: { width: 22, height: 22, borderWidth: 2, borderColor: C.text, borderRadius: 11, textAlign: 'center', textAlignVertical: 'center', fontFamily: F.bold, fontSize: 16, lineHeight: 19 },
   creditsOverlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 50, alignItems: 'center', justifyContent: 'center' },
   creditNames: { alignItems: 'center', gap: 16 },
   creditName: { fontSize: 27, lineHeight: 40, fontWeight: '700', color: '#FFFFFF', textAlign: 'center' },
@@ -570,30 +638,49 @@ const styles = createThemedStyles({
   slot: { position: 'absolute', left: 65, top: SLOT_TOP, width: SLOT_W, height: SLOT_FULL_H },
   item: { width: SLOT_W, height: SLOT_H, alignItems: 'center' },
   title: { width: 244, textAlign: 'center', fontFamily: F.display, fontSize: 22, lineHeight: 23.8, letterSpacing: -0.4, color: C.text },
-  meta: { marginTop: 4, fontFamily: F.semibold, fontSize: 12, letterSpacing: 0.2, color: 'rgba(255, 255, 255, 0.62)' },
+  meta: { marginTop: 4, fontFamily: F.semibold, fontSize: 13.5, letterSpacing: 0.2, color: 'rgba(255, 255, 255, 0.62)' },
   icon: { marginTop: 'auto' },
   ground: { marginTop: 16, width: GROUND_W, height: 24, alignSelf: 'center', alignItems: 'center', justifyContent: 'center' },
   pullAdd: { position: 'absolute', left: 0, right: 0, top: 508, zIndex: 4, alignItems: 'center' },
   pullDel: { position: 'absolute', left: 0, right: 0, top: 96, zIndex: 4, alignItems: 'center', gap: 6 },
   binWrap: { width: 72, height: 72, alignItems: 'center', justifyContent: 'center' },
-  pullText: { fontFamily: F.semibold, fontSize: 13, color: C.text },
+  pullText: { fontFamily: F.semibold, fontSize: 13.5, color: C.text },
   stats: { position: 'absolute', left: 28, right: 28, top: 547, height: 136, zIndex: 3, flexDirection: 'row', alignItems: 'center', gap: 18 },
-  fullReviewRingTarget: { position: 'absolute', left: 28, top: 555, width: 120, height: 120, borderRadius: 60, zIndex: 4 },
+  fullReviewRingTarget: { position: 'absolute', left: 88, top: 548, width: 214, height: 76, borderRadius: 40, zIndex: 4 },
   ringBox: { width: 120, height: 120, alignItems: 'center', justifyContent: 'center' },
   pct: { fontFamily: F.display, fontSize: 30, lineHeight: 31, letterSpacing: -0.8, color: C.text, fontVariant: ['tabular-nums'] },
-  unit: { marginTop: 4, fontFamily: F.semibold, fontSize: 11, lineHeight: 12, letterSpacing: 0.3 },
+  unit: { marginTop: 4, fontFamily: F.semibold, fontSize: 13.5, lineHeight: 16, letterSpacing: 0.3 },
   statHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   statLabel: { flexShrink: 1, fontFamily: F.semibold, fontSize: 14, color: C.secondary },
   delta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   deltaText: { fontFamily: F.bold, fontSize: 14 },
   statRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   statVal: { fontFamily: F.display, fontSize: 18, lineHeight: 20, color: C.text, fontVariant: ['tabular-nums'] },
-  statUnit: { flexShrink: 1, fontFamily: F.medium, fontSize: 13, color: C.secondary },
+  statUnit: { flexShrink: 1, fontFamily: F.medium, fontSize: 14, color: C.secondary },
   dots: { position: 'absolute', left: 0, right: 0, bottom: 70, zIndex: 3, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 },
-  sheet: { position: 'absolute', left: 0, right: 0, top: 96, bottom: 0 },
-  pickTitle: { fontFamily: F.display, fontSize: 22, letterSpacing: -0.4, color: C.text },
-  pickSub: { marginTop: 4, fontFamily: F.medium, fontSize: 13, color: C.secondary },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12, marginTop: 26, marginHorizontal: 20 },
-  tile: { width: 80, height: 80, alignItems: 'center', justifyContent: 'center' },
-  selectedDot: { position: 'absolute', bottom: 0, width: 6, height: 6, borderRadius: 3 },
+  sheet: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, paddingTop: 46, backgroundColor: C.bg },
+  tutorial: { zIndex: 55, paddingTop: 46 },
+  tutorialHeader: { alignItems: 'center' },
+  tutorialTitle: { fontFamily: F.display, fontSize: 18, lineHeight: 23, color: C.text },
+  tutorialMeta: { marginTop: 3, fontFamily: F.medium, fontSize: 14.5, lineHeight: 19, color: C.secondary },
+  tutorialArt: { position: 'absolute', top: 210, left: 0, right: 0, height: 270, alignItems: 'center', justifyContent: 'center' },
+  tutorialNeighbours: { position: 'absolute', left: -24, right: -24, top: 75, flexDirection: 'row', justifyContent: 'space-between', opacity: 0.35 },
+  tutorialHand: { position: 'absolute', top: 174, left: 0, right: 0, alignItems: 'center' },
+  tutorialHandGlyph: { fontFamily: F.display, fontSize: 48, lineHeight: 56, textShadowColor: 'rgba(0,0,0,0.25)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 },
+  tutorialWords: { position: 'absolute', top: 520, left: 24, right: 24, alignItems: 'center' },
+  tutorialAction: { fontFamily: F.display, fontSize: 32, lineHeight: 36, color: C.text, textAlign: 'center' },
+  tutorialDetail: { marginTop: 8, fontFamily: F.medium, fontSize: 15, lineHeight: 21, color: C.secondary, textAlign: 'center' },
+  tutorialDots: { position: 'absolute', left: 0, right: 0, bottom: 86, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10 },
+  tutorialButtons: { position: 'absolute', left: 0, right: 0, bottom: 30, flexDirection: 'row', justifyContent: 'center', gap: 24 },
+  tutorialButtonText: { fontFamily: F.medium, fontSize: 14.5, color: C.secondary },
+  pickTitle: { fontFamily: F.display, fontSize: 18, lineHeight: 22, color: C.text },
+  pickSub: { marginTop: 3, fontFamily: F.medium, fontSize: 14.5, color: C.secondary },
+  preview: { position: 'absolute', top: 106, left: 143, width: 104, height: 104, alignItems: 'center', justifyContent: 'center' },
+  swatches: { position: 'absolute', top: 232, left: 40, right: 40, height: 44, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  swatchHit: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  swatchOuter:{width:40,height:40,alignItems:'center',justifyContent:'center'},
+  swatchRing:{position:'absolute',left:0,right:0,top:0,bottom:0,borderWidth:2,borderRadius:20},
+  swatch: { width: 34, height: 34, borderRadius: 17 },
+  grid: { position: 'absolute', top: 292, left: 24, right: 24, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 10 },
+  tile: { width: 80, height: 64, borderWidth: 1, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
 });

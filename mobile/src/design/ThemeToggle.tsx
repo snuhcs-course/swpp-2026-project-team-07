@@ -22,7 +22,7 @@ export function ThemeToggle() {
     if (previousMode.current === mode) return;
     previousMode.current = mode;
     const next = ++targetTurns.current;
-    turns.set(reduced ? next : withTiming(next, { duration: 560, easing: EASE_SCREEN }));
+    turns.set(reduced ? next : withTiming(next, { duration: 420, easing: EASE_SCREEN }));
   }, [mode, reduced, turns]);
   const spin = useAnimatedStyle(() => ({ transform: [{ rotate: `${90 + 180 * turns.value}deg` }] }));
   return (
@@ -45,5 +45,7 @@ export function ThemeToggle() {
 
 const styles = StyleSheet.create({
   // OpenAI Codex header alignment: docs/ai-collaboration-prompts-iteration-2.md#home-header-vertical-alignment-october-15-2026
-  hit: { position: 'absolute', top: 50, right: 22, width: 44, height: 44, zIndex: 40, alignItems: 'center', justifyContent: 'center' },
+  // Center on the Home wordmark: the 44 dp hit target has the same y-center
+  // as the logo's 36 dp frame at top 57 dp (center y=75 dp).
+  hit: { position: 'absolute', top: 53, right: 18, width: 44, height: 44, zIndex: 40, alignItems: 'center', justifyContent: 'center' },
 });
