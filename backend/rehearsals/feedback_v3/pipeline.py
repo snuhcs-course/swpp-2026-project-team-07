@@ -22,7 +22,7 @@ from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 
-from ..models import Attempt, DescriptionSet, FeedbackRun, PresentationContext, Slide
+from ..models import Attempt, DescriptionSet, FeedbackRun, PresentationContext, QaAnswer, Slide
 from . import llm, measurements, prompts, rubric, transcript
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,11 @@ REPUBLISH_SECONDS = 120
 STALE_SECONDS = 330            # Longer than the 300-second task time limit.
 MAX_WORKER_ATTEMPTS = 3
 TEXT_LIMIT = 600
-FINISHED_PARTS = {'scored', 'insufficient_evidence', 'not_applicable', 'not_recorded', 'insufficient_speech'}
+CODE_DECIDED = {'not_applicable', 'not_recorded', 'insufficient_speech'}
+# insufficient_evidence is final for these inputs: the model judged there was too
+# little speech, so re-recording, not retrying, is the fix.
+FINISHED_PARTS = {'scored', 'insufficient_evidence'} | CODE_DECIDED
+RUN_BUDGET_SECONDS = 240      # Stop starting or retrying calls before the 300-second task limit.
 MESSAGES = {
     'feedback_disabled': 'AI feedback is turned off on this server.',
     'missing_api_key': 'AI feedback is not configured on this server.',
@@ -45,6 +49,8 @@ MESSAGES = {
     'not_found': 'Recording not found.',
     'worker_lost': 'Feedback stopped before finishing. Tap Retry.',
     'all_parts_failed': 'The AI service did not respond. Tap Retry.',
+    'processing_failed': 'Feedback stopped because of a server error. Tap Retry.',
+    'run_deadline': 'Feedback took too long. Tap Retry to finish the remaining slides.',
 }
 
 
@@ -67,10 +73,24 @@ class Inputs:
 
 # ---------------------------------------------------------------- inputs
 
+def _profile_set(deck) -> DescriptionSet | None:
+    """Generated slide-profile set: newest profile schema, then most recently updated.
+
+    Coaching description sets share the table but are not profiles, so they are
+    excluded; otherwise saving one would change the run fingerprint.
+    """
+    from ..services import slide_profile_schema as schema
+    ranked = [*schema.PROFILE_SCHEMAS.values(), *schema.STRICT_PROFILE_SCHEMAS.values(),
+              *schema.REFINED_PROFILE_SCHEMAS.values(), *schema.CATEGORY_PROFILE_SCHEMAS.values(),
+              *schema.HISTORICAL_PROFILE_SCHEMAS.values()]
+    rank = {version: position for position, version in reversed(list(enumerate(ranked)))}
+    candidates = DescriptionSet.objects.filter(deck=deck, descriptions__isnull=False, schema_version__in=rank)
+    return min(candidates, key=lambda s: (rank[s.schema_version], -s.updated_at.timestamp()), default=None)
+
+
 def _profile_slides(deck) -> tuple[dict, list]:
-    """Latest generated slide profile for the deck, if any; never waits for one."""
-    profile = (DescriptionSet.objects.filter(deck=deck, descriptions__isnull=False)
-               .order_by('-updated_at').first())
+    """Slide profile facts and Must Cover points, if generated; never waits for one."""
+    profile = _profile_set(deck)
     if not profile or not isinstance(profile.descriptions, dict):
         return {}, [None]
     slides = {}
@@ -210,12 +230,14 @@ def whole_payload(inputs: Inputs) -> dict:
     }
 
 
-def call_llm(http, config, kind: str, payload: dict) -> llm.Result:
+def call_llm(http, config, kind: str, payload: dict, deadline: float | None = None) -> llm.Result:
     if kind == 'slide':
         return llm.complete_json(http, config, name='slide_feedback', system=prompts.SLIDE_SYSTEM, user=payload,
-                                 schema=prompts.slide_schema(RUBRIC), max_output_tokens=SLIDE_OUTPUT_TOKENS)
+                                 schema=prompts.slide_schema(RUBRIC), max_output_tokens=SLIDE_OUTPUT_TOKENS,
+                                 deadline=deadline)
     return llm.complete_json(http, config, name='presentation_feedback', system=prompts.WHOLE_SYSTEM, user=payload,
-                             schema=prompts.whole_schema(RUBRIC), max_output_tokens=WHOLE_OUTPUT_TOKENS)
+                             schema=prompts.whole_schema(RUBRIC), max_output_tokens=WHOLE_OUTPUT_TOKENS,
+                             deadline=deadline)
 
 
 # ---------------------------------------------------------------- normalization (lenient)
@@ -224,18 +246,29 @@ def _text(value) -> str:
     return value.strip()[:TEXT_LIMIT] if isinstance(value, str) else ''
 
 
-def _evidence(ids, sentences: dict) -> list[dict]:
+def _list(value) -> list:
+    return value if isinstance(value, list) else []
+
+
+def _evidence(ids, sentences: dict, measures: dict | None = None) -> list[dict]:
+    """Known sentence ids (and measurement ids, for the whole call) only; others dropped."""
     seen, found = set(), []
-    for sentence_id in ids if isinstance(ids, list) else []:
-        sentence = sentences.get(sentence_id) if isinstance(sentence_id, str) else None
-        if sentence and sentence_id not in seen:
-            seen.add(sentence_id)
-            found.append({'id': sentence.id, 'slide_index': sentence.slide_index,
+    for item_id in _list(ids):
+        if not isinstance(item_id, str) or item_id in seen:
+            continue
+        sentence, measure = sentences.get(item_id), (measures or {}).get(item_id)
+        if sentence:
+            found.append({'kind': 'speech', 'id': sentence.id, 'slide_index': sentence.slide_index,
                           'start_ms': sentence.start_ms, 'end_ms': sentence.end_ms, 'text': sentence.text})
+        elif measure:
+            found.append({'kind': 'measurement', 'id': item_id, 'text': measure})
+        else:
+            continue
+        seen.add(item_id)
     return found[:6]
 
 
-def _criteria(raw: dict, criteria, sentences: dict) -> list[dict]:
+def _criteria(raw: dict, criteria, sentences: dict, measures: dict | None = None) -> list[dict]:
     rows = []
     for criterion in criteria:
         item = raw.get(criterion.id) if isinstance(raw, dict) else None
@@ -246,7 +279,7 @@ def _criteria(raw: dict, criteria, sentences: dict) -> list[dict]:
                      'points': round(float(rubric.criterion_points(criterion, level)), 2) if level else None,
                      'reason': _text(item.get('reason')),
                      'next_level': '' if level == 'advanced' else _text(item.get('next_level')),
-                     'evidence': _evidence(item.get('evidence'), sentences)})
+                     'evidence': _evidence(item.get('evidence'), sentences, measures)})
     return rows
 
 
@@ -254,11 +287,12 @@ def normalize_slide(raw: dict, sentences: dict) -> dict:
     criteria = _criteria(raw.get('criteria'), RUBRIC.slide, sentences)
     ids = {c.id for c in RUBRIC.slide}
     must_cover = [{'point': _text(m.get('point')), 'status': m['status'], 'evidence': _evidence(m.get('evidence'), sentences)}
-                  for m in raw.get('must_cover') or [] if isinstance(m, dict) and m.get('status') in ('covered', 'partial', 'missing')]
+                  for m in _list(raw.get('must_cover')) if isinstance(m, dict) and m.get('status') in ('covered', 'partial', 'missing')]
     strength = raw.get('strength') if isinstance(raw.get('strength'), dict) else None
     improvements = []
-    for item in raw.get('improvements') or []:
-        if isinstance(item, dict) and item.get('criterion') in ids and _text(item.get('action')):
+    for item in _list(raw.get('improvements')):
+        if (isinstance(item, dict) and isinstance(item.get('criterion'), str) and item['criterion'] in ids
+                and _text(item.get('action'))):
             improvements.append({'criterion': item['criterion'], 'problem': _text(item.get('problem')),
                                  'action': _text(item.get('action')), 'example': _text(item.get('example')),
                                  'evidence': _evidence(item.get('evidence'), sentences)})
@@ -269,10 +303,10 @@ def normalize_slide(raw: dict, sentences: dict) -> dict:
             'improvements': improvements[:3]}
 
 
-def normalize_whole(raw: dict, sentences: dict, slide_count: int) -> dict:
-    criteria = _criteria(raw.get('criteria'), RUBRIC.whole, sentences)
+def normalize_whole(raw: dict, sentences: dict, slide_count: int, measures: dict | None = None) -> dict:
+    criteria = _criteria(raw.get('criteria'), RUBRIC.whole, sentences, measures)
     priorities = []
-    for item in raw.get('top_priorities') or []:
+    for item in _list(raw.get('top_priorities')):
         if isinstance(item, dict) and _text(item.get('action')):
             index = item.get('slide_index')
             priorities.append({'title': _text(item.get('title')), 'action': _text(item.get('action')),
@@ -353,7 +387,7 @@ def start(attempt_id, *, context_id=None, retry=False) -> FeedbackRun:
         inputs = load_inputs(attempt, context, config.model)
         run = latest_run(attempt, context)
         now = timezone.now()
-        if run and run.fingerprint == inputs.fingerprint:
+        if run and run.fingerprint == inputs.fingerprint and run.status != FeedbackRun.Status.STALE:
             busy = run.status in (FeedbackRun.Status.QUEUED, FeedbackRun.Status.RUNNING)
             done = run.status == FeedbackRun.Status.COMPLETED and not _has_failed_parts(run)
             if busy or done or not retry:
@@ -374,6 +408,8 @@ def auto_start(attempt_id) -> None:
     """Called after transcription completes; never raises into the caller."""
     if os.environ.get('FEEDBACK_V3_AUTO_START', 'false') != 'true':
         return
+    if QaAnswer.objects.filter(attempt_id=attempt_id).exists():
+        return  # Audience Q&A answers are evaluated by the Q&A flow, not as presentations.
     try:
         start(attempt_id)
     except Exception as error:
@@ -392,9 +428,37 @@ def run(run_id) -> None:
     claimed = FeedbackRun.objects.filter(pk=run_id, status=FeedbackRun.Status.QUEUED).update(
         status=FeedbackRun.Status.RUNNING, started_at=now, heartbeat_at=now, worker_attempts=F('worker_attempts') + 1)
     if not claimed:
-        return
+        return  # Duplicate delivery or already handled.
     job = FeedbackRun.objects.select_related('attempt__deck', 'context').get(pk=run_id)
+    try:
+        _execute(job)
+    except Exception:
+        logger.exception('feedback_v3 run stopped unexpectedly')
+        try:
+            _save(job, status=FeedbackRun.Status.FAILED, finished_at=timezone.now(),
+                  error={'code': 'processing_failed', 'message': MESSAGES['processing_failed']})
+        except Exception:
+            logger.warning('feedback_v3 failure could not be saved; recovery will retry.')
+
+
+def _replace_stale(job: FeedbackRun) -> None:
+    """Inputs changed after the run was queued: queue one for the current inputs."""
+    replacements = (job.result or {}).get('stale_replacements', 0)
+    newer = FeedbackRun.objects.filter(attempt_id=job.attempt_id, context_id=job.context_id,
+                                       created_at__gt=job.created_at).exists()
+    if newer or replacements >= 3:
+        return
+    try:
+        fresh = start(job.attempt_id, context_id=job.context_id)
+        if fresh.pk != job.pk and fresh.status == FeedbackRun.Status.QUEUED and not fresh.result:
+            FeedbackRun.objects.filter(pk=fresh.pk).update(result={'stale_replacements': replacements + 1})
+    except Exception as error:
+        logger.warning('feedback_v3 stale replacement skipped: %s', getattr(error, 'code', type(error).__name__))
+
+
+def _execute(job: FeedbackRun) -> None:
     began = time.monotonic()
+    deadline = began + RUN_BUDGET_SECONDS
     try:
         config = llm.Config.from_env()
         inputs = load_inputs(job.attempt, job.context, config.model)
@@ -404,13 +468,19 @@ def run(run_id) -> None:
         return
     if inputs.fingerprint != job.fingerprint:
         _save(job, status=FeedbackRun.Status.STALE, finished_at=timezone.now())
+        _replace_stale(job)
         return
 
     result = dict(job.result or {})
+    result.pop('stale_replacements', None)
     result['measurements'] = inputs.measurements['whole']
     result['language'] = inputs.speech.language
     slides = result.setdefault('slides', {})
     work = {}
+    # The whole call is the largest, so it is submitted first.
+    if (result.get('whole') or {}).get('status') not in FINISHED_PARTS:
+        result['whole'] = {'status': 'pending'}
+        work[('whole', None)] = whole_payload(inputs)
     for index in range(len(inputs.slides)):
         key = str(index)
         if slides.get(key, {}).get('status') in FINISHED_PARTS:
@@ -419,37 +489,36 @@ def run(run_id) -> None:
         slides[key] = {'status': status or 'pending', 'measurements': inputs.measurements['slides'][index]}
         if not status:
             work[('slide', index)] = slide_payload(inputs, index)
-    if (result.get('whole') or {}).get('status') not in FINISHED_PARTS:
-        result['whole'] = {'status': 'pending'}
-        work[('whole', None)] = whole_payload(inputs)
     timings, usage = dict(job.timings or {}), dict(job.usage or {'input_tokens': 0, 'output_tokens': 0, 'calls': 0})
     timings['prepare_seconds'] = round(time.monotonic() - began, 2)
     _save(job, result=result, timings=timings)
 
-    sentences = inputs.speech.by_id()
-    errors = []
+    everything = inputs.speech.by_id()
+    measures = {m['id']: m['what'] for m in measurement_items(inputs)}
     if work:
         with httpx.Client() as http, ThreadPoolExecutor(max_workers=min(config.max_parallel, len(work))) as pool:
-            futures = {pool.submit(call_llm, http, config, kind, payload): (kind, index)
+            futures = {pool.submit(call_llm, http, config, kind, payload, deadline): (kind, index)
                        for (kind, index), payload in work.items()}
             for future in as_completed(futures):
                 kind, index = futures[future]
                 name = 'whole' if kind == 'whole' else f'slide_{index}'
                 try:
                     answer = future.result()
-                    part = (normalize_whole(answer.data, sentences, len(inputs.slides)) if kind == 'whole'
-                            else normalize_slide(answer.data, sentences))
+                    if kind == 'whole':
+                        part = normalize_whole(answer.data, everything, len(inputs.slides), measures)
+                    else:
+                        # A slide may cite only its own sentences.
+                        own = {s.id: s for s in inputs.speech.slides[index].sentences}
+                        part = normalize_slide(answer.data, own)
                     timings[name] = answer.seconds
                     usage['input_tokens'] += answer.input_tokens
                     usage['output_tokens'] += answer.output_tokens
                     usage['calls'] += answer.tries
                 except llm.LLMError as error:
-                    part, code = {'status': 'failed', 'error': error.code}, error.code
-                    errors.append(code)
+                    part = {'status': 'failed', 'error': error.code}
                 except Exception:
                     logger.exception('feedback_v3 part failed: %s', name)
                     part = {'status': 'failed', 'error': 'processing_failed'}
-                    errors.append('processing_failed')
                 if kind == 'whole':
                     result['whole'] = part
                 else:
@@ -459,10 +528,13 @@ def run(run_id) -> None:
 
     result['scores'] = score(result)
     timings['total_seconds'] = round(time.monotonic() - began, 2)
-    all_failed = bool(work) and len(errors) == len(work)
+    # Failed only when no model-graded part exists at all, counting earlier passes.
+    graded = [result['whole']] + [p for p in slides.values() if p.get('status') not in CODE_DECIDED]
+    failed = [p for p in graded if p.get('status') == 'failed']
+    all_failed = bool(graded) and len(failed) == len(graded)
     _save(job, result=result, timings=timings, usage=usage, finished_at=timezone.now(),
           status=FeedbackRun.Status.FAILED if all_failed else FeedbackRun.Status.COMPLETED,
-          error={'code': 'all_parts_failed', 'message': MESSAGES['all_parts_failed'], 'detail': errors[0]}
+          error={'code': 'all_parts_failed', 'message': MESSAGES['all_parts_failed'], 'detail': failed[0]['error']}
           if all_failed else None)
 
 

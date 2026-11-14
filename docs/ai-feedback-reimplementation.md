@@ -40,9 +40,9 @@ Transcription completes
 | All points, rounding, overall score, withheld reasons | Whole-talk top 3 priorities and summary |
 | Points each improvement would add (`gain_slide_points`, `gain_overall_points`) | |
 
-**Reliability.** Each call retries timeouts, connection errors, 429/5xx responses and cut-off or invalid JSON up to twice. A cut-off retry doubles the output budget. A failed part never discards finished parts. Retry re-runs only failed parts. The beat scheduler republishes lost queue messages after 120 s and requeues a run whose worker stops reporting for 330 s, up to 3 times.
+**Reliability.** Each call retries timeouts, connection errors, 429/5xx responses and cut-off or invalid JSON up to twice. A cut-off retry doubles the output budget; a content-filter stop is not retried. No call starts or retries after 240 s, keeping the run inside the 300 s task limit. The whole-presentation call is submitted first because it is the largest. A failed part never discards finished parts, and a run is `failed` only when every model-graded part has failed. Retry re-runs only failed parts. The beat scheduler republishes lost queue messages after 120 s and requeues a run whose worker stops reporting for 330 s, up to 3 times. If the inputs change before the worker starts, the run becomes `stale` without any model call, and a replacement run is queued for the current inputs.
 
-**Evidence.** The model cites sentence ids (`s12`); the server maps them to original timestamps for playback. Unknown ids are dropped without failing the slide.
+**Evidence.** The model cites sentence ids (`s12`); the server maps them to original timestamps for playback. A slide can cite only its own sentences. The whole call can also cite measurement ids (`m:pace`). Unknown ids are dropped without failing the part.
 
 **Inputs.** Only text goes to the model: slide text, the cached slide profile when one exists, speech sentences and measurements. No images or audio. A missing profile never blocks feedback.
 
@@ -51,7 +51,8 @@ Transcription completes
 - Slide score = (40E + 35D + 25C) / 3, with E, D and C as level units 0–3.
 - Whole score = 25 × (u1 + u2 + u3 + u4) / 3.
 - Overall = 0.70 × mean of applicable slide scores + 0.30 × whole score. Exact fractions; one half-up rounding when published.
-- The overall score is withheld when an applicable slide is unscored or a whole criterion has no level. `scores.withheld` gives the reason and slide numbers.
+- The overall score is withheld when an applicable slide is unscored or a whole criterion has no level. `scores.withheld` gives the reason and the 0-based indexes of those slides.
+- `insufficient_evidence` (the model judged there was too little speech) is final for those inputs; Retry does not re-run it. Re-recording the slide with more speech is the fix.
 
 Differences from the v2 implementation:
 - A bad citation drops that citation only; it never withholds a level. The model withholds a level (`null`) only when there is too little speech.
@@ -88,7 +89,7 @@ Run `status`: `queued`, `running`, `completed`, `failed`, `stale`. A completed r
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `FEEDBACK_V3_ENABLED` | `false` | Turns the pipeline on. Uses `OPENROUTER_API_KEY`. |
-| `FEEDBACK_V3_AUTO_START` | `false` | Starts a run when transcription completes. |
+| `FEEDBACK_V3_AUTO_START` | `false` | Starts a run when transcription completes. Audience Q&A answer recordings are skipped. |
 | `FEEDBACK_V3_MODEL` | `FEEDBACK_OPENROUTER_MODEL`, then `openai/gpt-6-luna` | Model for every call. |
 | `FEEDBACK_V3_REASONING_EFFORT` | `low` | Blank omits the setting. |
 | `FEEDBACK_V3_TEMPERATURE` | blank | Blank omits it; some reasoning models reject temperature. |
@@ -106,7 +107,7 @@ Run `status`: `queued`, `running`, `completed`, `failed`, `stale`. A completed r
 
 ## Verification and limits
 
-- 28 tests in `backend/rehearsals/test_feedback_v3.py` cover rubric arithmetic, sentence splitting, corrections, measurements, the retrying client (mocked HTTP), the end-to-end pipeline with a fake model, retry, stale inputs, recovery and auto-start. The full backend suite passes locally on SQLite: 658 tests, 26 skipped (torch/VAD packages not installed).
+- 40 tests in `backend/rehearsals/test_feedback_v3.py` cover rubric arithmetic, sentence splitting, corrections, measurements, the retrying client (mocked HTTP, deadlines), the end-to-end pipeline with a fake model (English and Korean), retry, stale inputs, recovery, profile selection, cross-slide evidence, unexpected output shapes and auto-start. The full backend suite passes locally on SQLite: 670 tests, 26 skipped (torch/VAD packages not installed). An independent AI review found 6 substantive defects and several smaller ones; all are fixed and tested.
 - No real provider call has been made. Model behavior, latency, consistency and advice quality are untested.
 - Rate bands, the filler lists and the 5-word minimum are provisional.
 - Migration `0012_feedback_run` assumes the VM schema matches `codex/issue-49`. Check `showmigrations rehearsals` on the VM before deploying (the unpushed v2.4 patch may add migrations).

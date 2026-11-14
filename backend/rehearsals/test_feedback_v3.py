@@ -15,7 +15,8 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from .feedback_v3 import llm, measurements, pipeline, prompts, rubric, transcript
-from .models import Attempt, Deck, FeedbackRun, PresentationContext, Slide
+from .models import (Attempt, Deck, DescriptionSet, FeedbackAnalysis, FeedbackJob, FeedbackRun,
+                     PresentationContext, QaAnswer, Slide)
 
 ENV = {'FEEDBACK_V3_ENABLED': 'true', 'OPENROUTER_API_KEY': 'test-key', 'FEEDBACK_V3_MODEL': 'openai/gpt-6-luna'}
 
@@ -173,6 +174,34 @@ class LLMTests(SimpleTestCase):
             self.call(lambda n: httpx.Response(503))
         self.assertEqual(caught.exception.code, 'provider_error')
 
+    def test_deadline_stops_new_attempts_and_shortens_timeouts(self):
+        clock = iter([0.0, 0.0, 100.0, 100.0]).__next__
+        with httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(503))) as http:
+            with self.assertRaises(llm.LLMError) as caught:
+                llm.complete_json(http, self.config, name='t', system='s', user={}, schema={}, max_output_tokens=10,
+                                  deadline=102.0, sleep=lambda _: None, clock=clock)
+        self.assertEqual(caught.exception.code, 'provider_error')  # No retry: the backoff would pass the deadline.
+        with self.assertRaises(llm.LLMError) as caught:
+            llm.complete_json(None, self.config, name='t', system='s', user={}, schema={}, max_output_tokens=10,
+                              deadline=3.0, clock=lambda: 0.0)
+        self.assertEqual(caught.exception.code, 'run_deadline')
+
+    def test_content_filter_is_a_refusal_and_decoding_errors_are_retried(self):
+        filtered = {'status': 'incomplete', 'incomplete_details': {'reason': 'content_filter'}, 'output': []}
+        with self.assertRaises(llm.LLMError) as caught:
+            self.call(lambda n: httpx.Response(200, json=filtered))
+        self.assertEqual((caught.exception.code, caught.exception.retryable), ('provider_refusal', False))
+        attempts = []
+        def handler(request):
+            attempts.append(1)
+            if len(attempts) == 1:
+                raise httpx.DecodingError('bad gzip', request=request)
+            return httpx.Response(200, json=provider_body({'ok': 1}))
+        with httpx.Client(transport=httpx.MockTransport(handler)) as http:
+            result = llm.complete_json(http, self.config, name='t', system='s', user={}, schema={},
+                                       max_output_tokens=10, sleep=lambda _: None)
+        self.assertEqual((result.data, result.tries), ({'ok': 1}, 2))
+
     def test_config_requires_explicit_enable_and_key(self):
         with self.assertRaises(llm.LLMError) as caught:
             llm.Config.from_env({})
@@ -222,7 +251,7 @@ class PipelineTests(TestCase):
         self.calls = []
 
     def fake(self, failing=()):
-        def call(http, config, kind, payload):
+        def call(http, config, kind, payload, deadline=None):
             index = payload['slide']['index'] if kind == 'slide' else None
             self.calls.append((kind, index))
             if (kind, index) in failing:
@@ -324,11 +353,17 @@ class PipelineTests(TestCase):
             response = self.post()
         self.context.audience = 'Changed'
         self.context.save()
-        with self.fake():
+        with self.fake(), mock.patch.object(pipeline, 'publish'):
             pipeline.run(response.json()['run_id'])
-        self.assertEqual(FeedbackRun.objects.get().status, 'stale')
+        self.assertEqual(FeedbackRun.objects.get(pk=response.json()['run_id']).status, 'stale')
+        self.assertEqual(self.calls, [])  # No paid call for outdated inputs.
 
-    def test_transcript_not_ready_and_disabled_errors(self):
+    def test_zero_length_visits_leave_the_skipped_slide_unvisited(self):
+        speech = transcript.build(words_for('one two three', 0), [{'slide_index': 0, 'at_ms': 0},
+                                  {'slide_index': 1, 'at_ms': 0}], 3000, [])
+        self.assertEqual((list(speech.slides), speech.slides[1].visit_ms), ([1], [(0, 3000)]))
+
+
         self.attempt.status = 'processing'
         self.attempt.save()
         response = self.post()
@@ -355,6 +390,130 @@ class PipelineTests(TestCase):
         pipeline.recover()
         run = FeedbackRun.objects.get()
         self.assertEqual((run.status, run.error['code']), ('failed', 'worker_lost'))
+
+    def profile(self, **extra):
+        slides = [{'slide_index': i, 'slide_kind': kind, 'summary': {'text': f'summary {i}', 'uncertain': False},
+                   'key_ideas': [{'text': 'idea', 'uncertain': False}, {'text': 'unsure', 'uncertain': True}],
+                   'visual_facts': [], 'must_cover': [{'text': f'must {i}', 'evidence_refs': ['summary']}]}
+                  for i, kind in enumerate(['title', 'content', 'closing'])]
+        values = dict(deck=self.deck, source_fingerprint='f', provider='openrouter', project_id='p',
+                      model='m', prompt_version='slide-profile-v5', schema_version='slide-profile-v5',
+                      source_snapshot={}, prompt_digest='d', input_hash='h', descriptions={'slides': slides})
+        values.update(extra)
+        return DescriptionSet.objects.create(**values)
+
+    def test_profile_comes_from_slide_profile_sets_not_coaching_sets(self):
+        self.profile()
+        self.profile(schema_version='descriptions-v1', prompt_version='descriptions-v1', source_fingerprint='g',
+                     descriptions={'slides': [{'slide_index': 1, 'summary': {'text': 'coaching', 'uncertain': False}}]})
+        inputs = pipeline.load_inputs(self.attempt, self.context, 'm')
+        self.assertEqual((inputs.slides[1]['must_cover'], inputs.slides[1]['key_ideas'], inputs.slides[2]['kind']),
+                         (['must 1'], ['idea'], 'closing'))
+        self.assertEqual(pipeline.plan_slide(inputs, 2), 'not_applicable')  # Closing profile, last slide.
+
+    def test_retry_that_fails_again_keeps_the_run_completed(self):
+        with self.fake(failing={('slide', 2)}):
+            self.post()
+            self.post({'retry': True})
+        body = self.get().json()
+        self.assertEqual((body['status'], body['error']), ('completed', None))
+        self.assertEqual(body['whole']['status'], 'scored')
+
+    def test_slide_evidence_cannot_cite_another_slides_sentences(self):
+        def call(http, config, kind, payload, deadline=None):
+            answer = fake_answer(kind, payload)
+            if kind == 'slide' and payload['slide']['index'] == 1:
+                answer.data['criteria']['essential_coverage']['evidence'] = ['s3', 's1']  # s3 is slide 2.
+            return answer
+        with mock.patch.object(pipeline, 'call_llm', side_effect=call):
+            self.post()
+        slide = {s['slide_index']: s for s in self.get().json()['slides']}[1]
+        self.assertEqual([e['id'] for e in slide['criteria'][0]['evidence']], ['s1'])
+
+    def test_whole_delivery_can_cite_measurements(self):
+        with self.fake():
+            self.post()
+        evidence = self.get().json()['whole']['criteria'][3]['evidence']
+        self.assertEqual([(e['kind'], e['id']) for e in evidence], [('speech', 's0'), ('measurement', 'm:pace')])
+
+    def test_unexpected_output_shapes_never_raise(self):
+        sentences = {}
+        for value in (1, 2.5, True, 'x', None, {}):
+            slide = pipeline.normalize_slide({'criteria': value, 'must_cover': value, 'improvements': value,
+                                              'strength': value}, sentences)
+            whole = pipeline.normalize_whole({'criteria': value, 'top_priorities': value, 'summary': value},
+                                             sentences, 3)
+            self.assertEqual((slide['status'], whole['status']), ('insufficient_evidence', 'insufficient_evidence'))
+        odd = pipeline.normalize_slide({'improvements': [{'criterion': ['x'], 'action': 'a'}, {'criterion': {}}],
+                                        'criteria': {'essential_coverage': {'level': ['advanced'], 'evidence': 's1'}}},
+                                       sentences)
+        self.assertEqual((odd['improvements'], odd['criteria'][0]['level']), ([], None))
+
+    def test_stale_runs_are_replaced_not_reused(self):
+        with mock.patch.object(pipeline, 'publish'):
+            run_id = self.post().json()['run_id']
+        self.context.audience = 'Changed'
+        self.context.save()
+        with mock.patch.object(pipeline, 'publish'):
+            pipeline.run(run_id)
+        runs = list(FeedbackRun.objects.order_by('created_at'))
+        self.assertEqual([r.status for r in runs], ['stale', 'queued'])
+        self.context.audience = 'Students'
+        self.context.save()
+        with self.fake():
+            fresh = self.post().json()
+            current = self.get().json()
+        self.assertNotIn(fresh['run_id'], [str(r.pk) for r in runs])
+        self.assertEqual((current['run_id'], current['status']), (fresh['run_id'], 'completed'))
+
+    def test_recovery_republishes_lost_queue_messages_and_duplicates_are_ignored(self):
+        with mock.patch.object(pipeline, 'publish'):
+            run_id = self.post().json()['run_id']
+        FeedbackRun.objects.filter(pk=run_id).update(queued_at=timezone.now() - timedelta(seconds=200))
+        with mock.patch.object(pipeline, 'publish') as publish:
+            pipeline.recover()
+            pipeline.recover()  # queued_at was refreshed, so no second publish yet.
+        publish.assert_called_once()
+        with self.fake():
+            pipeline.run(run_id)
+            pipeline.run(run_id)  # Duplicate delivery: nothing to claim.
+        self.assertEqual(len([c for c in self.calls if c[0] == 'whole']), 1)
+
+    def test_korean_run_with_profile_passes_must_cover_and_language(self):
+        self.profile()
+        self.attempt.transcript = {'text': '', 'words': words_for('안녕하세요 여러분.', 0)
+                                   + words_for('서울은 일자리 때문에 빠르게 성장했습니다.', 3000)
+                                   + words_for('정리하면 세 가지 교훈이 있습니다 감사합니다.', 20000)}
+        self.attempt.save()
+        payloads = []
+        def call(http, config, kind, payload, deadline=None):
+            payloads.append((kind, payload))
+            return fake_answer(kind, payload)
+        with mock.patch.object(pipeline, 'call_llm', side_effect=call):
+            self.post()
+        body = self.get().json()
+        slide_payload = next(p for k, p in payloads if k == 'slide')
+        self.assertEqual((slide_payload['presentation']['language'], slide_payload['slide']['must_cover']),
+                         ('ko', ['must 1']))
+        self.assertEqual((body['language'], body['measurements']['rate']), ('ko', None))  # Under 5 s of speech.
+        self.assertEqual(body['scores']['overall'], 67)  # Slides 0 and 2 are title/closing: not graded.
+
+    def test_auto_start_skips_audience_qa_answers(self):
+        profile = self.profile()
+        analysis = FeedbackAnalysis.objects.create(attempt=self.attempt, analysis_type='qa_x')
+        job = FeedbackJob.objects.create(analysis=analysis, generation=1, description_set=profile,
+                                         description_generation=1, source_snapshot={}, prompt_version='v',
+                                         schema_version='s', prompt_digest='d', queued_at=timezone.now())
+        QaAnswer.objects.create(attempt=self.attempt, question_job=job, question_id='q1', part=0)
+        with mock.patch.dict(os.environ, {'FEEDBACK_V3_AUTO_START': 'true'}), mock.patch.object(pipeline, 'publish'):
+            pipeline.auto_start(self.attempt.pk)
+        self.assertEqual(FeedbackRun.objects.count(), 0)
+
+    def test_failed_run_post_returns_200_not_202(self):
+        with self.fake(failing={('slide', 1), ('slide', 2), ('whole', None)}):
+            self.post()
+            response = self.post()
+        self.assertEqual((response.status_code, response.json()['status']), (200, 'failed'))
 
     def test_auto_start_is_off_by_default_and_never_raises(self):
         pipeline.auto_start(self.attempt.pk)

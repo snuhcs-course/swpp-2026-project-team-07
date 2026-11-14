@@ -36,7 +36,7 @@ def feedback_run(request, attempt_id):
         run.refresh_from_db()
         body = pipeline.public(run)
         body['enabled'] = True
-        return Response(body, status=200 if run.status == 'completed' else 202)
+        return Response(body, status=202 if run.status in ('queued', 'running') else 200)
     except pipeline.RunError as error:
         return _error(error.code, error.status)
     except llm.LLMError as error:

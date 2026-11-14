@@ -74,11 +74,16 @@ def effective_words(words: list[dict], edits: list[dict]) -> list[Word]:
 
 
 def visits(slide_events: list[dict], duration_ms: int) -> list[tuple[int, int, int]]:
-    """(slide_index, start_ms, end_ms) per chronological visit, including revisits."""
+    """(slide_index, start_ms, end_ms) per chronological visit, including revisits.
+
+    Zero-length visits (events sharing a timestamp) are dropped: the last event at
+    a time wins, matching services/alignment.py, and the skipped slide stays unvisited.
+    """
     rows = []
     for i, event in enumerate(slide_events):
         end = slide_events[i + 1]['at_ms'] if i + 1 < len(slide_events) else duration_ms
-        rows.append((event['slide_index'], event['at_ms'], end))
+        if end > event['at_ms']:
+            rows.append((event['slide_index'], event['at_ms'], end))
     return rows
 
 

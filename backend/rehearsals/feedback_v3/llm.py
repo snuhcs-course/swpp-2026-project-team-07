@@ -65,15 +65,26 @@ class Result:
 
 
 def complete_json(http: httpx.Client, config: Config, *, name: str, system: str, user: dict,
-                  schema: dict, max_output_tokens: int, sleep=time.sleep) -> Result:
-    """One structured call; retries transient failures, raises LLMError otherwise."""
-    started, budget, tries = time.monotonic(), max_output_tokens, 0
+                  schema: dict, max_output_tokens: int, deadline: float | None = None,
+                  sleep=time.sleep, clock=time.monotonic) -> Result:
+    """One structured call; retries transient failures, raises LLMError otherwise.
+
+    deadline is a clock() time after which no new attempt starts, so a run stays
+    inside its Celery time limit; the last attempt's timeout is shortened to fit.
+    """
+    started, budget, tries = clock(), max_output_tokens, 0
     while True:
         tries += 1
+        timeout = config.timeout_seconds
+        if deadline is not None:
+            remaining = deadline - clock()
+            if remaining < 5:
+                raise LLMError('run_deadline')
+            timeout = min(timeout, remaining)
         try:
-            data, usage = _call(http, config, name, system, user, schema, budget)
+            data, usage = _call(http, config, name, system, user, schema, budget, timeout)
             return Result(data, usage.get('input_tokens', 0), usage.get('output_tokens', 0),
-                          round(time.monotonic() - started, 2), tries)
+                          round(clock() - started, 2), tries)
         except LLMError as error:
             if not error.retryable or tries > config.retries:
                 logger.warning('feedback_v3 call failed: name=%s code=%s tries=%s', name, error.code, tries)
@@ -81,11 +92,13 @@ def complete_json(http: httpx.Client, config: Config, *, name: str, system: str,
             if error.code == 'output_cut_off':
                 budget *= 2  # Reasoning used the budget; give the retry more room.
             delay = getattr(error, 'retry_after', None) or min(8.0, 1.5 * 2 ** (tries - 1))
+            if deadline is not None and clock() + delay > deadline - 5:
+                raise
             logger.info('feedback_v3 retrying: name=%s code=%s try=%s', name, error.code, tries)
             sleep(delay)
 
 
-def _call(http, config, name, system, user, schema, max_output_tokens):
+def _call(http, config, name, system, user, schema, max_output_tokens, timeout):
     payload = {
         'model': config.model,
         'instructions': system,
@@ -100,11 +113,11 @@ def _call(http, config, name, system, user, schema, max_output_tokens):
     if config.temperature is not None:
         payload['temperature'] = config.temperature
     try:
-        response = http.post(f'{config.base_url}/responses', json=payload, timeout=config.timeout_seconds,
+        response = http.post(f'{config.base_url}/responses', json=payload, timeout=timeout,
                              headers={'Authorization': f'Bearer {config.api_key}'})
     except httpx.TimeoutException:
         raise LLMError('timeout', retryable=True) from None
-    except httpx.TransportError:
+    except httpx.RequestError:  # Transport, protocol and body-decoding failures.
         raise LLMError('connection_error', retryable=True) from None
     if response.status_code != 200:
         error = LLMError(_status_code(response.status_code), retryable=response.status_code in RETRYABLE_STATUS)
@@ -117,6 +130,10 @@ def _call(http, config, name, system, user, schema, max_output_tokens):
     if not isinstance(body, dict):
         raise LLMError('invalid_response', retryable=True)
     if body.get('status') == 'incomplete':
+        details = body.get('incomplete_details')
+        reason = details.get('reason') if isinstance(details, dict) else None
+        if reason == 'content_filter':
+            raise LLMError('provider_refusal')
         raise LLMError('output_cut_off', retryable=True)
     if body.get('error') or body.get('status') not in (None, 'completed'):
         raise LLMError('provider_error', retryable=True)
