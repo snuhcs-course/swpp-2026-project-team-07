@@ -271,3 +271,42 @@ class QaAnswer(models.Model):
 
     class Meta:
         constraints = [models.CheckConstraint(condition=models.Q(part__in=[0, 1]), name='qa_answer_part_range')]
+
+
+class FeedbackRun(models.Model):
+    """One v3 feedback run: measurements, per-slide and whole results, scores.
+
+    AI-assisted with Claude Code, prompted by Seoyeon (November 14, 2026); see
+    docs/ai-collaboration-prompts.md. A new run is created when its inputs
+    (transcript, corrections, presentation context, slide profiles, prompt,
+    rubric or model) change. Retry re-queues the same run and keeps finished parts.
+    """
+    class Status(models.TextChoices):
+        QUEUED = 'queued'
+        RUNNING = 'running'
+        COMPLETED = 'completed'
+        FAILED = 'failed'
+        STALE = 'stale'
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    attempt = models.ForeignKey(Attempt, on_delete=models.CASCADE, related_name='feedback_runs')
+    context = models.ForeignKey(PresentationContext, on_delete=models.SET_NULL, null=True, blank=True,
+                                related_name='feedback_runs')
+    fingerprint = models.CharField(max_length=64)
+    pipeline_version = models.CharField(max_length=40)
+    rubric_version = models.CharField(max_length=40)
+    model = models.CharField(max_length=100)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.QUEUED, db_index=True)
+    result = models.JSONField(default=dict)
+    error = models.JSONField(null=True, blank=True)
+    timings = models.JSONField(default=dict)
+    usage = models.JSONField(default=dict)
+    worker_attempts = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    queued_at = models.DateTimeField()
+    started_at = models.DateTimeField(null=True, blank=True)
+    heartbeat_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=['attempt', '-created_at'], name='feedback_run_latest')]

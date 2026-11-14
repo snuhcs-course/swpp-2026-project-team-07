@@ -1232,3 +1232,7 @@ that migration has already been applied to the current local phone database.
 Read-only checks found zero membership rows and zero grouped-review snapshots in
 both known local phone datasets. No active code uses that table; no database
 rollback/deletion or live configuration change accompanies this source cleanup.
+
+## Feedback v3 runs (November 14, 2026, branch `ai-feedback-reimplementation`)
+
+`GET|POST /api/attempts/{attempt_id}/feedback-run/` serves the rebuilt feedback pipeline: per-slide and whole-presentation Rubric V2 levels, scores calculated by the server, next-level advice and point gains. It is off unless `FEEDBACK_V3_ENABLED=true` and runs alongside the endpoints above. GET never starts work; POST starts or reuses the run for the current inputs, and `{"retry": true}` re-queues only failed parts. The response shape, statuses and settings are in [the reimplementation design](ai-feedback-reimplementation.md#api).

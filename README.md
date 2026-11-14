@@ -12,6 +12,7 @@ The [requirements status](docs/requirements-and-specifications.md#iteration-2-im
 
 - **This copy has the redesigned mobile UI** (design prototype rebuild, October 14, 2026). See [REDESIGN.md](REDESIGN.md) for setup, the screen-to-feature map and verification limits.
 - **Iteration 2 is current.** Iteration 1 features were merged into `main` on October 11, 2026 (PRs #17–#21).
+- **Feedback v3 (in progress, off by default):** a rebuilt feedback pipeline with parallel per-slide calls, automatic retries and server-calculated Rubric V2 scores. The backend and API are on branch `ai-feedback-reimplementation`; the app does not use it yet. See the [reimplementation design](docs/ai-feedback-reimplementation.md).
 - Available features include PDF import, recording with slide tracking, saved audio playback, ElevenLabs Scribe v2 transcription, synchronized transcript review and AI feedback.
 - Local import, recording and saved-media playback work without the backend. Upload, transcription and feedback require the configured server; provider work requires internet and credentials.
 - Iteration 2 Phase 2 adds cached image-aware slide profiles with zero to three essential Must Cover points and zero to three optional Further Insight suggestions per slide, aiming for 8–16 words (maximum 25) with expandable supporting details. PDF upload admits them automatically when feedback is configured; the permanent Cues panel shows both categories, progress and saved results beside selected-slide playback. Historical description/coaching functionality remains separate. See the [phase ledger](docs/iteration-2-ai-feedback.md).
@@ -133,7 +134,7 @@ docker compose exec api python manage.py makemigrations --check --dry-run
 | Feedback behavior and quality limits | [AI feedback reference](docs/ai-feedback.md) · [controlled evaluation](docs/feedback-evaluation.md) |
 | Testing plan and evidence | [Testing Documentation](docs/testing.md) · [Test Inventory](docs/test-inventory.md) · [verification commands and historical evidence](docs/verification.md) |
 | Contributor rules and earlier ownership context | [Shared instructions](AGENTS.md) · [Iteration 1 work division](docs/team-work-division.md) · [Iteration 1 handoff](docs/iteration-1-handoff.md) |
-| AI contribution and disclosure | [Iteration 2 collaboration log](docs/ai-collaboration-prompts-iteration-2.md) · [reporting guide](docs/ai-collaboration-guidelines.md) |
+| AI contribution and disclosure | [collaboration log](docs/ai-collaboration-prompts.md) · [reporting guide](docs/ai-collaboration-guidelines.md) |
 | Meeting records | [Meeting-log workflow](docs/meeting-log-workflow.md) · [reusable template](docs/daily-standup-meeting-log-template.md); Wiki publication follows approval |
 | Historical setup rationale | [Original scaffold walkthrough](docs/setup-explained.md); its scaffold-only status and branch instructions describe the earlier stage |
 

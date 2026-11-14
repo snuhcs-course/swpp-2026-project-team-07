@@ -5,8 +5,10 @@ from . import views, description_views, feedback_views, qa_views
 from . import presentation_context_views
 from . import slide_profile_views
 from . import correction_views, slide_review_views, durable_qa_views, presentation_score_views
+from .feedback_v3 import views as feedback_v3_views  # Claude Code, prompted by Seoyeon (2026-11-14)
 
 urlpatterns = [
+    path('attempts/<uuid:attempt_id>/feedback-run/', feedback_v3_views.feedback_run),
     path('attempts/<uuid:attempt_id>/presentation-score/', presentation_score_views.score),
     path('attempts/<uuid:attempt_id>/audience-qa/', durable_qa_views.questions),
     path('attempts/<uuid:attempt_id>/qa-answer/', durable_qa_views.answer),

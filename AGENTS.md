@@ -6,8 +6,8 @@ These rules apply across project tasks; read detailed guides only when relevant.
 
 ## Current iteration and prompt logging
 
-**Current iteration: 2.** The active log is
-[docs/ai-collaboration-prompts-iteration-2.md](docs/ai-collaboration-prompts-iteration-2.md).
+**Current iteration: 2.** The active log for all new prompts is
+[docs/ai-collaboration-prompts.md](docs/ai-collaboration-prompts.md).
 
 - Record each actual project-task prompt and follow-up verbatim in that log during
   work, under the contributor/task, with date, tool and model. Group related prompts

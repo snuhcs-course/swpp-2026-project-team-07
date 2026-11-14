@@ -36,6 +36,6 @@ The QA harness initially needed package/provider isolation corrections and reduc
 
 ## Evidence and limits
 
-Actual prompts and task decisions are in the [Iteration 2 collaboration log](ai-collaboration-prompts-iteration-2.md). The frozen task patch, initial snapshots, source hashes, raw check logs and independent review are retained at `/private/tmp/outloud-issues44-46-20261103-eibm8xyq/`.
+Actual prompts and task decisions are in the [collaboration log](ai-collaboration-prompts.md). The frozen task patch, initial snapshots, source hashes, raw check logs and independent review are retained at `/private/tmp/outloud-issues44-46-20261103-eibm8xyq/`.
 
 No physical-phone acceptance or new generated-feedback usefulness result is claimed. No real transcription, microphone capture, sound generation or customer/provider request is part of verification. PostgreSQL/Redis worker integration was not rerun for these prompt/constant-only backend changes.

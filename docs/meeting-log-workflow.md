@@ -45,5 +45,5 @@ The destination is the team's
 - Record actual prompts, draft/revisions, human approval, verification and publication
   result in the active collaboration log identified by
   [AGENTS.md](../AGENTS.md#current-iteration-and-prompt-logging), currently
-  [Iteration 2](ai-collaboration-prompts-iteration-2.md). Keep one task entry and
+  [collaboration log](ai-collaboration-prompts.md). Keep one task entry and
   follow the [reporting guide](ai-collaboration-guidelines.md).

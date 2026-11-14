@@ -184,6 +184,10 @@ def run_attempt(attempt_id, revision):
             analysis_outcome='no_speech' if claim.analysis_outcome == 'no_speech' else 'speech',
             status='completed', processing_state='completed', feedback=[], feedback_state='disabled',
             error=None, failed_stage='', retry_at=None, claim_token=None)
+        # Claude Code, prompted by Seoyeon (2026-11-14): start v3 feedback without a client
+        # round trip when FEEDBACK_V3_AUTO_START=true. auto_start never raises.
+        from ..feedback_v3.pipeline import auto_start
+        auto_start(claim.pk)
     except StaleClaim:
         return
     except Exception as error:
