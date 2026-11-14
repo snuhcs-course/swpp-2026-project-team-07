@@ -4016,3 +4016,16 @@ Ok commit and push the finding 1 wording fix to PR #32.
 - **Verification:** The prior read-only review reconciled the 548 mobile/554 backend inventory and matched all 17 recorded tooling SHA-256 values to snapshot `f0d7148`. For this correction, an independent reviewer checked the proposed wording and `#h-home-screen` anchor. Local assertions confirm exactly three replacements, the H04/H05 link target, unchanged finding 2 and all other matrix content, the unchanged original log prefix and balanced Markdown fences. Diff review and `git diff --check` pass; only the matrix and this required log entry changed.
 - **Publication authorization and scope:** The user confirmed the finding 1 correction and explicitly authorized committing and pushing it to PR #32. At commit preparation, both the live PR and remote branch point to `e75854d` on `docs/iteration-2-documentation`. A separate read-only reviewer found no blockers in the exact staged three matrix replacements and append-only log; staged files match the working tree. The coordinator then updated only this verification sentence and rechecked the final staged scope. Remote readback after the authorized push is reported in the chat handoff.
 - **Limits:** Documentation-only changes; no application/device/provider tests or Iteration 3 implementation. Finding 2, the Wiki and unrelated local work remain unchanged. No merge or submission is authorized; human teammate review remains pending.
+
+### AI feedback loop rebuild planning — November 14, 2026
+
+**Contributor:** not recorded · **Tool:** Claude Code (cloud session) · **Model:** not recorded.
+
+**Prompt — verbatim JSON string (preserves trailing spaces; attached local file path redacted; attachment: `outloud-scoring-rubrics.pdf`, Rubric V2 reference dated November 13, 2026):**
+
+```json
+"Ai feedback loop is currently very inconsistent. There is a server in Azure HUb but I dont think its working properly. \n\nCurrent issues i see with AI feedback \n1) INconsistent doesnt work always \n2) Slow takes around 60 seconds to transcribe audio using scribe, analyze with Ai prompts and then return output. \n3)Non-helpful feedback, feedback doesnt tell user what to do or how to increase their csocre. \n4) Too simple scoring design. Currently scoring is done very simple manner making it inconsistent across languages. \n\nI want to to rebuild the ai feedback loop so that its consistent and faster with good feedback \n\nplan with me"
+```
+
+- **Work so far:** Read-only review of `main` (`7b7ef3b`) and the deployed demo branch `codex/issue-49` (`1b094a2`): processing, slide review, scoring v2, provider, quota and measurement services, mobile polling hooks, and the Iteration 3 Azure hosting record. Proposed a diagnosis and rebuild plan in chat; no application code changed.
+- **Limits:** The Azure VM, its logs, database and the unpushed v2.4 scoring patch were not accessible. Causes stated in chat are code-based hypotheses until checked against server data. No tests or provider calls. This log entry alone was committed and pushed to session branch `claude/cool-knuth-vqb2r9` after a session stop hook requested it; no PR, merge or deployment.
