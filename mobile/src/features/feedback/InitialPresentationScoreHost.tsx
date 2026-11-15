@@ -9,6 +9,7 @@ import { automaticScoreEnabled, enableAutomaticScore } from './automaticPresenta
 import { selectedPresentationScores } from './selectedPresentationScores';
 import { usePresentationScore } from './usePresentationScore';
 import type { ScoreTarget } from './presentationScore';
+import { feedbackV3Capability } from './feedbackRunClient';
 
 export function InitialPresentationScoreHost({openedDeckId}:{openedDeckId:string|null}) {
  const version=useStore(s=>s.version);
@@ -17,6 +18,8 @@ export function InitialPresentationScoreHost({openedDeckId}:{openedDeckId:string
   const saved=getDeckState(openedDeckId);
   if(!saved.compare)for(const id of runAttemptIds(saved.run))enableAutomaticScore(API_URL,id);
  },[openedDeckId,version]);
+ // Claude Code, prompted by Seoyeon (2026-11-15): feedback v3 replaces automatic v2 scoring.
+ if(feedbackV3Capability(API_URL)===true)return null;
  return <>{visibleDecks().map(deck=><DeckWorker key={deck.id} id={deck.id}/>)}</>;
 }
 function DeckWorker({id}:{id:string}) {

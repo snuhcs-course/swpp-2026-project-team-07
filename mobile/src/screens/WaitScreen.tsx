@@ -6,7 +6,8 @@ import { useTheme } from '../design/theme';
 import { HintRow, PageSurface } from '../design/ui';
 import { useDeckModel } from '../features/presentations/useDeckModel';
 import { useRunFeedbackStatus } from '../features/feedback/useRunFeedbackStatus';
-import { useRunPresentationScores } from '../features/feedback/useRunPresentationScores';
+// Claude Code, prompted by Seoyeon (2026-11-15): waits on feedback v3 progress when the server offers it.
+import { useRunScores } from '../features/feedback/useRunFeedbackV3';
 import { scoreLevelColor } from '../features/feedback/presentationScoreDisplay';
 import { runLabel } from '../domain/run';
 import { useNow, useShell } from './shared';
@@ -16,14 +17,15 @@ export function WaitScreen({ active = true }: { active?: boolean }) {
   const { c } = useTheme();
   const { go, nav } = useShell();
   const model = useDeckModel(nav.deckId);
-  const feedback = useRunFeedbackStatus(model, active);
-  const scores = useRunPresentationScores(model, active);
+  const runScores = useRunScores(model, active), v3 = runScores.v3, scores = runScores.scores, v2 = runScores.v2;
+  const feedback = useRunFeedbackStatus(model, active && !v3);
   const now = useNow();
   const moved = useRef(false);
   const [timedOut, setTimedOut] = useState(false);
-  const scorePending = /grading|scoring|updating|pending/i.test(scores.overall.status);
-  const scoreResolved = scores.overall.score !== null || /graded|unavailable|incomplete|insufficient|invalid|not applicable|select a complete|combined recordings/i.test(scores.overall.status);
-  const allReady = !!model?.state.run && feedback.aggregate.pending === 0 && !scorePending && scoreResolved;
+  const scorePending = v3 ? /scoring|pending|outdated/i.test(scores.overall.status) : /grading|scoring|updating|pending/i.test(scores.overall.status);
+  const scoreResolved = v3 ? !scorePending : scores.overall.score !== null || /graded|unavailable|incomplete|insufficient|invalid|not applicable|select a complete|combined recordings/i.test(scores.overall.status);
+  const slidesPending = v3 ? v3.aggregate.pending : feedback.aggregate.pending;
+  const allReady = !!model?.state.run && slidesPending === 0 && !scorePending && scoreResolved;
   const revealTiles = allReady || timedOut;
   useEffect(() => {
     const remaining = 180_000;
@@ -46,30 +48,34 @@ export function WaitScreen({ active = true }: { active?: boolean }) {
   if (!run) return null;
   const hintHome = () => { moved.current = true; go('home'); };
   const openListen = () => { moved.current = true; go('listen', { deckId: deck.id, sel: 0, from: 'wait' }); };
-  const terminalCount = feedback.items.filter(item => ['reviewed','partial','insufficient','unavailable','recovery_needed','outdated','not_analyzed'].includes(item.status)).length;
+  const terminalCount = v3 ? v3.aggregate.settled : feedback.items.filter(item => ['reviewed','partial','insufficient','unavailable','recovery_needed','outdated','not_analyzed'].includes(item.status)).length;
   return <Enter kind={nav.nav}><PanView style={[StyleSheet.absoluteFill,{backgroundColor:c.bg}]} onMoveShould={(_e,g)=>g.dy>12&&g.dy>Math.abs(g.dx)} onRelease={(_e,g)=>{if(g.dy>60)hintHome();}}>
     <PageSurface hue={deck.hue} />
     <View style={styles.header}><Txt numberOfLines={1} style={[styles.title,{color:c.text}]}>{deck.title}</Txt>
       <Txt style={[styles.sub,{color:c.secondary}]}>{`Review · ${runLabel(run,now,()=> 'Just now')}`}</Txt></View>
     <View style={styles.score}><Txt style={[styles.ghostScore,{color:c.tertiary}]}>—%</Txt>
-      {/unavailable|failed|invalid/i.test(scores.overall.status)&&<>
+      {v3 ? v3.failures && <>
+        <Txt style={[styles.scoreError,{color:c.secondary}]}>Some AI feedback failed</Txt>
+        <Pressable accessibilityRole="button" accessibilityLabel="Retry failed AI feedback" disabled={v3.busy} onPress={() => void v3.retry()}
+          style={[styles.retry,{borderColor:c.hair,opacity:v3.busy?0.5:1}]}><Txt style={[styles.retryText,{color:c.text}]}>{v3.busy?'Retrying…':'Try again'}</Txt></Pressable>
+      </> : /unavailable|failed|invalid/i.test(scores.overall.status)&&<>
         <Txt style={[styles.scoreError,{color:c.secondary}]}>Overall score unavailable</Txt>
-        <Pressable accessibilityRole="button" accessibilityLabel={scores.controller.ask?'Confirm overall score retry':'Retry overall score'} disabled={scores.controller.busy || !scores.overall.state?.retry_available}
-          onPress={() => void (scores.controller.ask ? scores.controller.confirm() : scores.controller.generate())} style={[styles.retry,{borderColor:c.hair,opacity:scores.controller.busy || !scores.overall.state?.retry_available?0.5:1}]}>
-          <Txt style={[styles.retryText,{color:c.text}]}>{scores.controller.busy?'Retrying…':scores.controller.ask?'Retry anyway':'Try again'}</Txt>
+        <Pressable accessibilityRole="button" accessibilityLabel={v2.controller.ask?'Confirm overall score retry':'Retry overall score'} disabled={v2.controller.busy || !v2.overall.state?.retry_available}
+          onPress={() => void (v2.controller.ask ? v2.controller.confirm() : v2.controller.generate())} style={[styles.retry,{borderColor:c.hair,opacity:v2.controller.busy || !v2.overall.state?.retry_available?0.5:1}]}>
+          <Txt style={[styles.retryText,{color:c.text}]}>{v2.controller.busy?'Retrying…':v2.controller.ask?'Retry anyway':'Try again'}</Txt>
         </Pressable>
-        {scores.controller.ask&&<Pressable accessibilityRole="button" onPress={()=>void scores.controller.cancel()} style={styles.cancelRetry}><Txt style={[styles.retryText,{color:c.secondary}]}>Cancel retry</Txt></Pressable>}
+        {v2.controller.ask&&<Pressable accessibilityRole="button" onPress={()=>void v2.controller.cancel()} style={styles.cancelRetry}><Txt style={[styles.retryText,{color:c.secondary}]}>Cancel retry</Txt></Pressable>}
       </>}</View>
     <View style={styles.steps}>
       <Step label="Recording saved" detail="Audio is safe on this phone" done icon="✓" />
-      <Step label="Each slide checked" detail={`${terminalCount} of ${times.length} · ${feedback.aggregate.pending ? 'in progress' : 'ready'}`} done={terminalCount >= times.length} icon={terminalCount >= times.length ? '✓' : '···'} />
+      <Step label="Each slide checked" detail={`${terminalCount} of ${times.length} · ${slidesPending ? 'in progress' : 'ready'}`} done={terminalCount >= times.length} icon={terminalCount >= times.length ? '✓' : '···'} />
       <Step label="Full review against the rubric" detail={scorePending ? 'Checking the full presentation' : scores.overall.status} done={!scorePending && scores.overall.status !== 'Not graded'} icon={!scorePending ? '✓' : '···'} />
     </View>
     <View style={styles.tiles}>
       {Array.from({length:Math.ceil(times.length/6)},(_,row)=><View key={row} style={styles.tileRow}>{times.slice(row*6,row*6+6).map((_,col)=>{
         const i=row*6+col;
         const score=scores.items[i]; const fill=score?.score!=null?scoreLevelColor(score.level,c):c.track;
-        const settled=revealTiles&&feedback.items[i]?.assessed;
+        const settled=revealTiles&&(v3?v3.items[i]?.settled:feedback.items[i]?.assessed);
         const available=revealTiles&&score?.score!=null;
         return <View key={i} style={[styles.tile,{backgroundColor:available?fill:settled?c.surface:c.track,borderColor:settled&&!available?c.hair:'transparent',borderWidth:settled&&!available?1:0}]}><Txt style={[styles.tileText,{color:available?c.gradeOnFill:settled?c.good:c.secondary}]}>{available?score.score:settled?'✓':i+1}</Txt></View>;
       })}</View>)}

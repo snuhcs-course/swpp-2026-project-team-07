@@ -71,17 +71,17 @@ Comfortable-rate bands are **provisional** until calibrated: English 110–180 w
 
 `POST /api/attempts/{attempt_id}/feedback-run/` with JSON `{"context_id": "<uuid>|null", "retry": false}` starts a run, or returns the existing run when the inputs are unchanged. `"retry": true` re-queues only failed parts. Without `context_id`, the deck's only presentation context is used, if it has exactly one.
 
-Run `status`: `queued`, `running`, `completed`, `failed`, `stale`. A completed run can still contain failed parts. Part `status`: `pending`, `scored`, `insufficient_evidence`, `not_applicable`, `not_recorded`, `insufficient_speech`, `failed`.
+Run `status`: `queued`, `running`, `completed`, `failed`, `stale`. A completed run can still contain failed parts. Part `status`: `pending`, `scored`, `insufficient_evidence`, `not_applicable`, `not_recorded`, `insufficient_speech`, `failed`. Statuses decided in code carry a `reason`: `title_slide_profile`, `closing_slide_profile`, `short_slide_text`, `slide_not_visited` or `fewer_than_5_words`. Scored slides and the whole part carry `level`, banded from exact points rather than the rounded score. GET also returns `outdated: true` when the stored run no longer matches the current transcript corrections, settings or slide profile; the app then requests a new run.
 
 ```text
 {run_id, status, progress: {slides_total, slides_done, whole_done},
  scores: {overall, overall_level, slide_average, whole, withheld: [{reason, slides?}]},
- slides: [{slide_index, status, score, measurements,
+ slides: [{slide_index, status, reason?, score, level, measurements,
            criteria: [{id, label, level, anchor, points, maximum_points, reason, next_level, evidence: [{id, start_ms, end_ms, text}]}],
            must_cover: [{point, status, evidence}], strength,
            improvements: [{criterion, problem, action, example, evidence, gain_slide_points, gain_overall_points}]}],
- whole: {status, score, criteria, top_priorities: [{title, action, why, slide_index}], summary},
- measurements, language, timings, error, enabled}
+ whole: {status, score, level, criteria, top_priorities: [{title, action, why, slide_index}], summary},
+ measurements, language, timings, error, enabled, outdated}
 ```
 
 ## Configuration
@@ -107,19 +107,31 @@ Run `status`: `queued`, `running`, `completed`, `failed`, `stale`. A completed r
 
 Rollback: `export OUTLOUD_IMAGE_TAG=issue49-tokenfix-r2-20261103 && dc up -d api worker scheduler`, and restore the tag setting. The `0012` table can stay; the old code ignores it. Worker concurrency stays at 1 for now. Raise it only after the memory check, because each worker process can load the speech-detection model.
 
+## App integration
+
+When the server answers `enabled: true`, the app uses v3 for Review, Full Review, its Feedback page, Home's score and the post-recording Wait screen; otherwise these screens keep the v2 scores. The answer is saved per server address.
+
+- **Starting runs:** `FEEDBACK_V3_AUTO_START` stays off. When a screen shows a transcribed recording that has no current run (absent, stale or outdated), the app sends one POST; the server returns the existing run if the inputs are unchanged. Each run identity is started at most once per app session, so a failing server cannot cause a request loop. Nothing starts while presentation settings are unsynchronized.
+- **Progress:** the app polls every 2 s while a run is queued or running, 5 s after a connection error, and stops when the run finishes. Each slide shows its result as soon as its part finishes. A saved copy of each run is shown offline. The cache is only rewritten, and the app only re-rendered, when the answer changes.
+- **Takes:** each slide reads the run of the recording selected for that slide. The overall score is shown only when every slide comes from one recording, as before.
+- **Review:** coaching cards come first (problem, action, "Try saying" example, quoted evidence with playback, and the points the change would add), then next-level advice for criteria without an improvement. Details show each criterion's level, points, reason and next-level advice, the Must Cover checklist, the strength, and Retry for failed parts. Title and closing slides explain that they are reviewed with the whole presentation.
+- **Full Review:** the overall score and per-slide tiles come from v3. Its Feedback page lists the whole-talk top priorities first, then every slide improvement ordered by overall point gain. Failed parts offer Retry.
+- **v2 jobs:** the app-wide v2 slide-review and scoring hosts start nothing while v3 is enabled.
+
 ## Rollout
 
 | Phase | Work | Status |
 | --- | --- | --- |
 | 0 | Run `deploy/diagnose_feedback.py` on the VM; check CPU credits and memory | Waiting for VM output |
 | 1 | Backend pipeline, API and tests | Done on this branch |
-| 2 | Mobile: read `feedback-run` in Review and Full Review; show progress, next-level advice and point gains; stop starting v2 score and slide-review jobs | Next |
-| 3 | Deploy with v3 off, enable it, run `deploy/smoke_feedback_v3.py`; time real rehearsals | Steps ready; not run |
+| 2 | Mobile: read `feedback-run` in Review and Full Review; show progress, next-level advice and point gains; stop starting v2 score and slide-review jobs | Implemented on this branch; no APK built or device-tested |
+| 3 | Deploy with v3 off, enable it, run `deploy/smoke_feedback_v3.py`; time real rehearsals | Deployed and smoke-tested (6-slide recording, 10.9 s, 6 calls); server auto-start still off |
 | 4 | Calibration: 10–20 English and Korean recordings, each scored 5 times; targets: ≤ 3 points between runs, ≤ 5 points between languages for the same talk | Not started |
 
 ## Verification and limits
 
 - 40 tests in `backend/rehearsals/test_feedback_v3.py` cover rubric arithmetic, sentence splitting, corrections, measurements, the retrying client (mocked HTTP, deadlines), the end-to-end pipeline with a fake model (English and Korean), retry, stale inputs, recovery, profile selection, cross-slide evidence, unexpected output shapes and auto-start. The full backend suite passes locally on SQLite: 670 tests, 26 skipped (torch/VAD packages not installed). An independent AI review found 6 substantive defects and several smaller ones; all are fixed and tested.
-- No real provider call has been made. Model behavior, latency, consistency and advice quality are untested.
+- Mobile: 7 tests in `mobile/tests/feedback-v3.test.mjs` cover parsing, per-slide selection (progress, outdated, combined recordings, withheld overall, failures), coaching-card order and the client cache, capability and deduplication. Type-check, lint and an Android JavaScript export pass. The full mobile suite shows the same 62 failures as the unchanged base branch (existing tests not updated for the issue-49 UI) and no new ones. No APK build, device test or human usability test yet.
+- One real smoke run on the VM: a six-slide recording finished in 10.9 s with six model calls and no errors. Advice quality and consistency are not yet assessed.
 - Rate bands, the filler lists and the 5-word minimum are provisional.
 - Migration `0012_feedback_run` was checked against the VM: the deployed plan ends at `0011`, and the deployed code has no unmigrated model changes. The v2.4 patch changed no schema.

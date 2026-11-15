@@ -269,7 +269,7 @@ class PipelineTests(TestCase):
     def test_get_before_start_is_absent_and_never_starts_work(self):
         with self.fake():
             response = self.get()
-        self.assertEqual(response.json(), {'status': 'absent', 'enabled': True})
+        self.assertEqual(response.json(), {'status': 'absent', 'enabled': True, 'outdated': False})
         self.assertEqual((FeedbackRun.objects.count(), self.calls), (0, []))
 
     def test_full_run_scores_slides_and_presentation_in_code(self):
@@ -280,7 +280,7 @@ class PipelineTests(TestCase):
         self.assertEqual(sorted(self.calls, key=str), [('slide', 1), ('slide', 2), ('whole', None)])
         slides = {s['slide_index']: s for s in body['slides']}
         self.assertEqual(slides[0]['status'], 'not_applicable')  # Short title slide, first position.
-        self.assertEqual((slides[1]['status'], slides[1]['score']), ('scored', 67))
+        self.assertEqual((slides[1]['status'], slides[1]['score'], slides[1]['level']), ('scored', 67, 'competent'))
         evidence = slides[1]['criteria'][0]['evidence']
         self.assertEqual([e['id'] for e in evidence], ['s1'])  # Unknown id s999 dropped, not fatal.
         self.assertEqual((evidence[0]['start_ms'], evidence[0]['text']), (3000, 'Seoul grew fast.'))
@@ -514,6 +514,19 @@ class PipelineTests(TestCase):
             self.post()
             response = self.post()
         self.assertEqual((response.status_code, response.json()['status']), (200, 'failed'))
+
+    def test_get_reports_outdated_runs_and_code_decided_reasons(self):
+        with self.fake():
+            self.post()
+        body = self.get().json()
+        slides = {s['slide_index']: s for s in body['slides']}
+        self.assertEqual((body['outdated'], slides[0]['reason']), (False, 'short_slide_text'))
+        self.context.audience = 'Engineers'
+        self.context.save()
+        self.assertTrue(self.get().json()['outdated'])
+        self.profile()
+        inputs = pipeline.load_inputs(self.attempt, self.context, 'm')
+        self.assertEqual(pipeline.plan_slide_reason(inputs, 0), ('not_applicable', 'title_slide_profile'))
 
     def test_auto_start_is_off_by_default_and_never_raises(self):
         pipeline.auto_start(self.attempt.pk)

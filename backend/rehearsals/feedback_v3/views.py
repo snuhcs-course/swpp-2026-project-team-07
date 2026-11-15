@@ -26,8 +26,11 @@ def feedback_run(request, attempt_id):
     try:
         if request.method == 'GET':
             context = pipeline.resolve_context(attempt, request.query_params.get('context_id'))
-            body = pipeline.public(pipeline.latest_run(attempt, context))
+            run = pipeline.latest_run(attempt, context)
+            body = pipeline.public(run)
             body['enabled'] = os.environ.get('FEEDBACK_V3_ENABLED', 'false') == 'true'
+            # Lets the app re-request feedback after corrections or settings change.
+            body['outdated'] = body['enabled'] and pipeline.outdated(attempt, context, run)
             return Response(body)
         payload = request.data if isinstance(request.data, dict) else None
         if payload is None or set(payload) - {'context_id', 'retry'} or not isinstance(payload.get('retry', False), bool):
@@ -35,7 +38,7 @@ def feedback_run(request, attempt_id):
         run = pipeline.start(attempt.pk, context_id=payload.get('context_id'), retry=payload.get('retry', False))
         run.refresh_from_db()
         body = pipeline.public(run)
-        body['enabled'] = True
+        body['enabled'], body['outdated'] = True, False
         return Response(body, status=202 if run.status in ('queued', 'running') else 200)
     except pipeline.RunError as error:
         return _error(error.code, error.status)

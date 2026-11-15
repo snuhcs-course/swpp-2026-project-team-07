@@ -9,6 +9,7 @@ import { readReview } from '../transcription/reviewStorage';
 import { reviewScope } from './slideReview';
 import { initialFeedbackEnabled } from './automaticFeedback';
 import { useSlideReview } from './useSlideReview';
+import { feedbackV3Capability } from './feedbackRunClient';
 import type { ReviewAttempt } from '../../contracts';
 import type { ReviewScope } from './slideReview';
 
@@ -17,6 +18,8 @@ type InitialReviewTask={id:string;scope:ReviewScope;review:ReviewAttempt;revisio
 export function InitialFeedbackHost() {
  useStore(s=>s.version);
  useSyncExternalStore(subscribeRequirements,getRequirementsVersion);
+ // Claude Code, prompted by Seoyeon (2026-11-15): feedback v3 replaces automatic v2 slide reviews.
+ if(feedbackV3Capability(API_URL)===true)return null;
  const tasks:InitialReviewTask[]=[];
  for(const deck of visibleDecks()) {
   const saved=getDeckState(deck.id);

@@ -23,11 +23,13 @@ import { useSegmentPlayer } from '../features/rehearsal/useSegmentPlayer';
 import { audioOf } from '../features/rehearsal/analysis';
 import { useDeckModel, type DeckModel } from '../features/presentations/useDeckModel';
 import type { ScoreDisplay } from '../features/feedback/PresentationScorePanel';
-import { useRunPresentationScores } from '../features/feedback/useRunPresentationScores';
+// Claude Code, prompted by Seoyeon (2026-11-15): feedback v3 in Review; see docs/ai-feedback-reimplementation.md.
+import { useRunScores } from '../features/feedback/useRunFeedbackV3';
+import { CODE_REASON_TEXT, slideCards } from '../features/feedback/feedbackRun';
+import { FeedbackV3SlideDetails } from '../features/feedback/FeedbackV3SlideDetails';
 import { scoreLevelColor } from '../features/feedback/presentationScoreDisplay';
 import { useRunFeedbackStatus } from '../features/feedback/useRunFeedbackStatus';
 import { SlideReviewDetails } from '../features/feedback/SlideReviewDetails';
-import type { Finding } from '../features/feedback/slideReview';
 import { useBack, useNow, useShell } from './shared';
 
 const EMPTY_SCORE:ScoreDisplay={score:null,level:null,status:'Not graded',state:null,result:null,target:null};
@@ -41,12 +43,13 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
  const {c}=useTheme(),{go,nav}=useShell(),frame=useFrame();
  const n=model?.n??0;
  const s=Math.max(0,Math.min(Math.max(0,n-1),nav.sel));
- const feedback=useRunFeedbackStatus(model,active),item=feedback.items[s];
+ const runScores=useRunScores(model,active,s),v3=runScores.v3,v3Item=v3?.items[s]??null,v3Slide=v3Item?.v3??null;
+ const feedback=useRunFeedbackStatus(model,active&&!v3),item=feedback.items[s];
  const duration=model?.times[s]??0,allocation=model?.deck.targets[s]??0;
  const spokenText=slideText(model?.lines??[],s);
  const selectedAttempt=model?.state.run?.parts[s]?.attemptId;
  const hasTranscript=!!selectedAttempt&&model?.stages.get(selectedAttempt)==='done'&&!!model.transcripts.get(selectedAttempt)?.words.length;
- const fillerCount=duration>0&&hasTranscript&&spokenText.trim()?fillerTotal(spokenText):null;
+ const fillerCount=v3Slide?.measurements?v3Slide.measurements.filler_count:duration>0&&hasTranscript&&spokenText.trim()?fillerTotal(spokenText):null;
  const slideReviewRows=compactFeedbackRows(s,item,{durationSeconds:duration,allocationSeconds:allocation,fillerCount});
  const [feedbackOpen,setFeedbackOpen]=useState(false);
  const [issueIndex,setIssueIndex]=useState(0);
@@ -54,7 +57,7 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
  const recorded=!!model?.state.run?.parts[s]?.segments.some(segment=>segment.endMs>segment.startMs);
  const detailsOpen=active&&feedbackOpen&&recorded;
  if(feedbackOpen&&!detailsOpen)setFeedbackOpen(false);
- const scores=useRunPresentationScores(model,active,s),scoreItem=scores.items[s]??EMPTY_SCORE;
+ const scores=runScores.scores,scoreItem=scores.items[s]??EMPTY_SCORE;
  const player=useSegmentPlayer(),stopPlayback=player.stop;
  const dy=useSharedValue(0),backExiting=useRef(false);
  const now=useNow();
@@ -90,14 +93,23 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
  if(!model||!model.state.run)return null;
  const {deck,times,state}=model,run=state.run!;
  const t=times[s]??0,target=deck.targets[s]??0,timingLabel=slideTimingLabel(t,target);
- const insufficient=recorded&&(!hasTranscript||item?.status==='insufficient'||item?.status==='not_analyzed');
- const scoreStrength=scoreItem.result&&'slide_index' in scoreItem.result?scoreItem.result.feedback.strengths[0]?.text:null;
- const pointList=deck.slides[s]?.points??[];
- const pointsSaid=spokenText.trim()?pointList.filter(point=>covers(spokenText,point)).length:null;
- const issueItems=[
-  ...(timingLabel==='Over time'?[{category:'timing',observation:`This slide ran ${fmt(t-target)} over its ${fmt(target)} allocation.`,suggestion:'Trim or simplify this slide to stay within its planned time.',icon:'i-clock' as const}]:[]),
-  ...findingRows.filter(f=>f.category!=='timing').slice().sort((a,b)=>a.priority-b.priority).map(f=>({category:f.category,observation:f.observation,suggestion:f.suggestion,icon:'i-flag' as const,finding:f})),
- ];
+ const insufficient=recorded&&(v3?!hasTranscript||v3Slide?.status==='insufficient_speech':!hasTranscript||item?.status==='insufficient'||item?.status==='not_analyzed');
+ const scoreStrength=v3?v3Slide?.strength?.text??null:scoreItem.result&&'slide_index' in scoreItem.result?scoreItem.result.feedback.strengths[0]?.text:null;
+ const mustCover=v3Slide?.must_cover??[];
+ const pointList=mustCover.length?mustCover.map(m=>m.point):deck.slides[s]?.points??[];
+ const pointsSaid=mustCover.length?mustCover.filter(m=>m.status==='covered').length:spokenText.trim()?pointList.filter(point=>covers(spokenText,point)).length:null;
+ type Issue={category:string;observation:string;suggestion:string;icon:'i-clock'|'i-flag';quote:{text:string;start_ms:number;end_ms:number}|null;gain:number|null};
+ const timingIssues:Issue[]=timingLabel==='Over time'?[{category:'timing',observation:`This slide ran ${fmt(t-target)} over its ${fmt(target)} allocation.`,suggestion:'Trim or simplify this slide to stay within its planned time.',icon:'i-clock',quote:null,gain:null}]:[];
+ const issueItems:Issue[]=[...timingIssues,...(v3&&v3Item
+  ?slideCards(v3Item).map(card=>({category:v3Slide?.criteria.find(cr=>cr.id===card.criterion)?.label??'feedback',observation:card.title,
+    suggestion:[card.action,card.example?`Try saying: “${card.example}”`:''].filter(Boolean).join(' '),icon:'i-flag' as const,
+    quote:card.evidence?{text:card.evidence.text,start_ms:card.evidence.start_ms,end_ms:card.evidence.end_ms}:null,gain:card.gain}))
+  :findingRows.filter(f=>f.category!=='timing').slice().sort((a,b)=>a.priority-b.priority).map(f=>({category:f.category,observation:f.observation,suggestion:f.suggestion,icon:'i-flag' as const,
+    quote:f.speech_quote?{text:f.speech_quote,start_ms:f.start_ms,end_ms:f.end_ms}:null,gain:null})))];
+ // v3 states with no coaching card: graded with the whole talk, still running, or failed.
+ const v3Empty:[string,string]|null=!v3||!v3Item?null:v3Slide?.status==='not_applicable'?['Reviewed with the whole presentation',CODE_REASON_TEXT[v3Slide.reason??'']??'']
+  :!v3Item.settled?['Feedback in progress…','Slide feedback appears here as soon as it is ready.']
+  :v3Item.status==='Feedback failed'?['Feedback failed','Open full feedback to retry.']:null;
  const issue=issueItems[Math.min(issueIndex,Math.max(0,issueItems.length-1))];
  const part=run.parts[s],slidePlayKey=`slide:${deck.id}:${s}`;
  const slideAudioUri=part?audioOf(part.attemptId):null;
@@ -109,11 +121,12 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
   void player.playSegments(slidePlayKey,part.segments.filter(segment=>segment.endMs>segment.startMs)
    .map(segment=>({uri:slideAudioUri,...segment})));
  };
- const playFindingEvidence=(finding:Finding)=>{
-  if(!part||!slideAudioUri||finding.end_ms<=finding.start_ms)return;
-  const key=`evidence:${part.attemptId}:${finding.start_ms}:${finding.end_ms}`;
+ const evidenceKey=(start:number,end:number)=>`evidence:${part?.attemptId}:${start}:${end}`;
+ const playEvidence=(start:number,end:number)=>{
+  if(!part||!slideAudioUri||end<=start)return;
+  const key=evidenceKey(start,end);
   if(player.playingKey===key){player.setPaused(!player.paused);return;}
-  void player.playSegments(key,[{uri:slideAudioUri,startMs:finding.start_ms,endMs:finding.end_ms}]);
+  void player.playSegments(key,[{uri:slideAudioUri,startMs:start,endMs:end}]);
  };
 
  return <Enter kind={nav.nav}><PanView style={StyleSheet.absoluteFill} {...pan}>
@@ -130,19 +143,19 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
     <Pressable accessibilityRole="button" accessibilityLabel={slidePlaying?'Pause slide audio':`Play slide ${s+1} audio`} disabled={!slideAudioUri||!part} onPress={playSlide} style={[styles.heroPlay,{backgroundColor:c.surface}]}><Glyph name={slidePlaying?'p-pause':'p-play'} size={19} color={c.text}/></Pressable>
    </View>
    <View style={[styles.issueCard,{backgroundColor:c.surface06,borderColor:c.hair}]}>
-    <View style={styles.issueTop}><Txt style={[styles.issueMeta,{color:c.secondary}]}>{issue?`${issue.category.toUpperCase()} · ${issueIndex+1} OF ${issueItems.length}`:'SLIDE STATUS'}</Txt><Txt style={[styles.issueMeta,{color:timingLabel==='Over time'?c.warn:c.secondary}]}>{t>0?`${fmt(t)} / ${fmt(target)} planned`:item?.label??'Not recorded'}</Txt></View>
-    <Txt style={[styles.issueTitle,{color:c.text}]}>{issue?issue.observation:insufficient?'Too little speech to review':'Nothing to fix on this slide'}</Txt>
-    <Txt style={[styles.issueBody,{color:c.secondary}]}>{issue?issue.suggestion:insufficient?`Record slide ${s+1} again to get feedback based on your delivery.`:scoreStrength??'Keep the strongest part of this slide.'}</Txt>
-    {issue&&'finding' in issue&&issue.finding.speech_quote&&<View style={[styles.evidence,{borderColor:c.hair}]}>
+    <View style={styles.issueTop}><Txt numberOfLines={1} style={[styles.issueMeta,styles.issueMetaFlex,{color:c.secondary}]}>{issue?`${issue.category.toUpperCase()} · ${issueIndex+1} OF ${issueItems.length}${issue.gain?` · +${issue.gain} PTS`:''}`:'SLIDE STATUS'}</Txt><Txt style={[styles.issueMeta,{color:timingLabel==='Over time'?c.warn:c.secondary}]}>{t>0?`${fmt(t)} / ${fmt(target)} planned`:item?.label??'Not recorded'}</Txt></View>
+    <Txt numberOfLines={3} style={[styles.issueTitle,{color:c.text}]}>{issue?issue.observation:insufficient?'Too little speech to review':v3Empty?v3Empty[0]:'Nothing to fix on this slide'}</Txt>
+    <Txt numberOfLines={issue?.quote?3:6} style={[styles.issueBody,{color:c.secondary}]}>{issue?issue.suggestion:insufficient?`Record slide ${s+1} again to get feedback based on your delivery.`:v3Empty?v3Empty[1]:scoreStrength??'Keep the strongest part of this slide.'}</Txt>
+    {issue?.quote&&<View style={[styles.evidence,{borderColor:c.hair}]}>
      <View style={styles.evidenceHead}><Txt style={[styles.evidenceLabel,{color:c.tertiary}]}>YOU SAID</Txt>
-      <Pressable accessibilityRole="button" accessibilityLabel={`Hear cited evidence at ${fmt(issue.finding.start_ms/1000)}`}
-       disabled={!slideAudioUri||issue.finding.end_ms<=issue.finding.start_ms}
-       onPress={()=>playFindingEvidence(issue.finding)} style={[styles.evidenceListen,{backgroundColor:c.surface08,opacity:!slideAudioUri||issue.finding.end_ms<=issue.finding.start_ms?0.45:1}]}>
-       <Glyph name={player.playingKey===`evidence:${part?.attemptId}:${issue.finding.start_ms}:${issue.finding.end_ms}`&&!player.paused?'p-pause':'p-play'} size={14} color={c.text}/>
-       <Txt style={[styles.evidenceListenText,{color:c.text}]}>{`Hear it · ${fmt(issue.finding.start_ms/1000)}`}</Txt>
+      <Pressable accessibilityRole="button" accessibilityLabel={`Hear cited evidence at ${fmt(issue.quote.start_ms/1000)}`}
+       disabled={!slideAudioUri||issue.quote.end_ms<=issue.quote.start_ms}
+       onPress={()=>playEvidence(issue.quote!.start_ms,issue.quote!.end_ms)} style={[styles.evidenceListen,{backgroundColor:c.surface08,opacity:!slideAudioUri||issue.quote.end_ms<=issue.quote.start_ms?0.45:1}]}>
+       <Glyph name={player.playingKey===evidenceKey(issue.quote.start_ms,issue.quote.end_ms)&&!player.paused?'p-pause':'p-play'} size={14} color={c.text}/>
+       <Txt style={[styles.evidenceListenText,{color:c.text}]}>{`Hear it · ${fmt(issue.quote.start_ms/1000)}`}</Txt>
       </Pressable>
      </View>
-     <Txt numberOfLines={3} style={[styles.evidenceQuote,{color:c.body}]}>{`“${issue.finding.speech_quote}”`}</Txt>
+     <Txt numberOfLines={2} style={[styles.evidenceQuote,{color:c.body}]}>{`“${issue.quote.text}”`}</Txt>
     </View>}
     {recorded&&!insufficient?<Pressable accessibilityRole="button" onPress={()=>setFeedbackOpen(true)} style={styles.detailsLink}><Txt style={[styles.detailsLinkText,{color:c.accent}]}>Full feedback and recovery options</Txt></Pressable>
       :<Pressable accessibilityRole="button" onPress={()=>go('rehearse',{deckId:nav.deckId,slide:s,nav:'fade'})} style={styles.detailsLink}><Txt style={[styles.detailsLinkText,{color:c.accent}]}>Rehearse slide {s+1}</Txt></Pressable>}
@@ -162,13 +175,15 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
       <Txt style={[styles.actionText,{color:c.text}]}>Close</Txt>
      </Pressable></View>
     <ScrollView style={styles.detailsScroll} contentContainerStyle={styles.detailsBody} accessibilityLabel="Full slide feedback">
-     <SlideReviewDetails slide={s} part={part!} localDeckId={deck.id} status={item?.label??'Not analyzed'}>
+     {v3&&v3Item?<FeedbackV3SlideDetails item={v3Item} isPlaying={e=>player.playingKey===evidenceKey(e.start_ms,e.end_ms)&&!player.paused}
+      onPlay={e=>playEvidence(e.start_ms,e.end_ms)} onRetry={()=>void v3.retry()} retrying={v3.busy} notice={v3.notice}/>
+     :<SlideReviewDetails slide={s} part={part!} localDeckId={deck.id} status={item?.label??'Not analyzed'}>
      {findingRows.map((finding,index)=><View key={`${finding.category}-${index}`} style={styles.detailsFinding}>
       <UIIcon name={slideReviewRows.find(row=>row.findings.includes(finding))!.icon} size={18} color={c.warn}/>
       <Txt style={[styles.detailsText,{color:c.text}]}>{finding.observation}</Txt>
       <Txt style={[styles.detailsText,{color:c.text}]}>{finding.suggestion}</Txt>
      </View>)}
-     </SlideReviewDetails>
+     </SlideReviewDetails>}
     </ScrollView>
    </View>
   </View>}
@@ -177,7 +192,7 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
 const styles=StyleSheet.create({
  header:{position:'absolute',left:30,right:30,top:46,alignItems:'center'},title:{fontFamily:F.display,fontSize:18,lineHeight:23},label:{fontFamily:F.medium,fontSize:14,lineHeight:18},
  slideHero:{position:'absolute',left:24,right:24,top:100,height:160,borderRadius:18,overflow:'hidden'},heroScrim:{position:'absolute',left:0,right:0,top:0,bottom:0,justifyContent:'flex-end',padding:18,backgroundColor:'rgba(0,0,0,0.24)'},heroLabel:{fontFamily:F.bold,fontSize:13.5,letterSpacing:1.1,color:'#FFFFFF'},heroTitle:{maxWidth:245,fontFamily:F.display,fontSize:23,lineHeight:27,color:'#FFFFFF'},scoreBadge:{position:'absolute',top:12,right:12,minWidth:46,height:30,borderRadius:15,paddingHorizontal:10,alignItems:'center',justifyContent:'center'},scoreBadgeText:{fontFamily:F.bold,fontSize:14},heroPlay:{position:'absolute',right:14,bottom:14,width:40,height:40,borderRadius:20,alignItems:'center',justifyContent:'center'},
- issueCard:{position:'absolute',left:24,right:24,top:284,height:300,borderRadius:24,borderWidth:1,padding:20,gap:12},issueTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},issueMeta:{fontFamily:F.bold,fontSize:13.5,letterSpacing:.4},issueTitle:{fontFamily:F.display,fontSize:22,lineHeight:28},issueBody:{fontFamily:F.medium,fontSize:15,lineHeight:22},evidence:{marginTop:2,paddingTop:12,borderTopWidth:1,gap:4},evidenceHead:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},evidenceLabel:{fontFamily:F.bold,fontSize:13.5,letterSpacing:.5},evidenceListen:{minHeight:36,paddingHorizontal:10,borderRadius:18,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:5},evidenceListenText:{fontFamily:F.semibold,fontSize:13.5},evidenceQuote:{fontFamily:F.medium,fontSize:15,lineHeight:20},detailsLink:{marginTop:'auto',minHeight:44,justifyContent:'center'},detailsLinkText:{fontFamily:F.semibold,fontSize:14},
+ issueCard:{position:'absolute',left:24,right:24,top:284,height:300,borderRadius:24,borderWidth:1,padding:20,gap:12},issueTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},issueMeta:{fontFamily:F.bold,fontSize:13.5,letterSpacing:.4},issueMetaFlex:{flexShrink:1},issueTitle:{fontFamily:F.display,fontSize:22,lineHeight:28},issueBody:{fontFamily:F.medium,fontSize:15,lineHeight:22},evidence:{marginTop:2,paddingTop:12,borderTopWidth:1,gap:4},evidenceHead:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},evidenceLabel:{fontFamily:F.bold,fontSize:13.5,letterSpacing:.5},evidenceListen:{minHeight:36,paddingHorizontal:10,borderRadius:18,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:5},evidenceListenText:{fontFamily:F.semibold,fontSize:13.5},evidenceQuote:{fontFamily:F.medium,fontSize:15,lineHeight:20},detailsLink:{marginTop:'auto',minHeight:44,justifyContent:'center'},detailsLinkText:{fontFamily:F.semibold,fontSize:14},
  dots:{position:'absolute',top:604,left:24,right:24,height:24,flexDirection:'row',justifyContent:'center',alignItems:'center',gap:5},dotHit:{width:22,height:24,alignItems:'center',justifyContent:'center'},dot:{width:6,height:6,borderRadius:3},chips:{position:'absolute',top:634,left:24,right:24,height:36,flexDirection:'row',alignItems:'center',gap:6},chip:{flex:1,minWidth:0,height:34,paddingHorizontal:6,borderRadius:17,borderWidth:1,alignItems:'center',justifyContent:'center'},chipText:{fontFamily:F.semibold,fontSize:13.5},
  content:{position:'absolute',left:16,right:16,top:140,gap:4},
  ringRow:{flexDirection:'row',alignItems:'center',gap:18,paddingHorizontal:8},ringRight:{flex:1,minWidth:0,gap:10},slideLabel:{fontFamily:F.semibold,fontSize:13.5},

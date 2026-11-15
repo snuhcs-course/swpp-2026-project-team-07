@@ -163,17 +163,36 @@ def load_inputs(attempt, context, model: str) -> Inputs:
 
 def plan_slide(inputs: Inputs, index: int) -> str | None:
     """Status decided in code, or None when the slide needs an LLM call."""
+    return plan_slide_reason(inputs, index)[0]
+
+
+def plan_slide_reason(inputs: Inputs, index: int) -> tuple[str | None, str | None]:
+    """(status, reason) decided in code; (None, None) when the slide needs an LLM call."""
     slide, last = inputs.slides[index], len(inputs.slides) - 1
-    title_like = slide['kind'] in ('title', 'closing') or (
-        slide['kind'] == 'unknown' and len(slide['text'].split()) <= 8)
-    if index in (0, last) and last > 0 and title_like:
-        return 'not_applicable'
+    if index in (0, last) and last > 0:
+        if slide['kind'] in ('title', 'closing'):
+            return 'not_applicable', f"{slide['kind']}_slide_profile"
+        if slide['kind'] == 'unknown' and len(slide['text'].split()) <= 8:
+            return 'not_applicable', 'short_slide_text'
     spoken = inputs.speech.slides.get(index)
     if not spoken or not spoken.visit_ms:
-        return 'not_recorded'
+        return 'not_recorded', 'slide_not_visited'
     if sum(1 for w in spoken.words if w.text) < MIN_WORDS:
-        return 'insufficient_speech'
-    return None
+        return 'insufficient_speech', f'fewer_than_{MIN_WORDS}_words'
+    return None, None
+
+
+def outdated(attempt, context, job: FeedbackRun | None) -> bool:
+    """True when the stored run no longer matches the current inputs (or is stale)."""
+    if job is None:
+        return False
+    if job.status == FeedbackRun.Status.STALE:
+        return True
+    try:
+        config = llm.Config.from_env()
+        return load_inputs(attempt, context, config.model).fingerprint != job.fingerprint
+    except (RunError, llm.LLMError):
+        return False
 
 
 def _presentation(inputs: Inputs) -> dict:
@@ -328,11 +347,13 @@ def score(result: dict) -> dict:
             levels = {c['id']: c['level'] for c in part['criteria']}
             exact[key] = rubric.component_points(RUBRIC.slide, levels)
             part['score'] = rubric.round_half_up(exact[key])
+            part['level'] = rubric.overall_level(exact[key])  # Band from exact points, not the rounded score.
     whole = result.get('whole') or {}
     whole_exact = None
     if whole.get('status') == 'scored':
         whole_exact = rubric.component_points(RUBRIC.whole, {c['id']: c['level'] for c in whole['criteria']})
         whole['score'] = rubric.round_half_up(whole_exact)
+        whole['level'] = rubric.overall_level(whole_exact)
     missing = sorted(int(k) for k, p in applicable.items() if p.get('status') != 'scored')
     withheld = []
     if not applicable:
@@ -485,8 +506,9 @@ def _execute(job: FeedbackRun) -> None:
         key = str(index)
         if slides.get(key, {}).get('status') in FINISHED_PARTS:
             continue
-        status = plan_slide(inputs, index)
-        slides[key] = {'status': status or 'pending', 'measurements': inputs.measurements['slides'][index]}
+        status, reason = plan_slide_reason(inputs, index)
+        slides[key] = {'status': status or 'pending', 'measurements': inputs.measurements['slides'][index],
+                       **({'reason': reason} if reason else {})}
         if not status:
             work[('slide', index)] = slide_payload(inputs, index)
     timings, usage = dict(job.timings or {}), dict(job.usage or {'input_tokens': 0, 'output_tokens': 0, 'calls': 0})

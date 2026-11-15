@@ -3,7 +3,8 @@ import { Pressable, View } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { Txt, useFrame } from '../design/frame';
 import { UIIcon } from '../design/icons';
-import { useRunPresentationScores } from '../features/feedback/useRunPresentationScores';
+// Claude Code, prompted by Seoyeon (2026-11-15): Home shares Full Review's v3 score when the server offers it.
+import { useRunScores } from '../features/feedback/useRunFeedbackV3';
 import { scoreLevelColor, scoreNumber } from '../features/feedback/presentationScoreDisplay';
 import { createThemedStyles, useTheme } from '../design/theme';
 import { C, F } from '../design/tokens';
@@ -16,7 +17,7 @@ export function HomeFeedbackStats({ deckId, home, active, onOpenReview }: { deck
   const { c } = useTheme();
   const compact = useFrame().compact;
   const model = useDeckModel(deckId);
-  const scores = useRunPresentationScores(model, active);
+  const { scores } = useRunScores(model, active);
   const style = useAnimatedStyle(() => {
     const pull = Math.min(1, Math.abs(home.vy.value) / PULL_T), fraction = Math.abs(home.p.value - Math.round(home.p.value));
     return { opacity: (home.vy.value < 0 ? 1 - Math.min(1, pull * 1.6) * 0.9 : 1) * Math.max(0, 1 - fraction * 2.4) };

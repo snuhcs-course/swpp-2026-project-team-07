@@ -11,7 +11,9 @@ import { audioOf } from '../features/rehearsal/analysis';
 import { useSegmentPlayer } from '../features/rehearsal/useSegmentPlayer';
 import { useDeckModel } from '../features/presentations/useDeckModel';
 import { useRunFeedbackStatus } from '../features/feedback/useRunFeedbackStatus';
-import { useRunPresentationScores } from '../features/feedback/useRunPresentationScores';
+// Claude Code, prompted by Seoyeon (2026-11-15): v3 priorities and improvements; see docs/ai-feedback-reimplementation.md.
+import { useRunScores } from '../features/feedback/useRunFeedbackV3';
+import { runCards, type V3Card } from '../features/feedback/feedbackRun';
 import { scoreAudioEvidence } from '../features/feedback/presentationScoreDisplay';
 import type { ScoreAdvice, ScoreEvidence } from '../features/feedback/presentationScore';
 import type { Finding } from '../features/feedback/slideReview';
@@ -19,13 +21,14 @@ import { useBack, useShell } from './shared';
 
 export function FeedbackScreen({active=true}:{active?:boolean}) {
   const {c}=useTheme(),{go,nav}=useShell();
-  const model=useDeckModel(nav.deckId),feedback=useRunFeedbackStatus(model,active);
-  const scores=useRunPresentationScores(model,active);
+  const model=useDeckModel(nav.deckId),runScores=useRunScores(model,active),v3=runScores.v3;
+  const feedback=useRunFeedbackStatus(model,active&&!v3),scores=runScores.v2;
   const player=useSegmentPlayer();
-  const points=useMemo<FeedbackPoint[]>(()=>[
+  const v3Cards=v3?runCards(v3.items,v3.overall):null;
+  const points=useMemo<FeedbackPoint[]>(()=>v3Cards?v3Cards.map(card=>({kind:'v3' as const,card})):[
     ...feedback.items.flatMap(item=>item.findings.map(finding=>({kind:'slide' as const,slide:item.slide,finding})).filter(x=>x.finding.suggestion.trim())),
     ...(scores.overall.result?.feedback.improvements??[]).map(advice=>({kind:'score' as const,advice})),
-  ],[feedback.items,scores.overall.result]);
+  ],[v3Cards,feedback.items,scores.overall.result]);
   const [index,setIndex]=useState(0);
   const currentIndex=Math.min(index,Math.max(0,points.length-1));
   const point=points[currentIndex];
@@ -42,6 +45,13 @@ export function FeedbackScreen({active=true}:{active?:boolean}) {
     });
     if(segments.length)void player.playSegments(key,segments);
   };
+  const playCard=(card:V3Card)=>{
+    const uri=card.attemptId&&audioOf(card.attemptId),e=card.evidence;
+    if(!uri||!e)return;
+    const key=`feedback-v3:${card.key}`;
+    if(player.playingKey===key){player.setPaused(!player.paused);return;}
+    void player.playSegments(key,[{uri,startMs:e.start_ms,endMs:e.end_ms}]);
+  };
   const play=(finding:Finding,slide:number)=>{
     const part=model?.state.run?.parts[slide],uri=part&&audioOf(part.attemptId);
     if(!part||!uri||finding.end_ms<=finding.start_ms)return;
@@ -57,8 +67,13 @@ export function FeedbackScreen({active=true}:{active?:boolean}) {
     <PageSurface hue={model.deck.hue}/>
     <View style={styles.header}><Txt style={[styles.title,{color:c.text}]}>Feedback</Txt><Txt style={[styles.count,{color:c.secondary}]}>{points.length?`${currentIndex+1} of ${points.length}`:'No reviewed points'}</Txt></View>
     {point?<>
-      <View style={[styles.slidePill,{backgroundColor:c.surface08}]}><UIIcon name="i-slides" size={16}/><Txt style={[styles.pillText,{color:c.secondary}]}>{point.kind==='slide'?`Slide ${point.slide+1} · ${model.deck.slides[point.slide]?.title??`Slide ${point.slide+1}`}`:'Whole presentation · Overall score'}</Txt></View>
-      <Txt style={[styles.headline,{color:c.text}]}>{point.kind==='slide'?headline(point.finding):'Make this improvement to your talk'}</Txt>
+      <View style={[styles.slidePill,{backgroundColor:c.surface08}]}><UIIcon name="i-slides" size={16}/><Txt style={[styles.pillText,{color:c.secondary}]}>{point.kind==='v3'?`${point.card.slide===null?'Whole presentation':`Slide ${point.card.slide+1} · ${model.deck.slides[point.card.slide]?.title??`Slide ${point.card.slide+1}`}`}${point.card.gain?` · +${point.card.gain} pts`:''}`:point.kind==='slide'?`Slide ${point.slide+1} · ${model.deck.slides[point.slide]?.title??`Slide ${point.slide+1}`}`:'Whole presentation · Overall score'}</Txt></View>
+      <Txt style={[styles.headline,{color:c.text}]}>{point.kind==='v3'?point.card.title:point.kind==='slide'?headline(point.finding):'Make this improvement to your talk'}</Txt>
+      {point.kind==='v3'&&point.card.evidence&&<View style={[styles.quoteCard,{backgroundColor:c.surface06,borderColor:c.hair}]}>
+        <Txt style={[styles.kicker,{color:c.tertiary}]}>YOU SAID</Txt>
+        <Txt numberOfLines={4} style={[styles.quote,{color:c.body}]}>{`“${point.card.evidence.text}”`}</Txt>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Play the cited audio at ${fmt(point.card.evidence.start_ms/1000)}`} onPress={()=>playCard(point.card)} style={styles.play}><Glyph name={player.playingKey===`feedback-v3:${point.card.key}`&&!player.paused?'p-pause':'p-play'} size={14} color={c.text}/><Txt style={[styles.playText,{color:c.secondary}]}>{fmt(point.card.evidence.start_ms/1000)}</Txt></Pressable>
+      </View>}
       {point.kind==='slide'&&!!point.finding.speech_quote&&<View style={[styles.quoteCard,{backgroundColor:c.surface06,borderColor:c.hair}]}>
         <Txt style={[styles.kicker,{color:c.tertiary}]}>YOU SAID</Txt>
         <Txt numberOfLines={4} style={[styles.quote,{color:c.body}]}>{`“${point.finding.speech_quote}”`}</Txt>
@@ -69,19 +84,19 @@ export function FeedbackScreen({active=true}:{active?:boolean}) {
         <Txt numberOfLines={4} style={[styles.quote,{color:c.body}]}>{`“${scoreQuote(point.advice)!.quote}”`}</Txt>
         <Pressable accessibilityRole="button" accessibilityLabel="Play the cited recording evidence" onPress={()=>playEvidence(point.advice.evidence)} style={styles.play}><Glyph name={player.playingKey===`feedback-score:${currentIndex}`&&!player.paused?'p-pause':'p-play'} size={14} color={c.text}/><Txt style={[styles.playText,{color:c.secondary}]}>{fmt(scoreQuote(point.advice)!.start_ms/1000)}</Txt></Pressable>
       </View>}
-      {(point.kind==='slide'?!!point.finding.speech_quote:!!scoreQuote(point.advice))&&<View style={styles.arrow}><Txt style={[styles.arrowText,{color:c.secondary}]}>↓</Txt></View>}
+      {(point.kind==='v3'?!!point.card.evidence:point.kind==='slide'?!!point.finding.speech_quote:!!scoreQuote(point.advice))&&<View style={styles.arrow}><Txt style={[styles.arrowText,{color:c.secondary}]}>↓</Txt></View>}
       <View style={[styles.quoteCard,styles.tryCard,{backgroundColor:c.surface06,borderColor:c.hair}]}>
-        <Txt style={[styles.kicker,{color:c.accent}]}>{point.kind==='slide'?'DO THIS':'TRY'}</Txt>
-        <Txt numberOfLines={4} style={[styles.quote,{color:c.text}]}>{point.kind==='slide'?point.finding.suggestion:point.advice.text}</Txt>
+        <Txt style={[styles.kicker,{color:c.accent}]}>{point.kind==='score'?'TRY':'DO THIS'}</Txt>
+        <Txt numberOfLines={point.kind==='v3'?7:4} style={[styles.quote,{color:c.text}]}>{point.kind==='v3'?[point.card.action,point.card.example?`Try saying: “${point.card.example}”`:'',point.card.why].filter(Boolean).join('\n'):point.kind==='slide'?point.finding.suggestion:point.advice.text}</Txt>
       </View>
-    </>:<View style={[styles.empty,{backgroundColor:c.surface06,borderColor:c.hair}]}><Txt style={[styles.quote,{color:c.secondary}]}>Verified feedback points will appear here when a slide review is available.</Txt></View>}
+    </>:<View style={[styles.empty,{backgroundColor:c.surface06,borderColor:c.hair}]}><Txt style={[styles.quote,{color:c.secondary}]}>{v3?'Ways to raise your score appear here when the AI review is ready.':'Verified feedback points will appear here when a slide review is available.'}</Txt></View>}
     <View style={styles.dots}>{points.map((_,i)=><View key={i} style={[styles.dot,i===currentIndex?styles.activeDot:{backgroundColor:c.dotOff},i===currentIndex&&{backgroundColor:c.text}]}/>)}</View>
     <HintRow hints={[{icon:'h-spin',text:'Next point'},{icon:'h-dn',text:'Back to review',nudge:'down'}]}/>
     </View>
   </PanView></Enter>;
 }
 
-type FeedbackPoint = {kind:'slide';slide:number;finding:Finding}|{kind:'score';advice:ScoreAdvice};
+type FeedbackPoint = {kind:'slide';slide:number;finding:Finding}|{kind:'score';advice:ScoreAdvice}|{kind:'v3';card:V3Card};
 function scoreQuote(advice:ScoreAdvice){
   const speech=scoreAudioEvidence(advice.evidence).find(ref=>ref.kind==='speech');
   return speech?{quote:speech.quote,start_ms:speech.start_ms}:null;
