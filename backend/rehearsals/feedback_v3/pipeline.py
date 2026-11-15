@@ -183,14 +183,15 @@ def plan_slide_reason(inputs: Inputs, index: int) -> tuple[str | None, str | Non
 
 
 def presentation_complete(inputs: Inputs) -> bool:
-    """The take covers every slide, so whole-presentation feedback is meaningful."""
-    return all(inputs.speech.slides.get(i) and inputs.speech.slides[i].visit_ms for i in range(len(inputs.slides)))
+    """The take reached every gradable slide (an unvisited title/closing slide does not count)."""
+    return all(plan_slide_reason(inputs, i)[0] != 'not_recorded' for i in range(len(inputs.slides)))
 
 
-def part_hash(kind: str, payload: dict, model: str) -> str:
-    """Everything the model sees for one part; equal hashes need no new model call."""
-    return _digest({'kind': kind, 'payload': payload, 'model': model, 'prompt': prompts.PROMPT_VERSION,
-                    'rubric': RUBRIC.version})
+def part_hash(kind: str, payload: dict, config: llm.Config) -> str:
+    """Everything that shapes one part's result; equal hashes need no new model call."""
+    return _digest({'kind': kind, 'payload': payload, 'model': config.model, 'effort': config.reasoning_effort,
+                    'temperature': config.temperature, 'prompt': prompts.PROMPT_VERSION,
+                    'rubric': RUBRIC.version, 'pipeline': PIPELINE_VERSION})
 
 
 def _reusable_parts(job: FeedbackRun) -> dict:
@@ -527,9 +528,17 @@ def _execute(job: FeedbackRun) -> None:
               error={'code': error.code, 'message': MESSAGES.get(error.code, error.code)})
         return
     if inputs.fingerprint != job.fingerprint:
-        _save(job, status=FeedbackRun.Status.STALE, finished_at=timezone.now())
-        _replace_stale(job)
-        return
+        newer = FeedbackRun.objects.filter(attempt_id=job.attempt_id, context_id=job.context_id,
+                                           created_at__gt=job.created_at).exists()
+        if not newer and not (job.result or {}).get('slides'):
+            # Nothing graded yet: take the current inputs (e.g. a correction made while queued)
+            # and keep this run's place in the queue instead of re-queueing at the back.
+            _save(job, fingerprint=inputs.fingerprint)
+        else:
+            _save(job, status=FeedbackRun.Status.STALE, finished_at=timezone.now())
+            if not newer:
+                _replace_stale(job)
+            return
 
     result = dict(job.result or {})
     result.pop('stale_replacements', None)
@@ -548,7 +557,7 @@ def _execute(job: FeedbackRun) -> None:
                        **({'reason': reason} if reason else {})}
         if not status:
             payload = slide_payload(inputs, index)
-            digest = part_hash('slide', payload, config.model)
+            digest = part_hash('slide', payload, config)
             if digest in reusable:
                 slides[key] = {**reusable[digest], 'measurements': inputs.measurements['slides'][index], 'reused': True}
                 reused += 1
@@ -560,7 +569,7 @@ def _execute(job: FeedbackRun) -> None:
             result['whole'] = {'status': 'not_recorded', 'reason': 'presentation_incomplete'}
         else:
             payload = whole_payload(inputs)
-            digest = part_hash('whole', payload, config.model)
+            digest = part_hash('whole', payload, config)
             if digest in reusable:
                 result['whole'] = {**reusable[digest], 'reused': True}
                 reused += 1

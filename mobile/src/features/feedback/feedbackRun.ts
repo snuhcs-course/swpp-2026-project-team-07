@@ -106,7 +106,7 @@ export const feedbackRunActive = (run: FeedbackRun | null) => run?.status === 'q
 export const feedbackRunNeedsStart = (run: FeedbackRun | null) =>
   !!run && run.enabled && (run.status === 'absent' || run.status === 'stale');
 /** Saved results came from older inputs (a correction or settings change); they stay visible until updated. */
-export const feedbackRunOutdated = (run: FeedbackRun | null) => !!run && run.outdated && !feedbackRunActive(run);
+export const feedbackRunOutdated = (run: FeedbackRun | null) => !!run && (run.outdated || run.status === 'stale') && !feedbackRunActive(run);
 export const feedbackRunHasFailures = (run: FeedbackRun | null) =>
   !!run && (run.status === 'failed' || run.slides.some(s => s.status === 'failed') || run.whole?.status === 'failed');
 
@@ -119,17 +119,20 @@ export type V3OverallDisplay = { score: number | null; level: ScoreLevel | null;
 export type V3Input = { n: number; parts: (SlidePart | null)[]; stages: ReadonlyMap<string, string>;
   /** Saved run per attempt id, for attempts whose transcript is ready. */ runs: ReadonlyMap<string, FeedbackRun | null>;
   ready: ReadonlySet<string>;
-  /** New recordings whose feedback starts automatically after transcription. */ expected: ReadonlySet<string> };
+  /** New recordings whose feedback starts automatically after transcription. */ expected: ReadonlySet<string>;
+  /** New recordings whose automatic start waits for presentation settings to synchronize. */ waitingForSettings?: ReadonlySet<string> };
 
 const CODE_LABELS: Partial<Record<V3SlideStatus, string>> = {
   not_applicable: 'Not applicable', not_recorded: 'Not recorded', insufficient_speech: 'Too little speech',
   insufficient_evidence: 'Insufficient evidence', failed: 'Feedback failed',
 };
-function runStatus(run: FeedbackRun | null, ready: boolean, stage: string | undefined, expected: boolean): string | null {
+function runStatus(run: FeedbackRun | null, ready: boolean, stage: string | undefined, expected: boolean, waiting = false): string | null {
   if (!ready) return stage === 'no_speech' ? 'No speech detected' : stage === 'done' ? 'No usable word timing' : 'Transcript pending';
   // Screens never start generation: a missing run is "Scoring…" only when one is on its way.
-  if (!run || run.status === 'absent') return expected ? 'Scoring…' : 'Not graded';
-  if (run.status === 'stale' || feedbackRunActive(run)) return 'Scoring…';
+  if (!run || run.status === 'absent') return expected ? 'Scoring…' : waiting ? 'Settings sync pending' : 'Not graded';
+  // A stale run is replaced by the server; if that has not happened, it needs an explicit request.
+  if (run.status === 'stale') return 'Not graded';
+  if (feedbackRunActive(run)) return 'Scoring…';
   if (run.status === 'failed') return 'Feedback failed';
   return null;
 }
@@ -145,8 +148,8 @@ export function selectRunFeedbackV3(input: V3Input) {
     const run = input.runs.get(part.attemptId) ?? null, ready = input.ready.has(part.attemptId);
     const v3 = run?.slides.find(s => s.slide_index === slideIndex) ?? null;
     const expected = input.expected.has(part.attemptId);
-    const pending = runStatus(run, ready, input.stages.get(part.attemptId), expected);
-    const usable = !!v3 && v3.status !== 'pending' && run?.status !== 'stale';
+    const pending = runStatus(run, ready, input.stages.get(part.attemptId), expected, !!input.waitingForSettings?.has(part.attemptId));
+    const usable = !!v3 && v3.status !== 'pending';
     // Settled = nothing more is coming without a user action; a transcript still in progress is not settled.
     const stage = input.stages.get(part.attemptId), terminal = !ready && (stage === 'no_speech' || stage === 'done');
     if (pending && !usable) return { ...base, run, v3, status: pending,
@@ -163,7 +166,8 @@ export function selectRunFeedbackV3(input: V3Input) {
   else if (ids.length > 1) overall = { ...base, status: 'Combined recordings', attemptId: null, run: null };
   else {
     const run = input.runs.get(ids[0]) ?? null;
-    const pending = runStatus(run, input.ready.has(ids[0]), input.stages.get(ids[0]), input.expected.has(ids[0]));
+    const pending = runStatus(run, input.ready.has(ids[0]), input.stages.get(ids[0]), input.expected.has(ids[0]),
+      !!input.waitingForSettings?.has(ids[0]));
     const scores = run?.scores, outdated = feedbackRunOutdated(run);
     if (pending) overall = { ...base, status: pending, attemptId: ids[0], run };
     else if (scores?.overall !== null && scores?.overall !== undefined)

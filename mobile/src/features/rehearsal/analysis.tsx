@@ -11,7 +11,7 @@ import { API_URL } from '../../services/api';
 import { getSavedAttempt, saveAttempt, type SavedAttempt } from '../recording/storage';
 import { uploadAttempt } from '../recording/upload';
 import { enableInitialQa } from '../qa/automatic';
-import { enableInitialFeedback } from '../feedback/automaticFeedback';
+import { enableInitialFeedback, enableAutomaticFeedbackV3 } from '../feedback/automaticFeedback';
 import { enableAutomaticScore } from '../feedback/automaticPresentationScore';
 import { normalizeApi, readAnalysis } from '../transcription/analysisStorage';
 import { readReview } from '../transcription/reviewStorage';
@@ -139,6 +139,7 @@ function AttemptWorker({ id }: { id: string }) {
       saveAttempt({ ...saved, auto_process_api: undefined });
       enableInitialQa(address,id);
       enableAutomaticScore(address,id);
+      enableAutomaticFeedbackV3(address,id);  // Claude Code, prompted by Seoyeon (2026-11-15)
       handedOff.add(id);
     } catch { handOffFailed.add(id); }
     notify();

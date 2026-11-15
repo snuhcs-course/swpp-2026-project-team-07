@@ -5060,3 +5060,24 @@ Prioritize immediate per-slide feedback after transcription. Transcript correcti
   - Docs: the design doc's design, reliability, scoring, configuration and app-integration sections.
 - **Verification (agent-operated, local):** Backend: 45 v3 tests, and the full suite of 686 passed with 26 skipped; migration check clean. Mobile: type-check and lint pass; 10 v3 tests pass; Android JavaScript export passes. The full suite has 587 tests and 62 failures, identical by name to the unchanged base branch. Intermediate full runs first showed 19 and then 10 new failures in legacy v2 automatic-host tests, because the hosts now wait for a known capability. Stubbing capability `false` in those loaders restored them without weakening the first-launch guard.
 - **Limits:** No APK, device or human test; no real-provider run of this round's backend. Server auto-start is still off on the VM. A second independent AI review was still running at this commit, which a session stop hook requested; its findings follow in a later update.
+- **Second independent AI review and fixes:** A separate reviewer agent made no edits; it reviewed `f324398..dea2029`. Confirmed findings:
+  1. The host reused the v2 eligibility flag, so it would have auto-started every older recording.
+  2. Whole feedback was skipped when only a short closing slide was unvisited.
+  3. The host wrote `started` when GET said v3 was off.
+  4. Screens showed "Scoring…" while the host was blocked by settings or a stale run had no replacement.
+  5. The capability probe could stay unknown after a `not_found`, leaving both v2 and v3 idle.
+
+  Plausible findings also fixed: queued runs re-queued at the back after a correction; the part hash lacked pipeline and model settings; settings appearing after a take triggered a second automatic run; and a quick poll could hide an explicit request's result. Fixes:
+  - a v3-only eligibility flag, set at new-recording hand-off;
+  - "reached every gradable slide";
+  - `started` only with a real run, and nothing recorded while v3 is off;
+  - screen states "Settings sync pending" and "Not graded" with Update for stale runs;
+  - probing up to five recordings;
+  - adopting current inputs while queued;
+  - pipeline version, reasoning effort and temperature in the part hash;
+  - start state keyed by recording;
+  - POST results always saved.
+
+  Decision made in implementation (reported to Seoyeon): the host also starts a take that is waiting on Keep/Overwrite. A single-slide redo gets one slide call and no whole call. Recommendation recorded in the deploy steps: enable `FEEDBACK_V3_AUTO_START` once the new APK is installed, so feedback is queued ahead of Audience Q&A. Afterward:
+  - backend: 48 v3 tests; full suite 689 passed, 26 skipped;
+  - mobile: 17 v3 tests including 5 host tests; full suite 593 with the same 62 failures as the base branch; type-check, lint and Android JS export pass.

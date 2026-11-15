@@ -13,13 +13,13 @@ import { requirementsDirty } from '../presentations/requirementsDraft';
 import { defaultRequirementsPending } from '../presentations/defaultRequirements';
 import { readReview } from '../transcription/reviewStorage';
 import { normalizeApi } from '../transcription/analysisStorage';
-import { initialFeedbackEnabled } from './automaticFeedback';
+import { automaticFeedbackV3Enabled } from './automaticFeedback';
 import { feedbackRunActive, feedbackRunHasFailures, feedbackRunNeedsStart, feedbackRunOutdated, selectRunFeedbackV3,
   type FeedbackRun } from './feedbackRun';
 import { feedbackV3Capability, fetchFeedbackRun, readSavedRun, readStartState, startFeedbackRun } from './feedbackRunClient';
 import { useRunPresentationScores } from './useRunPresentationScores';
 
-type Target = { id: string; contextId: string | null; ready: boolean; blocked: boolean; expected: boolean };
+type Target = { id: string; contextId: string | null; ready: boolean; blocked: boolean; expected: boolean; waitingForSettings: boolean };
 
 export function feedbackTargets(model: DeckModel | null, api: string): Target[] {
   if (!model?.state.run) return [];
@@ -34,9 +34,9 @@ export function feedbackTargets(model: DeckModel | null, api: string): Target[] 
     try { review = readReview(api, id); } catch { /* Unreadable review: treated as not ready. */ }
     const ready = !!review?.transcript_id && !!review.transcript?.words.length;
     const contextId = review?.deck_id ? contextFor(review.deck_id) : null;
-    // Expected: FeedbackV3Host starts it automatically, and that start has not failed.
-    return { id, contextId, ready, blocked,
-      expected: initialFeedbackEnabled(api, id) && readStartState(api, id, contextId)?.state !== 'failed' };
+    const auto = automaticFeedbackV3Enabled(api, id) && readStartState(api, id)?.state !== 'failed';
+    // Expected: FeedbackV3Host will start (or has started) it; it cannot while settings are unsynchronized.
+    return { id, contextId, ready, blocked, expected: auto && !blocked, waitingForSettings: auto && blocked };
   });
 }
 
@@ -49,7 +49,8 @@ export function useRunFeedbackV3(model: DeckModel | null, active = true) {
   const targets = feedbackTargets(model, api);
   const runs = new Map<string, FeedbackRun | null>(targets.map(t => [t.id, readSavedRun(api, t.id, t.contextId)]));
   const selection = selectRunFeedbackV3({ n: model?.n ?? 0, parts: model?.state.run?.parts ?? [], stages: model?.stages ?? new Map(),
-    runs, ready: new Set(targets.filter(t => t.ready).map(t => t.id)), expected: new Set(targets.filter(t => t.expected).map(t => t.id)) });
+    runs, ready: new Set(targets.filter(t => t.ready).map(t => t.id)), expected: new Set(targets.filter(t => t.expected).map(t => t.id)),
+    waitingForSettings: new Set(targets.filter(t => t.waitingForSettings).map(t => t.id)) });
   const capability = feedbackV3Capability(api);
   const identity = JSON.stringify(targets);
   const live = useRef({ targets, visible: active && foreground });
@@ -92,12 +93,13 @@ export function useRunFeedbackV3(model: DeckModel | null, active = true) {
 
   const failures = targets.some(t => feedbackRunHasFailures(runs.get(t.id) ?? null));
   const outdated = targets.some(t => t.ready && feedbackRunOutdated(runs.get(t.id) ?? null));
-  const missing = targets.some(t => t.ready && !t.expected && (!runs.get(t.id) || feedbackRunNeedsStart(runs.get(t.id) ?? null)));
+  const missing = targets.some(t => t.ready && !t.expected && !t.waitingForSettings &&
+    (!runs.get(t.id) || feedbackRunNeedsStart(runs.get(t.id) ?? null)));
   const blocked = targets.some(t => t.blocked);
   return {
     enabled: capability === true, capability, ...selection, retry, update, refresh: sync, busy, failures, outdated, missing, blocked,
     notice: offline ? 'Connection interrupted. Saved feedback is shown. Reconnecting…'
-      : blocked ? 'Presentation settings are saved on this phone. Update feedback after they synchronize.'
+      : blocked ? 'Presentation settings are saved on this phone. Feedback starts after they synchronize.'
       : outdated ? 'Feedback is from before your latest changes. Update it when you are ready.' : '',
   };
 }

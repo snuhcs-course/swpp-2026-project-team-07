@@ -11,7 +11,7 @@ import { requirementsPending } from '../presentations/requirementsDraft';
 import { defaultRequirementsPending } from '../presentations/defaultRequirements';
 import { readReview } from '../transcription/reviewStorage';
 import { normalizeApi } from '../transcription/analysisStorage';
-import { initialFeedbackEnabled } from './automaticFeedback';
+import { automaticFeedbackV3Enabled } from './automaticFeedback';
 import { feedbackRunNeedsStart, START_RETRY_MS, startsDue, type StartCandidate } from './feedbackRun';
 import { feedbackV3Capability, fetchFeedbackRun, readStartState, startFeedbackRun, writeStartState } from './feedbackRunClient';
 
@@ -21,16 +21,16 @@ function candidates(api: string): StartCandidate[] {
   const found: StartCandidate[] = [];
   for (const deck of visibleDecks()) {
     const saved = getDeckState(deck.id);
-    // A pending Keep/Overwrite comparison has not selected its new take yet.
-    if (saved.compare) continue;
     try {
       const r = readRequirements(deck.id, api);
       const pending = defaultRequirementsPending(deck.id, api) || requirementsPending(deck.id, api);
-      for (const id of runAttemptIds(saved.run)) {
+      // A take waiting on Keep/Overwrite starts too: its per-slide feedback is ready when the choice is made.
+      const ids = [...new Set([...runAttemptIds(saved.run), ...(saved.compare ? [saved.compare.attemptId] : [])])];
+      for (const id of ids) {
         const review = readReview(api, id);
         if (!review?.transcript_id || !review.transcript?.words.length) continue;
         const contextId = r.deckId === review.deck_id ? r.contextId ?? null : null;
-        found.push({ id, contextId, eligible: !pending && initialFeedbackEnabled(api, id), start: readStartState(api, id, contextId) });
+        found.push({ id, contextId, eligible: !pending && automaticFeedbackV3Enabled(api, id), start: readStartState(api, id) });
       }
     } catch { /* Unreadable local settings or review: nothing is started for this deck. */ }
   }
@@ -43,11 +43,12 @@ async function startOne(api: string, c: StartCandidate) {
   inProgress.add(key);
   try {
     const run = await fetchFeedbackRun(api, c.id, c.contextId);
-    if (run && !feedbackRunNeedsStart(run)) { writeStartState(api, c.id, c.contextId, 'started'); return; }
+    if (run && !run.enabled) return;  // v3 switched off: nothing is recorded, so it starts once it is back.
+    if (run?.runId && !feedbackRunNeedsStart(run)) { writeStartState(api, c.id, 'started'); return; }
     const started = await startFeedbackRun(api, c.id, c.contextId);
-    writeStartState(api, c.id, c.contextId, started ? 'started' : 'failed');
+    writeStartState(api, c.id, started?.runId ? 'started' : 'failed');
   } catch {
-    writeStartState(api, c.id, c.contextId, 'failed');
+    writeStartState(api, c.id, 'failed');
   } finally { inProgress.delete(key); }
 }
 
@@ -58,20 +59,21 @@ export function FeedbackV3Host() {
   const [tick, setTick] = useState(0);
   const list = candidates(api), capability = feedbackV3Capability(api);
   // Learn once per session whether the server offers v3, before any automatic v2 work starts.
-  const probe = capability !== true && !probed.has(api) ? list[0] ?? null : null;
+  const probes = capability !== true && !probed.has(api) ? list.slice(0, 5) : [];
   const retrying = list.some(c => c.eligible && c.start?.state === 'failed');
-  const identity = JSON.stringify({ api, capability, probe, list, tick });
+  const identity = JSON.stringify({ api, capability, probes, list, tick });
   useEffect(() => {
     if (!retrying) return;
     const timer = setInterval(() => setTick(value => value + 1), START_RETRY_MS);
     return () => clearInterval(timer);
   }, [retrying]);
   useEffect(() => {
-    const work = JSON.parse(identity) as { api: string; capability: boolean | null; probe: StartCandidate | null; list: StartCandidate[] };
+    const work = JSON.parse(identity) as { api: string; capability: boolean | null; probes: StartCandidate[]; list: StartCandidate[] };
     void (async () => {
-      if (work.probe) {
-        probed.add(work.api);
-        try { await fetchFeedbackRun(work.api, work.probe.id, work.probe.contextId); } catch { probed.delete(work.api); }
+      // Try recordings in turn: one missing on the server (not_found) leaves the answer unknown.
+      for (const probe of work.probes) {
+        try { await fetchFeedbackRun(work.api, probe.id, probe.contextId); } catch { /* Try the next one. */ }
+        if (feedbackV3Capability(work.api) !== null) { probed.add(work.api); break; }
       }
       if (feedbackV3Capability(work.api) !== true) return;
       for (const c of startsDue(work.list, Date.now())) await startOne(work.api, c);

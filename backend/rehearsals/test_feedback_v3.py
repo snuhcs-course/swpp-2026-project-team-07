@@ -355,15 +355,28 @@ class PipelineTests(TestCase):
         self.assertIn({'reason': 'presentation_incomplete'}, body['scores']['withheld'])
         self.assertEqual(body['status'], 'completed')
 
-    def test_inputs_changed_before_the_worker_starts_mark_the_run_stale(self):
+    def test_inputs_changed_while_queued_are_adopted_without_requeueing(self):
         with mock.patch.object(pipeline, 'publish'):
             response = self.post()
         self.context.audience = 'Changed'
         self.context.save()
-        with self.fake(), mock.patch.object(pipeline, 'publish'):
+        with self.fake(), mock.patch.object(pipeline, 'publish') as publish:
             pipeline.run(response.json()['run_id'])
-        self.assertEqual(FeedbackRun.objects.get(pk=response.json()['run_id']).status, 'stale')
-        self.assertEqual(self.calls, [])  # No paid call for outdated inputs.
+        run = FeedbackRun.objects.get()
+        self.assertEqual((run.status, publish.call_count), ('completed', 0))
+        self.assertFalse(self.get().json()['outdated'])
+        self.assertEqual(sorted(self.calls, key=str), [('slide', 1), ('slide', 2), ('whole', None)])
+
+    def test_inputs_changed_with_a_newer_run_queued_make_no_calls(self):
+        with mock.patch.object(pipeline, 'publish'):
+            first = self.post().json()['run_id']
+            self.context.audience = 'Changed'
+            self.context.save()
+            second = self.post().json()['run_id']
+        with self.fake():
+            pipeline.run(first)
+        self.assertEqual((FeedbackRun.objects.get(pk=first).status, self.calls), ('stale', []))
+        self.assertEqual(FeedbackRun.objects.get(pk=second).status, 'queued')
 
     def test_zero_length_visits_leave_the_skipped_slide_unvisited(self):
         speech = transcript.build(words_for('one two three', 0), [{'slide_index': 0, 'at_ms': 0},
@@ -459,6 +472,8 @@ class PipelineTests(TestCase):
     def test_stale_runs_are_replaced_not_reused(self):
         with mock.patch.object(pipeline, 'publish'):
             run_id = self.post().json()['run_id']
+        # A run that already has results cannot adopt new inputs; it goes stale and is replaced.
+        FeedbackRun.objects.filter(pk=run_id).update(result={'slides': {'1': {'status': 'failed'}}})
         self.context.audience = 'Changed'
         self.context.save()
         with mock.patch.object(pipeline, 'publish'):
@@ -554,6 +569,31 @@ class PipelineTests(TestCase):
         with self.fake():  # Undoing the correction reuses every part from the first run.
             self.post()
         self.assertEqual(self.calls, [])
+
+    def test_an_unvisited_closing_slide_does_not_block_whole_feedback(self):
+        Slide.objects.filter(deck=self.deck, slide_index=2).update(extracted_text='Thank you')
+        self.attempt.slide_events = [{'slide_index': 0, 'at_ms': 0}, {'slide_index': 1, 'at_ms': 3000}]
+        self.attempt.save()
+        with self.fake():
+            self.post()
+        body = self.get().json()
+        self.assertEqual(sorted(self.calls, key=str), [('slide', 1), ('whole', None)])
+        self.assertEqual(({s['slide_index']: s for s in body['slides']}[2]['status'], body['scores']['overall']), ('not_applicable', 67))
+
+    def test_pipeline_or_model_settings_changes_do_not_reuse_parts(self):
+        with self.fake():
+            self.post()
+        self.calls.clear()
+        self.context.audience, self.context.revision = 'Engineers', 1
+        self.context.save()
+        with self.fake():
+            self.post()
+        self.calls.clear()
+        self.context.audience, self.context.revision = 'Students', 2
+        self.context.save()
+        with self.fake(), mock.patch.object(pipeline, 'PIPELINE_VERSION', 'feedback-v3.test'):
+            self.post()  # Same inputs as the first run, but parts made by another pipeline version are not reused.
+        self.assertEqual(sorted(self.calls, key=str), [('slide', 1), ('slide', 2), ('whole', None)])
 
     def test_whole_call_has_its_own_thread_even_with_one_slide_worker(self):
         with mock.patch.dict(os.environ, {'FEEDBACK_V3_MAX_PARALLEL': '1'}), self.fake():

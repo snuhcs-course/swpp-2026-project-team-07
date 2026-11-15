@@ -68,6 +68,11 @@ test('progress, outdated inputs, transcripts and failures have honest statuses',
   assert.deepEqual([coming.items[1].status, coming.items[1].settled], ['Scoring…', false]);
   const old = select({ a1: body({ status: 'absent', scores: null, slides: [], whole: null }) }, { expected: [] });
   assert.deepEqual([old.items[1].status, old.items[1].settled, old.overall.status], ['Not graded', true, 'Not graded']);
+  const blocked = run.selectRunFeedbackV3({ n: 1, parts: [part('a1')], stages: new Map(), ready: new Set(['a1']), expected: new Set(),
+    waitingForSettings: new Set(['a1']), runs: new Map([['a1', run.parseFeedbackRun(body({ status: 'absent', scores: null, slides: [], whole: null }))]]) });
+  assert.deepEqual([blocked.items[0].status, blocked.items[0].settled], ['Settings sync pending', false]);
+  const stale = select({ a1: body({ status: 'stale', scores: null, slides: [], whole: null }) });
+  assert.deepEqual([stale.items[1].status, stale.items[1].settled, run.feedbackRunOutdated(stale.items[1].run)], ['Not graded', true, true]);
   const failed = select({ a1: body({ status: 'failed', scores: null, error: { code: 'all_parts_failed', message: 'x' },
     slides: [{ slide_index: 1, status: 'failed', error: 'timeout' }], whole: { status: 'failed' } }) });
   assert.deepEqual([failed.items[1].status, failed.items[1].settled, failed.overall.status], ['Feedback failed', true, 'Feedback failed']);
@@ -165,10 +170,24 @@ test('a slow older GET never overwrites a newer answer', async () => {
   assert.deepEqual([client.readSavedRun(api, 'a1', null).runId, client.readSavedRun(api, 'a1', null).status], ['new', 'queued']);
 });
 
-test('automatic start state is saved per recording and settings', () => {
+test('automatic start state is saved per recording', () => {
   const api = 'http://start.invalid/api';
-  assert.equal(client.readStartState(api, 'a1', 'c1'), null);
-  client.writeStartState(api, 'a1', 'c1', 'failed', 123);
-  assert.deepEqual(client.readStartState(api, 'a1', 'c1'), { state: 'failed', at: 123 });
-  assert.equal(client.readStartState(api, 'a1', 'c2'), null);
+  assert.equal(client.readStartState(api, 'a1'), null);
+  client.writeStartState(api, 'a1', 'failed', 123);
+  assert.deepEqual(client.readStartState(api, 'a1'), { state: 'failed', at: 123 });
+  assert.equal(client.readStartState(api, 'a2'), null);
+});
+
+test('a POST result is kept even when a poll sent after it is answered first', async () => {
+  const api = 'http://post-order.invalid/api', releases = [];
+  globalThis.fetch = (url, init) => new Promise(resolve => releases.push({ method: init.method, resolve }));
+  const post = client.startFeedbackRun(api, 'a1', null);
+  await new Promise(r => setTimeout(r, 5));
+  const poll = client.fetchFeedbackRun(api, 'a1', null);
+  await new Promise(r => setTimeout(r, 5));
+  releases.find(r => r.method === 'GET').resolve(new Response(JSON.stringify(body({ status: 'absent', run_id: null, scores: null, slides: [], whole: null })), { status: 200 }));
+  await poll;
+  releases.find(r => r.method === 'POST').resolve(new Response(JSON.stringify(body({ status: 'queued', run_id: 'created' })), { status: 202 }));
+  await post;
+  assert.equal(client.readSavedRun(api, 'a1', null).runId, 'created');
 });

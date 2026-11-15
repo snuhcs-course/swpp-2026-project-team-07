@@ -14,14 +14,15 @@ const url = (api: string, attemptId: string) => `${normalizeApi(api)}/attempts/$
 const inflight = new Map<string, Promise<FeedbackRun | null>>();
 // Responses are saved in request order: a slow older GET never replaces a newer answer.
 const requested = new Map<string, number>(), saved = new Map<string, number>();
-const startKey = (api: string, attemptId: string, contextId: string | null) => `feedback-v3-start:v1:${enc(api)}:${attemptId}:${contextId ?? 'none'}`;
+// Keyed by recording only: a later settings change never triggers another automatic run.
+const startKey = (api: string, attemptId: string) => `feedback-v3-start:v2:${enc(api)}:${attemptId}`;
 export type StartState = { state: 'started' | 'failed'; at: number };
-/** Whether the automatic start after transcription was sent (or failed) for this recording. */
-export function readStartState(api: string, attemptId: string, contextId: string | null): StartState | null {
-  try { return readStored<StartState>(startKey(api, attemptId, contextId)); } catch { return null; }
+/** Whether the one automatic start after transcription was sent (or failed) for this recording. */
+export function readStartState(api: string, attemptId: string): StartState | null {
+  try { return readStored<StartState>(startKey(api, attemptId)); } catch { return null; }
 }
-export function writeStartState(api: string, attemptId: string, contextId: string | null, state: StartState['state'], now = Date.now()) {
-  writeStored(startKey(api, attemptId, contextId), { state, at: now }); bump();
+export function writeStartState(api: string, attemptId: string, state: StartState['state'], now = Date.now()) {
+  writeStored(startKey(api, attemptId), { state, at: now }); bump();
 }
 
 /** true/false once the server has answered; null before the first answer. */
@@ -34,13 +35,14 @@ function saveCapability(api: string, value: boolean) {
 export function readSavedRun(api: string, attemptId: string, contextId: string | null): FeedbackRun | null {
   try { return parseFeedbackRun(readStored<unknown>(runKey(api, attemptId, contextId))); } catch { return null; }
 }
-function save(api: string, attemptId: string, contextId: string | null, body: unknown, order: number): FeedbackRun | null {
+function save(api: string, attemptId: string, contextId: string | null, body: unknown, order: number, created = false): FeedbackRun | null {
   const run = parseFeedbackRun(body);
   if (!run) throw new Error('Feedback response could not be read. Saved feedback is retained.');
   saveCapability(api, run.enabled);
   const key = runKey(api, attemptId, contextId);
-  if (order < (saved.get(key) ?? 0)) return readSavedRun(api, attemptId, contextId) ?? run;
-  saved.set(key, order);
+  // A POST's run is authoritative even if a poll sent after it was answered first.
+  if (order < (saved.get(key) ?? 0) && !(created && run.runId)) return readSavedRun(api, attemptId, contextId) ?? run;
+  saved.set(key, Math.max(order, saved.get(key) ?? 0));
   // Runs are never deleted, so "absent" can never replace a saved run.
   if (run.status === 'absent' && readSavedRun(api, attemptId, contextId)?.runId) return readSavedRun(api, attemptId, contextId);
   // Rewrite (and re-render) only on change: polling repeats identical answers.
@@ -93,6 +95,6 @@ export function startFeedbackRun(api: string, attemptId: string, contextId: stri
       if (code === 'transcript_not_ready') return null;
       throw new Error((body as { error?: { message?: string } } | null)?.error?.message || 'Could not start feedback.');
     }
-    return save(api, attemptId, contextId, body, order);
+    return save(api, attemptId, contextId, body, order, true);
   });
 }
