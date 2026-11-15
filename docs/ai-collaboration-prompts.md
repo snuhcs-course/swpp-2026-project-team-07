@@ -4959,3 +4959,36 @@ make new apk version and put it on git
 - **Verification (agent-operated, local):** In a scratch virtualenv without the torch/VAD packages, using SQLite test settings: the baseline `codex/issue-49` suite passed 630 tests with 26 skipped. After the changes, the 28 new feedback v3 tests and the full suite of 658 tests passed, with the same 26 skips. `makemigrations --check` and `manage.py check` passed. The diagnostic script ran against sample rows in a throwaway database. Two initial test failures were wrong expectations in the new tests, not code defects. Self-review found that an invalid `context_id` would raise an uncaught `ValidationError` (500); that was fixed and tested. The existing migration-leaf test was updated because the new migration changes the leaf.
 - **Limits:** No real OpenRouter call; model behavior, latency, consistency and advice quality are untested. Rate bands and filler lists are provisional. No mobile change yet. VM diagnostics have not been run. The VM schema and the unpushed v2.4 patch are unverified. No PostgreSQL run, device test or deployment. An independent AI review was still running at the first commit (`fe03903`). A session stop hook requested that commit and push.
 - **Independent AI review and fixes:** A separate reviewer agent made no edits and confirmed six substantive defects. (1) A retry whose re-run failed marked a run with finished parts as failed. (2) Profile lookup could pick a coaching description set and flip fingerprints. (3) Stale runs were terminal and could be returned forever. (4) Slide evidence could cite another slide's sentences. (5) Auto-start would run for Audience Q&A answer recordings. (6) Unexpected output shapes could raise. It also found plausible time-limit and stuck-run risks and smaller issues: zero-length visits, dropped measurement citations, 202 for failed runs, the withheld-index doc wording and retry classification. All were fixed with tests. The new behaviors: whole call first, a 240 s call deadline, catch-all run failure, stale replacement, measurement evidence, content-filter refusals and `httpx.RequestError` retries. The reviewer's `insufficient_evidence` question was decided as final for those inputs and documented. Afterward, the 40 v3 tests and the full suite of 670 tests passed with 26 skips, and the migration check passed. Two tests written before the stale-replacement change were updated to expect it.
+
+**VM report and follow-up prompt — verbatim (November 15, 2026):**
+
+```text
+VM checks completed:
+
+Deployment directory: /srv/outloud
+This is NOT a Git checkout.
+
+Docker Compose files:
+- /srv/outloud/compose.production.yaml
+- /srv/outloud/compose.public.yaml
+
+API, worker, and scheduler image:
+outloud-backend:issue49-tokenfix-r2-20261103
+
+All running containers report healthy.
+
+showmigrations --plan:
+All listed migrations applied, through rehearsals.0011_merge_scribe_scoring.
+Both 0007_presentationcontext and 0007_provider_request_options are applied.
+
+makemigrations --check --dry-run:
+No changes detected.
+
+Please compare the new branch’s migrations against this deployed state
+and determine whether the unpushed v2.4 patch still needs to be recovered
+before preparing deployment instructions.
+```
+
+- **Human-run VM results (reported by Seoyeon):** The VM state is as quoted above. The diagnostic script and resource checks were not part of this report.
+- **Migration comparison (agent-operated):** Migrations `0001`–`0011` on this branch are byte-identical to `codex/issue-49` and match the deployed plan through `0011_merge_scribe_scoring`, including both `0007` migrations. The only addition is `0012_feedback_run`: a single `CreateModel` (new table and index) that depends on `0011`. The VM's clean `makemigrations --check` shows the deployed code has no unmigrated model changes, so the v2.4 patch changed no schema.
+- **v2.4 patch decision:** The production image copies the backend source in at build time with no source mount, and `/srv/outloud` is not a Git checkout. The running image is therefore the only known copy of the deployed v2.4 code. A search of every pushed branch found no v2.4 change: `codex/issue-49` still has prompt v2.3, 12,000 score output tokens and a 64 KB output cap. Recovery is not needed for the schema. It is needed before deploying this branch, because an image built from the branch would replace the running code and revert the v2.4 scoring fixes that the current APK still relies on. Recommended recovery: export `/app` from the running image, then diff it against `codex/issue-49`.
