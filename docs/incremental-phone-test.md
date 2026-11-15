@@ -158,4 +158,32 @@ and 710 PostgreSQL backend tests pass with zero skips, alongside typecheck, lint
 Django checks and migration consistency. Cue retry controls, Q&A tap/TTS behavior,
 legacy Review pending/failure messages and Unicode audience input were corrected.
 An independent AI review found and resolved cue-control overlap and passed its
-focused checks. These source checks do not establish a completed v10 phone test.
+focused checks. The updated APK was then installed and checked on the phone as recorded below.
+
+
+### Final v10 phone checks
+
+The universal v10 update installed successfully without deleting local decks or
+recordings, and no USB reverse mapping was used. The After Stop fallback completed
+attempt `3aa04a86-8d2f-4da8-88a1-347e456b7696`: 41,814 ms M4A, 107 transcript words,
+one whole-audio Scribe request and three completed feedback calls, with no
+incremental capture session.
+
+A fresh live take, `1f2c57f5-ce0b-4fc8-9a12-6819b8ebeb5d`, completed at 45,900 ms.
+Slide 1 feedback appeared while the microphone continued and the server reported
+`stopped:false`. Its two segments retained 108 words with valid timestamps and
+byte-identical full PCM. Two segment Scribe calls and three feedback calls
+(two slides plus whole presentation) completed; whole-audio Scribe requests
+remained zero. The final Overview showed both slide scores and whole feedback.
+
+The corrected Q&A Next/Back controls responded to taps; tapping an automatically
+spoken question stopped it. The cue sheet displayed its complete offline message
+and a reachable Refresh action while retaining cached cues. Source regressions
+cover the other pending/legacy Review and Unicode input cases; this is not a claim
+of human usability or semantic scoring acceptance.
+
+The final v10 full-audio player advanced past the slide boundary. The later
+screenshot showed Feedback, so it does not establish an observed playback-end
+event; full-audio completeness is established separately by the PCM comparison. The app and microphone were stopped after testing; Wi-Fi and
+mobile data were restored and USB reverse mappings stayed empty. The release's
+GitHub asset hashes match the installed APK and companion verification files.
