@@ -225,7 +225,7 @@ def fake_answer(kind, payload, level='competent'):
                                   'action': 'say why it matters', 'example': 'This matters because...', 'evidence': ids[:1]},
                                  {'criterion': 'not_a_criterion', 'problem': 'x', 'action': 'y', 'example': '', 'evidence': []}]}
     else:
-        data = {'criteria': {c.id: {'level': level, 'reason': 'fits', 'evidence': ['s0', 'm:pace'], 'next_level': 'n'}
+        data = {'criteria': {c.id: {'level': level, 'reason': 'fits', 'evidence': ['s1.1', 'm:pace'], 'next_level': 'n'}
                              for c in rubric.RUBRIC_V2.whole},
                 'top_priorities': [{'title': 'Explain why', 'action': 'Add one reason per slide', 'why': 'clarity', 'slide_index': 1},
                                    {'title': 'bad index', 'action': 'a', 'why': 'w', 'slide_index': 99}],
@@ -282,7 +282,7 @@ class PipelineTests(TestCase):
         self.assertEqual(slides[0]['status'], 'not_applicable')  # Short title slide, first position.
         self.assertEqual((slides[1]['status'], slides[1]['score'], slides[1]['level']), ('scored', 67, 'competent'))
         evidence = slides[1]['criteria'][0]['evidence']
-        self.assertEqual([e['id'] for e in evidence], ['s1'])  # Unknown id s999 dropped, not fatal.
+        self.assertEqual([e['id'] for e in evidence], ['s2.1'])  # Unknown id s999 dropped, not fatal.
         self.assertEqual((evidence[0]['start_ms'], evidence[0]['text']), (3000, 'Seoul grew fast.'))
         self.assertEqual(slides[1]['must_cover'], [{'point': 'p', 'status': 'partial', 'evidence': evidence}])
         improvement, = slides[1]['improvements']
@@ -301,7 +301,7 @@ class PipelineTests(TestCase):
         payload = pipeline.slide_payload(inputs, 1)
         self.assertEqual(payload['presentation']['audience'], 'Students')
         self.assertEqual(payload['presentation']['language'], 'en')
-        self.assertEqual([s['id'] for s in payload['speech']['sentences']], ['s1', 's2'])
+        self.assertEqual([s['id'] for s in payload['speech']['sentences']], ['s2.1', 's2.2'])
         whole = pipeline.whole_payload(inputs)
         self.assertIn('m:pace', [m['id'] for m in whole['measurements']])
 
@@ -337,6 +337,8 @@ class PipelineTests(TestCase):
             changed = self.post().json()
         self.assertNotEqual(changed['run_id'], first['run_id'])
         self.assertEqual(len([c for c in self.calls if c[0] == 'whole']), 2)
+        # The audience is part of every slide's input, so every slide is graded again.
+        self.assertEqual(sorted(c[1] for c in self.calls if c[0] == 'slide'), [1, 1, 2, 2])
 
     def test_unvisited_slide_withholds_the_overall_score(self):
         self.attempt.slide_events = [{'slide_index': 0, 'at_ms': 0}, {'slide_index': 1, 'at_ms': 3000}]
@@ -347,6 +349,11 @@ class PipelineTests(TestCase):
         slides = {s['slide_index']: s for s in body['slides']}
         self.assertEqual(slides[2]['status'], 'not_recorded')
         self.assertIn({'reason': 'slides_not_scored', 'slides': [2]}, body['scores']['withheld'])
+        # The take stopped before the end: no whole-presentation call.
+        self.assertEqual(self.calls, [('slide', 1)])
+        self.assertEqual((body['whole']['status'], body['whole']['reason']), ('not_recorded', 'presentation_incomplete'))
+        self.assertIn({'reason': 'presentation_incomplete'}, body['scores']['withheld'])
+        self.assertEqual(body['status'], 'completed')
 
     def test_inputs_changed_before_the_worker_starts_mark_the_run_stale(self):
         with mock.patch.object(pipeline, 'publish'):
@@ -423,18 +430,18 @@ class PipelineTests(TestCase):
         def call(http, config, kind, payload, deadline=None):
             answer = fake_answer(kind, payload)
             if kind == 'slide' and payload['slide']['index'] == 1:
-                answer.data['criteria']['essential_coverage']['evidence'] = ['s3', 's1']  # s3 is slide 2.
+                answer.data['criteria']['essential_coverage']['evidence'] = ['s3.1', 's2.1']  # s3.1 is slide 3.
             return answer
         with mock.patch.object(pipeline, 'call_llm', side_effect=call):
             self.post()
         slide = {s['slide_index']: s for s in self.get().json()['slides']}[1]
-        self.assertEqual([e['id'] for e in slide['criteria'][0]['evidence']], ['s1'])
+        self.assertEqual([e['id'] for e in slide['criteria'][0]['evidence']], ['s2.1'])
 
     def test_whole_delivery_can_cite_measurements(self):
         with self.fake():
             self.post()
         evidence = self.get().json()['whole']['criteria'][3]['evidence']
-        self.assertEqual([(e['kind'], e['id']) for e in evidence], [('speech', 's0'), ('measurement', 'm:pace')])
+        self.assertEqual([(e['kind'], e['id']) for e in evidence], [('speech', 's1.1'), ('measurement', 'm:pace')])
 
     def test_unexpected_output_shapes_never_raise(self):
         sentences = {}
@@ -527,6 +534,48 @@ class PipelineTests(TestCase):
         self.profile()
         inputs = pipeline.load_inputs(self.attempt, self.context, 'm')
         self.assertEqual(pipeline.plan_slide_reason(inputs, 0), ('not_applicable', 'title_slide_profile'))
+
+    def test_a_correction_on_one_slide_regrades_only_that_slide_and_the_whole_talk(self):
+        with self.fake():
+            self.post()
+        self.calls.clear()
+        # Word 12 ("learned") is on slide 3; slide 2's input is unchanged.
+        with self.fake(), mock.patch.object(pipeline, '_accepted_edits',
+                                            return_value=([{'word_start': 12, 'word_end': 12, 'text': 'found'}], 1)):
+            self.assertTrue(self.get().json()['outdated'])
+            self.post()
+            body = self.get().json()
+        self.assertEqual(sorted(self.calls, key=str), [('slide', 2), ('whole', None)])
+        slides = {s['slide_index']: s for s in body['slides']}
+        self.assertEqual((slides[1]['status'], slides[1].get('reused'), slides[1]['score']), ('scored', True, 67))
+        self.assertEqual(body['scores']['overall'], 67)
+        self.assertEqual(FeedbackRun.objects.get(pk=body['run_id']).usage['reused_parts'], 1)
+        self.calls.clear()
+        with self.fake():  # Undoing the correction reuses every part from the first run.
+            self.post()
+        self.assertEqual(self.calls, [])
+
+    def test_whole_call_has_its_own_thread_even_with_one_slide_worker(self):
+        with mock.patch.dict(os.environ, {'FEEDBACK_V3_MAX_PARALLEL': '1'}), self.fake():
+            self.post()
+        self.assertEqual(sorted(self.calls, key=str), [('slide', 1), ('slide', 2), ('whole', None)])
+
+    def test_auto_start_skips_decks_with_several_settings(self):
+        PresentationContext.objects.create(deck=self.deck, audience='Other')
+        with mock.patch.dict(os.environ, {'FEEDBACK_V3_AUTO_START': 'true'}), mock.patch.object(pipeline, 'publish'):
+            pipeline.auto_start(self.attempt.pk)
+        self.assertEqual(FeedbackRun.objects.count(), 0)
+
+    def test_get_survives_a_failing_outdated_check_and_reports_missing_keys_as_disabled(self):
+        with self.fake():
+            self.post()
+        with mock.patch.object(pipeline, 'load_inputs', side_effect=KeyError('odd word data')):
+            response = self.get()
+        self.assertEqual((response.status_code, response.json()['status'], response.json()['outdated']), (200, 'completed', False))
+        with mock.patch.dict(os.environ, {'OPENROUTER_API_KEY': ''}):
+            self.assertFalse(self.get().json()['enabled'])
+        with mock.patch.dict(os.environ, {'FEEDBACK_V3_TEMPERATURE': 'warm'}):
+            self.assertFalse(self.get().json()['enabled'])
 
     def test_auto_start_is_off_by_default_and_never_raises(self):
         pipeline.auto_start(self.attempt.pk)

@@ -98,18 +98,26 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
  const mustCover=v3Slide?.must_cover??[];
  const pointList=mustCover.length?mustCover.map(m=>m.point):deck.slides[s]?.points??[];
  const pointsSaid=mustCover.length?mustCover.filter(m=>m.status==='covered').length:spokenText.trim()?pointList.filter(point=>covers(spokenText,point)).length:null;
- type Issue={category:string;observation:string;suggestion:string;icon:'i-clock'|'i-flag';quote:{text:string;start_ms:number;end_ms:number}|null;gain:number|null};
- const timingIssues:Issue[]=timingLabel==='Over time'?[{category:'timing',observation:`This slide ran ${fmt(t-target)} over its ${fmt(target)} allocation.`,suggestion:'Trim or simplify this slide to stay within its planned time.',icon:'i-clock',quote:null,gain:null}]:[];
+ type Issue={category:string;observation:string;suggestion:string;icon:'i-clock'|'i-flag';quote:{text:string;start_ms:number;end_ms:number}|null;gain:number|null;criterion:string|null};
+ const timingIssues:Issue[]=timingLabel==='Over time'?[{category:'timing',observation:`This slide ran ${fmt(t-target)} over its ${fmt(target)} allocation.`,suggestion:'Trim or simplify this slide to stay within its planned time.',icon:'i-clock',quote:null,gain:null,criterion:null}]:[];
  const issueItems:Issue[]=[...timingIssues,...(v3&&v3Item
   ?slideCards(v3Item).map(card=>({category:v3Slide?.criteria.find(cr=>cr.id===card.criterion)?.label??'feedback',observation:card.title,
     suggestion:[card.action,card.example?`Try saying: “${card.example}”`:''].filter(Boolean).join(' '),icon:'i-flag' as const,
-    quote:card.evidence?{text:card.evidence.text,start_ms:card.evidence.start_ms,end_ms:card.evidence.end_ms}:null,gain:card.gain}))
+    quote:card.evidence?{text:card.evidence.text,start_ms:card.evidence.start_ms,end_ms:card.evidence.end_ms}:null,gain:card.gain,criterion:card.criterion}))
   :findingRows.filter(f=>f.category!=='timing').slice().sort((a,b)=>a.priority-b.priority).map(f=>({category:f.category,observation:f.observation,suggestion:f.suggestion,icon:'i-flag' as const,
-    quote:f.speech_quote?{text:f.speech_quote,start_ms:f.start_ms,end_ms:f.end_ms}:null,gain:null})))];
- // v3 states with no coaching card: graded with the whole talk, still running, or failed.
+    quote:f.speech_quote?{text:f.speech_quote,start_ms:f.start_ms,end_ms:f.end_ms}:null,gain:null,criterion:null})))];
+ // v3 states with no coaching card. A slide the server could not grade never reads "Nothing to fix".
  const v3Empty:[string,string]|null=!v3||!v3Item?null:v3Slide?.status==='not_applicable'?['Reviewed with the whole presentation',CODE_REASON_TEXT[v3Slide.reason??'']??'']
+  :v3Slide?.status==='insufficient_evidence'?['Too little to judge',`The AI could not grade slide ${s+1} from what was said. Record it again with a fuller explanation.`]
+  :v3Slide?.status==='not_recorded'?['Not recorded in this take',CODE_REASON_TEXT.slide_not_visited]
   :!v3Item.settled?['Feedback in progress…','Slide feedback appears here as soon as it is ready.']
-  :v3Item.status==='Feedback failed'?['Feedback failed','Open full feedback to retry.']:null;
+  :v3Item.status==='Feedback failed'?['Feedback failed','Open full feedback to retry.']
+  :v3Item.status==='Not graded'?['No AI feedback yet','Open full feedback to request it for this recording.']:null;
+ // v3 chips: content = Must Cover gaps or coverage advice; delivery = explanation or clarity advice.
+ const chipCriteria:Record<string,string[]>={content:['essential_coverage'],delivery:['explanation_depth','clarity_relevance']};
+ const v3ChipFinding=(category:string)=>category==='timing'?timingLabel==='Over time'
+  :category==='content'?mustCover.some(m=>m.status!=='covered')||issueItems.some(i=>i.criterion==='essential_coverage')
+  :category==='delivery'?issueItems.some(i=>chipCriteria.delivery.includes(i.criterion??'')):false;
  const issue=issueItems[Math.min(issueIndex,Math.max(0,issueItems.length-1))];
  const part=run.parts[s],slidePlayKey=`slide:${deck.id}:${s}`;
  const slideAudioUri=part?audioOf(part.attemptId):null;
@@ -143,9 +151,9 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
     <Pressable accessibilityRole="button" accessibilityLabel={slidePlaying?'Pause slide audio':`Play slide ${s+1} audio`} disabled={!slideAudioUri||!part} onPress={playSlide} style={[styles.heroPlay,{backgroundColor:c.surface}]}><Glyph name={slidePlaying?'p-pause':'p-play'} size={19} color={c.text}/></Pressable>
    </View>
    <View style={[styles.issueCard,{backgroundColor:c.surface06,borderColor:c.hair}]}>
-    <View style={styles.issueTop}><Txt numberOfLines={1} style={[styles.issueMeta,styles.issueMetaFlex,{color:c.secondary}]}>{issue?`${issue.category.toUpperCase()} · ${issueIndex+1} OF ${issueItems.length}${issue.gain?` · +${issue.gain} PTS`:''}`:'SLIDE STATUS'}</Txt><Txt style={[styles.issueMeta,{color:timingLabel==='Over time'?c.warn:c.secondary}]}>{t>0?`${fmt(t)} / ${fmt(target)} planned`:item?.label??'Not recorded'}</Txt></View>
-    <Txt numberOfLines={3} style={[styles.issueTitle,{color:c.text}]}>{issue?issue.observation:insufficient?'Too little speech to review':v3Empty?v3Empty[0]:'Nothing to fix on this slide'}</Txt>
-    <Txt numberOfLines={issue?.quote?3:6} style={[styles.issueBody,{color:c.secondary}]}>{issue?issue.suggestion:insufficient?`Record slide ${s+1} again to get feedback based on your delivery.`:v3Empty?v3Empty[1]:scoreStrength??'Keep the strongest part of this slide.'}</Txt>
+    <View style={styles.issueTop}><Txt numberOfLines={1} style={[styles.issueMeta,styles.issueMetaFlex,{color:c.secondary}]}>{`${v3Item?.outdated?'OUTDATED · ':''}${issue?`${issue.category.toUpperCase()} · ${issueIndex+1} OF ${issueItems.length}${issue.gain?` · +${issue.gain} PTS`:''}`:'SLIDE STATUS'}`}</Txt><Txt style={[styles.issueMeta,{color:timingLabel==='Over time'?c.warn:c.secondary}]}>{t>0?`${fmt(t)} / ${fmt(target)} planned`:item?.label??'Not recorded'}</Txt></View>
+    <Txt numberOfLines={2} style={[styles.issueTitle,{color:c.text}]}>{issue?issue.observation:insufficient?'Too little speech to review':v3Empty?v3Empty[0]:'Nothing to fix on this slide'}</Txt>
+    <Txt numberOfLines={issue?.quote?2:5} style={[styles.issueBody,{color:c.secondary}]}>{issue?issue.suggestion:insufficient?`Record slide ${s+1} again to get feedback based on your delivery.`:v3Empty?v3Empty[1]:scoreStrength??'Keep the strongest part of this slide.'}</Txt>
     {issue?.quote&&<View style={[styles.evidence,{borderColor:c.hair}]}>
      <View style={styles.evidenceHead}><Txt style={[styles.evidenceLabel,{color:c.tertiary}]}>YOU SAID</Txt>
       <Pressable accessibilityRole="button" accessibilityLabel={`Hear cited evidence at ${fmt(issue.quote.start_ms/1000)}`}
@@ -155,7 +163,7 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
        <Txt style={[styles.evidenceListenText,{color:c.text}]}>{`Hear it · ${fmt(issue.quote.start_ms/1000)}`}</Txt>
       </Pressable>
      </View>
-     <Txt numberOfLines={2} style={[styles.evidenceQuote,{color:c.body}]}>{`“${issue.quote.text}”`}</Txt>
+     <Txt numberOfLines={1} style={[styles.evidenceQuote,{color:c.body}]}>{`“${issue.quote.text}”`}</Txt>
     </View>}
     {recorded&&!insufficient?<Pressable accessibilityRole="button" onPress={()=>setFeedbackOpen(true)} style={styles.detailsLink}><Txt style={[styles.detailsLinkText,{color:c.accent}]}>Full feedback and recovery options</Txt></Pressable>
       :<Pressable accessibilityRole="button" onPress={()=>go('rehearse',{deckId:nav.deckId,slide:s,nav:'fade'})} style={styles.detailsLink}><Txt style={[styles.detailsLinkText,{color:c.accent}]}>Rehearse slide {s+1}</Txt></Pressable>}
@@ -163,8 +171,10 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
    <View style={styles.dots}>{issueItems.map((_,i)=><Pressable key={i} accessibilityRole="button" accessibilityLabel={`Show issue ${i+1}`} onPress={()=>setIssueIndex(i)} style={styles.dotHit}><View style={[styles.dot,{backgroundColor:i===issueIndex?c.strong:c.dotOff}]}/></Pressable>)}</View>
    <View style={styles.chips}>{slideReviewRows.map((row,i)=>{
     const category=['timing','fillers','content','delivery'][i];
-    const targetIndex=issueItems.findIndex(value=>value.category===category||(category==='content'&&['graph','audience'].includes(value.category)));
-    return <Pressable key={row.icon} accessibilityRole="button" onPress={()=>targetIndex>=0&&setIssueIndex(targetIndex)} style={[styles.chip,{backgroundColor:c.surface08,borderColor:row.status==='finding'?c.warn:c.hair}]}><Txt numberOfLines={1} style={[styles.chipText,{color:row.status==='finding'?c.text:c.secondary}]}>{category==='timing'?`Time ${timingLabel}`:category==='fillers'?`Fillers ${fillerValue}`:category==='content'?`Points ${pointsSaid===null?'—':`${pointsSaid} of ${pointList.length}`}`:'Delivery'}</Txt></Pressable>;
+    const targetIndex=v3?issueItems.findIndex(value=>category==='timing'?value.category==='timing':(chipCriteria[category]??[]).includes(value.criterion??''))
+     :issueItems.findIndex(value=>value.category===category||(category==='content'&&['graph','audience'].includes(value.category)));
+    const finding=v3?v3ChipFinding(category):row.status==='finding';
+    return <Pressable key={row.icon} accessibilityRole="button" onPress={()=>targetIndex>=0&&setIssueIndex(targetIndex)} style={[styles.chip,{backgroundColor:c.surface08,borderColor:finding?c.warn:c.hair}]}><Txt numberOfLines={1} style={[styles.chipText,{color:finding?c.text:c.secondary}]}>{category==='timing'?`Time ${timingLabel}`:category==='fillers'?`Fillers ${fillerValue}`:category==='content'?`Points ${pointsSaid===null?'—':`${pointsSaid} of ${pointList.length}`}`:'Delivery'}</Txt></Pressable>;
    })}</View>
    <HintRow hints={[{icon:'h-spin',text:'Next issue'},{icon:'h-up',text:'Q&A',nudge:'up'},{icon:'h-dn',text:'Back',nudge:'down'}]}/>
   </Animated.View></PanView>
@@ -176,7 +186,7 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
      </Pressable></View>
     <ScrollView style={styles.detailsScroll} contentContainerStyle={styles.detailsBody} accessibilityLabel="Full slide feedback">
      {v3&&v3Item?<FeedbackV3SlideDetails item={v3Item} isPlaying={e=>player.playingKey===evidenceKey(e.start_ms,e.end_ms)&&!player.paused}
-      onPlay={e=>playEvidence(e.start_ms,e.end_ms)} onRetry={()=>void v3.retry()} retrying={v3.busy} notice={v3.notice}/>
+      onPlay={e=>playEvidence(e.start_ms,e.end_ms)} onRetry={()=>void v3.retry()} onUpdate={()=>void v3.update()} busy={v3.busy} notice={v3.notice}/>
      :<SlideReviewDetails slide={s} part={part!} localDeckId={deck.id} status={item?.label??'Not analyzed'}>
      {findingRows.map((finding,index)=><View key={`${finding.category}-${index}`} style={styles.detailsFinding}>
       <UIIcon name={slideReviewRows.find(row=>row.findings.includes(finding))!.icon} size={18} color={c.warn}/>
@@ -192,7 +202,7 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
 const styles=StyleSheet.create({
  header:{position:'absolute',left:30,right:30,top:46,alignItems:'center'},title:{fontFamily:F.display,fontSize:18,lineHeight:23},label:{fontFamily:F.medium,fontSize:14,lineHeight:18},
  slideHero:{position:'absolute',left:24,right:24,top:100,height:160,borderRadius:18,overflow:'hidden'},heroScrim:{position:'absolute',left:0,right:0,top:0,bottom:0,justifyContent:'flex-end',padding:18,backgroundColor:'rgba(0,0,0,0.24)'},heroLabel:{fontFamily:F.bold,fontSize:13.5,letterSpacing:1.1,color:'#FFFFFF'},heroTitle:{maxWidth:245,fontFamily:F.display,fontSize:23,lineHeight:27,color:'#FFFFFF'},scoreBadge:{position:'absolute',top:12,right:12,minWidth:46,height:30,borderRadius:15,paddingHorizontal:10,alignItems:'center',justifyContent:'center'},scoreBadgeText:{fontFamily:F.bold,fontSize:14},heroPlay:{position:'absolute',right:14,bottom:14,width:40,height:40,borderRadius:20,alignItems:'center',justifyContent:'center'},
- issueCard:{position:'absolute',left:24,right:24,top:284,height:300,borderRadius:24,borderWidth:1,padding:20,gap:12},issueTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},issueMeta:{fontFamily:F.bold,fontSize:13.5,letterSpacing:.4},issueMetaFlex:{flexShrink:1},issueTitle:{fontFamily:F.display,fontSize:22,lineHeight:28},issueBody:{fontFamily:F.medium,fontSize:15,lineHeight:22},evidence:{marginTop:2,paddingTop:12,borderTopWidth:1,gap:4},evidenceHead:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},evidenceLabel:{fontFamily:F.bold,fontSize:13.5,letterSpacing:.5},evidenceListen:{minHeight:36,paddingHorizontal:10,borderRadius:18,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:5},evidenceListenText:{fontFamily:F.semibold,fontSize:13.5},evidenceQuote:{fontFamily:F.medium,fontSize:15,lineHeight:20},detailsLink:{marginTop:'auto',minHeight:44,justifyContent:'center'},detailsLinkText:{fontFamily:F.semibold,fontSize:14},
+ issueCard:{position:'absolute',left:24,right:24,top:284,height:310,borderRadius:24,borderWidth:1,padding:20,gap:10},issueTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},issueMeta:{fontFamily:F.bold,fontSize:13.5,letterSpacing:.4},issueMetaFlex:{flexShrink:1},issueTitle:{fontFamily:F.display,fontSize:22,lineHeight:28},issueBody:{fontFamily:F.medium,fontSize:15,lineHeight:22},evidence:{marginTop:2,paddingTop:12,borderTopWidth:1,gap:4},evidenceHead:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},evidenceLabel:{fontFamily:F.bold,fontSize:13.5,letterSpacing:.5},evidenceListen:{minHeight:36,paddingHorizontal:10,borderRadius:18,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:5},evidenceListenText:{fontFamily:F.semibold,fontSize:13.5},evidenceQuote:{fontFamily:F.medium,fontSize:15,lineHeight:20},detailsLink:{marginTop:'auto',minHeight:44,justifyContent:'center'},detailsLinkText:{fontFamily:F.semibold,fontSize:14},
  dots:{position:'absolute',top:604,left:24,right:24,height:24,flexDirection:'row',justifyContent:'center',alignItems:'center',gap:5},dotHit:{width:22,height:24,alignItems:'center',justifyContent:'center'},dot:{width:6,height:6,borderRadius:3},chips:{position:'absolute',top:634,left:24,right:24,height:36,flexDirection:'row',alignItems:'center',gap:6},chip:{flex:1,minWidth:0,height:34,paddingHorizontal:6,borderRadius:17,borderWidth:1,alignItems:'center',justifyContent:'center'},chipText:{fontFamily:F.semibold,fontSize:13.5},
  content:{position:'absolute',left:16,right:16,top:140,gap:4},
  ringRow:{flexDirection:'row',alignItems:'center',gap:18,paddingHorizontal:8},ringRight:{flex:1,minWidth:0,gap:10},slideLabel:{fontFamily:F.semibold,fontSize:13.5},

@@ -102,31 +102,34 @@ export function parseFeedbackRun(value: unknown): FeedbackRun | null {
 }
 
 export const feedbackRunActive = (run: FeedbackRun | null) => run?.status === 'queued' || run?.status === 'running';
-/** A run the app should (re)start: none yet, outdated inputs, or a stale run. */
+/** No run exists yet for this recording (stale runs are replaced by the server). */
 export const feedbackRunNeedsStart = (run: FeedbackRun | null) =>
-  !!run && run.enabled && (run.status === 'absent' || run.status === 'stale' || (run.outdated && !feedbackRunActive(run)));
+  !!run && run.enabled && (run.status === 'absent' || run.status === 'stale');
+/** Saved results came from older inputs (a correction or settings change); they stay visible until updated. */
+export const feedbackRunOutdated = (run: FeedbackRun | null) => !!run && run.outdated && !feedbackRunActive(run);
 export const feedbackRunHasFailures = (run: FeedbackRun | null) =>
   !!run && (run.status === 'failed' || run.slides.some(s => s.status === 'failed') || run.whole?.status === 'failed');
 
 // ------------------------------------------------------------------ selection for the selected run
 
 export type V3SlideDisplay = { slide: number; score: number | null; level: ScoreLevel | null; status: string; settled: boolean;
-  state: null; result: null; target: null; attemptId: string | null; v3: V3Slide | null; run: FeedbackRun | null };
-export type V3OverallDisplay = { score: number | null; level: ScoreLevel | null; status: string; state: null; result: null; target: null;
-  attemptId: string | null; run: FeedbackRun | null };
+  outdated: boolean; state: null; result: null; target: null; attemptId: string | null; v3: V3Slide | null; run: FeedbackRun | null };
+export type V3OverallDisplay = { score: number | null; level: ScoreLevel | null; status: string; outdated: boolean; state: null;
+  result: null; target: null; attemptId: string | null; run: FeedbackRun | null };
 export type V3Input = { n: number; parts: (SlidePart | null)[]; stages: ReadonlyMap<string, string>;
   /** Saved run per attempt id, for attempts whose transcript is ready. */ runs: ReadonlyMap<string, FeedbackRun | null>;
-  ready: ReadonlySet<string> };
+  ready: ReadonlySet<string>;
+  /** New recordings whose feedback starts automatically after transcription. */ expected: ReadonlySet<string> };
 
 const CODE_LABELS: Partial<Record<V3SlideStatus, string>> = {
   not_applicable: 'Not applicable', not_recorded: 'Not recorded', insufficient_speech: 'Too little speech',
   insufficient_evidence: 'Insufficient evidence', failed: 'Feedback failed',
 };
-function runStatus(run: FeedbackRun | null, ready: boolean, stage: string | undefined): string | null {
+function runStatus(run: FeedbackRun | null, ready: boolean, stage: string | undefined, expected: boolean): string | null {
   if (!ready) return stage === 'no_speech' ? 'No speech detected' : stage === 'done' ? 'No usable word timing' : 'Transcript pending';
-  if (!run) return 'Scoring…';
-  if (run.outdated && !feedbackRunActive(run)) return 'Score outdated';
-  if (run.status === 'absent' || run.status === 'stale' || feedbackRunActive(run)) return 'Scoring…';
+  // Screens never start generation: a missing run is "Scoring…" only when one is on its way.
+  if (!run || run.status === 'absent') return expected ? 'Scoring…' : 'Not graded';
+  if (run.status === 'stale' || feedbackRunActive(run)) return 'Scoring…';
   if (run.status === 'failed') return 'Feedback failed';
   return null;
 }
@@ -137,30 +140,35 @@ export function selectRunFeedbackV3(input: V3Input) {
     const part = input.parts[slideIndex];
     const recorded = !!part?.segments.some(s => s.endMs > s.startMs);
     const base = { slide: slideIndex, score: null, level: null, state: null, result: null, target: null,
-      attemptId: part?.attemptId ?? null, v3: null, run: null } as const;
+      attemptId: part?.attemptId ?? null, v3: null, run: null, outdated: false } as const;
     if (!part || !recorded) return { ...base, status: 'Not recorded', settled: true };
     const run = input.runs.get(part.attemptId) ?? null, ready = input.ready.has(part.attemptId);
     const v3 = run?.slides.find(s => s.slide_index === slideIndex) ?? null;
-    const pending = runStatus(run, ready, input.stages.get(part.attemptId));
-    const usable = !run?.outdated && !!v3 && v3.status !== 'pending';
-    if (pending && !usable) return { ...base, run, v3, status: pending, settled: !ready || pending === 'Feedback failed' };
+    const expected = input.expected.has(part.attemptId);
+    const pending = runStatus(run, ready, input.stages.get(part.attemptId), expected);
+    const usable = !!v3 && v3.status !== 'pending' && run?.status !== 'stale';
+    // Settled = nothing more is coming without a user action; a transcript still in progress is not settled.
+    const stage = input.stages.get(part.attemptId), terminal = !ready && (stage === 'no_speech' || stage === 'done');
+    if (pending && !usable) return { ...base, run, v3, status: pending,
+      settled: terminal || pending === 'Feedback failed' || pending === 'Not graded' };
     if (!v3 || v3.status === 'pending') return { ...base, run, v3, status: 'Scoring…', settled: false };
     const scored = v3.status === 'scored' && v3.score !== null;
     return { ...base, run, v3, score: scored ? v3.score : null, level: scored ? v3.level ?? slideLevel(v3.score!) : null,
-      settled: true, status: scored ? 'Scored' : CODE_LABELS[v3.status] ?? 'Not graded' };
+      settled: true, outdated: feedbackRunOutdated(run), status: scored ? 'Scored' : CODE_LABELS[v3.status] ?? 'Not graded' };
   });
   const ids = [...new Set(input.parts.filter((p): p is SlidePart => !!p).map(p => p.attemptId))];
-  const base = { score: null, level: null, state: null, result: null, target: null } as const;
+  const base = { score: null, level: null, state: null, result: null, target: null, outdated: false } as const;
   let overall: V3OverallDisplay;
   if (ids.length === 0) overall = { ...base, status: 'Not graded', attemptId: null, run: null };
   else if (ids.length > 1) overall = { ...base, status: 'Combined recordings', attemptId: null, run: null };
   else {
-    const run = input.runs.get(ids[0]) ?? null, pending = runStatus(run, input.ready.has(ids[0]), input.stages.get(ids[0]));
-    const scores = run?.scores;
+    const run = input.runs.get(ids[0]) ?? null;
+    const pending = runStatus(run, input.ready.has(ids[0]), input.stages.get(ids[0]), input.expected.has(ids[0]));
+    const scores = run?.scores, outdated = feedbackRunOutdated(run);
     if (pending) overall = { ...base, status: pending, attemptId: ids[0], run };
     else if (scores?.overall !== null && scores?.overall !== undefined)
-      overall = { ...base, score: scores.overall, level: scores.overall_level, status: 'Scored', attemptId: ids[0], run };
-    else overall = { ...base, status: withheldLabel(scores?.withheld ?? []), attemptId: ids[0], run };
+      overall = { ...base, score: scores.overall, level: scores.overall_level, status: 'Scored', outdated, attemptId: ids[0], run };
+    else overall = { ...base, status: withheldLabel(scores?.withheld ?? []), outdated, attemptId: ids[0], run };
   }
   const graded = items.filter(i => i.v3 && !['not_applicable', 'not_recorded', 'insufficient_speech'].includes(i.v3.status));
   return {
@@ -175,10 +183,21 @@ export function slideLevel(points: number): ScoreLevel {
   return points >= 250 / 3 ? 'advanced' : points >= 50 ? 'competent' : points >= 100 / 6 ? 'emerging' : 'beginning';
 }
 export function withheldLabel(withheld: V3Scores['withheld']): string {
+  if (withheld.some(w => w.reason === 'presentation_incomplete')) return 'Record the whole presentation for an overall score';
   const slides = withheld.find(w => w.reason === 'slides_not_scored')?.slides ?? [];
   if (slides.length) return `Overall needs slide${slides.length === 1 ? '' : 's'} ${slides.map(s => s + 1).join(', ')}`;
   if (withheld.some(w => w.reason === 'whole_not_scored')) return 'Overall score unavailable';
   return 'Not graded';
+}
+
+// ------------------------------------------------------------------ automatic start after transcription
+
+export const START_RETRY_MS = 60_000;
+export type StartCandidate = { id: string; contextId: string | null; eligible: boolean;
+  start: { state: 'started' | 'failed'; at: number } | null };
+/** Eligible recordings not yet started, plus failed starts whose retry time has come. */
+export function startsDue(candidates: StartCandidate[], now: number): StartCandidate[] {
+  return candidates.filter(c => c.eligible && (!c.start || (c.start.state === 'failed' && now - c.start.at >= START_RETRY_MS)));
 }
 
 // ------------------------------------------------------------------ coaching cards

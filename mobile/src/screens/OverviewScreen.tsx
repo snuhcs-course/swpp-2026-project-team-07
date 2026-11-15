@@ -27,7 +27,8 @@ export function OverviewScreen({active=true}:{active?:boolean}) {
   const wpm=model.stats?.wpm;
   const stale=!!score.state?.stale||/outdated|updating/i.test(score.status);
   const composed=score.status==='Combined recordings';
-  const status=score.score===null?(stale?'Updating…':composed?'—':score.status):`${score.score}%`;
+  // Long statuses ("Record the whole presentation…") go on the line below, not in the 58 px number slot.
+  const status=score.score===null?(stale?'Updating…':composed||score.status.length>14?'—':score.status):`${score.score}%`;
   const critical=scores.items.filter(item=>item.level==='beginning'||item.level==='emerging').length;
   const hasSlideScores=scores.items.some(item=>item.score!==null);
   const tiles=Array.from({length:model.n},(_,i)=>scores.items[i]);
@@ -39,10 +40,12 @@ export function OverviewScreen({active=true}:{active?:boolean}) {
     onRelease={(_e,g)=>{if(g.dy < -60)openQA();else if(g.dy>60)toBack();}}>
     <PageSurface hue={model.deck.hue}/>
     <View style={styles.header}><Txt numberOfLines={1} style={[styles.title,{color:c.text}]}>{model.deck.title}</Txt><Txt style={[styles.sub,{color:c.secondary}]}>{`Review · ${runLabel(run,now,relativeDay)}`}</Txt></View>
-    <View style={styles.big}><Txt style={[styles.bigNumber,{color:score.score===null?c.secondary:scoreLevelColor(score.level,c)}]}>{status}</Txt>
+    <View style={styles.big}><Txt numberOfLines={1} adjustsFontSizeToFit style={[styles.bigNumber,{color:score.score===null?c.secondary:scoreLevelColor(score.level,c)}]}>{status}</Txt>
       {v3?.failures?<Pressable accessibilityRole="button" accessibilityLabel="Retry failed AI feedback" disabled={v3.busy} onPress={()=>void v3.retry()} style={styles.retry}>
         <Txt style={[styles.grade,{color:c.accent}]}>{v3.busy?'Retrying…':'Some feedback failed · Tap to retry'}</Txt></Pressable>
-      :<Txt style={[styles.grade,{color:c.secondary}]}>{composed?'Record a full run for an overall score':stale?'Updating saved score…':score.score===null?score.status:scoreLevelLabel(score.level)}</Txt>}</View>
+      :v3&&(v3.outdated||v3.missing)?<Pressable accessibilityRole="button" accessibilityLabel={v3.outdated?'Update AI feedback for the latest changes':'Get AI feedback for this recording'} disabled={v3.busy||v3.blocked} onPress={()=>void v3.update()} style={styles.retry}>
+        <Txt numberOfLines={1} style={[styles.grade,{color:c.accent}]}>{v3.busy?'Requesting…':v3.outdated?'From before your latest changes · Tap to update':'No AI feedback yet · Tap to request'}</Txt></Pressable>
+      :<Txt numberOfLines={2} style={[styles.grade,styles.gradeCenter,{color:c.secondary}]}>{composed?'Record a full run for an overall score':stale?'Updating saved score…':score.score===null?score.status:scoreLevelLabel(score.level)}</Txt>}</View>
     <View style={styles.stats}>
       <Stat value={hasSlideScores?String(critical):'—'} label="critical" />
       <Stat value={`${fmt(total)} / ${fmt(target)}`} label="recorded / planned" />
@@ -72,7 +75,7 @@ export function OverviewScreen({active=true}:{active?:boolean}) {
 function Stat({value,label}:{value:string;label:string}){const{c}=useTheme();return <View style={styles.stat}><Txt numberOfLines={1} style={[styles.statValue,{color:c.text}]}>{value}</Txt><Txt numberOfLines={1} style={[styles.statLabel,{color:c.secondary}]}>{label}</Txt></View>;}
 const styles=StyleSheet.create({
   header:{position:'absolute',top:46,left:40,right:40,alignItems:'center'},title:{fontFamily:F.display,fontSize:18,lineHeight:23},sub:{fontFamily:F.medium,fontSize:14,lineHeight:18},
-  big:{position:'absolute',top:108,left:24,right:24,alignItems:'center'},retry:{minHeight:44,justifyContent:'center'},bigNumber:{fontFamily:F.display,fontSize:58,lineHeight:66,letterSpacing:-2,fontVariant:['tabular-nums']},grade:{fontFamily:F.semibold,fontSize:14},
+  big:{position:'absolute',top:108,left:24,right:24,alignItems:'center'},retry:{minHeight:44,justifyContent:'center'},gradeCenter:{textAlign:'center'},bigNumber:{fontFamily:F.display,fontSize:58,lineHeight:66,letterSpacing:-2,fontVariant:['tabular-nums']},grade:{fontFamily:F.semibold,fontSize:14},
   stats:{position:'absolute',top:206,left:24,right:24,flexDirection:'row',justifyContent:'space-between',gap:8},stat:{flex:1,alignItems:'center',gap:5},statValue:{fontFamily:F.display,fontSize:24,lineHeight:29,fontVariant:['tabular-nums']},statLabel:{fontFamily:F.medium,fontSize:13.5},
   slideHeader:{position:'absolute',top:300,left:24,right:24,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},section:{fontFamily:F.bold,fontSize:15},help:{fontFamily:F.medium,fontSize:13.5},tiles:{position:'absolute',top:330,left:24,right:24,gap:8},tileRow:{height:50,flexDirection:'row',justifyContent:'space-between',gap:8},tile:{position:'relative',width:50,height:50,borderRadius:14,alignItems:'center',justifyContent:'center'},tileNumber:{fontFamily:F.bold,fontSize:14},tileWarning:{position:'absolute',top:3,right:5,fontFamily:F.bold,fontSize:13.5},
   door:{position:'absolute',left:24,right:24,top:548,height:62,borderWidth:1,borderRadius:18,paddingHorizontal:16,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},door2:{position:'absolute',left:24,right:24,top:620,height:62,borderWidth:1,borderRadius:18,paddingHorizontal:16,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},doorText:{gap:4},doorTitle:{fontFamily:F.semibold,fontSize:15},doorSub:{fontFamily:F.medium,fontSize:13.5}

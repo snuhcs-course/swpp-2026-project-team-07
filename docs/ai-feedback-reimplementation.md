@@ -22,14 +22,18 @@ These are code findings. The [diagnostic script](../deploy/diagnose_feedback.py)
 ## Design
 
 ```text
-Transcription completes
-  └─ start(): reuse or create a FeedbackRun for these inputs
+Stop recording → upload one audio file → Scribe transcribes it
+  └─ start() right away (server auto-start and/or the app's FeedbackV3Host): reuse or create a run
        └─ worker run():
             1. code: sentences, measurements, slide plan              (<1 s)
-            2. LLM, in parallel: one call per gradable slide + one whole call
-            3. each part is saved as it finishes (app shows progress)
-            4. code: Rubric V2 points, overall score, point gains
+            2. reuse any part whose exact inputs were already graded  (no model call)
+            3. LLM, in parallel: one call per remaining gradable slide;
+               the whole-presentation call on its own thread, only for a take that covers every slide
+            4. each part is saved as it finishes (screens show it immediately)
+            5. code: Rubric V2 points, overall score, point gains
 ```
+
+Slides are not uploaded or transcribed during the presentation: each take is one continuous recording that is uploaded and transcribed after Stop (checked November 15, 2026). Per-slide feedback therefore starts immediately after that transcription, not slide by slide during the talk. Transcript corrections are optional and never gate the first feedback.
 
 | Decided by code | Decided by the model |
 | --- | --- |
@@ -40,9 +44,11 @@ Transcription completes
 | All points, rounding, overall score, withheld reasons | Whole-talk top 3 priorities and summary |
 | Points each improvement would add (`gain_slide_points`, `gain_overall_points`) | |
 
-**Reliability.** Each call retries timeouts, connection errors, 429/5xx responses and cut-off or invalid JSON up to twice. A cut-off retry doubles the output budget; a content-filter stop is not retried. No call starts or retries after 240 s, keeping the run inside the 300 s task limit. The whole-presentation call is submitted first because it is the largest. A failed part never discards finished parts, and a run is `failed` only when every model-graded part has failed. Retry re-runs only failed parts. The beat scheduler republishes lost queue messages after 120 s and requeues a run whose worker stops reporting for 330 s, up to 3 times. If the inputs change before the worker starts, the run becomes `stale` without any model call, and a replacement run is queued for the current inputs.
+**Reliability.** Each call retries timeouts, connection errors, 429/5xx responses and cut-off or invalid JSON up to twice. A cut-off retry doubles the output budget; a content-filter stop is not retried. No call starts or retries after 240 s, keeping the run inside the 300 s task limit. Slide calls run in their own pool and the whole call on its own thread, so per-slide results are never queued behind it. A failed part never discards finished parts, and a run is `failed` only when every model-graded part has failed. Retry re-runs only failed parts. The beat scheduler republishes lost queue messages after 120 s and requeues a run whose worker stops reporting for 330 s, up to 3 times. If the inputs change before the worker starts, the run becomes `stale` without any model call, and a replacement run is queued for the current inputs.
 
-**Evidence.** The model cites sentence ids (`s12`); the server maps them to original timestamps for playback. A slide can cite only its own sentences. The whole call can also cite measurement ids (`m:pace`). Unknown ids are dropped without failing the part.
+**No repeated model calls.** A run is reused while its inputs are unchanged. Each part also stores a hash of exactly what the model saw (payload, model, prompt and rubric version); a new run for the same recording copies any finished part with the same hash instead of calling the model (`usage.reused_parts`). Sentence ids are slide-scoped (`s3.2` = slide 3, sentence 2), so a transcript correction on slide 3 re-grades only slide 3 and the whole presentation; undoing it re-grades nothing. Changing the audience or required time changes every slide's input, so every slide is graded again.
+
+**Evidence.** The model cites sentence ids (`s3.2`); the server maps them to original timestamps for playback. A slide can cite only its own sentences. The whole call can also cite measurement ids (`m:pace`). Unknown ids are dropped without failing the part.
 
 **Inputs.** Only text goes to the model: slide text, the cached slide profile when one exists, speech sentences and measurements. No images or audio. A missing profile never blocks feedback.
 
@@ -53,6 +59,7 @@ Transcription completes
 - Overall = 0.70 × mean of applicable slide scores + 0.30 × whole score. Exact fractions; one half-up rounding when published.
 - The overall score is withheld when an applicable slide is unscored or a whole criterion has no level. `scores.withheld` gives the reason and the 0-based indexes of those slides.
 - `insufficient_evidence` (the model judged there was too little speech) is final for those inputs; Retry does not re-run it. Re-recording the slide with more speech is the fix.
+- Whole-presentation feedback runs only for a take that covers every slide. A partial take (stopped early, or a single-slide redo) gets slide feedback only; `whole.reason` and `scores.withheld` say `presentation_incomplete`.
 
 Differences from the v2 implementation:
 - A bad citation drops that citation only; it never withholds a level. The model withholds a level (`null`) only when there is too little speech.
@@ -88,8 +95,8 @@ Run `status`: `queued`, `running`, `completed`, `failed`, `stale`. A completed r
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `FEEDBACK_V3_ENABLED` | `false` | Turns the pipeline on. Uses `OPENROUTER_API_KEY`. |
-| `FEEDBACK_V3_AUTO_START` | `false` | Starts a run when transcription completes. Audience Q&A answer recordings are skipped. |
+| `FEEDBACK_V3_ENABLED` | `false` | Turns the pipeline on. Uses `OPENROUTER_API_KEY`; GET reports `enabled: false` unless the configuration is complete. |
+| `FEEDBACK_V3_AUTO_START` | `false` | Starts a run the moment transcription completes, ahead of other queued jobs such as Audience Q&A. Skips Audience Q&A answers and decks with more than one settings record (the app starts those with its own settings). |
 | `FEEDBACK_V3_MODEL` | `FEEDBACK_OPENROUTER_MODEL`, then `openai/gpt-6-luna` | Model for every call. |
 | `FEEDBACK_V3_REASONING_EFFORT` | `low` | Blank omits the setting. |
 | `FEEDBACK_V3_TEMPERATURE` | blank | Blank omits it; some reasoning models reject temperature. |
@@ -109,14 +116,15 @@ Rollback: `export OUTLOUD_IMAGE_TAG=issue49-tokenfix-r2-20261103 && dc up -d api
 
 ## App integration
 
-When the server answers `enabled: true`, the app uses v3 for Review, Full Review, its Feedback page, Home's score and the post-recording Wait screen; otherwise these screens keep the v2 scores. The answer is saved per server address.
+When the server answers `enabled: true`, the app uses v3 for Review, Full Review, its Feedback page, Home's score and the post-recording Wait screen. When it answers `false`, these screens keep the v2 scores. The answer is saved per server address and checked again once per session.
 
-- **Starting runs:** `FEEDBACK_V3_AUTO_START` stays off. When a screen shows a transcribed recording that has no current run (absent, stale or outdated), the app sends one POST; the server returns the existing run if the inputs are unchanged. Each run identity is started at most once per app session, so a failing server cannot cause a request loop. Nothing starts while presentation settings are unsynchronized.
-- **Progress:** the app polls every 2 s while a run is queued or running, 5 s after a connection error, and stops when the run finishes. Each slide shows its result as soon as its part finishes. A saved copy of each run is shown offline. The cache is only rewritten, and the app only re-rendered, when the answer changes.
-- **Takes:** each slide reads the run of the recording selected for that slide. The overall score is shown only when every slide comes from one recording, as before.
-- **Review:** coaching cards come first (problem, action, "Try saying" example, quoted evidence with playback, and the points the change would add), then next-level advice for criteria without an improvement. Details show each criterion's level, points, reason and next-level advice, the Must Cover checklist, the strength, and Retry for failed parts. Title and closing slides explain that they are reviewed with the whole presentation.
-- **Full Review:** the overall score and per-slide tiles come from v3. Its Feedback page lists the whole-talk top priorities first, then every slide improvement ordered by overall point gain. Failed parts offer Retry.
-- **v2 jobs:** the app-wide v2 slide-review and scoring hosts start nothing while v3 is enabled.
+- **Starting runs:** `FeedbackV3Host` starts feedback once for each new recording as soon as its transcription completes, on any screen. It waits only for unsynchronized presentation settings and for an open Keep/Overwrite comparison. A failed start is retried after 60 s. With `FEEDBACK_V3_AUTO_START=true` the server starts it even earlier; both paths return the same run.
+- **Display only:** Review, Full Review and the other screens never start generation. They read saved runs, poll every 2 s while a run is in progress (3 s while an automatic start is on its way, 5 s after a connection error), and show each slide as soon as its part finishes. A saved copy is shown offline, and an older response never overwrites a newer one.
+- **Changes after feedback:** after a transcript correction or settings change, the existing results stay visible, marked out of date, with an explicit **Update feedback** action. Older recordings that never had v3 feedback show **Get AI feedback**. Failed parts show **Retry**. All three are user actions.
+- **Takes:** each slide reads the run of the recording selected for that slide. The overall score is shown only when every slide comes from one recording.
+- **Review:** coaching cards come first (problem, action, "Try saying" example, quoted evidence with playback, and the points the change would add), then next-level advice for criteria without an improvement. Details show each criterion's level, points, reason and next-level advice, the Must Cover checklist and the strength. Title and closing slides, ungraded slides and slides not in the take explain their status.
+- **Full Review:** the overall score and per-slide tiles come from v3. Its Feedback page lists the whole-talk top priorities first, then every slide improvement ordered by overall point gain.
+- **v2 jobs:** the automatic v2 slide-review and scoring hosts run only once the server is known not to offer v3, so the two pipelines never both start paid work.
 
 ## Rollout
 

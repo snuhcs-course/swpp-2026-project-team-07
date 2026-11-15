@@ -5020,3 +5020,43 @@ Deployment and the first real v3 smoke test succeeded. The existing app still re
   - Docs: the design doc's app-integration and API sections, and the README status line.
 - **Verification (agent-operated, local):** Backend full SQLite suite: 682 passed, 26 skipped. Mobile type-check, lint and an Android JavaScript export passed. Full mobile suite: 584 tests, 62 failures. The unchanged base branch in a separate worktree had 577 tests and the same 62 failures, identical by name. Those are existing tests not updated for the issue-49 UI (for example, a missing `score-ring` element and changed colors). The 7 new tests pass, and no test newly fails. Four screen-test files at first stopped at import (real SQLite pulled in by the new hook), which hid their individual results; the loader stub fixed that.
 - **Limits:** No APK, device or human test of the integration. No real v3 response was rendered in the app. An independent AI review of this round was still running at this commit, which a session stop hook requested; its findings and fixes follow in a later update.
+
+**Per-slide timing prompt — verbatim (November 15, 2026):**
+
+```text
+Prioritize immediate per-slide feedback after transcription. Transcript correction is optional and shouldn’t delay feedback generation. First check whether slides upload and transcribe while the presentation is ongoing; if they do, start each slide’s feedback then. Review should display existing results rather than trigger generation. Keep whole-presentation feedback until the presentation finishes, and prevent duplicate model calls for unchanged inputs.
+```
+
+- **Check requested first (agent-operated, code reading):** Slides are not uploaded or transcribed during the presentation. `CaptureEngine` records one continuous file per take with a single recorder, and `recording/upload.ts` refuses a take that is still capturing. `rehearsal/analysis.tsx` uploads the take after Stop, and Scribe transcribes the whole file. Per-slide feedback can therefore start only after that transcription; no streaming or per-slide upload was added. Correction suggestions run only on explicit request, so they never delay feedback. Audience Q&A is queued automatically on the same single-job worker; server auto-start queues v3 first.
+- **Independent review of the previous round:** A separate reviewer agent made no edits. Its confirmed items, all addressed in this round:
+  - a failed automatic start could leave screens stuck on "Scoring…";
+  - GET reported v3 enabled even with no API key;
+  - outdated coaching could appear current;
+  - ungraded slides read "Nothing to fix";
+  - transcript-in-progress slides counted as finished;
+  - Review chips read v2 data;
+  - the export output was not valid JSON;
+  - plausible issues: response-order overwrites, first-launch double work by v2 and v3, text overflow, and the cost and exceptions of the `outdated` check.
+  The outdated-coaching item was resolved by design: results stay visible and are explicitly marked out of date.
+- **Generated and retained (this round):**
+  - Backend:
+    - slide calls run in their own pool and the whole call on its own thread;
+    - each part stores an input hash, and finished parts with the same hash are reused (`usage.reused_parts`);
+    - sentence ids are slide-scoped (`s3.2`);
+    - the whole call runs only for takes that cover every slide (`presentation_incomplete` otherwise);
+    - auto-start skips decks with several settings records;
+    - `outdated()` skips active runs and never raises, and `enabled()` checks the full configuration;
+    - prompt version 2; export usage flags; five new tests.
+  - Mobile:
+    - new `FeedbackV3Host` starts feedback once per new recording right after transcription, retries failed starts after 60 s and probes the capability once per session;
+    - screens only read and poll, with explicit Update, Get AI feedback and Retry actions;
+    - outdated results stay visible and marked;
+    - v2 hosts run only once the server is known to lack v3;
+    - client request ordering, and `absent` never replaces a saved run;
+    - status texts, text caps and v3 chips in Review;
+    - headline and number overflow fixes;
+    - test loaders route the client to a v3-off stub for legacy v2 host tests;
+    - three new app tests and updated ones.
+  - Docs: the design doc's design, reliability, scoring, configuration and app-integration sections.
+- **Verification (agent-operated, local):** Backend: 45 v3 tests, and the full suite of 686 passed with 26 skipped; migration check clean. Mobile: type-check and lint pass; 10 v3 tests pass; Android JavaScript export passes. The full suite has 587 tests and 62 failures, identical by name to the unchanged base branch. Intermediate full runs first showed 19 and then 10 new failures in legacy v2 automatic-host tests, because the hosts now wait for a known capability. Stubbing capability `false` in those loaders restored them without weakening the first-launch guard.
+- **Limits:** No APK, device or human test; no real-provider run of this round's backend. Server auto-start is still off on the VM. A second independent AI review was still running at this commit, which a session stop hook requested; its findings follow in a later update.

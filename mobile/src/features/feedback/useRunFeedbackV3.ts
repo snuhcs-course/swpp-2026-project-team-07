@@ -1,7 +1,7 @@
-// Feedback v3 for the selected run: reads, starts when missing or outdated, polls while running.
+// Feedback v3 for the selected run, for screens: reads saved results and polls while a run is on its way.
 // AI-assisted with Claude Code, prompted by Seoyeon (November 15, 2026); see docs/ai-collaboration-prompts.md.
-// The server's FEEDBACK_V3_AUTO_START may stay off: the app starts a run when it first needs one,
-// and the server deduplicates by input fingerprint, so repeated starts never repeat paid calls.
+// Screens never start generation on their own. New recordings start in FeedbackV3Host (or on the server)
+// right after transcription; Update and Retry here are explicit user actions.
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { AppState } from 'react-native';
 import { API_URL } from '../../services/api';
@@ -13,20 +13,15 @@ import { requirementsDirty } from '../presentations/requirementsDraft';
 import { defaultRequirementsPending } from '../presentations/defaultRequirements';
 import { readReview } from '../transcription/reviewStorage';
 import { normalizeApi } from '../transcription/analysisStorage';
-import { feedbackRunActive, feedbackRunHasFailures, feedbackRunNeedsStart, selectRunFeedbackV3, type FeedbackRun } from './feedbackRun';
-import { feedbackV3Capability, fetchFeedbackRun, readSavedRun, startFeedbackRun } from './feedbackRunClient';
+import { initialFeedbackEnabled } from './automaticFeedback';
+import { feedbackRunActive, feedbackRunHasFailures, feedbackRunNeedsStart, feedbackRunOutdated, selectRunFeedbackV3,
+  type FeedbackRun } from './feedbackRun';
+import { feedbackV3Capability, fetchFeedbackRun, readSavedRun, readStartState, startFeedbackRun } from './feedbackRunClient';
 import { useRunPresentationScores } from './useRunPresentationScores';
 
-type Target = { id: string; contextId: string | null; ready: boolean; blocked: boolean };
-// One automatic start per run identity per app session, so a server that keeps answering
-// "outdated" (or an error) can never cause a request loop.
-const startedOnce = new Set<string>();
-const startKey = (api: string, t: Target, run: FeedbackRun | null) =>
-  JSON.stringify([api, t.id, t.contextId, run?.runId, run?.status, run?.outdated]);
-const shouldStart = (api: string, t: Target, run: FeedbackRun | null) =>
-  t.ready && !t.blocked && feedbackRunNeedsStart(run) && !startedOnce.has(startKey(api, t, run));
+type Target = { id: string; contextId: string | null; ready: boolean; blocked: boolean; expected: boolean };
 
-function targetsFor(model: DeckModel | null, api: string): Target[] {
+export function feedbackTargets(model: DeckModel | null, api: string): Target[] {
   if (!model?.state.run) return [];
   let contextFor: (deckId: string) => string | null = () => null, blocked = false;
   try {
@@ -38,7 +33,10 @@ function targetsFor(model: DeckModel | null, api: string): Target[] {
     let review: ReturnType<typeof readReview> = null;
     try { review = readReview(api, id); } catch { /* Unreadable review: treated as not ready. */ }
     const ready = !!review?.transcript_id && !!review.transcript?.words.length;
-    return { id, contextId: review?.deck_id ? contextFor(review.deck_id) : null, ready, blocked };
+    const contextId = review?.deck_id ? contextFor(review.deck_id) : null;
+    // Expected: FeedbackV3Host starts it automatically, and that start has not failed.
+    return { id, contextId, ready, blocked,
+      expected: initialFeedbackEnabled(api, id) && readStartState(api, id, contextId)?.state !== 'failed' };
   });
 }
 
@@ -48,10 +46,10 @@ export function useRunFeedbackV3(model: DeckModel | null, active = true) {
   useSyncExternalStore(subscribeRequirements, getRequirementsVersion);
   const [foreground, setForeground] = useState(AppState.currentState === 'active');
   const [offline, setOffline] = useState(false), [busy, setBusy] = useState(false);
-  const targets = targetsFor(model, api);
+  const targets = feedbackTargets(model, api);
   const runs = new Map<string, FeedbackRun | null>(targets.map(t => [t.id, readSavedRun(api, t.id, t.contextId)]));
   const selection = selectRunFeedbackV3({ n: model?.n ?? 0, parts: model?.state.run?.parts ?? [], stages: model?.stages ?? new Map(),
-    runs, ready: new Set(targets.filter(t => t.ready).map(t => t.id)) });
+    runs, ready: new Set(targets.filter(t => t.ready).map(t => t.id)), expected: new Set(targets.filter(t => t.expected).map(t => t.id)) });
   const capability = feedbackV3Capability(api);
   const identity = JSON.stringify(targets);
   const live = useRef({ targets, visible: active && foreground });
@@ -59,18 +57,9 @@ export function useRunFeedbackV3(model: DeckModel | null, active = true) {
 
   const sync = useCallback(async () => {
     const { targets: list, visible } = live.current;
-    if (!visible) return;
-    let failed = false;
-    await Promise.all(list.filter(t => t.ready).map(async t => {
-      try {
-        const run = await fetchFeedbackRun(api, t.id, t.contextId);
-        if (shouldStart(api, t, run)) {
-          startedOnce.add(startKey(api, t, run));
-          await startFeedbackRun(api, t.id, t.contextId);
-        }
-      } catch { failed = true; }
-    }));
-    setOffline(failed);
+    if (!visible || feedbackV3Capability(api) !== true) return;  // FeedbackV3Host learns the capability.
+    const results = await Promise.allSettled(list.filter(t => t.ready).map(t => fetchFeedbackRun(api, t.id, t.contextId)));
+    setOffline(results.some(r => r.status === 'rejected'));
   }, [api]);
 
   useEffect(() => {
@@ -78,31 +67,38 @@ export function useRunFeedbackV3(model: DeckModel | null, active = true) {
     return () => sub.remove();
   }, []);
   useEffect(() => { if (active && foreground) void sync(); }, [active, foreground, identity, sync]);
-  // Poll while a run is in progress, or until the one automatic start for a missing run is sent.
-  const polling = targets.some(t => t.ready && (feedbackRunActive(runs.get(t.id) ?? null) || shouldStart(api, t, runs.get(t.id) ?? null)));
+  // Poll while a run is in progress, or while an automatically started run has not appeared yet.
+  const waiting = targets.some(t => t.ready && t.expected && (!runs.get(t.id) || feedbackRunNeedsStart(runs.get(t.id) ?? null)));
+  const running = targets.some(t => t.ready && feedbackRunActive(runs.get(t.id) ?? null));
   useEffect(() => {
-    if (!active || !foreground || (!polling && !offline)) return;
-    const timer = setInterval(() => void sync(), offline ? 5000 : 2000);
+    if (!active || !foreground || (!running && !waiting && !offline)) return;
+    const timer = setInterval(() => void sync(), offline ? 5000 : running ? 2000 : 3000);
     return () => clearInterval(timer);
-  }, [active, foreground, polling, offline, sync]);
+  }, [active, foreground, running, waiting, offline, sync]);
 
-  const retry = useCallback(async () => {
+  const act = useCallback(async (pick: (run: FeedbackRun | null) => boolean, retry: boolean) => {
     setBusy(true);
     try {
       for (const t of live.current.targets) {
-        if (t.ready && !t.blocked && feedbackRunHasFailures(readSavedRun(api, t.id, t.contextId)))
-          await startFeedbackRun(api, t.id, t.contextId, true);
+        if (t.ready && !t.blocked && pick(readSavedRun(api, t.id, t.contextId))) await startFeedbackRun(api, t.id, t.contextId, retry);
       }
       setOffline(false);
     } catch { setOffline(true); } finally { setBusy(false); }
   }, [api]);
+  /** Explicit: request feedback for current inputs (missing or outdated). Unchanged parts are reused, not regenerated. */
+  const update = useCallback(() => act(run => !run || feedbackRunNeedsStart(run) || feedbackRunOutdated(run), false), [act]);
+  /** Explicit: re-run only the parts that failed. */
+  const retry = useCallback(() => act(feedbackRunHasFailures, true), [act]);
 
   const failures = targets.some(t => feedbackRunHasFailures(runs.get(t.id) ?? null));
+  const outdated = targets.some(t => t.ready && feedbackRunOutdated(runs.get(t.id) ?? null));
+  const missing = targets.some(t => t.ready && !t.expected && (!runs.get(t.id) || feedbackRunNeedsStart(runs.get(t.id) ?? null)));
   const blocked = targets.some(t => t.blocked);
   return {
-    enabled: capability === true, capability, ...selection, retry, refresh: sync, busy, failures, blocked,
+    enabled: capability === true, capability, ...selection, retry, update, refresh: sync, busy, failures, outdated, missing, blocked,
     notice: offline ? 'Connection interrupted. Saved feedback is shown. Reconnecting…'
-      : blocked ? 'Presentation settings are saved on this phone. Feedback updates after they synchronize.' : '',
+      : blocked ? 'Presentation settings are saved on this phone. Update feedback after they synchronize.'
+      : outdated ? 'Feedback is from before your latest changes. Update it when you are ready.' : '',
   };
 }
 export type RunFeedbackV3 = ReturnType<typeof useRunFeedbackV3>;

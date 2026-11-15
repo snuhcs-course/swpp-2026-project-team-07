@@ -182,16 +182,51 @@ def plan_slide_reason(inputs: Inputs, index: int) -> tuple[str | None, str | Non
     return None, None
 
 
+def presentation_complete(inputs: Inputs) -> bool:
+    """The take covers every slide, so whole-presentation feedback is meaningful."""
+    return all(inputs.speech.slides.get(i) and inputs.speech.slides[i].visit_ms for i in range(len(inputs.slides)))
+
+
+def part_hash(kind: str, payload: dict, model: str) -> str:
+    """Everything the model sees for one part; equal hashes need no new model call."""
+    return _digest({'kind': kind, 'payload': payload, 'model': model, 'prompt': prompts.PROMPT_VERSION,
+                    'rubric': RUBRIC.version})
+
+
+def _reusable_parts(job: FeedbackRun) -> dict:
+    """Finished model-graded parts from this recording's earlier runs, by input hash."""
+    found = {}
+    for previous in FeedbackRun.objects.filter(attempt_id=job.attempt_id).exclude(pk=job.pk).order_by('created_at'):
+        result = previous.result or {}
+        for part in [*(result.get('slides') or {}).values(), result.get('whole') or {}]:
+            if isinstance(part, dict) and part.get('input_hash') and part.get('status') in ('scored', 'insufficient_evidence'):
+                found[part['input_hash']] = {k: v for k, v in part.items() if k not in ('measurements', 'reused')}
+    return found
+
+
 def outdated(attempt, context, job: FeedbackRun | None) -> bool:
     """True when the stored run no longer matches the current inputs (or is stale)."""
-    if job is None:
-        return False
+    if job is None or job.status in (FeedbackRun.Status.QUEUED, FeedbackRun.Status.RUNNING):
+        return False  # Polls during a run skip the input rebuild.
     if job.status == FeedbackRun.Status.STALE:
         return True
     try:
         config = llm.Config.from_env()
         return load_inputs(attempt, context, config.model).fingerprint != job.fingerprint
     except (RunError, llm.LLMError):
+        return False
+    except Exception:
+        # A read must never fail because of this check; the stored run is still shown.
+        logger.exception('feedback_v3 outdated check failed')
+        return False
+
+
+def enabled() -> bool:
+    """Feedback v3 can actually run: switched on and configured (key, numeric settings)."""
+    try:
+        llm.Config.from_env()
+        return True
+    except Exception:
         return False
 
 
@@ -361,7 +396,8 @@ def score(result: dict) -> dict:
     if missing:
         withheld.append({'reason': 'slides_not_scored', 'slides': missing})
     if whole_exact is None:
-        withheld.append({'reason': 'whole_not_scored'})
+        incomplete = whole.get('reason') == 'presentation_incomplete'
+        withheld.append({'reason': 'presentation_incomplete' if incomplete else 'whole_not_scored'})
     count = max(1, len(applicable))
     criteria = {c.id: c for c in RUBRIC.slide}
     for key, part in slides.items():
@@ -431,6 +467,9 @@ def auto_start(attempt_id) -> None:
         return
     if QaAnswer.objects.filter(attempt_id=attempt_id).exists():
         return  # Audience Q&A answers are evaluated by the Q&A flow, not as presentations.
+    deck_id = Attempt.objects.filter(pk=attempt_id).values_list('deck_id', flat=True).first()
+    if PresentationContext.objects.filter(deck_id=deck_id).count() > 1:
+        return  # Ambiguous settings: the app starts the run with its own context instead.
     try:
         start(attempt_id)
     except Exception as error:
@@ -497,11 +536,9 @@ def _execute(job: FeedbackRun) -> None:
     result['measurements'] = inputs.measurements['whole']
     result['language'] = inputs.speech.language
     slides = result.setdefault('slides', {})
-    work = {}
-    # The whole call is the largest, so it is submitted first.
-    if (result.get('whole') or {}).get('status') not in FINISHED_PARTS:
-        result['whole'] = {'status': 'pending'}
-        work[('whole', None)] = whole_payload(inputs)
+    reusable = _reusable_parts(job)
+    work, reused = {}, 0
+    # Slides first: per-slide feedback is the priority and appears as each part finishes.
     for index in range(len(inputs.slides)):
         key = str(index)
         if slides.get(key, {}).get('status') in FINISHED_PARTS:
@@ -510,19 +547,48 @@ def _execute(job: FeedbackRun) -> None:
         slides[key] = {'status': status or 'pending', 'measurements': inputs.measurements['slides'][index],
                        **({'reason': reason} if reason else {})}
         if not status:
-            work[('slide', index)] = slide_payload(inputs, index)
+            payload = slide_payload(inputs, index)
+            digest = part_hash('slide', payload, config.model)
+            if digest in reusable:
+                slides[key] = {**reusable[digest], 'measurements': inputs.measurements['slides'][index], 'reused': True}
+                reused += 1
+            else:
+                work[('slide', index)] = (payload, digest)
+    # Whole-presentation feedback only for a take that covers every slide.
+    if (result.get('whole') or {}).get('status') not in FINISHED_PARTS:
+        if not presentation_complete(inputs):
+            result['whole'] = {'status': 'not_recorded', 'reason': 'presentation_incomplete'}
+        else:
+            payload = whole_payload(inputs)
+            digest = part_hash('whole', payload, config.model)
+            if digest in reusable:
+                result['whole'] = {**reusable[digest], 'reused': True}
+                reused += 1
+            else:
+                result['whole'] = {'status': 'pending'}
+                work[('whole', None)] = (payload, digest)
+    result['scores'] = score(result)
     timings, usage = dict(job.timings or {}), dict(job.usage or {'input_tokens': 0, 'output_tokens': 0, 'calls': 0})
     timings['prepare_seconds'] = round(time.monotonic() - began, 2)
-    _save(job, result=result, timings=timings)
+    usage['reused_parts'] = usage.get('reused_parts', 0) + reused
+    _save(job, result=result, timings=timings, usage=usage)
 
     everything = inputs.speech.by_id()
     measures = {m['id']: m['what'] for m in measurement_items(inputs)}
+    slide_work = [(index, item) for (kind, index), item in work.items() if kind == 'slide']
+    whole_work = work.get(('whole', None))
     if work:
-        with httpx.Client() as http, ThreadPoolExecutor(max_workers=min(config.max_parallel, len(work))) as pool:
-            futures = {pool.submit(call_llm, http, config, kind, payload, deadline): (kind, index)
-                       for (kind, index), payload in work.items()}
+        # The whole call has its own thread, so it never takes a slide's place in the pool.
+        with httpx.Client() as http, \
+                ThreadPoolExecutor(max_workers=max(1, min(config.max_parallel, len(slide_work)))) as pool, \
+                ThreadPoolExecutor(max_workers=1) as whole_pool:
+            futures = {pool.submit(call_llm, http, config, 'slide', payload, deadline): ('slide', index, digest)
+                       for index, (payload, digest) in slide_work}
+            if whole_work:
+                futures[whole_pool.submit(call_llm, http, config, 'whole', whole_work[0], deadline)] = (
+                    'whole', None, whole_work[1])
             for future in as_completed(futures):
-                kind, index = futures[future]
+                kind, index, digest = futures[future]
                 name = 'whole' if kind == 'whole' else f'slide_{index}'
                 try:
                     answer = future.result()
@@ -532,6 +598,7 @@ def _execute(job: FeedbackRun) -> None:
                         # A slide may cite only its own sentences.
                         own = {s.id: s for s in inputs.speech.slides[index].sentences}
                         part = normalize_slide(answer.data, own)
+                    part['input_hash'] = digest
                     timings[name] = answer.seconds
                     usage['input_tokens'] += answer.input_tokens
                     usage['output_tokens'] += answer.output_tokens
@@ -551,7 +618,7 @@ def _execute(job: FeedbackRun) -> None:
     result['scores'] = score(result)
     timings['total_seconds'] = round(time.monotonic() - began, 2)
     # Failed only when no model-graded part exists at all, counting earlier passes.
-    graded = [result['whole']] + [p for p in slides.values() if p.get('status') not in CODE_DECIDED]
+    graded = [p for p in [result['whole'], *slides.values()] if p.get('status') not in CODE_DECIDED]
     failed = [p for p in graded if p.get('status') == 'failed']
     all_failed = bool(graded) and len(failed) == len(graded)
     _save(job, result=result, timings=timings, usage=usage, finished_at=timezone.now(),

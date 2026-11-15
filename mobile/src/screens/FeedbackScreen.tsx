@@ -67,8 +67,8 @@ export function FeedbackScreen({active=true}:{active?:boolean}) {
     <PageSurface hue={model.deck.hue}/>
     <View style={styles.header}><Txt style={[styles.title,{color:c.text}]}>Feedback</Txt><Txt style={[styles.count,{color:c.secondary}]}>{points.length?`${currentIndex+1} of ${points.length}`:'No reviewed points'}</Txt></View>
     {point?<>
-      <View style={[styles.slidePill,{backgroundColor:c.surface08}]}><UIIcon name="i-slides" size={16}/><Txt style={[styles.pillText,{color:c.secondary}]}>{point.kind==='v3'?`${point.card.slide===null?'Whole presentation':`Slide ${point.card.slide+1} · ${model.deck.slides[point.card.slide]?.title??`Slide ${point.card.slide+1}`}`}${point.card.gain?` · +${point.card.gain} pts`:''}`:point.kind==='slide'?`Slide ${point.slide+1} · ${model.deck.slides[point.slide]?.title??`Slide ${point.slide+1}`}`:'Whole presentation · Overall score'}</Txt></View>
-      <Txt style={[styles.headline,{color:c.text}]}>{point.kind==='v3'?point.card.title:point.kind==='slide'?headline(point.finding):'Make this improvement to your talk'}</Txt>
+      <View style={[styles.slidePill,{backgroundColor:c.surface08}]}><UIIcon name="i-slides" size={16}/><Txt numberOfLines={1} style={[styles.pillText,{color:c.secondary}]}>{point.kind==='v3'?`${v3?.outdated?'Outdated · ':''}${point.card.slide===null?'Whole presentation':`Slide ${point.card.slide+1} · ${model.deck.slides[point.card.slide]?.title??`Slide ${point.card.slide+1}`}`}${point.card.gain?` · +${point.card.gain} pts`:''}`:point.kind==='slide'?`Slide ${point.slide+1} · ${model.deck.slides[point.slide]?.title??`Slide ${point.slide+1}`}`:'Whole presentation · Overall score'}</Txt></View>
+      <Txt numberOfLines={2} style={[styles.headline,point.kind==='v3'&&styles.headlineV3,{color:c.text}]}>{point.kind==='v3'?point.card.title:point.kind==='slide'?headline(point.finding):'Make this improvement to your talk'}</Txt>
       {point.kind==='v3'&&point.card.evidence&&<View style={[styles.quoteCard,{backgroundColor:c.surface06,borderColor:c.hair}]}>
         <Txt style={[styles.kicker,{color:c.tertiary}]}>YOU SAID</Txt>
         <Txt numberOfLines={4} style={[styles.quote,{color:c.body}]}>{`“${point.card.evidence.text}”`}</Txt>
@@ -113,6 +113,7 @@ function headline(f:Finding){
 }
 const styles=StyleSheet.create({
   header:{position:'absolute',top:46,left:40,right:40,alignItems:'center'},title:{fontFamily:F.display,fontSize:18,lineHeight:23},count:{fontFamily:F.medium,fontSize:14,lineHeight:18},
+  headlineV3:{fontSize:22,lineHeight:27,letterSpacing:-.2},
   slidePill:{position:'absolute',top:112,left:24,right:24,minHeight:34,borderRadius:17,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:7},pillText:{fontFamily:F.semibold,fontSize:13.5},headline:{position:'absolute',left:24,right:24,top:162,fontFamily:F.display,fontSize:26,lineHeight:32,letterSpacing:-.4},
   quoteCard:{position:'absolute',top:220,left:24,right:24,minHeight:150,padding:18,borderRadius:20,borderWidth:1,gap:10},kicker:{fontFamily:F.bold,fontSize:13.5,letterSpacing:1.1},quote:{fontFamily:F.medium,fontSize:18,lineHeight:26},play:{alignSelf:'flex-start',minHeight:36,flexDirection:'row',alignItems:'center',gap:8},playText:{fontFamily:F.semibold,fontSize:13.5,fontVariant:['tabular-nums']},arrow:{position:'absolute',left:0,right:0,top:386,alignItems:'center'},arrowText:{fontSize:22},tryCard:{top:414,minHeight:144},empty:{position:'absolute',left:24,right:24,top:220,minHeight:140,borderRadius:20,borderWidth:1,padding:20,justifyContent:'center'},
   dots:{position:'absolute',left:0,right:0,bottom:86,flexDirection:'row',justifyContent:'center',gap:6},dot:{width:6,height:6,borderRadius:3},activeDot:{width:18,height:6,borderRadius:3}

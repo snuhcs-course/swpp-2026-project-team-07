@@ -18,8 +18,8 @@ type InitialReviewTask={id:string;scope:ReviewScope;review:ReviewAttempt;revisio
 export function InitialFeedbackHost() {
  useStore(s=>s.version);
  useSyncExternalStore(subscribeRequirements,getRequirementsVersion);
- // Claude Code, prompted by Seoyeon (2026-11-15): feedback v3 replaces automatic v2 slide reviews.
- if(feedbackV3Capability(API_URL)===true)return null;
+ // Claude Code, prompted by Seoyeon (2026-11-15): automatic v2 slide reviews run only once the server is known to lack feedback v3.
+ if(feedbackV3Capability(API_URL)!==false)return null;
  const tasks:InitialReviewTask[]=[];
  for(const deck of visibleDecks()) {
   const saved=getDeckState(deck.id);

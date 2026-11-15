@@ -18,8 +18,8 @@ export function InitialPresentationScoreHost({openedDeckId}:{openedDeckId:string
   const saved=getDeckState(openedDeckId);
   if(!saved.compare)for(const id of runAttemptIds(saved.run))enableAutomaticScore(API_URL,id);
  },[openedDeckId,version]);
- // Claude Code, prompted by Seoyeon (2026-11-15): feedback v3 replaces automatic v2 scoring.
- if(feedbackV3Capability(API_URL)===true)return null;
+ // Claude Code, prompted by Seoyeon (2026-11-15): automatic v2 scoring runs only once the server is known to lack feedback v3.
+ if(feedbackV3Capability(API_URL)!==false)return null;
  return <>{visibleDecks().map(deck=><DeckWorker key={deck.id} id={deck.id}/>)}</>;
 }
 function DeckWorker({id}:{id:string}) {

@@ -4,7 +4,6 @@ AI-assisted with Claude Code, prompted by Seoyeon (November 14, 2026); see docs/
 GET never starts work. POST starts or reuses the run for the current inputs;
 {"retry": true} re-queues only the parts that failed.
 """
-import os
 
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -28,7 +27,7 @@ def feedback_run(request, attempt_id):
             context = pipeline.resolve_context(attempt, request.query_params.get('context_id'))
             run = pipeline.latest_run(attempt, context)
             body = pipeline.public(run)
-            body['enabled'] = os.environ.get('FEEDBACK_V3_ENABLED', 'false') == 'true'
+            body['enabled'] = pipeline.enabled()  # False when switched off or missing its key.
             # Lets the app re-request feedback after corrections or settings change.
             body['outdated'] = body['enabled'] and pipeline.outdated(attempt, context, run)
             return Response(body)

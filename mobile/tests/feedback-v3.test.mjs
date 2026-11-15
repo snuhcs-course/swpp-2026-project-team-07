@@ -28,9 +28,9 @@ const body = (extra = {}) => ({
     top_priorities: [{ title: 'Explain why', action: 'Add one reason per slide', why: 'clarity', slide_index: 1 }], summary: 'Solid.' },
   error: null, ...extra });
 const part = (attemptId, ms = 1000) => ({ attemptId, segments: [{ startMs: 0, endMs: ms }] });
-const select = (runs, { parts = [part('a1'), part('a1'), part('a1')], ready = ['a1'], stages = {} } = {}) =>
+const select = (runs, { parts = [part('a1'), part('a1'), part('a1')], ready = ['a1'], stages = {}, expected = ['a1'] } = {}) =>
   run.selectRunFeedbackV3({ n: parts.length, parts, stages: new Map(Object.entries(stages)), ready: new Set(ready),
-    runs: new Map(Object.entries(runs).map(([k, v]) => [k, v && run.parseFeedbackRun(v)])) });
+    expected: new Set(expected), runs: new Map(Object.entries(runs).map(([k, v]) => [k, v && run.parseFeedbackRun(v)])) });
 
 test('parse keeps valid parts and drops malformed ones without guessing', () => {
   const parsed = run.parseFeedbackRun(body({ slides: [scoredSlide(1), { slide_index: -1 }, 'x', { slide_index: 2, status: 'weird' }] }));
@@ -56,11 +56,18 @@ test('progress, outdated inputs, transcripts and failures have honest statuses',
   const running = select({ a1: body({ status: 'running', scores: null, slides: [scoredSlide(1), { slide_index: 2, status: 'pending' }] }) });
   assert.deepEqual(running.items.slice(1).map(i => [i.status, i.score, i.settled]), [['Scored', 67, true], ['Scoring…', null, false]]);
   assert.equal(running.overall.status, 'Scoring…');
+  // Outdated results stay visible (screens never regenerate on their own), flagged for an explicit Update.
   const outdated = select({ a1: body({ outdated: true }) });
-  assert.deepEqual([outdated.items[1].status, outdated.items[1].score, outdated.items[1].settled, outdated.overall.status],
-    ['Score outdated', null, false, 'Score outdated']);
-  assert.equal(select({}, { ready: [] }).items[1].status, 'Transcript pending');
-  assert.equal(select({}, { ready: [], stages: { a1: 'no_speech' } }).overall.status, 'No speech detected');
+  assert.deepEqual([outdated.items[1].status, outdated.items[1].score, outdated.items[1].outdated, outdated.overall.score, outdated.overall.outdated],
+    ['Scored', 67, true, 67, true]);
+  const transcribing = select({}, { ready: [] });
+  assert.deepEqual([transcribing.items[1].status, transcribing.items[1].settled], ['Transcript pending', false]);
+  const silent = select({}, { ready: [], stages: { a1: 'no_speech' } });
+  assert.deepEqual([silent.overall.status, silent.items[1].settled], ['No speech detected', true]);
+  const coming = select({ a1: body({ status: 'absent', scores: null, slides: [], whole: null }) });
+  assert.deepEqual([coming.items[1].status, coming.items[1].settled], ['Scoring…', false]);
+  const old = select({ a1: body({ status: 'absent', scores: null, slides: [], whole: null }) }, { expected: [] });
+  assert.deepEqual([old.items[1].status, old.items[1].settled, old.overall.status], ['Not graded', true, 'Not graded']);
   const failed = select({ a1: body({ status: 'failed', scores: null, error: { code: 'all_parts_failed', message: 'x' },
     slides: [{ slide_index: 1, status: 'failed', error: 'timeout' }], whole: { status: 'failed' } }) });
   assert.deepEqual([failed.items[1].status, failed.items[1].settled, failed.overall.status], ['Feedback failed', true, 'Feedback failed']);
@@ -75,16 +82,27 @@ test('combined recordings, unrecorded slides and withheld overall scores', () =>
     withheld: [{ reason: 'slides_not_scored', slides: [2] }] } }) });
   assert.equal(withheld.overall.status, 'Overall needs slide 3');
   assert.equal(run.withheldLabel([{ reason: 'whole_not_scored', slides: [] }]), 'Overall score unavailable');
+  assert.equal(run.withheldLabel([{ reason: 'slides_not_scored', slides: [3] }, { reason: 'presentation_incomplete', slides: [] }]),
+    'Record the whole presentation for an overall score');
 });
 
-test('start is needed only for absent, stale or outdated idle runs', () => {
+test('a start is needed only when no run exists; outdated runs wait for an explicit update', () => {
   const parse = extra => run.parseFeedbackRun(body(extra));
   assert.equal(run.feedbackRunNeedsStart(parse({ status: 'absent' })), true);
   assert.equal(run.feedbackRunNeedsStart(parse({ status: 'stale' })), true);
-  assert.equal(run.feedbackRunNeedsStart(parse({ outdated: true })), true);
-  assert.equal(run.feedbackRunNeedsStart(parse({ status: 'running', outdated: true })), false);
+  assert.equal(run.feedbackRunNeedsStart(parse({ outdated: true })), false);
+  assert.equal(run.feedbackRunOutdated(parse({ outdated: true })), true);
+  assert.equal(run.feedbackRunOutdated(parse({ status: 'running', outdated: true })), false);
   assert.equal(run.feedbackRunNeedsStart(parse({ status: 'absent', enabled: false })), false);
   assert.equal(run.feedbackRunNeedsStart(parse()), false);
+});
+
+test('automatic starts: new eligible recordings once, failed starts after the retry delay', () => {
+  const c = (id, extra = {}) => ({ id, contextId: 'c1', eligible: true, start: null, ...extra });
+  const now = 1_000_000;
+  const due = run.startsDue([c('new'), c('done', { start: { state: 'started', at: 0 } }), c('old', { eligible: false }),
+    c('failedRecently', { start: { state: 'failed', at: now - 1000 } }), c('failedLongAgo', { start: { state: 'failed', at: now - run.START_RETRY_MS } })], now);
+  assert.deepEqual(due.map(x => x.id), ['new', 'failedLongAgo']);
 });
 
 test('coaching cards lead with the largest gains and add next-level advice not already covered', () => {
@@ -129,4 +147,28 @@ test('client saves answers, tracks capability, dedupes requests and only re-rend
   answer = () => new Response('oops', { status: 500 });
   await assert.rejects(client.fetchFeedbackRun(api, 'a1', 'c1'));
   assert.equal(client.readSavedRun(api, 'a1', 'c1').scores.overall, 67);  // Saved copy survives failures.
+  answer = () => new Response(JSON.stringify(body({ status: 'absent', run_id: null, scores: null, slides: [], whole: null })), { status: 200 });
+  await client.fetchFeedbackRun(api, 'a1', 'c1');
+  assert.equal(client.readSavedRun(api, 'a1', 'c1').runId, 'r1');  // "absent" never replaces a saved run.
+});
+
+test('a slow older GET never overwrites a newer answer', async () => {
+  const api = 'http://order.invalid/api', releases = [];
+  globalThis.fetch = (url, init) => new Promise(resolve => releases.push({ method: init.method, resolve }));
+  const slowGet = client.fetchFeedbackRun(api, 'a1', null);
+  const post = client.startFeedbackRun(api, 'a1', null);
+  await new Promise(r => setTimeout(r, 5));
+  releases.find(r => r.method === 'POST').resolve(new Response(JSON.stringify(body({ status: 'queued', run_id: 'new' })), { status: 202 }));
+  await post;
+  releases.find(r => r.method === 'GET').resolve(new Response(JSON.stringify(body({ run_id: 'older' })), { status: 200 }));
+  await slowGet;
+  assert.deepEqual([client.readSavedRun(api, 'a1', null).runId, client.readSavedRun(api, 'a1', null).status], ['new', 'queued']);
+});
+
+test('automatic start state is saved per recording and settings', () => {
+  const api = 'http://start.invalid/api';
+  assert.equal(client.readStartState(api, 'a1', 'c1'), null);
+  client.writeStartState(api, 'a1', 'c1', 'failed', 123);
+  assert.deepEqual(client.readStartState(api, 'a1', 'c1'), { state: 'failed', at: 123 });
+  assert.equal(client.readStartState(api, 'a1', 'c2'), null);
 });

@@ -1,7 +1,7 @@
 """Slide-aligned speech as numbered sentences the model can cite.
 
 AI-assisted with Claude Code, prompted by Seoyeon (November 14, 2026); see docs/ai-collaboration-prompts.md.
-The model cites sentence ids ("s12"), never word positions; the server maps ids
+The model cites sentence ids ("s3.2" = slide 3, sentence 2), never word positions; the server maps ids
 back to original timestamps so the app can play the evidence.
 """
 from bisect import bisect_right
@@ -116,7 +116,8 @@ def build(words: list[dict], slide_events: list[dict], duration_ms: int, edits: 
             text = ' '.join(w.text for w in group if w.text).strip()
             if not text:
                 continue
-            sentence = Sentence(f's{len(sentences)}', slide_index, visit_number,
+            # Slide-scoped ids ("s3.2"): edits on one slide never renumber another slide.
+            sentence = Sentence(f's{slide_index + 1}.{len(slide.sentences) + 1}', slide_index, visit_number,
                                 group[0].start_ms, max(w.end_ms for w in group), text)
             sentences.append(sentence)
             slide.sentences.append(sentence)

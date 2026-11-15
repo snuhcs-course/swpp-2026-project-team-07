@@ -28,6 +28,8 @@ import { AnalysisHost, stageOf, usePlaybackIds, useWorkers } from '../features/r
 import { DefaultRequirementsHost } from '../features/presentations/DefaultRequirementsHost';
 import { InitialQaHost } from '../features/qa/InitialQaHost';
 import { InitialFeedbackHost } from '../features/feedback/InitialFeedbackHost';
+// Claude Code, prompted by Seoyeon (2026-11-15): starts feedback v3 right after transcription.
+import { FeedbackV3Host } from '../features/feedback/FeedbackV3Host';
 import { InitialPresentationScoreHost } from '../features/feedback/InitialPresentationScoreHost';
 import { CoachHost, useCoaches } from '../features/rehearsal/coaching';
 import { deckById, getDeckState, loadPresentations, nextHue, useStore, visibleDecks } from '../features/presentations/store';
@@ -139,6 +141,7 @@ export function AppShell() {
       <CoachHost />
       <DefaultRequirementsHost />
       <InitialFeedbackHost />
+      <FeedbackV3Host />
       <InitialPresentationScoreHost openedDeckId={['rehearse','review','wait','full','listen','feedback'].includes(s)?nav.deckId:null} />
       <InitialQaHost />
       </HomeContext.Provider>

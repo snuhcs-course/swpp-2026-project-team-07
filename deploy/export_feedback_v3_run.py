@@ -1,10 +1,12 @@
 # Export one stored feedback v3 run with the inputs the model saw, for quality review.
 # AI-assisted with Claude Code, prompted by Seoyeon (November 15, 2026); see docs/ai-collaboration-prompts.md.
 #
-# Run inside the API container:  python manage.py shell < export_feedback_v3_run.py > run.json
-# Optional: SMOKE_ATTEMPT_ID selects the recording; default is the newest v3 run.
-# Read-only and makes no provider calls. The output CONTAINS the recording's transcript
-# sentences, slide text and the AI feedback text: share it only with intended reviewers.
+# Run inside the API container (--no-imports -v 0 keeps the output pure JSON):
+#   python manage.py shell --no-imports -v 0 < export_feedback_v3_run.py > run.json
+# Optional: SMOKE_ATTEMPT_ID selects the recording; default is the newest v3 run on the
+# server, from any user of the shared demo. Read-only; makes no provider calls.
+# The output CONTAINS the recording's transcript sentences, slide text and AI feedback
+# text: share it only with intended reviewers and delete the file after review.
 import json
 import os
 

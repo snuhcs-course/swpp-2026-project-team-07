@@ -12,10 +12,10 @@ import { CODE_REASON_TEXT, levelLabel, type V3Evidence, type V3SlideDisplay } fr
 
 type Speech = Extract<V3Evidence, { kind: 'speech' }>;
 type Props = { item: V3SlideDisplay; isPlaying: (e: Speech) => boolean; onPlay: (e: Speech) => void;
-  onRetry: () => void; retrying: boolean; notice: string };
+  onRetry: () => void; onUpdate: () => void; busy: boolean; notice: string };
 const MUST_ICON = { covered: '✓', partial: '◐', missing: '✗' } as const;
 
-export function FeedbackV3SlideDetails({ item, isPlaying, onPlay, onRetry, retrying, notice }: Props) {
+export function FeedbackV3SlideDetails({ item, isPlaying, onPlay, onRetry, onUpdate, busy, notice }: Props) {
   const { c } = useTheme(), v3 = item.v3;
   const listen = (e: Speech, label: string) => {
     const playing = isPlaying(e);
@@ -31,9 +31,12 @@ export function FeedbackV3SlideDetails({ item, isPlaying, onPlay, onRetry, retry
       {item.score !== null ? `Slide score ${item.score} · ${levelLabel(item.level)}` : item.status}</Txt>
     {!!notice && <Txt style={[styles.note, { color: c.secondary }]}>{notice}</Txt>}
     {!!v3?.reason && <Txt style={[styles.note, { color: c.secondary }]}>{CODE_REASON_TEXT[v3.reason] ?? v3.reason}</Txt>}
-    {(v3?.status === 'failed' || item.status === 'Feedback failed') && <Pressable accessibilityRole="button" accessibilityLabel="Retry slide feedback"
-      disabled={retrying} onPress={onRetry} style={[styles.action, { backgroundColor: c.surface10, opacity: retrying ? 0.45 : 1 }]}>
-      <Txt style={[styles.actionText, { color: c.text }]}>{retrying ? 'Retrying…' : 'Retry feedback'}</Txt></Pressable>}
+    {(v3?.status === 'failed' || item.status === 'Feedback failed') && <Action label="Retry slide feedback" text={busy ? 'Retrying…' : 'Retry feedback'} disabled={busy} onPress={onRetry} />}
+    {item.outdated && <>
+      <Txt style={[styles.note, { color: c.secondary }]}>These results are from before your latest transcript or settings changes.</Txt>
+      <Action label="Update feedback for the latest changes" text={busy ? 'Updating…' : 'Update feedback'} disabled={busy} onPress={onUpdate} />
+    </>}
+    {item.status === 'Not graded' && <Action label="Get AI feedback for this recording" text={busy ? 'Requesting…' : 'Get AI feedback'} disabled={busy} onPress={onUpdate} />}
     {!!v3?.strength && <View style={styles.block}>
       <Txt style={[styles.kicker, { color: c.good }]}>WHAT WORKED</Txt>
       <Txt style={[styles.body, { color: c.text }]}>{v3.strength.text}</Txt>
@@ -70,6 +73,12 @@ export function FeedbackV3SlideDetails({ item, isPlaying, onPlay, onRetry, retry
       </View>)}
     </View>}
   </View>;
+}
+function Action({ label, text, disabled, onPress }: { label: string; text: string; disabled: boolean; onPress: () => void }) {
+  const { c } = useTheme();
+  return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }} disabled={disabled} onPress={onPress}
+    style={[styles.action, { backgroundColor: c.surface10, opacity: disabled ? 0.45 : 1 }]}>
+    <Txt style={[styles.actionText, { color: c.text }]}>{text}</Txt></Pressable>;
 }
 const styles = StyleSheet.create({
   root: { gap: 18 }, block: { gap: 10 }, card: { gap: 8, borderTopWidth: 1, paddingTop: 10 },
