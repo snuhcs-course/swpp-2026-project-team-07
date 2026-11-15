@@ -95,6 +95,18 @@ Run `status`: `queued`, `running`, `completed`, `failed`, `stale`. A completed r
 | `FEEDBACK_V3_TEMPERATURE` | blank | Blank omits it; some reasoning models reject temperature. |
 | `FEEDBACK_V3_TIMEOUT_SECONDS`, `FEEDBACK_V3_RETRIES`, `FEEDBACK_V3_MAX_PARALLEL` | `60`, `2`, `8` | Per-call timeout, retries, parallel calls. |
 
+## Deploy to the Azure VM
+
+`/srv/outloud` is not a Git checkout, and the production image bakes in the backend source. This branch includes the deployed v2.4 scoring patch, recovered byte-for-byte from `outloud-backend:issue49-tokenfix-r2-20261103`, so a rebuilt image keeps it. Migration `0012_feedback_run` only adds a table, and the deployed database is at `0011`.
+
+1. On a computer with the repository: `git archive --format=tar.gz -o outloud-feedback-v3.tgz origin/ai-feedback-reimplementation backend deploy/smoke_feedback_v3.py deploy/diagnose_feedback.py`. Copy the archive to the VM's `/tmp`.
+2. On the VM, in `/srv/outloud`, with the `dc` helper from the [hosting guide](azure-hosting.md#deploy-and-maintain): run `sudo bash deploy/backup.sh`. Extract the archive to `/tmp/outloud-v3`. Move any existing `backend` directory to `backend.before-feedback-v3`, then copy `/tmp/outloud-v3/backend` to `backend`.
+3. `export OUTLOUD_IMAGE_TAG=feedback-v3-r1`, then `dc build api`, `dc run -T --rm --no-deps api python manage.py migrate </dev/null`, and `dc up -d api worker scheduler`. Check `dc ps` and the worker ping. Feedback v3 is still off, so the app behaves as before.
+4. Add `FEEDBACK_V3_ENABLED=true` and `FEEDBACK_V3_AUTO_START=false` to `deploy/.env`, run `dc up -d api worker scheduler` again, then run `deploy/smoke_feedback_v3.py` with `dc exec -T api python manage.py shell <`. This makes real paid calls: one per gradable slide plus one whole call.
+5. Set `OUTLOUD_IMAGE_TAG=feedback-v3-r1` wherever the current tag is defined, so later `dc` commands do not recreate the old image.
+
+Rollback: `export OUTLOUD_IMAGE_TAG=issue49-tokenfix-r2-20261103 && dc up -d api worker scheduler`, and restore the tag setting. The `0012` table can stay; the old code ignores it. Worker concurrency stays at 1 for now. Raise it only after the memory check, because each worker process can load the speech-detection model.
+
 ## Rollout
 
 | Phase | Work | Status |
@@ -102,7 +114,7 @@ Run `status`: `queued`, `running`, `completed`, `failed`, `stale`. A completed r
 | 0 | Run `deploy/diagnose_feedback.py` on the VM; check CPU credits and memory | Waiting for VM output |
 | 1 | Backend pipeline, API and tests | Done on this branch |
 | 2 | Mobile: read `feedback-run` in Review and Full Review; show progress, next-level advice and point gains; stop starting v2 score and slide-review jobs | Next |
-| 3 | Deploy with `FEEDBACK_V3_ENABLED=true`; time real rehearsals | Not started |
+| 3 | Deploy with v3 off, enable it, run `deploy/smoke_feedback_v3.py`; time real rehearsals | Steps ready; not run |
 | 4 | Calibration: 10–20 English and Korean recordings, each scored 5 times; targets: ≤ 3 points between runs, ≤ 5 points between languages for the same talk | Not started |
 
 ## Verification and limits
@@ -110,4 +122,4 @@ Run `status`: `queued`, `running`, `completed`, `failed`, `stale`. A completed r
 - 40 tests in `backend/rehearsals/test_feedback_v3.py` cover rubric arithmetic, sentence splitting, corrections, measurements, the retrying client (mocked HTTP, deadlines), the end-to-end pipeline with a fake model (English and Korean), retry, stale inputs, recovery, profile selection, cross-slide evidence, unexpected output shapes and auto-start. The full backend suite passes locally on SQLite: 670 tests, 26 skipped (torch/VAD packages not installed). An independent AI review found 6 substantive defects and several smaller ones; all are fixed and tested.
 - No real provider call has been made. Model behavior, latency, consistency and advice quality are untested.
 - Rate bands, the filler lists and the 5-word minimum are provisional.
-- Migration `0012_feedback_run` assumes the VM schema matches `codex/issue-49`. Check `showmigrations rehearsals` on the VM before deploying (the unpushed v2.4 patch may add migrations).
+- Migration `0012_feedback_run` was checked against the VM: the deployed plan ends at `0011`, and the deployed code has no unmigrated model changes. The v2.4 patch changed no schema.
