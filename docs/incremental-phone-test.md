@@ -1,12 +1,12 @@
 # Incremental feedback: Android phone test
 
-The shared demo uses the Azure backend and standalone v9 APK. It makes real
+The shared demo uses the Azure backend and standalone v10 APK. It makes real
 Scribe and configured feedback-provider calls. Use an ordinary, nonprivate deck
 and test speech. Automated fixtures are separate from this physical-phone test.
 
 ## Azure setup (no computer required)
 
-1. Download the APK from the [v9 release](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v9-20261115).
+1. Download the APK from the [v10 release](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v10-20261115).
    Install it as an update; keep the existing app installed to preserve local takes.
    This standalone, non-debuggable demo retains the team's development signing key.
 2. Connect the phone to Wi-Fi or mobile data. The APK uses
@@ -27,7 +27,7 @@ Follow [local development](../README.md#quick-start) to start PostgreSQL, Redis,
 Django, a Celery worker and Beat. Apply migration 0013. Put `ELEVENLABS_API_KEY` and
 `OPENROUTER_API_KEY` only in ignored `backend/.env`; enable `FEEDBACK_V3_ENABLED`,
 `FEEDBACK_V3_AUTO_START` and `INCREMENTAL_CAPTURE_ENABLED` on all three services.
-Rebuild with the chosen local `EXPO_PUBLIC_API_URL`; the v9 release always uses
+Rebuild with the chosen local `EXPO_PUBLIC_API_URL`; the v10 release always uses
 Azure. A localhost development APK needs `adb reverse tcp:8000 tcp:8000` and its
 Mac backend. Do not put provider credentials or the reviewer code in the APK.
 
@@ -123,5 +123,39 @@ with its saved reviewer code. Public PDF import and Live feedback mode worked wi
 no USB forwarding and the Mac API stopped. The user then asked to stop audio tests
 because they were wearing earbuds. Recording and playback were stopped immediately;
 the v9 phone recording/outage/finalization test is **interrupted, not passed**.
-The earlier local APK checks above remain distinct evidence. No further recording
-or playback should be initiated during this publication task.
+The earlier local APK checks above remain distinct evidence. The user subsequently
+reauthorized audio tests; the resumed check is recorded below and in the active log.
+
+
+### Resumed Azure phone check
+
+After the user reauthorized audio testing, the installed v9 APK completed the
+previously interrupted check on the same Samsung phone, with no USB forwarding
+and the local Mac API stopped. Attempt `c774d83a-0c26-473e-8773-94e41ecfe472`
+recorded 409,320 ms across four slide visits (1 → 2 → 1 → 2) and nine contiguous
+segments. Slide feedback appeared before Stop; revisiting slide 1 withheld its
+current score until the new speech was ready, then updated its advice.
+
+Disabling Wi-Fi and mobile data left no active Android network. Recording
+continued, uploads queued locally, and restoring connectivity completed them
+without tapping Retry. A second outage at Stop followed by an offline app restart
+also retained the same attempt and uploaded its remaining audio after reconnecting.
+The full PCM exactly matched all nine segments; all 214 assembled transcript
+words had valid timestamps. Five speech segments each had one accepted Scribe
+result; four silent segments made no Scribe call. The two slide assessments plus
+one revisit update and one whole-presentation assessment each made one model call.
+No full-audio transcription or unchanged-slide reassessment occurred. Playback
+crossed the first transition and skipped to both later visits in speaking order.
+This is an agent-operated synthetic-speech check, not human scoring-quality
+acceptance. The microphone and playback were stopped afterward.
+
+Separately, Recover recording finalized the earlier interrupted attempt
+`9a29bb6c-cc8d-41b0-8477-77949c9e55bc` with the same identity and matching full PCM.
+Its mostly silent audio is recovery evidence only.
+
+The follow-up v10 source also repairs the failed automated checks: 669 mobile tests
+and 710 PostgreSQL backend tests pass with zero skips, alongside typecheck, lint,
+Django checks and migration consistency. Cue retry controls, Q&A tap/TTS behavior,
+legacy Review pending/failure messages and Unicode audience input were corrected.
+An independent AI review found and resolved cue-control overlap and passed its
+focused checks. These source checks do not establish a completed v10 phone test.

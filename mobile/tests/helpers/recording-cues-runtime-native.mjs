@@ -8,17 +8,20 @@ export function emitSetupKeyboard(name,screenY){setupNative.keyboard=name==='key
 export const StyleSheet={create:v=>v,absoluteFill:{}};
 export const Enter=({children})=>React.createElement('enter',null,children), Txt='text';
 export const useFrame=()=>setupNative.frame;
-export const Glyph='glyph',UIIcon='icon',PanView='pan',SlideCard='slide-card',CARD_H=196,CARD_W=358;
+export const Glyph='glyph',UIIcon='icon',PanView='pan',SlideCard='slide-card',MiniSlide='mini-slide',CARD_H=196,CARD_W=358;
 export const Chip='chip',Confetti='confetti',Dialog='dialog',HintRow='hints',OrbitalCaption='orbital-caption',PageSurface='page-surface',RecordButton='record-button',RecordRing='record-ring',RoundButton='round-button',Waveform='waveform',IDLE_WAVE=[];
-export const Easing={linear:v=>v,cubic:v=>v,bezier:()=>v=>v,inOut:f=>f};
+export const Easing={linear:v=>v,cubic:v=>v,bezier:()=>v=>v,inOut:f=>f,out:f=>f};
 export const cancelAnimation=()=>{},runOnJS=f=>f,withTiming=v=>v;
 export const useSharedValue=value=>{const r=React.useRef({value,get(){return this.value;},set(v){this.value=v;}});return r.current;};
 export const useAnimatedStyle=()=>({}),useReducedMotion=()=>true;
 const Animated=Object.assign(({children})=>React.createElement('svg',null,children),{View:'animated'});export default Animated;
-export const Rect='rect',selectionAsync=async()=>{},impactAsync=async()=>{},ImpactFeedbackStyle={Medium:'medium'};
+export const Rect='rect',Path='path',Circle='circle',Line='line',StatusBar='status-bar',selectionAsync=async()=>{},impactAsync=async()=>{},ImpactFeedbackStyle={Medium:'medium'};
+export const OrientationLock={PORTRAIT_UP:1},lockAsync=async()=>{};
+export const useSafeAreaInsets=()=>({top:0,bottom:0,left:0,right:0});
+const setFullscreenLandscape=()=>{};
 export const runtime={model:null,version:0,listeners:new Set(),shell:null,captures:[],played:[],stops:0,routes:[],recoveries:[],audio:new Map(),startWait:null,
  reset(model,slide=0){this.model=model;this.version++;this.captures=[];this.played=[];this.stops=0;this.routes=[];this.recoveries=[];this.audio=new Map();this.startWait=null;
- this.shell={nav:{deckId:model.deck.id,slide,nav:null},go:(...a)=>this.routes.push(a),home:{p:{get:()=>0,set(){}}}};},
+ this.shell={nav:{deckId:model.deck.id,slide,nav:null},go:(...a)=>this.routes.push(a),setFullscreenLandscape,home:{p:{get:()=>0,set(){}}}};},
  emit(){this.version++;for(const l of this.listeners)l();}};
 const subscribe=l=>{runtime.listeners.add(l);return()=>runtime.listeners.delete(l);};
 export function useDeckModel(){React.useSyncExternalStore(subscribe,()=>runtime.version);return runtime.model;}

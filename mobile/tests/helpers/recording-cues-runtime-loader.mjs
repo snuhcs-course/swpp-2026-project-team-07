@@ -7,7 +7,7 @@ export function resolve(specifier, context, nextResolve) {
   if (specifier.endsWith('/modules/outloud-recorder') || specifier.endsWith('/recording/incremental') || specifier.endsWith('/recording/LiveFeedbackPanel'))
     return { url: new URL('./recording-screen-incremental.mjs', import.meta.url).href, shortCircuit: true };
   if (specifier === 'expo-router') return {url:new URL('./recording-screen-ui.mjs',import.meta.url).href,shortCircuit:true};
-  if (['react-native', 'react-native-reanimated', 'react-native-svg', 'expo-haptics'].includes(specifier) ||
+  if (['react-native', 'react-native-reanimated', 'react-native-svg', 'expo-haptics', 'expo-screen-orientation', 'expo-status-bar', 'react-native-safe-area-context'].includes(specifier) ||
       /\/(frame|icons|PanView|SlideCard|ui)$/.test(specifier) || specifier === './shared' ||
       /\/(CaptureEngine|takes|useSegmentPlayer|importer|useDeckModel)$/.test(specifier) ||
       specifier.endsWith('/rehearsal/analysis') || specifier.endsWith('/recording/storage') || specifier.endsWith('/presentations/store') || specifier === './TakePlayback') {

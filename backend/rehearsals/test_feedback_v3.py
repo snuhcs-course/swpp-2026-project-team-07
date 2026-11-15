@@ -10,7 +10,7 @@ import os
 from unittest import mock
 
 import httpx
-from django.test import SimpleTestCase, TestCase
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -234,6 +234,7 @@ def fake_answer(kind, payload, level='competent'):
 
 
 @mock.patch.dict(os.environ, ENV)
+@override_settings(CELERY_TASK_ALWAYS_EAGER=True)
 class PipelineTests(TestCase):
     def setUp(self):
         self.client = APIClient()
