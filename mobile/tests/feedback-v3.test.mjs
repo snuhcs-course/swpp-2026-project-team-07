@@ -191,3 +191,50 @@ test('a POST result is kept even when a poll sent after it is answered first', a
   await post;
   assert.equal(client.readSavedRun(api, 'a1', null).runId, 'created');
 });
+
+test('a delayed POST cannot replace a newer snapshot of the same run', async () => {
+  const api = 'http://post-progress.invalid/api', releases = [];
+  const at = seconds => `2026-11-15T08:00:${seconds}.000000+00:00`;
+  globalThis.fetch = (url, init) => new Promise(resolve => releases.push({ method: init.method, resolve }));
+  const post = client.startFeedbackRun(api, 'a1', null);
+  const poll = client.fetchFeedbackRun(api, 'a1', null);
+  await new Promise(r => setTimeout(r, 5));
+  releases.find(r => r.method === 'GET').resolve(new Response(JSON.stringify(body({ updated_at: at('05') })), { status: 200 }));
+  await poll;
+  releases.find(r => r.method === 'POST').resolve(new Response(JSON.stringify(body({ status: 'queued', updated_at: at('01'), scores: null })), { status: 202 }));
+  await post;
+  assert.equal(client.readSavedRun(api, 'a1', null).status, 'completed');
+  assert.equal(client.readSavedRun(api, 'a1', null).scores.overall, 67);
+});
+
+test('a newer retry snapshot can replace a failed run', async () => {
+  const api = 'http://retry-version.invalid/api';
+  globalThis.fetch = async (_url, init) => new Response(JSON.stringify(body(init.method === 'GET'
+    ? { status: 'failed', updated_at: '2026-11-15T08:00:01+00:00' }
+    : { status: 'queued', updated_at: '2026-11-15T08:00:02+00:00' })), { status: 200 });
+  await client.fetchFeedbackRun(api, 'a1', null);
+  await client.startFeedbackRun(api, 'a1', null, true);
+  assert.equal(client.readSavedRun(api, 'a1', null).status, 'queued');
+});
+
+test('embedded capture feedback invalidates a revisit before a delayed old GET completes', async () => {
+  const api = 'http://capture-feedback.invalid/api'; let release;
+  const older = body({ updated_at: '2026-11-15T08:00:01+00:00' });
+  client.receiveFeedbackRun(api, 'a1', 'c1', older);
+  const pending = client.fetchFeedbackRun(api, 'a1', 'c1', async () => new Promise(resolve => { release = resolve; }));
+  const newer = body({ status: 'running', updated_at: '2026-11-15T08:00:02+00:00',
+    slides: [scoredSlide(1, { status: 'pending', score: null, level: null, provisional: true, reason: 'awaiting_segments' })] });
+  client.receiveFeedbackRun(api, 'a1', 'c1', newer);
+  release(new Response(JSON.stringify(older), { status: 200 })); await pending;
+  const slide = client.readSavedRun(api, 'a1', 'c1').slides[0];
+  assert.equal(slide.status, 'pending'); assert.equal(slide.score, null); assert.equal(slide.provisional, true);
+  assert.equal(slide.improvements.length, 1, 'prior advice is retained provisionally');
+});
+
+test('embedded capture feedback rejects a foreign recording or settings without changing the cache', () => {
+  const api = 'http://capture-identity.invalid/api';
+  client.receiveFeedbackRun(api, 'a1', 'c1', body());
+  assert.throws(() => client.receiveFeedbackRun(api, 'a1', 'c1', body({ attempt_id: 'other' })), /different recording/);
+  assert.throws(() => client.receiveFeedbackRun(api, 'a1', 'c1', body({ context_id: 'other' })), /different recording/);
+  assert.equal(client.readSavedRun(api, 'a1', 'c1').scores.overall, 67);
+});

@@ -43,6 +43,8 @@ def publish(attempt_id, revision):
 def admit(attempt_id, payload):
     with transaction.atomic():
         attempt = Attempt.objects.select_for_update().get(pk=attempt_id)
+        if hasattr(attempt, 'capture'):
+            raise ProcessConflict('incremental_capture', 'This recording uses segment transcripts. Retry its failed segments; full audio is never retranscribed.')
         revision = payload.get('processing_revision')
         if revision is not None and revision != attempt.processing_revision:
             raise ProcessConflict('stale_revision', 'Refresh this attempt before retrying.')

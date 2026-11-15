@@ -1,3 +1,4 @@
+import { captureFeedback, readCapture, captureVersion, subscribeCaptures } from '../recording/incrementalState';
 // Feedback v3 for the selected run, for screens: reads saved results and polls while a run is on its way.
 // AI-assisted with Claude Code, prompted by Seoyeon (November 15, 2026); see docs/ai-collaboration-prompts.md.
 // Screens never start generation on their own. New recordings start in FeedbackV3Host (or on the server)
@@ -32,9 +33,11 @@ export function feedbackTargets(model: DeckModel | null, api: string): Target[] 
   return runAttemptIds(model.state.run).map(id => {
     let review: ReturnType<typeof readReview> = null;
     try { review = readReview(api, id); } catch { /* Unreadable review: treated as not ready. */ }
-    const ready = !!review?.transcript_id && !!review.transcript?.words.length;
-    const contextId = review?.deck_id ? contextFor(review.deck_id) : null;
-    const auto = automaticFeedbackV3Enabled(api, id) && readStartState(api, id)?.state !== 'failed';
+    const incremental = readCapture(id);
+    const streaming = incremental?.api === api;
+    const ready = streaming || (!!review?.transcript_id && !!review.transcript?.words.length);
+    const contextId = streaming ? incremental.contextId ?? null : review?.deck_id ? contextFor(review.deck_id) : null;
+    const auto = streaming || automaticFeedbackV3Enabled(api, id) && readStartState(api, id)?.state !== 'failed';
     // Expected: FeedbackV3Host will start (or has started) it; it cannot while settings are unsynchronized.
     return { id, contextId, ready, blocked, expected: auto && !blocked, waitingForSettings: auto && blocked };
   });
@@ -42,12 +45,16 @@ export function feedbackTargets(model: DeckModel | null, api: string): Target[] 
 
 export function useRunFeedbackV3(model: DeckModel | null, active = true) {
   const api = normalizeApi(API_URL);
+  useSyncExternalStore(subscribeCaptures, captureVersion);
   useStore(s => s.version);
   useSyncExternalStore(subscribeRequirements, getRequirementsVersion);
   const [foreground, setForeground] = useState(AppState.currentState === 'active');
   const [offline, setOffline] = useState(false), [busy, setBusy] = useState(false);
   const targets = feedbackTargets(model, api);
-  const runs = new Map<string, FeedbackRun | null>(targets.map(t => [t.id, readSavedRun(api, t.id, t.contextId)]));
+  const runs = new Map<string, FeedbackRun | null>(targets.map(t => {
+    const capture = readCapture(t.id);
+    return [t.id, captureFeedback(capture?.api === api ? capture : null, readSavedRun(api, t.id, t.contextId))];
+  }));
   const selection = selectRunFeedbackV3({ n: model?.n ?? 0, parts: model?.state.run?.parts ?? [], stages: model?.stages ?? new Map(),
     runs, ready: new Set(targets.filter(t => t.ready).map(t => t.id)), expected: new Set(targets.filter(t => t.expected).map(t => t.id)),
     waitingForSettings: new Set(targets.filter(t => t.waitingForSettings).map(t => t.id)) });
@@ -67,7 +74,7 @@ export function useRunFeedbackV3(model: DeckModel | null, active = true) {
     const sub = AppState.addEventListener('change', s => setForeground(s === 'active'));
     return () => sub.remove();
   }, []);
-  useEffect(() => { if (active && foreground) void sync(); }, [active, foreground, identity, sync]);
+  useEffect(() => { if (active && foreground) void sync(); }, [active, foreground, identity, capability, sync]);
   // Poll while a run is in progress, or while an automatically started run has not appeared yet.
   const waiting = targets.some(t => t.ready && t.expected && (!runs.get(t.id) || feedbackRunNeedsStart(runs.get(t.id) ?? null)));
   const running = targets.some(t => t.ready && feedbackRunActive(runs.get(t.id) ?? null));

@@ -2,7 +2,7 @@
 
 **Team 07 · OutLoud**
 
-Record actual prompts and concise task notes here during Iteration 2, following the [reporting guide](ai-collaboration-guidelines.md). Excerpts are labelled; missing metadata stays explicit.
+Historical Iteration 2 entries, retained through Claude Code's feedback-v3 work on November 15, 2026. Record new prompts in the [active Iteration 2 log](ai-collaboration-prompts-iteration-2.md), following the [reporting guide](ai-collaboration-guidelines.md). Excerpts are labelled; missing metadata stays explicit.
 
 ## Meeting documentation, October 12, 2026
 

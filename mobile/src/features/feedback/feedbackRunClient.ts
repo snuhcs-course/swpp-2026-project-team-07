@@ -14,6 +14,7 @@ const url = (api: string, attemptId: string) => `${normalizeApi(api)}/attempts/$
 const inflight = new Map<string, Promise<FeedbackRun | null>>();
 // Responses are saved in request order: a slow older GET never replaces a newer answer.
 const requested = new Map<string, number>(), saved = new Map<string, number>();
+const checkedCapabilities = new Set<string>();
 // Keyed by recording only: a later settings change never triggers another automatic run.
 const startKey = (api: string, attemptId: string) => `feedback-v3-start:v2:${enc(api)}:${attemptId}`;
 export type StartState = { state: 'started' | 'failed'; at: number };
@@ -29,8 +30,14 @@ export function writeStartState(api: string, attemptId: string, state: StartStat
 export function feedbackV3Capability(api: string): boolean | null {
   try { return readStored<boolean>(capabilityKey(api)); } catch { return null; }
 }
+/** Cached display capability is not permission to start v2 jobs in a new session. */
+export const feedbackV3CapabilityChecked = (api: string) => checkedCapabilities.has(normalizeApi(api));
 function saveCapability(api: string, value: boolean) {
-  if (feedbackV3Capability(api) !== value) { writeStored(capabilityKey(api), value); bump(); }
+  const changed = feedbackV3Capability(api) !== value;
+  const first = !feedbackV3CapabilityChecked(api);
+  if (changed) writeStored(capabilityKey(api), value);
+  checkedCapabilities.add(normalizeApi(api));
+  if (changed || first) bump();
 }
 export function readSavedRun(api: string, attemptId: string, contextId: string | null): FeedbackRun | null {
   try { return parseFeedbackRun(readStored<unknown>(runKey(api, attemptId, contextId))); } catch { return null; }
@@ -40,6 +47,14 @@ function save(api: string, attemptId: string, contextId: string | null, body: un
   if (!run) throw new Error('Feedback response could not be read. Saved feedback is retained.');
   saveCapability(api, run.enabled);
   const key = runKey(api, attemptId, contextId);
+  const previous = readStored<Record<string, unknown>>(key);
+  if (run.runId && previous?.run_id) {
+    // Server timestamps order snapshots even when a POST response is delayed behind polling.
+    const field = previous.run_id === run.runId ? 'updated_at' : 'created_at';
+    const incomingTime = (body as Record<string, unknown>)[field], previousTime = previous[field];
+    if (typeof incomingTime === 'string' && typeof previousTime === 'string' &&
+        Date.parse(incomingTime) < Date.parse(previousTime)) return readSavedRun(api, attemptId, contextId);
+  }
   // A POST's run is authoritative even if a poll sent after it was answered first.
   if (order < (saved.get(key) ?? 0) && !(created && run.runId)) return readSavedRun(api, attemptId, contextId) ?? run;
   saved.set(key, Math.max(order, saved.get(key) ?? 0));
@@ -53,6 +68,13 @@ function nextOrder(api: string, attemptId: string, contextId: string | null) {
   const key = runKey(api, attemptId, contextId), order = (requested.get(key) ?? 0) + 1;
   requested.set(key, order);
   return order;
+}
+/** The capture endpoint includes the same feedback snapshot; cache it before exposing its transcript progress. */
+export function receiveFeedbackRun(api: string, attemptId: string, contextId: string | null, body: unknown) {
+  const run = parseFeedbackRun(body);
+  if (!run || run.attemptId !== attemptId || run.contextId !== contextId)
+    throw new Error('Feedback belongs to a different recording or settings. Saved feedback is retained.');
+  return save(api, attemptId, contextId, body, nextOrder(api, attemptId, contextId));
 }
 async function json(response: Response): Promise<unknown> {
   try { return await response.json(); } catch { return null; }

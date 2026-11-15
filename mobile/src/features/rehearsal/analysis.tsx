@@ -1,3 +1,5 @@
+import { captureVersion, readCapture, subscribeCaptures } from '../recording/incrementalState';
+import { retryCapture } from '../recording/incremental';
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
 // Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
 // OutLoud redesign: background upload + hosted transcription for each take.
@@ -101,6 +103,31 @@ export function audioOf(id: string): string | null {
 const STAGE_TEXT: Record<string, string> = { queued: 'Queued', checking_audio: 'Checking audio', transcribing: 'Transcribing', aligning: 'Matching words to slides' };
 
 function AttemptWorker({ id }: { id: string }) {
+  useSyncExternalStore(subscribeCaptures, captureVersion);
+  return readCapture(id) ? <IncrementalWorker id={id} /> : <LegacyAttemptWorker id={id} />;
+}
+function IncrementalWorker({ id }: { id: string }) {
+  useSyncExternalStore(subscribeCaptures, captureVersion);
+  const item = readCapture(id);
+  const [uncertain, setUncertain] = useState(false);
+  const failed = item?.remote?.segments.some(s => s.status === 'failed' || s.status === 'uncertain');
+  const done = item?.remote?.finalized;
+  const retry = useCallback(() => {
+    if (readCapture(id)?.remote?.segments.some(s => s.requires_confirmation)) { setUncertain(true); return; }
+    void retryCapture(id).catch(() => undefined);
+  }, [id, setUncertain]);
+  const detail = item?.error || item?.refreshError || (failed ? 'A segment needs retry. Saved audio and available slide feedback are retained.'
+    : done ? '' : `${item?.remote?.segments.filter(s => s.status === 'completed').length ?? 0} / ${item?.manifest.segments.length ?? 0} segments transcribed. Available slide feedback is ready to read.`);
+  useEffect(() => {
+    publish(id, { stage: done ? 'done' : failed ? 'failed' : item?.error ? 'upload_failed' : 'processing', detail,
+      prompt: uncertain ? 'uncertain' : null, busy: false, retryAvailable: !!failed || !!item?.error, retryAt: null,
+      retry, retryUpload: retry, refresh: retry, continuePrompt: () => { setUncertain(false); void retryCapture(id, true).catch(() => undefined); },
+      cancelPrompt: () => setUncertain(false) });
+  }, [id, done, failed, detail, item?.error, retry, uncertain]);
+  useEffect(() => () => publish(id, null), [id]);
+  return null;
+}
+function LegacyAttemptWorker({ id }: { id: string }) {
   const address = API_URL;
   const [saved, setSaved] = useState<SavedAttempt | null>(() => { try { return getSavedAttempt(id); } catch { return null; } });
   const [uploadError, setUploadError] = useState('');

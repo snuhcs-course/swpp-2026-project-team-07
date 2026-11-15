@@ -677,5 +677,6 @@ def public(job: FeedbackRun | None) -> dict:
         'measurements': result.get('measurements'), 'slides': slides, 'whole': result.get('whole'),
         'error': job.error, 'timings': job.timings,
         'created_at': job.created_at.isoformat() if job.created_at else None,
+        'updated_at': max(t for t in (job.created_at, job.queued_at, job.started_at, job.heartbeat_at, job.finished_at) if t).isoformat(),
         'finished_at': job.finished_at.isoformat() if job.finished_at else None,
     }

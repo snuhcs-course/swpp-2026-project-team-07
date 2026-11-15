@@ -93,7 +93,7 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
  if(!model||!model.state.run)return null;
  const {deck,times,state}=model,run=state.run!;
  const t=times[s]??0,target=deck.targets[s]??0,timingLabel=slideTimingLabel(t,target);
- const insufficient=recorded&&(v3?!hasTranscript||v3Slide?.status==='insufficient_speech':!hasTranscript||item?.status==='insufficient'||item?.status==='not_analyzed');
+ const insufficient=recorded&&(v3?v3Slide?.status==='insufficient_speech'||v3Item?.status==='No speech detected':!hasTranscript||item?.status==='insufficient'||item?.status==='not_analyzed');
  const scoreStrength=v3?v3Slide?.strength?.text??null:scoreItem.result&&'slide_index' in scoreItem.result?scoreItem.result.feedback.strengths[0]?.text:null;
  const mustCover=v3Slide?.must_cover??[];
  const pointList=mustCover.length?mustCover.map(m=>m.point):deck.slides[s]?.points??[];

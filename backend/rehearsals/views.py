@@ -39,7 +39,7 @@ def attempt_data(attempt, request):
             "feedback": attempt.feedback, "feedback_state": attempt.feedback_state, "error": attempt.error,
             "duration_ms": attempt.duration_ms, "slide_events": attempt.slide_events,
             "audience": attempt.audience, "created_at": attempt.created_at,
-            "audio_url": request.build_absolute_uri(attempt.audio.url),
+            "audio_url": request.build_absolute_uri(attempt.audio.url) if attempt.audio else None,
             "processing_state": attempt.processing_state, "processing_revision": attempt.processing_revision,
             "failed_stage": attempt.failed_stage or None,
             "retry_available": attempt.status == 'failed' and (not attempt.retry_at or attempt.retry_at <= timezone.now()),
@@ -86,7 +86,9 @@ def deck_detail(request, deck_id):
 @api_view(["GET"])
 def deck_attempts(request, deck_id):
     deck = get_object_or_404(Deck, id=deck_id)
-    return Response([attempt_data(a, request) for a in deck.attempts.filter(qa_answer__isnull=True).order_by("-created_at")])
+    # Live capture uses its progress API until full playback and transcript exist.
+    return Response([attempt_data(a, request) for a in deck.attempts.filter(qa_answer__isnull=True)
+                     .exclude(capture__finalized=False).order_by("-created_at")])
 
 
 @api_view(["POST"])

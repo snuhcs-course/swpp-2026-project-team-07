@@ -4,6 +4,8 @@ import { resolve as domainResolve } from './domain-loader.mjs';
 export { load } from './domain-loader.mjs';
 const native = new URL('./recording-cues-runtime-native.mjs', import.meta.url).href;
 export function resolve(specifier, context, nextResolve) {
+  if (specifier.endsWith('/modules/outloud-recorder') || specifier.endsWith('/recording/incremental') || specifier.endsWith('/recording/LiveFeedbackPanel'))
+    return { url: new URL('./recording-screen-incremental.mjs', import.meta.url).href, shortCircuit: true };
   if (specifier === 'expo-router') return {url:new URL('./recording-screen-ui.mjs',import.meta.url).href,shortCircuit:true};
   if (['react-native', 'react-native-reanimated', 'react-native-svg', 'expo-haptics'].includes(specifier) ||
       /\/(frame|icons|PanView|SlideCard|ui)$/.test(specifier) || specifier === './shared' ||

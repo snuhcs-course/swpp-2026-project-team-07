@@ -1,3 +1,4 @@
+import { isIncrementalAttempt } from '../recording/incrementalState';
 /** Eligible selected recordings share one automatic assessment across all screens. */
 import { useEffect } from 'react';
 import { API_URL } from '../../services/api';
@@ -9,24 +10,24 @@ import { automaticScoreEnabled, enableAutomaticScore } from './automaticPresenta
 import { selectedPresentationScores } from './selectedPresentationScores';
 import { usePresentationScore } from './usePresentationScore';
 import type { ScoreTarget } from './presentationScore';
-import { feedbackV3Capability } from './feedbackRunClient';
+import { feedbackV3Capability, feedbackV3CapabilityChecked } from './feedbackRunClient';
 
 export function InitialPresentationScoreHost({openedDeckId}:{openedDeckId:string|null}) {
  const version=useStore(s=>s.version);
  useEffect(()=>{
   if(!openedDeckId)return;
   const saved=getDeckState(openedDeckId);
-  if(!saved.compare)for(const id of runAttemptIds(saved.run))enableAutomaticScore(API_URL,id);
+  if(!saved.compare)for(const id of runAttemptIds(saved.run))if(!isIncrementalAttempt(API_URL,id))enableAutomaticScore(API_URL,id);
  },[openedDeckId,version]);
  // Claude Code, prompted by Seoyeon (2026-11-15): automatic v2 scoring runs only once the server is known to lack feedback v3.
- if(feedbackV3Capability(API_URL)!==false)return null;
+ if(!feedbackV3CapabilityChecked(API_URL)||feedbackV3Capability(API_URL)!==false)return null;
  return <>{visibleDecks().map(deck=><DeckWorker key={deck.id} id={deck.id}/>)}</>;
 }
 function DeckWorker({id}:{id:string}) {
  const model=useDeckModel(id);
  if(!model||model.state.compare)return null;
  const derived=selectedPresentationScores(model,API_URL);
- return <>{derived.targets.filter(target=>automaticScoreEnabled(API_URL,target.id)&&derived.items.some(item=>item.target?.id===target.id)).map(target=><SourceWorker
+ return <>{derived.targets.filter(target=>!isIncrementalAttempt(API_URL,target.id)&&automaticScoreEnabled(API_URL,target.id)&&derived.items.some(item=>item.target?.id===target.id)).map(target=><SourceWorker
   key={JSON.stringify([target.id,target.contextId,target.review?.transcript_id])} target={target}
   revision={target.contextId?readRequirements(id,API_URL).revision:null} localDeckId={id}/>)}</>;
 }

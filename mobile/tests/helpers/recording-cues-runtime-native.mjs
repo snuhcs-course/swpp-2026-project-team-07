@@ -38,4 +38,4 @@ export function useSegmentPlayer(){const[,render]=React.useState(0);const[p]=Rea
  const[bound]=React.useState(()=>{p.stop=p.stop.bind(p);return p;});return bound;}
 export function TakePlayback(props){return React.createElement('take-playback',props);}
 
-export { AppState } from './recording-screen-ui.mjs';
+export { AppState, Alert } from './recording-screen-ui.mjs';

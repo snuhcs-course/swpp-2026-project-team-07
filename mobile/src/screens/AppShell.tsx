@@ -1,3 +1,4 @@
+import { IncrementalCaptureHost } from '../features/recording/IncrementalCaptureHost';
 // Scribe migration: OpenAI Codex, Iteration 2 (2026-10-16); see active collaboration log.
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
 // OpenAI Codex light-mode ambient: docs/ai-collaboration-prompts-iteration-2.md#guide-based-light-mode-october-15-2026
@@ -138,6 +139,7 @@ export function AppShell() {
         <Prompts />
       </Frame>
       <Workers />
+      <IncrementalCaptureHost />
       <CoachHost />
       <DefaultRequirementsHost />
       <InitialFeedbackHost />
