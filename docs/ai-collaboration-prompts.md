@@ -10103,3 +10103,16 @@ There is some relevant information that you cut out
 
 - Injoon flagged missing context in the Iteration 3 status and change summary. Codex restored the Iteration 2 comparison, the exact v8 source and main date, carried-over capabilities, release changes, and the distinction between APK evidence, later backend recovery and unreleased candidates.
 - Codex checked the official requirements guideline, revisited the 18-team review and Team 03's original implementation-status section, and verified the GitHub v8 tag, main, and pinned release reports. The patch preserves the acceptance criteria and existing evidence. No application rerun was performed.
+
+## Review README content removed in PR #52 — November 16, 2026
+
+**Contributor:** Injoon · **Iteration:** 4 · **Tool:** OpenAI Codex desktop · **Model:** GPT-6 (exact variant not recorded)
+
+### Request — verbatim
+
+```text
+You probably cut out too much in all the sections. I thought that read me was good but now seeing this I'm worried you cut out too much. I want you check the previous readme and make sure you didn't cut necessary information. From now on make sure to read the whole document from top to bottom and from that cut
+```
+
+- Injoon instructed Codex to read the full document before shortening it in future passes. Codex read the PR #50 baseline and PR #52 README end to end. It checked the Project Overview's working-increment slide, the Iteration 3 assignment, the 18-team review, and the original demo and limitations sections of Teams 04 and 19.
+- Restored the demo steps and expected behavior, known gaps, input caps, offline behavior, and links for detailed review, provider setup, verification and contribution records. Checked them against the v8 release, pinned source and dated evidence. No v8-matched demo video was verified in either README or the v8 release.
