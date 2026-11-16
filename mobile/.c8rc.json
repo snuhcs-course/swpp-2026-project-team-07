@@ -1,0 +1,10 @@
+{
+  "all": true,
+  "src": ["src"],
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["**/*.d.ts", "src/contracts/feedback.ts"],
+  "extension": [".ts", ".tsx"],
+  "exclude-after-remap": true,
+  "reporter": ["text", "json", "json-summary", "html"],
+  "reports-dir": "coverage"
+}

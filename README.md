@@ -121,7 +121,7 @@ docker compose exec api python manage.py makemigrations --check --dry-run
 ```
 
 - [Verification guide](docs/verification.md) covers local Python/SQLite commands, PostgreSQL concurrency tests, worker recovery and historical evidence.
-- [Testing Documentation](docs/testing.md#environment-and-commands) gives reproducible commands for the published [coverage setup](https://github.com/snuhcs-course/swpp-2026-project-team-07/tree/testing-setup-documentation). The October 22 run passes all application tests and meets backend targets; mobile CI fails its two line-coverage targets. Reports remain available after failure.
+- [Coverage checks](docs/testing.md#coverage-on-main) show how to run the same coverage checks as CI. GitHub Actions retains the reports when a check fails.
 - SQLite tests skip PostgreSQL-specific races. An Android JavaScript export does not establish APK, physical-device or human-usefulness results.
 
 ## Documentation
