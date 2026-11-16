@@ -10129,3 +10129,12 @@ Looks good. Go ahead and update the README on PR #52 with this outline. First de
 
 - Injoon approved the README order and identified v10 as Iteration 4. Codex used Stop Slop to edit the prose after reading the existing README end to end. The Project Overview's working-increment slide, the 18-team documentation review, and [Team 19's original README](https://github.com/snuhcs-course/swpp-2026-project-team-19/blob/a14d08696428159ab8e2b11f30f2e6472b8980cc/README.md) informed the order and demo environment table.
 - Codex added the Iteration 3 summary, demo checkpoints and environment, and dated verification. It kept the setup commands, the known gaps and input limits, and linked Jaewon's submitted archive. It moved v10 under Project documentation as the Iteration 4 demo. Verified internal links, existing heading anchors, and preserved shell commands. No matching v8 demo video was verified and no app checks were rerun.
+
+### Follow-up — verbatim excerpt
+
+```text
+Like this, when you write documents it should sound "factual" and not "third-persepctive". Your writing is like from the third perspective. And if you find inconsistencies like having coverage for iteration 2, then you have to tell me so we can fix it.
+```
+
+- Injoon asked for direct project prose and for Codex to surface inconsistencies. Codex stated the v8 baseline directly in the README and checked that the deployment and smoke-test descriptions retained their dated facts.
+- The README places October 22 Iteration 2 coverage beneath the Iteration 3 verification heading. The v8 build and smoke-test records do not provide a v8 coverage measurement. Codex left the coverage entry for a separate decision.

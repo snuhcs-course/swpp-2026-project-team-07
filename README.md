@@ -6,7 +6,7 @@ OutLoud helps presenters rehearse with their PDF slides on Android. Import a dec
 
 ## What Iteration 3 changed
 
-Iteration 3 added hosted reviewer access, precise audio seeking and fuller feedback in slide Review. The first Redo starts a new capture, and you can retry feedback for an affected slide. The submitted Requirements and Design identify [v8 (`cdb8055`)](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103) as the demo baseline. [Iteration 3 release evidence](docs/testing-evidence/iteration-3-reconciliation-20261105.md)
+Iteration 3 added hosted reviewer access, precise audio seeking and fuller feedback in slide Review. The first Redo starts a new capture, and you can retry feedback for an affected slide. The Iteration 3 demo uses [v8 (`cdb8055`)](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103). [Iteration 3 release evidence](docs/testing-evidence/iteration-3-reconciliation-20261105.md)
 
 <a id="install-the-iteration-3-demo-apk"></a>
 
@@ -36,7 +36,7 @@ V8 also supports saved audience Q&A with spoken questions. [Recording and review
 | App | `OutLoud-demo-v8-issue49.apk`, [source `cdb8055`](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/cdb8055f0fd5022aafccb47625889d3f9a403f5f) |
 | Minimum Android | Android 7.0 (API 24) |
 | Phone smoke test | Samsung SM-S918N, Android 16, November 3, 2026 |
-| Hosted backend | Azure over HTTPS. The v8 release records a separate hosted v2.4 grading repair. [Hosting details](docs/azure-hosting.md) |
+| Hosted backend | Azure over HTTPS. We deployed the separate v2.4 grading repair on November 3. [Hosting details](docs/azure-hosting.md) |
 
 ## Known limitations and remaining work
 
@@ -110,7 +110,7 @@ The bundle command checks the Android JavaScript export. See the [verification g
 ### What we verified for Iteration 3
 
 - **V8 release:** 617 mobile tests passed. The Android JavaScript export and production APK build passed. [Release verification](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103)
-- **V8 phone smoke test:** One Android 16 phone exercised PDF import, playback, and restart persistence. One English/Korean rehearsal produced a transcript and a displayed score. [Dated evidence and limits](docs/testing-evidence/iteration-3-reconciliation-20261105.md#dated-verification-evidence)
+- **V8 phone smoke test:** The phone check covered PDF import, playback, and restart persistence on Android 16. One English/Korean rehearsal produced a transcript and a displayed score. [Dated evidence and limits](docs/testing-evidence/iteration-3-reconciliation-20261105.md#dated-verification-evidence)
 - **Iteration 2 coverage:** The October 22 suites passed. Backend coverage met its targets, and mobile coverage fell below both line targets. [October 22 coverage record](docs/testing.md#october-22-local-coverage)
 
 <a id="documentation"></a>
