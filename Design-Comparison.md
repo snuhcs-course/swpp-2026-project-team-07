@@ -107,7 +107,7 @@ Checks are documentation self-review only. `build_design_pdf.py` leaves Markdown
 ## 7. Delivery and remaining submission work
 
 - Primary source: `Design-Documentation.md`; preview: `Design-Documentation.html`.
-- Approved SVGs, normalized PNG copies and editable sources: `assets/outloud-design/`.
+- Approved SVGs, PNG renders and editable sources: `docs/design/figures/`.
 - The [historical Iteration 1 Rev.2.0 design PDF](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/34bada699dbf64530f2b6c67cac7a188f840dd67/output/pdf/team7-iter1-design.pdf) combines the short and long drafts. Rebuilding creates a local PDF, HTML preview and Wiki bundle.
 - Wiki-ready derivative and assets: `output/wiki/`. It differs from the primary Markdown only in expanded asset URLs.
 - The current export uses A4 portrait throughout, with 11-point Arial body text, tables and captions. Eight figures span twelve panels so larger diagrams remain readable. Earlier mixed-size exports remain in local archives.

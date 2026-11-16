@@ -10107,3 +10107,43 @@ no i mean delete that  folder and keep outputs/ as the only racked output folder
 
 - Removed two tracked, byte-identical design PDFs. Pinned the named copy in Git history, removed their Git attributes, and documented the existing ignore rule for regenerated exports.
 - Checked the old blob IDs, the staged file list, the ignore rule for future PDF exports and the unchanged archive tree. Export code was unchanged. No PDF regeneration or application tests were needed for these path-only changes.
+
+## Repository design figure consolidation (2026-11-16)
+
+- Contributor: Injoon. Tool: OpenAI Codex. Model: not recorded.
+- Confirmed decision, received November 16, 2026 (KST): combine the two design figure folders in `docs/design/figures/` and update the documentation and exporter.
+
+### Input prompts (verbatim)
+
+```text
+Should we keep assets/outloud-design in root folder or docs folder
+```
+
+```text
+What does diagram-review do
+```
+
+```text
+but regardless they both contain figures needed for docs right
+```
+
+```text
+so how can we combine htem
+```
+
+```text
+but diagram-review does not sound appropriate. we are not reviewing anything
+```
+
+```text
+Let's combine both folders into docs/design/figures/ and update the docs and exporter to use the new path.
+```
+
+```text
+Commit and push the figure consolidation, then open a PR.
+```
+
+### Agent work and verification
+
+- Consolidated 53 editable sources and renders in the selected folder. The retired export copies matched by bytes (43) or decoded pixels (10). Updated the document links, HTML preview, figure manifest, PDF/Wiki exporter, checker and A4 SVG generator in an isolated checkout.
+- The clean Iteration 1 build and checker passed. Verified all 53 files in each export bundle, all eight preview figure links, 12 PDF panels, and pixel equality across all 24 PDF pages against the baseline. The reflow script reproduced the three expected SVGs and panel metadata byte for byte. Earlier check records and prompt quotations retain their original paths. No application testing or Wiki publication. The follow-up requested a commit, push and repository PR.

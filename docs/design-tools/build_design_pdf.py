@@ -21,6 +21,7 @@ parser=argparse.ArgumentParser();parser.add_argument('--root',type=Path)
 ROOT=parser.parse_args().root or Path(__file__).resolve().parents[2]
 # Historical source selection updated with OpenAI Codex, October 21, 2026; docs/ai-collaboration-prompts-iteration-2.md.
 SRC=ROOT/'Design-Documentation-Iteration-1.md';OUT=ROOT/'output/pdf';OUT.mkdir(parents=True,exist_ok=True)
+FIGURE_DIR=Path('docs/design/figures')
 TEXT=SRC.read_text();DIGEST=hashlib.sha256(SRC.read_bytes()).hexdigest()
 REVISION=re.search(r'Team 07 \| (Rev\.\d+\.\d+)',TEXT)[1]
 FIGURE_MANIFEST=json.loads((ROOT/'docs/design-tools/figure-manifest.json').read_text())
@@ -87,14 +88,11 @@ def parse():
   out.append({'kind':'caption' if p[0].startswith('**Figure ') else 'paragraph','text':' '.join(p)})
  return out
 BLOCKS=parse()
-# Preserve original SVGs and their paired browser renders, including editable sources.
-assets=ROOT/'assets/outloud-design';assets.mkdir(parents=True,exist_ok=True)
-for p in (ROOT/'docs/diagram-review/svg').glob('*.svg'):shutil.copy2(p,assets/p.name)
-for p in (ROOT/'docs/diagram-review/png').glob('*.png'):
- # Phase 1 browser captures may carry JPEG bytes under .png names.
- # Normalize exported copies to PNG without changing their decoded pixels.
- with PILImage.open(p) as capture:capture.save(assets/p.name,format='PNG')
-shutil.copytree(ROOT/'docs/diagram-review/sources',assets/'sources',dirs_exist_ok=True)
+assets=OUT/FIGURE_DIR
+shutil.copytree(ROOT/FIGURE_DIR,assets,dirs_exist_ok=True)
+for p in (ROOT/FIGURE_DIR/'png').glob('*.png'):
+ # Some historical browser captures have JPEG bytes under .png names.
+ with PILImage.open(p) as capture:capture.save(assets/'png'/p.name,format='PNG')
 figs=[b for b in BLOCKS if b['kind']=='image']
 assert [b['path'] for b in figs]==[f['path'] for f in FIGURE_MANIFEST['figures']], 'Markdown/figure manifest mismatch'
 for b in figs:
@@ -117,9 +115,9 @@ body{font:16px/1.6 Arial,sans-serif;color:#111;max-width:880px;margin:36px auto;
 # A Wiki-only derivative changes asset URLs, not prose. Unpublished assets stay local.
 WIKI=ROOT/'output/wiki';WIKI.mkdir(parents=True,exist_ok=True)
 wiki_base='https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2026-project-team-07/'
-(WIKI/'Design-Documentation.md').write_text(TEXT.replace('(assets/outloud-design/','('+wiki_base+'assets/outloud-design/'))
-shutil.copytree(assets,WIKI/'assets/outloud-design',dirs_exist_ok=True)
-shutil.copytree(assets,OUT/'assets/outloud-design',dirs_exist_ok=True)
+figure_prefix=FIGURE_DIR.as_posix()+'/'
+(WIKI/'Design-Documentation.md').write_text(TEXT.replace('('+figure_prefix,'('+wiki_base+figure_prefix))
+shutil.copytree(assets,WIKI/FIGURE_DIR,dirs_exist_ok=True)
 
 # Group at major sections/figures; all content flows on uniform A4 paper.
 groups=[];pending=[];current=[]
@@ -167,7 +165,7 @@ def render(b,width):
  if k=='heading':
   p=Paragraph('<a name="'+anchor(b['text'])+'"/>'+inline(b['text']),STYLES['h'+str(min(b['level'],3))]);p.heading=(b['text'],0 if b['level']<3 else 1);return [p]
  if k=='image':
-  stem=Path(b['path']).stem;png=assets/(stem+'.png');spec=FIGURE_SPECS[stem]
+  stem=Path(b['path']).stem;png=assets/'png'/(stem+'.png');spec=FIGURE_SPECS[stem]
   natural=ET.parse(ROOT/b['path']).getroot();nw=float(natural.get('width').replace('px',''));nh=float(natural.get('height').replace('px',''))
   flows=[];b['pdf_panels']=[]
   with PILImage.open(png) as original:
@@ -223,6 +221,6 @@ for label,size in SIZES.items():
 doc.build(story)
 shutil.copy2(OUT/'OutLoud_Design_Documentation.pdf',OUT/'team7-iter1-design.pdf')
 assert hashlib.sha256(SRC.read_bytes()).hexdigest()==DIGEST,'Build must not modify Markdown'
-manifest={'revision':REVISION,'figure_manifest_sha256':hashlib.sha256((ROOT/'docs/design-tools/figure-manifest.json').read_bytes()).hexdigest(),'source':SRC.name,'markdown_sha256':DIGEST,'pages':page_manifest,'blocks':BLOCKS,'figure_sha256':{b['path']:hashlib.sha256((ROOT/b['path']).read_bytes()).hexdigest() for b in figs},'wiki_asset_base':wiki_base+'assets/outloud-design/','published':False,'typography':{'body':11,'tables':11,'captions':11,'code':11,'h1':21,'h2':15,'h3':12,'header_footer':8},'paper':'A4 portrait'}
+manifest={'revision':REVISION,'figure_manifest_sha256':hashlib.sha256((ROOT/'docs/design-tools/figure-manifest.json').read_bytes()).hexdigest(),'source':SRC.name,'markdown_sha256':DIGEST,'pages':page_manifest,'blocks':BLOCKS,'figure_sha256':{b['path']:hashlib.sha256((ROOT/b['path']).read_bytes()).hexdigest() for b in figs},'wiki_asset_base':wiki_base+figure_prefix,'published':False,'typography':{'body':11,'tables':11,'captions':11,'code':11,'h1':21,'h2':15,'h3':12,'header_footer':8},'paper':'A4 portrait'}
 (OUT/'build-manifest.json').write_text(json.dumps(manifest,indent=2))
 print(json.dumps({'pdf':str(OUT/'OutLoud_Design_Documentation.pdf'),'pages':len(PdfReader(OUT/'OutLoud_Design_Documentation.pdf').pages),'page_sizes':page_manifest,'markdown_sha256':DIGEST}))

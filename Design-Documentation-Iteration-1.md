@@ -15,7 +15,7 @@ Iteration 1 features are in review (PRs #17–21). Section 8 is planned design.
 
 ## 2. System Architecture
 
-![Figure 1. System architecture](assets/outloud-design/figure-1-system-short.svg)
+![Figure 1. System architecture](docs/design/figures/svg/figure-1-system-short.svg)
 
 **Figure 1. System architecture.**
 
@@ -51,7 +51,7 @@ See the [processing and feedback contracts](https://github.com/snuhcs-course/swp
 
 ### Core rehearsal data
 
-![Figure 2. Core rehearsal data](assets/outloud-design/figure-2-core-short.svg)
+![Figure 2. Core rehearsal data](docs/design/figures/svg/figure-2-core-short.svg)
 
 **Figure 2. Core rehearsal data.**
 
@@ -71,7 +71,7 @@ The device keeps PDFs/audio in app-private files and metadata in SQLite. Postgre
 
 ### Feedback data and caching
 
-![Figure 3. Feedback data](assets/outloud-design/figure-3-feedback-short.svg)
+![Figure 3. Feedback data](docs/design/figures/svg/figure-3-feedback-short.svg)
 
 **Figure 3. Feedback data.**
 
@@ -121,7 +121,7 @@ The [API contract](https://github.com/snuhcs-course/swpp-2026-project-team-07/bl
 
 ## 5. Recording, Transcription and Alignment
 
-![Figure 4. Recording and transcription](assets/outloud-design/figure-4-processing-short.svg)
+![Figure 4. Recording and transcription](docs/design/figures/svg/figure-4-processing-short.svg)
 
 **Figure 4. Recording and transcription.**
 
@@ -143,7 +143,7 @@ One shared player's audio position drives the displayed slide and transcript hig
 
 ## 6. AI Coaching
 
-![Figure 5. Coaching and recovery](assets/outloud-design/figure-5-coaching-short.svg)
+![Figure 5. Coaching and recovery](docs/design/figures/svg/figure-5-coaching-short.svg)
 
 **Figure 5. Coaching and recovery.**
 
@@ -159,7 +159,7 @@ Each suggestion links slide evidence to speech within a recorded visit. The back
 
 **Planned.** The controller/layout redesign exists in a local prototype and is not included in PRs #17–21.
 
-![Figure 6. Frontend architecture](assets/outloud-design/figure-6-frontend.svg)
+![Figure 6. Frontend architecture](docs/design/figures/svg/figure-6-frontend.svg)
 
 **Figure 6. Frontend architecture.**
 
@@ -195,7 +195,7 @@ The roadmap below maps the [requirements](https://github.com/snuhcs-course/swpp-
 | US-11: deletion | Coordinate rows, files, caches and active jobs. | [8.4](#84-deletion-and-recovery) |
 | NFR-05: privacy, consent, deletion | Ownership, protected media and pre-upload consent before multi-user use. | [8.4](#84-deletion-and-recovery), [8.5](#85-ownership-and-consent) |
 
-![Figure 3A. Proposed data-model extension](assets/outloud-design/figure-3a-planned-data.svg)
+![Figure 3A. Proposed data-model extension](docs/design/figures/svg/figure-3a-planned-data.svg)
 
 **Figure 3A. Proposed data-model extension.**
 
@@ -227,7 +227,7 @@ Owner would own decks; attempts and derived results inherit access through the d
 
 ### 8.4 Deletion and recovery
 
-![Figure 8. Confirmed deletion and recovery](assets/outloud-design/figure-8-deletion.svg)
+![Figure 8. Confirmed deletion and recovery](docs/design/figures/svg/figure-8-deletion.svg)
 
 **Figure 8. Confirmed deletion and recovery.**
 
