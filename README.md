@@ -4,21 +4,23 @@ OutLoud is an Android app for rehearsing a presentation. Import your slides, rec
 
 <a id="current-status"></a>
 
-## Install the demo APK
+## Install the Iteration 3 demo APK
 
-Use **[OutLoud demo v10](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v10-20261115)** to try the published app. Download `OutLoud-demo-v10-live-feedback.apk` from the release and install it on Android 7.0 or later. Allow the browser or file manager to install it if Android asks. Install it over the existing demo to keep your recordings and settings. Open OutLoud and enter the team’s reviewer code, which the team distributes privately.
+Use **[OutLoud demo v8](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103)** to review the published Iteration 3 baseline. Download `OutLoud-demo-v8-issue49.apk` and install it on Android 7.0 or later. Install it as an update to an earlier demo to keep your recordings and settings. If your phone already has a newer OutLoud build, use a separate test device or emulator for v8.
 
-The APK uses the shared Azure backend over HTTPS. You need internet for transcription and feedback. You can install and open the APK directly on your phone without Metro or a local server. The release lists the APK checksum, source commit `5745502`, and verification results. The reviewer code grants access to a shared workspace, so use sample slides and recordings for the demo.
+Open OutLoud and enter the team’s reviewer code. This APK connects to the shared Azure backend over HTTPS and runs without Metro or a local server. Use sample slides and recordings in the shared workspace. Transcription and feedback require internet and the hosted backend. The release links the checksum and evidence for source commit `cdb8055`.
 
 ### Try the published demo flow
 
-1. Import a PDF and set the audience and time target.
-2. Record a short rehearsal across two or more slides. Choose **Live feedback** before recording to see slide feedback as you go, or select **After Stop** to process the take when you finish.
-3. Stop, open Review or Full Review, and play the saved recording. Check the transcript and feedback against what you said.
+1. Import a PDF and save the audience and time target.
+2. Record a short rehearsal while moving between slides, then tap Stop.
+3. When processing finishes, open Review or Full Review. Play the saved recording and compare the transcript and slide feedback with what you said.
+
+The [v10 APK](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v10-20261115) is a later demo with live slide feedback.
 
 ## Quick start
 
-Use this path to run the code in your checkout. The shared repository baseline is [v8 source `cdb8055`](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/cdb8055f0fd5022aafccb47625889d3f9a403f5f). The v10 APK uses [its own release source](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/57455028739ad2d1aeb7f1d04723a01f6fb7190e).
+Use this path to run the code in your checkout. The Iteration 3 repository baseline is [v8 source `cdb8055`](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/cdb8055f0fd5022aafccb47625889d3f9a403f5f).
 
 Install Git, Node.js 24 and npm, Docker with Compose, Android Studio, JDK 17, and Android SDK Platform 36. Set `JAVA_HOME` and Android Studio’s Gradle JDK to JDK 17.
 

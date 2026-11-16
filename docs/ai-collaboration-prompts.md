@@ -10068,3 +10068,11 @@ No not a standalone read me pr but documentaion cleanup pr
 
 - Codex opened a separate documentation cleanup branch based on the reconciled PR #50. The README starts with installation of the published v10 APK and gives separate local setup instructions for the v8 repository baseline. Submitted Iteration 3 exports remain pending.
 - Checked v10 release metadata and INSTALL.txt, repository scripts and endpoint definitions, README internal links and retained anchors, shell syntax, and a Compose configuration render using the example environment. This documentation pass did not install a new APK or rerun the app.
+
+### Scope correction — verbatim
+
+```text
+i mean we should do a cleanup for iteration 3. iteration 4 is still in progress. you know how we looked at all the class lectures, other groups' repo to see how our repo stands? 
+```
+
+- The requester clarified that PR #52 cleans up the published Iteration 3 snapshot. Codex corrected the README to point to v8 for Iteration 3 and revised the PR scope using the course and peer documentation audit. Iteration 4 work and later releases retain their own evidence and scope.
