@@ -108,7 +108,7 @@ Checks are documentation self-review only. `build_design_pdf.py` leaves Markdown
 
 - Primary source: `Design-Documentation.md`; preview: `Design-Documentation.html`.
 - Approved SVGs, normalized PNG copies and editable sources: `assets/outloud-design/`.
-- Current Iteration 1 Rev.2.0 PDFs (merged from the short and long drafts): [documentation](output/pdf/OutLoud_Design_Documentation.pdf) and [submission copy](output/pdf/team7-iter1-design.pdf). The obsolete root PDF is removed. Rebuilding also creates the local HTML preview and Wiki bundle.
+- The [historical Iteration 1 Rev.2.0 design PDF](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/34bada699dbf64530f2b6c67cac7a188f840dd67/output/pdf/team7-iter1-design.pdf) combines the short and long drafts. Rebuilding creates a local PDF, HTML preview and Wiki bundle.
 - Wiki-ready derivative and assets: `output/wiki/`. It differs from the primary Markdown only in expanded asset URLs.
 - The current export uses A4 portrait throughout, with 11-point Arial body text, tables and captions. Eight figures span twelve panels so larger diagrams remain readable. Earlier mixed-size exports remain in local archives.
 - SVG rendering is confirmed locally. GitHub's [Wiki image guidance](https://docs.github.com/en/communities/documenting-your-project-with-wikis/editing-wiki-content) explicitly lists raster formats; PNG fallbacks are included in case its live renderer suppresses SVG.

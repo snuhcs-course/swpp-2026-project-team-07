@@ -10078,3 +10078,32 @@ Keep the coverage gate strict. Bring mobile coverage up to both targets before m
 - Adapted the existing c8 and coverage.py setup from PR #33 (`f0d7148`) to main (`4f0dd79`). Kept the original group targets and the checks that fail for missing or below-target coverage. Added source maps for the later bundled-PDF loader.
 - Added eight tests using the actual Home, Upload, import and review-media logic with simulated Android and network boundaries. Covered navigation and delete/undo, offline import and retry, legacy page recovery, cache reuse, invalid media and stale focus callbacks.
 - The initial mobile port passed all 617 tests but missed both line targets. The final strict run passed all 625 tests: logic 86.77% lines / 86.29% branches and screens 78.49% lines / 74.90% branches. Type checking, lint (one pre-existing warning), the collector self-check and Android JavaScript export passed. Three coverage-report tests passed, and the local SQLite backend run passed 605 tests with 25 PostgreSQL-only skips. GitHub CI runs the backend with PostgreSQL. These checks did not use a physical device.
+
+## Injoon — retire tracked design PDF exports
+
+- Date: 2026-11-16 (KST).
+- Tool: OpenAI Codex. Model: not recorded.
+- Decision: Keep `outputs/` as the sole tracked export folder. Defer the Iteration 1 submission documents.
+
+### Input prompts (verbatim)
+
+```text
+We have seperate output/pdf and ouputs folders in our repo; how should we combine/delete
+```
+
+```text
+Isn't the iteration 1 submission documents in output/pdf/
+```
+
+```text
+acutally let's just defer iter 1 documents. I'll ask seoyeon later
+```
+
+```text
+no i mean delete that  folder and keep outputs/ as the only racked output folder
+```
+
+### Agent work and verification
+
+- Removed two tracked, byte-identical design PDFs. Pinned the named copy in Git history, removed their Git attributes, and documented the existing ignore rule for regenerated exports.
+- Checked the old blob IDs, the staged file list, the ignore rule for future PDF exports and the unchanged archive tree. Export code was unchanged. No PDF regeneration or application tests were needed for these path-only changes.
