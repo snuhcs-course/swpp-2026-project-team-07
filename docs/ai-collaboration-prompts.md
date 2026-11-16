@@ -10155,3 +10155,17 @@ can we revert the read me to the baseline. It became so bad. Find skills we can 
 ```
 
 - Injoon requested the baseline README. Codex applied a checked patch to the clean README and verified that it matches the PR #52 base, PR #50 at `7c9dd8c`, byte for byte. The Requirements changes remain in PR #52.
+
+## Edit the baseline README after reader review — November 16, 2026
+
+**Contributor:** Injoon · **Iteration:** 4 · **Tool:** OpenAI Codex desktop · **Model:** GPT-6 (exact variant not recorded)
+
+### Request — verbatim
+
+```text
+Looks good. Use both skills and make those targeted README edits on PR #52. Keep the baseline detail, leave Iteration 2 coverage in Testing, and do another fresh-reader check before pushing.
+```
+
+- Codex used GitHub's documentation-writer and Anthropic's doc-coauthoring. It checked the full baseline, the course working-increment requirements, the 18-team review and the original Team 04 and Team 19 README examples. It retained the detailed rehearsal flow, local setup, limits and phase history, and added the APK, reviewer handoff, and submitted archive.
+- An independent README-only reader could follow the APK, USB setup, retake, consent, evidence and history paths. It flagged that the walkthrough could obscure upload-before-consent and omitted the control that starts a retake. Codex clarified both steps against the specification and v8 source. The reader confirmed the fixes before push.
+- Verified 40 internal links, existing anchors, shell syntax, unchanged shell commands, and the v8-only verification section. Iteration 2 coverage remains in Testing Documentation. No matching demo video was verified and no runtime tests were rerun.
