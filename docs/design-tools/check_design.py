@@ -8,6 +8,8 @@ from PIL import Image, ImageChops
 p=argparse.ArgumentParser();p.add_argument('--root',type=Path);p.add_argument('--source-repo',type=Path,required=True);a=p.parse_args()
 # Historical source selection updated with OpenAI Codex, October 21, 2026; docs/ai-collaboration-prompts-iteration-2.md.
 r=a.root or Path(__file__).resolve().parents[2];s=(r/'Design-Documentation-Iteration-1.md').read_text();m=json.loads((r/'output/pdf/build-manifest.json').read_text());errors=[]
+figure_dir=Path('docs/design/figures')
+figure_prefix=figure_dir.as_posix()+'/'
 def check(ok,msg):
  if not ok:errors.append(msg)
 specs=json.loads((r/'docs/design-tools/figure-manifest.json').read_text());expected=specs['figures'];revision=re.search(r'Team 07 \| (Rev\.\d+\.\d+)',s)[1]
@@ -25,7 +27,7 @@ anchors={re.sub(r'[^\w\- ]','',x.lower()).replace(' ','-') for x in re.findall(r
 source_count=0
 for u in links:
  if u.startswith('#'):check(u[1:] in anchors,'Broken anchor '+u)
- elif u.startswith('assets/'):
+ elif u.startswith(figure_prefix):
   check((r/u).is_file(),'Missing local asset '+u)
   check((r/'output/pdf'/u).is_file(),'Missing PDF relative asset '+u)
  elif '/blob/' in u or '/tree/' in u:
@@ -34,10 +36,13 @@ for u in links:
   check(proc.returncode==0,'Missing source '+u);source_count+=1
 for alt,path in figures:
  ET.parse(r/path);stem=Path(path).stem
- check((r/path).read_bytes()==(r/'docs/diagram-review/svg'/Path(path).name).read_bytes(),'Canonical SVG differs '+path)
- im=Image.open(r/'assets/outloud-design'/(stem+'.png'));im.verify()
+ for bundle in ('output/pdf','output/wiki'):
+  check((r/bundle/path).read_bytes()==(r/path).read_bytes(),'Exported SVG differs '+path+' in '+bundle)
+  with Image.open(r/bundle/figure_dir/'png'/(stem+'.png')) as im:
+   check(im.format=='PNG','Expected exported PNG for '+stem+' in '+bundle)
+   im.verify()
 wiki=(r/'output/wiki/Design-Documentation.md').read_text();base='https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2026-project-team-07/'
-check(wiki.replace('('+base+'assets/outloud-design/','(assets/outloud-design/')==s,'Wiki text differs')
+check(wiki.replace('('+base+figure_prefix,'('+figure_prefix)==s,'Wiki text differs')
 for raw in re.findall(r'```json\n(.*?)\n```',s,re.S):json.loads(raw)
 reader=PdfReader(r/'output/pdf/OutLoud_Design_Documentation.pdf');texts=[]
 for i,page in enumerate(reader.pages,1):
@@ -59,7 +64,7 @@ for (page_no,img),panel in zip(image_pages,panel_specs):
  check(img.size==expected_image.size and ImageChops.difference(img,expected_image).getbbox() is None,'PDF panel differs '+panel['png'])
 # Every panel must be an exact, gap-free slice of the canonical figure.
 for b in (b for b in m['blocks'] if b['kind']=='image'):
- canonical=Image.open(r/'assets/outloud-design'/(Path(b['path']).stem+'.png')).convert('RGB')
+ canonical=Image.open(r/figure_dir/'png'/(Path(b['path']).stem+'.png')).convert('RGB')
  slices=[Image.open(r/p['png']).convert('RGB') for p in b['pdf_panels']]
  stitched=Image.new('RGB',(canonical.width,sum(im.height for im in slices)));y=0
  for im in slices:stitched.paste(im,(0,y));y+=im.height

@@ -44,7 +44,7 @@ def save(name,panels):
    for x in p.x:content=content.replace(f'{x},691',f'{x},{p.h-13}')
   a.append(f'<g transform="translate(0 {off})">'+content+'</g>');crop.append([off,off+p.h]);off+=p.h
  a.append('</svg>');s=''.join(a)
- for sub in ['svg','sources']:(R/f'docs/diagram-review/{sub}/{name}.svg').write_text(s)
+ for sub in ['svg','sources']:(R/f'docs/design/figures/{sub}/{name}.svg').write_text(s)
  return crop
 # Figure 6: same responsibilities, arranged as two consecutive views.
 p=Panel('Figure 6. Frontend architecture - 1 of 2',618)
