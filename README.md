@@ -1,35 +1,54 @@
 # OutLoud · Team 07
 
-OutLoud is an Android app for rehearsing a presentation. Import your slides, record a take, then review the transcript, audio, and slide-specific feedback.
+OutLoud helps presenters rehearse with their PDF slides on Android. Import a deck, record across slides, review the audio, transcript, and slide feedback, then redo a slide.
 
 <a id="current-status"></a>
 
-## Install the Iteration 3 demo APK
+## What Iteration 3 changed
 
-Use **[OutLoud demo v8](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103)** to review the published Iteration 3 baseline. Download `OutLoud-demo-v8-issue49.apk` and install it on Android 7.0 or later. Install it as an update to an earlier demo to keep your recordings and settings. If your phone already has a newer OutLoud build, use a separate test device or emulator for v8.
+Iteration 3 added hosted reviewer access, precise audio seeking and fuller feedback in slide Review. The first Redo starts a new capture, and you can retry feedback for an affected slide. The submitted Requirements and Design identify [v8 (`cdb8055`)](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103) as the demo baseline. [Iteration 3 release evidence](docs/testing-evidence/iteration-3-reconciliation-20261105.md)
 
-Open OutLoud and enter the team’s reviewer code. This APK connects to the shared Azure backend over HTTPS and runs without Metro or a local server. Use sample slides and recordings in the shared workspace. Transcription and feedback require internet and the hosted backend. The release links the checksum and evidence for source commit `cdb8055`.
+<a id="install-the-iteration-3-demo-apk"></a>
 
-### Try the published demo flow
+## Run the Iteration 3 demo
 
-1. Pull up on Home to import a PDF. Review and save the audience and time target. New imports start at **General audience** and **10 minutes**.
-2. Check the slide's **Must Cover** and **Further Insight** cues when available. Record a short rehearsal, swipe forward and back between slides, then tap Stop.
-3. Accept the first-use transcription disclosure to continue analysis. When processing finishes, open **Review** for slide-specific playback and feedback or **Full Review** for the whole recording, transcript, and any available score.
-4. Redo a slide and choose **Keep current** or **Overwrite**. Reopen the rehearsal from Home to check that the selected take was saved.
+### Install and connect
 
-V8 also supports saved audience Q&A, spoken questions, and retrying feedback for an affected slide. See the [recording and review guide](docs/rehearsal-review.md#published-demo-behavior--november-5-reconciliation) and the [release evidence](docs/testing-evidence/iteration-3-reconciliation-20261105.md).
+Download the [v8 APK](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/download/outloud-demo-v8-20261103/OutLoud-demo-v8-issue49.apk). Ask Team 07 for the reviewer code and enter it when you open OutLoud. The APK connects to the hosted Azure backend over HTTPS without Metro or a local server. Use sample slides and recordings in the shared workspace. Transcription and feedback require internet access.
 
-The [v10 APK](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v10-20261115) is a later demo with live slide feedback.
+Install v8 over an earlier demo to keep your recordings and settings. Use a separate test device or emulator if your phone already has a newer OutLoud build. [Verify the APK checksum](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/download/outloud-demo-v8-20261103/OutLoud-demo-v8-issue49.apk.sha256)
 
-### Known limitations and remaining work
+<a id="try-the-published-demo-flow"></a>
 
-- **Shared workspace.** The reviewer code gives users access to the same workspace. Full server-side deletion is incomplete. V8 uploads rehearsal audio before showing the first-use transcription disclosure. Cancelling stops transcription and leaves the uploaded copy on the server.
+### Try one rehearsal
+
+1. Pull up on Home to import a sample PDF with at least two slides. Review and save the audience and time target. New imports start at **General audience** and **10 minutes**.
+2. Check **Must Cover** and **Further Insight** when cues appear. Record a short rehearsal, swipe forward and back between slides, then tap Stop.
+3. Accept the first-use transcription disclosure to continue analysis. After processing, open **Review** and check that the feedback belongs to the selected slide. In **Full Review**, play the saved audio and check it against the transcript. A score appears when available.
+4. Redo a slide and choose **Keep current** or **Overwrite**. Reopen the rehearsal from Home and play the selected slide to verify that the chosen take was saved.
+
+V8 also supports saved audience Q&A with spoken questions. [Recording and review guide](docs/rehearsal-review.md#published-demo-behavior--november-5-reconciliation)
+
+### Demo environment
+
+| Item | Iteration 3 |
+| --- | --- |
+| App | `OutLoud-demo-v8-issue49.apk`, [source `cdb8055`](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/cdb8055f0fd5022aafccb47625889d3f9a403f5f) |
+| Minimum Android | Android 7.0 (API 24) |
+| Phone smoke test | Samsung SM-S918N, Android 16, November 3, 2026 |
+| Hosted backend | Azure over HTTPS. The v8 release records a separate hosted v2.4 grading repair. [Hosting details](docs/azure-hosting.md) |
+
+## Known limitations and remaining work
+
+- **Shared workspace.** The reviewer code gives users access to the same workspace. Full server-side deletion is incomplete. V8 uploads rehearsal audio before showing the first-use transcription disclosure. Cancelling prevents transcription and leaves the uploaded copy on the server.
 - **Recording and review.** V8 blocks Back while recording. Stop/save/discard, a separate spoken summary, and full comparison between two takes remain open. The compact UI omits some older recovery and transcript correction controls.
 - **Evidence.** V8 has a limited phone smoke test. Broad recognition quality, feedback usefulness, score calibration, and full acceptance still need verification. [Remaining requirements](docs/requirements-and-specifications.md#remaining-requirements-and-acceptance-gaps) · [Dated test results](docs/testing-evidence/iteration-3-reconciliation-20261105.md#dated-verification-evidence)
 
-## Quick start
+<a id="quick-start"></a>
 
-Use this path to run the code in your checkout. The Iteration 3 repository baseline is [v8 source `cdb8055`](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/cdb8055f0fd5022aafccb47625889d3f9a403f5f).
+## Run locally
+
+The checkout contains the Android app in `mobile/`, the Django API and Celery workers in `backend/`, and project guides in `docs/`. Compose runs the local API, database, Redis, and workers. [Repository layout](docs/local-development.md#repository-structure)
 
 Install Git, Node.js 24 LTS (minimum 22.13) and npm, Docker with Compose, Android Studio, JDK 17, and Android SDK Platform 36. Set `JAVA_HOME` and Android Studio’s Gradle JDK to JDK 17.
 
@@ -59,13 +78,17 @@ cp -n .env.example .env
 
 From `mobile/`, run `npm run android` to build and launch the Expo development client. Keep Metro running. Native PDF rendering and SQLite need the development client. After editing `mobile/.env`, restart Metro. See the [local development guide](docs/local-development.md) for Android Studio setup and troubleshooting.
 
-## Configuration and limits
+### Configuration and limits
 
 PDF import, recording, and saved-audio playback work offline. Upload, transcription, and feedback need the configured server. Feedback is disabled by default. For transcription, set `ELEVENLABS_API_KEY` in `backend/.env`. For feedback, enable it and supply the OpenRouter key, project identity, and request limits described in the [provider setup](docs/ai-feedback.md#openrouter-activation-and-saved-job-cutover). Keep provider keys in `backend/.env`. The Android environment holds the API address. Retrying an uncertain provider request may incur another charge.
 
 Use a PDF with at least one slide and up to **50 MiB**, and record at most **30 minutes**. Audio uploads are capped at **25,000,000 bytes**. Oversized saved audio can still play locally. Record a shorter take to upload. [Capture and recovery details](docs/rehearsal-review.md#local-capture-and-limits)
 
-## Checks
+<a id="checks"></a>
+
+## Checks and evidence
+
+### Run the checks
 
 From `mobile/`:
 
@@ -82,14 +105,24 @@ docker compose exec api python manage.py makemigrations --check --dry-run
 docker compose exec api python manage.py test --noinput
 ```
 
-The bundle command checks the Android JavaScript export. Use the [verification guide](docs/verification.md) for PostgreSQL concurrency and worker recovery checks. All tests passed in the October 22 Iteration 2 run. Backend coverage met its targets, and mobile coverage fell below both line targets. [October 22 coverage record](docs/testing.md#october-22-local-coverage)
+The bundle command checks the Android JavaScript export. See the [verification guide](docs/verification.md) for PostgreSQL concurrency and worker recovery checks.
 
-## Documentation
+### What we verified for Iteration 3
 
+- **V8 release:** 617 mobile tests passed. The Android JavaScript export and production APK build passed. [Release verification](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103)
+- **V8 phone smoke test:** One Android 16 phone exercised PDF import, playback, and restart persistence. One English/Korean rehearsal produced a transcript and a displayed score. [Dated evidence and limits](docs/testing-evidence/iteration-3-reconciliation-20261105.md#dated-verification-evidence)
+- **Iteration 2 coverage:** The October 22 suites passed. Backend coverage met its targets, and mobile coverage fell below both line targets. [October 22 coverage record](docs/testing.md#october-22-local-coverage)
+
+<a id="documentation"></a>
+
+## Project documentation
+
+- [Submitted Iteration 3 archive](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/b49b65aad0b45d97d837f09ea1aced53927fabf2/team7-iter3.zip)
 - [Requirements and acceptance criteria](docs/requirements-and-specifications.md)
-- [System design](Design-Documentation.md), [repository layout](docs/local-development.md#repository-structure), and [API contract](docs/api-contract.md)
+- [System design](Design-Documentation.md) and [API contract](docs/api-contract.md)
 - [Recording and review](docs/rehearsal-review.md), [AI feedback reference](docs/ai-feedback.md), and [Iteration 2 AI feature history](docs/iteration-2-ai-feedback.md)
 - [Testing Documentation](docs/testing.md) and [story-to-test matrix](docs/story-test-matrix.md)
 - [Contributor instructions](AGENTS.md), [AI collaboration log](docs/ai-collaboration-prompts.md), and [AI reporting guide](docs/ai-collaboration-guidelines.md)
 - [Daily standup workflow](docs/meeting-log-workflow.md)
 - [Team Wiki](https://github.com/snuhcs-course/swpp-2026-project-team-07/wiki)
+- [Iteration 4 demo v10 with live slide feedback](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v10-20261115)

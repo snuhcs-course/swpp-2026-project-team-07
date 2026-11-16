@@ -10116,3 +10116,16 @@ You probably cut out too much in all the sections. I thought that read me was go
 
 - Injoon instructed Codex to read the full document before shortening it in future passes. Codex read the PR #50 baseline and PR #52 README end to end. It checked the Project Overview's working-increment slide, the Iteration 3 assignment, the 18-team review, and the original demo and limitations sections of Teams 04 and 19.
 - Restored the demo steps and expected behavior, known gaps, input caps, offline behavior, and links for detailed review, provider setup, verification and contribution records. Checked them against the v8 release, pinned source and dated evidence. No v8-matched demo video was verified in either README or the v8 release.
+
+## Apply the approved README outline on PR #52 — November 16, 2026
+
+**Contributor:** Injoon · **Iteration:** 4 · **Tool:** OpenAI Codex desktop · **Model:** GPT-6 (exact variant not recorded)
+
+### Request — verbatim
+
+```text
+Looks good. Go ahead and update the README on PR #52 with this outline. First determine which skills to use to write this readme file. The v10 was made during iteration 4 btw
+```
+
+- Injoon approved the README order and identified v10 as Iteration 4. Codex used Stop Slop to edit the prose after reading the existing README end to end. The Project Overview's working-increment slide, the 18-team documentation review, and [Team 19's original README](https://github.com/snuhcs-course/swpp-2026-project-team-19/blob/a14d08696428159ab8e2b11f30f2e6472b8980cc/README.md) informed the order and demo environment table.
+- Codex added the Iteration 3 summary, demo checkpoints and environment, and dated verification. It kept the setup commands, the known gaps and input limits, and linked Jaewon's submitted archive. It moved v10 under Project documentation as the Iteration 4 demo. Verified internal links, existing heading anchors, and preserved shell commands. No matching v8 demo video was verified and no app checks were rerun.
