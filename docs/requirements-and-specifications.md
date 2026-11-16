@@ -7,11 +7,24 @@ Version 4.0, 5 November 2026
 
 ## Iteration 3 implementation status
 
-The published Iteration 3 baseline is [Android demo v8](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103) (source `cdb8055`). For exact builds, test dates, and the separately reported backend repair, see the [Iteration 3 evidence record](testing-evidence/iteration-3-reconciliation-20261105.md).
+The published [Android demo v8](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103) was released November 3 from `cdb8055`. GitHub main advanced to that commit on November 16. V8 includes selected UI changes from PR #34. The Iteration 2 comparison is the PR #31 app (`c4a3f48`) described by the documents merged October 23 in [PR #32](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/32). [V8 architecture](../Design-Documentation.md)
+
+Iteration 2 already supported Scribe v2 transcription, saved audience and time settings, slide cues, recognition corrections, scoring, and saved Q&A. V8 retains the underlying services and uses a more compact review UI. Some earlier controls are absent from that UI and are listed under [remaining gaps](#remaining-requirements-and-acceptance-gaps).
+
+The v8 release record also reports a later hosted backend v2.4 update and one successful ten-slide grading retry with zero evidence rejections. The v2.4 patch was recovered separately on November 15. Early advice preview and the performance and audience-citation experiments were recorded as unreleased candidates in the November 5 review. [Dated evidence and build history](testing-evidence/iteration-3-reconciliation-20261105.md)
 
 ### Changes since Iteration 2
 
-V8 adds hosted access with a reviewer code for a shared workspace. New imports start with a General audience and a ten-minute target. The compact review adds precise playback seeking and fuller slide feedback. V8 also fixes the first Redo and adds targeted slide-feedback retry. See the [release evidence](testing-evidence/iteration-3-reconciliation-20261105.md#changes-since-iteration-2) for source links and limits.
+| Area | Change in v8 |
+| --- | --- |
+| Hosted access | The Azure HTTPS demo uses a reviewer code for a shared workspace. Local recording and playback still work offline. |
+| Import defaults | New imports start with a General audience and a ten-minute target. Existing choices and explicit clears are preserved. The bundled offline Seoul deck retains its separate five-minute default. |
+| Playback and review | Precise audio seeking preserves playback state and the source recording. Review shows fuller slide feedback, clearer timing-allocation labels, and filler-word counts. The first Redo now starts a new capture. |
+| Q&A speech | Questions and follow-ups use Korean speech when the text contains Hangul, English for other Latin-script text, and the platform fallback otherwise. |
+| Grading and recovery | V8 accepts audio-duration differences up to one second, reports more specific failure reasons, and can retry feedback for one slide while preserving the original recording and earlier results. |
+| Analysis configuration | The v8 source defaults to OpenRouter for new feedback and keeps Scribe v2 for transcription. The deployed provider settings require separate verification. |
+
+See the [release evidence](testing-evidence/iteration-3-reconciliation-20261105.md#changes-since-iteration-2) for exact settings and build records. The October 22 coverage run describes Iteration 2. The later v8 checks cover the build and a limited phone smoke test. [Dated verification](testing-evidence/iteration-3-reconciliation-20261105.md#dated-verification-evidence)
 
 ### Remaining requirements and acceptance gaps
 

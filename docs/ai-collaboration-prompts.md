@@ -10094,3 +10094,12 @@ Make sure for every pass you refer to the course requirements and review of all 
 - Injoon approved the requirements pass on November 16 and directed Codex to keep the existing acceptance-criteria wording and IDs. The submitted Iteration 3 UAT selection remains pending verification.
 - Codex checked the course's Requirements & Specifications Guidelines and the acceptance-testing section of the Testing Documentation Guidelines. It reviewed the audit of all 18 peers and consulted source documents, including [Team 11's compact story index](https://github.com/snuhcs-course/swpp-2026-project-team-11/wiki/Requirements-%26-Specifications#51-key-user-stories-for-uat), [Team 19's criterion-to-test mapping](https://github.com/snuhcs-course/swpp-2026-project-team-19/wiki/Testing-Documentation#5-acceptance-testing-from-iteration-3), and [Team 03's build-specific requirements status](https://github.com/snuhcs-course/swpp-2026-project-team-03/wiki/Requirements-and-Specifications#51-iteration-3-implementation-status).
 - Codex shortened the v8 status, linked dated evidence, and linked each mandatory story and its criteria from the existing functional index. Verified the story, criterion and NFR text against the previous PR head and checked the new links and diff. This pass adds documentation checks only.
+
+### Follow-up — verbatim excerpt
+
+```text
+There is some relevant information that you cut out
+```
+
+- Injoon flagged missing context in the Iteration 3 status and change summary. Codex restored the Iteration 2 comparison, the exact v8 source and main date, carried-over capabilities, release changes, and the distinction between APK evidence, later backend recovery and unreleased candidates.
+- Codex checked the official requirements guideline, revisited the 18-team review and Team 03's original implementation-status section, and verified the GitHub v8 tag, main, and pinned release reports. The patch preserves the acceptance criteria and existing evidence. No application rerun was performed.
