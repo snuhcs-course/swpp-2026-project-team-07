@@ -28,7 +28,7 @@ Use this page to choose increment scope and record manual/quality results. [Team
 
 ## B09 Follow-up (Tested October 20; Published October 21)
 
-Published October 21: [fix/retry-recording](https://github.com/snuhcs-course/swpp-2026-project-team-07/tree/fix/retry-recording), code/evidence commit `3ae9d16`; original device/test evidence below remains dated October 20. No new CI or acceptance result is inferred.
+Published October 21: [B09 fix and test evidence](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/8d3cf6e40569f6e4e90691f1a1bc72c7970815f7/docs/b09-retry-recording.md), code/evidence commit `3ae9d16`; original device/test evidence below remains dated October 20. No new CI or acceptance result is inferred.
 
 B09 adds five regressions for first Redo, repeated retakes/timer wiring, cancellation, duplicate taps and full-presentation Redo. All five passed; the separate local mobile run passed 553 tests. The automated tests use native audio/UI fixtures. Codex's Galaxy S25 check passed three consecutive retakes, Keep/Overwrite selection and selected-audio playback. The seven-second timer freeze remains unreproduced. SQLite tests cover file/ID retention; human acceptance remains pending. See [Testing Documentation](testing.md) and the [B09 spec](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/3ae9d162d53088a129bffaf15a915400480a6483/docs/b09-retry-recording.md).
 
