@@ -7,43 +7,25 @@ Version 4.0, 5 November 2026
 
 ## Iteration 3 implementation status
 
-**Published product baseline:** [demo v8](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103), source `cdb8055`. **Documentation reviewed:** November 5, 2026. **Evidence dates:** recorded separately below; this update includes no fresh application, provider or device run.
-
-[PR #32](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/32) merged the Iteration 2 documents on October 23. They describe the PR31 application (`c4a3f48`) as recorded on main at `7b7ef3b`. Main advanced to v8 on November 16 and includes the released selection of PR #34 UI changes. [Design Documentation](../Design-Documentation.md) describes that release architecture.
-
-Scribe v2 transcription, saved audience/time settings, cues, corrections, scoring and durable Q&A already existed in Iteration 2. V8 retains those services with a compact UI and the repairs below. Requirements and acceptance criteria remain distinct from implementation status.
+The published Iteration 3 baseline is [Android demo v8](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103) (source `cdb8055`). For exact builds, test dates, and the separately reported backend repair, see the [Iteration 3 evidence record](testing-evidence/iteration-3-reconciliation-20261105.md).
 
 ### Changes since Iteration 2
 
-| Area | Current implementation and status | Source and evidence date |
-| --- | --- | --- |
-| Hosted access | Published v8 uses Azure HTTPS and an in-app reviewer code. Code holders share one workspace; separate application accounts and user-level sharing permissions are not implemented. Local recording/playback remain available offline. | `cdb8055`; [hosting source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/docs/azure-hosting.md), November 2, 2026 |
-| Analysis providers | Published source defaults new analysis to OpenRouter `openai/gpt-6-luna`; provider work remains disabled until configured. Scribe v2 remains the transcription provider. Default settings do not establish the configuration of a running server. | `cdb8055`; [provider configuration](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/docs/ai-feedback.md), November 2, 2026 |
-| New-presentation defaults | Untouched imports initialize General audience and 600 seconds (10 minutes), preserving edits, clears and accepted legacy five-minute settings. The bundled Seoul deck's five-minute offline seed is separate and needs explicitly saved server choices. | `cdb8055`; [defaults follow-up](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/docs/presentation-defaults-verification.md#november-3-2026--issues-36-and-43-follow-up), November 3, 2026 |
-| Retakes and compact review | The first-Redo repair is released. Full feedback details, continuous source-aware seeking, timing-allocation labels and informational filler counts are included. Keep/Overwrite remains partial coverage of full comparison. | `cdb8055`; [Redo evidence](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/docs/apk-redo-feedback-verification-20261102.md), November 2; [combined v7 evidence](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/docs/demo-v7-combined-verification-20261103.md), November 3 |
-| Q&A speech | Main/follow-up text uses Korean speech for Hangul, otherwise English for Latin text, with platform fallback otherwise. Mixed Hangul/Latin selects Korean. This heuristic does not establish natural pronunciation or general multilingual detection. | `cdb8055`; [language follow-up](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/docs/presentation-defaults-verification.md#november-3-2026--issues-36-and-43-follow-up), November 3, 2026 |
-| Grading and feedback recovery | V8 includes inclusive ±1,000 ms audio-duration tolerance, specific safe failure reasons and revision-fenced targeted slide-feedback retry. Original recordings and historical results are retained. | `cdb8055`; [v8 evidence](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/docs/demo-v8-issue49-verification-20261103.md), November 3, 2026 |
-| Later backend repair | The release record reports deployed v2.4: 24,000 output tokens, 128 KiB inner JSON and a grading-only 240-second deadline. The patch was [recovered on November 15](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/2c7c337c2c89de6e6714c9e5f0708fb2be2cabc3) on a separate branch. It preserves rubric/weights/API shapes and is compatible with v8. Successful ten-slide grading with zero evidence rejections is a bounded operational result. | [V8 release update](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103), November 3; reviewed November 5, 2026 |
-| Local candidates | Early advice preview and v2.5 Review-performance/audience-citation repairs remain uncommitted and unreleased. They are not published features; numeric score streaming is not implemented. | [Dated reconciliation evidence](testing-evidence/iteration-3-reconciliation-20261105.md), November 3–4, 2026 |
-
-GitHub issue and PR state is administrative evidence. Several issues remain open even where a repair is included in v8; selected PR #34 UI does not imply the whole PR was merged. Other reported defects, including large-text accessibility, navigation responsiveness and Q&A recording timing, need current-build retests. The local performance candidate does not close those acceptance gaps.
+V8 adds hosted access with a reviewer code for a shared workspace. New imports start with a General audience and a ten-minute target. The compact review adds precise playback seeking and fuller slide feedback. V8 also fixes the first Redo and adds targeted slide-feedback retry. See the [release evidence](testing-evidence/iteration-3-reconciliation-20261105.md#changes-since-iteration-2) for source links and limits.
 
 ### Remaining requirements and acceptance gaps
 
-| Area | Current status and remaining work |
+| Area | Gap or retest |
 | --- | --- |
-| PDF import, AC-01a/b | Jooyoung's Iteration 2 report records two upload HTTP 500 responses associated with a surrogate-character encoding error. A controlled error and matching device retest remain missing. [JY01](testing-evidence/iteration-2-supporting-records.md#jooyoung-pdf-upload-failure). |
-| Repeated slide visits, AC-02a | Forward, backward and repeated visits are supported. Jaewon and Seoyeon's reported association/display concerns still need source-timing and displayed-identity retests. [JJ02 / SY01](testing.md#supplementary-manual-testing). |
-| Leave while recording, AC-02d | V8 blocks Back. Stop/save/discard confirmation remains unmet. |
-| Spoken key ideas, AC-03b/d/e | Must Cover/Further Insight describe slides. Separate summaries of what the presenter said, with failure/no-speech states, remain unmet. |
-| Retry and comparison, AC-08 | Released Redo and Keep/Overwrite preserve take selection. Complete two-attempt audio/transcript/feedback comparison and the empty-selection checklist remain unmet. |
-| Full deletion, AC-11a–c | Hide/Undo and local PDF removal do not complete server media/result deletion or partial-deletion recovery. |
-| Disclosure before upload, NFR-05 / Section 7.2 | Rehearsal consent still follows audio upload; Q&A checks before a new answer upload. Pre-upload rehearsal disclosure remains required. |
-| Recovery and corrections in compact UI | Supporting services remain, but the selected compact UI does not expose the earlier saved-recording upload/transcription retry, recognition-correction and manual remote-audio download tools. Targeted feedback recovery is present. |
-| Q&A and Korean, US-17 / US-20 | Implemented workflows do not establish complete Q&A recovery, broad Korean accuracy or useful advice. Quality evaluation remains incomplete. |
-| Numerical targets and human acceptance | Performance, recognition, feedback-quality and cost targets, owners and exact dates remain unset. Existing automated and bounded device/provider checks do not establish full acceptance or calibrated scoring. |
+| PDF import | Retest the reported upload failure on v8 and verify that an unusable file produces a controlled error. [AC-01b](story-test-matrix.md#ac-01b-reject-an-unusable-file-negative) · [Device report](testing-evidence/iteration-2-supporting-records.md#jooyoung-pdf-upload-failure) |
+| Recording | Retest whether repeated slide visits are associated and shown correctly. V8 blocks Back during recording. The stop/save/discard confirmation is still missing. [AC-02a](story-test-matrix.md#ac-02a-record-repeated-slide-visits-positive) · [AC-02d](story-test-matrix.md#ac-02d-leave-while-recording-negative) · [Device reports](testing.md#supplementary-manual-testing) |
+| Spoken summaries | Must Cover and Further Insight describe the slides. Separate summaries of what the presenter said, including no-speech and failure states, are still missing. [AC-03b](story-test-matrix.md#ac-03b-slide-without-recognized-speech-negative) · [AC-03d](story-test-matrix.md#ac-03d-separate-key-ideas-positive) · [AC-03e](story-test-matrix.md#ac-03e-summary-could-not-be-generated-negative) |
+| Retakes | Keep/Overwrite selects a take. The empty-selection checklist and full audio, transcript and feedback comparison across two takes are still missing. [AC-08b](story-test-matrix.md#ac-08b-no-slide-selected-negative) · [AC-08c](story-test-matrix.md#ac-08c-compare-slide-2-in-two-attempts-positive) |
+| Recovery | Targeted feedback retry is available. The compact UI omits saved-recording upload and transcription retry, recognition correction and manual remote-audio download. [AC-10b](story-test-matrix.md#ac-10b-retry-failed-analysis-positive) |
+| Deletion and consent | Hide/Undo and local PDF removal leave server deletion and partial-deletion recovery incomplete. Rehearsal consent still follows upload. Q&A asks before a new answer upload. [AC-11b](story-test-matrix.md#ac-11b-delete-a-deck-with-several-attempts-positive) · [AC-11c](story-test-matrix.md#ac-11c-deletion-cannot-finish-negative) · [NFR-05](#6-non-functional-requirements) |
+| Quality and device checks | Q&A recovery, Korean recognition, and feedback usefulness still need evaluation. Performance, recognition, feedback-quality and cost targets remain unset. Reported large-text, navigation and Q&A timing issues need v8 retests. [Open evidence](testing-evidence/iteration-3-reconciliation-20261105.md#open-requirements-and-issue-administration) |
 
-The October 22 full-suite run passed 548 mobile and 554 PostgreSQL backend tests with zero failures/skips. Backend coverage met both groups' targets; both mobile groups missed their line targets. These are historical Iteration 2 results, not reruns against v8. Later release evidence and limitations are recorded in [Testing Documentation](testing.md) and the [Story-to-Test Matrix](story-test-matrix.md). Backward-navigation restrictions, onboarding and model/routing experiments remain proposals.
+For dated test results and their limits, see [Testing Documentation](testing.md), the [Story-to-Test Matrix](story-test-matrix.md), and the [verification record](testing-evidence/iteration-3-reconciliation-20261105.md#dated-verification-evidence).
 
 ## Table of Contents
 
@@ -127,17 +109,19 @@ Sources: [Microsoft Speaker Coach](https://support.microsoft.com/en-us/powerpoin
 
 ## 5. Functional Requirements
 
-The nine stories in this section describe the mandatory functionality of the final product. Each story uses the Connextra format. Each acceptance criterion uses Given–When–Then and is labeled **Positive** (expected success) or **Negative** (failure or input that is not allowed). Story IDs follow Version 1.0. The team will select and freeze the user acceptance test (UAT) stories by the end of Iteration 3.
+The nine stories below describe mandatory final-product functionality. Each story uses Connextra. Each acceptance criterion uses Given–When–Then and is labeled **Positive** or **Negative**. Story IDs follow Version 1.0.
 
-| Functional group | Stories |
-| --- | --- |
-| 5.1 Presentation management | US-01 |
-| 5.2 Recording and slide synchronization | US-02 |
-| 5.3 Transcription and rehearsal playback | US-03 |
-| 5.4 Slide-specific and audience feedback | US-05, US-07 |
-| 5.5 Speaking delivery feedback | US-06 |
-| 5.6 Retry and comparison | US-08 |
-| 5.7 History, data management and recovery | US-10, US-11 |
+The course requires the team to select at least five stories for user acceptance testing (UAT) by the end of Iteration 3 and keep that selection fixed. The submitted Iteration 3 UAT selection is pending verification. The index links the full set of mandatory stories to their available test evidence.
+
+| Functional group | Stories | Test evidence by criterion |
+| --- | --- | --- |
+| [5.1 Presentation management](#51-presentation-management) | [US-01](#us-01-import-and-inspect-slides) | [AC-01a](story-test-matrix.md#ac-01a-import-a-valid-pdf-positive), [AC-01b](story-test-matrix.md#ac-01b-reject-an-unusable-file-negative), [AC-01c](story-test-matrix.md#ac-01c-cancel-file-selection-negative) |
+| [5.2 Recording and slide synchronization](#52-recording-and-slide-synchronization) | [US-02](#us-02-record-a-slide-based-rehearsal) | [AC-02a](story-test-matrix.md#ac-02a-record-repeated-slide-visits-positive), [AC-02b](story-test-matrix.md#ac-02b-microphone-permission-denied-negative), [AC-02c](story-test-matrix.md#ac-02c-recording-interrupted-negative), [AC-02d](story-test-matrix.md#ac-02d-leave-while-recording-negative) |
+| [5.3 Transcription and rehearsal playback](#53-transcription-and-rehearsal-playback) | [US-03](#us-03-review-recordings-transcripts-and-key-ideas) | [AC-03a](story-test-matrix.md#ac-03a-play-a-transcript-segment-positive), [AC-03b](story-test-matrix.md#ac-03b-slide-without-recognized-speech-negative), [AC-03c](story-test-matrix.md#ac-03c-repeated-visits-to-one-slide-positive), [AC-03d](story-test-matrix.md#ac-03d-separate-key-ideas-positive), [AC-03e](story-test-matrix.md#ac-03e-summary-could-not-be-generated-negative) |
+| [5.4 Slide-specific and audience feedback](#54-slide-specific-and-audience-feedback) | [US-05](#us-05-review-evidence-linked-content-feedback), [US-07](#us-07-adapt-feedback-to-the-audiences-knowledge-level) | [AC-05a](story-test-matrix.md#ac-05a-feedback-for-a-selected-slide-with-evidence-positive), [AC-05b](story-test-matrix.md#ac-05b-reject-invalid-evidence-negative), [AC-05c](story-test-matrix.md#ac-05c-respect-the-practiced-slides-negative), [AC-07a](story-test-matrix.md#ac-07a-plain-wording-for-nontechnical-clients-positive), [AC-07b](story-test-matrix.md#ac-07b-no-audience-described-negative), [AC-07c](story-test-matrix.md#ac-07c-simpler-explanation-for-students-positive) |
+| [5.5 Speaking delivery feedback](#55-speaking-delivery-feedback) | [US-06](#us-06-review-pace-slide-timing-filler-words-and-pauses) | [AC-06a](story-test-matrix.md#ac-06a-pace-and-duration-for-one-slide-positive), [AC-06b](story-test-matrix.md#ac-06b-pace-or-pauses-unavailable-negative), [AC-06c](story-test-matrix.md#ac-06c-filler-results-unavailable-negative), [AC-06d](story-test-matrix.md#ac-06d-total-time-for-a-revisited-slide-positive), [AC-06e](story-test-matrix.md#ac-06e-flag-filler-words-and-pauses-positive) |
+| [5.6 Retry and comparison](#56-retry-and-comparison) | [US-08](#us-08-practice-selected-slides-again-and-compare-attempts) | [AC-08a](story-test-matrix.md#ac-08a-retry-one-slide-positive), [AC-08b](story-test-matrix.md#ac-08b-no-slide-selected-negative), [AC-08c](story-test-matrix.md#ac-08c-compare-slide-2-in-two-attempts-positive), [AC-08d](story-test-matrix.md#ac-08d-no-shared-slide-negative), [AC-08e](story-test-matrix.md#ac-08e-feedback-missing-for-one-attempt-negative) |
+| [5.7 History, data management and recovery](#57-history-data-management-and-recovery) | [US-10](#us-10-reopen-saved-attempts-and-recover-analysis), [US-11](#us-11-delete-rehearsal-data) | [AC-10a](story-test-matrix.md#ac-10a-reopen-a-saved-attempt-positive), [AC-10b](story-test-matrix.md#ac-10b-retry-failed-analysis-positive), [AC-10c](story-test-matrix.md#ac-10c-later-stage-fails-negative), [AC-11a](story-test-matrix.md#ac-11a-cancel-or-confirm-deletion-positive), [AC-11b](story-test-matrix.md#ac-11b-delete-a-deck-with-several-attempts-positive), [AC-11c](story-test-matrix.md#ac-11c-deletion-cannot-finish-negative) |
 
 ### 5.1 Presentation management
 

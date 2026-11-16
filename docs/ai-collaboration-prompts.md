@@ -10076,3 +10076,21 @@ i mean we should do a cleanup for iteration 3. iteration 4 is still in progress.
 ```
 
 - The requester clarified that PR #52 cleans up the published Iteration 3 snapshot. Codex corrected the README to point to v8 for Iteration 3 and revised the PR scope using the course and peer documentation audit. Iteration 4 work and later releases retain their own evidence and scope.
+
+## Clean up the Iteration 3 requirements on PR #52 — November 16, 2026
+
+**Contributor:** Injoon · **Iteration:** 4 · **Tool:** OpenAI Codex desktop · **Model:** GPT-6 (exact variant not recorded)
+
+### Request — verbatim excerpts
+
+```text
+Sounds good, go ahead with the Requirements & Specifications pass on PR #52.
+```
+
+```text
+Make sure for every pass you refer to the course requirements and review of all 18 peer teams. Don't just rely on the summary but actually look into full detail if needed.
+```
+
+- Injoon approved the requirements pass on November 16 and directed Codex to keep the existing acceptance-criteria wording and IDs. The submitted Iteration 3 UAT selection remains pending verification.
+- Codex checked the course's Requirements & Specifications Guidelines and the acceptance-testing section of the Testing Documentation Guidelines. It reviewed the audit of all 18 peers and consulted source documents, including [Team 11's compact story index](https://github.com/snuhcs-course/swpp-2026-project-team-11/wiki/Requirements-%26-Specifications#51-key-user-stories-for-uat), [Team 19's criterion-to-test mapping](https://github.com/snuhcs-course/swpp-2026-project-team-19/wiki/Testing-Documentation#5-acceptance-testing-from-iteration-3), and [Team 03's build-specific requirements status](https://github.com/snuhcs-course/swpp-2026-project-team-03/wiki/Requirements-and-Specifications#51-iteration-3-implementation-status).
+- Codex shortened the v8 status, linked dated evidence, and linked each mandatory story and its criteria from the existing functional index. Verified the story, criterion and NFR text against the previous PR head and checked the new links and diff. This pass adds documentation checks only.
