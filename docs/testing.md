@@ -1,5 +1,29 @@
 # Testing Documentation
 
+## Coverage on main
+
+GitHub Actions measures line and branch coverage and enforces the [four group targets](../tools/coverage-policy.json). The mobile and backend jobs upload their coverage reports after the checks run.
+
+From `mobile/` with Node 24 and Python 3 available:
+
+```sh
+npm ci
+node tools/validate-coverage.mjs
+npm run test:coverage
+```
+
+From `backend/` with the test dependencies and a disposable PostgreSQL database as described in the [environment setup](#environment-and-commands):
+
+```sh
+python -m pip install -r requirements-test.txt
+python -m coverage run manage.py test --noinput
+python -m coverage json
+python -m coverage html
+python ../tools/coverage_report.py backend --check
+```
+
+Open `coverage/groups.html` in either directory for the targets and results. The archived Iteration 2 instructions and results below describe the October snapshot.
+
 ## Iteration 3 evidence update — November 5, 2026
 
 The [dated reconciliation](testing-evidence/iteration-3-reconciliation-20261105.md) separates main/PR31, published v8, the release-reported backend v2.4 repair and unreleased local candidates. The published demo includes first-Redo repair, selected PR34 UI, combined v7 fixes and targeted v8 recovery. Earlier statements below that B09 remains unmerged describe main administration, not absence from the demo.

@@ -10045,3 +10045,36 @@ Can you resolve the conflicts in PR #50 against the updated main so we can use i
 - Codex merged the published v8 main commit into the PR branch in an isolated checkout and resolved seven Markdown conflicts. It retained the consolidated log and compatibility index, updated the source references to distinguish v8 from the later backend repair, and retained the dated evidence and acceptance criteria.
 - Verified the staged diff against v8 main. Only Markdown changes remain. The existing acceptance criteria and both compatibility indexes are byte-identical to the PR head. All 382 fenced blocks and the non-heading evidence lines in the v8 prompt files are present in the consolidated log. The changed documentation's relative links resolve.
 - Jaewon's submitted exports are pending. This merge does not supply a submission snapshot or new device/provider evidence.
+
+## Injoon: coverage tooling on main — November 16, 2026
+
+- Tool: OpenAI Codex. Model: not recorded.
+- Date received: November 16, 2026 (KST). Confirmed decision: port PR #33 coverage tooling and retire its source branch after integration. Keep strict CI thresholds and cover both mobile shortfalls before merging.
+
+### Verbatim prompts
+
+```text
+PR#33 is closed so is branch testing-setup-documentation needed?
+```
+
+```text
+What is the coverage tooling
+```
+
+```text
+So you're saying this coverage tooling was not in main???
+```
+
+```text
+Then let's bring the coverage tooling from PR #33 into main before deleting the testing-setup-documentation branch.
+```
+
+```text
+Keep the coverage gate strict. Bring mobile coverage up to both targets before merging.
+```
+
+### Agent work and verification
+
+- Adapted the existing c8 and coverage.py setup from PR #33 (`f0d7148`) to main (`4f0dd79`). Kept the original group targets and the checks that fail for missing or below-target coverage. Added source maps for the later bundled-PDF loader.
+- Added eight tests using the actual Home, Upload, import and review-media logic with simulated Android and network boundaries. Covered navigation and delete/undo, offline import and retry, legacy page recovery, cache reuse, invalid media and stale focus callbacks.
+- The initial mobile port passed all 617 tests but missed both line targets. The final strict run passed all 625 tests: logic 86.77% lines / 86.29% branches and screens 78.49% lines / 74.90% branches. Type checking, lint (one pre-existing warning), the collector self-check and Android JavaScript export passed. Three coverage-report tests passed, and the local SQLite backend run passed 605 tests with 25 PostgreSQL-only skips. GitHub CI runs the backend with PostgreSQL. These checks did not use a physical device.
