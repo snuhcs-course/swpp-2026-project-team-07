@@ -1,12 +1,14 @@
 # OutLoud · Team 07
 
-OutLoud helps presenters rehearse with their PDF slides on Android. Import a deck, record across slides, review the audio, transcript, and slide feedback, then redo a slide.
+OutLoud is an Android app for practicing a presentation before you give it. Import your slides as a PDF and record yourself as you move through them. OutLoud links the audio and transcript to each slide so you can find what you said, review AI feedback, and practice a slide again.
+
+[Try the hosted demo](#run-the-iteration-3-demo) to use the app on Android, or [run it locally](#run-locally) to develop the app and server from this repository.
 
 <a id="current-status"></a>
 
 ## What Iteration 3 changed
 
-Iteration 3 added hosted reviewer access, precise audio seeking and fuller feedback in slide Review. The first Redo starts a new capture, and you can retry feedback for an affected slide. The Iteration 3 demo uses [v8 (`cdb8055`)](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103). [Iteration 3 release evidence](docs/testing-evidence/iteration-3-reconciliation-20261105.md)
+In Iteration 3, we hosted the demo so reviewers could use it with a code. We improved slide review so you can jump to a specific moment in the recording and read the full feedback. We fixed the first retake and added a way to retry feedback for a single slide. The Iteration 3 demo uses [v8 (`cdb8055`)](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103). [Iteration 3 release evidence](docs/testing-evidence/iteration-3-reconciliation-20261105.md)
 
 <a id="install-the-iteration-3-demo-apk"></a>
 
@@ -14,7 +16,7 @@ Iteration 3 added hosted reviewer access, precise audio seeking and fuller feedb
 
 ### Install and connect
 
-Download the [v8 APK](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/download/outloud-demo-v8-20261103/OutLoud-demo-v8-issue49.apk). Ask Team 07 for the reviewer code and enter it when you open OutLoud. The APK connects to the hosted Azure backend over HTTPS without Metro or a local server. Use sample slides and recordings in the shared workspace. Transcription and feedback require internet access.
+Download and install the [v8 APK](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/download/outloud-demo-v8-20261103/OutLoud-demo-v8-issue49.apk). Ask Team 07 for the reviewer code and enter it when you open OutLoud. The APK runs on your Android device and connects to our Azure server over HTTPS. Connect to the internet so the server can transcribe your recording and generate feedback. Use sample slides and recordings because reviewers share one workspace.
 
 Install v8 over an earlier demo to keep your recordings and settings. Use a separate test device or emulator if your phone already has a newer OutLoud build. [Verify the APK checksum](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/download/outloud-demo-v8-20261103/OutLoud-demo-v8-issue49.apk.sha256)
 
@@ -23,9 +25,9 @@ Install v8 over an earlier demo to keep your recordings and settings. Use a sepa
 ### Try one rehearsal
 
 1. Pull up on Home to import a sample PDF with at least two slides. Review and save the audience and time target. New imports start at **General audience** and **10 minutes**.
-2. Check **Must Cover** and **Further Insight** when cues appear. Record a short rehearsal, swipe forward and back between slides, then tap Stop.
-3. Accept the first-use transcription disclosure to continue analysis. After processing, open **Review** and check that the feedback belongs to the selected slide. In **Full Review**, play the saved audio and check it against the transcript. A score appears when available.
-4. Redo a slide and choose **Keep current** or **Overwrite**. Reopen the rehearsal from Home and play the selected slide to verify that the chosen take was saved.
+2. Use **Must Cover** and **Further Insight** as rehearsal cues when they appear. Record a short rehearsal, swipe forward and back between slides, then tap Stop.
+3. On your first rehearsal, read and accept the transcription prompt to turn your recording into text. When processing finishes, use **Review** to select a slide and see its feedback and **Full Review** to play the whole recording and follow the transcript. A score appears when available.
+4. Redo a slide. Choose **Keep current** to retain the previous recording or **Overwrite** to use the new one. Reopen the rehearsal from Home and play that slide to check which recording you kept.
 
 V8 also supports saved audience Q&A with spoken questions. [Recording and review guide](docs/rehearsal-review.md#published-demo-behavior--november-5-reconciliation)
 
@@ -48,7 +50,7 @@ V8 also supports saved audience Q&A with spoken questions. [Recording and review
 
 ## Run locally
 
-The checkout contains the Android app in `mobile/`, the Django API and Celery workers in `backend/`, and project guides in `docs/`. Compose runs the local API, database, Redis, and workers. [Repository layout](docs/local-development.md#repository-structure)
+For development, start the server first, then launch the Android app in a second terminal. The app lives in `mobile/`, the server and background processing code live in `backend/`, and project guides live in `docs/`. Docker Compose starts the local server, database, Redis, and background workers. [Repository layout](docs/local-development.md#repository-structure)
 
 Install Git, Node.js 24 LTS (minimum 22.13) and npm, Docker with Compose, Android Studio, JDK 17, and Android SDK Platform 36. Set `JAVA_HOME` and Android Studio’s Gradle JDK to JDK 17.
 
@@ -105,13 +107,12 @@ docker compose exec api python manage.py makemigrations --check --dry-run
 docker compose exec api python manage.py test --noinput
 ```
 
-The bundle command checks the Android JavaScript export. See the [verification guide](docs/verification.md) for PostgreSQL concurrency and worker recovery checks.
+The bundle command checks that the Android JavaScript can be packaged. See the [verification guide](docs/verification.md) for PostgreSQL concurrency and worker recovery checks.
 
 ### What we verified for Iteration 3
 
 - **V8 release:** 617 mobile tests passed. The Android JavaScript export and production APK build passed. [Release verification](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103)
 - **V8 phone smoke test:** The phone check covered PDF import, playback, and restart persistence on Android 16. One English/Korean rehearsal produced a transcript and a displayed score. [Dated evidence and limits](docs/testing-evidence/iteration-3-reconciliation-20261105.md#dated-verification-evidence)
-- **Iteration 2 coverage:** The October 22 suites passed. Backend coverage met its targets, and mobile coverage fell below both line targets. [October 22 coverage record](docs/testing.md#october-22-local-coverage)
 
 <a id="documentation"></a>
 

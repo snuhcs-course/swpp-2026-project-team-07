@@ -10138,3 +10138,12 @@ Like this, when you write documents it should sound "factual" and not "third-per
 
 - Injoon asked for direct project prose and for Codex to surface inconsistencies. Codex stated the v8 baseline directly in the README and checked that the deployment and smoke-test descriptions retained their dated facts.
 - The README places October 22 Iteration 2 coverage beneath the Iteration 3 verification heading. The v8 build and smoke-test records do not provide a v8 coverage measurement. Codex left the coverage entry for a separate decision.
+
+### Follow-up — verbatim
+
+```text
+Yeah, move the Iteration 2 coverage out of the README and keep it in the testing docs. For Iteration 3, only include what we actually verified on v8. Update PR #52. CAn you rewrite so that even for a reader who is reading the repo for the first time they understand what is happening
+```
+
+- Codex clarified what the app does, how to choose the hosted demo or local development, and what to expect on the first rehearsal. It used the working-increment guidance, the 18-team peer review, and Team 19's demo walkthrough. The section order and command blocks follow the approved README.
+- Codex removed the October 22 coverage bullet from the README and verified that the existing testing record still holds the Iteration 2 results. The README verification section covers the v8 release and limited v8 phone check. No new runtime test was performed.
