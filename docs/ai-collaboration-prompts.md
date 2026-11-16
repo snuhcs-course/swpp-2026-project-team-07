@@ -10147,3 +10147,11 @@ Yeah, move the Iteration 2 coverage out of the README and keep it in the testing
 
 - Codex clarified what the app does, how to choose the hosted demo or local development, and what to expect on the first rehearsal. It used the working-increment guidance, the 18-team peer review, and Team 19's demo walkthrough. The section order and command blocks follow the approved README.
 - Codex removed the October 22 coverage bullet from the README and verified that the existing testing record still holds the Iteration 2 results. The README verification section covers the v8 release and limited v8 phone check. No new runtime test was performed.
+
+### README rollback — verbatim
+
+```text
+can we revert the read me to the baseline. It became so bad. Find skills we can use to write the documentation on the internet
+```
+
+- Injoon requested the baseline README. Codex applied a checked patch to the clean README and verified that it matches the PR #52 base, PR #50 at `7c9dd8c`, byte for byte. The Requirements changes remain in PR #52.

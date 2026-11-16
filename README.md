@@ -1,96 +1,109 @@
 # OutLoud · Team 07
 
-OutLoud is an Android app for practicing a presentation before you give it. Import your slides as a PDF and record yourself as you move through them. OutLoud links the audio and transcript to each slide so you can find what you said, review AI feedback, and practice a slide again.
+An Android presentation rehearsal app that connects PDF slides, recordings, slide-aligned transcripts and AI feedback.
 
-[Try the hosted demo](#run-the-iteration-3-demo) to use the app on Android, or [run it locally](#run-locally) to develop the app and server from this repository.
+- **Mobile:** Expo SDK 57 / React Native 0.86 / TypeScript.
+- **Backend:** Django / Celery, with PostgreSQL and Redis.
+- **Repository:** `mobile/` for the app, `backend/` for the API and workers, `docs/` for guides and evidence, `compose.yaml` for local services.
 
-<a id="current-status"></a>
+## Current status
 
-## What Iteration 3 changed
+The [Requirements & Specifications v4.0](docs/requirements-and-specifications.md), [Design Rev.4.0](Design-Documentation.md) and [dated evidence reconciliation](docs/testing-evidence/iteration-3-reconciliation-20261105.md) describe the published [demo v8](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103), source `cdb8055`, and distinguish the later release-reported backend repair and unreleased local candidates. The Iteration 2 comparison baseline is main `7b7ef3b` / PR31 application `c4a3f48`.
 
-In Iteration 3, we hosted the demo so reviewers could use it with a code. We improved slide review so you can jump to a specific moment in the recording and read the full feedback. We fixed the first retake and added a way to retry feedback for a single slide. The Iteration 3 demo uses [v8 (`cdb8055`)](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103). [Iteration 3 release evidence](docs/testing-evidence/iteration-3-reconciliation-20261105.md)
+GitHub main has used v8 source since November 16. Release-specific implementation links point to that revision. The setup commands below build the checked-out source. Use the release APK to exercise the documented published demo.
 
-<a id="install-the-iteration-3-demo-apk"></a>
+- **This copy has the redesigned mobile UI** (design prototype rebuild, October 14, 2026). See [REDESIGN.md](REDESIGN.md) for setup, the screen-to-feature map and verification limits.
+- **Iteration 3 documentation baseline for Iteration 4.** Existing task entries retain their recorded iteration labels. Iteration 1 features were merged into `main` on October 11, 2026 (PRs #17–#21).
+- Available features include PDF import, recording with slide tracking, saved audio playback, ElevenLabs Scribe v2 transcription, synchronized transcript review and AI feedback.
+- Local import, recording and saved-media playback work without the backend. Upload, transcription and feedback require the configured server; provider work requires internet and credentials.
+- Iteration 2 Phase 2 adds cached image-aware slide profiles with zero to three essential Must Cover points and zero to three optional Further Insight suggestions per slide, aiming for 8–16 words (maximum 25) with expandable supporting details. PDF upload admits them automatically when feedback is configured; the permanent Cues panel shows both categories, progress and saved results beside selected-slide playback. Historical description/coaching functionality remains separate. See the [phase ledger](docs/iteration-2-ai-feedback.md).
+- Phase 3 derives exact-sum per-slide timing from explicitly saved duration requirements and uses mono AAC at 64 kbps for new captures up to thirty minutes. Missing duration retains labeled suggested timing; time and audience are editable through the shared presentation setup overlay. See [Phase 3 evidence](docs/phase-3-verification.md).
+- Phase 5 adds automatic initial selected-slide feedback in Review: up to four prioritized evidence-linked findings, with separate pending, failed, insufficient-evidence, successful and outdated states. The evaluator also critiques idea ordering/connections and can suggest a clearer way to express the same meaning for a future rehearsal, without editing the transcript. Accepted transcript corrections invalidate results without automatically regenerating them. Audience/time checks require explicit requirements; the shared setup overlay saves those requirements. See [Phase 5 evidence](docs/phase-5-verification.md).
+- Phase 6 adds durable audience Q&A using saved presentation audience and selected slide takes. New recording workflows admit one initial question set; changes mark it outdated and require an explicit update. Answers retain their own recording identity and cached transcription through retries. Saved Q&A remains playable in the existing screen. Apply backend migrations before loading this client against an older API. See [Phase 6 evidence and device limits](docs/phase-6-verification.md).
+- New imports initialize saved requirements to **General audience** and **10 minutes**, using existing context APIs and labeled defaults in the current screens. Existing presentation preferences are preserved; the shared setup overlay can edit these values. [Verification](docs/presentation-defaults-verification.md).
+- App LLM prompts use OpenRouter with `openai/gpt-6-luna` and are **disabled by default** until configured. This covers slide profiles, feedback, transcript suggestions, scoring and Q&A. Suggestions link to evidence; they still require human judgment.
+- The [hosted demo](docs/azure-hosting.md) uses HTTPS and an in-app reviewer code with shared workspace access; separate accounts are absent. The November 3 v8 release reports a later compatible backend v2.4 grading repair. A later phone smoke recorded one English/Korean human rehearsal, playback, transcription, a displayed score and restart persistence. Human advice usefulness, broad recognition quality, calibrated scores and full acceptance remain unverified. [Dated results and limits](docs/testing-evidence/iteration-3-reconciliation-20261105.md).
+- [Verification evidence and remaining limits](docs/verification.md) distinguish automated tests, agent-operated emulator checks and controlled provider evaluation. Sample previews remain separate from real results.
 
-## Run the Iteration 3 demo
+## Quick start
 
-### Install and connect
+Automatic presentation scoring now uses the existing durable feedback jobs. It produces validated overall and per-slide scores, refreshes after synchronized input changes, and retains explicit failure/uncertainty recovery. Existing review screens show level colors, direct advice and evidence; Home shows the overall score, total findings, duration and WPM. See the [v2 contract](docs/presentation-score-v2.md) and [source snapshot verification](docs/presentation-scoring-source-verification.md). Scores remain provisional; provider usefulness requires human testing.
 
-Download and install the [v8 APK](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/download/outloud-demo-v8-20261103/OutLoud-demo-v8-issue49.apk). Ask Team 07 for the reviewer code and enter it when you open OutLoud. The APK runs on your Android device and connects to our Azure server over HTTPS. Connect to the internet so the server can transcribe your recording and generate feedback. Use sample slides and recordings because reviewers share one workspace.
+Step 1 compact feedback requests and cue/feedback reliability are integrated alongside scoring. Cached cues reconnect after connection failures, pause in the background or while covered, and resume on return. New feedback remains independent per slide; discontinued grouping and experiment tools are removed. See [compact context](docs/feedback-compact-context.md) and [retained-feature verification](docs/retained-features-verification.md).
 
-Install v8 over an earlier demo to keep your recordings and settings. Use a separate test device or emulator if your phone already has a newer OutLoud build. [Verify the APK checksum](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/download/outloud-demo-v8-20261103/OutLoud-demo-v8-issue49.apk.sha256)
+### 1. Prerequisites and clone
 
-<a id="try-the-published-demo-flow"></a>
-
-### Try one rehearsal
-
-1. Pull up on Home to import a sample PDF with at least two slides. Review and save the audience and time target. New imports start at **General audience** and **10 minutes**.
-2. Use **Must Cover** and **Further Insight** as rehearsal cues when they appear. Record a short rehearsal, swipe forward and back between slides, then tap Stop.
-3. On your first rehearsal, read and accept the transcription prompt to turn your recording into text. When processing finishes, use **Review** to select a slide and see its feedback and **Full Review** to play the whole recording and follow the transcript. A score appears when available.
-4. Redo a slide. Choose **Keep current** to retain the previous recording or **Overwrite** to use the new one. Reopen the rehearsal from Home and play that slide to check which recording you kept.
-
-V8 also supports saved audience Q&A with spoken questions. [Recording and review guide](docs/rehearsal-review.md#published-demo-behavior--november-5-reconciliation)
-
-### Demo environment
-
-| Item | Iteration 3 |
-| --- | --- |
-| App | `OutLoud-demo-v8-issue49.apk`, [source `cdb8055`](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/cdb8055f0fd5022aafccb47625889d3f9a403f5f) |
-| Minimum Android | Android 7.0 (API 24) |
-| Phone smoke test | Samsung SM-S918N, Android 16, November 3, 2026 |
-| Hosted backend | Azure over HTTPS. We deployed the separate v2.4 grading repair on November 3. [Hosting details](docs/azure-hosting.md) |
-
-## Known limitations and remaining work
-
-- **Shared workspace.** The reviewer code gives users access to the same workspace. Full server-side deletion is incomplete. V8 uploads rehearsal audio before showing the first-use transcription disclosure. Cancelling prevents transcription and leaves the uploaded copy on the server.
-- **Recording and review.** V8 blocks Back while recording. Stop/save/discard, a separate spoken summary, and full comparison between two takes remain open. The compact UI omits some older recovery and transcript correction controls.
-- **Evidence.** V8 has a limited phone smoke test. Broad recognition quality, feedback usefulness, score calibration, and full acceptance still need verification. [Remaining requirements](docs/requirements-and-specifications.md#remaining-requirements-and-acceptance-gaps) · [Dated test results](docs/testing-evidence/iteration-3-reconciliation-20261105.md#dated-verification-evidence)
-
-<a id="quick-start"></a>
-
-## Run locally
-
-For development, start the server first, then launch the Android app in a second terminal. The app lives in `mobile/`, the server and background processing code live in `backend/`, and project guides live in `docs/`. Docker Compose starts the local server, database, Redis, and background workers. [Repository layout](docs/local-development.md#repository-structure)
-
-Install Git, Node.js 24 LTS (minimum 22.13) and npm, Docker with Compose, Android Studio, JDK 17, and Android SDK Platform 36. Set `JAVA_HOME` and Android Studio’s Gradle JDK to JDK 17.
-
-### Start the backend
+- Node.js 24 LTS recommended (minimum 22.13), npm and Git.
+- Android Studio, **JDK 17**, Android SDK Platform 36, and an emulator or USB-debug-enabled Android phone.
+- Docker Desktop or another Docker Compose-compatible runtime for the backend.
+- Set both shell `JAVA_HOME` and Android Studio's project Gradle JDK to **JDK 17**.
 
 ```sh
 git clone https://github.com/snuhcs-course/swpp-2026-project-team-07.git
 cd swpp-2026-project-team-07
+```
+
+### 2. Start the backend
+
+From the repository root, copy the example only on first setup; preserve any existing `.env`:
+
+```sh
 cp -n backend/.env.example backend/.env
 docker compose up --build
 ```
 
-Leave Compose running. The API starts on port 8000 and applies migrations. Compose stores the database and uploaded media in persistent volumes. In another terminal, check [API liveness](http://127.0.0.1:8000/api/health/) and [database and Redis readiness](http://127.0.0.1:8000/api/ready/). Run `docker compose exec worker celery -A config inspect ping` from the repository root to check the worker.
+- Compose starts PostgreSQL, Redis, Django on port 8000, a Celery worker and one recovery scheduler; the API applies migrations.
+- Database and media volumes persist. Services bind to loopback for local development.
+- `http://127.0.0.1:8000/api/health/` checks API liveness; `/api/ready/` checks database/broker connectivity.
+- Check the worker with `docker compose exec worker celery -A config inspect ping`.
 
-### Start Android
+### 3. Start Android
 
-Start an Android emulator or connect a phone with USB debugging. From the repository root in a second terminal:
+In a second terminal, from the repository root:
 
 ```sh
 cd mobile
 npm ci
 cp -n .env.example .env
+npm run android
 ```
 
-- **Emulator:** use `EXPO_PUBLIC_API_URL=http://10.0.2.2:8000/api` in `mobile/.env`.
-- **USB phone:** use `EXPO_PUBLIC_API_URL=http://127.0.0.1:8000/api` in `mobile/.env` and run `adb reverse tcp:8000 tcp:8000` and `adb reverse tcp:8081 tcp:8081`. Use an emulator or a separate test phone if Android reports a signing conflict with the installed demo.
+- Start the emulator first. The command builds and installs an Android development client and starts Metro; keep Metro running.
+- Use the development client, **not Expo Go**: native PDF rendering and SQLite require a native build. No EAS account or cloud build is required.
+- Expect the first build to download Gradle and Android dependencies.
 
-From `mobile/`, run `npm run android` to build and launch the Expo development client. Keep Metro running. Native PDF rendering and SQLite need the development client. After editing `mobile/.env`, restart Metro. See the [local development guide](docs/local-development.md) for Android Studio setup and troubleshooting.
+### 4. Connect the app
 
-### Configuration and limits
+- **Emulator:** set `EXPO_PUBLIC_API_URL=http://10.0.2.2:8000/api` in `mobile/.env`.
+- **USB phone:** run `adb reverse tcp:8000 tcp:8000` and use `EXPO_PUBLIC_API_URL=http://127.0.0.1:8000/api`. For a development client using Metro over USB, also run `adb reverse tcp:8081 tcp:8081`; debug builds can use Metro over the Mac's LAN address as well.
+- The Android release build permits local HTTP only for the USB-forwarded loopback address or Android emulator host. The backend must be running for uploads and transcription; offline recording and playback stay local.
+- Restart Metro after changing `.env`, then import a PDF and check the upload status in the redesigned app.
+- [Detailed setup](docs/local-development.md) includes Android Studio launching, macOS Java/Android/Docker troubleshooting, local Python development and dependency maintenance.
 
-PDF import, recording, and saved-audio playback work offline. Upload, transcription, and feedback need the configured server. Feedback is disabled by default. For transcription, set `ELEVENLABS_API_KEY` in `backend/.env`. For feedback, enable it and supply the OpenRouter key, project identity, and request limits described in the [provider setup](docs/ai-feedback.md#openrouter-activation-and-saved-job-cutover). Keep provider keys in `backend/.env`. The Android environment holds the API address. Retrying an uncertain provider request may incur another charge.
+## Try the published demo flow
 
-Use a PDF with at least one slide and up to **50 MiB**, and record at most **30 minutes**. Audio uploads are capped at **25,000,000 bytes**. Oversized saved audio can still play locally. Record a shorter take to upload. [Capture and recovery details](docs/rehearsal-review.md#local-capture-and-limits)
+1. On Home, pull up to add a PDF. After slide analysis, choose a 1–30 minute presentation time and audience in the setup overlay, then tap the checkmark. Choices synchronize through the existing presentation context API; offline saves remain pending and visible. Tap **Edit time & audience** in the idle recording header to edit them later. Conflicts offer Use server or Keep mine; dependent AI updates wait for synchronization.
+2. Record while navigating forward or backward through slides, then finish the recording. Repeated visits retain their source audio times.
+3. With the server available, the app uploads the PDF/audio and starts transcription after first-use ElevenLabs disclosure covering audio and visited-slide vocabulary hints. Failures preserve the local recording. The selected compact UI does not expose the earlier saved-recording retry tools.
+4. Open a presentation from Home. The normal recording layout shows the selected slide's Must Cover and Further Insight cues before and during capture. Tap Play beside Cues to play or pause its saved audio when not recording. Rotation enlarges the PDF; returning restores the current slide's Cues panel. Retaking a recorded slide opens the existing comparison screen, where you choose **Keep current** or **Overwrite**. The new recording stays pending until you decide. If a capture is interrupted, tap the status beneath the timer to inspect and recover its audio; close the sheet and tap again to inspect another interrupted capture. A recovered redo uses the same choice.
+5. After a new selected recording is transcribed, its first feedback starts automatically. Select a recorded slide in Review. The existing four rows show measured timing, a filler count, and verified content/delivery feedback for that exact recording. Per-slide timing is Under time, On time or Over time using an inclusive ±15% allocation range; a completed category with no finding says No issue flagged. Existing feedback details retain the complete observations and suggestions, including timing/filler advice; unavailable or incomplete results retain their status. Transcript-correction tools are not exposed by this selected UI. V8 retains explicit targeted feedback Retry/Update controls, cooldowns and uncertain-charge confirmation in the existing details.
+6. The first saved recording opens Full Review; later recordings use the selected slide review. Keep/Overwrite decisions retain their selected slide and return route. Review has a persistent Full Review button above its scroll content.
+7. Compact Review shows selected-slide playback and feedback. Full Review retains whole-run playback, transcripts and slide navigation and is also accessible from the Home assessment ring. Home and Full Review share a verified overall score for an exact complete original recording; slide rings and tiles show validated per-slide scores. Home also shows total current findings, recording duration and WPM. Scores start after transcription and saved settings synchronize. Combined recordings do not receive a whole-run grade. Full Review warns before playing a run with missing source audio.
 
-<a id="checks"></a>
+- Previously saved local media and cached results remain stored through network or provider failures. The selected compact Review has no manual remote-audio download control.
+- Refreshing, downloading and replaying do not start transcription or feedback. Opening a presentation may automatically score its selected recordings; unused history is not backfilled. Indicator GET requests never admit work. PDF upload may generate the reusable AI cue profile; failed/uncertain generation requires explicit recovery. Rehearsal coaching generation remains explicit and does not retranscribe audio.
+- History covers locally known presentations for the selected API, not an account-wide archive. [Recording, playback and recovery details](docs/rehearsal-review.md).
 
-## Checks and evidence
+## Configuration and limits
 
-### Run the checks
+- Keep provider keys in ignored `backend/.env`; never put secrets in `EXPO_PUBLIC_*` variables.
+- Hosted transcription uses ElevenLabs `scribe_v2` exclusively and requires `ELEVENLABS_API_KEY`. Up to 100 vocabulary hints come only from visited slides; see [Scribe transcription](docs/scribe-transcription.md). Detected no-speech recordings produce an empty transcript without a provider request.
+- To enable LLM requests, set `FEEDBACK_ENABLED=true`, `FEEDBACK_PROVIDER=openrouter`, `OPENROUTER_API_KEY`, `FEEDBACK_OPENROUTER_MODEL=openai/gpt-6-luna`, a nonsecret `FEEDBACK_OPENROUTER_PROJECT_ID` and positive `FEEDBACK_OPENROUTER_RPM`/`FEEDBACK_OPENROUTER_TPM` allowances. OpenRouter is the default provider; its key never falls back to `OPENAI_API_KEY`. Use an OpenRouter workspace/key that excludes personal OpenAI BYOK credentials. Follow the [activation and saved-job cutover](docs/ai-feedback.md#openrouter-activation-and-saved-job-cutover) and [configuration reference](docs/ai-feedback.md#provider-configuration-and-operational-bounds).
+- **Input limits:** any positive slide count, 50 MiB PDF, thirty-minute recordings and 25,000,000 audio bytes. Oversized legacy audio remains playable locally; record a shorter attempt to upload.
+- Failed or uncertain provider submissions retain explicit recovery/confirmation controls. A retry may incur another charge; the system does not guarantee exactly-once provider execution or a spending cap.
+- [Dependency assessment](docs/whisper-transcription.md#packaged-gate-dependency-assessment-2026-10-08) records unresolved Torch advisories and their assessed scope.
+
+## Checks
 
 From `mobile/`:
 
@@ -99,31 +112,33 @@ npm run check
 npm run bundle:android
 ```
 
-From the repository root with Compose running:
+With Compose running, from the repository root:
 
 ```sh
 docker compose exec api python manage.py check
-docker compose exec api python manage.py makemigrations --check --dry-run
 docker compose exec api python manage.py test --noinput
+docker compose exec api python manage.py makemigrations --check --dry-run
 ```
 
-The bundle command checks that the Android JavaScript can be packaged. See the [verification guide](docs/verification.md) for PostgreSQL concurrency and worker recovery checks.
+- [Verification guide](docs/verification.md) covers local Python/SQLite commands, PostgreSQL concurrency tests, worker recovery and historical evidence.
+- [Testing Documentation](docs/testing.md#environment-and-commands) gives reproducible commands for the published [coverage setup](https://github.com/snuhcs-course/swpp-2026-project-team-07/tree/testing-setup-documentation). The October 22 run passes all application tests and meets backend targets; mobile CI fails its two line-coverage targets. Reports remain available after failure.
+- SQLite tests skip PostgreSQL-specific races. An Android JavaScript export does not establish APK, physical-device or human-usefulness results.
 
-### What we verified for Iteration 3
+## Documentation
 
-- **V8 release:** 617 mobile tests passed. The Android JavaScript export and production APK build passed. [Release verification](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103)
-- **V8 phone smoke test:** The phone check covered PDF import, playback, and restart persistence on Android 16. One English/Korean rehearsal produced a transcript and a displayed score. [Dated evidence and limits](docs/testing-evidence/iteration-3-reconciliation-20261105.md#dated-verification-evidence)
+| Need | Document |
+| --- | --- |
+| Requirements and implementation context | [Requirements and current status](docs/requirements-and-specifications.md) · [Story-to-Test Matrix](docs/story-test-matrix.md) · [GitHub Wiki](https://github.com/snuhcs-course/swpp-2026-project-team-07/wiki) |
+| Design and TA review artifacts | [Current Iteration 3 design](Design-Documentation.md) · [historical Iteration 1 design](Design-Documentation-Iteration-1.md) and [export tools](docs/design-tools/README.md) |
+| Setup and repository layout | [Local development guide](docs/local-development.md) |
+| Data boundaries and recovery | [API contract](docs/api-contract.md) · [rehearsal review](docs/rehearsal-review.md) |
+| Feedback behavior and quality limits | [AI feedback reference](docs/ai-feedback.md) · [controlled evaluation](docs/feedback-evaluation.md) |
+| Testing plan and evidence | [Testing Documentation](docs/testing.md) · [Test Inventory](docs/test-inventory.md) · [verification commands and historical evidence](docs/verification.md) |
+| Contributor rules and earlier ownership context | [Shared instructions](AGENTS.md) · [Iteration 1 work division](docs/team-work-division.md) · [Iteration 1 handoff](docs/iteration-1-handoff.md) |
+| AI contribution and disclosure | [Combined collaboration log](docs/ai-collaboration-prompts.md) · [reporting guide](docs/ai-collaboration-guidelines.md) |
+| Meeting records | [Meeting-log workflow](docs/meeting-log-workflow.md) · [reusable template](docs/daily-standup-meeting-log-template.md); Wiki publication follows approval |
+| Historical setup rationale | [Original scaffold walkthrough](docs/setup-explained.md); its scaffold-only status and branch instructions describe the earlier stage |
 
-<a id="documentation"></a>
-
-## Project documentation
-
-- [Submitted Iteration 3 archive](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/b49b65aad0b45d97d837f09ea1aced53927fabf2/team7-iter3.zip)
-- [Requirements and acceptance criteria](docs/requirements-and-specifications.md)
-- [System design](Design-Documentation.md) and [API contract](docs/api-contract.md)
-- [Recording and review](docs/rehearsal-review.md), [AI feedback reference](docs/ai-feedback.md), and [Iteration 2 AI feature history](docs/iteration-2-ai-feedback.md)
-- [Testing Documentation](docs/testing.md) and [story-to-test matrix](docs/story-test-matrix.md)
-- [Contributor instructions](AGENTS.md), [AI collaboration log](docs/ai-collaboration-prompts.md), and [AI reporting guide](docs/ai-collaboration-guidelines.md)
-- [Daily standup workflow](docs/meeting-log-workflow.md)
-- [Team Wiki](https://github.com/snuhcs-course/swpp-2026-project-team-07/wiki)
-- [Iteration 4 demo v10 with live slide feedback](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v10-20261115)
+- Existing design and requirements exports remain dated historical snapshots. This revision prepares Markdown and Wiki drafts; v4.0 PDF export and eTL submission are separate work.
+- Preserve dated evidence and confirm current task ownership.
+- Expo template assets/license remain under `mobile/`.
