@@ -1,6 +1,6 @@
 # AI feedback — checkpoints 1–5
 
-**November 5 documentation baseline:** this guide incorporates published v8 `cdb8055`. OpenRouter configuration below describes the v8 release, now on main. Earlier checkpoint sections describe their original provider/workflow scope. Current selected-slide feedback, scoring and durable Q&A are summarized in [Design Rev.4.0](../Design-Documentation.md) and the [dated evidence reconciliation](testing-evidence/iteration-3-reconciliation-20261105.md). Repository configuration defaults remain distinct from hosted enablement.
+**November 5 documentation baseline:** this guide incorporates published v8 `cdb8055`. OpenRouter configuration below describes the v8 release, now on main. Earlier checkpoint sections describe their original provider/workflow scope. Current selected-slide feedback, scoring and durable Q&A are summarized in [Design Rev.4.0](design/design-documentation.md) and the [dated evidence reconciliation](testing-evidence/iteration-3-reconciliation-20261105.md). Repository configuration defaults remain distinct from hosted enablement.
 
 > Current routing, October 29, 2026: app LLM prompts default to OpenRouter with
 > `openai/gpt-6-luna`. The configuration and cutover sections below apply to current
@@ -26,7 +26,7 @@ Checkpoint 4 adds feedback review/disclosure and description editing within the 
 | 4 — feedback review UI | Independently reviewed and coordinator-verified at `64ec596`: 270 mobile tests, TypeScript/lint, Android export, Django checks, 229 SQLite tests (18 skips), 229/229 real PostgreSQL tests and synthetic emulator disclosure/edit/stale/regenerate/offline/evidence-seek flows. Human/physical-phone checks remain pending. |
 | 5 — controlled provider evaluation | Complete as an agent-operated check: independent review, 247 SQLite tests (18 skips), 247/247 PostgreSQL tests, real-worker v2/v3 receipt recovery and successful full Gemini/OpenAI flows on identical synthetic inputs. Gemini adversarial output was partial (1 accepted / 1 discarded); OpenAI returned 3 accepted. Quality limitations and human/device checks are documented in the evaluation. |
 
-All five checkpoints were delivered in PR #21, merged into main after PRs #17–#20 on October 11, 2026. Each checkpoint used the configured-model local pipeline and checks; the coordinator verified and transferred reviewed snapshots before publication. The historical checkpoint evidence below does not establish human approval. New detectors, local Whisper, themes, authentication and public deployment remain excluded. See the [controlled evaluation](feedback-evaluation.md), [AI-use evidence](history/ai-use-before-stack-consolidation-2026-10-11.md), [team boundaries](team-work-division.md) and [API contract](api-contract.md).
+All five checkpoints were delivered in PR #21, merged into main after PRs #17–#20 on October 11, 2026. Each checkpoint used the configured-model local pipeline and checks; the coordinator verified and transferred reviewed snapshots before publication. The historical checkpoint evidence below does not establish human approval. New detectors, local Whisper, themes, authentication and public deployment remain excluded. See the [controlled evaluation](testing-evidence/feedback-evaluation.md), [AI-use evidence](history/ai-use-before-stack-consolidation-2026-10-11.md), [team boundaries](history/implementation/team-work-division.md) and [API contract](api-contract.md).
 
 ## Internal preparation and evidence contracts
 
@@ -263,7 +263,7 @@ Official references checked for this implementation:
 The installed OpenAI 2.54.0 source was also inspected. HTTPX 0.28.1 and Pydantic
 2.13.5 are now declared direct dependencies; the existing lock versions are
 unchanged. The coordinator installed the same 61 pinned versions into an isolated test environment and checked all 61 versions against public PyPI advisory metadata on 2026-10-08. No new versions were added or upgraded. OpenAI, HTTPX and Pydantic registry metadata links to their official repositories and lists no advisories for these pins. The
-[inherited Torch advisory assessment](whisper-transcription.md#packaged-gate-dependency-assessment-2026-10-08)
+[inherited Torch advisory assessment](history/implementation/whisper-transcription.md#packaged-gate-dependency-assessment-2026-10-08)
 remains applicable: Torch 2.10.0 has PYSEC-2026-139 and GHSA-rrmf-rvhw-rf47 (alias PYSEC-2025-194). Registry advisory absence is not proof of safety; the dependency set is not audit-clean.
 
 Provenance/advisory sources: [OpenAI 2.54.0](https://pypi.org/pypi/openai/2.54.0/json), [HTTPX 0.28.1](https://pypi.org/pypi/httpx/0.28.1/json), [Pydantic 2.13.5](https://pypi.org/pypi/pydantic/2.13.5/json), [Torch 2.10.0](https://pypi.org/pypi/torch/2.10.0/json).
@@ -605,7 +605,7 @@ pending. The runner owns staging/independent review and the coordinator owns:
 
 Android device regression is separate from JavaScript export. Historical
 checkpoint-3 and checkpoint-4 coordinator infrastructure/emulator evidence is
-recorded in AI-use. Final checkpoint-5 provider runs, new schema acceptance and agent quality assessment are recorded separately in [the evaluation](feedback-evaluation.md); earlier mocked recovery checks alone do not establish them.
+recorded in AI-use. Final checkpoint-5 provider runs, new schema acceptance and agent quality assessment are recorded separately in [the evaluation](testing-evidence/feedback-evaluation.md); earlier mocked recovery checks alone do not establish them.
 
 
 ## Checkpoint 4 review and disclosure
@@ -659,7 +659,7 @@ TypeScript/lint, Android export, Django checks, 229 SQLite tests (18 skips) and
 editing, staleness, regeneration, offline restart and evidence seeking with synthetic
 providers. See [AI-use](history/ai-use-before-stack-consolidation-2026-10-11.md#2026-10-08--checkpoint-4-coordinator-verification).
 Human TalkBack, extended text/keyboard, physical-phone listening/synchronization and
-code inspection remain pending. Checkpoint 5 completed controlled live evaluation with [documented quality limitations](feedback-evaluation.md). Prior prototype attribution is unchanged; this repair does not touch
+code inspection remain pending. Checkpoint 5 completed controlled live evaluation with [documented quality limitations](testing-evidence/feedback-evaluation.md). Prior prototype attribution is unchanged; this repair does not touch
 prototype, mobile or other-worktree source.
 
 ## Illustrative feedback experience
@@ -703,7 +703,7 @@ description v2 with only recursively removed `minItems`/`maxItems` passed 200;
 unchanged `coaching-gemini-v2` passed 200. Gemini transport attempts before the final run: **7**
 (two full rejections plus five probes), without automatic retries, new transcript/
 audio input or new Whisper calls. This reproduces a schema-specific rejection;
-small-probe acceptance alone did not establish full application success. The later reviewed `f89383f` full run completed both cases with four more requests, eleven Gemini transport attempts total. OpenAI completed both cases with four requests. The [evaluation](feedback-evaluation.md) separates structural acceptance, rejected evidence, semantic limitations and usage.
+small-probe acceptance alone did not establish full application success. The later reviewed `f89383f` full run completed both cases with four more requests, eleven Gemini transport attempts total. OpenAI completed both cases with four requests. The [evaluation](testing-evidence/feedback-evaluation.md) separates structural acceptance, rejected evidence, semantic limitations and usage.
 
 The prior v2 projection removed string keywords and translated integer bounds. The
 [Gemini GenerationConfig reference](https://ai.google.dev/api/generate-content#GenerationConfig)
@@ -812,7 +812,7 @@ retries. See [OpenRouter Responses](https://openrouter.ai/docs/api_reference/res
 
 - Relocated from README on October 13, 2026 to preserve its configuration, API and UI details alongside the full feedback reference.
 - Relocated passages retain checkpoint-specific verification scope; later controlled provider results are recorded separately in the evaluation.
-- Checkpoint names describe implementation stages. Their test counts and verification limits remain in the [dated verification snapshots](verification.md#historical-evidence-snapshots).
+- Checkpoint names describe implementation stages. Their test counts and verification limits remain in the [dated verification snapshots](testing-evidence/verification.md#historical-evidence-snapshots).
 - Use the [README](../README.md#configuration-and-limits) for the short configuration overview.
 
 ### Saved-deck descriptions (checkpoint 2)
@@ -879,7 +879,7 @@ distinct; valid empty says “No supported suggestions.” Prior suggestions can
 visible as stale alongside a current failure or uncertain outcome. Evidence
 validation proves references, not semantic correctness or advice quality.
 
-Run the [backend and mobile checks](verification.md#routine-and-integration-checks). New PostgreSQL-only races are in
+Run the [backend and mobile checks](testing-evidence/verification.md#routine-and-integration-checks). New PostgreSQL-only races are in
 `rehearsals.test_coaching.ConcurrentCoachingTests`; the populated migration test
 preserves checkpoint-2 descriptions/requests/reservations plus attempts and Whisper.
 Actual writer outcomes are in [AI-use](history/ai-use-before-stack-consolidation-2026-10-11.md). Real PostgreSQL/Redis/Celery

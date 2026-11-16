@@ -39,10 +39,9 @@ for every iteration. Earlier per-iteration paths are compatibility indexes.
 - Check the branch, working tree and applicable instructions. Preserve unrelated
   changes. Continue an existing task on its branch; choose a suitable base for new
   work without switching, resetting or rebasing the user's checkout merely for freshness.
-- Start with [README.md](README.md). For implementation, read the relevant
-  [API contract](docs/api-contract.md), [handoff](docs/iteration-1-handoff.md),
-  [ownership context](docs/team-work-division.md) and directory instructions.
-  For meeting-note or meeting-log tasks, follow the
+- Start with [README.md](README.md) and the [documentation index](docs/README.md).
+  For implementation, read the relevant [API contract](docs/api-contract.md)
+  and directory instructions. For meeting records, follow the
   [meeting-log workflow](docs/meeting-log-workflow.md).
 - Verify claims against the relevant source, code and evidence. Plans, mock screens,
   branch names and task ownership do not establish implementation, approval or completion.

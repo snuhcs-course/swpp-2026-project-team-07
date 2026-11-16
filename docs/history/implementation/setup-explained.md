@@ -106,13 +106,13 @@ The repository is one shared project containing both mobile and backend code. A 
 
 The demo content is explicitly labeled. The recording button is disabled, the timer stays at `00:00`, and no microphone capture is claimed. Result-state buttons only change which screen state you preview; they do not submit an AI request.
 
-Navigation lives in [the route layout](../mobile/src/app/_layout.tsx). The actual screens live in their feature directories. This lets a teammate edit a screen without having to maintain all of the navigation code.
+Navigation lives in [the route layout](../../../mobile/src/app/_layout.tsx). The actual screens live in their feature directories. This lets a teammate edit a screen without having to maintain all of the navigation code.
 
 The shared UI file provides colors, spacing, cards, buttons, scrollable screens, and safe-area handling. The visual design is a starting frame for implementation, not a finalized product design.
 
 ## 6. Interfaces let teammates work independently
 
-An interface defines what a feature will provide without implementing it yet. For example, [RecordingService](../mobile/src/features/recording/service.ts) requires:
+An interface defines what a feature will provide without implementing it yet. For example, [RecordingService](../../../mobile/src/features/recording/service.ts) requires:
 
 ```ts
 export interface RecordingService {
@@ -135,7 +135,7 @@ These entry points are deliberately unfinished. Backend adapters and the PDF ser
 
 ## 7. The shared data and timing agreement
 
-The definitions in [mobile/src/contracts/index.ts](../mobile/src/contracts/index.ts) agree with [api-contract.md](api-contract.md).
+The definitions in [mobile/src/contracts/index.ts](../../../mobile/src/contracts/index.ts) agree with [api-contract.md](../../api-contract.md).
 
 | Data | Meaning |
 | --- | --- |
@@ -363,6 +363,6 @@ Everyone starts from the same approved scaffold baseline:
 
 The recommended division is three feature owners plus you as the integration owner, if there are four people in total. These are proposed responsibilities, not named assignments. [team-work-division.md](team-work-division.md) gives the detailed work packages and an option for a three-person team. Agree on changes to shared types, models/migrations, and dependency locks before merging so one feature does not silently break another.
 
-Read [iteration-1-handoff.md](iteration-1-handoff.md) for the implementation boundaries and [api-contract.md](api-contract.md) for request/result shapes. The first complete feature demonstration should use a short real PDF and recording, including forward/backward slide changes, then real transcription and feedback with checked evidence references.
+Read [iteration-1-handoff.md](iteration-1-handoff.md) for the implementation boundaries and [api-contract.md](../../api-contract.md) for request/result shapes. The first complete feature demonstration should use a short real PDF and recording, including forward/backward slide changes, then real transcription and feedback with checked evidence references.
 
-For reviewing the code now, follow [review.md](review.md). For everyday commands, use the [README](../README.md).
+For reviewing the code now, follow [review.md](review.md). For everyday commands, use the [README](../../../README.md).

@@ -20,7 +20,7 @@ old server overlays remain in storage but are not applied. Only explicit PATCH
 acceptance writes internal suggestion-job/policy provenance; merely generating a
 matching offer never accepts an old manual edit. The external API still exchanges
 three-field edits. No migration beyond the already reviewed Phase 4 migration is
-needed. See the [updated API contract](api-contract.md#phase-4-recognition-only-product-amendment).
+needed. See the [updated API contract](../api-contract.md#phase-4-recognition-only-product-amendment).
 
 The model receives text and slide context, not the source audio. Its instructions
 and schema restrict candidates to recognition categories, preserve grammar, fillers,

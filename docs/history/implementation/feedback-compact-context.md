@@ -21,7 +21,7 @@ is reused rather than regenerated on navigation.
 Tests cover payload identity, explicit columns, context bounds, selected/repeated
 visits, corrections, distant background, old request hashes, request-size limits,
 invented quotes and saved-job reuse/update. Full-suite results are recorded in
-[retained-feature verification](retained-features-verification.md).
+[retained-feature verification](../../testing-evidence/retained-features-verification.md).
 
 Smaller JSON does not establish model usefulness, billed cost or latency. No paid
 inference or provider comparison was run for this integration. Discontinued

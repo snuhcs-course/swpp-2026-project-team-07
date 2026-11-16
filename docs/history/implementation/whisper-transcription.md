@@ -1,6 +1,6 @@
 # Hosted Whisper adapter (historical)
 
-> Superseded for new requests on October 16, 2026 by [ElevenLabs Scribe v2](scribe-transcription.md). This page preserves the earlier implementation and dated test evidence. The gate dependency assessment still applies.
+> Superseded for new requests on October 16, 2026 by [ElevenLabs Scribe v2](../../scribe-transcription.md). This page preserves the earlier implementation and dated test evidence. The gate dependency assessment still applies.
 
 `backend/rehearsals/services/transcription.py` implements `transcribe(Path)` using
 OpenAI's Python SDK and hosted `whisper-1`. It requests `verbose_json` with
@@ -64,7 +64,7 @@ verify millisecond conversion and alignment, and cover silence, missing/invalid
 word data, file validation, missing credentials, HTTP failures, and network failures.
 They neither upload recordings nor incur provider usage.
 
-The current worker uses `prepare_request` → durable submitted marker → `request_raw` → private raw save → normalization → transcript save → alignment. Standalone `transcribe` remains compatible and bypasses the worker's VAD/duplicate protection; use the saved-attempt flow for the coordinated pilot. A packaged Silero CPU gate prevents calls for detected no-speech, and saved raw/transcripts resume without provider work. See [api-contract.md](api-contract.md) for retry/uncertainty rules. No live check of this newly integrated pipeline is claimed here.
+The current worker uses `prepare_request` → durable submitted marker → `request_raw` → private raw save → normalization → transcript save → alignment. Standalone `transcribe` remains compatible and bypasses the worker's VAD/duplicate protection; use the saved-attempt flow for the coordinated pilot. A packaged Silero CPU gate prevents calls for detected no-speech, and saved raw/transcripts resume without provider work. See [api-contract.md](../../api-contract.md) for retry/uncertainty rules. No live check of this newly integrated pipeline is claimed here.
 
 No-speech also runs alignment and timing metrics after durably saving the empty transcript and gate outcome. Visits keep empty word lists, repeated/backward/zero-duration visits and the original recording end; rate components are empty and language is `und`. Completion, manual retry after alignment failure and recovery after a worker exit perform no provider call for this saved gate outcome.
 
@@ -74,7 +74,7 @@ The coordinator-provided baseline, candidate and patched audit reports contain 0
 
 Source-path assessment: `backend/rehearsals/services/speech_gate.py` calls `load_silero_vad(onnx=True)`. Installed Silero 6.2.0's `model.py` selects the bundled `silero_vad.data/silero_vad.onnx` through package resources and constructs `utils_vad.OnnxWrapper(..., force_onnx_cpu=True)`, which uses ONNX Runtime's CPU execution provider. Torch supplies tensors/state operations to `get_speech_timestamps`; the app decodes uploaded audio through PyAV. The current path does not load PT2/pickle or JIT models, compile user code with `torch.jit.script`, or accept an uploaded model path. Silero's alternate JIT loader and downloading `Validator` helper exist in the dependency but are not called by this gate. This source inspection supports limited exposure through the current gate, not removal of the vulnerabilities from the installed package.
 
-Residual risk remains if later code enables affected loading/scripting paths or the local dependency/model environment is compromised. Keep the gate on its packaged CPU ONNX path; reassess the advisories and compatible pins before adding model-loading behavior. The synthetic-silence regression checks a fresh CPU model load with network, PT2/pickle/JIT loading and JIT compilation forbidden during inference. The coordinator installed the exact regenerated lock and verified the packaged gate in Linux arm64 Python 3.12, plus the host PostgreSQL/Redis/Celery workflow. The final audit still reports these two advisories; see [coordinator evidence](history/ai-use-before-stack-consolidation-2026-10-11.md#2026-10-08--hosted-processing-coordinator-verification-and-publication).
+Residual risk remains if later code enables affected loading/scripting paths or the local dependency/model environment is compromised. Keep the gate on its packaged CPU ONNX path; reassess the advisories and compatible pins before adding model-loading behavior. The synthetic-silence regression checks a fresh CPU model load with network, PT2/pickle/JIT loading and JIT compilation forbidden during inference. The coordinator installed the exact regenerated lock and verified the packaged gate in Linux arm64 Python 3.12, plus the host PostgreSQL/Redis/Celery workflow. The final audit still reports these two advisories; see [coordinator evidence](../ai-use-before-stack-consolidation-2026-10-11.md#2026-10-08--hosted-processing-coordinator-verification-and-publication).
 
 ## Live synthetic-audio result (2026-09-29)
 

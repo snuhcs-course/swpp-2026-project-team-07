@@ -2,7 +2,7 @@
 
 This branch carries the mobile UI rebuilt from the OutLoud design prototype (`OutLoud — Android App Prototype`) and its later gesture, Review and icon revisions. Every earlier screen, component and gesture layer was removed, including the Iteration 2 gesture redesign. The app's functions were kept: PDF import, capture, local storage, upload, hosted transcription, AI feedback and the backend. The new screens are wired to those functions.
 
-> October 16 integration: new transcription uses ElevenLabs Scribe v2 with slide-derived vocabulary hints. Apply migration `0007_provider_request_options` and configure the updated API/worker and mobile consent together. [Configuration and evidence](docs/scribe-transcription.md).
+> October 16 integration: new transcription uses ElevenLabs Scribe v2 with slide-derived vocabulary hints. Apply migration `0007_provider_request_options` and configure the updated API/worker and mobile consent together. [Configuration and evidence](../scribe-transcription.md).
 
 ## Run it
 
@@ -88,7 +88,7 @@ Checks performed during the initial redesign build (before the later device work
   - The PostgreSQL-only tests were skipped.
 
 Not done in the initial October 14 build:
-- A device build and on-device check of the visuals and gestures. Later dated checks are in the [combined collaboration log](docs/ai-collaboration-prompts.md); they do not establish full human testing.
+- A device build and on-device check of the visuals and gestures. Later dated checks are in the [combined collaboration log](../ai-collaboration-prompts.md); they do not establish full human testing.
 - Live provider calls for Audience Q&A. The tests use synthetic provider responses and a fake Whisper.
 - A run on CI's PostgreSQL/Python 3.12 setup.
 

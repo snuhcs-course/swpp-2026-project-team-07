@@ -6,13 +6,13 @@ Prepared on `codex/iteration-1-scaffold`, based on the repository's existing `ma
 
 ## Suggested reading order
 
-1. [App routes](../mobile/src/app/_layout.tsx): four screens, Android back navigation.
+1. [App routes](../../../mobile/src/app/_layout.tsx): four screens, Android back navigation.
 2. [Library](../mobile/src/features/pdf/LibraryScreen.tsx) and [viewer](../mobile/src/features/pdf/ViewerScreen.tsx): import seam, sample pages, optional audience.
-3. [Recording frame](../mobile/src/features/recording/RehearsalScreen.tsx) and [recording interface](../mobile/src/features/recording/service.ts): capture remains a teammate task.
+3. [Recording frame](../mobile/src/features/recording/RehearsalScreen.tsx) and [recording interface](../../../mobile/src/features/recording/service.ts): capture remains a teammate task.
 4. [Result frame](../mobile/src/features/transcription/ResultsScreen.tsx): sample, processing, and failed states.
-5. [Shared types](../mobile/src/contracts/index.ts) and [API contract](api-contract.md): feature integration agreement.
-6. [Backend models](../backend/rehearsals/models.py), [routes](../backend/rehearsals/urls.py), and [worker entry point](../backend/rehearsals/tasks.py).
-7. [Compose services](../compose.yaml), [setup instructions](../README.md), and [CI](../.github/workflows/checks.yml).
+5. [Shared types](../../../mobile/src/contracts/index.ts) and [API contract](../../api-contract.md): feature integration agreement.
+6. [Backend models](../../../backend/rehearsals/models.py), [routes](../../../backend/rehearsals/urls.py), and [worker entry point](../../../backend/rehearsals/tasks.py).
+7. [Compose services](../../../compose.yaml), [setup instructions](../../../README.md), and [CI](../../../.github/workflows/checks.yml).
 
 ## Scope
 

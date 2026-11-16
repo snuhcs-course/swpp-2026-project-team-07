@@ -8,7 +8,7 @@
 
 **Audience:** developers, reviewers, and teammates who need to understand the implemented application and its delivery status.
 
-This document inventories the current application, including work inherited from earlier branches. It distinguishes committed application features, the staged Scribe replacement, automated verification, and observed device behavior. It does not assign individual authorship or replace the [API contract](api-contract.md) and the linked feature specifications. Earlier dated documents describe their own checkpoints; their provider names and test counts may differ from this snapshot.
+This document inventories the current application, including work inherited from earlier branches. It distinguishes committed application features, the staged Scribe replacement, automated verification, and observed device behavior. It does not assign individual authorship or replace the [API contract](../../api-contract.md) and the linked feature specifications. Earlier dated documents describe their own checkpoints; their provider names and test counts may differ from this snapshot.
 
 ## 1. Implementation and delivery status
 
@@ -103,7 +103,7 @@ The diagram shows dependencies, not permission to regenerate on every dependency
 - Foreground/screen activation resumes reads; backgrounding, covering the screen, switching decks and unmounting cancel obsolete cue reads and timers.
 - Opening Further Insight expands saved content. It does not submit a new provider request.
 
-See [requirements and cues](api-contract.md), [default initialization](presentation-defaults-verification.md), [timing](phase-3-verification.md), and [cue reliability](cue-feedback-reliability.md).
+See [requirements and cues](../../api-contract.md), [default initialization](../../testing-evidence/presentation-defaults-verification.md), [timing](../../testing-evidence/phase-3-verification.md), and [cue reliability](cue-feedback-reliability.md).
 
 ## 5. Recording, slide visits, source selection and navigation
 
@@ -185,7 +185,7 @@ This is an illustrative contract fragment, not a recorded result. Public respons
 - Public transcription provenance accepts the exact Scribe provider/model pair, or the existing null states before a provider request. Unsupported identities fail validation.
 - Whisper adapter construction, decoding of historical Whisper receipts, provider selection and fallback paths were removed. Historical Whisper development-data support is intentionally absent.
 
-See [Scribe implementation and configuration](scribe-transcription.md) and [integration verification](scribe-only-integration-verification.md).
+See [Scribe implementation and configuration](../../scribe-transcription.md) and [integration verification](../../testing-evidence/scribe-only-integration-verification.md).
 
 ## 7. Transcript review, playback and confirmed corrections
 
@@ -200,7 +200,7 @@ See [Scribe implementation and configuration](scribe-transcription.md) and [inte
 - Confirmed corrections retain historical feedback/assessments but mark dependent results stale. Other attempts and reusable slide-only profiles remain unaffected.
 - Singleton feedback needs the existing explicit Update after correction. Automatic scoring instead refreshes once the corrected inputs synchronize, subject to its admission/recovery rules.
 
-See [correction contract](api-contract.md#iteration-2-phase-4--confirmed-transcript-overlays) and [rehearsal review](rehearsal-review.md).
+See [correction contract](../../api-contract.md#iteration-2-phase-4--confirmed-transcript-overlays) and [rehearsal review](../../rehearsal-review.md).
 
 ## 8. Singleton AI feedback and Step 1 compact context
 
@@ -230,7 +230,7 @@ The request includes full-deck facts and guidance once, selected original words 
 
 The optimization preserves original word identities, quotes, timing, repeated visits, provider selection and output validation. Old singleton snapshots reconstruct their original hashes. Unknown or discontinued grouped protocols fail closed. The change reduces duplicated JSON; it does not establish billed savings, latency improvement or human usefulness by itself.
 
-See [compact-context specification](feedback-compact-context.md), [selected-slide API](api-contract.md#iteration-2-phase-5--selected-slide-review), and [retained-feature verification](retained-features-verification.md).
+See [compact-context specification](feedback-compact-context.md), [selected-slide API](../../api-contract.md#iteration-2-phase-5--selected-slide-review), and [retained-feature verification](../../testing-evidence/retained-features-verification.md).
 
 ## 9. Backend presentation scoring
 
@@ -306,7 +306,7 @@ A completed rejected assessment, or an exactly supported scoring-protocol upgrad
 
 Audio unavailable/corrupt/insufficient states suppress the overall score. Delivery is not removed and the remaining weights are not renormalized. Pauses, rate, fillers and repetitions require an explained communication consequence for deductions. Scoring does not claim to grade emotion, confidence, pronunciation, gestures, eye contact or Q&A.
 
-See [complete scoring contract and anchors](presentation-score-v2.md).
+See [complete scoring contract and anchors](../../presentation-score-v2.md).
 
 ## 10. Automatic Android scoring workflow
 
@@ -360,7 +360,7 @@ The new consent key is `analysis-consent:elevenlabs:scribe-v2:keyterms:v2`. Old 
 - Saved successful-result reads, active status polling and feedback-only evaluation recovery do not demand fresh transcription consent.
 - The existing dialog styling and durable workflow remain intact. No duplicate answer or parallel Q&A architecture was added.
 
-See [durable Q&A contract](api-contract.md#phase-6--durable-selected-run-audience-qa). The historical Phase 6 ledger predates Scribe and must be read with the current provider specification.
+See [durable Q&A contract](../../api-contract.md#phase-6--durable-selected-run-audience-qa). The historical Phase 6 ledger predates Scribe and must be read with the current provider specification.
 
 ## 13. Shared job, validation and failure behavior
 
@@ -428,20 +428,20 @@ Paths below are relative to the repository root. This is a map of feature owners
 
 | Area | Entry points |
 | --- | --- |
-| Screens and navigation | [AppShell](../mobile/src/screens/AppShell.tsx), [Home](../mobile/src/screens/HomeScreen.tsx), [Rehearse](../mobile/src/screens/RehearseScreen.tsx), [Review](../mobile/src/screens/ReviewScreen.tsx), [Full Review](../mobile/src/screens/FullReviewScreen.tsx), [Q&A](../mobile/src/screens/QAScreen.tsx) |
-| Import and presentation state | [importer](../mobile/src/features/presentations/importer.ts), [presentation store](../mobile/src/features/presentations/store.ts), [context writer](../mobile/src/features/presentations/contextWriter.ts), [defaults](../mobile/src/features/presentations/defaultRequirements.ts) |
-| Capture and selected takes | [CaptureEngine](../mobile/src/features/rehearsal/CaptureEngine.tsx), [recording service](../mobile/src/features/recording/service.ts), [limits](../mobile/src/features/recording/limits.ts), [recovery](../mobile/src/features/recording/recovery.ts), [takes](../mobile/src/features/rehearsal/takes.ts) |
-| Scribe boundary | [transcription](../backend/rehearsals/services/transcription.py), [keyterms](../backend/rehearsals/services/keyterms.py), [processing](../backend/rehearsals/services/processing.py), [speech gate](../backend/rehearsals/services/speech_gate.py), [alignment](../backend/rehearsals/services/alignment.py) |
-| Transcript validation/cache | [client](../mobile/src/features/transcription/client.ts), [result validation](../mobile/src/features/transcription/resultValidation.ts), [analysis storage/consent](../mobile/src/features/transcription/analysisStorage.ts), [review validation](../mobile/src/features/transcription/reviewValidation.ts) |
-| Corrections | [backend corrections](../backend/rehearsals/services/corrections.py), [suggestions](../backend/rehearsals/services/transcript_suggestions.py), [mobile corrections](../mobile/src/features/presentations/useTranscriptCorrections.ts) |
-| Cues | [profiles](../backend/rehearsals/services/slide_profiles.py), [cue panel](../mobile/src/features/presentations/CueGuidancePanel.tsx), [profile reader](../mobile/src/features/presentations/useSlideProfiles.ts) |
-| Singleton feedback | [backend singleton service](../backend/rehearsals/services/slide_review.py), [coaching admission](../backend/rehearsals/services/coaching.py), [initial host](../mobile/src/features/feedback/InitialFeedbackHost.tsx), [review hook](../mobile/src/features/feedback/useSlideReview.ts) |
-| Scoring backend | [rubric](../backend/rehearsals/services/presentation_rubric_v2.py), [visit evidence](../backend/rehearsals/services/presentation_visit_evidence.py), [scorer](../backend/rehearsals/services/presentation_score_v2.py), [durable integration](../backend/rehearsals/services/presentation_scoring.py), [API](../backend/rehearsals/presentation_score_views.py) |
-| Scoring Android | [automatic host](../mobile/src/features/feedback/InitialPresentationScoreHost.tsx), [controller](../mobile/src/features/feedback/usePresentationScore.ts), [automatic guards](../mobile/src/features/feedback/automaticPresentationScore.ts), [validator](../mobile/src/features/feedback/presentationScore.ts), [cache](../mobile/src/features/feedback/presentationScoreStore.ts), [selected sources](../mobile/src/features/feedback/selectedPresentationScores.ts) |
-| Score display/playback | [panel](../mobile/src/features/feedback/PresentationScorePanel.tsx), [level/playback helpers](../mobile/src/features/feedback/presentationScoreDisplay.ts), [Home statistics](../mobile/src/screens/HomeFeedbackStats.tsx), [slide playback](../mobile/src/screens/ReviewSlidePlayback.tsx), [segment player](../mobile/src/features/rehearsal/useSegmentPlayer.ts) |
-| Durable Q&A | [question service](../backend/rehearsals/services/audience_qa.py), [API/bindings](../backend/rehearsals/durable_qa_views.py), [client](../mobile/src/features/qa/client.ts), [state hook](../mobile/src/features/qa/useDurableQa.ts), [saved state](../mobile/src/features/qa/store.ts), [initial host](../mobile/src/features/qa/InitialQaHost.tsx) |
-| Durable persistence and scheduling | [models](../backend/rehearsals/models.py), [tasks](../backend/rehearsals/tasks.py), [provider configuration](../backend/rehearsals/services/feedback_config.py), [quota](../backend/rehearsals/services/feedback_quota.py) |
-| Migration join | [0011 merge migration](../backend/rehearsals/migrations/0011_merge_scribe_scoring.py) |
+| Screens and navigation | [AppShell](../../../mobile/src/screens/AppShell.tsx), [Home](../../../mobile/src/screens/HomeScreen.tsx), [Rehearse](../../../mobile/src/screens/RehearseScreen.tsx), [Review](../../../mobile/src/screens/ReviewScreen.tsx), [Full Review](../../../mobile/src/screens/FullReviewScreen.tsx), [Q&A](../../../mobile/src/screens/QAScreen.tsx) |
+| Import and presentation state | [importer](../../../mobile/src/features/presentations/importer.ts), [presentation store](../../../mobile/src/features/presentations/store.ts), [context writer](../../../mobile/src/features/presentations/contextWriter.ts), [defaults](../../../mobile/src/features/presentations/defaultRequirements.ts) |
+| Capture and selected takes | [CaptureEngine](../../../mobile/src/features/rehearsal/CaptureEngine.tsx), [recording service](../../../mobile/src/features/recording/service.ts), [limits](../../../mobile/src/features/recording/limits.ts), [recovery](../../../mobile/src/features/recording/recovery.ts), [takes](../../../mobile/src/features/rehearsal/takes.ts) |
+| Scribe boundary | [transcription](../../../backend/rehearsals/services/transcription.py), [keyterms](../../../backend/rehearsals/services/keyterms.py), [processing](../../../backend/rehearsals/services/processing.py), [speech gate](../../../backend/rehearsals/services/speech_gate.py), [alignment](../../../backend/rehearsals/services/alignment.py) |
+| Transcript validation/cache | [client](../../../mobile/src/features/transcription/client.ts), [result validation](../../../mobile/src/features/transcription/resultValidation.ts), [analysis storage/consent](../../../mobile/src/features/transcription/analysisStorage.ts), [review validation](../../../mobile/src/features/transcription/reviewValidation.ts) |
+| Corrections | [backend corrections](../../../backend/rehearsals/services/corrections.py), [suggestions](../../../backend/rehearsals/services/transcript_suggestions.py), [mobile corrections](../../../mobile/src/features/presentations/useTranscriptCorrections.ts) |
+| Cues | [profiles](../../../backend/rehearsals/services/slide_profiles.py), [cue panel](../../../mobile/src/features/presentations/CueGuidancePanel.tsx), [profile reader](../../../mobile/src/features/presentations/useSlideProfiles.ts) |
+| Singleton feedback | [backend singleton service](../../../backend/rehearsals/services/slide_review.py), [coaching admission](../../../backend/rehearsals/services/coaching.py), [initial host](../../../mobile/src/features/feedback/InitialFeedbackHost.tsx), [review hook](../../../mobile/src/features/feedback/useSlideReview.ts) |
+| Scoring backend | [rubric](../../../backend/rehearsals/services/presentation_rubric_v2.py), [visit evidence](../../../backend/rehearsals/services/presentation_visit_evidence.py), [scorer](../../../backend/rehearsals/services/presentation_score_v2.py), [durable integration](../../../backend/rehearsals/services/presentation_scoring.py), [API](../../../backend/rehearsals/presentation_score_views.py) |
+| Scoring Android | [automatic host](../../../mobile/src/features/feedback/InitialPresentationScoreHost.tsx), [controller](../../../mobile/src/features/feedback/usePresentationScore.ts), [automatic guards](../../../mobile/src/features/feedback/automaticPresentationScore.ts), [validator](../../../mobile/src/features/feedback/presentationScore.ts), [cache](../../../mobile/src/features/feedback/presentationScoreStore.ts), [selected sources](../../../mobile/src/features/feedback/selectedPresentationScores.ts) |
+| Score display/playback | [panel](../../../mobile/src/features/feedback/PresentationScorePanel.tsx), [level/playback helpers](../../../mobile/src/features/feedback/presentationScoreDisplay.ts), [Home statistics](../../../mobile/src/screens/HomeFeedbackStats.tsx), [slide playback](../../../mobile/src/screens/ReviewSlidePlayback.tsx), [segment player](../../../mobile/src/features/rehearsal/useSegmentPlayer.ts) |
+| Durable Q&A | [question service](../../../backend/rehearsals/services/audience_qa.py), [API/bindings](../../../backend/rehearsals/durable_qa_views.py), [client](../../../mobile/src/features/qa/client.ts), [state hook](../../../mobile/src/features/qa/useDurableQa.ts), [saved state](../../../mobile/src/features/qa/store.ts), [initial host](../../../mobile/src/features/qa/InitialQaHost.tsx) |
+| Durable persistence and scheduling | [models](../../../backend/rehearsals/models.py), [tasks](../../../backend/rehearsals/tasks.py), [provider configuration](../../../backend/rehearsals/services/feedback_config.py), [quota](../../../backend/rehearsals/services/feedback_quota.py) |
+| Migration join | [0011 merge migration](../../../backend/rehearsals/migrations/0011_merge_scribe_scoring.py) |
 
 ## 17. Discontinued implementation and preserved shared code
 
@@ -513,14 +513,14 @@ The isolated runtime and temporary APK/log directories are session artifacts, no
 
 ## 20. Detailed specifications and review evidence
 
-- [API contract](api-contract.md): wire formats, identities, correction scopes, singleton review, durable Q&A and scoring seams.
-- [Scoring v2](presentation-score-v2.md): complete anchors, formulas, evidence and automatic workflow contracts.
-- [Scoring source snapshot](presentation-scoring-source-verification.md): the earlier committed scoring dependency closure and its own historical gate.
+- [API contract](../../api-contract.md): wire formats, identities, correction scopes, singleton review, durable Q&A and scoring seams.
+- [Scoring v2](../../presentation-score-v2.md): complete anchors, formulas, evidence and automatic workflow contracts.
+- [Scoring source snapshot](../../testing-evidence/presentation-scoring-source-verification.md): the earlier committed scoring dependency closure and its own historical gate.
 - [Compact feedback context](feedback-compact-context.md): retained Step 1 request construction and compatibility.
-- [Retained-feature verification](retained-features-verification.md): Step 1/navigation/reliability and discontinued runtime cleanup.
-- [Scribe specification](scribe-transcription.md): provider boundary and backend configuration.
-- [Scribe integration verification](scribe-only-integration-verification.md): preservation allowlist, automated/independent review and subsequent live-phone evidence.
-- [AI collaboration log](ai-collaboration-prompts.md): actual prompts, AI assistance and task-level verification, separate from human approval.
+- [Retained-feature verification](../../testing-evidence/retained-features-verification.md): Step 1/navigation/reliability and discontinued runtime cleanup.
+- [Scribe specification](../../scribe-transcription.md): provider boundary and backend configuration.
+- [Scribe integration verification](../../testing-evidence/scribe-only-integration-verification.md): preservation allowlist, automated/independent review and subsequent live-phone evidence.
+- [AI collaboration log](../../ai-collaboration-prompts.md): actual prompts, AI assistance and task-level verification, separate from human approval.
 
 The reviewed source patch hash is `3497f6def49dd2c121aedf635552eaefc77d4ef197cd330b57460cc22beec28c`. Seven later runtime-file edits added attribution comments only; byte comparisons confirmed the reviewed implementation remained unchanged.
 
@@ -539,6 +539,6 @@ thirteen unused raster assets and one obsolete component test were removed;
 test stubs were cleaned. Editable SVG sources and all other audited groups remain.
 Current mobile checks pass 548 tests (one obsolete component test removed),
 typecheck/lint and Android export. The 112 embedded live application sources and
-all backend source remain unchanged. See [cleanup/review evidence](scribe-integration-cleanup-verification.md).
+all backend source remain unchanged. See [cleanup/review evidence](../../testing-evidence/scribe-integration-cleanup-verification.md).
 Earlier staged/pending-delivery statements describe the original snapshot, before
 this later authorization. Publication results are reported after remote verification.

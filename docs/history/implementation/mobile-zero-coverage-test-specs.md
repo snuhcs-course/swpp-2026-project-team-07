@@ -2,7 +2,7 @@
 
 **Status:** Proposed cases; implementation and execution pending.
 
-Use these cases to test the mobile files recorded at 0% line coverage on October 22, 2026. The application baseline is merged PR #31, `c4a3f48`; [PR #33](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/33) adds the coverage setup at `f0d7148`. The [measurement record](testing-evidence/coverage-2026-10-22.json) preserves scope, counts and tooling hashes. The [PR CI mobile log](https://github.com/snuhcs-course/swpp-2026-project-team-07/actions/runs/39719152101/job/119628338510) confirms 548 passing tests and the same group shortfalls.
+Use these cases to test the mobile files recorded at 0% line coverage on October 22, 2026. The application baseline is merged PR #31, `c4a3f48`; [PR #33](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/33) adds the coverage setup at `f0d7148`. The [measurement record](../../testing-evidence/coverage-2026-10-22.json) preserves scope, counts and tooling hashes. The [PR CI mobile log](https://github.com/snuhcs-course/swpp-2026-project-team-07/actions/runs/39719152101/job/119628338510) confirms 548 passing tests and the same group shortfalls.
 
 0% means that the measured suite recorded no covered lines in that file. Related helpers can already have tests. None of the cases below count as completed tests or acceptance evidence.
 
@@ -12,26 +12,26 @@ Use these cases to test the mobile files recorded at 0% line coverage on October
 2. Add transcription, worker/host and navigation cases. Finish with shared controls and application entry points.
 3. Rerun coverage after each group. Use the new report to choose the next missing behavior.
 
-Follow the [testing plan](testing.md): Jooyoung maintains mobile logic/storage (`.ts` coverage group); Jaewon maintains screens/components (`.tsx` coverage group). Coordinate cases that cross the two groups. All four members perform manual phone testing and record their own results.
+Follow the [testing plan](../../testing.md): Jooyoung maintains mobile logic/storage (`.ts` coverage group); Jaewon maintains screens/components (`.tsx` coverage group). Coordinate cases that cross the two groups. All four members perform manual phone testing and record their own results.
 
 ## Test method
 
 Use the existing Node test runner, `node:assert/strict`, React test renderer and source-map loaders. Keep each test file under `mobile/tests/` with a `.test.mjs` suffix. Case IDs below can prefix test names; split parameterized inputs into named cases.
 
 - Import the complete production module. Keep the behavior under assertion real. Replace native APIs, network responses and clocks with controlled fixtures; use real storage/domain code where the assertion concerns their integration. Do not copy production functions into tests or replace the controller under test with a mock.
-- Mount hooks through a small React probe and drive updates with `act`. Reuse the pattern in [presentation-score-automatic.test.mjs](../mobile/tests/presentation-score-automatic.test.mjs) and the focus/AppState controls in [recording-screen-ui.mjs](../mobile/tests/helpers/recording-screen-ui.mjs). Adapt loaders for each boundary; existing loaders may replace the module these new cases need to execute.
-- Reuse valid `feedbackState`, `descriptionState`, `absentFeedback` and `withFeedback` fixtures from [feedback-fixtures.mjs](../mobile/tests/helpers/feedback-fixtures.mjs). Use distinct attempt/deck IDs and API addresses when testing identity changes. Keep response bodies valid unless malformed input is the subject of the test.
+- Mount hooks through a small React probe and drive updates with `act`. Reuse the pattern in [presentation-score-automatic.test.mjs](../../../mobile/tests/presentation-score-automatic.test.mjs) and the focus/AppState controls in [recording-screen-ui.mjs](../../../mobile/tests/helpers/recording-screen-ui.mjs). Adapt loaders for each boundary; existing loaders may replace the module these new cases need to execute.
+- Reuse valid `feedbackState`, `descriptionState`, `absentFeedback` and `withFeedback` fixtures from [feedback-fixtures.mjs](../../../mobile/tests/helpers/feedback-fixtures.mjs). Use distinct attempt/deck IDs and API addresses when testing identity changes. Keep response bodies valid unless malformed input is the subject of the test.
 - Control pending responses with deferred promises. Record request method, payload, signal and call count. Check state before completion, then resolve, reject or abort the operation and check the result.
 - Use fake timers for polling, retry windows and animation completion. Reset mocks, timers, AppState, focus, storage fixtures and mounted trees after each case. Isolate module-level worker registries between test files or remove their entries during cleanup.
 - Assert visible text/state, navigation arguments, saved records and request/file operations. Import-only checks and snapshots alone do not satisfy these cases.
 
-These are regression specifications for current behavior unless a row identifies a requirement check. Use the [story matrix](story-test-matrix.md) and [known requirement differences](requirements-and-specifications.md#iteration-2-implementation-status) when evaluating acceptance. A failing requirement check may identify a defect; do not change its expected result to match the defect.
+These are regression specifications for current behavior unless a row identifies a requirement check. Use the [story matrix](../../story-test-matrix.md) and [known requirement differences](../../requirements-and-specifications.md#iteration-2-implementation-status) when evaluating acceptance. A failing requirement check may identify a defect; do not change its expected result to match the defect.
 
 ## First group: feedback, media, import and screens
 
 ### F. Feedback review
 
-Source: [useFeedbackReview.ts](../mobile/src/features/feedback/useFeedbackReview.ts). Suggested file: `feedback-review-runtime.test.mjs`. Basis: cached feedback, disclosure and recovery in the [API contract](api-contract.md), plus the controller's revision and cancellation rules. This is the legacy take-level review controller; selected-slide automatic feedback has separate tests.
+Source: [useFeedbackReview.ts](../../../mobile/src/features/feedback/useFeedbackReview.ts). Suggested file: `feedback-review-runtime.test.mjs`. Basis: cached feedback, disclosure and recovery in the [API contract](../../api-contract.md), plus the controller's revision and cancellation rules. This is the legacy take-level review controller; selected-slide automatic feedback has separate tests.
 
 | ID | Setup and action | Expected result |
 | --- | --- | --- |
@@ -46,13 +46,13 @@ Source: [useFeedbackReview.ts](../mobile/src/features/feedback/useFeedbackReview
 
 ### M. Audio, PDF and metadata controllers
 
-Sources: [useReviewMedia.ts](../mobile/src/features/transcription/useReviewMedia.ts), [useReviewPdf.ts](../mobile/src/features/transcription/useReviewPdf.ts), [useReviewDeck.ts](../mobile/src/features/transcription/useReviewDeck.ts), [useReviewPlayerStatus.ts](../mobile/src/features/transcription/useReviewPlayerStatus.ts). Suggested files: `review-media-hooks.test.mjs`, `review-metadata-hooks.test.mjs`, `review-player-status.test.mjs`.
+Sources: [useReviewMedia.ts](../../../mobile/src/features/transcription/useReviewMedia.ts), [useReviewPdf.ts](../../../mobile/src/features/transcription/useReviewPdf.ts), [useReviewDeck.ts](../../../mobile/src/features/transcription/useReviewDeck.ts), [useReviewPlayerStatus.ts](../../../mobile/src/features/transcription/useReviewPlayerStatus.ts). Suggested files: `review-media-hooks.test.mjs`, `review-metadata-hooks.test.mjs`, `review-player-status.test.mjs`.
 
 | ID | Setup and action | Expected result |
 | --- | --- | --- |
 | M01 | Mount with existing valid original audio/PDF files. Return to focus with the same source identities. | Validate and expose those files without downloading replacements. Retain an unchanged validated URI when returning to focus. |
 | M02 | Supply a missing original, an invalid original and a valid cached candidate in order. Also test no usable candidate. | Try the next candidate after validation failure. Expose only a validated URI; otherwise show the unavailable/error state. Preserve original files. |
-| M03 | Choose Download. Test success, network rejection and native validation rejection with a previous usable file present. | Publish the validated result on success. On failure, clear busy state, show the error and retain the previous usable file. Reuse the lower-level checks in [review-media.test.mjs](../mobile/tests/review-media.test.mjs). |
+| M03 | Choose Download. Test success, network rejection and native validation rejection with a previous usable file present. | Publish the validated result on success. On failure, clear busy state, show the error and retain the previous usable file. Reuse the lower-level checks in [review-media.test.mjs](../../../mobile/tests/review-media.test.mjs). |
 | M04 | Invoke Download twice before the first settles. Background/blur during download, then deliver a late completion or renderer-error callback from the old session. | Start one download for that hook session. Abort on lifecycle exit. Ignore callbacks that no longer own the active source/session. A new focus session can recover. |
 | M05 | Keep audio loading while PDF metadata changes or PDF validation fails. Mount audio-only and PDF-only variants in separate cases. | PDF work does not cancel or reset the audio session. Audio-only review does not validate a PDF. PDF-only review does not start an audio validator. |
 | M06 | Discover PDFs from imported files and saved attempts across two API addresses. Include duplicates; fail one catalog read; repeat discovery with unchanged candidates. | Return deduplicated candidates for the requested API/deck. A failed catalog does not hide candidates from the other catalog. Preserve the array identity for unchanged ordered candidates, including an empty result. |
@@ -62,7 +62,7 @@ Sources: [useReviewMedia.ts](../mobile/src/features/transcription/useReviewMedia
 
 ### V. Native validation adapters
 
-Source: [nativeMediaValidation.tsx](../mobile/src/features/transcription/nativeMediaValidation.tsx). Suggested file: `native-media-validation.test.mjs`. Simulate native callbacks here; retain real Android decoder/PDF-renderer checks in the phone plan.
+Source: [nativeMediaValidation.tsx](../../../mobile/src/features/transcription/nativeMediaValidation.tsx). Suggested file: `native-media-validation.test.mjs`. Simulate native callbacks here; retain real Android decoder/PDF-renderer checks in the phone plan.
 
 | ID | Setup and action | Expected result |
 | --- | --- | --- |
@@ -72,7 +72,7 @@ Source: [nativeMediaValidation.tsx](../mobile/src/features/transcription/nativeM
 
 ### I. PDF import orchestration
 
-Source: [importer.ts](../mobile/src/features/presentations/importer.ts). Suggested file: `presentation-importer.test.mjs`. Keep the importer real; fake page rendering/filesystem/network boundaries. Basis: AC-01a–c and current offline import behavior. Existing [pdf-import.test.mjs](../mobile/tests/pdf-import.test.mjs) covers the lower-level PDF service.
+Source: [importer.ts](../../../mobile/src/features/presentations/importer.ts). Suggested file: `presentation-importer.test.mjs`. Keep the importer real; fake page rendering/filesystem/network boundaries. Basis: AC-01a–c and current offline import behavior. Existing [pdf-import.test.mjs](../../../mobile/tests/pdf-import.test.mjs) covers the lower-level PDF service.
 
 | ID | Setup and action | Expected result |
 | --- | --- | --- |
@@ -85,7 +85,7 @@ Source: [importer.ts](../mobile/src/features/presentations/importer.ts). Suggest
 
 ### U. Upload screen
 
-Source: [UploadScreen.tsx](../mobile/src/screens/UploadScreen.tsx). Suggested file: `upload-screen-runtime.test.mjs`. Mount the real screen with shell/theme/animation fixtures. Keep importer integration in at least U02–U04. Basis: AC-01a–c and the saved presentation-setup flow.
+Source: [UploadScreen.tsx](../../../mobile/src/screens/UploadScreen.tsx). Suggested file: `upload-screen-runtime.test.mjs`. Mount the real screen with shell/theme/animation fixtures. Keep importer integration in at least U02–U04. Basis: AC-01a–c and the saved presentation-setup flow.
 
 | ID | Setup and action | Expected result |
 | --- | --- | --- |
@@ -99,7 +99,7 @@ Source: [UploadScreen.tsx](../mobile/src/screens/UploadScreen.tsx). Suggested fi
 
 ### H. Home screen
 
-Source: [HomeScreen.tsx](../mobile/src/screens/HomeScreen.tsx). Suggested file: `home-screen-runtime.test.mjs`. Use empty, one-deck and three-deck stores, with distinct titles and IDs. Drive accessibility actions and the registered gesture callbacks. Basis: presentation selection/history, current Hide/Undo behavior and access to Full Review.
+Source: [HomeScreen.tsx](../../../mobile/src/screens/HomeScreen.tsx). Suggested file: `home-screen-runtime.test.mjs`. Use empty, one-deck and three-deck stores, with distinct titles and IDs. Drive accessibility actions and the registered gesture callbacks. Basis: presentation selection/history, current Hide/Undo behavior and access to Full Review.
 
 | ID | Setup and action | Expected result |
 | --- | --- | --- |
@@ -115,7 +115,7 @@ Source: [HomeScreen.tsx](../mobile/src/screens/HomeScreen.tsx). Suggested file: 
 
 ### A. Attempt-analysis controller
 
-Source: [useAttemptAnalysis.ts](../mobile/src/features/transcription/useAttemptAnalysis.ts). Suggested file: `attempt-analysis-hook.test.mjs`. Use real result/review validation and controlled transport/cache fixtures. Basis: explicit process/retry payloads in the API contract and preserved local audio.
+Source: [useAttemptAnalysis.ts](../../../mobile/src/features/transcription/useAttemptAnalysis.ts). Suggested file: `attempt-analysis-hook.test.mjs`. Use real result/review validation and controlled transport/cache fixtures. Basis: explicit process/retry payloads in the API contract and preserved local audio.
 
 | ID | Setup and action | Expected result |
 | --- | --- | --- |
@@ -128,7 +128,7 @@ Source: [useAttemptAnalysis.ts](../mobile/src/features/transcription/useAttemptA
 
 ### R. Deck model, analysis and coaching hosts
 
-Sources: [useDeckModel.ts](../mobile/src/features/presentations/useDeckModel.ts), [analysis.tsx](../mobile/src/features/rehearsal/analysis.tsx), [coaching.tsx](../mobile/src/features/rehearsal/coaching.tsx), [DefaultRequirementsHost.tsx](../mobile/src/features/presentations/DefaultRequirementsHost.tsx). Suggested files: `deck-model.test.mjs`, `analysis-host-runtime.test.mjs`, `coaching-host-runtime.test.mjs`, `default-requirements-host.test.mjs`.
+Sources: [useDeckModel.ts](../../../mobile/src/features/presentations/useDeckModel.ts), [analysis.tsx](../../../mobile/src/features/rehearsal/analysis.tsx), [coaching.tsx](../../../mobile/src/features/rehearsal/coaching.tsx), [DefaultRequirementsHost.tsx](../../../mobile/src/features/presentations/DefaultRequirementsHost.tsx). Suggested files: `deck-model.test.mjs`, `analysis-host-runtime.test.mjs`, `coaching-host-runtime.test.mjs`, `default-requirements-host.test.mjs`.
 
 | ID | Setup and action | Expected result |
 | --- | --- | --- |
@@ -142,7 +142,7 @@ Sources: [useDeckModel.ts](../mobile/src/features/presentations/useDeckModel.ts)
 
 ### Q. Q&A host and recorder
 
-Sources: [InitialQaHost.tsx](../mobile/src/features/qa/InitialQaHost.tsx), [AnswerRecorder.tsx](../mobile/src/features/qa/AnswerRecorder.tsx). Suggested files: `initial-qa-host.test.mjs`, `answer-recorder.test.mjs`. Use the existing durable-Q&A tests for downstream question-generation rules.
+Sources: [InitialQaHost.tsx](../../../mobile/src/features/qa/InitialQaHost.tsx), [AnswerRecorder.tsx](../../../mobile/src/features/qa/AnswerRecorder.tsx). Suggested files: `initial-qa-host.test.mjs`, `answer-recorder.test.mjs`. Use the existing durable-Q&A tests for downstream question-generation rules.
 
 | ID | Setup and action | Expected result |
 | --- | --- | --- |
@@ -152,7 +152,7 @@ Sources: [InitialQaHost.tsx](../mobile/src/features/qa/InitialQaHost.tsx), [Answ
 
 ### S. Navigation, entry points and shared hooks
 
-Sources: [AppShell.tsx](../mobile/src/screens/AppShell.tsx), [shared.ts](../mobile/src/screens/shared.ts), [app/_layout.tsx](../mobile/src/app/_layout.tsx), [app/index.tsx](../mobile/src/app/index.tsx). Suggested files: `app-shell-navigation.test.mjs`, `screen-shared-hooks.test.mjs`, `app-entry.test.mjs`. Child-screen stubs are valid for routing assertions; use real Home/Upload in at least one connected journey.
+Sources: [AppShell.tsx](../../../mobile/src/screens/AppShell.tsx), [shared.ts](../../../mobile/src/screens/shared.ts), [app/_layout.tsx](../../../mobile/src/app/_layout.tsx), [app/index.tsx](../../../mobile/src/app/index.tsx). Suggested files: `app-shell-navigation.test.mjs`, `screen-shared-hooks.test.mjs`, `app-entry.test.mjs`. Child-screen stubs are valid for routing assertions; use real Home/Upload in at least one connected journey.
 
 | ID | Setup and action | Expected result |
 | --- | --- | --- |
@@ -165,7 +165,7 @@ Sources: [AppShell.tsx](../mobile/src/screens/AppShell.tsx), [shared.ts](../mobi
 
 ### T. Shared controls
 
-Sources: [ScoreRing.tsx](../mobile/src/design/ScoreRing.tsx), [ThemeToggle.tsx](../mobile/src/design/ThemeToggle.tsx). Suggested file: `shared-controls-runtime.test.mjs`.
+Sources: [ScoreRing.tsx](../../../mobile/src/design/ScoreRing.tsx), [ThemeToggle.tsx](../../../mobile/src/design/ThemeToggle.tsx). Suggested file: `shared-controls-runtime.test.mjs`.
 
 | ID | Setup and action | Expected result |
 | --- | --- | --- |

@@ -1,11 +1,11 @@
 # OutLoud Design Comparison
 
-**Historical Iteration 1 comparison.** The comparisons, revision labels and export checks below describe earlier drafts. Read [Design-Documentation.md](Design-Documentation.md) for current Rev.3.1 or [Design-Documentation-Iteration-1.md](Design-Documentation-Iteration-1.md) for the preserved Rev.2.0 source. The saved source/check JSON files below remain historical records.
+**Historical Iteration 1 comparison.** The comparisons, revision labels and export checks below describe earlier drafts. Read [Design-Documentation.md](../design/design-documentation.md) for current Rev.3.1 or [Design-Documentation-Iteration-1.md](../design/iteration-1.md) for the preserved Rev.2.0 source. The saved source/check JSON files below remain historical records.
 
 
 **Team 07 | 9 October 2026 | Draft review companion**
 
-**Historical benchmark:** Sections 1–6 record the Rev.3.0 comparison and checks. They are not a new evaluation of the merged Iteration 1 draft. The current design is in [Design-Documentation.md](Design-Documentation.md); current document checks are in [docs/design-document-checks.json](docs/design-document-checks.json).
+**Historical benchmark:** Sections 1–6 record the Rev.3.0 comparison and checks. They are not a new evaluation of the merged Iteration 1 draft. The current design is in [Design-Documentation.md](../design/design-documentation.md); current document checks are in [docs/design-document-checks.json](../design-document-checks.json).
 
 This report compares the current course guidance, four previous-year examples, the existing OutLoud wiki, and the proposed replacement. It evaluates documentation quality, not the correctness or performance of the example applications. All four example pages were accessible. Their text and representative rendered architecture, class, database and workflow diagrams were inspected on 9 October 2026.
 

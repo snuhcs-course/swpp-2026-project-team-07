@@ -1,14 +1,14 @@
 # Presentation scoring completion milestones — October 17, 2026
 
-> Historical feature evidence. The current retained-feature integration and cleanup are recorded in [retained-feature verification](retained-features-verification.md). Earlier deployment/test statements below belong to their original checkpoints.
+> Historical feature evidence. The current retained-feature integration and cleanup are recorded in [retained-feature verification](../../testing-evidence/retained-features-verification.md). Earlier deployment/test statements below belong to their original checkpoints.
 
 
-Latest follow-up: [Android scoring workflow and review UI integration](android-presentation-scoring-verification.md)
+Latest follow-up: [Android scoring workflow and review UI integration](../../testing-evidence/android-presentation-scoring-verification.md)
 is implemented and independently reviewed with mocked checks. The entries below
 retain the earlier backend checkpoint; device scoring and live-provider quality remain unverified.
 
 Follow-up: the Android zero-duration validation blocker described below is now
-repaired in a separate compatibility change. See [the repair and verification](android-scoring-visits-verification.md).
+repaired in a separate compatibility change. See [the repair and verification](../../testing-evidence/android-scoring-visits-verification.md).
 The entries below retain the original backend checkpoint; scoring UI integration was pending at that compatibility checkpoint.
 
 Scope: continue `codex/presentation-score` at artifact commit `234c0e1`; preserve all

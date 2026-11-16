@@ -1,7 +1,7 @@
 # Word-to-slide alignment: first implementation
 
 `rehearsals.services.alignment.align_words` implements the timestamp policy in
-[api-contract.md](api-contract.md). It runs without Django, a provider key, or audio.
+[api-contract.md](../../api-contract.md). It runs without Django, a provider key, or audio.
 Its inputs are normalized word dictionaries, chronological slide events, and
 the positive recording duration, all in integer milliseconds.
 

@@ -1,8 +1,8 @@
 # Design Documentation production
 
-The current source is [Design-Documentation.md](../../Design-Documentation.md), Rev.4.0 for Iteration 3.
+The current source is [Design-Documentation.md](../design/design-documentation.md), Rev.4.0 for Iteration 3.
 
-The tools below reproduce [Design-Documentation-Iteration-1.md](../../Design-Documentation-Iteration-1.md), Rev.2.0, with its original figure manifest. Their PDF, HTML and Wiki outputs remain Iteration 1 artifacts. Exporting Rev.4.0 needs a separate update to the export pipeline. Earlier drafts remain in Git history and local archives. The November 5 task prepares Markdown and Wiki drafts only; these historical export tools were not run or upgraded.
+The tools below reproduce [Design-Documentation-Iteration-1.md](../design/iteration-1.md), Rev.2.0, with its original figure manifest. Their PDF, HTML and Wiki outputs remain Iteration 1 artifacts. Exporting Rev.4.0 needs a separate update to the export pipeline. Earlier drafts remain in Git history and local archives. The November 5 task prepares Markdown and Wiki drafts only; these historical export tools were not run or upgraded.
 
 ```sh
 python docs/design-tools/build_design_pdf.py
@@ -21,7 +21,7 @@ Editable sources and their SVG and raster renders live under [`docs/design/figur
 
 The generated files under `output/` are local and ignored by Git. The [submitted ZIP archive](../../outputs/README.md) is tracked in `outputs/`.
 
-- `Design-Documentation.html`: Markdown-derived local preview.
+- `output/pdf/Design-Documentation.html`: Markdown-derived local preview.
 - `output/pdf/OutLoud_Design_Documentation.pdf`: complete export.
 - `output/pdf/team7-iter1-design.pdf`: identical submission-named copy.
 - `output/wiki/Design-Documentation.md` and assets: Wiki-ready derivative. Only image URL prefixes differ. These URLs require separately authorized Wiki publication.

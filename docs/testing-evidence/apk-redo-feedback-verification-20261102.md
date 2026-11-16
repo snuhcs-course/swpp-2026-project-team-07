@@ -80,6 +80,6 @@ feedback-evidence, feedback-update or manual remote-audio-download controls.
 Those controls were not restored as part of this repair. Full Review retains
 transcripts and playback; Cues retains its existing details control.
 
-[Portable automated/artifact evidence](testing-evidence/redo-feedback-20261102.md)
+[Portable automated/artifact evidence](redo-feedback-20261102.md)
 contains commands, counts and hashes. Raw screenshots, recordings and private
 logs remain local; no private media or credentials are included in the branch.

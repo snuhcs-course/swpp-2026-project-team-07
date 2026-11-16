@@ -36,5 +36,5 @@ The local backend skip concerns a packaged-model dependency; the separate
 production-image run exercised that model offline. APK inspection and component
 fixtures do not prove physical microphone behavior. Native recorder/access
 checks, real provider checks and the failed emulator microphone setup are
-reported separately in the [current report](../apk-redo-feedback-verification-20261102.md).
+reported separately in the [current report](apk-redo-feedback-verification-20261102.md).
 No human acceptance or feedback-quality rate is claimed.

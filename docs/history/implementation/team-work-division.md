@@ -76,7 +76,7 @@ This owner has the most cross-feature dependencies. Merge the API/storage work f
 
 ## Start in parallel without waiting for completed features
 
-First, everyone reads [api-contract.md](api-contract.md) and [iteration-1-handoff.md](iteration-1-handoff.md). Agree on audio format, audio-start timing, slide-image access, and the internal alignment result. Coordinate any shared-contract changes before coding against them.
+First, everyone reads [api-contract.md](../../api-contract.md) and [iteration-1-handoff.md](iteration-1-handoff.md). Agree on audio format, audio-start timing, slide-image access, and the internal alignment result. Coordinate any shared-contract changes before coding against them.
 
 - A can build PDF preparation and the viewer using an explicitly labeled local response fixture while the endpoint is being wired.
 - B can implement real recording against the sample slide deck, then accept A's real deck data.

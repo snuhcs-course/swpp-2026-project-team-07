@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reproduce Iteration 1 PDF, browser preview and Wiki bundle from Design-Documentation-Iteration-1.md.
+"""Reproduce Iteration 1 PDF, browser preview and Wiki bundle from docs/design/iteration-1.md.
 The Markdown is authoritative. Browser-rendered diagrams are verified against figure-manifest.json.
 Run: python docs/design-tools/build_design_pdf.py [--root PATH]
 Requires ReportLab and pypdf; uses the approved browser PNGs for PDF embedding.
@@ -20,7 +20,7 @@ from PIL import Image as PILImage
 parser=argparse.ArgumentParser();parser.add_argument('--root',type=Path)
 ROOT=parser.parse_args().root or Path(__file__).resolve().parents[2]
 # Historical source selection updated with OpenAI Codex, October 21, 2026; docs/ai-collaboration-prompts-iteration-2.md.
-SRC=ROOT/'Design-Documentation-Iteration-1.md';OUT=ROOT/'output/pdf';OUT.mkdir(parents=True,exist_ok=True)
+SRC=ROOT/'docs/design/iteration-1.md';OUT=ROOT/'output/pdf';OUT.mkdir(parents=True,exist_ok=True)
 FIGURE_DIR=Path('docs/design/figures')
 TEXT=SRC.read_text();DIGEST=hashlib.sha256(SRC.read_bytes()).hexdigest()
 REVISION=re.search(r'Team 07 \| (Rev\.\d+\.\d+)',TEXT)[1]
@@ -67,7 +67,7 @@ def parse():
   if not s:i+=1;continue
   if s.startswith('<!--'):i+=1;continue
   m=re.fullmatch(r'!\[([^]]+)\]\(([^)]+)\)',s)
-  if m:out.append({'kind':'image','alt':m[1],'path':m[2]});i+=1;continue
+  if m:out.append({'kind':'image','alt':m[1],'path':(SRC.parent.relative_to(ROOT)/m[2]).as_posix()});i+=1;continue
   if s.startswith('```'):
    lang=s[3:];i+=1;block=[]
    while i<len(rows) and not rows[i].startswith('```'):block.append(rows[i]);i+=1
@@ -108,7 +108,7 @@ for b in BLOCKS:
  elif k=='code':web.append('<pre><code>'+html.escape(b['text'])+'</code></pre>')
  elif k=='list':web.append('<ul><li>'+inline(b['text'],True)+'</li></ul>')
  else:web.append('<p>'+inline(b['text'],True)+'</p>')
-(ROOT/'Design-Documentation.html').write_text('''<!doctype html><html lang="en"><meta charset="utf-8"><title>OutLoud Design Documentation - {REVISION}</title><style>
+(OUT/'Design-Documentation.html').write_text('''<!doctype html><html lang="en"><meta charset="utf-8"><title>OutLoud Design Documentation - {REVISION}</title><style>
 body{font:16px/1.6 Arial,sans-serif;color:#111;max-width:880px;margin:36px auto;padding:0 24px;background:white}h1{font-size:28px}h2{font-size:23px;margin-top:36px}h3{font-size:19px}a{color:#111}table{border-collapse:collapse;width:100%;font-size:inherit;margin:18px 0}th,td{text-align:left;vertical-align:top;border:1px solid #999;padding:8px}th{background:white}pre{white-space:pre-wrap;background:white;padding:14px;font-family:Arial}code{font-family:Arial}.figure{display:block;overflow:auto}.figure img{display:block;max-width:100%;height:auto}.toc-item{margin:3px 0} @media(max-width:650px){body{padding:0 14px}}
 </style><main>'''.replace('{REVISION}',REVISION)+''.join(web)+'</main></html>')
 
@@ -116,7 +116,7 @@ body{font:16px/1.6 Arial,sans-serif;color:#111;max-width:880px;margin:36px auto;
 WIKI=ROOT/'output/wiki';WIKI.mkdir(parents=True,exist_ok=True)
 wiki_base='https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2026-project-team-07/'
 figure_prefix=FIGURE_DIR.as_posix()+'/'
-(WIKI/'Design-Documentation.md').write_text(TEXT.replace('('+figure_prefix,'('+wiki_base+figure_prefix))
+(WIKI/'Design-Documentation.md').write_text(TEXT.replace('](figures/',']('+wiki_base+figure_prefix))
 shutil.copytree(assets,WIKI/FIGURE_DIR,dirs_exist_ok=True)
 
 # Group at major sections/figures; all content flows on uniform A4 paper.
@@ -221,6 +221,6 @@ for label,size in SIZES.items():
 doc.build(story)
 shutil.copy2(OUT/'OutLoud_Design_Documentation.pdf',OUT/'team7-iter1-design.pdf')
 assert hashlib.sha256(SRC.read_bytes()).hexdigest()==DIGEST,'Build must not modify Markdown'
-manifest={'revision':REVISION,'figure_manifest_sha256':hashlib.sha256((ROOT/'docs/design-tools/figure-manifest.json').read_bytes()).hexdigest(),'source':SRC.name,'markdown_sha256':DIGEST,'pages':page_manifest,'blocks':BLOCKS,'figure_sha256':{b['path']:hashlib.sha256((ROOT/b['path']).read_bytes()).hexdigest() for b in figs},'wiki_asset_base':wiki_base+figure_prefix,'published':False,'typography':{'body':11,'tables':11,'captions':11,'code':11,'h1':21,'h2':15,'h3':12,'header_footer':8},'paper':'A4 portrait'}
+manifest={'revision':REVISION,'figure_manifest_sha256':hashlib.sha256((ROOT/'docs/design-tools/figure-manifest.json').read_bytes()).hexdigest(),'source':SRC.relative_to(ROOT).as_posix(),'markdown_sha256':DIGEST,'pages':page_manifest,'blocks':BLOCKS,'figure_sha256':{b['path']:hashlib.sha256((ROOT/b['path']).read_bytes()).hexdigest() for b in figs},'wiki_asset_base':wiki_base+figure_prefix,'published':False,'typography':{'body':11,'tables':11,'captions':11,'code':11,'h1':21,'h2':15,'h3':12,'header_footer':8},'paper':'A4 portrait'}
 (OUT/'build-manifest.json').write_text(json.dumps(manifest,indent=2))
 print(json.dumps({'pdf':str(OUT/'OutLoud_Design_Documentation.pdf'),'pages':len(PdfReader(OUT/'OutLoud_Design_Documentation.pdf').pages),'page_sizes':page_manifest,'markdown_sha256':DIGEST}))

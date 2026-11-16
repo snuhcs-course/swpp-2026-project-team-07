@@ -511,7 +511,7 @@ B09 adds five regressions for first Redo, repeated retakes/timer wiring, cancell
 
 ### AC-11a: Cancel or confirm deletion (Positive)
 
-- Existing tests: PDF service removal only. Presentation Hide/Undo tests are pending ([H04–H05](mobile-zero-coverage-test-specs.md#h-home-screen)).
+- Existing tests: PDF service removal only. Presentation Hide/Undo tests are pending ([H04–H05](history/implementation/mobile-zero-coverage-test-specs.md#h-home-screen)).
 - Remaining: Implement and test full attempt/audio/result deletion in Iteration 3.
 - Acceptance status: Implementation/spec gap.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L282)
@@ -527,7 +527,7 @@ B09 adds five regressions for first Redo, repeated retakes/timer wiring, cancell
 
 ### AC-11b: Delete a deck with several attempts (Positive)
 
-- Existing tests: PDF service removal only. Presentation Hide/Undo tests are pending ([H04–H05](mobile-zero-coverage-test-specs.md#h-home-screen)).
+- Existing tests: PDF service removal only. Presentation Hide/Undo tests are pending ([H04–H05](history/implementation/mobile-zero-coverage-test-specs.md#h-home-screen)).
 - Remaining: Implement and test full presentation deletion, including its attempts and media, in Iteration 3.
 - Acceptance status: Implementation/spec gap.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L286)
@@ -541,7 +541,7 @@ B09 adds five regressions for first Redo, repeated retakes/timer wiring, cancell
 
 ### AC-11c: Deletion cannot finish (Negative)
 
-- Existing tests: PDF service removal only. Presentation Hide/Undo tests are pending ([H04–H05](mobile-zero-coverage-test-specs.md#h-home-screen)).
+- Existing tests: PDF service removal only. Presentation Hide/Undo tests are pending ([H04–H05](history/implementation/mobile-zero-coverage-test-specs.md#h-home-screen)).
 - Remaining: Implement and test recovery from incomplete data deletion in Iteration 3.
 - Acceptance status: Implementation/spec gap.
 - [Requirement source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/f1af9dd9737e2ac9adbe8a45186f0e2722863e60/docs/requirements-and-specifications.md#L290)

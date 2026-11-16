@@ -1,6 +1,6 @@
 # Issue #49 repair and verification — November 3, 2026
 
-Implementation branch: `codex/issue-49`, based on published v7 `64e6484e4496950d47b3999fb62522f122d09bab`, which contained live main `7b7ef3b` when work began. Earlier dirty checkouts were preserved. [The investigation](issue49-investigation-20261103.md) records the confirmed 119.3125 ms duration mismatch and independent per-slide recovery problem.
+Implementation branch: `codex/issue-49`, based on published v7 `64e6484e4496950d47b3999fb62522f122d09bab`, which contained live main `7b7ef3b` when work began. Earlier dirty checkouts were preserved. [The investigation](../history/implementation/issue49-investigation-20261103.md) records the confirmed 119.3125 ms duration mismatch and independent per-slide recovery problem.
 
 ## Retained behavior
 

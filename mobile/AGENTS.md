@@ -2,7 +2,7 @@
 
 Follow the [shared agent instructions](../AGENTS.md). This is the Android-only
 Expo / React Native / TypeScript client; use the architecture mapped in
-[the source-alignment document](../docs/source-alignment.md).
+[the source-alignment document](../docs/history/implementation/source-alignment.md).
 
 ## Check versions before using APIs
 
@@ -47,7 +47,7 @@ not lint, typechecking or a rebuild solely because the file is under `mobile/`.
 
 ## Feature boundaries
 
-Read the [handoff](../docs/iteration-1-handoff.md) and
+Read the [design](../docs/design/design-documentation.md) and
 [API contract](../docs/api-contract.md) when changing feature boundaries. Inspect
 this branch to determine which flows are real and which use fixtures; preserve their
 labels. Coordinate shared contract changes and keep provider credentials on the backend.

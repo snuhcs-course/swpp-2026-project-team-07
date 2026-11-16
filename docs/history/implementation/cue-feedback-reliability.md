@@ -1,6 +1,6 @@
 # Cue and feedback reliability — October 16, 2026
 
-> Historical feature evidence. The current retained-feature integration and cleanup are recorded in [retained-feature verification](retained-features-verification.md). Earlier deployment/test statements below belong to their original checkpoints.
+> Historical feature evidence. The current retained-feature integration and cleanup are recorded in [retained-feature verification](../../testing-evidence/retained-features-verification.md). Earlier deployment/test statements below belong to their original checkpoints.
 
 
 Implemented on `it2/integration-ai-nakajima`, starting at `c5c370d`. Existing edits in `docs/ai-use.md` were preserved. The user authorized a commit after the implementation handoff; its revision is reported in the chat. No push was requested.

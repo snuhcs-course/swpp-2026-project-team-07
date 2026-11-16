@@ -1218,7 +1218,7 @@ Record actual prompts and concise task notes here during Iteration 2, following 
 
 **Contributor:** unconfirmed · **Tool:** OpenAI Codex · **Model:** not recorded
 
-- **Output and use:** Codex consolidated three earlier Notion meeting notes and the October 11 kickoff PDF into the approved [Daily Standup Meeting Log](https://github.com/snuhcs-course/swpp-2026-project-team-07/wiki/Daily-Standup-Meeting-Log), published at Wiki revision `bbf1b61`. The [reusable template](daily-standup-meeting-log-template.md) keeps six sections from the existing Notion template, with member updates, decisions and actions. Only the review-draft label was removed from the approved template for upload.
+- **Output and use:** Codex consolidated three earlier Notion meeting notes and the October 11 kickoff PDF into the approved [Daily Standup Meeting Log](https://github.com/snuhcs-course/swpp-2026-project-team-07/wiki/Daily-Standup-Meeting-Log), published at Wiki revision `bbf1b61`. The [reusable template](meeting-log-workflow.md#meeting-entry-template) keeps six sections from the existing Notion template, with member updates, decisions and actions. Only the review-draft label was removed from the approved template for upload.
 - **Verification:** Codex read the three source pages and both PDF pages, checked the PDF visually, checked deadlines and Markdown tables, and inspected the staged publication diff. The Wiki commit contains only the log and its sidebar link; its staged page matched the latest approved local draft byte-for-byte. Repository changes are documentation only; application builds and device tests were not needed. Agent checks are not teammate review.
 - **Errors and revisions:** The initial search looked in Docs & Meetings and missed meeting notes stored in Tasks & Milestones. The user's clarification identified the three pages, and Codex included them. An ad hoc table checker incorrectly treated a two-column decision row as an action row; Codex corrected it to check contiguous table widths, which passed. No repair time or token cost was recorded.
 - **Human decisions:** The user approved publication. The approved saved draft includes Zoom/full-attendance details for the earlier meetings, selection of the presentation app, and full attendance at the Manjok Coffee kickoff. Unrecorded owners and deadlines remain explicit. No repository PR merge or eTL submission was authorized or performed.
@@ -2466,7 +2466,7 @@ Both categories must be specific, useful, non-redundant, and appropriately groun
 - **Independent AI review:** separate fresh-context reviewer `/root/cue_categories_review` reviewed staged patch `cdf0fba4892b7fa7f48ff382c124993c0e6493f31a8a607fc373720fbc8b5ff7` and found unavailable reads could erase offline payloads and historical v2 caches could appear current. Fixed both; its follow-up on `f29f6a1220e86d8d6776b045f7305932bccfc5c1444f1dbb7972efac79fc8f2b` found a retained payload also needed a persisted stale marker after known source/selection invalidation. Fixed that with regression tests. Final code/test patch `fa54fc4dd0cdddf876cd0460680cf900b89b0e7ef50dd28723dbb5617e4d4fa4`: reviewer confirmed all three defects closed and no remaining concrete defect in changed cache/version paths. Independently ran 17 focused backend tests (one PG-only skip) and final 14 mobile profile/panel tests. This is AI review; human inspection remains pending. Reviewer did not independently operate Android or run full suites/providers/PG.
 - **Automated checks on final runtime code:** `npm run check` passed TypeScript/lint and 192 mobile tests; `npm run bundle:android` exported Android successfully. Backend `python manage.py check --settings=config.test_settings` passed; `python manage.py test --settings=config.test_settings --noinput` ran 314 tests, passed with 21 environment/PG skips; `python manage.py makemigrations --check --dry-run --settings=config.test_settings` reported no changes. Full suite using isolated `phase2_runtime_settings` ran 314 PostgreSQL tests, passed with one host-VAD dependency skip, using Django's separate disposable test database. `python manage.py migrate --plan --settings=phase2_runtime_settings` reported no planned operations; no live-data migration required. Full worker image `python manage.py test rehearsals.test_cue_guidance rehearsals.test_speech_gate --settings=config.test_settings --noinput` ran 11 tests, all passed, including actual installed VAD dependencies and mocked-provider category receipt recovery. Initial exploratory command mistakenly named nonexistent `rehearsals.test_vad`; corrected to existing `test_speech_gate` before reporting the successful run.
 - **Worker and historical verification:** actual PostgreSQL/Redis/Celery v2/v3 provider jobs completed on both evaluation PDFs. Saved v1/v2/v3 prompt digests still validate; original profile JSON hashes remain unchanged. Repeated final-scope POSTs and Android reimport of exact evaluated sources retained the same v3 set IDs, processing revision 1, one job and one received receipt each. Receipt-normalization crash recovery is also tested with mocked providers under SQLite/PostgreSQL/full worker dependencies. No private recording was reprocessed for this cue task.
-- **Real-model quality:** [same-input comparison](phase-2-cue-quality.md) records actual v1/v2/v3 outputs and five quality dimensions on two presentations/seven slides. Final real `gpt-6-luna` receipts: HTTP 200; small chart usage 1432 input/763 output/2195 total tokens, six-slide deck 10631/3589/14220. Same source fingerprints/snapshots as historical v1. Actual numerical comparisons and optional research questions improve on v1's visible-fact lists. Final full deck is conservative: only one essential and one optional point; useful cross-slide opportunities may be omitted. Human usefulness/semantic accuracy acceptance remains pending; structural references do not prove all wording true.
+- **Real-model quality:** [same-input comparison](history/implementation/phase-2-cue-quality.md) records actual v1/v2/v3 outputs and five quality dimensions on two presentations/seven slides. Final real `gpt-6-luna` receipts: HTTP 200; small chart usage 1432 input/763 output/2195 total tokens, six-slide deck 10631/3589/14220. Same source fingerprints/snapshots as historical v1. Actual numerical comparisons and optional research questions improve on v1's visible-fact lists. Final full deck is conservative: only one essential and one optional point; useful cross-slide opportunities may be omitted. Human usefulness/semantic accuracy acceptance remains pending; structural references do not prove all wording true.
 - **Local verification artifacts:** `/private/tmp/phase2-guidance-mobile-check.log`, `phase2-guidance-android-bundle.log`, `phase2-guidance-backend-check.log`, `phase2-guidance-postgres-tests.log`, `phase2-guidance-pg-migrations.log`, `phase2-guidance-full-worker-tests.log`, `phase2-guidance-review-fix-tests.log`, `phase2-guidance-history-dedup.json`, `phase2-guidance-v3-comparison.json`. These are local scratch evidence, may expire, and are not committed. Credentials, original .env, installed dependencies and private recordings remain outside the staged patch.
 - **Scope and approval:** all implementation remains isolated on `it2/feature/ai_feedback`, HEAD `2bd6cd2ad7128bb30d59da8dae818b5bdb01d66c`; original checkout's unrelated local changes preserved. Review and verification do not authorize commit, push, merge or advancing phases.
 - **Android verification:** agent-operated existing development build on emulator `emulator-5554`, task Metro 8082 and isolated API 58000. Imported the labeled small chart and exact previously evaluated six-slide PDF through JJ's existing picker; confirmed the expected completed backend scope was reused. Tested Essential/Optional selection, explicit missing-information wording, empty title category, slide-strip navigation from title to chart to food, no previous-slide guidance leaking, and layout clear of the clock/record control. Force-stopped and freshly reopened with emulator API reverse removed (physical phone unaffected); cached chart guidance remained readable with explicit “Could not refresh AI cues. Saved cues are retained.” No recording, transcript, selected-run or audio data was modified. Screenshots are local `/private/tmp/phase2-guidance-{must-cover,go-deeper,empty-title,chart-navigation,food-optional,offline-chart}.png`. Physical-phone and human usefulness acceptance of the new category selector remain pending; earlier human confirmations of v1 cues/transcripts do not prove acceptance of this update.
@@ -2523,7 +2523,7 @@ Aslo now some slides have no cues at all
 - **Implemented:** Current immutable v4 prompt/schema scopes supersede v3. Both backend and mobile reject cue text exceeding 15 words, with identical explicit Unicode whitespace separators. Prior v1–v3 limits and exact schemas/prompt rules remain readable/recoverable and are not truncated. v4 removes the blanket discouragement of descriptive slides and seeks supported central messages/contrasts before returning an empty content category; sparse/unreadable exceptions remain valid. Prompt requests one objective, shorter keywords/contrasts, no instruction padding or linking rationale. Existing cue cards show short text and a Details control, collapsed by default; explicit expansion reveals stored premises and missing-information details. Keys reset expansion on slide/category/profile changes. No new screen, held requirements UI or later-phase behavior was added.
 - **Independent AI review:** `/root/cue_categories_review` reviewed staged `0c2100a13f4047df984ec434f1f8b65adb17d75b5dbd513c2ffd232713f9aa64` and reproduced a word-count discrepancy between Python and ECMAScript for U+FEFF. Fixed it using a shared explicit separator policy, also covering NEL, U+001C, em space and NBSP in regression tests. Reviewer closed the defect on snapshot `ea443f9724f2cc09cf6fb40cefcfb940c7f72cdc7c5c56b701de350282ac75f6`, independently passing 10 backend guidance tests and 16 mobile profile/panel tests. No remaining concrete defect found in the reviewed delta. This is AI review, not human acceptance.
 - **Final checks:** `npm run check` passed TypeScript/lint and 194 tests; `npm run bundle:android` exported successfully. Backend full SQLite suite: 316 tests, passed with 21 environment/PG skips. Isolated PostgreSQL full suite: 316 tests, passed with one host VAD dependency skip. Django check passed and migration dry-run reported no changes; no model migration was added. Full-dependency worker guidance tests also passed before the separator-only repair; final PostgreSQL/SQLite tests exercise that repair. Logs: `/private/tmp/phase2-concise-{mobile-check,android-bundle,backend-tests,pg-tests,full-worker-tests}.log`.
-- **Real-provider evidence:** same two saved source inputs evaluated under v4. Small chart completed with an eight-word numerical objective. First six-slide response had one 16-word food cue and was rejected rather than silently truncated; one explicit revisioned retry completed. All five readable content slides now have one or two Must Cover points (8–15 words across the two sources), with a 12-word optional cross-slide connection and no linking rationale. Title remains empty. Details/evidence remain separate from the short text. [Quality evaluation](phase-2-cue-quality.md) records outputs, counts, paid retry and limits. Several descriptive cues still summarize visible content; semantic non-redundancy and usefulness remain for human assessment.
+- **Real-provider evidence:** same two saved source inputs evaluated under v4. Small chart completed with an eight-word numerical objective. First six-slide response had one 16-word food cue and was rejected rather than silently truncated; one explicit revisioned retry completed. All five readable content slides now have one or two Must Cover points (8–15 words across the two sources), with a 12-word optional cross-slide connection and no linking rationale. Title remains empty. Details/evidence remain separate from the short text. [Quality evaluation](history/implementation/phase-2-cue-quality.md) records outputs, counts, paid retry and limits. Several descriptive cues still summarize visible content; semantic non-redundancy and usefulness remain for human assessment.
 - **Android evidence:** existing emulator build read the successful v4 scope. Verified short heritage cue, collapsed Details by default, explicit expansion into grounded evidence and scroll containment within the cue area; recording controls remained visible. Renderer tests verify expansion and reset on navigation. Local screenshots: `/private/tmp/phase2-concise-current.png` (collapsed) and `phase2-concise-details-expanded.png`. No recording or transcript was modified. Physical-phone/human acceptance remains pending; existing Metro/API remain available for testing.
 - **Boundary:** staged only on the isolated `it2/feature/ai_feedback` checkout. No commit, push, merge, Phase 3 work or held UI design. Prior Phase 2 observations and receipts are retained as historical evidence; v4 is the current implementation.
 
@@ -2612,7 +2612,7 @@ architecture and existing recording/Whisper pipeline. Added exact-sum allocation
 required/suggested labeling, thirty-minute validation/recovery and mono 64 kbps AAC.
 No held requirements UI, new screen, new migration or later phase was implemented.
 
-**Verification:** [Phase 3 evidence](phase-3-verification.md) records baseline,
+**Verification:** [Phase 3 evidence](testing-evidence/phase-3-verification.md) records baseline,
 regression checks and separate generated-speech real-Whisper results. Mobile
 checks passed (202 tests), SQLite/PostgreSQL suites passed (321 tests), full worker
 checks passed (seven tests), and independent review plus repair review passed.
@@ -2705,7 +2705,7 @@ remain pending; automated tests cover return visits, silent visits, source
 boundaries, moved/corrected lines and selected retakes. Automatic approval review
 rejected a proposed phone database export due to private-content exposure; no
 export ran, and UI verification continued without it. See
-[verification details](transcript-visits-verification.md).
+[verification details](testing-evidence/transcript-visits-verification.md).
 
 **Human decisions/corrections:** Seoyeon authorized this narrow additional UI
 scope after requesting visit identification. Existing phase gates and held
@@ -2761,7 +2761,7 @@ test and fixed. Reviewer confirmed the repair with 13 tests and no new findings.
 Phone heading playback and native-position word highlighting were observed;
 return/earlier sentence selection and heading pause were exercised. Human audible
 sync/gesture stress remains pending. No provider calls or private recording export.
-See [verification evidence](transcript-playback-verification.md).
+See [verification evidence](testing-evidence/transcript-playback-verification.md).
 
 **Human decisions:** Seoyeon clarified all three playback entry points and requested
 word highlighting. This authorizes the focused fix and inline feedback, not held
@@ -2836,7 +2836,7 @@ made one STT request and one feedback request, and correction persistence queued
 no feedback. Runtime migration compared original-record counts/hashes and retained
 them. Migration tests prove legacy roundtrip and guarded refusal of lossy downgrade.
 Final counts, exact commands, staged patch and review status are in
-[the verification ledger](phase-4-verification.md).
+[the verification ledger](testing-evidence/phase-4-verification.md).
 
 **Android evidence:** Emulator checks used a newly labeled synthetic presentation,
 mock STT/suggestions and synthetic speech audio; they do not establish live AI
@@ -2916,7 +2916,7 @@ the existing labeled synthetic recording. Source error classification is not pro
 of what was spoken; users must listen before accepting. Physical-phone/live-model
 quality and human audible acceptance remain unverified. Commands, counts, Android
 evidence, review and the updated physical-device checklist are recorded in
-[the amendment ledger](phase-4-recognition-only-verification.md).
+[the amendment ledger](testing-evidence/phase-4-recognition-only-verification.md).
 
 **Historical source supplement — `published-wiki-i2`.** Unique source wording follows; overlapping older attribution or status is retained as a historical variant, not a new correction.
 
@@ -2956,7 +2956,7 @@ was immediately retracted; no custom/manual editing was implemented.
 existing playback cleanup-ref warning remains. Agent-operated synthetic emulator
 inspection confirmed the quiet synchronized state and heading action. No backend
 code/provider contract changed and no live provider call was made. See the
-[current ledger](phase-4-recognition-only-verification.md#contextual-transcript-controls--october-16-2026).
+[current ledger](testing-evidence/phase-4-recognition-only-verification.md#contextual-transcript-controls--october-16-2026).
 Physical-phone/human acceptance remains pending. No commit/push/merge.
 
 **Historical source supplement — `published-wiki-i2`.** Unique source wording follows; overlapping older attribution or status is retained as a historical variant, not a new correction.
@@ -2984,7 +2984,7 @@ JJ Review summary and existing-sheet playback integration, regression/interactio
 tests and API/verification documentation. Scope is the approved Phase 5 plan and
 preceding product amendments; no custom editor, held requirements sheet or Phase 6.
 
-Verification/review: see [Phase 5 ledger](phase-5-verification.md). Initial tests and
+Verification/review: see [Phase 5 ledger](testing-evidence/phase-5-verification.md). Initial tests and
 implementation do not establish human advice quality or physical-device acceptance.
 No commit, push or merge is authorized by this request.
 
@@ -3013,7 +3013,7 @@ gating, automatic-work and correction regression tests; saved the current phone
 presentation's audience through existing app/API functions. Diagnosed and corrected
 the temporary isolated reservation budget, then made two explicit real profile
 retries. Both returned invalid overlong cue text; no successful live feedback is
-claimed. See [follow-up evidence](phase-5-verification.md#october-16-follow-up--automatic-first-feedback-and-audience-preview).
+claimed. See [follow-up evidence](testing-evidence/phase-5-verification.md#october-16-follow-up--automatic-first-feedback-and-audience-preview).
 No custom editing, new screen, commit, push or merge.
 
 **Historical source supplement — `published-wiki-i2`.** Unique source wording follows; overlapping older attribution or status is retained as a historical variant, not a new correction.
@@ -3062,7 +3062,7 @@ present; the agent did not accept, restore or rewrite the user's transcription.
 External sourced enrichment was requested, but automatic approval review rejected
 enabling OpenAI web search without explicit destination/data-sharing approval.
 The pending approval question was left open; no search integration or workaround
-was enabled. Verification and review repairs: [follow-up ledger](phase-5-verification.md#purpose-aware-feedback-and-interaction-repairs-october-16).
+was enabled. Verification and review repairs: [follow-up ledger](testing-evidence/phase-5-verification.md#purpose-aware-feedback-and-interaction-repairs-october-16).
 No commit, push, merge or later phase is authorized by these changes.
 
 **Historical source supplement — `published-wiki-i2`.** Unique source wording follows; overlapping older attribution or status is retained as a historical variant, not a new correction.
@@ -3099,7 +3099,7 @@ Independent review identified failed answer-profile recovery, ambiguous follow-u
 context, stale-current history exclusion and same-job storage initialization. These
 were repaired with client/state/workflow regressions and checked again. Evidence,
 actual command outcomes, Android test limits and final staged review are recorded in
-[Phase 6 verification](phase-6-verification.md). No human code review is fabricated;
+[Phase 6 verification](testing-evidence/phase-6-verification.md). No human code review is fabricated;
 no commit, push, merge, publication, Phase 7 or real-provider quality acceptance.
 
 **Historical source supplement — `published-wiki-i2`.** Unique source wording follows; overlapping older attribution or status is retained as a historical variant, not a new correction.
@@ -3128,7 +3128,7 @@ existing isolated settings; worker and recovery scheduler resumed. No credential
 original recordings changed. Verified three completed current questions through the
 physical phone; usefulness and full answer submission remain pending. All 275 mobile
 tests and Android export passed; independent review reran 15 focused tests with no
-findings. [Evidence](phase-6-verification.md#phone-qa-availability-repair-october-16).
+findings. [Evidence](testing-evidence/phase-6-verification.md#phone-qa-availability-repair-october-16).
 No commit, push or merge.
 
 **Historical source supplement — `published-wiki-i2`.** Unique source wording follows; overlapping older attribution or status is retained as a historical variant, not a new correction.
@@ -3158,7 +3158,7 @@ General audience/300-second defaults, stable retry identity and deduplication,
 preference-conflict preservation, initial-feedback synchronization gate and default
 labels within existing screens. No held requirements sheet or new screen. Automated
 checks, independent review and synthetic native-import evidence are recorded in
-[presentation defaults verification](presentation-defaults-verification.md).
+[presentation defaults verification](testing-evidence/presentation-defaults-verification.md).
 No commit, push or merge.
 
 **Historical source supplement — `published-wiki-i2`.** Unique source wording follows; overlapping older attribution or status is retained as a historical variant, not a new correction.
@@ -3190,7 +3190,7 @@ Incorporated: v5 generation target 8–16 words with maximum 25, concise distinc
 objectives and expandable reasoning; preserved evidence validation and v4 cached
 results/recovery. Updated backend/mobile validation, cache selection for Review/Q&A,
 regression tests and API documentation. A failed real deck completed generation and
-rendered cues on the physical phone. [Verification and limits](cue-policy-v5-verification.md).
+rendered cues on the physical phone. [Verification and limits](testing-evidence/cue-policy-v5-verification.md).
 No commit, push or merge. Human usefulness acceptance remains pending.
 
 **Historical source supplement — `published-wiki-i2`.** Unique source wording follows; overlapping older attribution or status is retained as a historical variant, not a new correction.
@@ -3222,7 +3222,7 @@ submission protection, complete-batch navigation, explicit last-question/pending
 states, v3 meaning-preserving expression advice in existing Review suggestions,
 and historical v2 request reconstruction. The reviewer caught a removed consumed
 marker guard; it was restored and regression-tested before final review.
-[Checks, Android evidence and limits](qa-navigation-expression-verification.md).
+[Checks, Android evidence and limits](testing-evidence/qa-navigation-expression-verification.md).
 Original speech/audio, correction rules and selected-take identity remain intact.
 No incremental recording, requirements sheet, new screen, commit, push or merge.
 
@@ -3260,7 +3260,7 @@ excerpts, 64-character panelist names with historical schema reconstruction,
 structural object comparison, and explicit idempotent no-provider saved-receipt
 repair. Review feedback led to conservative operator/unit handling, Unicode parity,
 full authoritative fact context, and per-finding source-length isolation.
-[Verification and limits](evidence-validation-verification.md). Tests use mocked
+[Verification and limits](testing-evidence/evidence-validation-verification.md). Tests use mocked
 providers; one current saved result was repaired and fetched by the actual phone.
 Human usefulness/visual Review acceptance remains pending. No commit, push or merge.
 
@@ -4837,7 +4837,7 @@ PLEASE IMPLEMENT THIS PLAN:
 
 - Prepared isolated `it2/integration-ai-nakajima` from AI `ff8472c` and uncommitted merge of Nakajima `959025e`, because no integrated checkout existed. Preserved source worktrees and backend runtime contracts.
 - Reused immutable profile cache/client/hook; permanent themed Cues, retained selected-slide Play/Pause, normal/rotated layout handling, Review correction access and retained durable Q&A/feedback hosts.
-- Verification and remaining limits are recorded in [the recording-cues verification record](recording-cues-verification.md); initial integration check exposed correction-component lint and theme test-loader failures, repaired before the final run.
+- Verification and remaining limits are recorded in [the recording-cues verification record](testing-evidence/recording-cues-verification.md); initial integration check exposed correction-component lint and theme test-loader failures, repaired before the final run.
 - No human testing or final inspection is inferred. No commit or push performed.
 
 Final verification for permanent Cues: 331 mobile tests passed, typecheck and lint
@@ -4875,7 +4875,7 @@ The existing PDF catalog still contains seven entries. Backend port 8000 was not
 listening, so this presentation showed the explicit unavailable-offline cue state;
 no claim of physical-phone cue generation or speech/audio quality is made. Source
 code and the previously tested/staged implementation remain unchanged; evidence
-updated in [recording-cues-verification.md](recording-cues-verification.md#physical-phone-preview-correction--october-16-2026) and this task entry. No commit or push.
+updated in [recording-cues-verification.md](testing-evidence/recording-cues-verification.md#physical-phone-preview-correction--october-16-2026) and this task entry. No commit or push.
 
 **Historical source supplement — `published-wiki-i2`.** Unique source wording follows; overlapping older attribution or status is retained as a historical variant, not a new correction.
 
@@ -5028,7 +5028,7 @@ The user selected AI status instead of heuristic quality grades, connected time/
 
 #### Verification and review
 
-Implementation and actual check/device evidence are recorded in [recording-cues-verification.md](recording-cues-verification.md#complete-ai-feedback-integration-october-16-2026). Independent review reproduced and repaired delayed word-play overlap, covered Review polling and stale in-memory source feedback. Final user inspection remains pending; no commit, push or PR is implied. Native runtime additionally exposed a defaults/draft import cycle; extracted shared defaults state while preserving behavior. Physical checks also repaired custom-audience keyboard obstruction, sheet-header overlap, a missing visible setup action and Q&A unavailable-state audience/recovery presentation. A cold Next check then isolated an entrance-opacity failure; the shared fade now settles to static visible opacity, with regressions and a separate re-review. The final source passed 392 mobile tests and Android export, then separate scoped AI re-reviews. Real-provider feedback and native evidence progress are recorded separately from automated fixtures and untested capture/correction/answer flows.
+Implementation and actual check/device evidence are recorded in [recording-cues-verification.md](testing-evidence/recording-cues-verification.md#complete-ai-feedback-integration-october-16-2026). Independent review reproduced and repaired delayed word-play overlap, covered Review polling and stale in-memory source feedback. Final user inspection remains pending; no commit, push or PR is implied. Native runtime additionally exposed a defaults/draft import cycle; extracted shared defaults state while preserving behavior. Physical checks also repaired custom-audience keyboard obstruction, sheet-header overlap, a missing visible setup action and Q&A unavailable-state audience/recovery presentation. A cold Next check then isolated an entrance-opacity failure; the shared fade now settles to static visible opacity, with regressions and a separate re-review. The final source passed 392 mobile tests and Android export, then separate scoped AI re-reviews. Real-provider feedback and native evidence progress are recorded separately from automated fixtures and untested capture/correction/answer flows.
 
 **Historical source supplement — `published-wiki-i2`.** Unique source wording follows; overlapping older attribution or status is retained as a historical variant, not a new correction.
 
@@ -5050,7 +5050,7 @@ Currently transcript in review is shown in seperate black window. Dleete that wi
 
 **Output and use:** Moved the selected-source transcript and existing correction controls into the normal Review page below its saved-audio Play button and above AI feedback. Removed Review's separate playback modal; retained rehearsal recovery's existing sheet. Reused the same segment player for slide/sentence/word/evidence audio, source URI and source-time highlighting, source-owned corrections, original-word playback, saved-media downloads and collapsed recording tools. No backend contract, provider prompt, generation scope or native dependency changed.
 
-**Verification and limits:** Checks and final review are recorded in [the verification record](recording-cues-verification.md#inline-review-transcript-october-16-2026). Human final inspection remained pending at this implementation handoff; no commit, push or PR was implied. The later [integration publication](#integration-publication--october-16-2026) supersedes that commit/push gate.
+**Verification and limits:** Checks and final review are recorded in [the verification record](testing-evidence/recording-cues-verification.md#inline-review-transcript-october-16-2026). Human final inspection remained pending at this implementation handoff; no commit, push or PR was implied. The later [integration publication](#integration-publication--october-16-2026) supersedes that commit/push gate.
 
 **Historical source supplement — `published-wiki-i2`.** Unique source wording follows; overlapping older attribution or status is retained as a historical variant, not a new correction.
 
@@ -5070,7 +5070,7 @@ Go deeper is hidden beneath must cover
 
 #### Incorporated work and verification
 
-Replaced vertically stacked categories with equal-width Must Cover / Go Deeper columns within the existing shared recording-panel scroll. Kept category labels above the scroll, retained original content/details, and placed shared notices after category content so they cannot push both cue starts out of view. Panel bounds, Play, timer, recording controls and generation/cache workflows remain unchanged. Focused layout regression reproduced the defect before the fix. Final automated, phone and independent-review evidence is recorded in [the verification record](recording-cues-verification.md#both-cue-categories-visible-october-16-2026). Human final inspection remained pending at this implementation handoff; no commit or push occurred then. The later [integration publication](#integration-publication--october-16-2026) supersedes that commit/push gate.
+Replaced vertically stacked categories with equal-width Must Cover / Go Deeper columns within the existing shared recording-panel scroll. Kept category labels above the scroll, retained original content/details, and placed shared notices after category content so they cannot push both cue starts out of view. Panel bounds, Play, timer, recording controls and generation/cache workflows remain unchanged. Focused layout regression reproduced the defect before the fix. Final automated, phone and independent-review evidence is recorded in [the verification record](testing-evidence/recording-cues-verification.md#both-cue-categories-visible-october-16-2026). Human final inspection remained pending at this implementation handoff; no commit or push occurred then. The later [integration publication](#integration-publication--october-16-2026) supersedes that commit/push gate.
 
 **Historical source supplement — `published-wiki-i2`.** Unique source wording follows; overlapping older attribution or status is retained as a historical variant, not a new correction.
 
@@ -5107,7 +5107,7 @@ User request:
 
 - **Output and use:** Codex selected the complete existing automatic scoring implementation and required earlier uncommitted runtime dependencies into an isolated source snapshot. Retained material includes the frozen v2 rubric/evidence reconstruction, deterministic scorer, existing-job API integration, Android validation/cache/controller, automatic selected-recording scoring, direct advice/evidence, shared score colors and Home statistics. Existing v1 evidence/measurement helpers remain runtime dependencies; experiment runners, grouped-feedback schemas and unrelated cue/navigation/reliability changes are excluded.
 - **Errors and revisions:** Mixed source/test files include only reviewed scoring hunks. A candidate-test edit removed an unnecessary historical grouping-model assertion while retaining scoring/singleton independence checks. Independent AI review found a missing explicit Retry for rejected source assessments in slide/composed views; Codex added a narrow UI gate and regression, then passed final mobile checks with 494 tests. Repair cost was not recorded.
-- **Verification:** The isolated snapshot was tested independently of unrelated local changes. Included files, exact checks, separate AI review and remaining limits are recorded in [the source-snapshot report](presentation-scoring-source-verification.md).
+- **Verification:** The isolated snapshot was tested independently of unrelated local changes. Included files, exact checks, separate AI review and remaining limits are recorded in [the source-snapshot report](testing-evidence/presentation-scoring-source-verification.md).
 - **Human decisions and preservation:** Seoyeon authorized committing the complete scoring implementation and dependencies. Original index/staged snapshots were saved locally before history changes; unrelated staged entries and working-tree content were preserved. This task made no live AI calls, push, merge, deployment or device update. Commit authorization does not establish teammate approval or real-provider usefulness; human code edits are not recorded.
 
 **Historical source supplement — `published-wiki-i2`.** Unique source wording follows; overlapping older attribution or status is retained as a historical variant, not a new correction.
@@ -5129,7 +5129,7 @@ User request:
 
 - **Human decisions:** Seoyeon discontinued Step 2 and older scoring experiments, and authorized applying/committing Step 1 compact feedback context, navigation/layout and cue/feedback reliability. Human functional acceptance remains separate from commit authorization.
 - **Output and use:** Codex preserved completed scoring, integrated the retained implementations, removed obsolete experiment runners, grouping runtime and superseded records, and used ordinary commits without rewriting history. Five earlier evidence/measurement helpers remain because active v2 scoring imports them. The applied membership migration remains inert for schema consistency.
-- **Verification:** Codex checked actual saved-data dependencies read-only; no grouped snapshots or membership rows existed in the known local datasets. Focused/full mocked checks and separate AI review are recorded in [retained-features verification](retained-features-verification.md). No architecture restart, paid inference, shared-data mutation, push, merge or live deployment occurred in this task; no new grouping or experiment was introduced.
+- **Verification:** Codex checked actual saved-data dependencies read-only; no grouped snapshots or membership rows existed in the known local datasets. Focused/full mocked checks and separate AI review are recorded in [retained-features verification](testing-evidence/retained-features-verification.md). No architecture restart, paid inference, shared-data mutation, push, merge or live deployment occurred in this task; no new grouping or experiment was introduced.
 
 **Historical source supplement — `published-wiki-i2`.** Unique source wording follows; overlapping older attribution or status is retained as a historical variant, not a new correction.
 
@@ -5358,7 +5358,7 @@ Use **`integration/ai-feedback-with-scribe`** consistently for the integration b
 
 #### Incorporated work and verification
 
-- AI retained our complete reviewed application and adapted main's Scribe boundary to Scribe-only identity/normalization, joined both migration histories, and added necessary durable-Q&A consent checks and regression tests. Scoring formulas, feedback prompts, corrections, navigation and layouts were preserved. Final evidence is maintained in [the integration verification record](scribe-only-integration-verification.md).
+- AI retained our complete reviewed application and adapted main's Scribe boundary to Scribe-only identity/normalization, joined both migration histories, and added necessary durable-Q&A consent checks and regression tests. Scoring formulas, feedback prompts, corrections, navigation and layouts were preserved. Final evidence is maintained in [the integration verification record](testing-evidence/scribe-only-integration-verification.md).
 - Human decisions: current app takes precedence; historical Whisper compatibility explicitly rejected; integration branch name confirmed; final inspection required before commit. Human code edits or device testing for this integration: not recorded.
 - Errors/revisions: initial mechanical indentation edit and consent effect lint error were corrected before full checks; a new renderer fixture initially populated an unused mock, then switched to the real validated review cache. These were implementation/test-fixture mistakes, not fabricated provider success.
 - Provider calls in the initial review snapshot: prohibited and blocked/mocked throughout. Earlier dated Scribe provider checks remain historical evidence only. Commit, push and PR awaited the explicit final inspection gate; the subsequent authorized live validation and publication below supersede this dated restriction.
@@ -5386,7 +5386,7 @@ to input elven labs api key”, followed by “saved”.
 - **Human decisions:** Seoyeon authorized live Scribe and physical-phone testing after the mocked review and saved the ElevenLabs key in the ignored backend environment. Codex checked presence without displaying the value; this approval superseded the initial task's prohibition for these Scribe tests only.
 - **Output and verification:** In an isolated API/database/worker runtime, Codex verified a real normalized Scribe transcript, saved-receipt reuse, visited-slide hints, unchanged source audio and client validation. A separately built production-source-verified release was installed on the Galaxy S23 Ultra without clearing data. Agent-operated native checks observed PDF import, capture/slide navigation, Scribe consent/transcription, saved-audio playback/highlighting and restored statistics.
 - **Costs and limits:** Exactly two paid Scribe submissions covered the synthetic backend case and physical-phone capture; other inference was disabled. Surrounding audio dominated the microphone check, so human recognition accuracy and live feedback/scoring/Q&A quality remain unverified. No real worker process-kill result is claimed.
-- **Preservation and status:** No application source changed; original reviewed staging stayed intact and new evidence notes were unstaged at this handoff. No commit or push occurred in this test task. See [dated live/device evidence](scribe-only-integration-verification.md#subsequent-authorized-live-scribe-and-physical-phone-check--october-17-2026).
+- **Preservation and status:** No application source changed; original reviewed staging stayed intact and new evidence notes were unstaged at this handoff. No commit or push occurred in this test task. See [dated live/device evidence](testing-evidence/scribe-only-integration-verification.md#subsequent-authorized-live-scribe-and-physical-phone-check--october-17-2026).
 
 #### Detailed implementation handoff — October 17, 2026
 
@@ -5394,7 +5394,7 @@ to input elven labs api key”, followed by “saved”.
 
 User request: “Make a file describing in detail everything that was implemented.”
 
-- **Output and use:** Codex created [the implementation handoff](outloud-implementation-handoff.md) covering the complete authoritative application, automatic scoring/Step 1/reliability, Scribe-only adaptation, source/API map, branch origins, verification and remaining delivery limits. It distinguishes committed scoring/retained features, the then-staged Scribe integration, actual live checks and unresolved limits.
+- **Output and use:** Codex created [the implementation handoff](history/implementation/outloud-implementation-handoff.md) covering the complete authoritative application, automatic scoring/Step 1/reliability, Scribe-only adaptation, source/API map, branch origins, verification and remaining delivery limits. It distinguishes committed scoring/retained features, the then-staged Scribe integration, actual live checks and unresolved limits.
 - **Verification:** Facts were checked against current application source, Git ancestry, existing contracts and recorded review/test/device artifacts. Local links/anchors and documented file locations were checked. This documentation task ran no application builds/tests or provider calls and changed no runtime source.
 - **Human decision and status:** Seoyeon requested the detailed handoff. Original staged implementation stayed unchanged; the handoff remained unstaged for user review at this snapshot. No commit or publication occurred in this documentation task; later publication below supersedes that delivery state. Human code edits or acceptance are not recorded.
 
@@ -5741,7 +5741,7 @@ Then can you write specs based on the areas with 0% coverage
 ```
 
 - **Human decision:** Prepare test specifications based on measured zero-coverage areas. Test implementation and a further push were not requested.
-- **Generated and retained:** [Mobile coverage test specifications](mobile-zero-coverage-test-specs.md): 64 planned scenario IDs, fixtures/method, implementation order, responsibility from the existing testing plan, setup/actions/assertions and a complete 23-file zero-coverage inventory. Twenty-two files receive runtime scenarios; the type-only contracts index receives a separate scope-review question. Cases cover success, failure, cancellation, data retention, request duplication, revisions, consent, background work, screens and native adapter callbacks. Known requirement differences remain open; late-picker cleanup is an explicit requirement check.
+- **Generated and retained:** [Mobile coverage test specifications](history/implementation/mobile-zero-coverage-test-specs.md): 64 planned scenario IDs, fixtures/method, implementation order, responsibility from the existing testing plan, setup/actions/assertions and a complete 23-file zero-coverage inventory. Twenty-two files receive runtime scenarios; the type-only contracts index receives a separate scope-review question. Cases cover success, failure, cancellation, data retention, request duplication, revisions, consent, background work, screens and native adapter callbacks. Known requirement differences remain open; late-picker cleanup is an explicit requirement check.
 - **Verification:** Read the relevant baseline modules and existing test/fixture patterns. Matched all 23 zero-coverage paths and native line totals, checked relative links/anchor and whitespace/fences, and preserved all 25 published files outside the entry README/active log. The 17 measured tooling hashes match; application source still matches PR31. The earlier PR CI run confirms 548 passing mobile tests and the line-coverage gaps. No application tests were rerun for this specification-only task. Stop Slop guided the prose; self-review 42/50.
 - **Errors and limits:** The native report counts 83 lines in the type-only contracts index; coverage-scope correction remains unapproved and unimplemented. No tests, application code, measured results, targets or exclusions changed. The proposed cases have not run; they establish no new pass/coverage or phone-quality result. No commit, push, PR update, Wiki publication or eTL submission occurred. Detailed check/provenance records remain in the course workspace.
 
@@ -6571,7 +6571,7 @@ Preserve layout, typography, icons and navigation. Reuse existing components and
 - **Preservation and limits:** Pre-task snapshots and a task-only patch separate these changes from the existing dirty #35/#36/#43 work; unrelated tracked diffs match the original snapshot. Original v2.2 protocol digests are frozen in the predecessor allowlist, and lifecycle tests preserve historical snapshots/results/receipts. No real model response was generated, so prompt adherence/usefulness is not established. No account, provider, production backend, recording or historical saved result was mutated.
 
 - **Final native result and cleanup:** Ten of ten silent Android 16/API36 native component-fixture checks passed: arbitrary/repeated-visit seeking, paused/playing intent, cross-slide coordinates, Under/On/Over labels, three fillers, existing actionable feedback/citations and cited-source playback. All six changed mobile sources matched the QA APK's source map exactly; root visually inspected compact/advice screenshots. The task-only harness required generated package/provider corrections and reduced-motion automation settings; no production source fix was needed. Restored runtime settings, stopped the read-only emulator and verified all eight original AVD disk/config file hashes/sizes unchanged. Retake/missing-audio, cancellation/rapid races, boundary/EOF and accessibility cases remain unit-only, not native acceptance. No live model/provider call, microphone capture or audible-quality test occurred.
-- **Final handoff:** [Verification report](issues44-46-verification-20261103.md) records commands, source/receipt preservation, independent review and explicit limits. Reviewed application/test hashes remain unchanged after checks; previous log text and unrelated dirty changes are preserved. Removed only the task-created dependency link. Changes remain local and uncommitted; no GitHub issue mutation, push, merge, deployment or production APK publication. Generated-advice usefulness still needs separate real-model/human assessment; the native advice example was a labelled fixture.
+- **Final handoff:** [Verification report](testing-evidence/issues44-46-verification-20261103.md) records commands, source/receipt preservation, independent review and explicit limits. Reviewed application/test hashes remain unchanged after checks; previous log text and unrelated dirty changes are preserved. Removed only the task-created dependency link. Changes remain local and uncommitted; no GitHub issue mutation, push, merge, deployment or production APK publication. Generated-advice usefulness still needs separate real-model/human assessment; the native advice example was a labelled fixture.
 
 <a id="i2-combined-v7-github-publication--november-3-2026"></a>
 
@@ -6592,7 +6592,7 @@ combine all fixes and check before uploading
 - **Authorization and scope:** The second request supersedes uploading the older v7-only APK. Prepare one combined versionCode7 demo containing the implemented #35/#36/#43 and #44–46 fixes, verify the exact combined source/build, then publish its source branch and APK/checksum on GitHub. No previous v7 release exists. Preserve the earlier v7 APK and dirty original checkouts. Backend prompt v2.3 is included as source only; no running-server deployment, merge or paid evaluation is authorized.
 - **Preparation:** Existing release metadata and older v7 bytes were read before mutation; a read-only independent audit confirmed the older APK's CRC/signature/manifest and complete source provenance. No release had been created when the user requested combining fixes. CLI network access required a narrow sandbox escalation; release uploads are unavailable in the GitHub connector. Prepare an isolated source snapshot and exact staged review rather than commit the user's dirty checkout. Actual combined verification/publication receipts will be appended before handoff.
 
-- **Combined pre-publication verification:** The exact isolated snapshot passed fresh607mobile tests/typecheck/lint and public-config Android export; backend system/migration checks and601tests passed with25PostgreSQL-only skips. Independent review of staged tree`b9ea1b92fe440d7e9d1c528aa5ce9fcbf712c005` found no concrete defect and independently passed69focused tests. No application code changed after review. Production Gradle build and byte-identical capture-forward proof build passed; final packagecom.team07.outloud/code7/non-debuggable/all4ABIs passes CRC/signature/manifest checks. All11changed application sources and116mounted sources match the source map. APK SHA256`24df70866369ef4af2a55513765f5daa364463896b97a848c29c2436c553f55b`,143234646bytes, differs from the preserved earlier v7. Public HTTPS/demo-code gating is compiled into the actual input; no secret code or QA harness was bundled. [Combined report](demo-v7-combined-verification-20261103.md) distinguishes prior native fixture checks, untested phone/voice/model quality and backend source-only delivery.
+- **Combined pre-publication verification:** The exact isolated snapshot passed fresh607mobile tests/typecheck/lint and public-config Android export; backend system/migration checks and601tests passed with25PostgreSQL-only skips. Independent review of staged tree`b9ea1b92fe440d7e9d1c528aa5ce9fcbf712c005` found no concrete defect and independently passed69focused tests. No application code changed after review. Production Gradle build and byte-identical capture-forward proof build passed; final packagecom.team07.outloud/code7/non-debuggable/all4ABIs passes CRC/signature/manifest checks. All11changed application sources and116mounted sources match the source map. APK SHA256`24df70866369ef4af2a55513765f5daa364463896b97a848c29c2436c553f55b`,143234646bytes, differs from the preserved earlier v7. Public HTTPS/demo-code gating is compiled into the actual input; no secret code or QA harness was bundled. [Combined report](testing-evidence/demo-v7-combined-verification-20261103.md) distinguishes prior native fixture checks, untested phone/voice/model quality and backend source-only delivery.
 
 <a id="i2-issue-49-investigation--november-3-2026"></a>
 
@@ -6614,7 +6614,7 @@ let's go over issue 49 try recreating the problem and seeing whats the issue
 - **Actual source/cause confirmed:** Used the existing Azure CLI/auth session and three VM Run Command probes, with PostgreSQL `SET TRANSACTION READ ONLY`; no firewall, deployment, source, environment, job or provider action. Located the issue's only matching10slide Team7progressreport attempt. Saved duration271073ms versus decoded4335259samples@16000Hz=270953.6875ms:119.3125ms shorter. File exists(2223020bytes/M4A), finite/nonzero and within bounds. Upload already accepts±1000ms; grading alone rejects beyond100ms. Latest four snapshots explicitly record that duration limitation. All nine failed grading generations match the current file hash; there are zero grading provider-request records. No private audio/transcript content was exported.
 - **Retry/UI findings:** Whole grading and singleton slide feedback have independent inputs/status. Retry grading creates a fresh score generation over the same immutable recording/metadata, so it cannot remove this deterministic validation failure. Full Review surfaces the misleading generic audio_unavailable error and aggregate recovery count; the failed slide is chiefly identified through its accessibility label, and the existing feedback-recovery component is unmounted. Current live per-slide job rows are completed; this does not prove all current result-level assessments usable or identify the historical9/10count's separate cause. V5/v7 parity checks confirm the relevant measurement/preparation/retry code is unchanged.
 - **Capture trace and future direction:** Uploaded duration freezes native recorder status before stop. Installed expo-audio Android uses elapsed MediaRecorder/system-clock timing rather than decoded sample duration. The exact startup/pause/codec cause of this capture's drift remains inferred. A future patch should align playable-upload and grading tolerances, preserve original captures/history, keep waveform/VAD bounds, and clip/drop diagnostic intervals that become empty at an accepted longer-audio tail. Version/protocol changes must retain exact historical retry compatibility. No fix is authorized or applied in this investigation.
-- **Review, preservation and limits:** Separate backend review confirmed the live arithmetic/causal proof and flagged the longer-audio-tail edge case for a future fix; mobile review confirmed retry ownership/capture timing. All389tracked mobile/backend product and test files match the previously published v7 source. Only task evidence, this log and [the investigation report](issue49-investigation-20261103.md) were added. No phone UI interaction, real provider request, issue mutation, commit/push or deployment. An overbroad historical-path lookup stalled; its identified helper process was terminated and bounded metadata lookup reused the existing Azure session instead. This was investigation tooling, not the app failure.
+- **Review, preservation and limits:** Separate backend review confirmed the live arithmetic/causal proof and flagged the longer-audio-tail edge case for a future fix; mobile review confirmed retry ownership/capture timing. All389tracked mobile/backend product and test files match the previously published v7 source. Only task evidence, this log and [the investigation report](history/implementation/issue49-investigation-20261103.md) were added. No phone UI interaction, real provider request, issue mutation, commit/push or deployment. An overbroad historical-path lookup stalled; its identified helper process was terminated and bounded metadata lookup reused the existing Azure session instead. This was investigation tooling, not the app failure.
 
 <a id="i2-issue-49-fix--november-3-2026"></a>
 
@@ -6685,7 +6685,7 @@ Fix the confirmed 119 ms audio-duration mismatch and add targeted slide recovery
 
 - **Final physical-phone observations:** 20/20 native synthetic-fixture checks passed on Samsung SM-S918N. Exact source proof covers 15 mounted/16 mirrored modules, including real feedback controllers/parsers/stores. Read-only open/refresh, selected take/repeated visits, failed/rejected/missing retries, completed zero, uncertainty Cancel/Close/Back/Confirm, honest unavailable/partial/outdated/cooldown states, untimed prerequisites and the second selected recording passed. Model/recordings, score/audio readers, task-only navigation, in-process transport and fixture-only footer animation are explicit substitutions. No production AppShell/live backend/provider/audio-quality claim is made; physical profile recovery/network-race checks remain automated-only.
 - **Native tooling corrections and cleanup:** Fixed a fixture selector that inspected the enabled text child instead of its disabled button, and used normal slide navigation for partial results that correctly have no recovery link. Provenance/UID tooling assumptions were corrected too; no product rebuild/change was needed for these. The QA package/shared snapshot were removed, production APK checksum/path stayed unchanged, production process stayed stopped, and phone animation/launcher/shade/keyguard/dozing state matched its original state. No security settings were weakened or APK sent for a cloud scan.
-- **Handoff:** Implementation and scoped verification are complete locally on `codex/issue-49`. [Final repair/verification report](issue49-fix-verification-20261103.md) contains commands, results, boundaries and deployment-drain prerequisites. No commit, push, deployment, production installation, external issue message or real provider call occurred. The original rehearsal's live retry awaits separately authorized backend/client rollout; no human testing or generation usefulness assessment is claimed.
+- **Handoff:** Implementation and scoped verification are complete locally on `codex/issue-49`. [Final repair/verification report](testing-evidence/issue49-fix-verification-20261103.md) contains commands, results, boundaries and deployment-drain prerequisites. No commit, push, deployment, production installation, external issue message or real provider call occurred. The original rehearsal's live retry awaits separately authorized backend/client rollout; no human testing or generation usefulness assessment is claimed.
 
 <a id="i2-publish-demo-v8-with-issue-49-recovery--november-3-2026"></a>
 
@@ -10147,3 +10147,19 @@ Commit and push the figure consolidation, then open a PR.
 
 - Consolidated 53 editable sources and renders in the selected folder. The retired export copies matched by bytes (43) or decoded pixels (10). Updated the document links, HTML preview, figure manifest, PDF/Wiki exporter, checker and A4 SVG generator in an isolated checkout.
 - The clean Iteration 1 build and checker passed. Verified all 53 files in each export bundle, all eight preview figure links, 12 PDF panels, and pixel equality across all 24 PDF pages against the baseline. The reflow script reproduced the three expected SVGs and panel metadata byte for byte. Earlier check records and prompt quotations retain their original paths. No application testing or Wiki publication. The follow-up requested a commit, push and repository PR.
+
+## Repository folder restructuring (2026-11-16)
+
+- Contributor: Injoon. Tool: OpenAI Codex. Model: not recorded.
+- Decision received November 16, 2026 (KST): branch cleanup is complete. Continue with the repository folders.
+
+### Input prompts (verbatim)
+
+```text
+I made changes to our repo; the branch clean is complete but we still need to restructure/clean the folders
+```
+
+### Agent work and verification
+
+- Started from main after the submission archives, coverage tooling, tracked PDF retirement and design figure consolidation were merged. Added a documentation index, moved design sources and dated evidence into their existing topic directories, grouped older implementation notes under history, and included the meeting template in its workflow.
+- Updated the affected links outside quoted prompts and adjusted the Iteration 1 design exporter for the new source path. The 24-page local export and checker passed, including all 12 figure panels and Wiki text parity. Iteration 2 and 3 submission ZIPs remained byte-identical.

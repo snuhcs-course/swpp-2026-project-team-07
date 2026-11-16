@@ -6,9 +6,9 @@ Implementation branch: `it2/feature/ai_feedback`. Phase 1 is committed locally a
 Phase 3 and its authorized transcript follow-ups were subsequently committed as
 `ee6233be2875739c6c9f8d2c62e9878e4ab759b7`. The user authorized the amended
 Phase 4 implementation on October 15. Phase 4 was committed as `c99d74b` after approval. Its recognition-only contract
-is tracked in [Phase 4 verification](phase-4-recognition-only-verification.md).
+is tracked in [Phase 4 verification](../../testing-evidence/phase-4-recognition-only-verification.md).
 Phase 5 was approved and committed locally as `6a4dfb11afdc7990759a5ca0bf150460174b25d4`.
-Phase 6 implementation is staged for inspection under separate user authorization; see [its execution ledger](phase-6-verification.md).
+Phase 6 implementation is staged for inspection under separate user authorization; see [its execution ledger](../../testing-evidence/phase-6-verification.md).
 
 ## Full implementation contract
 
@@ -55,7 +55,7 @@ AI recognition replacements or Keep original, source playback and Restore origin
 Grammar/phrasing/fillers/repetitions/factual explanations must be improved through
 rerecording, not transcript rewrites. The persistence/revision/synchronization and
 explicit feedback-regeneration requirements below remain in force. Detailed current
-behavior and physical-device checklist: [recognition-only verification](phase-4-recognition-only-verification.md).
+behavior and physical-device checklist: [recognition-only verification](../../testing-evidence/phase-4-recognition-only-verification.md).
 
 Historical scope below is superseded wherever it permits manual/custom editing.
 
@@ -90,7 +90,7 @@ Do not add standalone correction/summary screens or use these authorizations to 
 
 Baseline at the approved JJ revision: `npm run check` passed (168 tests); backend SQLite suite passed (286 tests, 19 skips). The skips do not establish PostgreSQL behavior. At the Phase 1 inspection, HEAD was the Phase 1 commit recorded above.
 
-Phase 1 verification and independent-review findings are recorded in the task's entry in [the active collaboration log](ai-collaboration-prompts.md). Provider/profile worker behavior advances in Phase 2 below; correction synchronization, allocations, longer captures, the separately authorized Phase 4/5 UI and complete user flows remain outstanding in their assigned phases.
+Phase 1 verification and independent-review findings are recorded in the task's entry in [the active collaboration log](../../ai-collaboration-prompts.md). Provider/profile worker behavior advances in Phase 2 below; correction synchronization, allocations, longer captures, the separately authorized Phase 4/5 UI and complete user flows remain outstanding in their assigned phases.
 
 ## Phase 2 implementation decisions
 
@@ -119,12 +119,12 @@ No new UI sheet, screen, database migration or worker infrastructure is added.
 The existing timing readout labels requirements versus suggestions.
 
 [Implementation decisions, checks, live-provider evidence and remaining acceptance
-limits](phase-3-verification.md) record completed checks and independent review.
+limits](../../testing-evidence/phase-3-verification.md) record completed checks and independent review.
 Phase 3 was subsequently committed as `ee6233b`. Phase 4 implementation and its
-current inspection gate are recorded in [the Phase 4 ledger](phase-4-verification.md).
+current inspection gate are recorded in [the Phase 4 ledger](../../testing-evidence/phase-4-verification.md).
 Seoyeon confirmed short phone playback/transcription. A separately authorized
 follow-up now labels first/return visits within the existing transcript panel;
-see the [follow-up evidence](transcript-visits-verification.md). Physical-phone
+see the [follow-up evidence](../../testing-evidence/transcript-visits-verification.md). Physical-phone
 long-capture acceptance remains pending. The presentation requirements sheet remains held.
 
 ## Phase 5 execution ledger (October 16)
@@ -211,7 +211,7 @@ through the existing context revision API; label them as defaults rather than
 silently treating legacy suggestions as entered requirements. Preserve existing
 presentation preferences and legacy missing values. This supersedes the earlier
 missing-requirement rule only for the new-import default initialization workflow;
-the separate requirements sheet remains held. [Verification](presentation-defaults-verification.md).
+the separate requirements sheet remains held. [Verification](../../testing-evidence/presentation-defaults-verification.md).
 
 
 ### Default policy update (November 3, 2026)
@@ -229,7 +229,7 @@ Repair automatic question admission after safe synchronization failures and keep
 navigation within the complete saved question set. Add meaning-preserving expression
 advice to existing Review findings under `slide-review-v3`; retained old reviews need
 explicit Update feedback. Incremental recording remains held. No unrestricted editing.
-See [verification](qa-navigation-expression-verification.md).
+See [verification](../../testing-evidence/qa-navigation-expression-verification.md).
 
 
 ### Evidence-validation follow-up (October 16)
@@ -239,9 +239,9 @@ finding validation, accurate review statuses, same-visit chunk crossing, bounded
 names and structural metadata comparison. Original source/revision/word/timing checks
 remain strict. No generation prompt redesign or new screen. Completed behavior,
 regressions, independent AI review and current-device GET verification are recorded
-in [the evidence ledger](evidence-validation-verification.md). No commit/push/merge.
+in [the evidence ledger](../../testing-evidence/evidence-validation-verification.md). No commit/push/merge.
 
 
 ## Nakajima UI integration amendment — October 16
 
-Seoyeon approved connecting the existing setup overlay to saved context requirements (including existing presentations), replacing heuristic quality indicators with verified AI status/counts, and making selected-slide findings first-class Review content. This supersedes the earlier held requirements-entry restriction for this existing overlay only. The permanent recording Cues panel and selected-slide Play remain; slide-only profiles remain independent of audience/duration. Existing source/revision, explicit update/retry and uncertain-request rules remain in force. See [implementation and verification](recording-cues-verification.md#complete-ai-feedback-integration-october-16-2026) and the [exact approved plan](ai-collaboration-prompts-iteration-2.md#complete-ai-feedback-integration-into-nakajima-ui--october-16-2026).
+Seoyeon approved connecting the existing setup overlay to saved context requirements (including existing presentations), replacing heuristic quality indicators with verified AI status/counts, and making selected-slide findings first-class Review content. This supersedes the earlier held requirements-entry restriction for this existing overlay only. The permanent recording Cues panel and selected-slide Play remain; slide-only profiles remain independent of audience/duration. Existing source/revision, explicit update/retry and uncertain-request rules remain in force. See [implementation and verification](../../testing-evidence/recording-cues-verification.md#complete-ai-feedback-integration-october-16-2026) and the [exact approved plan](../../ai-collaboration-prompts-iteration-2.md#complete-ai-feedback-integration-into-nakajima-ui--october-16-2026).

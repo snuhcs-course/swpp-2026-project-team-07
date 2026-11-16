@@ -7,7 +7,12 @@ import pdfplumber
 from PIL import Image, ImageChops
 p=argparse.ArgumentParser();p.add_argument('--root',type=Path);p.add_argument('--source-repo',type=Path,required=True);a=p.parse_args()
 # Historical source selection updated with OpenAI Codex, October 21, 2026; docs/ai-collaboration-prompts-iteration-2.md.
-r=a.root or Path(__file__).resolve().parents[2];s=(r/'Design-Documentation-Iteration-1.md').read_text();m=json.loads((r/'output/pdf/build-manifest.json').read_text());errors=[]
+r = a.root or Path(__file__).resolve().parents[2]
+src = r / 'docs/design/iteration-1.md'
+source_dir = src.parent.relative_to(r)
+s = src.read_text()
+m = json.loads((r / 'output/pdf/build-manifest.json').read_text())
+errors = []
 figure_dir=Path('docs/design/figures')
 figure_prefix=figure_dir.as_posix()+'/'
 def check(ok,msg):
@@ -17,7 +22,11 @@ def norm(s):
  s=re.sub(r'!?\[([^\[\]\n]+)\]\([^)\n]+\)',r'\1',s);s=s.replace('**','').replace('`','')
  return re.sub(r'\s+','',html.unescape(s))
 check(hashlib.sha256(s.encode()).hexdigest()==m['markdown_sha256'],'Markdown differs from build')
-figures=re.findall(r'!\[([^]]+)\]\(([^)]+)\)',s);check([path for alt,path in figures]==[f['path'] for f in expected],'Figure manifest and Markdown differ')
+figures = [
+ (alt, (source_dir / path).as_posix())
+ for alt, path in re.findall(r'!\[([^]]+)\]\(([^)]+)\)', s)
+]
+check([path for alt, path in figures] == [f['path'] for f in expected], 'Figure manifest and Markdown differ')
 check(m['revision']==revision==specs['revision'],'Revision mismatch')
 for spec in expected:
  for path,digest in spec['sha256'].items():
@@ -27,7 +36,8 @@ anchors={re.sub(r'[^\w\- ]','',x.lower()).replace(' ','-') for x in re.findall(r
 source_count=0
 for u in links:
  if u.startswith('#'):check(u[1:] in anchors,'Broken anchor '+u)
- elif u.startswith(figure_prefix):
+ elif u.startswith('figures/'):
+  u = (source_dir / u).as_posix()
   check((r/u).is_file(),'Missing local asset '+u)
   check((r/'output/pdf'/u).is_file(),'Missing PDF relative asset '+u)
  elif '/blob/' in u or '/tree/' in u:
@@ -42,7 +52,7 @@ for alt,path in figures:
    check(im.format=='PNG','Expected exported PNG for '+stem+' in '+bundle)
    im.verify()
 wiki=(r/'output/wiki/Design-Documentation.md').read_text();base='https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2026-project-team-07/'
-check(wiki.replace('('+base+figure_prefix,'('+figure_prefix)==s,'Wiki text differs')
+check(wiki.replace(']('+base+figure_prefix,'](figures/')==s,'Wiki text differs')
 for raw in re.findall(r'```json\n(.*?)\n```',s,re.S):json.loads(raw)
 reader=PdfReader(r/'output/pdf/OutLoud_Design_Documentation.pdf');texts=[]
 for i,page in enumerate(reader.pages,1):

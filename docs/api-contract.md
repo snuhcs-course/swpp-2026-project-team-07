@@ -117,7 +117,7 @@ No database migration is required for the added provider/model values.
 `PresentationContext` is independent of deduplicated decks, original attempt audiences,
 and JJ's local selected-run record. Multiple contexts may reference the same deck.
 No context operation admits provider/worker work, modifies a transcript/run, or changes
-the current recording limit. See [the full phased contract](iteration-2-ai-feedback.md).
+the current recording limit. See [the full phased contract](history/implementation/iteration-2-ai-feedback.md).
 
 | Route | Exact JSON input | Response |
 | --- | --- | --- |
@@ -221,7 +221,7 @@ extends past the authoritative cap; decoding permits only the existing one-secon
 codec tail. Recovery, result/review and verified feedback playback accept the same
 timeline. Original files remain unchanged; no trimming, recompression or chunking.
 Provider prompt/schema scopes and existing timeout/receipt/recovery rules remain
-unchanged. [Phase 3 verification and remaining UI/device limits](phase-3-verification.md).
+unchanged. [Phase 3 verification and remaining UI/device limits](testing-evidence/phase-3-verification.md).
 
 ## Durable slide descriptions (checkpoint 2)
 
@@ -747,7 +747,7 @@ The initial request refreshes server state first and only starts `awaiting_analy
 
 ## Redesigned mobile app and Audience Q&A (October 14, 2026)
 
-The mobile UI was rebuilt from the design prototype (see `REDESIGN.md`). The upload, processing, feedback and deck endpoints above are unchanged and are used as before. The mobile flow changed as follows.
+The mobile UI was rebuilt from the design prototype (see the [October redesign record](history/redesign.md)). The upload, processing, feedback and deck endpoints above are unchanged and are used as before. The mobile flow changed as follows.
 
 - **Import:** the app renders page images on the device and calls `POST /decks/` at import time to read `extracted_text`. It stores the result under the same `server-deck:<API>:<local id>` mapping that attempt uploads use. Offline imports fetch the text later.
 - **Takes:** every recording is a normal attempt with the existing `auto_process_api` handoff. A background worker per take replaces the former saved-result screen: it consumes the intent once, uploads, and requests initial processing after the first-use disclosure. A presentation's run (which take supplies each slide), moved-sentence placement and suggestion dismissals remain client-side SQLite records (`pres:v1:`, `deck:v1:`). Phase 4 synchronizes confirmed text corrections independently, as described below; the original legacy records are retained.
@@ -994,7 +994,7 @@ neighboring words per side as non-citable context, and corrected full speech onc
 as background. Original evidence IDs/times, strict validation, public schema and
 model/output limits are unchanged. Old singleton snapshots reconstruct their old
 request hashes exactly. Unknown or discontinued grouped protocols fail closed.
-See [compact-context contract](feedback-compact-context.md).
+See [compact-context contract](history/implementation/feedback-compact-context.md).
 
 The response extends feedback metadata with `scope`, `review_version`, `requirements`
 and result `slides: [{slide_index,status,evaluation_mode,findings,enrichments}]`. Each slide has zero to four
@@ -1169,7 +1169,7 @@ GET, playback and navigation do not revalidate or regenerate saved reviews. An
 explicit administrative command can revalidate one completed current receipt
 without AI work; stale source/revision/generation/hash checks remain mandatory.
 It defaults to dry run and applies idempotently only with `--apply`. See
-[evidence verification](evidence-validation-verification.md) for commands and limits.
+[evidence verification](testing-evidence/evidence-validation-verification.md) for commands and limits.
 
 
 ## Presentation scoring v2

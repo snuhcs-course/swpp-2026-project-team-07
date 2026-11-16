@@ -1,7 +1,7 @@
 # Meeting-log workflow
 
 Use this guide when a user supplies meeting notes or requests a meeting-log update.
-Use the [shared template](daily-standup-meeting-log-template.md) for the entry format.
+Use the [shared template](#meeting-entry-template) for the entry format.
 The destination is the team's
 [Daily Standup Meeting Log](https://github.com/snuhcs-course/swpp-2026-project-team-07/wiki/Daily-Standup-Meeting-Log).
 
@@ -47,3 +47,48 @@ The destination is the team's
   [AGENTS.md](../AGENTS.md#current-iteration-and-prompt-logging), currently
   [single active collaboration log](ai-collaboration-prompts.md). Keep one task entry and
   follow the [reporting guide](ai-collaboration-guidelines.md).
+
+## Meeting entry template
+
+## Iteration [number]
+
+### [YYYY-MM-DD] — [Daily standup / Kickoff / Meeting title]
+
+**Created:** [YYYY-MM-DD]
+
+**Updated:** [YYYY-MM-DD, or Not recorded]
+
+#### Participants and objective
+
+- **Time / location:** [Recorded details, or Not recorded]
+- **Participants:** [Confirmed attendees, or Not recorded]
+- **Objective:** [Purpose of this meeting]
+
+#### Agenda
+
+- [Topic and context]
+
+#### Notes
+
+| Member | Completed since last meeting | Next work | Blockers / help needed |
+| --- | --- | --- | --- |
+| [Name] | [Reported progress] | [Reported plan] | [Reported blocker, None reported, or Not recorded] |
+
+[Key discussion points. If individual updates were not captured, state that instead of inventing rows.]
+
+#### Decisions
+
+| Issue | Resolution / agreed next step |
+| --- | --- |
+| [Issue] | [Decision; label unresolved alternatives as proposed] |
+
+#### Actions
+
+| TO-DO | Requirements / expected output | Due date | Owner(s) |
+| --- | --- | --- | --- |
+| [Task] | [Recorded requirement or output] | [YYYY-MM-DD, or Not recorded] | [Recorded owner(s), or Not recorded] |
+
+#### Next check-in
+
+- **Next meeting:** [Recorded date, time and location, or Not recorded]
+- **Source:** [Link to this meeting's notes]

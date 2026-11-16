@@ -9,7 +9,7 @@ Version 4.0, 5 November 2026
 
 **Published product baseline:** [demo v8](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103), source `cdb8055`. **Documentation reviewed:** November 5, 2026. **Evidence dates:** recorded separately below; this update includes no fresh application, provider or device run.
 
-[PR #32](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/32) merged the Iteration 2 documents on October 23. They describe the PR31 application (`c4a3f48`) as recorded on main at `7b7ef3b`. Main advanced to v8 on November 16 and includes the released selection of PR #34 UI changes. [Design Documentation](../Design-Documentation.md) describes that release architecture.
+[PR #32](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/32) merged the Iteration 2 documents on October 23. They describe the PR31 application (`c4a3f48`) as recorded on main at `7b7ef3b`. Main advanced to v8 on November 16 and includes the released selection of PR #34 UI changes. [Design Documentation](design/design-documentation.md) describes that release architecture.
 
 Scribe v2 transcription, saved audience/time settings, cues, corrections, scoring and durable Q&A already existed in Iteration 2. V8 retains those services with a compact UI and the repairs below. Requirements and acceptance criteria remain distinct from implementation status.
 

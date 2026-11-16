@@ -15,7 +15,7 @@ new request identities to Scribe and rewrites no saved rows or committed migrati
 Fresh database initialization is the supported verification target. No shared
 database, running service or secrets are changed by this source integration.
 
-See [integration verification](scribe-only-integration-verification.md) for the
+See [integration verification](testing-evidence/scribe-only-integration-verification.md) for the
 current diff boundary, tests, independent review and remaining delivery gates.
 The dated October 16 records below describe earlier revisions, including their
 former compatibility policy; they do not establish current integration acceptance.

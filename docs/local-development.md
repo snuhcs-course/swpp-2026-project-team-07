@@ -2,7 +2,7 @@
 
 - Current setup details relocated from README on October 13, 2026.
 - Use the [README quick start](../README.md#quick-start) for the recommended path.
-- The [original scaffold walkthrough](setup-explained.md) preserves earlier setup history; its scaffold-only scope is historical.
+- The [original scaffold walkthrough](history/implementation/setup-explained.md) preserves earlier setup history; its scaffold-only scope is historical.
 
 ## Repository structure
 
@@ -47,7 +47,7 @@ export ANDROID_HOME="$HOME/Library/Android/sdk"
 export PATH="$ANDROID_HOME/platform-tools:$PATH"
 ```
 
-That Java command requires a macOS-registered JDK 17. If Gradle provisioned your JDK instead, point `JAVA_HOME` directly to its `Contents/Home` directory. The exact path used on the setup machine is recorded in [setup-explained.md](setup-explained.md).
+That Java command requires a macOS-registered JDK 17. If Gradle provisioned your JDK instead, point `JAVA_HOME` directly to its `Contents/Home` directory. The exact path used on the setup machine is recorded in [setup-explained.md](history/implementation/setup-explained.md).
 
 ## Run the backend
 
@@ -82,7 +82,7 @@ The SQLite `config.test_settings` setup is for automated tests; persistent devel
 
 The dependency lock includes `silero-vad==6.2.0`, `torch==2.10.0`, `torchaudio==2.10.0`, `onnxruntime==1.23.2`, `numpy==2.2.6`, and `av==16.1.0`. Silero's packaged ONNX model runs on CPU; there are no local Whisper dependencies or model downloads. PyAV decodes only a temporary in-memory waveform for presence detection; hosted transcription receives the original audio bytes unchanged. Decode/model failures stop recoverably before provider submission.
 
-The coordinator's dependency audit reports two residual Torch advisories after this upgrade: PT2 loading (`PYSEC-2026-139`) and `torch.jit.script` (`PYSEC-2025-194`). The current gate uses neither affected operation on uploaded data; this is not an audit-clean dependency set. See the [dependency assessment](whisper-transcription.md#packaged-gate-dependency-assessment-2026-10-08) for source paths, evidence and remaining risk.
+The coordinator's dependency audit reports two residual Torch advisories after this upgrade: PT2 loading (`PYSEC-2026-139`) and `torch.jit.script` (`PYSEC-2025-194`). The current gate uses neither affected operation on uploaded data; this is not an audit-clean dependency set. See the [dependency assessment](history/implementation/whisper-transcription.md#packaged-gate-dependency-assessment-2026-10-08) for source paths, evidence and remaining risk.
 
 Regenerate the lock with `uv pip compile backend/requirements.in -o backend/requirements.txt --cache-dir /tmp/onloud-uv-cache` from the repository root (append `--offline` when the cache is populated). Install through the setup above; native CPU/runtime packaging must also be verified in the coordinator's Linux/Compose environment.
 
@@ -101,7 +101,7 @@ The submitted proposal defines the stack. Expo template assets/license remain un
 
 - Follow [shared instructions](../AGENTS.md) and the team's review/testing agreement before publication.
 - Coordinate shared types, models/migrations, routes and dependency locks. Never force-push `main`.
-- The [Iteration 1 work division](team-work-division.md#git-commands) preserves the earlier branch examples and ownership suggestions; confirm current assignments and PR bases for each task.
+- The [Iteration 1 work division](history/implementation/team-work-division.md#git-commands) preserves the earlier branch examples and ownership suggestions; confirm current assignments and PR bases for each task.
 - Expo template assets/license remain under `mobile/`; the submitted proposal records the stack choice.
 
 ## Earlier branch example (historical)

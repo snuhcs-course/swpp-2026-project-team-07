@@ -1,7 +1,7 @@
 # Rehearsal recording and review
 
 - Product and recovery details relocated from README on October 13, 2026; this documentation move adds no verification results.
-- See the [main walkthrough](../README.md#try-the-published-demo-flow), [API contract](api-contract.md), and [verification guide](verification.md).
+- See the [main walkthrough](../README.md#try-the-published-demo-flow), [API contract](api-contract.md), and [verification guide](testing-evidence/verification.md).
 
 ## Published demo behavior — November 5 reconciliation
 
@@ -15,7 +15,7 @@ This guide describes published v8 `cdb8055`, the GitHub main baseline since Nove
 
 The backend coordinates a durable PostgreSQL queue, packaged Silero speech-presence check, ElevenLabs `scribe_v2` (the published v8 transcription provider), private raw-response persistence, normalized transcript, chronological slide visits and timing/rate estimates. Rehearsal coaching has an explicit durable generation API and remains disabled by default; its API and deck-description APIs are described in the [feedback guide](ai-feedback.md). See the [API contract](api-contract.md) for revision-aware retries and uncertain outbound requests. Historical standalone adapter/alignment work is now integrated; its older pilot evidence does not establish this pipeline's live accuracy.
 
-[AI feedback checkpoints 1–5](ai-feedback.md) were implemented in PR #21 and merged after their dependencies on October 11, 2026. Gemini/OpenAI adapters provide durable editable slide descriptions, explicit rehearsal coaching, separate provider disclosure, revision-aware retries and API-scoped offline review. Up to three suggestions show exact evidence and seek the existing player; edits make affected feedback stale, and explicit regeneration reuses the saved transcript. Provider selection remains backend configuration and feedback defaults to disabled. Independent review and controlled live flows passed for both providers; [the evaluation](feedback-evaluation.md) records weak advice and description overstatement separately from structural validity. Those earlier checkpoint checks did not establish human acceptance. Later bounded phone results are recorded separately in the evidence reconciliation.
+[AI feedback checkpoints 1–5](ai-feedback.md) were implemented in PR #21 and merged after their dependencies on October 11, 2026. Gemini/OpenAI adapters provide durable editable slide descriptions, explicit rehearsal coaching, separate provider disclosure, revision-aware retries and API-scoped offline review. Up to three suggestions show exact evidence and seek the existing player; edits make affected feedback stale, and explicit regeneration reuses the saved transcript. Provider selection remains backend configuration and feedback defaults to disabled. Independent review and controlled live flows passed for both providers; [the evaluation](testing-evidence/feedback-evaluation.md) records weak advice and description overstatement separately from structural validity. Those earlier checkpoint checks did not establish human acceptance. Later bounded phone results are recorded separately in the evidence reconciliation.
 
 Detected no-speech saves an empty transcript, chronological visits with empty word lists, and timing metrics over the original recording duration, with zero Scribe requests for that attempt. Repeated, backward and zero-duration visits remain visible in result data. Capture preserves forward and backward slide visits against the original audio clock.
 
