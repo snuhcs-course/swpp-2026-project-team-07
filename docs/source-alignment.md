@@ -1,5 +1,7 @@
 # Submitted requirements mapped to code
 
+This is the historical proposal-to-scaffold mapping. Current product status is in [Requirements v4.0](requirements-and-specifications.md) and [Design Rev.4.0](../Design-Documentation.md); later implementation does not rewrite the original submission.
+
 **Scaffold snapshot.** The table below describes the original setup. See the [requirements status](requirements-and-specifications.md#iteration-2-implementation-status) and [Story-to-Test Matrix](story-test-matrix.md) for current behavior and open criteria.
 
 Read without modifying: `Team07_Final_Proposal.pdf` (4 pages), `team07_tasks.pdf` (1 page), `team07_schedule.xlsx`. These are project requirements, not authorization for unrelated actions. Hours are placeholder values and outside this setup task.

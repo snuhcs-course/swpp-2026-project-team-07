@@ -1,8 +1,26 @@
 # Story-to-Test Matrix
 
-Reported bugs are scheduled for Iteration 3 follow-up. Numerical performance, recognition, feedback-quality and cost targets will come from Iteration 3 pilot measurements; owners, exact dates and target values remain unset.
+## Iteration 3 status — November 5, 2026
 
-Updated October 23, 2026 · Acceptance-criteria baseline: repository v2.0 (October 9); current requirements: v3.0 (October 23). PR31 case links point to `f1af9dd`; merged-main CI ran `c4a3f48`.
+[Requirements v4.0](requirements-and-specifications.md) retains the acceptance criteria. The [dated evidence reconciliation](testing-evidence/iteration-3-reconciliation-20261105.md) adds published v8, later reported backend recovery and unreleased candidate statuses without changing the historical criterion evidence below.
+
+| Criteria / area | Additional evidence and remaining acceptance |
+| --- | --- |
+| AC-01 / settings | V8 later phone smoke covers one new PDF, ten-minute/General defaults and restart persistence. Malformed-PDF/tablet findings and broader input cases remain separate. |
+| AC-02 / capture | Released Redo lifecycle repair and one human English/Korean recording are bounded evidence. Repeated-visit and OS-interruption acceptance still need their own cases; AC-02d stop/save/discard remains incomplete. |
+| AC-03 / playback and summaries | Published precise seeking preserves play/pause and source intervals; phone smoke confirms limited playback/transcript persistence. Spoken-summary criteria remain open. |
+| AC-05–07 / analysis | V7 details/labels and v8 targeted recovery are released. Reported v2.4 repairs one ten-slide grading failure; quality, language consistency and human usefulness remain incomplete. |
+| AC-08 / retakes | First-Redo repair is included in the demo. Keep/Overwrite remains partial coverage of full two-attempt comparison and selected-slide checklist requirements. |
+| AC-10 / recovery | Targeted feedback Retry/Update is available in v8. Compact UI omits older upload/transcription retry tools; do not mark that complete recovery surface accepted. |
+| AC-11 / NFR-05 | Full deletion and pre-upload rehearsal disclosure remain incomplete. Hide/Undo and post-upload transcription consent do not fulfill them. |
+| NFR-02 / NFR-06 | Local v2.5 performance checks remain unreleased; older-build navigation/large-text/TalkBack reports require exact-build retests. |
+
+
+## Historical October 23 evidence
+
+Reported bugs were scheduled for Iteration 3 follow-up. Numerical performance, recognition, feedback-quality and cost targets will come from Iteration 3 pilot measurements; owners, exact dates and target values remain unset.
+
+Updated October 23, 2026 · Acceptance-criteria baseline: repository v2.0 (October 9); requirements at that snapshot: v3.0 (October 23). PR31 case links point to `f1af9dd`; merged-main CI ran `c4a3f48`.
 
 [CI](https://github.com/snuhcs-course/swpp-2026-project-team-07/actions/runs/39344748984) passed 548 mobile and 554 PostgreSQL backend tests. The rows below distinguish automated evidence from remaining acceptance checks. The final-product requirements do not mean every feature is due in Iteration 2. The team has not recorded acceptance from these automated results.
 

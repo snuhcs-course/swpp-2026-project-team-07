@@ -88,7 +88,7 @@ Checks performed during the initial redesign build (before the later device work
   - The PostgreSQL-only tests were skipped.
 
 Not done in the initial October 14 build:
-- A device build and on-device check of the visuals and gestures. Later dated checks are in the [Iteration 2 collaboration log](docs/ai-collaboration-prompts-iteration-2.md); they do not establish full human testing.
+- A device build and on-device check of the visuals and gestures. Later dated checks are in the [combined collaboration log](docs/ai-collaboration-prompts.md); they do not establish full human testing.
 - Live provider calls for Audience Q&A. The tests use synthetic provider responses and a fake Whisper.
 - A run on CI's PostgreSQL/Python 3.12 setup.
 

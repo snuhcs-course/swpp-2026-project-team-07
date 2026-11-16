@@ -1,19 +1,23 @@
 # Rehearsal recording and review
 
 - Product and recovery details relocated from README on October 13, 2026; this documentation move adds no verification results.
-- See the [main walkthrough](../README.md#try-the-main-flow), [API contract](api-contract.md), and [verification guide](verification.md).
+- See the [main walkthrough](../README.md#try-the-published-demo-flow), [API contract](api-contract.md), and [verification guide](verification.md).
 
-## Integrated behavior
+## Published demo behavior — November 5 reconciliation
 
-**Current status: Iteration 1 features merged into `main` on October 11, 2026 (#17–#21).** The Library merges local captures and server history for known presentations. Saved rehearsals open by attempt UUID with actual PDF pages, audio, synchronized transcript and chronological slide visits. Missing audio/PDF can be downloaded explicitly for offline review. Ordinary browsing, refreshing, downloading and replaying never start analysis; the durable new-capture handoff is the explicit exception. Existing **Analyze recording**, ElevenLabs disclosure, stage/Refresh/Retry and uncertain-charge confirmation remain in place; sample previews stay separate.
+This guide describes published v8 `cdb8055`, the GitHub main baseline since November 16. [Current evidence](testing-evidence/iteration-3-reconciliation-20261105.md) separates release, later reported backend repair and pending local work. The compact release UI exposes the controls listed below; older saved-attempt tools described in this guide remain historical/backend capabilities and are not all reachable in that UI.
+
+## Earlier integrated behavior and retained capabilities
+
+**Historical Iteration 1 integration: merged October 11, 2026 (#17–#21).** The Library merges local captures and server history for known presentations. Saved rehearsals open by attempt UUID with actual PDF pages, audio, synchronized transcript and chronological slide visits. Missing audio/PDF can be downloaded explicitly for offline review. Ordinary browsing, refreshing, downloading and replaying never start analysis; the durable new-capture handoff is the explicit exception. Existing **Analyze recording**, ElevenLabs disclosure, stage/Refresh/Retry and uncertain-charge confirmation remain in place; sample previews stay separate.
 
 **Recording-to-transcription flow.** Finishing a real recording opens its saved result and uploads the PDF and audio to the configured server. Transcription starts automatically after the first-use ElevenLabs disclosure is accepted; cancelling the disclosure leaves the server upload saved without starting transcription. The saved-attempt screen retains **Analyze recording** for cancelled/older recordings, stage/Refresh/Retry controls and a plain real transcript. SQLite caches results by API address and attempt UUID. Local replay remains available through network/provider/analysis failures; sample previews stay separate.
 
-The backend coordinates a durable PostgreSQL queue, packaged Silero speech-presence check, hosted `whisper-1`, private raw-response persistence, normalized transcript, chronological slide visits and timing/rate estimates. Rehearsal coaching has an explicit durable generation API and remains disabled by default; its API and deck-description APIs are described in the [feedback guide](ai-feedback.md). See the [API contract](api-contract.md) for revision-aware retries and uncertain outbound requests. Historical standalone adapter/alignment work is now integrated; its older pilot evidence does not establish this pipeline's live accuracy.
+The backend coordinates a durable PostgreSQL queue, packaged Silero speech-presence check, ElevenLabs `scribe_v2` (the published v8 transcription provider), private raw-response persistence, normalized transcript, chronological slide visits and timing/rate estimates. Rehearsal coaching has an explicit durable generation API and remains disabled by default; its API and deck-description APIs are described in the [feedback guide](ai-feedback.md). See the [API contract](api-contract.md) for revision-aware retries and uncertain outbound requests. Historical standalone adapter/alignment work is now integrated; its older pilot evidence does not establish this pipeline's live accuracy.
 
-[AI feedback checkpoints 1–5](ai-feedback.md) were implemented in PR #21 and merged after their dependencies on October 11, 2026. Gemini/OpenAI adapters provide durable editable slide descriptions, explicit rehearsal coaching, separate provider disclosure, revision-aware retries and API-scoped offline review. Up to three suggestions show exact evidence and seek the existing player; edits make affected feedback stale, and explicit regeneration reuses the saved transcript. Provider selection remains backend configuration and feedback defaults to disabled. Independent review and controlled live flows passed for both providers; [the evaluation](feedback-evaluation.md) records weak advice and description overstatement separately from structural validity. Human review and physical-phone checks remain pending.
+[AI feedback checkpoints 1–5](ai-feedback.md) were implemented in PR #21 and merged after their dependencies on October 11, 2026. Gemini/OpenAI adapters provide durable editable slide descriptions, explicit rehearsal coaching, separate provider disclosure, revision-aware retries and API-scoped offline review. Up to three suggestions show exact evidence and seek the existing player; edits make affected feedback stale, and explicit regeneration reuses the saved transcript. Provider selection remains backend configuration and feedback defaults to disabled. Independent review and controlled live flows passed for both providers; [the evaluation](feedback-evaluation.md) records weak advice and description overstatement separately from structural validity. Those earlier checkpoint checks did not establish human acceptance. Later bounded phone results are recorded separately in the evidence reconciliation.
 
-Detected no-speech saves an empty transcript, chronological visits with empty word lists, and timing metrics over the original recording duration, with zero provider requests. Repeated, backward and zero-duration visits remain visible in result data. Capture preserves forward and backward slide visits against the original audio clock.
+Detected no-speech saves an empty transcript, chronological visits with empty word lists, and timing metrics over the original recording duration, with zero Scribe requests for that attempt. Repeated, backward and zero-duration visits remain visible in result data. Capture preserves forward and backward slide visits against the original audio clock.
 
 ## Local capture and limits
 
@@ -21,9 +25,9 @@ Local PDF import, capture and saved-audio playback run without backend services 
 
 Limits are **at least one slide, 50 MiB PDF, thirty minutes (1,800,000 ms), and 25,000,000 audio bytes**. Legacy audio above the byte limit stays local and can still be played; make a shorter new recording to upload. New captures automatically continue from upload to analysis; first-use cancellation leaves them awaiting analysis. Deck mappings are scoped to the configured API address, and confirmed missing mappings are repaired before audio upload.
 
-## Review a saved rehearsal
+## Earlier saved-attempt review controls
 
-The normal Rehearse layout permanently displays Cues with Must Cover and Go Deeper, plus the selected slide's Play/Pause button. It does not display a transcript body. Rotated mode prioritizes the PDF and capture controls; returning restores Cues for the current slide.
+The normal Rehearse layout permanently displays Cues with Must Cover and Further Insight, plus the selected slide's Play/Pause button. It does not display a transcript body. Rotated mode prioritizes the PDF and capture controls; returning restores Cues for the current slide.
 
 In Review, open **Transcript & corrections** for transcript corrections and playback. Each source visit starts with **First visit** or
 **Return visit N** and its start time in the original recording. Return counts
@@ -55,10 +59,12 @@ Recovery uses the exact selected take and every chronological visit for that sli
 
 Full Review keeps its equal-width slide sections. Dragging previews an exact position within a section; release seeks within the saved source segments, including repeated visits and retakes. Playing audio continues, while paused or idle seeks stay paused. Accessibility adjustments move five seconds. Interrupted gestures cancel, and leaving/backgrounding or changing the selected source invalidates pending seeks. Missing source audio remains disclosed; unavailable target audio never silently seeks elsewhere. The selected run still plays in slide order, retaining each slide's chronological source segments.
 
-## App connection and transcription disclosure
+<a id="app-connection-and-transcription-disclosure"></a>
+
+## Development connection and transcription disclosure
 
 - Emulator: `EXPO_PUBLIC_API_URL=http://10.0.2.2:8000/api` in `mobile/.env`.
 - USB phone: run `adb reverse tcp:8000 tcp:8000`, use `http://127.0.0.1:8000/api`, and restart Metro.
-- Tap **Check connection** in the Library screen.
+- The published APK uses its built-in hosted endpoint and reviewer-code gate. These loopback settings apply to local development; the older Library connection action is not part of the compact demo flow.
 
-Provider keys belong only in ignored `backend/.env`. Never use `EXPO_PUBLIC_*` for secrets. Storage/upload endpoints call no providers. After a new capture uploads, the mobile flow calls `/attempts/{id}/process/` following first-use disclosure; older/cancelled recordings retain Analyze and failures retain explicit Retry. Missing keys and provider rejection fail safely while retaining source audio.
+Provider keys belong only in ignored `backend/.env`. Never use `EXPO_PUBLIC_*` for secrets. Audio upload stores the recording; `/attempts/{id}/process/` admits transcription after first-use disclosure. PDF upload may admit reusable slide-profile generation when configured. Earlier saved-attempt screens expose Analyze/Retry for cancelled or failed processing; the compact v8 UI does not expose those upload/transcription controls. Its targeted feedback recovery remains available. Missing keys and provider rejection retain source audio and explicit processing states.

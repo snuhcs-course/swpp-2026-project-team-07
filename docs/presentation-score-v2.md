@@ -1,6 +1,6 @@
 # Unified presentation and slide scoring — presentation-score-v2
 
-Implementation contract approved October 17, 2026. This extends the existing feedback transport; v1 and all experiment receipts remain historical. No live grading reliability is claimed.
+Implementation contract approved October 17, 2026; documentation reconciled November 5. The published source baseline is v8 `cdb8055`; GitHub main uses that source as of November 16. V1 and experiment receipts remain historical. The [v8 release](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103) later reports deployed v2.4 grading with 24,000 output tokens, 128 KiB inner JSON and a grading-only 240-second response deadline, preserving prompt wording, rubric, weights and public schema. Its source was [recovered on November 15](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/2c7c337c2c89de6e6714c9e5f0708fb2be2cabc3) on a separate branch. Published v8 uses v2.3; local v2.5 work remains unreleased. A successful reported ten-slide retry and one phone smoke are bounded operational evidence, not calibrated scoring or general reliability. [Evidence and limits](testing-evidence/iteration-3-reconciliation-20261105.md).
 
 ## Frozen scoring
 
@@ -92,6 +92,6 @@ Full Review ring: integer, proportion 0–100, `Overall score`, derived performa
 
 A composed run may show per-slide scores from its original attempts but no overall total. Require one attempt with exact original visit selection and every applicable slide; `Run.full` alone is not proof. No old-attempt substitution. Home uses the same exact selected-run overall projection as Full Review, with no latest-old-attempt substitution. It displays total current verified findings once, selected-run duration and WPM. Home indicator reads do not grade.
 
-## Gates and boundaries
+## Historical implementation boundaries — October 17, 2026
 
-No paid inference, commits, pushes, merges or deployment. Preserve the historical $2 ledger: recorded settled $0.10330350, unresolved $0.08667250. Do not modify/release reservations or rerun old experiments. All automated/Android checks use mocked providers. New live work needs an exact-request cost dry run and separate authorization. Reliability needs the independent human pilot (10–20 diverse recordings, two blind reviewers on a shared subset, repeat unchanged calls, citation/support/usefulness/fairness audits), separate from correctness tests.
+The original implementation task excluded paid inference, commits, pushes, merges and deployment. Its historical $2 ledger recorded: recorded settled $0.10330350, unresolved $0.08667250. Do not modify/release reservations or rerun old experiments. All automated/Android checks use mocked providers. New live work needs an exact-request cost dry run and separate authorization. Reliability needs the independent human pilot (10–20 diverse recordings, two blind reviewers on a shared subset, repeat unchanged calls, citation/support/usefulness/fairness audits), separate from correctness tests.

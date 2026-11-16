@@ -1,8 +1,8 @@
 # Design Documentation production
 
-The current source is [Design-Documentation.md](../../Design-Documentation.md), Rev.3.1 for Iteration 2.
+The current source is [Design-Documentation.md](../../Design-Documentation.md), Rev.4.0 for Iteration 3.
 
-The tools below reproduce [Design-Documentation-Iteration-1.md](../../Design-Documentation-Iteration-1.md), Rev.2.0, with its original figure manifest. Their PDF, HTML and Wiki outputs remain Iteration 1 artifacts. Exporting Rev.3.1 needs a separate update to the export pipeline. Earlier drafts remain in Git history and local archives.
+The tools below reproduce [Design-Documentation-Iteration-1.md](../../Design-Documentation-Iteration-1.md), Rev.2.0, with its original figure manifest. Their PDF, HTML and Wiki outputs remain Iteration 1 artifacts. Exporting Rev.4.0 needs a separate update to the export pipeline. Earlier drafts remain in Git history and local archives. The November 5 task prepares Markdown and Wiki drafts only; these historical export tools were not run or upgraded.
 
 ```sh
 python docs/design-tools/build_design_pdf.py

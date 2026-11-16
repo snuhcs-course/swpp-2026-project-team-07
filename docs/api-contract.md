@@ -1,5 +1,7 @@
 > October 16 keyterms follow-up: new Scribe requests include up to 100 validated vocabulary hints extracted from visited-slide text when available, with `no_verbatim=false`. Private `ProviderRequest.request_options` snapshots exact submitted options (migration 0007); public transcript/provenance shape is unchanged. Updated mobile consent discloses audio plus slide-derived hints and replaces audio-only consent. [Behavior, cost and verification](scribe-transcription.md#automatic-slide-keyterms--implemented-october-16-2026).
 
+**Documentation baseline — November 5, 2026:** published v8 [`cdb8055`](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/cdb8055f0fd5022aafccb47625889d3f9a403f5f). This documentation-only branch retains older main application source. The [evidence reconciliation](testing-evidence/iteration-3-reconciliation-20261105.md) distinguishes the release-reported deployed v2.4 backend patch from this published source and unreleased v2.5 work. No endpoint, public response shape or database schema changes are introduced here.
+
 # Initial API contract
 
 > Provider update, October 16, 2026: new transcription requests use ElevenLabs Scribe v2 with up to 100 keyterms derived from recorded slides when text is available. `no_verbatim=false` preserves recognized fillers. Migration 0007 privately snapshots submitted request options; the public transcript schema is unchanged. The updated client requests consent for audio plus slide-derived hints. October 17 Scribe-only integration supersedes the historical Whisper behavior below. Whisper receipts/provenance are unsupported; feedback/scoring/Q&A evaluation providers are unchanged. See [current adapter](scribe-transcription.md).
@@ -1232,3 +1234,7 @@ that migration has already been applied to the current local phone database.
 Read-only checks found zero membership rows and zero grouped-review snapshots in
 both known local phone datasets. No active code uses that table; no database
 rollback/deletion or live configuration change accompanies this source cleanup.
+
+## Later backend policy reported by the v8 release — November 3, 2026
+
+The [release record](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103) reports a deployed v2.4 grading policy with 24,000 output tokens, 128 KiB inner JSON and a grading-only 240-second response deadline. Prompt wording, rubric, weights and public request/response shapes are unchanged. The patch source was [recovered on November 15](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/2c7c337c2c89de6e6714c9e5f0708fb2be2cabc3) on a separate branch. `cdb8055` identifies the APK source, not that later deployment. Earlier build-time failure records remain historical. No runtime verification was repeated for this documentation update. The local v2.5 requirement-citation/performance candidate remains unreleased.

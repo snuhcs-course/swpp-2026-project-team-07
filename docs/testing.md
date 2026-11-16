@@ -1,5 +1,11 @@
 # Testing Documentation
 
+## Iteration 3 evidence update — November 5, 2026
+
+The [dated reconciliation](testing-evidence/iteration-3-reconciliation-20261105.md) separates main/PR31, published v8, the release-reported backend v2.4 repair and unreleased local candidates. The published demo includes first-Redo repair, selected PR34 UI, combined v7 fixes and targeted v8 recovery. Earlier statements below that B09 remains unmerged describe main administration, not absence from the demo.
+
+The October coverage percentages and teammate reports below remain unchanged historical evidence. V8 release checks and the later English/Korean phone smoke cover bounded operational cases; no current coverage measurement, full UAT, calibrated scoring or human usefulness acceptance is claimed. This documentation task ran documentation checks only.
+
 Team 07 · Iteration 2 · October 23, 2026
 
 [Test Inventory](test-inventory.md) lists test files. [Story-to-Test Matrix](story-test-matrix.md) maps tests to acceptance criteria.
@@ -154,11 +160,11 @@ A separate October 22 run on `f1af9dd` reports **456 backend passes, 19 PostgreS
 
 ## 3. AI Module Testing (starting from Iteration 3)
 
-To be completed in Iteration 3.
+Available Iteration 3 evidence is listed in the [reconciliation](testing-evidence/iteration-3-reconciliation-20261105.md). Automated provider mocks test source references, failure states, retries and arithmetic; they do not establish semantic correctness. One human microphone smoke and synthetic candidate checks are separate evidence. Full AI evaluation must record language, source/build, sample size, supported/unsupported suggestions, missed issues, unavailable results, repeat-score consistency and human usefulness. Numerical thresholds, owners and dates remain unset.
 
 ## 4. Acceptance Testing (starting from Iteration 3)
 
-Plan to be completed in Iteration 3; results in Iteration 4.
+Use the unchanged acceptance criteria and [Story-to-Test Matrix](story-test-matrix.md) to record each case's build, device/OS, tester, steps, expected/actual result and evidence. Prioritize import/settings, recording and repeated visits, disclosure timing, playback/precise seeking, Redo/Keep/Overwrite, recovery and restart persistence, Q&A, large text and TalkBack. Keep incomplete deletion, spoken summaries, full comparison and stop/save/discard criteria open. The later phone smoke is partial evidence; complete acceptance and an Iteration 4 results set have not been established.
 
 ## 5. Alpha & Beta Testing (Iteration 5)
 

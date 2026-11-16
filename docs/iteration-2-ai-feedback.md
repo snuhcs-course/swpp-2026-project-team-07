@@ -90,7 +90,7 @@ Do not add standalone correction/summary screens or use these authorizations to 
 
 Baseline at the approved JJ revision: `npm run check` passed (168 tests); backend SQLite suite passed (286 tests, 19 skips). The skips do not establish PostgreSQL behavior. At the Phase 1 inspection, HEAD was the Phase 1 commit recorded above.
 
-Phase 1 verification and independent-review findings are recorded in the task's entry in [the active collaboration log](ai-collaboration-prompts-iteration-2.md). Provider/profile worker behavior advances in Phase 2 below; correction synchronization, allocations, longer captures, the separately authorized Phase 4/5 UI and complete user flows remain outstanding in their assigned phases.
+Phase 1 verification and independent-review findings are recorded in the task's entry in [the active collaboration log](ai-collaboration-prompts.md). Provider/profile worker behavior advances in Phase 2 below; correction synchronization, allocations, longer captures, the separately authorized Phase 4/5 UI and complete user flows remain outstanding in their assigned phases.
 
 ## Phase 2 implementation decisions
 
