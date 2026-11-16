@@ -10045,3 +10045,26 @@ Can you resolve the conflicts in PR #50 against the updated main so we can use i
 - Codex merged the published v8 main commit into the PR branch in an isolated checkout and resolved seven Markdown conflicts. It retained the consolidated log and compatibility index, updated the source references to distinguish v8 from the later backend repair, and retained the dated evidence and acceptance criteria.
 - Verified the staged diff against v8 main. Only Markdown changes remain. The existing acceptance criteria and both compatibility indexes are byte-identical to the PR head. All 382 fenced blocks and the non-heading evidence lines in the v8 prompt files are present in the consolidated log. The changed documentation's relative links resolve.
 - Jaewon's submitted exports are pending. This merge does not supply a submission snapshot or new device/provider evidence.
+
+## Start the Iteration 4 documentation cleanup — November 16, 2026
+
+**Contributor:** Injoon · **Iteration:** 4 · **Tool:** OpenAI Codex desktop · **Model:** GPT-6 (exact variant not recorded)
+
+### Request — verbatim
+
+```text
+Can you start the documentation cleanup on PR #50 now? Start with the README so it’s clear which APK to use and how to run the repo, while we wait for Jaewon’s submitted files.
+```
+
+### Follow-ups — verbatim
+
+```text
+Actually do it on another PR
+```
+
+```text
+No not a standalone read me pr but documentaion cleanup pr
+```
+
+- Codex opened a separate documentation cleanup branch based on the reconciled PR #50. The README starts with installation of the published v10 APK and gives separate local setup instructions for the v8 repository baseline. Submitted Iteration 3 exports remain pending.
+- Checked v10 release metadata and INSTALL.txt, repository scripts and endpoint definitions, README internal links and retained anchors, shell syntax, and a Compose configuration render using the example environment. This documentation pass did not install a new APK or rerun the app.
