@@ -2,6 +2,8 @@
 
 This is a reconciliation of existing source and dated evidence, checked November 5, 2026 (Asia/Seoul). It adds no application, device, provider or deployment run. Earlier reports retain their original outcomes; a later result supersedes only the case it actually exercised.
 
+> **November 16 baseline update.** GitHub main advanced to the published v8 source, `cdb8055`. The backend v2.4 patch was [recovered on November 15](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/2c7c337c2c89de6e6714c9e5f0708fb2be2cabc3) on a separate branch. The record below describes what was known on November 5. The submitted Iteration 3 exports still need to be compared with this documentation.
+
 ## Baselines and implementation status
 
 | Layer | Source and evidence date | Status |

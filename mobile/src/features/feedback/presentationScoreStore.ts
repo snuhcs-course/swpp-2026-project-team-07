@@ -1,3 +1,4 @@
+import { backendFetch } from '../../services/backendFetch';
 /** Validated, API/attempt/context/transcript/source-aware cache. Lifecycle reads use GET only. */
 import type { LocalCorrections } from '../../domain/corrections';
 import { readStored,writeStored } from '../../services/storage';
@@ -31,7 +32,7 @@ export function effectivePresentationScore(raw:PresentationScore|null,input:{req
 const flights=new Map<string,Promise<PresentationScore>>();
 let reads=0;const queue:(()=>void)[]=[];
 function schedule<T>(fn:()=>Promise<T>):Promise<T>{return new Promise((resolve,reject)=>{const start=()=>{reads++;void fn().then(resolve,reject).finally(()=>{reads--;queue.shift()?.();});};if(reads<3)start();else queue.push(start);});}
-export function createPresentationScoreReader(apiUrl:string,transport:typeof globalThis.fetch=globalThis.fetch){
+export function createPresentationScoreReader(apiUrl:string,transport:typeof globalThis.fetch=backendFetch){
  const api=normalizeApi(apiUrl);
  return {read(t:ScoreTarget):Promise<PresentationScore>{
   const key=presentationScoreKey(api,t),existing=flights.get(key);if(existing)return existing;

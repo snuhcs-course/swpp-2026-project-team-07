@@ -1,3 +1,4 @@
+import { backendFetch as fetch } from '../../services/backendFetch';
 import {verifiedExcerpt} from '../feedback/evidence';
 // Iteration 2 Phase 2: cached profiles; GET/playback never admits provider work.
 import type { DescriptionState, SlideDescription, DescriptionGenerateRequest } from '../../contracts';
@@ -13,7 +14,7 @@ export type CueCategory = 'must_cover' | 'go_deeper';
 export type SlideProfile = SlideDescription & { slide_kind: 'title' | 'content' | 'closing' | 'unknown';
   cues: SlideCue[]; must_cover: SlideCue[]; go_deeper: Enrichment[] };
 export type ProfileState = Omit<DescriptionState, 'descriptions'> & { descriptions: { slides: SlideProfile[] } | null };
-const schemas = { openai: 'slide-profile', gemini: 'slide-profile-gemini' };
+const schemas = { openai: 'slide-profile', openrouter: 'slide-profile', gemini: 'slide-profile-gemini' };
 // Same explicit Unicode-whitespace union as backend cue_word_count.
 const cueWordSeparator = /[\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]+/u;
 const canonical = (v: string) => v.toLowerCase().replace(/[^\p{L}\p{N}_]/gu, '');
@@ -76,7 +77,8 @@ export function parseProfileState(value: unknown, deckId: string, pages: number)
 
 export function cueState(state: ProfileState | null, slide: number, category: CueCategory = 'must_cover'): { cues: (SlideCue | Enrichment)[]; message: string | null; action: 'generate' | 'retry' | 'confirm' | null } {
   if (!state) return { cues: [], message: 'AI cues are unavailable offline', action: null };
-  if (state.stale) return { cues: [], message: 'AI cues are out of date', action: 'generate' };
+  if (state.stale) return { cues: [], message: 'AI cues are out of date', action: state.requires_confirmation
+    ? state.retry_available ? 'confirm' : null : state.retry_available ? 'retry' : 'generate' };
   const ready = state.state === 'completed' && state.descriptions?.slides.find(s => s.slide_index === slide);
   if (ready && state.provenance?.prompt_version === 'slide-profile-v1') return {cues:[],message:'Saved cues use the previous format · Generate updated guidance',action:'generate'};
   if (ready && !['slide-profile-v4','slide-profile-v5'].includes(state.provenance?.prompt_version??'')) return {cues:[],message:'AI cues are out of date',action:'generate'};
@@ -138,7 +140,8 @@ export function createProfileClient(apiUrl: string, fetcher: typeof fetch = fetc
     retry: (state: ProfileState, pages: number, acknowledge = false, signal?: AbortSignal) => {
       if (!state.description_set_id || !state.retry_available || (state.requires_confirmation && !acknowledge)) invalid();
       return request(state.deck_id, pages, { description_set_id: state.description_set_id!,
-        processing_revision: state.processing_revision, ...(acknowledge ? { acknowledge_uncertain: true } : {}) }, signal);
+        processing_revision: state.processing_revision, ...(state.selection ? { expected_selection: state.selection.token } : {}),
+        ...(acknowledge ? { acknowledge_uncertain: true } : {}) }, signal);
     },
   };
 }

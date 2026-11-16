@@ -1,8 +1,10 @@
 import json
+import hashlib
 import tempfile
 import uuid
 import wave
 from io import BytesIO
+from unittest.mock import patch
 from django.test import TestCase, override_settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIClient
@@ -102,6 +104,37 @@ class UploadTests(TestCase):
         self.assertEqual(upload(SimpleUploadedFile("bad.wav", b"broken")).status_code, 400)
         metadata["duration_ms"] = 1800001
         self.assertEqual(upload().status_code, 400)
+
+    def test_upload_and_measurements_share_duration_tolerance_without_rewriting_source(self):
+        from .services.presentation_measurements import measure_audio
+        deck = self.deck()['deck']
+        for count, duration_ms, expected_status in ((16000, 2000, 201), (48000, 2000, 201),
+                                                   (15999, 2000, 400), (48001, 2000, 400),
+                                                   (4335259, 271073, 201)):
+            with self.subTest(count=count, duration_ms=duration_ms):
+                output = BytesIO()
+                with wave.open(output, 'wb') as audio:
+                    audio.setnchannels(1); audio.setsampwidth(2); audio.setframerate(16000)
+                    audio.writeframes(b'\x01\x00' * count)
+                original = output.getvalue()
+                metadata = {'id': str(uuid.uuid4()), 'deck_id': deck['id'], 'duration_ms': duration_ms,
+                            'audience': 'Synthetic fixture', 'slide_events': [{'slide_index': 0, 'at_ms': 0}]}
+                response = self.client.post('/api/attempts/', {'metadata': json.dumps(metadata),
+                    'audio': SimpleUploadedFile('synthetic.wav', original, 'audio/wav')})
+                self.assertEqual(response.status_code, expected_status, response.data)
+                if expected_status == 201:
+                    saved = Attempt.objects.get(pk=metadata['id'])
+                    detect = lambda *args, **kwargs: [{'start': 0, 'end': count}]
+                    with patch('rehearsals.services.speech_gate.load_gate', return_value=(object(), detect)):
+                        result = measure_audio(saved.audio.path, attempt_id=str(saved.pk), duration_ms=duration_ms,
+                                               text='Synthetic speech', language='en')
+                    self.assertEqual(result['status'], 'available')
+                    self.assertEqual(result['audio_hash'], hashlib.sha256(original).hexdigest())
+                    saved.audio.open('rb')
+                    try: self.assertEqual(saved.audio.read(), original)
+                    finally: saved.audio.close()
+                    self.assertEqual(saved.duration_ms, duration_ms)
+                    self.assertEqual(saved.slide_events, metadata['slide_events'])
 
     def test_exact_decimal_audio_limit_and_awaiting_analysis(self):
         from .services.storage import read_upload

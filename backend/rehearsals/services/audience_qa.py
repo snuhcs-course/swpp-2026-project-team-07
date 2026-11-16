@@ -92,7 +92,7 @@ def augment(prepared, snapshot):
             schema['$defs']['Question']['properties']['panelist']['maxLength']=8
     payload=provider.strict_json(prepared.payload)
     # Replace legacy whole-attempt speech: only selected speech may reach the evaluator.
-    if prepared.config.provider=='openai':
+    if prepared.config.provider in provider.RESPONSES_PROVIDERS:
         payload['instructions']=rules
         payload['input']=[{'role':'user','content':[{'type':'input_text','text':json_bytes(context).decode()}]}]
         payload['text']['format']['schema']=schema
@@ -103,7 +103,7 @@ def augment(prepared, snapshot):
     # Original source is needed privately for freshness, not duplicated into the prompt.
     if not answer:
         context['selected_run']={k:v for k,v in snapshot['audience_qa'].items() if k not in {'sources','question_schema'}}
-        if prepared.config.provider=='openai':payload['input'][0]['content'][0]['text']=json_bytes(context).decode()
+        if prepared.config.provider in provider.RESPONSES_PROVIDERS:payload['input'][0]['content'][0]['text']=json_bytes(context).decode()
         else:payload['contents'][0]['parts'][0]['text']=json_bytes(context).decode()
     body=json_bytes(payload)
     if len(body)>provider.MAX_REQUEST_BYTES:raise FeedbackError('request_too_large')

@@ -61,6 +61,31 @@ export function runStarts(times: readonly number[]): number[] {
   for (const t of times) { out.push(acc); acc += t; }
   return out;
 }
+// OpenAI Codex #44: equal-width slide sections retain exact offsets in the composed run.
+export type RunSeekPosition = { slide: number; offsetMs: number; positionMs: number };
+export function runScrubPosition(fraction: number, times: readonly number[]): RunSeekPosition | null {
+  if (!times.length || !Number.isFinite(fraction)) return null;
+  const section = Math.max(0, Math.min(1, fraction)) * times.length;
+  const slide = Math.min(times.length - 1, Math.floor(section));
+  const offsetMs = Math.round((section - slide) * Math.max(0, times[slide]) * 1000);
+  return { slide, offsetMs, positionMs: Math.round(runStarts(times)[slide] * 1000) + offsetMs };
+}
+export function runSeekPosition(positionMs: number, times: readonly number[]): RunSeekPosition | null {
+  if (!Number.isFinite(positionMs)) return null;
+  const total = times.reduce((sum, time) => sum + Math.max(0, time) * 1000, 0);
+  if (total <= 0) return null;
+  const target = Math.max(0, Math.min(total, positionMs));
+  let start = 0, last: RunSeekPosition | null = null;
+  for (let slide = 0; slide < times.length; slide++) {
+    const duration = Math.max(0, times[slide]) * 1000;
+    if (duration > 0) {
+      if (target < start + duration) return { slide, offsetMs: target - start, positionMs: target };
+      last = { slide, offsetMs: duration, positionMs: start + duration };
+    }
+    start += duration;
+  }
+  return last;
+}
 /** Map concatenated local audio time back to the true merged-run timeline. Missing-audio slides are absent from plan. */
 export type RunAudioPlanEntry = { slide: number; runStart: number; durMs: number };
 export function runPosition(elapsedMs: number, plan: readonly RunAudioPlanEntry[]): number {

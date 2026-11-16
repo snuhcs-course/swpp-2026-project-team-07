@@ -7,7 +7,7 @@
 // transcribed with the existing hosted Scribe v2 adapter and judged by the configured
 // feedback provider. Provider keys stay on the server.
 import { File } from 'expo-file-system';
-import { fetch } from 'expo/fetch';
+import { backendExpoFetch as fetch } from '../../services/backendFetch';
 import type { Transcript } from '../../contracts';
 import { API_URL } from '../../services/api';
 import { readStored } from '../../services/storage';

@@ -1,5 +1,5 @@
 import { Directory, File, Paths } from 'expo-file-system';
-import { fetch as expoFetch } from 'expo/fetch';
+import { backendExpoFetch as expoFetch } from '../../services/backendFetch';
 import { randomUUID } from 'expo-crypto';
 import { readStored, writeStored } from '../../services/storage';
 import { normalizeApi } from './analysisStorage';

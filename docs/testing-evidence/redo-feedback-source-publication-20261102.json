@@ -1,0 +1,552 @@
+{
+  "schema_version": 1,
+  "evidence_date_local": "2026-11-02",
+  "timezone": "Asia/Seoul",
+  "summary_generated_at_utc": "2026-11-01T17:21:01.910633+00:00",
+  "verification_operator": "agent-operated automated checks",
+  "human_acceptance_claimed": false,
+  "base_commit": "7b7ef3be38e0e54fdca9ba0ebb403d670368d9ad",
+  "snapshot_kind": "Uncommitted publication source snapshot; commit and push are performed separately.",
+  "branch": "codex/demo-redo-feedback-20261102",
+  "ui_source_commit": "c43ab1fdcabb285327a5c1618e61e4cbf10b400f",
+  "apk": {
+    "name": "OutLoud-public-demo-20261102-feedback.apk",
+    "version_code": 5,
+    "sha256": "9f1e1cbaba83f6c3ea7aef326c2ae163d815ffdedb414658acc29d489d573ffe"
+  },
+  "scope": "Changed or newly added publishable backend/mobile/deploy/configuration files relative to base_commit. Root documentation and collaboration logs are outside this manifest.",
+  "excluded": "Ignored local environment, keys, recordings, generated native projects, dependencies, private test media and local artifacts are not included.",
+  "file_count": 103,
+  "files": [
+    {
+      "path": "backend/.env.example",
+      "bytes": 1837,
+      "sha256": "1d173b8fc5350603bd895d86c2d2fb99f3ad6fd905fc8fdac3163bc68b5634ee"
+    },
+    {
+      "path": "backend/Dockerfile.production",
+      "bytes": 637,
+      "sha256": "a74543fee6f6c029f6cfe3974d2c207ef53791cf190a9f15e8e8ad10d9cede20"
+    },
+    {
+      "path": "backend/config/production_settings.py",
+      "bytes": 1508,
+      "sha256": "cf3ffbfd737a2c41dd3419050d48f6c8d51a753e0bcccf5693a2ac9df708212d"
+    },
+    {
+      "path": "backend/config/test_production_settings.py",
+      "bytes": 6327,
+      "sha256": "e9381db826d233ae02853d8ff1e3ea570388f78ae18c2e6d3969f82798ab2596"
+    },
+    {
+      "path": "backend/rehearsals/management/commands/import_legacy_history.py",
+      "bytes": 11100,
+      "sha256": "25b0adf2f1c85f6aa5f485ada1300cf63b29a0f90acb31f21febfb81870d5468"
+    },
+    {
+      "path": "backend/rehearsals/services/audience_qa.py",
+      "bytes": 10030,
+      "sha256": "61a8fe3cdf914a7f8f9bd80294e034ec9e68b18408ae187cf64d0a6802221b79"
+    },
+    {
+      "path": "backend/rehearsals/services/coaching.py",
+      "bytes": 44052,
+      "sha256": "1bea1a604a1672beac68ce097cb0b4a00aef1557c8c19284b1c5377c835664e1"
+    },
+    {
+      "path": "backend/rehearsals/services/descriptions.py",
+      "bytes": 37729,
+      "sha256": "11dce1d5b56ae8a3cf49b55dc0d57fcafbdb50d124bef2cfa9c1d02986537274"
+    },
+    {
+      "path": "backend/rehearsals/services/feedback_config.py",
+      "bytes": 6831,
+      "sha256": "9c36007c1ed953453ab634300f980b905fc1d2a12d1f2721f2ab962fbc601f44"
+    },
+    {
+      "path": "backend/rehearsals/services/feedback_provider.py",
+      "bytes": 38375,
+      "sha256": "262e8f3895d1e90f9cfbe9d2805c15cddd1dd0ad3e2ad419a4145c8d327a32fb"
+    },
+    {
+      "path": "backend/rehearsals/services/presentation_score.py",
+      "bytes": 29076,
+      "sha256": "e1c7db7f9a37edecf551de827310ea74c59e37bad92576c6252e3e8eb6de9b83"
+    },
+    {
+      "path": "backend/rehearsals/services/presentation_score_v2.py",
+      "bytes": 36542,
+      "sha256": "ea6e2e5dfd5bee53ddca9f20715c0dba54b5f0c6c128daf7f961053f219799b2"
+    },
+    {
+      "path": "backend/rehearsals/services/presentation_scoring.py",
+      "bytes": 20547,
+      "sha256": "b1676fa3b7530f1501fd4b76ad608fb5ee2d1ed7ffd5c731398578aea96d7c4a"
+    },
+    {
+      "path": "backend/rehearsals/services/qa.py",
+      "bytes": 10228,
+      "sha256": "659815fb4d0d8f9f3a12ced2339c3ddb90f93fe36d9fad8c4abaf807b93a62ea"
+    },
+    {
+      "path": "backend/rehearsals/services/slide_profile_schema.py",
+      "bytes": 6290,
+      "sha256": "18aadc16aa2f73e7e69b054d3f5807451362e5bf5b91e24f0977b25a1898bbf2"
+    },
+    {
+      "path": "backend/rehearsals/services/slide_profiles.py",
+      "bytes": 4116,
+      "sha256": "1e2065e0bfd661155c3fad0b185fe23de98e279537ed352e03a638a8635d302c"
+    },
+    {
+      "path": "backend/rehearsals/services/slide_review.py",
+      "bytes": 25746,
+      "sha256": "c8d37aaf29021d98f0450dd08360842fe00ba34075198595f0328484350544f7"
+    },
+    {
+      "path": "backend/rehearsals/services/transcript_suggestions.py",
+      "bytes": 5675,
+      "sha256": "a8fc459b2a419a2785931d93399501b3de52292a7f2dea6064da65cfeafcb2a8"
+    },
+    {
+      "path": "backend/rehearsals/test_feedback_provider.py",
+      "bytes": 46162,
+      "sha256": "19d76b1db8090370cfd7254f749ba9f3db86233ee1829f0a4f39166b4a3e6ff7"
+    },
+    {
+      "path": "backend/rehearsals/test_feedback_quota_policy.py",
+      "bytes": 23309,
+      "sha256": "5f5f5ec969fdc46c1e432c0f054cd83d79ddb8c19b4a99fb37e6ad1f97fbabb6"
+    },
+    {
+      "path": "backend/rehearsals/test_legacy_history_import.py",
+      "bytes": 9372,
+      "sha256": "59673a1264531f97a79db642d88800e6dd727c4ed65faf19713d03fc04d66cef"
+    },
+    {
+      "path": "backend/rehearsals/test_openrouter.py",
+      "bytes": 11806,
+      "sha256": "c71846a93b95a39c07021dbd30a1e11a0efcc6332603186df8e99ceac350478d"
+    },
+    {
+      "path": "backend/rehearsals/test_openrouter_cutover.py",
+      "bytes": 17033,
+      "sha256": "452b61eee000078ade19b221bae0c32b1c50e924ca58eb6bf02cc0702f055708"
+    },
+    {
+      "path": "backend/rehearsals/test_presentation_score_v2_boundaries.py",
+      "bytes": 19497,
+      "sha256": "18ced4b09ca9c52b136666e5bba5161d287bf113f8e9de48a672f171dcc9ec67"
+    },
+    {
+      "path": "backend/rehearsals/test_presentation_scoring_lifecycle.py",
+      "bytes": 23401,
+      "sha256": "ad82d6d9cf6752c853bb5dafa50e357d1bd7717063e5112b28f896a27b7ceb65"
+    },
+    {
+      "path": "backend/requirements-production.txt",
+      "bytes": 201,
+      "sha256": "991cc55640bce299d43ecbec433d2138b041f5c4c347f823a474927de22cbb9b"
+    },
+    {
+      "path": "compose.production.yaml",
+      "bytes": 3186,
+      "sha256": "9d9d6dbc9a5766b04067f65891fdea005b65ba4aff57b25a17c64350ff27a514"
+    },
+    {
+      "path": "compose.public.yaml",
+      "bytes": 1276,
+      "sha256": "480451b153b1e963577e0387cb2f0876504835d2ab5388c3a9b3552cb8edb64b"
+    },
+    {
+      "path": "deploy/.env.example",
+      "bytes": 1055,
+      "sha256": "1d60e7fbb187a89841751b82833008629e3061d8abd639ac76cc15af8d8189ce"
+    },
+    {
+      "path": "deploy/Caddyfile",
+      "bytes": 831,
+      "sha256": "6e3221bbf84c593aaa4e0d85d8d82e9c7d6874b052492783ea0cbd6eac47268d"
+    },
+    {
+      "path": "deploy/backup.sh",
+      "bytes": 3382,
+      "sha256": "cd969fed0a961e69cfe96545c437537afc3cfe8544d69485a13594f3d9e3dc27"
+    },
+    {
+      "path": "deploy/bootstrap-ubuntu.sh",
+      "bytes": 774,
+      "sha256": "85b5acfeeaad71aa66056b1f5697cd43e4a5e7b0fda45c2469ce20d839f6644b"
+    },
+    {
+      "path": "deploy/export-legacy-history.py",
+      "bytes": 5647,
+      "sha256": "67256a90e7160849a768f3b137bfc681ef0ba3e1b10b0bb8e14ef1bd64133baf"
+    },
+    {
+      "path": "deploy/nginx.conf",
+      "bytes": 1825,
+      "sha256": "1d387884a155e168b74b538759ff36bfdf86de23d4b959042a785078d89ae876"
+    },
+    {
+      "path": "deploy/public.env.example",
+      "bytes": 732,
+      "sha256": "a8ab0aca0e21bec68fda4864747d48b7b966615dc073fa54f6d8521dbb5e29de"
+    },
+    {
+      "path": "deploy/test_proxy.py",
+      "bytes": 5013,
+      "sha256": "6d888ddf8011655927b52ee7a516d1761bd154639f51f895204014fba2ba6286"
+    },
+    {
+      "path": "deploy/test_public_edge.py",
+      "bytes": 11430,
+      "sha256": "27cd5fabfdcaf2605e4fc72674e1d31bff6e6c184aca5e42062b9c4478baf62a"
+    },
+    {
+      "path": "deploy/tests/test-backup.sh",
+      "bytes": 7335,
+      "sha256": "82a77fb05ffc63debe5903855b5743d3697a20221f3c2e8e9f7f20a2d88fdcf4"
+    },
+    {
+      "path": "mobile/app.json",
+      "bytes": 1349,
+      "sha256": "29fe33e93a572fc4f2ab7b301749f6a3a8211b480521ee572cc06b3c21fd5591"
+    },
+    {
+      "path": "mobile/assets/demo/Seoul-text.json",
+      "bytes": 995,
+      "sha256": "02586dd1813c166cc989e46e7338831367bfcb83bf218a2ed343e465a60e34db"
+    },
+    {
+      "path": "mobile/assets/demo/Seoul.pdf",
+      "bytes": 6793649,
+      "sha256": "48e673f2dce98c5b4a67a1ad52fcb68092bdc5d606c03d68892e6b187be1f9aa"
+    },
+    {
+      "path": "mobile/package-lock.json",
+      "bytes": 438523,
+      "sha256": "12be159b70f386e4b056462f5918f2dda3d4b0c4352fa7654ffb3274104bfc3b"
+    },
+    {
+      "path": "mobile/package.json",
+      "bytes": 1911,
+      "sha256": "352fef0abeb93e687cfd1244045a8eb1694b8a24ad248fe8b6a929ac8a7571fe"
+    },
+    {
+      "path": "mobile/src/app/index.tsx",
+      "bytes": 469,
+      "sha256": "5c80ce857cb45fb346c6dc4968e14cfe5d2886c7104ea29013c2179ea400894e"
+    },
+    {
+      "path": "mobile/src/contracts/feedback.ts",
+      "bytes": 5281,
+      "sha256": "5e69fef55fa7bf59a02116b65875bde14ddd1596147820bc75505f85443648d8"
+    },
+    {
+      "path": "mobile/src/design/iconData.tsx",
+      "bytes": 13050,
+      "sha256": "f7e23d544a524c367c5e199b775b64a1adc113cf130409401127631d857db637"
+    },
+    {
+      "path": "mobile/src/design/icons.tsx",
+      "bytes": 6053,
+      "sha256": "824d5d2b350792831c27fd63353ef5e0f7f2787e1aaebce57572750a43bd899f"
+    },
+    {
+      "path": "mobile/src/design/ui.tsx",
+      "bytes": 26686,
+      "sha256": "f7e6ec47af5f1ac6e509be361e248597b9be1be04e83a3c0a90258aef4c29c08"
+    },
+    {
+      "path": "mobile/src/domain/analysis.ts",
+      "bytes": 15749,
+      "sha256": "30852ad7855628097d54bd3ab8c69ac80e7e1ab25d9482c0c0a26152b1fa2094"
+    },
+    {
+      "path": "mobile/src/features/feedback/compactFeedbackRows.ts",
+      "bytes": 1575,
+      "sha256": "19657e94041afb8da3e55510d1ffa76bc860bffef0408e5b70e526dbc4e730de"
+    },
+    {
+      "path": "mobile/src/features/feedback/presentationScoreStore.ts",
+      "bytes": 3848,
+      "sha256": "94c12b5e17da7af59566fb20df6d1633d9c3d3d9db28f96c4ec6077465a475c7"
+    },
+    {
+      "path": "mobile/src/features/feedback/selectedSlideFeedback.ts",
+      "bytes": 6997,
+      "sha256": "0519dfcd319c8eb007c1686e7397290ebc8cb23207d818fe6f97aed1bb43d256"
+    },
+    {
+      "path": "mobile/src/features/feedback/slideReviewStore.ts",
+      "bytes": 5974,
+      "sha256": "46d2a8c27a60ca24c485a433273e3530bfd0b7b4a3c7ecdf43d8119738abc608"
+    },
+    {
+      "path": "mobile/src/features/feedback/usePresentationScore.ts",
+      "bytes": 15576,
+      "sha256": "4568d7b00cc030bb3950527a2accc1a21a3fa5496f91512c1ba014eb4779d57e"
+    },
+    {
+      "path": "mobile/src/features/feedback/useSlideReview.ts",
+      "bytes": 14000,
+      "sha256": "09ceed32c2fd8ae6e62b9b654c1715e456ac2e893b115648ec4be209cab42112"
+    },
+    {
+      "path": "mobile/src/features/feedback/validation.ts",
+      "bytes": 22849,
+      "sha256": "ca688c44b8f9c558e6853f4dfae2a46b3ddae79f09bcf7009536e58eede7505a"
+    },
+    {
+      "path": "mobile/src/features/pdf/renderPages.ts",
+      "bytes": 1216,
+      "sha256": "bc68209bcdaa0b0bde737ae72ce96243aee63d931a320fa0e68f09c5fc23b9ec"
+    },
+    {
+      "path": "mobile/src/features/pdf/service.ts",
+      "bytes": 5419,
+      "sha256": "9bf14f3b0e6612e286e00f20a9940e1623c601d55440316475a948e6b0ba118a"
+    },
+    {
+      "path": "mobile/src/features/presentations/bundledDemo.ts",
+      "bytes": 3092,
+      "sha256": "c09adf826c1dc15d948cf28af1d0972b5ba51df46d65545b023329f747dfe959"
+    },
+    {
+      "path": "mobile/src/features/presentations/contextClient.ts",
+      "bytes": 3000,
+      "sha256": "c70ef9dbc8f58d1e1eaa79c98790bf6cb5b78dfc2b065a4fe46b60a34ef5625c"
+    },
+    {
+      "path": "mobile/src/features/presentations/correctionStore.ts",
+      "bytes": 7717,
+      "sha256": "b0df59ca7da5791fe292d13d9f4b24f178385642917def5579adb5e72b453f0c"
+    },
+    {
+      "path": "mobile/src/features/presentations/defaultRequirements.ts",
+      "bytes": 2156,
+      "sha256": "8b9dd7884966ebbb5b52ea0a554264db9ea16dc27ac2fb70644159da3c6b49d5"
+    },
+    {
+      "path": "mobile/src/features/presentations/importer.ts",
+      "bytes": 5732,
+      "sha256": "d1c3ba13b0d7d2f90bbb7d3b69f817f230fddd66106b6b867e7d4920fa65582b"
+    },
+    {
+      "path": "mobile/src/features/presentations/requirementsDraft.ts",
+      "bytes": 6133,
+      "sha256": "6051f05bae6c9f665c130dd4ad8bbcec0105f5799434c939a437e0572166125e"
+    },
+    {
+      "path": "mobile/src/features/presentations/serverDeck.ts",
+      "bytes": 3754,
+      "sha256": "61e200241577f108d1d24351b5b1d617001441a6e91a93ba04294211e6ed2cf0"
+    },
+    {
+      "path": "mobile/src/features/presentations/slideProfiles.ts",
+      "bytes": 11282,
+      "sha256": "33b667aa9072c9fab4b3432f200d51298807c271a891b43382a73cc6ea805245"
+    },
+    {
+      "path": "mobile/src/features/presentations/store.ts",
+      "bytes": 8536,
+      "sha256": "8e7561300e0918335801f269e94b359f954682ebbec1ad472511d84d9b494175"
+    },
+    {
+      "path": "mobile/src/features/presentations/transcriptSuggestions.ts",
+      "bytes": 6001,
+      "sha256": "ca91f80cd815cd00106b396ab62bd43228601e23a2607568dc6a1e784dfaf885"
+    },
+    {
+      "path": "mobile/src/features/presentations/useSlideProfiles.ts",
+      "bytes": 4400,
+      "sha256": "1974fef8ac733e71305c54787f5bdee704fc27e5b97af449759ef2959f461fae"
+    },
+    {
+      "path": "mobile/src/features/qa/client.ts",
+      "bytes": 13147,
+      "sha256": "51a2dc464e2380fd24644bfe172de075acb5ed275145104703fc64f57a05921e"
+    },
+    {
+      "path": "mobile/src/features/qa/useDurableQa.ts",
+      "bytes": 10255,
+      "sha256": "a7d7df4c550017b37b1b41771cf13adf1080a2f78d8bc985c0bfdeeb702892dc"
+    },
+    {
+      "path": "mobile/src/features/recording/upload.ts",
+      "bytes": 5472,
+      "sha256": "cd77aa4cd9b0e7bda46bd71c5dca343f4bee81f3ac8a0f96da9ac3f9a31c1586"
+    },
+    {
+      "path": "mobile/src/features/rehearsal/coaching.tsx",
+      "bytes": 6819,
+      "sha256": "27bf60878b9cf1d0e735071920dc070c75812d97ca94bdc013f5d1f6cda41cff"
+    },
+    {
+      "path": "mobile/src/features/transcription/client.ts",
+      "bytes": 14045,
+      "sha256": "765e1c574b7a5214cd3a2c3d9f012eb0d0504cfb67afba917dffd3ad1e203181"
+    },
+    {
+      "path": "mobile/src/features/transcription/reviewMedia.ts",
+      "bytes": 9911,
+      "sha256": "bfa6910a7ac0b78751a25c7c612e54d2e0a1de1e5dfa2f9186e2662e2e45855f"
+    },
+    {
+      "path": "mobile/src/features/transcription/service.ts",
+      "bytes": 886,
+      "sha256": "79d864a67a9f3e95c4d9ca54faab59e49b937ec385f3c0a47390ad57113fcf9e"
+    },
+    {
+      "path": "mobile/src/screens/DemoAccessGate.tsx",
+      "bytes": 5268,
+      "sha256": "6a64654a1e88f580814d614b2f7fef6ebfa4c5d19c1c9adb1ad2fd18efada218"
+    },
+    {
+      "path": "mobile/src/screens/FullReviewScreen.tsx",
+      "bytes": 27121,
+      "sha256": "668b9fbfb5bb5730e4e261e2e13fcb8d4808c9452ecbde38031489731b83f182"
+    },
+    {
+      "path": "mobile/src/screens/RehearseScreen.tsx",
+      "bytes": 47381,
+      "sha256": "d6d6227c84d58bad32da61f2b2c9a68242bdb35a7fa0cf09afffc79ea6369189"
+    },
+    {
+      "path": "mobile/src/screens/ReviewScreen.tsx",
+      "bytes": 13892,
+      "sha256": "d814903b6f32f2ae91d6efde84ebb0f5f732b0bf9992f00029fef3cbf7f8fadf"
+    },
+    {
+      "path": "mobile/src/services/api.ts",
+      "bytes": 1080,
+      "sha256": "5c7916da5c3cf83f54152d09d07b3f0d79c3b4283878b4565147339440ab535c"
+    },
+    {
+      "path": "mobile/src/services/apiConfig.ts",
+      "bytes": 278,
+      "sha256": "d410391c4eca5706c7b6775a50f1f9941b1b8e1b5ab999e98ca4db06f4e09806"
+    },
+    {
+      "path": "mobile/src/services/backendFetch.ts",
+      "bytes": 1117,
+      "sha256": "c7e8652b1402e89f1f1291cee931f8ff172512b7d3ae66498e732581c572a570"
+    },
+    {
+      "path": "mobile/src/services/demoAccess.ts",
+      "bytes": 6544,
+      "sha256": "18c8902de030655ee068944e37452c4ec0ee374f50de76f92f0088ce31098371"
+    },
+    {
+      "path": "mobile/tests/ai-overview-screens.test.mjs",
+      "bytes": 13796,
+      "sha256": "dee17ea10e8c79d0259e7ceff780f2d3c457682a4bded76d39095580bc7794d4"
+    },
+    {
+      "path": "mobile/tests/bundled-demo.test.mjs",
+      "bytes": 7265,
+      "sha256": "a5117a8375c9273a8297c11bdd3deff496930955379f2e8eb5a877a6b67d6147"
+    },
+    {
+      "path": "mobile/tests/compact-feedback.test.mjs",
+      "bytes": 7822,
+      "sha256": "bbca098ebb2c46c9b8bbb2e4d323c61aad19002561dd0094bdef447ab3a11417"
+    },
+    {
+      "path": "mobile/tests/demo-access-gate.test.mjs",
+      "bytes": 2753,
+      "sha256": "e4182033fba7f785f8587daf27dcd3111805ebc5baecb509ad790bb3e2e5f584"
+    },
+    {
+      "path": "mobile/tests/demo-access.test.mjs",
+      "bytes": 9015,
+      "sha256": "6c67f705c90794efc6d8eec1ace3c795c9d748d63847ee09a409055622e159ac"
+    },
+    {
+      "path": "mobile/tests/feedback-status.test.mjs",
+      "bytes": 10878,
+      "sha256": "2f0c2b7d795a9d77e148477279d14205fdc4f371539edca9e46d6dff095f208d"
+    },
+    {
+      "path": "mobile/tests/helpers/ai-overview-screen-native.mjs",
+      "bytes": 4312,
+      "sha256": "f5539efe51e5b8a0dfe7654e23ed31c115b96093d7b673cb5dbdf8ace76e451c"
+    },
+    {
+      "path": "mobile/tests/helpers/bundled-demo-loader.mjs",
+      "bytes": 1206,
+      "sha256": "17b5d54574738e58031aaeec10c5ca6c419317c8de181309e5277658a72eeea4"
+    },
+    {
+      "path": "mobile/tests/helpers/bundled-demo-native.mjs",
+      "bytes": 1028,
+      "sha256": "5fc29613d09415f81c8192b13d3c2579cdfeee79fcf9f96487f23ad339d9a662"
+    },
+    {
+      "path": "mobile/tests/helpers/demo-access-native-loader.mjs",
+      "bytes": 1653,
+      "sha256": "6c734b672a4f6c2266ff6c61e8c2d956ce24eacb33783564d967f6f58abb7d32"
+    },
+    {
+      "path": "mobile/tests/helpers/openrouter-mobile-loader.mjs",
+      "bytes": 885,
+      "sha256": "8e92560c72f42034e425902085a2142e581e6e19b6c5f63c990b0d158ad8bce4"
+    },
+    {
+      "path": "mobile/tests/helpers/recording-cues-runtime-native.mjs",
+      "bytes": 5211,
+      "sha256": "fe673e411cc0c885ce4c94e95e44c4b6e4aff73ef68a8e48d54203d1708ac9ab"
+    },
+    {
+      "path": "mobile/tests/helpers/redo-capture-loader.mjs",
+      "bytes": 1000,
+      "sha256": "7b838a2593b7b3c1b1149f35c8163fe93aed52d036dc57209acf6a24ad35872d"
+    },
+    {
+      "path": "mobile/tests/openrouter-mobile.test.mjs",
+      "bytes": 4894,
+      "sha256": "f4810afe047930d2c76a62683ca1bcfc82dfae4860a13443f12d1b4ad06a6b37"
+    },
+    {
+      "path": "mobile/tests/presentation-score-ui.test.mjs",
+      "bytes": 15775,
+      "sha256": "d9f76df3848a11b1dbe64e19b6762cd077f6db44055ef25cb81edb67f8cbbbf5"
+    },
+    {
+      "path": "mobile/tests/recording-cues-runtime.test.mjs",
+      "bytes": 16546,
+      "sha256": "27f9d7ecceb479f402cb35c3df4e82c73ca0da1d9433a81f7609288147faf4ea"
+    },
+    {
+      "path": "mobile/tests/redo-capture.test.mjs",
+      "bytes": 8499,
+      "sha256": "1fd20f75a7c20f56f2aeb29ce3499b42801a40a717f8038d7a7c1d3cd520e020"
+    },
+    {
+      "path": "mobile/tests/review-history.test.mjs",
+      "bytes": 11305,
+      "sha256": "d037a4a4497232a1564d5dab2c187329e8e0e68a9b37b06ff755b273a5022225"
+    },
+    {
+      "path": "mobile/tests/slide-profiles.test.mjs",
+      "bytes": 18561,
+      "sha256": "ae5caf747617b29b908ee612ec5ccf4d2ce17314cfba0b0811b2517f866eb85c"
+    }
+  ],
+  "evidence_files": [
+    "redo-feedback-mobile-20261102.json",
+    "redo-feedback-backend-20261102.json",
+    "redo-feedback-image-20261102.json",
+    "redo-feedback-apk-20261102.json"
+  ],
+  "acceptance_boundaries": {
+    "mobile_automated": "passed: 576",
+    "backend_local": "passed: 596; skipped: 1; total: 597; PostgreSQL",
+    "production_image_offline": "passed: 86; skipped: 0",
+    "apk_static_inspection": "passed",
+    "version5_native_functional": "pending",
+    "live_provider_inference": "pending",
+    "human_acceptance": "not claimed"
+  }
+}

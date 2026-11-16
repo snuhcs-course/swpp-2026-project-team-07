@@ -3,6 +3,7 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
 // OpenAI Codex finger-linked page fade: docs/ai-collaboration-prompts-iteration-2.md#finger-linked-page-fade-october-15-2026
 // OpenAI Codex time/audience setup: docs/ai-collaboration-prompts-iteration-2.md#presentation-time-and-audience-setup-october-15-2026
+// OpenAI Codex removes the edit-settings button backdrop: docs/ai-collaboration-prompts-iteration-2.md#compact-slide-review-card-and-slider-label-november-1-2026
 // OpenAI Codex light-mode rehearsal: docs/ai-collaboration-prompts-iteration-2.md#guide-based-light-mode-october-15-2026
 // Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
 // OpenAI Codex follow-up: docs/ai-collaboration-prompts-iteration-2.md#rehearsal-recording-choice-and-transcript-playback-october-14-2026
@@ -35,6 +36,7 @@ import { Pressable, StyleSheet, View, type GestureResponderEvent } from 'react-n
 import * as Haptics from 'expo-haptics';
 import Animated, { Easing, cancelAnimation, runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 import { Enter, Txt, useFrame } from '../design/frame';
+import { UIIcon } from '../design/icons';
 import { PanView, type PanHandlers } from '../design/PanView';
 import { CARD_H, CARD_W, SlideCard } from '../design/SlideCard';
 import { C, EASE_SCREEN, EASE_SNAP, F } from '../design/tokens';
@@ -104,7 +106,7 @@ export const RehearseScreen = memo(function RehearseScreen({ active = true }: { 
 });
 
 function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
-  useTheme();
+  const { c } = useTheme();
   const { go, nav, home } = useShell();
   const frame = useFrame();
   useSyncExternalStore(subscribeRequirements, getRequirementsVersion);
@@ -275,6 +277,8 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
       const whole = fullRedo.current;
       fullRedo.current = false;
       const { run: next, compare } = commitTake(deck, take, live.get().spoken, whole, model.stats?.coverage ?? null);
+      // OpenAI Codex, 2026-11-02: remount the single-use engine after success; see docs/ai-collaboration-prompts-iteration-2.md.
+      setEngineKey(k => k + 1);
       hideRing();
       setBurst({ total: take.durationMs / 1000, compare: !!compare });
       setPhase('burst');
@@ -452,16 +456,21 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
         accessibilityElementsHidden={setupOpen} importantForAccessibility={setupOpen ? 'no-hide-descendants' : 'auto'}>
         <Animated.View style={[StyleSheet.absoluteFill, screen]}>
           <PageSurface hue={deck.hue} />
+          <Pressable accessibilityRole="button" accessibilityLabel="Edit presentation time and audience"
+            accessibilityHint="Open presentation time and audience settings"
+            accessibilityState={{ disabled: !active || phase !== 'idle' }} disabled={!active || phase !== 'idle'}
+            onPress={openSetup} style={styles.editRequirements} hitSlop={8}>
+            <UIIcon name="i-sliders" size={24} color={c.text} />
+          </Pressable>
           <View style={styles.header} pointerEvents="none">
             <Txt numberOfLines={1} style={styles.deckTitle}>{deck.title}</Txt>
+          </View>
+          <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.headerBalance}>
+            <UIIcon name="i-wave" size={21} color={c.text} />
           </View>
           <Animated.View pointerEvents="none" style={[styles.counterWrap, counterMotion]}>
             <Txt style={styles.counter}>{'Slide ' + (cur + 1) + ' of ' + n}</Txt>
           </Animated.View>
-          {active && phase === 'idle' && !pdfRotated && !pdfRotating && !setupOpen && <Pressable accessibilityRole="button"
-            accessibilityLabel="Edit presentation time and audience" onPress={openSetup} style={styles.editRequirements} hitSlop={{ left: 12, right: 12, top: 2 }}>
-            <Txt style={styles.editLabel}>Edit time &amp; audience</Txt>
-          </Pressable>}
           <SlideTrack model={model} slide={cur} trackX={trackX} onSlide={goSlide}
             previousLocked={locksPreviousSlide(phase)} isPreviousLocked={isPreviousLocked}
             navigationFrozen={freezesSlideNavigation(phase)} isNavigationFrozen={isNavigationFrozen}
@@ -513,7 +522,7 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
         <Dialog title={redoAsk === 'all' ? 'Redo the whole presentation?' : 'Redo slide ' + (cur + 1) + '?'}
           body={redoAsk === 'all' ? 'Recording starts again from slide 1. When you stop, you can compare it with your current run and keep either one.'
             : 'Your recording and transcript for slide ' + (cur + 1) + ' will be replaced. You can compare the takes and keep the old one.'}
-          confirm={redoAsk === 'all' ? 'Redo all' : 'Redo'} onConfirm={confirmRedo} onCancel={cancelRedo}
+          confirm={redoAsk === 'all' ? 'Redo all' : 'Redo'} onConfirm={confirmRedo} onCancel={cancelRedo} showScrim={false}
           />
       )}
       {cueRetryAsk && <Dialog title="Retry AI cues?" body="The previous provider request has an uncertain outcome. Retrying may incur another charge."
@@ -709,12 +718,13 @@ function Readout({ live, phase, cur, take, deck, burst, error, recoveryCount, re
 const styles = createThemedStyles({
   homeHintRight: { left: 244, right: 0 },
   loading: { position: 'absolute', top: 400, left: 0, right: 0, textAlign: 'center', fontFamily: F.medium, fontSize: 14, color: C.secondary },
-  header: { position: 'absolute', left: 40, right: 40, top: 50, alignItems: 'center' },
+  header: { position: 'absolute', left: 64, right: 64, top: 50, alignItems: 'center' },
   deckTitle: { fontFamily: F.display, fontSize: 18, lineHeight: 21.6, letterSpacing: -0.3, color: C.text },
   counterWrap: { position: 'absolute', left: 120, top: 75, width: 150, height: 18, alignItems: 'center', justifyContent: 'center' },
   counter: { fontFamily: F.medium, fontSize: 13, color: C.secondary },
-  editRequirements: { position: 'absolute', left: 96, right: 96, top: 96, height: 20, alignItems: 'center', justifyContent: 'center' },
-  editLabel: { fontFamily: F.semibold, fontSize: 11, lineHeight: 14, color: C.secondary },
+  editRequirements: { position: 'absolute', left: 16, top: 39, width: 44, height: 44,
+    alignItems: 'center', justifyContent: 'center', zIndex: 20 },
+  headerBalance: { position: 'absolute', right: 16, top: 39, width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
   slideStage: { position: 'absolute', left: 0, top: 100, width: 390, height: 510, overflow: 'hidden' },
   slidePosition: { position: 'absolute', left: 16, top: 16, width: CARD_W, height: CARD_H },
   slideZoom: { width: CARD_W, height: CARD_H, overflow: 'hidden' },

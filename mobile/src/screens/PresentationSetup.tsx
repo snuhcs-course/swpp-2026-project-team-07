@@ -16,6 +16,7 @@ import { readStored } from '../services/storage';
 import { normalizeApi } from '../features/transcription/analysisStorage';
 import { readRequirements, getRequirementsVersion, subscribeRequirements } from '../features/presentations/requirementsStore';
 import { createPresentationContextClient } from '../features/presentations/contextClient';
+import { DEFAULT_AUDIENCE, DEFAULT_DURATION_SECONDS } from '../features/presentations/defaultRequirementsState';
 import { confirmRequirements, readRequirementsDraft, synchronizeRequirements, acceptServerRequirements, keepLocalRequirements, type RequirementValues } from '../features/presentations/requirementsDraft';
 
 const MIN = 60;
@@ -25,13 +26,13 @@ const LEFT = 42;
 const WIDTH = 306;
 const AUDIENCES = ['Students', 'Teachers', 'Colleagues', 'Clients', 'General audience'] as const;
 
-export function PresentationSetup({ deck, error, initialValues = { requiredDurationSeconds: 300, audience: 'General audience' }, onConfirm, onBackPan, onChange, recovery, disabled = false }: {
+export function PresentationSetup({ deck, error, initialValues = { requiredDurationSeconds: DEFAULT_DURATION_SECONDS, audience: DEFAULT_AUDIENCE }, onConfirm, onBackPan, onChange, recovery, disabled = false }: {
   deck: Presentation; error: string; initialValues?: RequirementValues; onConfirm: (seconds: number | null, audience: string) => void; onBackPan: PanHandlers;
   onChange?: () => void; recovery?: ReactNode; disabled?: boolean;
 }) {
   const frame = useFrame();
   const { c } = useTheme();
-  const [target, setTarget] = useState(initialValues.requiredDurationSeconds ?? 300);
+  const [target, setTarget] = useState(initialValues.requiredDurationSeconds ?? DEFAULT_DURATION_SECONDS);
   const [required, setRequired] = useState(initialValues.requiredDurationSeconds !== null);
   const [audience, setAudience] = useState(initialValues.audience);
   const [custom, setCustom] = useState(!!initialValues.audience && !AUDIENCES.some(v => v === initialValues.audience));
@@ -165,12 +166,15 @@ const styles = createThemedStyles({
 export function PresentationRequirementsEditor({ deck, initialImport = false, onSaved, onBackPan, active = true }: {
   deck: Presentation; initialImport?: boolean; onSaved: () => void; onBackPan: PanHandlers; active?: boolean;
 }) {
-  useSyncExternalStore(subscribeRequirements, getRequirementsVersion);
+  const requirementsVersion = useSyncExternalStore(subscribeRequirements, getRequirementsVersion);
   const { c } = useTheme();
   const [base, setBase] = useState(() => readRequirements(deck.id, API_URL));
   const [error, setError] = useState('');
   const touched = useRef(false);
   const pending = readRequirementsDraft(deck.id, API_URL);
+  useEffect(() => {
+    if (active && !touched.current) setBase(readRequirements(deck.id, API_URL));
+  }, [active, deck.id, requirementsVersion]);
   useEffect(() => {
     if (!active || !base.contextId) return;
     let disposed = false;
@@ -188,8 +192,10 @@ export function PresentationRequirementsEditor({ deck, initialImport = false, on
     try { confirmRequirements(deck.id, API_URL, { requiredDurationSeconds, audience }, base); sync(); onSaved(); }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not save presentation choices.'); }
   };
-  const initialValues = pending?.desired ?? (initialImport && !base.contextId
-    ? { requiredDurationSeconds: 300, audience: 'General audience' } : base);
+  // Reserving a context ID does not mean its untouched requirements have been initialized.
+  const initialValues = pending?.desired ?? (initialImport && base.revision === 0 &&
+    base.requiredDurationSeconds === null && !base.audience.trim()
+    ? { requiredDurationSeconds: DEFAULT_DURATION_SECONDS, audience: DEFAULT_AUDIENCE } : base);
   return <PresentationSetup key={`${base.contextId}:${base.revision}`} deck={deck} initialValues={initialValues}
     error={error || (pending?.conflict ? pending.error : pending ? 'Saved on phone · sync pending' : '')}
     onChange={() => { touched.current = true; }} onConfirm={save} onBackPan={onBackPan} disabled={!!pending?.conflict || !active}

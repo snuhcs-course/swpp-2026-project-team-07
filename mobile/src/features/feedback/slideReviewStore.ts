@@ -1,3 +1,4 @@
+import { backendFetch } from '../../services/backendFetch';
 /** Shared validated selected-slide cache and GET-only reads. Generation stays in useSlideReview. */
 import type { ReviewAttempt } from '../../contracts';
 import type { LocalCorrections } from '../../domain/corrections';
@@ -68,7 +69,7 @@ function schedule<T>(operation: () => Promise<T>): Promise<T> {
     if (reading < 3) start(); else queue.push(start);
   });
 }
-export function createSlideReviewReader(apiUrl: string, transport: typeof globalThis.fetch = globalThis.fetch) {
+export function createSlideReviewReader(apiUrl: string, transport: typeof globalThis.fetch = backendFetch) {
   const api = normalizeApi(apiUrl);
   return { read(target: SlideReviewTarget): Promise<SlideReview> {
     const key = slideReviewKey(api, target.id, target.scope), existing = flights.get(key);

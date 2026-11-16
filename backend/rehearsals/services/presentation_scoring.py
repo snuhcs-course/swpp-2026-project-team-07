@@ -18,16 +18,30 @@ from .feedback import FeedbackError, json_bytes, restore_analysis
 from .feedback_config import Selection, QuotaPolicy, assert_selection, selection_descriptor
 
 VERSION = 'presentation-score-v2'
-PROMPT_VERSION = 'presentation-score-prompt-v2.1'
+PROMPT_VERSION = 'presentation-score-prompt-v2.3'
 SCHEMA_VERSION = VERSION
 
-# Exact original v2 protocol, including rubric, evidence, measurements and schema.
-# This only authorizes fresh generation; old receipts remain bound to their own
-# immutable protocol and are never normalized using the replacement prompt.
-_PREVIOUS_V2_PROTOCOL_DIGEST = '3c4c634861209d739d76e31068e6caaad00b4c7e905ed68c52fabcb9ce9a83f0'
-# Canonical fingerprint is separate from the historical request digest because
-# JSONB reorders object fields while preserving their exact values.
-_PREVIOUS_V2_PROTOCOL_FINGERPRINT = '1205c060a5691f8a220fd7ab6bfd19c791114deb3334883a457904d581bf8b5b'
+# Exact prior protocols, including rubric, evidence, measurements and schema.
+# Old receipts remain bound to their immutable protocol, never normalized using
+# replacement measurements. Only the two most recent terminal protocols can read through.
+# Canonical fingerprints also verify values after JSONB reorders object fields.
+_PREVIOUS_PROTOCOLS = (
+    ('presentation-score-v2',
+     '3c4c634861209d739d76e31068e6caaad00b4c7e905ed68c52fabcb9ce9a83f0',
+     '1205c060a5691f8a220fd7ab6bfd19c791114deb3334883a457904d581bf8b5b'),
+    ('presentation-score-prompt-v2.1',
+     'cfd48a4c2992dc175a115b7739dc226b6c961a07c292ac8dc4ae0e5a549e4510',
+     '8320b6497c480dc642ecd87a372e57e58317a351d5288b00d8c30e4eaaf3754f'),
+    # OpenAI Codex, 2026-11-03: exact pre-#45 identity, not a permissive version match.
+    ('presentation-score-prompt-v2.2',
+     '842ef8c656c1bf7042bfb4f312424a303d3b8f530dc33792b735f323b01cd8a7',
+     '9fda083caf1af6c4927025f148bdd5df773184846d311baba2fbb31af9ab1f07'),
+    ('presentation-score-prompt-v2.3',
+     'c7ae3c9576e57a2729054563292ae1816a8e187b580e72d90d9f6f72475e65ba',
+     'c35712151598808fef66e27f4f34132fe3f797e05ac05578959c4470695d288b'),
+)
+_TERMINAL_READ_PROTOCOLS = tuple(p for p in _PREVIOUS_PROTOCOLS
+                               if p[0] in ('presentation-score-prompt-v2.2', 'presentation-score-prompt-v2.3'))
 
 
 def context_for(attempt, context_id):
@@ -73,9 +87,25 @@ def _replacement_supported(job):
         return True
     except FeedbackError:
         captured = job.source_snapshot.get('presentation_score', {}).get('protocol')
-        return (job.prompt_version == VERSION and job.schema_version == SCHEMA_VERSION and
-                job.prompt_digest == _PREVIOUS_V2_PROTOCOL_DIGEST and
-                v1._digest(captured) == _PREVIOUS_V2_PROTOCOL_FINGERPRINT)
+        return (job.schema_version == SCHEMA_VERSION and
+                (job.prompt_version, job.prompt_digest, v1._digest(captured)) in _PREVIOUS_PROTOCOLS)
+
+
+def _read_protocol_supported(job):
+    captured = job.source_snapshot.get('presentation_score')
+    if not isinstance(captured, dict) or not isinstance(captured.get('protocol'), dict):
+        return False
+    measurements = captured.get('measurements')
+    if measurements is not None and (not isinstance(measurements, dict)
+            or measurements.get('version') != captured['protocol'].get('measurement_version')):
+        return False
+    try:
+        check_versions(job)
+        return True
+    except FeedbackError:
+        captured = captured.get('protocol')
+        return (job.state in ('completed', 'failed') and job.schema_version == SCHEMA_VERSION
+                and (job.prompt_version, job.prompt_digest, v1._digest(captured)) in _TERMINAL_READ_PROTOCOLS)
 
 
 def _rejected_completion(job):
@@ -98,7 +128,7 @@ def current(attempt, job):
     """Database-only fence; never decode/read media under admission/job locks."""
     captured = job.source_snapshot.get('presentation_score')
     try:
-        if (not captured or captured['protocol'] != protocol() or
+        if (not captured or not _read_protocol_supported(job) or
                 requirements(attempt, captured['context_id']) != captured['requirements'] or
                 job.description_set.processing_revision != job.description_generation):
             return False
@@ -137,6 +167,7 @@ def generate(attempt_id, payload, context_id=None):
     if 'transcript_revision' in payload and payload['transcript_revision'] != corrections.snapshot(attempt)['revision']:
         raise coaching.Conflict('correction_conflict')
     existing = FeedbackAnalysis.objects.filter(attempt=attempt, analysis_type=kind).first()
+    replacement = None
     if existing:
         with transaction.atomic():
             Deck.objects.select_for_update().get(pk=attempt.deck_id)
@@ -144,12 +175,13 @@ def generate(attempt_id, payload, context_id=None):
             value, owner, old = coaching._locked(existing.pk, existing.feedback_revision)
             if old.generation != owner.feedback_revision:
                 raise coaching.Conflict('stale_revision')
-            assert_selection(payload, descriptor(value=value, job=old))
+            replacement = descriptions.replacement_selection(value)
+            assert_selection(payload, descriptor(replacement) if replacement else descriptor(value=value, job=old))
             if payload.get('feedback_revision', owner.feedback_revision) != owner.feedback_revision:
                 raise coaching.Conflict('stale_revision')
             if 'transcript_revision' in payload and payload['transcript_revision'] != corrections.snapshot(attempt)['revision']:
                 raise coaching.Conflict('correction_conflict')
-            stale = coaching._stale(value, old) or not coaching._source_current(old)
+            stale = bool(replacement) or coaching._stale(value, old) or not coaching._source_current(old)
             explicit_rejected_retry = _rejected_completion(old) and 'feedback_revision' in payload
             if not stale and old.state in coaching.ACTIVE | {'completed'} and not explicit_rejected_retry:
                 return owner
@@ -158,24 +190,30 @@ def generate(attempt_id, payload, context_id=None):
             request = FeedbackRequest.objects.filter(coaching_job=old).first()
             if coaching._uncertain(request) and not payload.get('acknowledge_uncertain'):
                 raise coaching.Conflict('confirmation_required')
-            retry_at = descriptions.effective_retry_at(value, old)
-            if retry_at and retry_at > timezone.now():
-                raise coaching.Conflict('retry_not_available')
-            if coaching.attempt_identity(attempt) != old.source_snapshot['attempt_identity']:
-                raise coaching.Conflict('source_changed')
-            selection = Selection.saved(value)
-            selection.check_versions(value.prompt_digest)
-            if not _replacement_supported(old):
-                raise FeedbackError('snapshot_unavailable')
-            selection.credentials(); QuotaPolicy.current(selection)
-            source = old.source_snapshot['source']
-            # Rebuild immutable admission revisions, but measure only in the worker.
-            snapshot = _capture(attempt, context_id, source, type('Identity', (), {
-                'input_id': old.source_snapshot['analysis_id'], 'transcript_id': old.source_snapshot['transcript_id']})())
-            if (Selection.current().provider, Selection.current().project_id, Selection.current().model) != (value.provider, value.project_id, value.model):
-                raise coaching.Conflict('selection_mismatch')
-            return _queue(owner, value, snapshot)
-    if set(payload) - {'expected_selection', 'transcript_revision'}:
+            if replacement:
+                if descriptions.replacement_requires_confirmation(value, old) and not payload.get('acknowledge_uncertain'):
+                    raise coaching.Conflict('confirmation_required')
+                if coaching.attempt_identity(attempt) != old.source_snapshot['attempt_identity']:
+                    raise coaching.Conflict('source_changed')
+            else:
+                retry_at = descriptions.effective_retry_at(value, old)
+                if retry_at and retry_at > timezone.now():
+                    raise coaching.Conflict('retry_not_available')
+                if coaching.attempt_identity(attempt) != old.source_snapshot['attempt_identity']:
+                    raise coaching.Conflict('source_changed')
+                selection = Selection.saved(value)
+                selection.check_versions(value.prompt_digest)
+                if not _replacement_supported(old):
+                    raise FeedbackError('snapshot_unavailable')
+                selection.credentials(); QuotaPolicy.current(selection)
+                source = old.source_snapshot['source']
+                # Rebuild immutable admission revisions, but measure only in the worker.
+                snapshot = _capture(attempt, context_id, source, type('Identity', (), {
+                    'input_id': old.source_snapshot['analysis_id'], 'transcript_id': old.source_snapshot['transcript_id']})())
+                if (Selection.current().provider, Selection.current().project_id, Selection.current().model) != (value.provider, value.project_id, value.model):
+                    raise coaching.Conflict('selection_mismatch')
+                return _queue(owner, value, snapshot)
+    if not replacement and set(payload) - {'expected_selection', 'transcript_revision'}:
         raise coaching.Conflict('stale_revision')
     source = coaching.prepare_attempt(attempt)
     deck, storage = descriptions.prepare_saved(attempt.deck_id)
@@ -197,10 +235,20 @@ def generate(attempt_id, payload, context_id=None):
         descriptions.check_storage(locked_deck, storage)
         owner = FeedbackAnalysis.objects.filter(attempt=attempt, analysis_type=kind).first()
         if owner:
-            return generate(attempt_id, payload, context_id)
+            if not replacement:
+                return generate(attempt_id, payload, context_id)
+            old_value, owner, old = coaching._locked(owner.pk, owner.feedback_revision)
+            if payload['feedback_revision'] != owner.feedback_revision:
+                raise coaching.Conflict('stale_revision')
+            if replacement != descriptions.replacement_selection(old_value):
+                raise coaching.Conflict('selection_mismatch')
+            if descriptions.replacement_requires_confirmation(old_value, old) and not payload.get('acknowledge_uncertain'):
+                raise coaching.Conflict('confirmation_required')
         assert_selection(payload, descriptor(coaching.profile_selection(attempt.deck_id, source=deck.input_id)))
-        value = descriptions.admit_prepared(selection, deck, storage, dependency=True, candidate=candidate)
-        owner = FeedbackAnalysis.objects.create(attempt=attempt, analysis_type=kind)
+        value = descriptions.admit_prepared(selection, deck, storage, dependency=True, candidate=candidate,
+            replacement_of=old_value if replacement else None)
+        if not owner:
+            owner = FeedbackAnalysis.objects.create(attempt=attempt, analysis_type=kind)
         return _queue(owner, value, snapshot)
 
 
@@ -222,6 +270,12 @@ def _bundle(value, job, measurements):
         correction=correction, measurements=measurements, revisions=revisions, slide_events=captured['slide_events'])
 
 
+def _current_measurements(job, measurements):
+    if (not isinstance(measurements, dict)
+            or measurements.get('version') != job.source_snapshot['presentation_score']['protocol']['measurement_version']):
+        raise FeedbackError('snapshot_unavailable')
+
+
 def prepared(value, job):
     from . import presentation_score_v2 as core, presentation_measurements
     check_versions(job)
@@ -234,6 +288,7 @@ def prepared(value, job):
         measurements = presentation_measurements.measure_audio(attempt.audio.path,
             attempt_id=str(attempt.pk), duration_ms=job.source_snapshot['source']['duration_ms'],
             text=job.source_snapshot['effective_text'], language=job.source_snapshot['source']['speaker_language'])
+        _current_measurements(job, measurements)
         bundle = _bundle(value, job, measurements)
         identity = core.source_identity(bundle)
         with transaction.atomic():
@@ -247,6 +302,7 @@ def prepared(value, job):
                     **locked_job.source_snapshot['presentation_score'], 'measurements': measurements, 'source_identity': identity}}
                 locked_job.save(update_fields=['source_snapshot', 'updated_at'])
             job.source_snapshot = locked_job.source_snapshot
+    _current_measurements(job, measurements)
     bundle = _bundle(value, job, measurements)
     if core.source_identity(bundle) != job.source_snapshot['presentation_score']['source_identity']:
         raise FeedbackError('snapshot_unavailable')
@@ -270,6 +326,7 @@ class ScoreResult:
 def normalize(value, job, prepared_request, receipt):
     from . import presentation_score_v2 as core
     check_versions(job)
+    _current_measurements(job, job.source_snapshot['presentation_score']['measurements'])
     bundle = _bundle(value, job, job.source_snapshot['presentation_score']['measurements'])
     result, audit = core.normalize_with_audit(bundle, prepared_request, receipt)
     audit = {**audit, 'binding': {'input_hash': prepared_request.input_hash, 'protocol': protocol(),
@@ -314,9 +371,10 @@ def read(attempt_id, context_id=None):
         raise FeedbackError('snapshot_unavailable')
     if job:
         value = job.description_set
-        state['selection'] = descriptor(value=value, job=job)
+        replacement = descriptions.replacement_selection(value)
+        state['selection'] = descriptor(replacement) if replacement else descriptor(value=value, job=job)
         identity = job.source_snapshot.get('presentation_score', {}).get('source_identity')
-        if not _replacement_supported(job):
+        if not replacement and not _replacement_supported(job):
             state['retry_available'] = False
         elif _rejected_completion(job):
             retry_at = state['retry_at']

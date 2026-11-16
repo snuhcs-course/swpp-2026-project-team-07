@@ -234,3 +234,29 @@ test('v5 accepts up to 25 words in either category and rejects 26 without trunca
   v.descriptions.slides[0][category][0].text+=sep+'extra';assert.throws(()=>parseProfileState(v,deckId,2));
  }
 });
+
+test('stale profile retry binds the retained revision to the current OpenRouter selection',async()=>{
+ const original=globalThis.fetch,calls=[];
+ writeStored(`server-deck:${API_URL}:profile-cutover`,deckId);
+ const old=state();Object.assign(old,{state:'failed',stale:true,retry_available:true,descriptions:null,available_data:false,processing_revision:3});
+ Object.assign(old.provenance,{provider:'openai',model:'gpt-6-luna',prompt_version:'slide-profile-v5',schema_version:'slide-profile-v5'});
+ old.selection={...descriptionSelection,provider:'openrouter',project_id:'synthetic-router',model:'openai/gpt-6-luna',
+  prompt_version:'slide-profile-v5',schema_version:'slide-profile-v5',token:'a'.repeat(64)};
+ let response=old,renderer;
+ globalThis.fetch=async(_url,init)=>{calls.push({method:init.method,body:init.body?JSON.parse(init.body):null});return new Response(JSON.stringify(response));};
+ try{
+  await act(async()=>{renderer=create(React.createElement(Harness,{id:'profile-cutover'}));});
+  await act(async()=>{await current.recover();});
+  assert.deepEqual(calls.filter(c=>c.method==='POST').map(c=>c.body),[{description_set_id:old.description_set_id,processing_revision:3,expected_selection:'a'.repeat(64)}]);
+  response={...old,state:'needs_confirmation',requires_confirmation:true};
+  await act(async()=>current.refresh());
+  const beforeConfirmation=calls.length;
+  await act(async()=>{await current.recover();});
+  assert.equal(calls.slice(beforeConfirmation).filter(c=>c.method==='POST').length,0,'an uncertain stale request requires acknowledgement');
+  const captured=current.value;response={...response,selection:{...old.selection,token:'b'.repeat(64)}};
+  await act(async()=>current.refresh());
+  const count=calls.length;
+  await act(async()=>{await current.recover(true,captured);});
+  assert.equal(calls.slice(count).filter(c=>c.method==='POST').length,0,'a changed current selection needs fresh confirmation');
+ }finally{if(renderer)await act(async()=>renderer.unmount());globalThis.fetch=original;}
+});

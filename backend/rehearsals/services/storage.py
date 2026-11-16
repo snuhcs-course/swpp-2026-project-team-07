@@ -11,7 +11,8 @@ from django.core.files.base import ContentFile
 from django.db import IntegrityError, transaction
 from rest_framework.exceptions import ValidationError
 
-from rehearsals.limits import MAX_AUDIO_BYTES, MAX_PDF_BYTES, MAX_DURATION_MS, PREPARATION_VERSION
+from rehearsals.limits import (MAX_AUDIO_BYTES, MAX_PDF_BYTES, MAX_DURATION_MS,
+                               AUDIO_DURATION_TOLERANCE_MS, PREPARATION_VERSION)
 from rehearsals.models import Attempt, Deck, Slide
 from .pdf import prepare_slides
 
@@ -110,10 +111,11 @@ def store_attempt(upload, metadata):
                 if frame.is_corrupt or not frame.sample_rate:
                     raise ValueError()
                 duration += frame.samples * 1000 / frame.sample_rate
-                if duration > MAX_DURATION_MS + 1000:
+                if duration > MAX_DURATION_MS + AUDIO_DURATION_TOLERANCE_MS:
                     raise ValueError()
             # A small codec tail is allowed; the capture timeline remains capped at 30 minutes.
-            if not 0 < duration <= MAX_DURATION_MS + 1000 or abs(duration - metadata["duration_ms"]) > 1000:
+            if (not 0 < duration <= MAX_DURATION_MS + AUDIO_DURATION_TOLERANCE_MS
+                    or abs(duration - metadata["duration_ms"]) > AUDIO_DURATION_TOLERANCE_MS):
                 raise ValueError()
     except Exception as exc:
         raise ValidationError("Audio must be playable, at most 30 minutes, and match its recording duration.") from exc

@@ -1,6 +1,6 @@
 # AI feedback — checkpoints 1–5
 
-**November 5 documentation baseline:** this guide incorporates published v8 `cdb8055`. OpenRouter configuration below describes the release; source on this documentation branch remains at main. Earlier checkpoint sections describe their original provider/workflow scope. Current selected-slide feedback, scoring and durable Q&A are summarized in [Design Rev.4.0](../Design-Documentation.md) and the [dated evidence reconciliation](testing-evidence/iteration-3-reconciliation-20261105.md). Repository configuration defaults remain distinct from hosted enablement.
+**November 5 documentation baseline:** this guide incorporates published v8 `cdb8055`. OpenRouter configuration below describes the v8 release, now on main. Earlier checkpoint sections describe their original provider/workflow scope. Current selected-slide feedback, scoring and durable Q&A are summarized in [Design Rev.4.0](../Design-Documentation.md) and the [dated evidence reconciliation](testing-evidence/iteration-3-reconciliation-20261105.md). Repository configuration defaults remain distinct from hosted enablement.
 
 > Current routing, October 29, 2026: app LLM prompts default to OpenRouter with
 > `openai/gpt-6-luna`. The configuration and cutover sections below apply to current

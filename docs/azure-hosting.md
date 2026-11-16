@@ -1,6 +1,6 @@
 # Public Azure submission backend
 
-Documentation reconciled November 5, 2026 against published v8 `cdb8055` and the later release report. Historical deployment observations below keep their dates; this task did not inspect the VM or change its configuration. Application/deployment source remains outside main.
+Documentation reconciled November 5, 2026 against published v8 `cdb8055` and the later release report. Historical deployment observations below keep their dates; this task did not inspect the VM or change its configuration. GitHub main advanced to the v8 source on November 16.
 
 OutLoud's submission APK connects directly to `https://outloud-team07.koreacentral.cloudapp.azure.com/api` over public HTTPS. Reviewers enter one demo code inside the app; they do not install Tailscale or configure a server address. The existing Ubuntu 24.04 x64 VM, `outloud-team07` in `outloud-team07-semester`, remains in Korea Central: `Standard_B2als_v2` (2 vCPU / 4 GiB), 64 GiB Standard SSD. This is a semester pilot, not a load-tested public service.
 
@@ -10,7 +10,7 @@ Install **OutLoud-demo-v8-issue49.apk** from the [v8 release](https://github.com
 
 V8 retains the selected PR34 UI, bundled seven-slide Seoul PDF, first-Redo repair and combined v7 feedback/playback/default fixes, plus targeted review recovery. New imports use General audience and ten minutes; the bundled offline Seoul seed retains its five-minute suggestion. [Source and dated evidence](testing-evidence/iteration-3-reconciliation-20261105.md).
 
-The release reports a later compatible backend v2.4 policy: 24,000 output tokens, 128 KiB inner JSON and a grading-only 240-second deadline. Its unpushed patch is separate from APK source. The original ten-slide retry succeeded with zero evidence rejections according to that release record. Current service health was not rechecked for this documentation task.
+The release reports a later compatible backend v2.4 policy: 24,000 output tokens, 128 KiB inner JSON and a grading-only 240-second deadline. The backend patch was [recovered on November 15](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/2c7c337c2c89de6e6714c9e5f0708fb2be2cabc3) on a separate branch. The original ten-slide retry succeeded with zero evidence rejections according to that release record. Current service health was not rechecked for this documentation task.
 
 1. Install the APK on a supported Android phone.
 2. Enter the code supplied privately by the operator to intended reviewers. Keep the code out of repository files and APK assets.
@@ -65,13 +65,15 @@ The temporary operator-only SSH rule was removed after cutover; the only custom 
 
 The migrated original history comprises 3 presentations, 14 slides and 17 rehearsals: 16 completed legacy results and one unqueued awaiting-analysis result. All 34 original media files total 21,725,239 bytes and matched original hashes/sizes at migration. Migration did not queue old recordings, manufacture Scribe provenance or generate feedback. The November 2 activation verified unchanged fingerprints of the original records before/after deployment. Later labeled synthetic checks are additive and separate from that original inventory.
 
-The original local schema diverged from current main after migration 0002. Keep the original PostgreSQL dump on the Mac in `~/.codex/backups/outloud-azure-20261031/`; do not restore it and run current migrations over it. The bounded [legacy exporter](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/deploy/export-legacy-history.py) and [import command](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/backend/rehearsals/management/commands/import_legacy_history.py) validate IDs, references and file hashes. Import requires a freshly migrated empty history database and media already restored with matching hashes; restore media into an empty destination before import. They are not a repeat-import or general schema conversion service. Preserve the original local containers/volumes and both private archives.
+The original local schema diverged from current main after migration 0002. Keep the original PostgreSQL dump on the Mac in `~/.codex/backups/outloud-azure-20261031/`; do not restore it and run current migrations over it. The bounded [legacy exporter](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/deploy/export-legacy-history.py) and [import command](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/backend/rehearsals/management/commands/import_legacy_history.py) validate IDs, references and file hashes. Import requires a freshly migrated empty history database and media already restored with matching hashes; restore media into an empty destination before import. They are not a repeat-import or general schema conversion service. Preserve the original local containers/volumes and both private archives. Preserve the original local containers/volumes and both private archives.
 
 Run `bash deploy/backup.sh` as root for a consistent current-schema PostgreSQL dump/media archive. It stops and resumes only previously running API/worker/scheduler writers; public requests may briefly fail during that maintenance window. Copy verified snapshots off the VM. The helper excludes environment secrets and certificate keys; keep those separately. [Backup helper](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/deploy/backup.sh).
 
 A current-schema snapshot was restored successfully on October 31 in an isolated PostgreSQL 16 container, preserving all records/media with zero provider/description/feedback jobs. Before the public cutover, another data-only snapshot was copied to `~/.codex/backups/outloud-public-20261101/` and its three checksums verified. Credential rollback stayed only in root-private `/var/backups/outloud-public-cutover/pre-public.env` on the VM. No new production-secret download occurred. These are manual one-time backups, not a schedule.
 
 For rollback, close the public HTTP/HTTPS firewall rule, retain all current volumes, images and backups, and restore the previous root-private environment/configuration and image. Re-enabling private Tailscale access would require a deliberate operator action. Do not reverse schema migrations, use `down -v`, overwrite source volumes or delete archives. Export new Azure-only records before retiring the server.
+
+<a id="verification-and-costs"></a>
 
 ## Dated verification and cost records
 

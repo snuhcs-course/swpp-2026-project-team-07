@@ -7,7 +7,7 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const React = await import('react');
 const { act, create } = await import('react-test-renderer');
 const { useSegmentPlayer } = await import('../src/features/rehearsal/useSegmentPlayer.ts');
-const { players, mode } = await import('./helpers/segment-player-native.mjs');
+const { players, mode, AppState } = await import('./helpers/segment-player-native.mjs');
 const seg = (startMs, endMs, uri = 'file:///synthetic.m4a') => ({ uri, startMs, endMs });
 async function mount() {
   let value, renderer;
@@ -82,6 +82,43 @@ test('cancel during a pending seek cannot start audio when it resolves', async (
   assert.equal(h.player.plays, 0);
   assert.equal(h.value.playingKey, null);
   await h.unmount();
+});
+
+// OpenAI Codex #44: seek within the complete saved-segment queue, independently of Play.
+test('exact seeks retain queue offsets and paused intent across repeated visits and source changes',async t=>{
+ t.mock.timers.enable({apis:['setInterval']});const h=await mount();t.after(()=>h.unmount());
+ const queue=[seg(1000,11000),seg(20000,30000),seg(5000,45000,'file:///retake.m4a')];
+ await act(async()=>{await h.value.seekSegments('run',queue,15000,true);});
+ assert.deepEqual(h.player.seeks,[25]);assert.equal(h.player.playing,false);assert.equal(h.value.elapsedMs,15000);assert.equal(h.value.paused,true);
+ await act(async()=>h.value.setPaused(false));h.player.currentTime=30;
+ await act(async()=>t.mock.timers.tick(50));assert.deepEqual(h.player.seeks,[25,5]);
+ h.player.currentTime=8;await act(async()=>t.mock.timers.tick(50));assert.equal(h.value.elapsedMs,23000);
+ await act(async()=>{await h.value.seekSegments('run',queue,10000,false);});
+ assert.equal(h.player.currentTime,20,'an exact boundary selects the next original visit');assert.equal(h.player.playing,true);
+ await act(async()=>{await h.value.seekSegments('run',queue,60000,false);});
+ assert.equal(h.value.elapsedMs,60000);assert.equal(h.player.playing,false,'the final endpoint settles paused');
+ await act(async()=>{await h.value.playSegments('run',[]);});assert.equal(h.player.currentTime,1,'Play after the final endpoint restarts the complete queue');
+});
+
+test('newer exact seeks supersede pending targets and retain a pause made while seeking',async()=>{
+ const h=await mount();let release;const queue=[seg(1000,11000),seg(20000,30000)];
+ try{
+  h.player.seekWait=new Promise(resolve=>{release=resolve;});let first,latest;
+  await act(async()=>{first=h.value.seekSegments('run',queue,15000,false);});
+  h.player.seekWait=null;await act(async()=>{latest=h.value.seekSegments('run',queue,1000,false);h.value.setPaused(true);});
+  await act(async()=>{release();await first;await latest;});
+  assert.deepEqual(h.player.seeks,[25,2]);assert.equal(h.player.playing,false);assert.equal(h.value.elapsedMs,1000);assert.equal(h.value.paused,true);
+ }finally{await h.unmount();}
+});
+
+test('backgrounding during an exact seek cancels native resume even after returning',async()=>{
+ const h=await mount();let release;
+ try{
+  h.player.seekWait=new Promise(resolve=>{release=resolve;});let pending;
+  await act(async()=>{pending=h.value.seekSegments('run',[seg(1000,11000)],5000,false);});
+  await act(async()=>{AppState.emit('background');AppState.emit('active');release();await pending;});
+  assert.equal(h.player.plays,0);assert.equal(h.value.playingKey,null);
+ }finally{await h.unmount();}
 });
 
 test('superseded audio-mode setup cannot replace the newest sentence source', async t => {

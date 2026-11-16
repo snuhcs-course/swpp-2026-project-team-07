@@ -14,9 +14,8 @@ globalThis.IS_REACT_ACT_ENVIRONMENT=true;
 // Asset identities only; this test never reads the phone or a user recording.
 globalThis.require=asset=>asset;
 const question=i=>({id:String(i).padStart(32,'a'),panelist:'Audience '+i,role:'Student',slide_index:i-1,topic:'Synthetic topic '+i,question:'Synthetic question '+i,follow_up:'Synthetic follow-up '+i});
-function setup(){
- runtime.routes=[];runtime.mounts=0;runtime.unmounts=0;runtime.speechStops=0;runtime.playerStops=0;
- const questions=[1,2,3].map(question);
+function setup(questions=[1,2,3].map(question)){
+ runtime.routes=[];runtime.mounts=0;runtime.unmounts=0;runtime.speeches=[];runtime.speechStops=0;runtime.playerStops=0;
  const cached={jobId:73001,runId:'runtime-run',audience:'Saved audience',questions,answers:{},createdAt:'2026-01-01T00:00:00Z'};
  saveQaV2(API_URL,'runtime-deck',cached.jobId,cached);
  globalThis.qaScreenModel={transcribed:true,transcripts:new Map(),stages:new Map(),deck:{id:'runtime-deck',hue:'blue',pages:[],slides:[]},state:{run:{id:'runtime-run',parts:[]}}};
@@ -54,6 +53,64 @@ test('actual Next buttons advance a cached three-question page while retaining h
   assert.deepEqual(readQaV2(API_URL,'runtime-deck',cached.jobId).answers,{});
  }finally{if(r)await act(async()=>r.unmount());}
  assert.equal(runtime.unmounts,1);
+});
+
+test('question Hear selects English or Korean from its own text and retains fallback for other scripts',async()=>{
+ for(const [text,language]of [
+  ['How does the PDF support your conclusion?','en'],
+  ['이 결과를 어떻게 설명하나요?','ko'],
+  ['AI와 PDF의 차이는 무엇인가요?','ko'],
+  ['한글'.normalize('NFD'),'ko'],
+  ['123 — ?!',undefined],
+  ['結果を説明してください。',undefined],
+ ]){
+  setup([{...question(1),question:text}]);let r;
+  try{
+   await act(async()=>{r=create(React.createElement(QAScreen));});
+   await act(async()=>button(r,'Hear the question: '+text).props.onPress());
+   assert.equal(runtime.speeches.length,1);assert.equal(runtime.speeches[0].text,text);
+   assert.equal(runtime.speeches[0].options.language,language,text);
+  }finally{if(r)await act(async()=>r.unmount());}
+ }
+});
+
+test('follow-up Hear selects its language independently from the main question',async()=>{
+ const first={...question(1),question:'근거는 무엇인가요?',follow_up:'How would you test that conclusion?'};
+ const cached=setup([first]);
+ const answer={audioUri:'file:///unused-synthetic-answer.m4a',durationMs:20000,status:'done',at:'2026-01-01T00:00:00Z',
+  result:{verdict:'answered',did:'Direct answer',evidence:'Relevant example',clarify:'One detail',transcript:{text:'',words:[]},duration_ms:20000}};
+ saveQaV2(API_URL,'runtime-deck',cached.jobId,{...cached,answers:{'0-0':answer}});let r;
+ try{
+  await act(async()=>{r=create(React.createElement(QAScreen));});
+  await act(async()=>button(r,'Hear the question: '+first.question).props.onPress());
+  assert.equal(runtime.speeches.at(-1).options.language,'ko');
+  await act(async()=>button(r,'Follow-up from '+first.panelist+': '+first.follow_up).props.onPress());
+  await act(async()=>button(r,'Hear the follow-up: '+first.follow_up).props.onPress());
+  assert.equal(runtime.speeches.at(-1).text,first.follow_up);
+  assert.equal(runtime.speeches.at(-1).options.language,'en');
+ }finally{if(r)await act(async()=>r.unmount());}
+});
+
+test('Hear toggles off and question navigation, Back and unmount still stop speech',async()=>{
+ const cached=setup();let r;
+ try{
+  await act(async()=>{r=create(React.createElement(QAScreen));});
+  await act(async()=>button(r,'Hear the question: '+cached.questions[0].question).props.onPress());
+  let stops=runtime.speechStops;
+  await act(async()=>button(r,'Stop the question: '+cached.questions[0].question).props.onPress());
+  assert.equal(runtime.speechStops,stops+1);assert.equal(runtime.speeches.length,1);
+  await act(async()=>button(r,'Hear the question: '+cached.questions[0].question).props.onPress());
+  stops=runtime.speechStops;
+  await act(async()=>button(r,'Next').props.onPress());
+  assert.equal(runtime.speechStops,stops+1);
+  await act(async()=>button(r,'Hear the question: '+cached.questions[1].question).props.onPress());
+  stops=runtime.speechStops;
+  await act(async()=>button(r,'Back').props.onPress());
+  assert.equal(runtime.speechStops,stops+1);assert.equal(runtime.routes.at(-1)[0],'review');
+  stops=runtime.speechStops;
+  await act(async()=>r.unmount());r=null;
+  assert.equal(runtime.speechStops,stops+1);
+ }finally{if(r)await act(async()=>r.unmount());}
 });
 
 test('Scribe consent Cancel keeps a saved answer and Continue submits that same identity once',async()=>{

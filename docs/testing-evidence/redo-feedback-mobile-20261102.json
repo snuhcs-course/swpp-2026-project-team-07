@@ -1,0 +1,70 @@
+{
+  "evidence_date_local": "2026-11-02",
+  "timezone": "Asia/Seoul",
+  "summary_generated_at_utc": "2026-11-01T16:55:50.087100+00:00",
+  "verification_operator": "agent-operated automated checks",
+  "human_acceptance_claimed": false,
+  "recorded_at_utc": "2026-11-01T16:41:27.736152+00:00",
+  "status": "passed",
+  "environment": {
+    "node": "v26.8.2",
+    "repository_nvmrc_major": "24",
+    "runtime_note": "Existing Node 26.8.2 used; repository requests24 and package minimum is22.13.0. Node 24 was not available in the checked local runtime locations."
+  },
+  "commands": [
+    {
+      "command": [
+        "npm",
+        "ci",
+        "--offline",
+        "--no-audit"
+      ],
+      "exit_code": 0,
+      "working_directory": "mobile"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "check"
+      ],
+      "exit_code": 0,
+      "tests": 576,
+      "passed": 576,
+      "failed": 0,
+      "working_directory": "mobile",
+      "existing_warnings": [
+        {
+          "file": "mobile/src/features/rehearsal/useSegmentPlayer.ts",
+          "line": 108,
+          "rule": "react-hooks/exhaustive-deps",
+          "message": "Effect cleanup reads token.current; this warning predates this task."
+        }
+      ]
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "bundle:android"
+      ],
+      "exit_code": 0,
+      "working_directory": "mobile"
+    }
+  ],
+  "offline_install": true,
+  "package_lock_unchanged": true,
+  "coverage": {
+    "unit_tests_total": 576,
+    "unit_tests_passed": 576,
+    "unit_tests_failed": 0,
+    "typecheck_passed": true,
+    "android_javascript_export_passed": true,
+    "includes": "Redo actual-engine lifecycle, exact-source compact feedback, offline Seoul seeding and protected transports"
+  },
+  "limitations": [
+    "React/native boundary fixtures do not establish Android microphone, playback or navigation acceptance.",
+    "No provider inference or live-service acceptance is established by these checks.",
+    "Android JavaScript export is distinct from native APK execution."
+  ]
+}

@@ -1,3 +1,4 @@
+import { backendFetch as fetch } from '../../services/backendFetch';
 import { readStored, writeStored } from '../../services/storage';
 import { normalizeApi } from '../transcription/analysisStorage';
 import type { STTSuggestion } from './correctionLines';

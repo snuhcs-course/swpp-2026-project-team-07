@@ -147,6 +147,68 @@ def _queue(value):
     return value
 
 
+def replacement_selection(value):
+    """Fresh OpenRouter work never rewrites a saved direct-provider identity."""
+    try:
+        current = Selection.current()
+    except FeedbackError:
+        return None
+    if current.provider == 'openrouter' and value.provider != 'openrouter':
+        from .slide_profile_schema import is_profile_schema
+        return Selection.profiles() if is_profile_schema(value.schema_version) else current
+    return None
+
+
+def uncertain_submission(request):
+    return bool(request and (request.outcome == 'uncertain' or
+        (request.received_at and not request.completed_at and
+         provider.receipt_is_uncertain(request.status_code, request.body_complete, request.raw_body, request.provider)) or
+        (request.submitted_at and not request.received_at and not request.completed_at)))
+
+
+def replacement_requires_confirmation(value, job=None):
+    # Edits advance the set revision without creating a job. A real retry creates
+    # a new job and has already acknowledged the previous submission.
+    description_job = value.jobs.order_by('-generation').first()
+    request = FeedbackRequest.objects.filter(job=description_job).first() if description_job else None
+    return uncertain_submission(request) or (job is not None and uncertain_submission(
+        FeedbackRequest.objects.filter(coaching_job=job).first()))
+
+
+def unresolved_cutover_scope(deck_id, source, selection):
+    """Expose the legacy uncertainty that a fresh current scope would bypass."""
+    if selection.provider != 'openrouter':
+        return None
+    from .slide_profile_schema import is_profile_schema
+    profile = is_profile_schema(selection.schema_version)
+    candidates = DescriptionSet.objects.filter(deck_id=deck_id, source_fingerprint=source).exclude(
+        provider='openrouter').order_by('-updated_at', '-created_at')
+    for value in candidates:
+        if is_profile_schema(value.schema_version) == profile and replacement_requires_confirmation(value):
+            return value
+    return None
+
+
+def replace_scope(value, payload, selection):
+    # Decode outside admission locks, then verify the old revision and uncertainty.
+    prepared, snapshot = prepare_saved(value.deck_id)
+    candidate = selection.adapter().prepare_descriptions(prepared)
+    with transaction.atomic():
+        Deck.objects.select_for_update().get(pk=value.deck_id)
+        old = DescriptionSet.objects.select_for_update().get(pk=value.pk)
+        current = replacement_selection(old)
+        assert_selection(payload, selection_descriptor(current))
+        if current != selection:
+            raise Conflict('selection_mismatch')
+        if 'processing_revision' not in payload:
+            raise Conflict('revision_required')
+        if payload['processing_revision'] != old.processing_revision:
+            raise Conflict('stale_revision')
+        if replacement_requires_confirmation(old) and not payload.get('acknowledge_uncertain'):
+            raise Conflict('confirmation_required')
+        return admit_prepared(selection, prepared, snapshot, candidate=candidate, replacement_of=old)
+
+
 @_private_database_logging()
 def generate(deck_id, payload):
     """Initial cache lookup or explicit, single-consumption failed retry."""
@@ -155,6 +217,9 @@ def generate(deck_id, payload):
     if set_id:
         # Resolve ownership before configuration; no client chooses provider/model.
         existing = DescriptionSet.objects.get(pk=set_id, deck_id=deck_id)
+        replacement = replacement_selection(existing)
+        if replacement:
+            return replace_scope(existing, payload, replacement)
         with transaction.atomic():
             value = DescriptionSet.objects.select_for_update().get(pk=existing.pk)
             assert_selection(payload, selection_descriptor(value=value))
@@ -186,7 +251,7 @@ def generate(deck_id, payload):
     return admit_prepared(selection, prepared, snapshot)
 
 
-def admit_prepared(selection, prepared, snapshot, *, dependency=False, candidate=None):
+def admit_prepared(selection, prepared, snapshot, *, dependency=False, candidate=None, replacement_of=None):
     """Internal captured-selection seam; caller has validated speech first.
 
     A dependency can reuse failed work but NEVER retries it. Its explicit route
@@ -205,6 +270,10 @@ def admit_prepared(selection, prepared, snapshot, *, dependency=False, candidate
                     existing.jobs.get(generation=existing.processing_revision).state in ACTIVE):
                 return existing
             raise Conflict('revision_required')
+        unresolved = unresolved_cutover_scope(deck_id, prepared.input_id, selection)
+        # Only an explicit old-scope revision/ack check grants this internal permit.
+        if unresolved and (replacement_of is None or unresolved.pk != replacement_of.pk):
+            raise Conflict('confirmation_required')
         selection.credentials()
         QuotaPolicy.current(selection)
         value = DescriptionSet.objects.create(**scope, source_snapshot=snapshot,
@@ -268,14 +337,18 @@ def public_state(deck_id, value=None, *, absent='absent', source=None, current_s
     job = value.jobs.order_by('-generation').first()
     request = FeedbackRequest.objects.filter(job=job).first() if job else None
     state = 'completed' if value.descriptions is not None else job.state if job else 'failed'
-    retry_at = effective_retry_at(value, job)
+    replacement = replacement_selection(value)
+    confirmation = state == 'needs_confirmation' or bool(replacement and replacement_requires_confirmation(value))
+    if confirmation:
+        state = 'needs_confirmation'
+    retry_at = None if replacement else effective_retry_at(value, job)
     try:
         selection = current_selection or Selection.current()
         current_scope = selection.scope() == Selection.saved(value).scope()
     except FeedbackError:
         current_scope = False
     return {'deck_id': str(deck_id), 'description_set_id': str(value.pk), 'state': state,
-        'selection': selection_descriptor(value=value),
+        'selection': selection_descriptor(replacement) if replacement else selection_descriptor(value=value),
         'stage': 'descriptions', 'processing_revision': value.processing_revision,
         'description_revision': value.description_revision, 'descriptions': value.descriptions, 'edited': value.edited,
         'provenance': {**Selection.saved(value).scope(), 'origin': 'edited' if value.edited else 'generated' if value.descriptions is not None else None,
@@ -285,8 +358,8 @@ def public_state(deck_id, value=None, *, absent='absent', source=None, current_s
         'submitted_at': request.submitted_at if request else None, 'received_at': request.received_at if request else None,
         'completed_at': value.updated_at if value.descriptions is not None else job.completed_at if job else None,
         'error': safe_error(job.error_code) if job and state != 'completed' else None,
-        'retry_at': retry_at, 'retry_available': state in {'failed', 'needs_confirmation'} and (not retry_at or retry_at <= now),
-        'requires_confirmation': state == 'needs_confirmation', 'stale': not current_scope or source != value.source_fingerprint,
+        'retry_at': retry_at, 'retry_available': bool(replacement) or state in {'failed', 'needs_confirmation'} and (not retry_at or retry_at <= now),
+        'requires_confirmation': confirmation, 'stale': not current_scope or source != value.source_fingerprint,
         'available_data': value.descriptions is not None}
 
 
@@ -305,6 +378,7 @@ def read(deck_id, set_id=None):
         source = None
     if not value and selection and source:
         value = DescriptionSet.objects.filter(deck_id=deck_id, source_fingerprint=source, **selection.scope()).first()
+        value = value or unresolved_cutover_scope(deck_id, source, selection)
     if value:
         return public_state(deck_id, value, source=source)
     try:

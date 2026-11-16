@@ -5,7 +5,7 @@
 
 ## Published demo behavior — November 5 reconciliation
 
-The current documentation baseline is published v8 `cdb8055`; this branch retains main application source. [Current evidence](testing-evidence/iteration-3-reconciliation-20261105.md) separates release, later reported backend repair and pending local work. The compact release UI exposes the controls listed below; older saved-attempt tools described in this guide remain historical/backend capabilities and are not all reachable in that UI.
+This guide describes published v8 `cdb8055`, the GitHub main baseline since November 16. [Current evidence](testing-evidence/iteration-3-reconciliation-20261105.md) separates release, later reported backend repair and pending local work. The compact release UI exposes the controls listed below; older saved-attempt tools described in this guide remain historical/backend capabilities and are not all reachable in that UI.
 
 ## Earlier integrated behavior and retained capabilities
 
@@ -58,6 +58,8 @@ Full Review identifies slides needing recovery with links to their selected reco
 Recovery uses the exact selected take and every chronological visit for that slide, one slide at a time. Closing details, leaving/backgrounding or changing the source invalidates pending local operations. Revision/selection checks, correction/settings synchronization, cooldowns and uncertain-submission acknowledgement remain required; profile-retry confirmation is additionally bound to the description-set ID and processing revision.
 
 Full Review keeps its equal-width slide sections. Dragging previews an exact position within a section; release seeks within the saved source segments, including repeated visits and retakes. Playing audio continues, while paused or idle seeks stay paused. Accessibility adjustments move five seconds. Interrupted gestures cancel, and leaving/backgrounding or changing the selected source invalidates pending seeks. Missing source audio remains disclosed; unavailable target audio never silently seeks elsewhere. The selected run still plays in slide order, retaining each slide's chronological source segments.
+
+<a id="app-connection-and-transcription-disclosure"></a>
 
 ## Development connection and transcription disclosure
 

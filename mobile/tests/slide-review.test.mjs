@@ -17,7 +17,7 @@ test('missing, failed, insufficient, outdated and successful are distinct', () =
  assert.equal(reviewStatus({...base,state:'queued'},0), 'Queued for AI feedback');
  const done={...base,state:'completed',result:{stale:false,slides:[{slide_index:0,status:'insufficient_evidence',findings:[],enrichments:[]}]}};
  assert.equal(reviewStatus(done,0),'The AI could not assess this slide from the available evidence');
- done.result.slides[0].status='successful'; assert.equal(reviewStatus(done,0),'Looks good!');
+ done.result.slides[0].status='successful'; assert.equal(reviewStatus(done,0),'No issue flagged');
  assert.equal(reviewStatus({...done,stale:true},0),'Feedback outdated');
 });
 test('reject responses for other takes, visit selections and oversized summaries', () => {

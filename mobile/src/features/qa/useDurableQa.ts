@@ -1,3 +1,4 @@
+import { backendFetch as fetch } from '../../services/backendFetch';
 import {useCallback,useEffect,useLayoutEffect,useRef,useSyncExternalStore} from 'react';
 import {AppState} from 'react-native';
 import {API_URL} from '../../services/api';

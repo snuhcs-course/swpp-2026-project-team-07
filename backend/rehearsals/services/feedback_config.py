@@ -45,14 +45,14 @@ class Selection:
     @classmethod
     def current(cls, env=None):
         env = os.environ if env is None else env
-        name = env.get('FEEDBACK_PROVIDER', 'openai')
-        if name not in {'gemini', 'openai'}:
+        name = env.get('FEEDBACK_PROVIDER', 'openrouter')
+        if name not in provider.DEFAULT_MODELS:
             raise FeedbackError('invalid_configuration')
         prefix = 'FEEDBACK_' + name.upper() + '_'
         project = env.get(prefix + 'PROJECT_ID', '')
-        model = env.get(prefix + 'MODEL', 'gemini-3.1-flash-lite' if name == 'gemini' else 'gpt-6-luna')
+        model = env.get(prefix + 'MODEL', provider.DEFAULT_MODELS[name])
         if (not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9._-]{0,159}', project)
-                or not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9._-]{0,99}', model)):
+                or not provider.valid_model(name, model)):
             raise FeedbackError('invalid_configuration')
         return cls(name, project, model, provider.DESCRIPTION_PROMPT_VERSION,
                    provider.current_schema_version(name, 'descriptions'))
@@ -79,12 +79,13 @@ class Selection:
     def credentials(self, env=None):
         env = os.environ if env is None else env
         enabled(env)
+        provider.check_active_provider(self.provider, env)
         # Saved retries keep provider/model, even when the current selection moves.
         # Only keys explicitly configured for the original project may be used.
         if env.get('FEEDBACK_' + self.provider.upper() + '_PROJECT_ID') != self.project_id:
             raise FeedbackError('project_changed')
         config = provider.ProviderConfig(self.provider, self.model,
-            env.get('GEMINI_API_KEY' if self.provider == 'gemini' else 'OPENAI_API_KEY', ''))
+            env.get(provider.API_KEYS[self.provider], ''))
         config.validate()
         return config
 

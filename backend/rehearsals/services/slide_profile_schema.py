@@ -7,11 +7,11 @@ from .feedback import (Description, Descriptions, PrivateModel, ShortText, Feedb
                        MAX_OUTPUT_BYTES, validated, description_facts, validate_descriptions)
 
 PROFILE_PROMPT_VERSION = 'slide-profile-v5'
-PROFILE_SCHEMAS = {'openai': 'slide-profile-v5', 'gemini': 'slide-profile-gemini-v5'}
-STRICT_PROFILE_SCHEMAS = {'openai': 'slide-profile-v4', 'gemini': 'slide-profile-gemini-v4'}
-HISTORICAL_PROFILE_SCHEMAS = {'openai': 'slide-profile-v1', 'gemini': 'slide-profile-gemini-v1'}
-CATEGORY_PROFILE_SCHEMAS = {'openai': 'slide-profile-v2', 'gemini': 'slide-profile-gemini-v2'}
-REFINED_PROFILE_SCHEMAS = {'openai': 'slide-profile-v3', 'gemini': 'slide-profile-gemini-v3'}
+PROFILE_SCHEMAS = {'openai': 'slide-profile-v5', 'openrouter': 'slide-profile-v5', 'gemini': 'slide-profile-gemini-v5'}
+STRICT_PROFILE_SCHEMAS = {'openai': 'slide-profile-v4', 'openrouter': 'slide-profile-v4', 'gemini': 'slide-profile-gemini-v4'}
+HISTORICAL_PROFILE_SCHEMAS = {'openai': 'slide-profile-v1', 'openrouter': 'slide-profile-v1', 'gemini': 'slide-profile-gemini-v1'}
+CATEGORY_PROFILE_SCHEMAS = {'openai': 'slide-profile-v2', 'openrouter': 'slide-profile-v2', 'gemini': 'slide-profile-gemini-v2'}
+REFINED_PROFILE_SCHEMAS = {'openai': 'slide-profile-v3', 'openrouter': 'slide-profile-v3', 'gemini': 'slide-profile-gemini-v3'}
 # Explicit union of Unicode whitespace used by Python and ECMAScript. Keep the
 # same policy in mobile/slideProfiles.ts so accepted outputs survive parsing.
 CUE_WORD_SEPARATOR = re.compile(r'[\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]+')

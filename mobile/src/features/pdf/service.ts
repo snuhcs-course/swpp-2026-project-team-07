@@ -51,6 +51,21 @@ export async function getImportedPdfs(): Promise<LocalPdf[]> {
 }
 
 export const pdfService = {
+  // OpenAI Codex, 2026-11-02: bundled catalog registration; see docs/ai-collaboration-prompts-iteration-2.md.
+  /** Register an already prepared bundled PDF without replacing any existing catalog entry. */
+  addBundledPdf(pdf: LocalPdf): Promise<LocalPdf> {
+    return mutate(async () => {
+      const previous = await getImportedPdfs();
+      const existing = previous.find(item => item.id === pdf.id);
+      if (existing) return existing;
+      const { directory, catalog } = getPaths();
+      await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
+      await FileSystem.writeAsStringAsync(`${catalog}.tmp`, JSON.stringify([pdf, ...previous]));
+      await FileSystem.moveAsync({ from: `${catalog}.tmp`, to: catalog });
+      return pdf;
+    });
+  },
+
   async importPdf(): Promise<LocalPdf | null> {
     const result = await DocumentPicker.getDocumentAsync({
       type: "application/pdf",

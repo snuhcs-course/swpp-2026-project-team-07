@@ -62,6 +62,7 @@ def read(deck_id, set_id=None):
         source = None
     if not value and selection and source:
         value = DescriptionSet.objects.filter(deck_id=deck_id, source_fingerprint=source, **selection.scope()).first()
+        value = value or descriptions.unresolved_cutover_scope(deck_id, source, selection)
     if value:
         return descriptions.public_state(deck_id, value, source=source, current_selection=selection)
     try:

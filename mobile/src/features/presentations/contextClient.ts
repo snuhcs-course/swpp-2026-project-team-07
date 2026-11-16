@@ -1,3 +1,4 @@
+import { backendFetch } from '../../services/backendFetch';
 // AI-assisted Phase 1; API-only integration, no screens, defaults, or provider jobs.
 import { parseContext, validateRequirementValues } from '../../domain/presentationRequirements';
 import { normalizeApi } from '../transcription/analysisStorage';
@@ -8,7 +9,7 @@ export class PresentationContextError extends Error {
   constructor(status: number, code: string) { super(`Presentation requirements request failed (HTTP ${status}).`); this.status = status; this.code = code; }
 }
 
-export function createPresentationContextClient(apiUrl: string, transport: typeof globalThis.fetch = globalThis.fetch) {
+export function createPresentationContextClient(apiUrl: string, transport: typeof globalThis.fetch = backendFetch) {
   const api = normalizeApi(apiUrl);
   async function request(localId: string, path: string, options: RequestInit) {
     const expected = readRequirements(localId, api);

@@ -109,7 +109,9 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
     if (hear === k) { stopSpeak(); return; }
     Speech.stop(); player.stop();
     setHear(k);
-    Speech.speak(text, { onDone: () => setHear(h => (h === k ? null : h)), onStopped: () => setHear(h => (h === k ? null : h)), onError: () => setHear(null) });
+    // shortcut: mixed Hangul/Latin uses Korean; add language metadata if more precise multilingual speech is needed.
+    const language = /\p{Script=Hangul}/u.test(text) ? 'ko' : /\p{Script=Latin}/u.test(text) ? 'en' : undefined;
+    Speech.speak(text, { language, onDone: () => setHear(h => (h === k ? null : h)), onStopped: () => setHear(h => (h === k ? null : h)), onError: () => setHear(null) });
   }, [hear, player, stopSpeak]);
   useEffect(() => () => { Speech.stop(); }, []);
   useEffect(() => { if (!active) { Speech.stop(); player.stop(); } }, [active, player]);

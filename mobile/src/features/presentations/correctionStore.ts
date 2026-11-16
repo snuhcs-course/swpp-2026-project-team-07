@@ -1,3 +1,4 @@
+import { backendFetch as fetch } from '../../services/backendFetch';
 // Phase 4: local confirmation, synchronization and analysis admission are separate.
 import type { Transcript } from '../../contracts';
 import { correctedText, replaceCorrection, type Correction, type CorrectionSnapshot, type LocalCorrections } from '../../domain/corrections';

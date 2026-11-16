@@ -10031,3 +10031,17 @@ Continue—push the docs, create the PR, and update the GitHub wiki with the pre
 - **Wiki publication:** Independently reviewed and published 27 pages at Wiki commit `6e9e0d060014028d051137518547e419dcfd1a60`, from documentation snapshot `70b01df`. A read-only check matched the Wiki remote HEAD and all 27 public Markdown responses byte-for-byte against reviewed hashes. The 354 legacy Wiki heading anchors and all 414 original Wiki quoted blocks are retained; the former log URL is a compatibility index. The existing deletion-test scope corrections and 38 unrelated pages/assets remain unchanged. Coverage images use immutable raw image targets. [Published Design](https://github.com/snuhcs-course/swpp-2026-project-team-07/wiki/Design-Documentation) and [Requirements](https://github.com/snuhcs-course/swpp-2026-project-team-07/wiki/Requirements-%26-Specifications).
 - **Automated CI:** The push-triggered [App checks run 41955731306](https://github.com/snuhcs-course/swpp-2026-project-team-07/actions/runs/41955731306) succeeded on `70b01df`: `npm run check` passed 548 mobile tests, typecheck and lint; `npm run bundle:android` succeeded. Backend system/migration checks, migration and 554 tests succeeded with the workflow's PostgreSQL 16 service. These are automatic GitHub checks of the unchanged main application source, separate from documentation validation and from device/provider/human acceptance. No local application rebuild or paid inference was performed for publication.
 - **Evidence and limits:** Local staged snapshots, independent-review reports, source-preservation records and public-page hash verification are retained under `outputs/iteration-3-documentation-20261105/validation/`. Publication succeeded; this receipt records verified actions after the earlier preparation checkpoint. Application branches, private recordings and runtime configuration remain unchanged. No eTL submission, deployment, human teammate review, broad recognition/feedback acceptance or PR merge is claimed.
+
+## Reconcile PR #50 with the v8 main baseline — November 16, 2026
+
+**Contributor:** Injoon · **Iteration:** 4 · **Tool:** OpenAI Codex desktop · **Model:** GPT-6 (exact variant not recorded)
+
+### Request — verbatim
+
+```text
+Can you resolve the conflicts in PR #50 against the updated main so we can use it for the documentation cleanup while we wait for Jaewon to upload the submitted files?
+```
+
+- Codex merged the published v8 main commit into the PR branch in an isolated checkout and resolved seven Markdown conflicts. It retained the consolidated log and compatibility index, updated the source references to distinguish v8 from the later backend repair, and retained the dated evidence and acceptance criteria.
+- Verified the staged diff against v8 main. Only Markdown changes remain. The existing acceptance criteria and both compatibility indexes are byte-identical to the PR head. All 382 fenced blocks and the non-heading evidence lines in the v8 prompt files are present in the consolidated log. The changed documentation's relative links resolve.
+- Jaewon's submitted exports are pending. This merge does not supply a submission snapshot or new device/provider evidence.

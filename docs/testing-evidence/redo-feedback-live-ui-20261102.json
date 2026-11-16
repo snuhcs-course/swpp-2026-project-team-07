@@ -1,0 +1,62 @@
+{
+  "date": "2026-11-02",
+  "status": "passed",
+  "operator": "AI agent",
+  "scope": "Live synthetic API payload through unchanged mobile parsers, isolated SQLite, exact selected-slide projection and the actual ReviewScreen component",
+  "network": {
+    "authenticated_requests": 4,
+    "routes": [
+      "GET /api/attempts/<synthetic-attempt-id>/",
+      "GET /api/decks/<synthetic-deck-id>/",
+      "GET /api/presentation-contexts/<synthetic-context-id>/",
+      "GET /api/attempts/<synthetic-attempt-id>/slide-review/?scope=<exact-selected-slide-and-context>"
+    ],
+    "normal_tls_validation": true,
+    "proxy": false,
+    "redirects_followed": false,
+    "application_writes": 0,
+    "provider_calls_by_this_check": 0,
+    "network_forbidden_during_component_render": true
+  },
+  "source": {
+    "actual_live_synthetic_result": true,
+    "transcript_words": 150,
+    "selected_slide_zero_based": 2,
+    "requirements_revision": 1,
+    "feedback_revision": 1,
+    "review_screen_sha256": "d814903b6f32f2ae91d6efde84ebb0f5f732b0bf9992f00029fef3cbf7f8fadf"
+  },
+  "checks": {
+    "actual_parse_deck_review_context_and_slide_review": true,
+    "actual_cache_publication_and_readback": true,
+    "sqlite_database": ":memory:",
+    "exact_attempt_transcript_visits_context_and_requirements_match": true,
+    "selected_status": "reviewed",
+    "selected_verified_findings": 1,
+    "intentional_speech_1495_vs_slide_1395_evidence_pair_present": true,
+    "accepted_observation_text_visible_in_actual_review_component": true,
+    "existing_compact_rows": 4,
+    "existing_icons_preserved": ["i-clock", "i-bubble", "i-flag", "i-wave"]
+  },
+  "fixture_boundaries": [
+    "Native views, animations, navigation, theme and player boundaries use existing component-test adapters.",
+    "The local presentation/run model is harness metadata derived from bundled Seoul text and the actual API recording timeline.",
+    "The feedback hook receives the actual selectedSlideFeedback projection from parsed live cache data; findings are not fabricated.",
+    "Unrelated score hooks are neutral test adapters and are not evidence of score rendering."
+  ],
+  "source_files": [
+    "mobile/src/features/transcription/reviewValidation.ts",
+    "mobile/src/domain/presentationRequirements.ts",
+    "mobile/src/features/transcription/reviewStorage.ts",
+    "mobile/src/features/feedback/slideReview.ts",
+    "mobile/src/features/feedback/slideReviewStore.ts",
+    "mobile/src/features/feedback/selectedSlideFeedback.ts",
+    "mobile/src/features/feedback/compactFeedbackRows.ts",
+    "mobile/src/screens/ReviewScreen.tsx"
+  ],
+  "limitations": [
+    "Component integration is not APK/device rendering, physical microphone or audible playback proof.",
+    "One accepted synthetic result establishes this data/render path, not a model quality rate or general accuracy.",
+    "Raw API payloads, transcript, credentials and private harness remain outside Git; this file contains summary evidence only."
+  ]
+}

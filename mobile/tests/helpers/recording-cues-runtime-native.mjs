@@ -8,7 +8,7 @@ export function emitSetupKeyboard(name,screenY){setupNative.keyboard=name==='key
 export const StyleSheet={create:v=>v,absoluteFill:{}};
 export const Enter=({children})=>React.createElement('enter',null,children), Txt='text';
 export const useFrame=()=>setupNative.frame;
-export const Glyph='glyph',PanView='pan',SlideCard='slide-card',CARD_H=196,CARD_W=358;
+export const Glyph='glyph',UIIcon='icon',PanView='pan',SlideCard='slide-card',CARD_H=196,CARD_W=358;
 export const Chip='chip',Confetti='confetti',Dialog='dialog',HintRow='hints',OrbitalCaption='orbital-caption',PageSurface='page-surface',RecordButton='record-button',RecordRing='record-ring',RoundButton='round-button',Waveform='waveform',IDLE_WAVE=[];
 export const Easing={linear:v=>v,cubic:v=>v,bezier:()=>v=>v,inOut:f=>f};
 export const cancelAnimation=()=>{},runOnJS=f=>f,withTiming=v=>v;
@@ -26,6 +26,8 @@ export const useShell=()=>runtime.shell,useBack=()=>{},ensurePages=async()=>{},e
 export const useStore=select=>select({version:React.useSyncExternalStore(subscribe,()=>runtime.version)});
 export const getDeckState=()=>runtime.model.state,visibleDecks=()=>[runtime.model.deck],bump=()=>runtime.emit();
 export function updateDeckState(_id,f){runtime.model.state=f(runtime.model.state);runtime.emit();}
+// OpenAI Codex, 2026-11-02: actual take/compare lifecycle adapter; see docs/ai-collaboration-prompts-iteration-2.md.
+export function saveDeckState(_id,state){runtime.model.state=state;runtime.emit();}
 export const savedAttempts=()=>runtime.recoveries,audioOf=id=>runtime.audio.get(id)??null;
 export function commitTake(_deck,take){const takes=(runtime.model.state.takes??0)+1,sel=take.events[0].slide_index;const run={id:'recovered-run',sel,takeNo:takes,parts:Array.from({length:runtime.model.n},(_,i)=>i===sel?{attemptId:take.attemptId,segments:[{startMs:0,endMs:take.durationMs}]}:null)};runtime.model.state={...runtime.model.state,run,takes};runtime.emit();return{run,compare:null};}
 export const CaptureEngine=React.forwardRef(function SyntheticCapture(props,ref){

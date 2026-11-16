@@ -1,3 +1,4 @@
+import { backendFetch as fetch } from '../../services/backendFetch';
 // Automatic scoring and explicit recovery over the existing durable score/correction APIs.
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { AppState } from 'react-native';

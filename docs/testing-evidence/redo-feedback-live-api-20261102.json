@@ -1,0 +1,135 @@
+{
+  "evidence_date_local": "2026-11-02",
+  "timezone": "Asia/Seoul",
+  "recorded_at_utc": "2026-11-01T17:27:46.206445+00:00",
+  "verification_operator": "agent-operated bounded live API checks",
+  "human_acceptance_claimed": false,
+  "status": "passed_after_v22_prompt_repair",
+  "scope": "Controlled synthetic Seoul PDF and TTS integration; direct API/provider operation, not native microphone or human usefulness validation.",
+  "providers": {
+    "feedback": {
+      "provider": "openrouter",
+      "model": "openai/gpt-6-luna",
+      "prompt_version": "presentation-score-prompt-v2.2"
+    },
+    "transcription": {
+      "provider": "elevenlabs",
+      "model": "scribe_v2"
+    }
+  },
+  "fixture": {
+    "clearly_synthetic": true,
+    "deck_pages": 7,
+    "presentation_audio_duration_ms": 58190,
+    "intentional_issue": "One year mismatch and an omission were predeclared in the synthetic narration."
+  },
+  "checks": [
+    {
+      "stage": "provider_configuration",
+      "status": "available",
+      "provider": "openrouter",
+      "model": "openai/gpt-6-luna"
+    },
+    {
+      "stage": "settings",
+      "status": "passed",
+      "revision": 1
+    },
+    {
+      "stage": "profiles",
+      "status": "passed",
+      "slide_count": 7,
+      "revision": 1,
+      "must_cover_count": 6
+    },
+    {
+      "stage": "scribe",
+      "status": "passed",
+      "word_count": 150,
+      "visits": 7,
+      "duration_ms": 58190,
+      "seoul_keyword_present": true
+    },
+    {
+      "stage": "selected_slide_review",
+      "status": "completed_validated",
+      "slide_status": "successful",
+      "findings": 1,
+      "result_status": "accepted",
+      "discarded_count": 0,
+      "intentional_year_mismatch_evidence_pair": true
+    },
+    {
+      "stage": "qa_questions",
+      "status": "passed",
+      "question_count": 2
+    },
+    {
+      "stage": "qa_answer",
+      "status": "passed",
+      "verdict": "partly",
+      "input": "predeclared synthetic intro reused as an answer; no relevance-quality claim"
+    }
+  ],
+  "score_generations": [
+    {
+      "generation": 1,
+      "prompt_version": "presentation-score-prompt-v2.1",
+      "outcome": "invalid_evidence",
+      "scored_slides": 6,
+      "overall_score": null,
+      "score_critical_rejected_count": 1,
+      "rejection": "slides.1: cross_slide_evidence",
+      "interpretation": "The model selected valid slide0 speech for slide1; strict validation correctly withheld the aggregate."
+    },
+    {
+      "generation": 2,
+      "prompt_version": "presentation-score-prompt-v2.1",
+      "outcome": "invalid_evidence",
+      "scored_slides": 6,
+      "overall_score": null,
+      "score_critical_rejected_count": 1,
+      "rejection": "slides.1: cross_slide_evidence",
+      "interpretation": "One explicit known-invalid-output recovery reproduced the same model selection error; no automatic retry."
+    },
+    {
+      "generation": 3,
+      "prompt_version": "presentation-score-prompt-v2.2",
+      "assessment_status": "scored",
+      "overall_score": 60,
+      "scored_slides": 7,
+      "score_critical_rejected_count": 0
+    }
+  ],
+  "repair": "The versioned prompt explicitly scopes per-slide speech and slide facts to the matching registry slide. Strict evidence validation, provider model, rubric and UI were unchanged; exact prior protocols permit a fresh generation only.",
+  "harness_correction": {
+    "phase": "preflight before admission",
+    "initial_assumption": "Expected completed rather than the API stale projection after the version upgrade.",
+    "resolution": "Confirmed stale/retry-available state with a read-only GET, corrected only the private harness and retained its failed-preflight record.",
+    "provider_requests_before_correction": 0
+  },
+  "preservation": {
+    "original_attempts_read_only_checked": 17,
+    "original_attempts_unchanged": true,
+    "production_deletions": 0,
+    "new_records": "Clearly labeled additive fixtures only.",
+    "method": "Read-only API fingerprints of original source-state fields before and after the bounded run; deployment DB/media verification is separate."
+  },
+  "usage": {
+    "approved_combined_provider_budget_usd": 5,
+    "observed_openrouter_key_usage_delta_usd": "0.014676075",
+    "openrouter_admissions_reserved_by_harness": 7,
+    "scribe_seconds_reserved_by_harness": 67.573,
+    "v22_new_admissions": 1,
+    "measurement": "Observed shared-key metadata at completion; includes possible concurrent use and may lag provider accounting. Scribe charges are excluded. This is not an exact combined-provider invoice.",
+    "follow_up_read_only_measurement_at_utc": "2026-11-01T17:28:22.253236+00:00",
+    "follow_up_observed_openrouter_key_usage_delta_usd": "0.014676075"
+  },
+  "limitations": [
+    "This controlled case establishes API execution and accepted evidence structure, not calibrated scores or broad semantic-quality accuracy.",
+    "The Q&A answer reused the predeclared synthetic introduction; its partly verdict establishes execution rather than answer relevance quality.",
+    "Native recording/injection evidence is reported separately; this direct upload does not establish microphone capture success.",
+    "OpenRouter account-level BYOK is inaccessible/unverified; the app uses only its OpenRouter key and has no personal OpenAI fallback.",
+    "Key usage deltas cover OpenRouter only and may include concurrent use; they are not an exact combined-provider invoice."
+  ]
+}

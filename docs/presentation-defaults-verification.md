@@ -46,3 +46,45 @@ Verification:
 Local evidence: `/private/tmp/presentation-defaults-final-check.log`,
 `/private/tmp/presentation-defaults-boundaries.log`, `/private/tmp/presentation-defaults-bundle.log`,
 `/private/tmp/defaults-android-result.json`, `/private/tmp/defaults-new-presentation-ready.png`.
+
+
+## November 3, 2026 — issues #36 and #43 follow-up
+
+The current new-import policy is **General audience / 600 seconds (10:00)**. The
+October 16 request, screenshots and results above remain historical evidence.
+
+- Issue #36: shared constants replace setup's duplicated five-minute values. An
+  empty revision-zero context remains eligible for import defaults after its ID
+  is reserved. Untouched controls follow accepted store updates; edits, drafts,
+  custom settings, previously saved five-minute values and explicit clears win.
+  Existing accepted five-minute default provenance is retained at its original
+  context/revision without changing stored settings.
+- Issue #43: main questions and follow-ups select `en` for Latin text without
+  Hangul and `ko` for text containing Hangul. Other text keeps the platform
+  fallback. Mixed Hangul/Latin uses Korean; this is not general language detection.
+  Speech cancellation and saved-audio coordination remain intact.
+- Regression proof: defaults tests failed before the repair; the focused defaults,
+  setup and draft tests passed **28/28**, including explicit-clear synchronization
+  before defaults, behind a queued writer and during an already submitted PATCH. Speech-language tests also failed
+  before the repair and runtime/navigation tests passed **12/12** afterward. All
+  checks are agent-operated and use mocks; no speech audio was generated.
+- `npm run check` passed typechecking, lint (one pre-existing player cleanup-ref
+  warning) and **591/591 tests**. `npm run bundle:android` passed. Independent AI
+  review found the explicit-clear race, which was fixed and rechecked; no findings
+  remain. The offline Gradle release build passed in 3m21s.
+- The user requested an APK handoff because the phone is unavailable. Installation,
+  phone UI/defaults, English voice availability and audible pronunciation remain
+  unverified. All checks stayed silent; no microphone or real transcription checks
+  were performed. No backend, API, provider or dependency changes are included.
+
+- Native artifact: **demo v7**, package `com.team07.outloud`, versionName `0.1.0`,
+  versionCode **7**, non-debuggable. APK signature verifies with the same
+  certificate as v6. Manifest comparison differs only in versionCode. The embedded
+  Hermes bundle matches the final Gradle bundle; its source map contains all five
+  exact final changed application files.
+- APK SHA-256: `c44bebc27d804c65451807a43f0ac1f5db5cf6ee572ded5270996ccf36e098c7`.
+  Workspace-local APK, checksum, focused patch, logs and verification are under
+  `outputs/demo-fixes36-43-20261103/`, outside this source checkout. The APK was
+  not installed, and no phone data/settings were changed.
+
+The artifact above is the earlier #36/#43-only v7. For the combined #35/#36/#43/#44–46 build and its distinct checksum, see [combined v7 verification](demo-v7-combined-verification-20261103.md).

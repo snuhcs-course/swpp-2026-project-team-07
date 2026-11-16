@@ -214,6 +214,15 @@ missing-requirement rule only for the new-import default initialization workflow
 the separate requirements sheet remains held. [Verification](presentation-defaults-verification.md).
 
 
+### Default policy update (November 3, 2026)
+
+New imports now use `General audience` and **600 seconds (10 minutes)**. The shared
+setup uses those defaults even after reserving an empty revision-zero context ID,
+and follows asynchronous accepted settings while its controls remain untouched.
+User edits, pending drafts, existing five-minute settings and explicit clears are
+preserved. The earlier October 16 request and verification remain historical
+evidence; they do not describe the current default duration.
+
 ### Approved follow-up — Q&A readiness and clearer expression (October 16)
 
 Repair automatic question admission after safe synchronization failures and keep

@@ -3,7 +3,8 @@ import {execFileSync} from 'node:child_process';import {mkdtempSync,rmSync} from
 import {resolve} from './helpers/storage-native-loader.mjs';registerHooks({resolve});
 const d=await import('../src/features/presentations/requirementsDraft.ts').catch(()=>({}));
 const {saveRequirements,readRequirements}=await import('../src/features/presentations/requirementsStore.ts');
-const {requestPresentationDefaults,synchronizePresentationDefaults}=await import('../src/features/presentations/defaultRequirements.ts');
+const {requestPresentationDefaults,synchronizePresentationDefaults,defaultRequirementsPending}=await import('../src/features/presentations/defaultRequirements.ts');
+const {serializeContextWrite}=await import('../src/features/presentations/contextWriter.ts');
 const api='http://draft.test/api',deck='22222222-2222-4222-8222-222222222222',context='33333333-3333-4333-8333-333333333333';
 const initial=(extra={})=>({contextId:context,deckId:deck,revision:1,audience:'General audience',requiredDurationSeconds:300,...extra});
 function server(start=initial()){let value={...start},afterPatch;const calls=[];const wire=()=>({id:value.contextId,deck_id:value.deckId,revision:value.revision,audience:value.audience,required_duration_seconds:value.requiredDurationSeconds});return {calls,get value(){return value;},set afterPatch(f){afterPatch=f;},fetch:async(_url,init={})=>{const method=init.method||'GET',body=init.body?JSON.parse(init.body):null;calls.push({method,body});if(method==='POST')value={...value,contextId:body.id,deckId:body.deck_id};if(method==='PATCH'){if(body.expected_revision!==value.revision)return Response.json({error:{code:'stale_revision'}},{status:409});value={...value,revision:value.revision+1,audience:body.audience,requiredDurationSeconds:body.required_duration_seconds};if(afterPatch)await afterPatch();}return Response.json(wire());}};}
@@ -21,3 +22,31 @@ test('new Save during in-flight write survives old acknowledgement',async()=>{sa
 test('user Save wins over already-running default initialization',async()=>{requestPresentationDefaults('race',api);const s=server(initial({revision:0,audience:'',requiredDurationSeconds:null}));let release,entered;const gate=new Promise(r=>release=r),started=new Promise(r=>entered=r);const fetcher=async(url,init)=>{if(init.method==='POST'){entered();await gate;}return s.fetch(url,init);};const defaults=synchronizePresentationDefaults('race',deck,api,fetcher);await started;d.confirmRequirements('race',api,{requiredDurationSeconds:600,audience:'Students'});const user=d.synchronizeRequirements('race',deck,api,s.fetch);release();await Promise.all([defaults,user]);assert.equal(s.value.audience,'Students');assert.equal(s.value.requiredDurationSeconds,600);assert.equal(d.requirementsDirty('race',api),false);assert.equal(s.calls.filter(c=>c.method==='PATCH').length,1);});
 test('clear values, 1–30 minutes and 500 Unicode code points validate without damaging last draft',()=>{for(const duration of [60,65,1800,null])d.confirmRequirements('bounds',api,{requiredDurationSeconds:duration,audience:'😀'.repeat(500)});const before=d.readRequirementsDraft('bounds',api);for(const duration of [0,59,1801,60.5])assert.throws(()=>d.confirmRequirements('bounds',api,{requiredDurationSeconds:duration,audience:''}));for(const audience of ['a'.repeat(501),'\0','\ud800'])assert.throws(()=>d.confirmRequirements('bounds',api,{requiredDurationSeconds:60,audience}));assert.deepEqual(d.readRequirementsDraft('bounds',api),before);d.confirmRequirements('bounds',api,{requiredDurationSeconds:null,audience:''});assert.equal(d.readRequirementsDraft('bounds',api).desired.requiredDurationSeconds,null);});
 test('a default PATCH already submitted cannot overwrite a newer confirmed choice',async()=>{requestPresentationDefaults('submitted-default',api);const s=server(initial({revision:0,audience:'',requiredDurationSeconds:null}));let release,entered;const gate=new Promise(r=>release=r),started=new Promise(r=>entered=r);s.afterPatch=async()=>{entered();await gate;};const defaults=synchronizePresentationDefaults('submitted-default',deck,api,s.fetch);await started;d.confirmRequirements('submitted-default',api,{requiredDurationSeconds:1200,audience:'Colleagues'});s.afterPatch=undefined;const user=d.synchronizeRequirements('submitted-default',deck,api,s.fetch);release();await Promise.all([defaults,user]);assert.equal(s.value.audience,'Colleagues');assert.equal(s.value.requiredDurationSeconds,1200);assert.equal(d.requirementsDirty('submitted-default',api),false);});
+test('clearing untouched new-import settings retires defaults even when the server is already empty',async()=>{
+ const local='clear-before-default',s=server(initial({revision:0,audience:'',requiredDurationSeconds:null}));
+ requestPresentationDefaults(local,api);d.confirmRequirements(local,api,{requiredDurationSeconds:null,audience:''});
+ await d.synchronizeRequirements(local,deck,api,s.fetch);await synchronizePresentationDefaults(local,deck,api,s.fetch);
+ assert.equal(defaultRequirementsPending(local,api),false);assert.equal(d.requirementsDirty(local,api),false);
+ assert.equal(s.value.requiredDurationSeconds,null);assert.equal(s.value.audience,'');assert.equal(s.calls.filter(c=>c.method==='PATCH').length,0);
+});
+test('a default operation queued behind a clear cannot restore defaults after that clear is accepted',{timeout:5000},async()=>{
+ const local='queued-after-clear',s=server(initial({revision:0,audience:'',requiredDurationSeconds:null}));
+ requestPresentationDefaults(local,api);let release;const gate=new Promise(r=>release=r);
+ const blocked=serializeContextWrite(local,api,()=>gate);
+ // Queue both operations while the intent is pending, then confirm the user's clear.
+ const user=d.synchronizeRequirements(local,deck,api,s.fetch);
+ const defaults=synchronizePresentationDefaults(local,deck,api,s.fetch);
+ d.confirmRequirements(local,api,{requiredDurationSeconds:null,audience:''});release();await Promise.all([blocked,user,defaults]);
+ assert.equal(defaultRequirementsPending(local,api),false);assert.equal(d.requirementsDirty(local,api),false);
+ assert.equal(s.value.requiredDurationSeconds,null);assert.equal(s.value.audience,'');assert.equal(s.calls.filter(c=>c.method==='PATCH').length,0);
+});
+test('a clear confirmed during an already submitted default PATCH advances its accepted revision safely',async()=>{
+ const local='clear-submitted-default',s=server(initial({revision:0,audience:'',requiredDurationSeconds:null}));
+ requestPresentationDefaults(local,api);let release,entered;const gate=new Promise(r=>release=r),started=new Promise(r=>entered=r);
+ s.afterPatch=async()=>{entered();await gate;};const defaults=synchronizePresentationDefaults(local,deck,api,s.fetch);await started;
+ d.confirmRequirements(local,api,{requiredDurationSeconds:null,audience:''});s.afterPatch=undefined;
+ const user=d.synchronizeRequirements(local,deck,api,s.fetch);release();await Promise.all([defaults,user]);
+ assert.equal(d.requirementsDirty(local,api),false);assert.equal(defaultRequirementsPending(local,api),false);
+ assert.equal(s.value.requiredDurationSeconds,null);assert.equal(s.value.audience,'');
+ assert.deepEqual(s.calls.filter(c=>c.method==='PATCH').map(c=>c.body.expected_revision),[0,1]);
+});

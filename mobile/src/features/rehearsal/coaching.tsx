@@ -95,7 +95,7 @@ function CoachInner({ id, review, generation }: { id: string; review: NonNullabl
     const sel = prompt?.intent.selection;
     publish(id, {
       busy, notice, done: f?.state === 'completed' && !!f.result, label: LABELS[f?.state ?? 'unavailable'] ?? 'AI suggestions', details: fb,
-      prompt: prompt && sel ? { kind: prompt.kind, provider: sel.provider === 'gemini' ? 'Gemini' : 'OpenAI', model: sel.model } : null,
+      prompt: prompt && sel ? { kind: prompt.kind, provider: sel.provider === 'openrouter' ? 'OpenRouter' : sel.provider === 'gemini' ? 'Gemini' : 'OpenAI', model: sel.model } : null,
       continuePrompt, cancelPrompt,
     });
   }, [busy, cancelPrompt, continuePrompt, f, fb, id, notice, prompt]);

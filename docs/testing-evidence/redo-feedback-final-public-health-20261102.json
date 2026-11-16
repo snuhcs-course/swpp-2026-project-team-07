@@ -1,0 +1,37 @@
+{
+  "status": "passed",
+  "method": "GET",
+  "requests": 5,
+  "normal_tls": true,
+  "proxy": false,
+  "redirects_followed": false,
+  "writes": 0,
+  "provider_calls": 0,
+  "results": [
+    {
+      "check": "health",
+      "http_status": 200,
+      "passed": true
+    },
+    {
+      "check": "ready",
+      "http_status": 200,
+      "passed": true
+    },
+    {
+      "check": "missing_code",
+      "http_status": 401,
+      "passed": true
+    },
+    {
+      "check": "wrong_code",
+      "http_status": 401,
+      "passed": true
+    },
+    {
+      "check": "browser_origin",
+      "http_status": 403,
+      "passed": true
+    }
+  ]
+}

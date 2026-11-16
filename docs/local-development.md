@@ -51,7 +51,7 @@ That Java command requires a macOS-registered JDK 17. If Gradle provisioned your
 
 ## Run the backend
 
-New transcriptions require `ELEVENLABS_API_KEY` in ignored `backend/.env`. `OPENAI_API_KEY` remains available for optional OpenAI feedback; it is no longer the transcription credential. See [Scribe configuration](scribe-transcription.md).
+New transcriptions require `ELEVENLABS_API_KEY` in ignored `backend/.env`. App LLM prompts use the separate `OPENROUTER_API_KEY` and `openai/gpt-6-luna`; no personal OpenAI key is required. See [Scribe configuration](scribe-transcription.md) and [OpenRouter activation](ai-feedback.md#openrouter-activation-and-saved-job-cutover).
 
 Install Docker Desktop or another Docker Compose-compatible runtime. From the repository root:
 
