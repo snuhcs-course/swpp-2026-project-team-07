@@ -19,6 +19,8 @@ Sources and reviewed SVG/PNG pairs live under `docs/diagram-review/`. SVG labels
 
 ## Outputs
 
+The generated files under `output/` are local and ignored by Git. The [submitted ZIP archive](../../outputs/README.md) is tracked in `outputs/`.
+
 - `Design-Documentation.html`: Markdown-derived local preview.
 - `output/pdf/OutLoud_Design_Documentation.pdf`: complete export.
 - `output/pdf/team7-iter1-design.pdf`: identical submission-named copy.
