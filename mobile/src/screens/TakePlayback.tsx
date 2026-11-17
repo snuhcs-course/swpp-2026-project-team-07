@@ -1,6 +1,6 @@
 // AI-generated/modified with OpenAI Codex, Iteration 2 (2026-10-14).
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#playback-transcription-and-home-visual-corrections-october-14-2026
-// OpenAI Codex follow-up: docs/ai-collaboration-prompts-iteration-2.md#rehearsal-recording-choice-and-transcript-playback-october-14-2026
+// Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-046
+// OpenAI Codex follow-up: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-047
 // A saved take's validated media, synchronized slide visits and transcript in the redesign UI.
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Pressable, ScrollView, TextInput, View } from 'react-native';

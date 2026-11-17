@@ -1,4 +1,4 @@
-// OpenAI Codex reliability fixes: docs/ai-collaboration-prompts-iteration-2.md#cue-and-feedback-reliability-october-16-2026
+// OpenAI Codex reliability fixes: docs/ai-collaboration/prompt-logs/unattributed/iteration-2.md#record-138
 // AI-assisted integration: one validated feedback overview, separate from measured delivery metrics.
 import { View } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';

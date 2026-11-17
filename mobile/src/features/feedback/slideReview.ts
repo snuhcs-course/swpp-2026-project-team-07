@@ -1,4 +1,4 @@
-// OpenAI Codex reliability fixes: docs/ai-collaboration-prompts-iteration-2.md#cue-and-feedback-reliability-october-16-2026
+// OpenAI Codex reliability fixes: docs/ai-collaboration/prompt-logs/unattributed/iteration-2.md#record-138
 import { quotesEqual,verifiedExcerpt,structurallyEqual } from './evidence';
 import type { ReviewAttempt, FeedbackEvidence, DescriptionFact } from '../../contracts';
 import type { SlidePart } from '../../domain/run';

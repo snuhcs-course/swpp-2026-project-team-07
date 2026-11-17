@@ -1,14 +1,14 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// OpenAI Codex light-mode base: docs/ai-collaboration-prompts-iteration-2.md#guide-based-light-mode-october-15-2026
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+// OpenAI Codex light-mode base: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-081
+// Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-043
 // OutLoud redesign: the 390 × 844 design frame, scaled to the device.
 // Every screen is laid out in design units (exactly as in the design bundle) and the
 // whole frame is scaled uniformly to fit inside the safe area. Backgrounds are full-bleed.
-// OpenAI Codex landscape follow-up: docs/ai-collaboration-prompts-iteration-2.md#landscape-rehearsal-implementation-october-15-2026
-// OpenAI Codex portrait-only correction: docs/ai-collaboration-prompts-iteration-2.md#portrait-only-pdf-rotation-correction-october-15-2026
-// OpenAI Codex semantic footer motion: docs/ai-collaboration-prompts-iteration-2.md#semantic-bottom-caption-motion-october-15-2026
-// OpenAI Codex stationary page entrances: docs/ai-collaboration-prompts-iteration-2.md#stationary-forward-page-fades-october-15-2026
-// OpenAI Codex stable frame context: docs/ai-collaboration-prompts-iteration-2.md#continuous-carousel-color-and-navigation-responsiveness-october-15-2026
+// OpenAI Codex landscape follow-up: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-053
+// OpenAI Codex portrait-only correction: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-080
+// OpenAI Codex semantic footer motion: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-101
+// OpenAI Codex stationary page entrances: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-120
+// OpenAI Codex stable frame context: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-114
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions, type TextProps } from 'react-native';
 import Animated, { Easing, cancelAnimation, runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming, type SharedValue } from 'react-native-reanimated';

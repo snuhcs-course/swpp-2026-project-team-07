@@ -1,5 +1,5 @@
 // Persisted default intent/provenance. Independent of context writers and confirmed drafts.
-// OpenAI Codex, 2026-11-03: #36 defaults; see docs/ai-collaboration-prompts-iteration-2.md.
+// OpenAI Codex, 2026-11-03: #36 defaults; see docs/ai-collaboration/README.md#prompt-logs.
 import {readStored,writeStored,removeStored} from '../../services/storage';
 import {normalizeApi} from '../transcription/analysisStorage';
 import {readRequirements} from './requirementsStore';

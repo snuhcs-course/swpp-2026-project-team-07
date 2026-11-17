@@ -1,7 +1,7 @@
-// OpenAI Codex review routing: docs/ai-collaboration-prompts-iteration-2.md#first-recording-review-navigation-october-16-2026
+// OpenAI Codex review routing: docs/ai-collaboration/prompt-logs/seoyeon/iteration-2.md#record-137
 // AI-assisted Nakajima integration: verified selected-slide feedback in the normal Review page.
-// OpenAI Codex compact slide review and scrubber label: docs/ai-collaboration-prompts-iteration-2.md#compact-slide-review-card-and-slider-label-november-1-2026
-// OpenAI Codex Review exit underlay and duration colours: docs/ai-collaboration-prompts-iteration-2.md#review-to-qa-fade-underlay-and-time-bar-colours-november-1-2026
+// OpenAI Codex compact slide review and scrubber label.
+// OpenAI Codex Review exit underlay and duration colours.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, type GestureResponderEvent, type PanResponderGestureState } from 'react-native';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -91,7 +91,7 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
  const part=run.parts[s],slidePlayKey=`slide:${deck.id}:${s}`;
  const slideAudioUri=part?audioOf(part.attemptId):null;
  const isSlideSelected=player.playingKey===slidePlayKey,slidePlaying=isSlideSelected&&!player.paused;
- // OpenAI Codex, 2026-11-02: verified selected feedback and honest absent-word metrics; see docs/ai-collaboration-prompts-iteration-2.md.
+ // OpenAI Codex, 2026-11-02: verified selected feedback and honest absent-word metrics; see docs/ai-collaboration/README.md#prompt-logs.
  const fillerValue=fillerCount===null?'—':String(fillerCount);
  const playSlide=()=>{
   if(!part||!slideAudioUri)return;

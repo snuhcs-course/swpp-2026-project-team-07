@@ -1,5 +1,5 @@
-// OpenAI Codex review routing: docs/ai-collaboration-prompts-iteration-2.md#first-recording-review-navigation-october-16-2026
-// OpenAI Codex Review and Full review: docs/ai-collaboration-prompts-iteration-2.md#review-and-full-review-redesign-october-15-2026
+// OpenAI Codex review routing: docs/ai-collaboration/prompt-logs/seoyeon/iteration-2.md#record-137
+// OpenAI Codex Review and Full review: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-122
 // Real merged-run audio, timed transcript and verified AI assessment status.
 // OpenAI Codex #44: continuous within-section seeking preserves saved-source and pause intent.
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';

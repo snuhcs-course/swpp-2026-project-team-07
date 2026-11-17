@@ -1,4 +1,4 @@
-// OpenAI Codex, issue #49: docs/ai-collaboration-prompts-iteration-2.md.
+// OpenAI Codex, issue #49: docs/ai-collaboration/README.md#prompt-logs.
 // Real review screens and recovery components; native boundaries and controller responses are synthetic.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

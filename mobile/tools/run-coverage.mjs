@@ -1,5 +1,5 @@
 // AI-generated with OpenAI Codex, 2026-10-22.
-// Attribution: docs/ai-collaboration-prompts.md#coverage-setup-and-first-measurement--october-22-2026
+// Attribution: docs/ai-collaboration/prompt-logs/injoon/iteration-2.md#record-142
 import { readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';

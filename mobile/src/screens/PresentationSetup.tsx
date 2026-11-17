@@ -1,6 +1,6 @@
 // AI-generated with OpenAI Codex, Iteration 2 (2026-10-15).
-// OpenAI Codex finger-linked page fade: docs/ai-collaboration-prompts-iteration-2.md#finger-linked-page-fade-october-15-2026
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#presentation-time-and-audience-setup-october-15-2026
+// OpenAI Codex finger-linked page fade: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-117
+// Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-107
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Keyboard, Pressable, ScrollView, StyleSheet, TextInput, View, type KeyboardEvent } from 'react-native';
 import { Txt, useFrame } from '../design/frame';

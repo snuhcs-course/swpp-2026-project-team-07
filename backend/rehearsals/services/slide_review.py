@@ -10,7 +10,7 @@ from .feedback import (PrivateModel, FeedbackError, validated, json_bytes, Sugge
                        canonical_quote, description_facts)
 from . import feedback_provider as provider
 
-# Compact-context changes AI-assisted by OpenAI Codex; see docs/ai-collaboration-prompts-iteration-2.md.
+# Compact-context changes AI-assisted by OpenAI Codex; see docs/ai-collaboration/README.md#prompt-logs.
 VERSION = 'slide-review-v3'
 REQUEST_CONTEXT_VERSION = 'selected-review-context-v1'
 NEARBY_WORDS = 20

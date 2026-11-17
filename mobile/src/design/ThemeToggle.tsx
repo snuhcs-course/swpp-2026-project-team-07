@@ -1,7 +1,7 @@
 // AI-generated/modified with OpenAI Codex, Iteration 2 (2026-10-15).
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#guide-based-light-mode-october-15-2026
-// OpenAI Codex half-turn correction: docs/ai-collaboration-prompts-iteration-2.md#theme-toggle-half-turn-correction-october-15-2026
-// OpenAI Codex sun dots: docs/ai-collaboration-prompts-iteration-2.md#theme-toggle-sun-dots-october-15-2026
+// Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-081
+// OpenAI Codex half-turn correction: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-083
+// OpenAI Codex sun dots: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-103
 import { useEffect, useRef } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -44,6 +44,6 @@ export function ThemeToggle() {
 }
 
 const styles = StyleSheet.create({
-  // OpenAI Codex header alignment: docs/ai-collaboration-prompts-iteration-2.md#home-header-vertical-alignment-october-15-2026
+  // OpenAI Codex header alignment: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-106
   hit: { position: 'absolute', top: 50, right: 22, width: 44, height: 44, zIndex: 40, alignItems: 'center', justifyContent: 'center' },
 });

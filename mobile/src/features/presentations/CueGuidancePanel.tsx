@@ -1,4 +1,4 @@
-// OpenAI Codex reliability fixes: docs/ai-collaboration-prompts-iteration-2.md#cue-and-feedback-reliability-october-16-2026
+// OpenAI Codex reliability fixes: docs/ai-collaboration/prompt-logs/unattributed/iteration-2.md#record-138
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Glyph } from '../../design/icons';

@@ -1,22 +1,22 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// OpenAI Codex light-mode carousel: docs/ai-collaboration-prompts-iteration-2.md#guide-based-light-mode-october-15-2026
+// OpenAI Codex light-mode carousel: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-081
 // Performance and add-preview changes with OpenAI Codex, Iteration 2 (2026-10-14).
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
-// OpenAI Codex follow-up: docs/ai-collaboration-prompts-iteration-2.md#home-idle-motion-removal-october-14-2026
-// OpenAI Codex shorter Home ground shadows: docs/ai-collaboration-prompts-iteration-2.md#shorter-home-icon-shadows-october-15-2026
-// OpenAI Codex Home float and shaped shadows: docs/ai-collaboration-prompts-iteration-2.md#home-icon-float-and-shaped-shadows-october-15-2026
-// OpenAI Codex lighter dark Home shadows: docs/ai-collaboration-prompts-iteration-2.md#lighter-dark-home-shadows-october-15-2026
-// OpenAI Codex supplied launcher mark and credits: docs/ai-collaboration-prompts-iteration-2.md#supplied-icon-and-home-credits-october-15-2026
-// OpenAI Codex transparent Home overlays: docs/ai-collaboration-prompts-iteration-2.md#supplied-icon-and-home-credits-october-15-2026
-// OpenAI Codex import setup background correction: docs/ai-collaboration-prompts-iteration-2.md#minimal-status-icons-october-15-2026
-// OpenAI Codex UI-thread carousel gesture: docs/ai-collaboration-prompts-iteration-2.md#home-carousel-and-return-transition-performance-october-15-2026
-// OpenAI Codex supplied delete icon: docs/ai-collaboration-prompts-iteration-2.md#home-delete-presentation-icon-october-15-2026
-// OpenAI Codex continuous Home glow and responsive navigation: docs/ai-collaboration-prompts-iteration-2.md#continuous-carousel-color-and-navigation-responsiveness-october-15-2026
-// OpenAI Codex stationary back crossfade: docs/ai-collaboration-prompts-iteration-2.md#stationary-back-crossfade-october-15-2026
+// Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-043
+// OpenAI Codex follow-up: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-049
+// OpenAI Codex shorter Home ground shadows: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-088
+// OpenAI Codex Home float and shaped shadows: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-096
+// OpenAI Codex lighter dark Home shadows: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-097
+// OpenAI Codex supplied launcher mark and credits: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-104
+// OpenAI Codex transparent Home overlays: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-104
+// OpenAI Codex import setup background correction: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-108
+// OpenAI Codex UI-thread carousel gesture: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-109
+// OpenAI Codex supplied delete icon: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-110
+// OpenAI Codex continuous Home glow and responsive navigation: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-114
+// OpenAI Codex stationary back crossfade: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-119
 // OutLoud redesign: Home (SPEC §4.1) and the icon picker (§4.2).
-// OpenAI Codex Review and Full review: docs/ai-collaboration-prompts-iteration-2.md#review-and-full-review-redesign-october-15-2026
-// OpenAI Codex stable import hue: docs/ai-collaboration-prompts-iteration-2.md#stable-presentation-import-colour-october-15-2026
-// OpenAI Codex supplied stopwatch brand: docs/ai-collaboration-prompts-iteration-2.md#stopwatch-brand-icon-october-16-2026
+// OpenAI Codex Review and Full review: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-122
+// OpenAI Codex stable import hue: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-123
+// OpenAI Codex supplied stopwatch brand: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-126
 // The carousel stays mounted behind Upload, which blurs it and opens a gap for the new item.
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -90,7 +90,7 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode:
   const openAdd = useCallback(() => {
     settle(Math.round(home.p.value));
     home.gap.set(1);
-    // OpenAI Codex page fade: docs/ai-collaboration-prompts-iteration-2.md#smooth-page-fades-october-15-2026
+    // OpenAI Codex page fade: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-105
     go('upload', { nav: 'fade' });
   }, [go, home.gap, home.p, settle]);
 
@@ -560,7 +560,7 @@ const styles = createThemedStyles({
   addBlur: { filter: [{ blur: 8 }] },
   logo: { position: 'absolute', left: 0, right: 0, top: 57, height: 36, alignItems: 'center', justifyContent: 'center' },
   logoText: { fontFamily: F.display, fontSize: 26, lineHeight: 27, letterSpacing: -0.5, color: C.text },
-  // OpenAI Codex header alignment: docs/ai-collaboration-prompts-iteration-2.md#home-header-vertical-alignment-october-15-2026
+  // OpenAI Codex header alignment: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-106
   brandMarkButton: { position: 'absolute', left: 14, top: 53, width: 44, height: 44, zIndex: 40, alignItems: 'center', justifyContent: 'center' },
   creditsOverlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 50, alignItems: 'center', justifyContent: 'center' },
   creditNames: { alignItems: 'center', gap: 16 },

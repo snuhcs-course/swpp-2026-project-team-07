@@ -1,5 +1,5 @@
 // AI-generated with OpenAI Codex, Iteration 2 (2026-10-14).
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#playback-transcription-and-home-visual-corrections-october-14-2026
+// Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-046
 // Allow HTTP only for the USB-forwarded phone and Android emulator development hosts.
 const fs = require('fs');
 const path = require('path');

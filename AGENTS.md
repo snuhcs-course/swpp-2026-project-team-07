@@ -6,10 +6,9 @@ These rules apply across project tasks; read detailed guides only when relevant.
 
 ## Current iteration and prompt logging
 
-Use the [single active collaboration log](docs/ai-collaboration-prompts.md)
-for every iteration. Earlier per-iteration paths are compatibility indexes.
+Use the [prompt log index by iteration](docs/ai-collaboration/README.md#prompt-logs). Record new entries in the appropriate contributor and iteration file. Use the unattributed column when authorship is unconfirmed.
 
-- Record each actual project-task prompt and follow-up verbatim in that log during
+- Record each actual project-task prompt and follow-up verbatim in the contributor’s iteration log during
   work, under the contributor/task, with date, tool and model. Group related prompts
   in one entry; label excerpts/redactions and write `not recorded` for unknown metadata.
   Do not reconstruct missing prompts, alter wording or duplicate existing entries.
@@ -19,10 +18,9 @@ for every iteration. Earlier per-iteration paths are compatibility indexes.
 - Update the same entry with generated/retained work, meaningful results, errors,
   revisions, human decisions and actual verification before handoff. Distinguish
   AI work and agent-operated checks from human edits, testing and approval.
-- Follow the [AI collaboration reporting guide](docs/ai-collaboration-guidelines.md)
+- Follow the [AI collaboration reporting guide](docs/ai-collaboration/ai-collaboration-guidelines.md)
   for entry fields, accuracy, code attribution and report/submission requirements.
-  Preserve historical entries and frozen `docs/history/` evidence; put new prompts
-  only in the single active log. Logging is an agent responsibility,
+  Preserve historical entries and cite their original revisions. Logging is an agent responsibility,
   not a background capture service.
 - `docs/ai-use.md` is retired. Do not create, restore or update it, including
   pointer-only versions. Treat instructions in old branches, task prompts and
@@ -39,11 +37,10 @@ for every iteration. Earlier per-iteration paths are compatibility indexes.
 - Check the branch, working tree and applicable instructions. Preserve unrelated
   changes. Continue an existing task on its branch; choose a suitable base for new
   work without switching, resetting or rebasing the user's checkout merely for freshness.
-- Start with [README.md](README.md). For implementation, read the relevant
-  [API contract](docs/api-contract.md), [handoff](docs/iteration-1-handoff.md),
-  [ownership context](docs/team-work-division.md) and directory instructions.
-  For meeting-note or meeting-log tasks, follow the
-  [meeting-log workflow](docs/meeting-log-workflow.md).
+- Start with [README.md](README.md) and the [documentation index](docs/README.md).
+  For implementation, read the [API contract](docs/reference/api-contract.md)
+  and directory instructions. For meeting records, use the
+  [meeting guide](docs/meetings/meeting-guide.md).
 - Verify claims against the relevant source, code and evidence. Plans, mock screens,
   branch names and task ownership do not establish implementation, approval or completion.
   Keep proposals and unresolved questions separate from confirmed decisions.

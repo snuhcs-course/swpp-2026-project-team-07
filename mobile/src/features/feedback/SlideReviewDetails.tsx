@@ -1,4 +1,4 @@
-// OpenAI Codex, issue #49: docs/ai-collaboration-prompts-iteration-2.md.
+// OpenAI Codex, issue #49: docs/ai-collaboration/README.md#prompt-logs.
 import { useMemo, type ReactNode } from 'react';
 import { Txt } from '../../design/frame';
 import { createThemedStyles, useTheme } from '../../design/theme';

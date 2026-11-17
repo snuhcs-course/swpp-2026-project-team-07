@@ -1,7 +1,7 @@
-// OpenAI Codex review routing: docs/ai-collaboration-prompts-iteration-2.md#first-recording-review-navigation-october-16-2026
+// OpenAI Codex review routing: docs/ai-collaboration/prompt-logs/seoyeon/iteration-2.md#record-137
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
-// OpenAI Codex run-audio position mapping: docs/ai-collaboration-prompts-iteration-2.md#review-and-full-review-redesign-october-15-2026
+// Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-043
+// OpenAI Codex run-audio position mapping: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-122
 // OutLoud redesign: the merged "run" of a presentation (SPEC §5.2).
 // Every recording stays a separate saved attempt (the existing upload/transcription
 // pipeline is unchanged). A run only records which attempt, and which stretch of

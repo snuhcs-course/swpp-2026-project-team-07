@@ -1,4 +1,4 @@
-// OpenAI Codex, 2026-11-02: bundled demo lifecycle tests; see docs/ai-collaboration-prompts-iteration-2.md.
+// OpenAI Codex, 2026-11-02: bundled demo lifecycle tests; see docs/ai-collaboration/README.md#prompt-logs.
 import { test, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';

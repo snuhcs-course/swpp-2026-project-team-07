@@ -1,11 +1,11 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// OpenAI Codex light-mode redo glyph: docs/ai-collaboration-prompts-iteration-2.md#guide-based-light-mode-october-15-2026
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+// OpenAI Codex light-mode redo glyph: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-081
+// Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-043
 // Converted from the icon SVGs in the design bundle's template.html. Regenerate from the design rather than editing shapes by hand.
-// OpenAI Codex landscape rotate glyphs: docs/ai-collaboration-prompts-iteration-2.md#landscape-rehearsal-implementation-october-15-2026
-// OpenAI Codex Review bars: docs/ai-collaboration-prompts-iteration-2.md#rehearse-review-bars-icon-october-15-2026
-// OpenAI Codex removed unused coloured status artwork: docs/ai-collaboration-prompts-iteration-2.md#minimal-status-icons-october-15-2026
-// OpenAI Codex centered three-bar review glyph: docs/ai-collaboration-prompts-iteration-2.md#compact-slide-review-card-and-slider-label-november-1-2026
+// OpenAI Codex landscape rotate glyphs: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-053
+// OpenAI Codex Review bars: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-094
+// OpenAI Codex removed unused coloured status artwork: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-108
+// OpenAI Codex centered three-bar review glyph.
 import type { ReactElement } from 'react';
 import { Circle, Ellipse, G, Path, Rect } from 'react-native-svg';
 type Shape = (c: string) => ReactElement;
@@ -32,7 +32,7 @@ export const PRESENTATION_SHAPES: Record<string, () => ReactElement> = {
   'palette': () => <><Path d="M12 2.3 C6.4 2.3 2.3 6.5 2.3 11.8 C2.3 17.3 6.7 21.7 12 21.7 C13.4 21.7 14.1 20.8 14.1 19.8 C14.1 19.3 13.9 18.9 13.6 18.5 C13.3 18.1 13.1 17.7 13.1 17.2 C13.1 16.2 13.9 15.5 14.9 15.5 H16.9 C19.5 15.5 21.7 13.4 21.7 10.7 C21.7 6.1 17.4 2.3 12 2.3 Z" /><G fill="#FFFFFF"><Circle cx="7.4" cy="11.6" r="1.65" /><Circle cx="9.4" cy="7.2" r="1.65" /><Circle cx="14.3" cy="6.6" r="1.65" /><Circle cx="17.8" cy="10.1" r="1.65" /></G></>,
 };
 export const GLYPHS: Record<string, { viewBox: string; body: Shape }> = {
-  // PDF-only rotation correction: docs/ai-collaboration-prompts-iteration-2.md#portrait-only-pdf-rotation-correction-october-15-2026
+  // PDF-only rotation correction: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-080
   'h-rotate-slide': { viewBox: '0 0 24 24', body: (c: string) => <>
     <Rect x="3" y="8" width="16" height="11" rx="2" fill="none" stroke={c} strokeWidth="2" />
     <Path d="M14.5 3.5 A7 7 0 0 1 21 9 M18.1 6.1 L21 9 L22 5.3" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />

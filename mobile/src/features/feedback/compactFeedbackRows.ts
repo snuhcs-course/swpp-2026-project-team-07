@@ -1,4 +1,4 @@
-// OpenAI Codex, 2026-11-02: verified data for existing Review slots; see docs/ai-collaboration-prompts-iteration-2.md.
+// OpenAI Codex, 2026-11-02: verified data for existing Review slots; see docs/ai-collaboration/README.md#prompt-logs.
 import type { FeedbackRow } from '../../domain/analysis';
 import { slideTimingLabel } from '../../domain/slides';
 import type { FeedbackStatusItem } from './selectedSlideFeedback';

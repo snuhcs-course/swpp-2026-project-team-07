@@ -1,8 +1,8 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+// Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-043
 // OutLoud redesign: findings, Review insights, Compare and Home stats
 // (SPEC §4.1, §4.5, §4.6, §5.5, §5.6). Pure functions over the merged run.
-// OpenAI Codex Review and Full review: docs/ai-collaboration-prompts-iteration-2.md#review-and-full-review-redesign-october-15-2026
+// OpenAI Codex Review and Full review: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-122
 import { fmt, listNumbers, quote } from './format';
 import { slideText, type Line } from './lines';
 import { runTimes, type Run } from './run';

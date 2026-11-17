@@ -1,6 +1,6 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// OpenAI Codex time/audience setup: docs/ai-collaboration-prompts-iteration-2.md#presentation-time-and-audience-setup-october-15-2026
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+// OpenAI Codex time/audience setup: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-107
+// Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-043
 // OutLoud redesign: Upload → analysis (SPEC §4.3), made real:
 //   Rendering slides   → page images on the device (Android PdfRenderer)
 //   Reading slide text → the server's extracted text (existing POST /decks/)
@@ -18,7 +18,7 @@ import { deckById, forgetPresentation, nextHue, nextOrder, savePresentation, typ
 export type Progress = { progress: number; status: string; pages: number | null; textOffline?: boolean };
 
 export function pickPdf(): Promise<LocalPdf | null> { return pdfService.importPdf(); }
-// OpenAI Codex, 2026-11-02: shared renderer extraction; see docs/ai-collaboration-prompts-iteration-2.md.
+// OpenAI Codex, 2026-11-02: shared renderer extraction; see docs/ai-collaboration/README.md#prompt-logs.
 export { renderPages } from '../pdf/renderPages';
 
 function pagesDir(id: string) {

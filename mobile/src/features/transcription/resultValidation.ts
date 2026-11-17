@@ -1,4 +1,4 @@
-// Scribe-only compatibility: OpenAI Codex, October 17, 2026; docs/scribe-only-integration-verification.md.
+// Scribe-only compatibility: OpenAI Codex, October 17, 2026; docs/testing/evidence/scribe-only-integration-verification-2026-10-17.md.
 import { MAX_RECORDING_MS } from "../recording/limits";
 import { optionalFeedback, isDigest } from "../feedback/validation";
 import type { AttemptResult, TranscriptWord, Feedback } from "../../contracts";

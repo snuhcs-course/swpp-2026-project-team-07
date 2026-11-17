@@ -1,7 +1,7 @@
-// Scribe-only compatibility: OpenAI Codex, October 17, 2026; docs/scribe-only-integration-verification.md.
+// Scribe-only compatibility: OpenAI Codex, October 17, 2026; docs/testing/evidence/scribe-only-integration-verification-2026-10-17.md.
 // Scribe migration: OpenAI Codex, Iteration 2 (2026-10-16); see active collaboration log.
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+// Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-043
 // OutLoud redesign: Audience Q&A API client (backend: rehearsals/qa_views.py).
 // Questions are written from the slide text and the merged transcript; answers are
 // transcribed with the existing hosted Scribe v2 adapter and judged by the configured

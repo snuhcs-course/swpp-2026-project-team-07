@@ -1,9 +1,9 @@
-// Scribe-only compatibility: OpenAI Codex, October 17, 2026; docs/scribe-only-integration-verification.md.
+// Scribe-only compatibility: OpenAI Codex, October 17, 2026; docs/testing/evidence/scribe-only-integration-verification-2026-10-17.md.
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// OpenAI Codex finger-linked page fade: docs/ai-collaboration-prompts-iteration-2.md#finger-linked-page-fade-october-15-2026
-// OpenAI Codex audience setup: docs/ai-collaboration-prompts-iteration-2.md#presentation-time-and-audience-setup-october-15-2026
-// OpenAI Codex light-mode Q&A: docs/ai-collaboration-prompts-iteration-2.md#guide-based-light-mode-october-15-2026
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+// OpenAI Codex finger-linked page fade: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-117
+// OpenAI Codex audience setup: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-107
+// OpenAI Codex light-mode Q&A: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-081
+// Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-043
 // OutLoud redesign: Audience Q&A (SPEC §4.7, §5.7).
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, type GestureResponderEvent, type PanResponderGestureState } from 'react-native';
