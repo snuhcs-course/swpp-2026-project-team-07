@@ -1,6 +1,6 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// OpenAI Codex time setup: docs/ai-collaboration-prompts-iteration-2.md#presentation-time-and-audience-setup-october-15-2026
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+// OpenAI Codex time setup: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-107
+// Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-043
 // OutLoud redesign: slide titles, slide points and per-slide target times.
 import { keyWords } from './words';
 import { validateRequirementValues, type PresentationRequirements } from './presentationRequirements';

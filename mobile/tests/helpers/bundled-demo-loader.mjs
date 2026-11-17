@@ -1,4 +1,4 @@
-// OpenAI Codex, 2026-11-02: native asset test boundaries; see docs/ai-collaboration-prompts-iteration-2.md.
+// OpenAI Codex, 2026-11-02: native asset test boundaries; see docs/ai-collaboration/README.md#prompt-logs.
 import { readFileSync } from 'node:fs';
 import { transpile } from './transpile.mjs';
 import { resolve as pdfResolve } from './pdf-native-loader.mjs';

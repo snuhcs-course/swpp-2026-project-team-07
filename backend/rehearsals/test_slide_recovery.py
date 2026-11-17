@@ -1,5 +1,5 @@
 """Issue #49 recovery over synthetic saved reviews; no live provider calls."""
-# OpenAI Codex: docs/ai-collaboration-prompts-iteration-2.md, issue #49.
+# OpenAI Codex: docs/ai-collaboration/README.md#prompt-logs, issue #49.
 from copy import deepcopy
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta

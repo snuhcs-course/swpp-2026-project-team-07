@@ -1,6 +1,6 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// OpenAI Codex historical twenty-minute capture: docs/ai-collaboration-prompts-iteration-2.md#presentation-time-and-audience-setup-october-15-2026
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+// OpenAI Codex historical twenty-minute capture: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-107
+// Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-043
 // OutLoud redesign: microphone capture for one take.
 // Ported from the former RehearsalScreen without changing its rules: the recording
 // service owns the audio clock and slide events, a durable checkpoint is written every

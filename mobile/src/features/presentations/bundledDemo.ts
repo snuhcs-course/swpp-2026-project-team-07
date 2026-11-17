@@ -1,4 +1,4 @@
-// OpenAI Codex, 2026-11-02: offline Seoul seeding; see docs/ai-collaboration-prompts-iteration-2.md.
+// OpenAI Codex, 2026-11-02: offline Seoul seeding; see docs/ai-collaboration/README.md#prompt-logs.
 // User-selected Seoul PDF and its extracted text; no synthetic recordings or provider results.
 import { Asset } from 'expo-asset';
 import * as FileSystem from 'expo-file-system/legacy';

@@ -1,4 +1,4 @@
-# Scribe-only integration: OpenAI Codex, October 17, 2026; docs/scribe-only-integration-verification.md.
+# Scribe-only integration: OpenAI Codex, October 17, 2026; docs/testing/evidence/scribe-only-integration-verification-2026-10-17.md.
 # Scribe migration: OpenAI Codex, Iteration 2 (2026-10-16); see active collaboration log.
 """Durable queue and fenced processing. Database intent precedes broker publication.
 

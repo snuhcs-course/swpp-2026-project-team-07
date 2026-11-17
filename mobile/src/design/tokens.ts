@@ -1,6 +1,6 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// OpenAI Codex light-mode palette: docs/ai-collaboration-prompts-iteration-2.md#guide-based-light-mode-october-15-2026
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+// OpenAI Codex light-mode palette: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-081
+// Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-043
 // OutLoud redesign: design tokens copied from the design bundle (tokens.json).
 import { Easing } from 'react-native-reanimated';
 import type { HueName } from '../domain/hues';
@@ -99,7 +99,7 @@ export const TONE = {
 /** Motion. */
 export const EASE_SCREEN = Easing.bezier(0.2, 0.8, 0.2, 1);
 export const EASE_SNAP = Easing.bezier(0.25, 1, 0.5, 1);
-// OpenAI Codex page fade: docs/ai-collaboration-prompts-iteration-2.md#smooth-page-fades-october-15-2026
+// OpenAI Codex page fade: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-105
 export const DUR = { rise: 260, zoom: 260, fade: 260 };
 
 /** The design frame. Every screen is laid out in these units and scaled to the device. */

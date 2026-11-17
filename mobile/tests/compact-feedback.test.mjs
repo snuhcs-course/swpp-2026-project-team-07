@@ -1,4 +1,4 @@
-// OpenAI Codex, 2026-11-02: verified compact Review data regression; see docs/ai-collaboration-prompts-iteration-2.md.
+// OpenAI Codex, 2026-11-02: verified compact Review data regression; see docs/ai-collaboration/README.md#prompt-logs.
 // Actual validated cache/status selection and Review rendering; native view/player/hook boundaries only are fixtures.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

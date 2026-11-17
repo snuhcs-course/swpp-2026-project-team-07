@@ -1,36 +1,36 @@
-// OpenAI Codex review routing: docs/ai-collaboration-prompts-iteration-2.md#first-recording-review-navigation-october-16-2026
-// OpenAI Codex reliability fixes: docs/ai-collaboration-prompts-iteration-2.md#cue-and-feedback-reliability-october-16-2026
+// OpenAI Codex review routing: docs/ai-collaboration/prompt-logs/seoyeon/iteration-2.md#record-137
+// OpenAI Codex reliability fixes: docs/ai-collaboration/prompt-logs/unattributed/iteration-2.md#record-138
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// OpenAI Codex finger-linked page fade: docs/ai-collaboration-prompts-iteration-2.md#finger-linked-page-fade-october-15-2026
-// OpenAI Codex time/audience setup: docs/ai-collaboration-prompts-iteration-2.md#presentation-time-and-audience-setup-october-15-2026
-// OpenAI Codex removes the edit-settings button backdrop: docs/ai-collaboration-prompts-iteration-2.md#compact-slide-review-card-and-slider-label-november-1-2026
-// OpenAI Codex light-mode rehearsal: docs/ai-collaboration-prompts-iteration-2.md#guide-based-light-mode-october-15-2026
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
-// OpenAI Codex follow-up: docs/ai-collaboration-prompts-iteration-2.md#rehearsal-recording-choice-and-transcript-playback-october-14-2026
-// OpenAI Codex Review entry navigation: docs/ai-collaboration-prompts-iteration-2.md#review-and-full-review-redesign-october-15-2026
-// OpenAI Codex follow-up: docs/ai-collaboration-prompts-iteration-2.md#transcript-header-playback-october-14-2026
+// OpenAI Codex finger-linked page fade: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-117
+// OpenAI Codex time/audience setup: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-107
+// OpenAI Codex removes the edit-settings button backdrop.
+// OpenAI Codex light-mode rehearsal: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-081
+// Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-043
+// OpenAI Codex follow-up: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-047
+// OpenAI Codex Review entry navigation: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-122
+// OpenAI Codex follow-up: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-048
 // OutLoud redesign: Rehearse (SPEC §4.4) with transcript corrections (§5.4).
-// OpenAI Codex landscape follow-up: docs/ai-collaboration-prompts-iteration-2.md#landscape-rehearsal-implementation-october-15-2026
-// OpenAI Codex portrait-only correction: docs/ai-collaboration-prompts-iteration-2.md#portrait-only-pdf-rotation-correction-october-15-2026
-// OpenAI Codex rotate-icon update: docs/ai-collaboration-prompts-iteration-2.md#rotate-button-icon-update-october-15-2026
-// OpenAI Codex rotated timer follow-up: docs/ai-collaboration-prompts-iteration-2.md#rotate-button-icon-update-october-15-2026
-// OpenAI Codex stable bottom hints: docs/ai-collaboration-prompts-iteration-2.md#rotate-button-icon-update-october-15-2026
-// OpenAI Codex sideways timer digits: docs/ai-collaboration-prompts-iteration-2.md#rotated-timer-text-orientation-october-15-2026
-// OpenAI Codex rotated Home hint: docs/ai-collaboration-prompts-iteration-2.md#rotated-home-hint-visibility-october-15-2026
-// OpenAI Codex rotated slide corners: docs/ai-collaboration-prompts-iteration-2.md#rotated-slide-corner-navigation-october-15-2026
-// OpenAI Codex smooth PDF rotation: docs/ai-collaboration-prompts-iteration-2.md#smooth-pdf-view-rotation-october-15-2026
-// OpenAI Codex static Home hint: docs/ai-collaboration-prompts-iteration-2.md#static-rehearse-home-arrow-october-15-2026
-// OpenAI Codex sideways redo glyph: docs/ai-collaboration-prompts-iteration-2.md#sideways-redo-glyph-october-15-2026
-// OpenAI Codex orbiting sideways captions: docs/ai-collaboration-prompts-iteration-2.md#sideways-control-captions-october-15-2026
-// OpenAI Codex sideways waveform and counter: docs/ai-collaboration-prompts-iteration-2.md#sideways-waveform-and-slide-counter-october-15-2026
-// OpenAI Codex Review bars: docs/ai-collaboration-prompts-iteration-2.md#rehearse-review-bars-icon-october-15-2026
-// OpenAI Codex centered redo hint: docs/ai-collaboration-prompts-iteration-2.md#centered-rehearse-redo-hint-october-15-2026
-// OpenAI Codex smooth Review/Time handoff: docs/ai-collaboration-prompts-iteration-2.md#smooth-review-time-rotation-october-15-2026
-// OpenAI Codex idle timer contrast: docs/ai-collaboration-prompts-iteration-2.md#idle-rehearse-timer-contrast-october-15-2026
-// OpenAI Codex faster Home return: docs/ai-collaboration-prompts-iteration-2.md#home-carousel-and-return-transition-performance-october-15-2026
-// OpenAI Codex faster presentation exit: docs/ai-collaboration-prompts-iteration-2.md#presentation-to-home-pause-october-15-2026
-// OpenAI Codex immediate recording completion: docs/ai-collaboration-prompts-iteration-2.md#continuous-carousel-color-and-navigation-responsiveness-october-15-2026
-// OpenAI Codex forward-only live recording: docs/ai-collaboration-prompts-iteration-2.md#forward-only-recording-slide-navigation-october-15-2026
+// OpenAI Codex landscape follow-up: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-053
+// OpenAI Codex portrait-only correction: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-080
+// OpenAI Codex rotate-icon update: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-082
+// OpenAI Codex rotated timer follow-up: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-082
+// OpenAI Codex stable bottom hints: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-082
+// OpenAI Codex sideways timer digits: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-084
+// OpenAI Codex rotated Home hint: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-085
+// OpenAI Codex rotated slide corners: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-086
+// OpenAI Codex smooth PDF rotation: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-089
+// OpenAI Codex static Home hint: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-090
+// OpenAI Codex sideways redo glyph: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-091
+// OpenAI Codex orbiting sideways captions: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-092
+// OpenAI Codex sideways waveform and counter: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-093
+// OpenAI Codex Review bars: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-094
+// OpenAI Codex centered redo hint: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-098
+// OpenAI Codex smooth Review/Time handoff: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#i2-smooth-reviewtime-rotation-october-15-2026
+// OpenAI Codex idle timer contrast: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-102
+// OpenAI Codex faster Home return: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-109
+// OpenAI Codex faster presentation exit: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-112
+// OpenAI Codex immediate recording completion: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-114
+// OpenAI Codex forward-only live recording: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-125
 import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Pressable, StyleSheet, View, type GestureResponderEvent } from 'react-native';
 import * as Haptics from 'expo-haptics';
@@ -277,7 +277,7 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
       const whole = fullRedo.current;
       fullRedo.current = false;
       const { run: next, compare } = commitTake(deck, take, live.get().spoken, whole, model.stats?.coverage ?? null);
-      // OpenAI Codex, 2026-11-02: remount the single-use engine after success; see docs/ai-collaboration-prompts-iteration-2.md.
+      // OpenAI Codex, 2026-11-02: remount the single-use engine after success; see docs/ai-collaboration/README.md#prompt-logs.
       setEngineKey(k => k + 1);
       hideRing();
       setBurst({ total: take.durationMs / 1000, compare: !!compare });

@@ -1,9 +1,9 @@
-# Scribe-only integration: OpenAI Codex, October 17, 2026; docs/scribe-only-integration-verification.md.
+# Scribe-only integration: OpenAI Codex, October 17, 2026; docs/testing/evidence/scribe-only-integration-verification-2026-10-17.md.
 # AI-generated/modified with OpenAI Codex, Iteration 1 (2026-09-26 to 2026-10-09).
-# Attribution/review scope: docs/history/ai-collaboration-validation-iteration-1-retired-2026-10-09.md#ai-code-markers
+# Attribution/review scope: https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/42c2154a54e209f4c9e931fd4db5777d6816c3d6/docs/history/ai-collaboration-validation-iteration-1-retired-2026-10-09.md#ai-code-markers
 # Historical review: Injoon reviewed the PR #3 version; later integrated changes are not covered.
 # Scribe v2 migration: OpenAI Codex, Iteration 2 (2026-10-16).
-# See docs/ai-collaboration-prompts-iteration-2.md#scribe-v2-transcription-october-16-2026
+# See docs/ai-collaboration/prompt-logs/injoon/iteration-2.md#i2-scribe-v2-transcription--october-16-2026
 """Hosted Scribe v2 only; normalized output preserves the existing transcript contract."""
 import os
 import json

@@ -1,4 +1,4 @@
-// OpenAI Codex, 2026-11-02: retained-screen Redo regression; see docs/ai-collaboration-prompts-iteration-2.md.
+// OpenAI Codex, 2026-11-02: retained-screen Redo regression; see docs/ai-collaboration/README.md#prompt-logs.
 // Actual single-use CaptureEngine/service/storage/take merging; native recorder/views and presentation model are fixtures.
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,4 +1,4 @@
-// OpenAI Codex, 2026-11-02: asset/renderer fixtures; see docs/ai-collaboration-prompts-iteration-2.md.
+// OpenAI Codex, 2026-11-02: asset/renderer fixtures; see docs/ai-collaboration/README.md#prompt-logs.
 // Asset and Android renderer boundaries only; catalog/filesystem/SQLite stay real.
 import * as fs from 'node:fs/promises';
 import { documentDirectory } from './pdf-node-storage.mjs';

@@ -1,6 +1,6 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
-// OpenAI Codex slide-spill detection: docs/ai-collaboration-prompts-iteration-2.md#review-and-full-review-redesign-october-15-2026
+// Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-043
+// OpenAI Codex slide-spill detection: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-122
 // OutLoud redesign: transcript sentences for the merged run (SPEC §5.4, §6).
 // Sentences come from hosted Scribe v2. Slide-change events split a sentence at
 // the first word whose timestamp belongs to the next slide.

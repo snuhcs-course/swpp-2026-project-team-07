@@ -35,7 +35,7 @@ function retry(v: ObjectValue): FeedbackRetry { return { retry_at: date(v.retry_
 function provenance(v: unknown): DescriptionProvenance { const r = object(v);
   const result = { provider: choice(r.provider, ['gemini', 'openai', 'openrouter']), project_id: text(r.project_id, 160, 1),
     model: text(r.model, 100, 1), prompt_version: nonblank(r.prompt_version, 40), schema_version: nonblank(r.schema_version, 40) };
-  // OpenAI Codex: OpenRouter provenance, docs/ai-collaboration-prompts-iteration-2.md#openrouter-luna-migration-october-29-2026
+  // OpenAI Codex: OpenRouter provenance, docs/ai-collaboration/prompt-logs/seoyeon/iteration-3.md#record-146
   const modelPattern = result.provider === 'openrouter'
     ? /^[a-zA-Z0-9][a-zA-Z0-9._-]*\/[a-zA-Z0-9][a-zA-Z0-9._-]*$/ : /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
   if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(result.project_id) || !modelPattern.test(result.model)) fail();

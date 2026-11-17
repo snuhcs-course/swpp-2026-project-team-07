@@ -1,10 +1,10 @@
-// Scribe-only compatibility: OpenAI Codex, October 17, 2026; docs/scribe-only-integration-verification.md.
+// Scribe-only compatibility: OpenAI Codex, October 17, 2026; docs/testing/evidence/scribe-only-integration-verification-2026-10-17.md.
 // Scribe migration: OpenAI Codex, Iteration 2 (2026-10-16); see active collaboration log.
 // AI-generated/modified with OpenAI Codex, Iteration 1 (2026-09-26 to 2026-10-09).
-// Attribution/review scope: docs/history/ai-collaboration-validation-iteration-1-retired-2026-10-09.md#ai-code-markers
+// Attribution/review scope: https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/42c2154a54e209f4c9e931fd4db5777d6816c3d6/docs/history/ai-collaboration-validation-iteration-1-retired-2026-10-09.md#ai-code-markers
 import type { FeedbackAnalysis } from './feedback';
 export * from './feedback';
-/** Wire-format names match docs/api-contract.md and the Django serializers. */
+/** Wire-format names match docs/reference/api-contract.md and the Django serializers. */
 export type SlideEvent = { slide_index: number; at_ms: number };
 export type TranscriptWord = { text: string; start_ms: number; end_ms: number };
 export type Deck = { id: string; title: string; page_count: number };

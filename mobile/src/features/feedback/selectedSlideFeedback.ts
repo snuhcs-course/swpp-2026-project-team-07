@@ -1,4 +1,4 @@
-// OpenAI Codex reliability fixes: docs/ai-collaboration-prompts-iteration-2.md#cue-and-feedback-reliability-october-16-2026
+// OpenAI Codex reliability fixes: docs/ai-collaboration/prompt-logs/unattributed/iteration-2.md#record-138
 /** Status and counts from verified AI feedback for the exact selected recordings. No heuristic quality score. */
 import type { DeckModel } from '../presentations/useDeckModel';
 import { readRequirements } from '../presentations/requirementsStore';
@@ -32,7 +32,7 @@ export function feedbackStatusItem(slide: number, recorded: boolean, stage: stri
     if (!summary) return item('recovery_needed', reviewStatus(state, slide), 'bad');
     if (summary.status === 'insufficient_evidence') return item('insufficient', reviewStatus(state, slide), 'muted');
     if (summary.status === 'invalid_evidence' || summary.status === 'model_error') return item('recovery_needed', summary.status === 'invalid_evidence' ? 'Feedback could not be verified' : 'AI response could not be processed', 'bad');
-    // OpenAI Codex, 2026-11-02: expose only current parsed findings; see docs/ai-collaboration-prompts-iteration-2.md.
+    // OpenAI Codex, 2026-11-02: expose only current parsed findings; see docs/ai-collaboration/README.md#prompt-logs.
     if (summary.status === 'partial') return item('partial', 'Partially assessed', 'warn', summary.findings.length, false, summary.findings);
     const count = summary.findings.length;
     return item('reviewed', count ? `${count} finding${count === 1 ? '' : 's'}` : 'No issues found', count ? 'warn' : 'good', count, true, summary.findings);

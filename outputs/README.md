@@ -9,3 +9,7 @@ This folder archives the original ZIPs submitted to eTL. The [project Wiki](http
 | 3 | [team7-iter3.zip](team7-iter3.zip) | [Original archive commit](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/b49b65aad0b45d97d837f09ea1aced53927fabf2/team7-iter3.zip); confirmed as the eTL submission |
 
 Add later iterations after submission. Copy the original archive unchanged and record its source. The ZIP contains the submitted documents; demo binaries and videos belong with their corresponding releases or demo branches.
+
+Generated local exports use ignored `output/`. This directory uses `outputs/` and holds the original eTL archives.
+
+The Iteration 3 ZIP is the submitted record. Any later reconstruction identifies the exact final Iteration 3 repo revision and belongs with its topic documents outside this archive.

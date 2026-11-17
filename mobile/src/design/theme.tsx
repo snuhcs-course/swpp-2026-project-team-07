@@ -1,5 +1,5 @@
 // AI-generated/modified with OpenAI Codex, Iteration 2 (2026-10-15).
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#guide-based-light-mode-october-15-2026
+// Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-081
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
 import { StyleSheet, type ImageStyle, type TextStyle, type ViewStyle } from 'react-native';
 import { readStored, writeStored } from '../services/storage';

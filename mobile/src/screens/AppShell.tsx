@@ -1,19 +1,19 @@
 // Scribe migration: OpenAI Codex, Iteration 2 (2026-10-16); see active collaboration log.
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// OpenAI Codex light-mode ambient: docs/ai-collaboration-prompts-iteration-2.md#guide-based-light-mode-october-15-2026
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
-// OpenAI Codex follow-up: docs/ai-collaboration-prompts-iteration-2.md#rehearsal-recording-choice-and-transcript-playback-october-14-2026
+// OpenAI Codex light-mode ambient: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-081
+// Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-043
+// OpenAI Codex follow-up: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-047
 // OutLoud redesign: one stage for every screen, as in the design prototype.
 // The ambient glow and the Home carousel persist across screens so Upload can blur
 // the carousel behind it.
-// OpenAI Codex immediate navigation: docs/ai-collaboration-prompts-iteration-2.md#remove-page-transitions-and-reduce-home-lag-october-15-2026
-// OpenAI Codex landscape follow-up: docs/ai-collaboration-prompts-iteration-2.md#landscape-rehearsal-implementation-october-15-2026
-// OpenAI Codex portrait-only correction: docs/ai-collaboration-prompts-iteration-2.md#portrait-only-pdf-rotation-correction-october-15-2026
-// OpenAI Codex faster presentation exit: docs/ai-collaboration-prompts-iteration-2.md#presentation-to-home-pause-october-15-2026
-// OpenAI Codex continuous Home glow and responsive navigation: docs/ai-collaboration-prompts-iteration-2.md#continuous-carousel-color-and-navigation-responsiveness-october-15-2026
-// OpenAI Codex stationary forward page fades: docs/ai-collaboration-prompts-iteration-2.md#stationary-forward-page-fades-october-15-2026
-// OpenAI Codex Full review routing: docs/ai-collaboration-prompts-iteration-2.md#review-and-full-review-redesign-october-15-2026
-// OpenAI Codex stable import hue: docs/ai-collaboration-prompts-iteration-2.md#stable-presentation-import-colour-october-15-2026
+// OpenAI Codex immediate navigation: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-111
+// OpenAI Codex landscape follow-up: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-053
+// OpenAI Codex portrait-only correction: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-080
+// OpenAI Codex faster presentation exit: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-112
+// OpenAI Codex continuous Home glow and responsive navigation: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-114
+// OpenAI Codex stationary forward page fades: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-120
+// OpenAI Codex Full review routing: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-122
+// OpenAI Codex stable import hue: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-123
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
 import { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';

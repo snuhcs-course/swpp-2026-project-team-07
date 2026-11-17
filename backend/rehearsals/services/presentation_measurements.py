@@ -19,7 +19,7 @@ def _empty(status, attempt_id, audio_hash, duration_ms, reason, limitation):
 
 def measure_waveform(waveform, speech_samples, *, attempt_id, audio_hash, duration_ms, text, language):
     """speech_samples are Silero sample intervals on the unchanged 16 kHz waveform."""
-    # AI-assisted #49 repair; decisions/evidence: docs/ai-collaboration-prompts-iteration-2.md.
+    # AI-assisted #49 repair; decisions/evidence: docs/ai-collaboration/README.md#prompt-logs.
     unavailable = lambda reason, limitation: _empty('unavailable', attempt_id, audio_hash, duration_ms, reason, limitation)
     try:
         values = np.asarray(waveform, dtype=np.float32)

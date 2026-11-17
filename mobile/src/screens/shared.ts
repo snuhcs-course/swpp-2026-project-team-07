@@ -1,8 +1,8 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
-// OpenAI Codex Full review navigation: docs/ai-collaboration-prompts-iteration-2.md#review-and-full-review-redesign-october-15-2026
-// OpenAI Codex follow-up: docs/ai-collaboration-prompts-iteration-2.md#rehearsal-recording-choice-and-transcript-playback-october-14-2026
-// OpenAI Codex continuous Home glow and responsive navigation: docs/ai-collaboration-prompts-iteration-2.md#continuous-carousel-color-and-navigation-responsiveness-october-15-2026
+// Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-043
+// OpenAI Codex Full review navigation: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-122
+// OpenAI Codex follow-up: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-047
+// OpenAI Codex continuous Home glow and responsive navigation: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-114
 // OutLoud redesign: navigation state shared by the screens.
 import { createContext, useContext, useEffect, useRef, useSyncExternalStore } from 'react';
 import { BackHandler } from 'react-native';

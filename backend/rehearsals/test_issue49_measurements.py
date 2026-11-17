@@ -1,5 +1,5 @@
 """Issue #49 regression evidence; synthetic audio and mocked local inference only."""
-# OpenAI Codex: docs/ai-collaboration-prompts-iteration-2.md, issue #49.
+# OpenAI Codex: docs/ai-collaboration/README.md#prompt-logs, issue #49.
 import hashlib
 from pathlib import Path
 from tempfile import TemporaryDirectory

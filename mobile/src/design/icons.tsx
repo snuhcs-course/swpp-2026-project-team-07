@@ -1,11 +1,11 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// OpenAI Codex light-mode glyphs: docs/ai-collaboration-prompts-iteration-2.md#guide-based-light-mode-october-15-2026
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+// OpenAI Codex light-mode glyphs: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-081
+// Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-043
 // OutLoud redesign: chroma presentation art and hint glyphs from the design bundle;
 // status icons below use the later monochrome outline treatment.
-// OpenAI Codex landscape follow-up: docs/ai-collaboration-prompts-iteration-2.md#landscape-rehearsal-implementation-october-15-2026
-// OpenAI Codex Review bars: docs/ai-collaboration-prompts-iteration-2.md#rehearse-review-bars-icon-october-15-2026
-// OpenAI Codex minimal status glyphs: docs/ai-collaboration-prompts-iteration-2.md#minimal-status-icons-october-15-2026
+// OpenAI Codex landscape follow-up: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-053
+// OpenAI Codex Review bars: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-094
+// OpenAI Codex minimal status glyphs: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-108
 import { memo } from 'react';
 import type { ReactNode } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';

@@ -26,7 +26,7 @@ export const useShell=()=>runtime.shell,useBack=()=>{},ensurePages=async()=>{},e
 export const useStore=select=>select({version:React.useSyncExternalStore(subscribe,()=>runtime.version)});
 export const getDeckState=()=>runtime.model.state,visibleDecks=()=>[runtime.model.deck],bump=()=>runtime.emit();
 export function updateDeckState(_id,f){runtime.model.state=f(runtime.model.state);runtime.emit();}
-// OpenAI Codex, 2026-11-02: actual take/compare lifecycle adapter; see docs/ai-collaboration-prompts-iteration-2.md.
+// OpenAI Codex, 2026-11-02: actual take/compare lifecycle adapter; see docs/ai-collaboration/README.md#prompt-logs.
 export function saveDeckState(_id,state){runtime.model.state=state;runtime.emit();}
 export const savedAttempts=()=>runtime.recoveries,audioOf=id=>runtime.audio.get(id)??null;
 export function commitTake(_deck,take){const takes=(runtime.model.state.takes??0)+1,sel=take.events[0].slide_index;const run={id:'recovered-run',sel,takeNo:takes,parts:Array.from({length:runtime.model.n},(_,i)=>i===sel?{attemptId:take.attemptId,segments:[{startMs:0,endMs:take.durationMs}]}:null)};runtime.model.state={...runtime.model.state,run,takes};runtime.emit();return{run,compare:null};}

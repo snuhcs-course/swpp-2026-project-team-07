@@ -1,5 +1,5 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+// Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-043
 // OutLoud redesign: the Rehearse screen's capture engine keeps the former
 // recording rules: recorder-clock slide events, durable checkpoints and a saved attempt
 // that uploads and transcribes automatically. Synthetic recorder fixture (no device audio).

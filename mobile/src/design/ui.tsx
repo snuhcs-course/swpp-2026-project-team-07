@@ -1,20 +1,20 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// OpenAI Codex light-mode controls: docs/ai-collaboration-prompts-iteration-2.md#guide-based-light-mode-october-15-2026
+// OpenAI Codex light-mode controls: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-081
 // Pre-rendered ambient glow integration with OpenAI Codex, Iteration 2 (2026-10-14).
-// OpenAI Codex layered ambient glow: docs/ai-collaboration-prompts-iteration-2.md#layered-full-screen-ambient-glow-october-15-2026
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
-// OpenAI Codex Review row tones: docs/ai-collaboration-prompts-iteration-2.md#review-and-full-review-redesign-october-15-2026
+// OpenAI Codex layered ambient glow: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-087
+// Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-043
+// OpenAI Codex Review row tones: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-122
 // OutLoud redesign: building blocks shared by the screens (design bundle template.html).
-// OpenAI Codex landscape follow-up: docs/ai-collaboration-prompts-iteration-2.md#landscape-rehearsal-implementation-october-15-2026
-// OpenAI Codex hidden hint slot: docs/ai-collaboration-prompts-iteration-2.md#rotated-home-hint-visibility-october-15-2026
-// OpenAI Codex rotated redo glyph: docs/ai-collaboration-prompts-iteration-2.md#sideways-redo-glyph-october-15-2026
-// OpenAI Codex rotated record countdown: docs/ai-collaboration-prompts-iteration-2.md#sideways-record-countdown-october-15-2026
-// OpenAI Codex orbiting sideways captions: docs/ai-collaboration-prompts-iteration-2.md#sideways-control-captions-october-15-2026
-// OpenAI Codex Review bars sizing: docs/ai-collaboration-prompts-iteration-2.md#rehearse-review-bars-icon-october-15-2026
-// OpenAI Codex richer light-mode glow: docs/ai-collaboration-prompts-iteration-2.md#stronger-light-mode-ambient-glow-october-15-2026
-// OpenAI Codex supplied Review artwork: docs/ai-collaboration-prompts-iteration-2.md#supplied-rehearse-review-icon-october-15-2026
-// OpenAI Codex semantic footer motion: docs/ai-collaboration-prompts-iteration-2.md#semantic-bottom-caption-motion-october-15-2026
-// OpenAI Codex precomposed ambient glow: docs/ai-collaboration-prompts-iteration-2.md#home-carousel-and-return-transition-performance-october-15-2026
+// OpenAI Codex landscape follow-up: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-053
+// OpenAI Codex hidden hint slot: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-085
+// OpenAI Codex rotated redo glyph: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-091
+// OpenAI Codex rotated record countdown: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-115
+// OpenAI Codex orbiting sideways captions: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-092
+// OpenAI Codex Review bars sizing: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-094
+// OpenAI Codex richer light-mode glow: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-095
+// OpenAI Codex supplied Review artwork: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-099
+// OpenAI Codex semantic footer motion: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-101
+// OpenAI Codex precomposed ambient glow: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-109
 import { memo, useEffect, type ComponentProps, type ReactNode } from 'react';
 import { Image, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { Easing, type SharedValue, useAnimatedProps, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';

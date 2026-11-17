@@ -1,4 +1,4 @@
-// OpenAI Codex, 2026-11-02: extracted existing page renderer; see docs/ai-collaboration-prompts-iteration-2.md.
+// OpenAI Codex, 2026-11-02: extracted existing page renderer; see docs/ai-collaboration/README.md#prompt-logs.
 import * as FileSystem from 'expo-file-system/legacy';
 import PdfThumbnail from 'react-native-pdf-thumbnail';
 import type { PageImage } from '../presentations/store';

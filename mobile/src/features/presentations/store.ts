@@ -1,7 +1,7 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// OpenAI Codex time/audience setup: docs/ai-collaboration-prompts-iteration-2.md#presentation-time-and-audience-setup-october-15-2026
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
-// OpenAI Codex follow-up: docs/ai-collaboration-prompts-iteration-2.md#rehearsal-recording-choice-and-transcript-playback-october-14-2026
+// OpenAI Codex time/audience setup: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-107
+// Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-043
+// OpenAI Codex follow-up: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-047
 // OutLoud redesign: presentations shown on Home, and each one's merged run.
 // PDFs, recordings, uploads and analysis results stay in the existing stores
 // (pdf catalog, saved attempts, analysis/review caches). This store only adds the
@@ -79,7 +79,7 @@ function sanitize(value: unknown, pdf: LocalPdf, fallbackOrder: number, usedHues
   };
 }
 
-// OpenAI Codex, 2026-11-02: serialized startup/demo loading; see docs/ai-collaboration-prompts-iteration-2.md.
+// OpenAI Codex, 2026-11-02: serialized startup/demo loading; see docs/ai-collaboration/README.md#prompt-logs.
 let loading: Promise<void> | null = null;
 /** Share startup/foreground loads so the bundled demo and catalog publish only once at a time. */
 export function loadPresentations(): Promise<void> {

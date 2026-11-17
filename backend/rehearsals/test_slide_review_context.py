@@ -1,5 +1,5 @@
 """Synthetic offline contracts for compact selected-review requests."""
-# AI-assisted by OpenAI Codex; see docs/ai-collaboration-prompts-iteration-2.md.
+# AI-assisted by OpenAI Codex; see docs/ai-collaboration/README.md#prompt-logs.
 from copy import deepcopy
 from types import SimpleNamespace
 from unittest import TestCase

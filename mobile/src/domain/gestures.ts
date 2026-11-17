@@ -1,7 +1,7 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// OpenAI Codex finger-linked page fade: docs/ai-collaboration-prompts-iteration-2.md#finger-linked-page-fade-october-15-2026
-// OpenAI Codex stationary back crossfade: docs/ai-collaboration-prompts-iteration-2.md#stationary-back-crossfade-october-15-2026
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+// OpenAI Codex finger-linked page fade: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-117
+// OpenAI Codex stationary back crossfade: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-119
+// Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-043
 // OutLoud redesign: gesture physics from the prototype (SPEC §4.1, §4.4, §8).
 // Functions marked 'worklet' also run on the UI thread inside Reanimated styles.
 

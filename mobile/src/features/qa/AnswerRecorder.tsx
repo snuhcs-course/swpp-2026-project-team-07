@@ -1,5 +1,5 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-// Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+// Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-043
 // OutLoud redesign: records one Audience Q&A answer (kept on the phone).
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { AppState } from 'react-native';

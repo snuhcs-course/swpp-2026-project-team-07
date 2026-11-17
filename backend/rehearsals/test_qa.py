@@ -1,5 +1,5 @@
 # AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
-# Attribution: docs/ai-collaboration-prompts-iteration-2.md#design-prototype-ui-rebuild-october-14-2026
+# Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-043
 """Audience Q&A endpoints with synthetic slides, transcripts and provider responses.
 
 Provider traffic goes through HTTPX MockTransport and the installed OpenAI SDK; Whisper is
