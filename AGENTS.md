@@ -30,6 +30,45 @@ Use the [prompt log index by iteration](docs/ai-collaboration/README.md#prompt-l
   a branch name, date or planning document does not establish a transition.
   Prepare the team's report separately for each iteration from the relevant entries.
 
+### Contributor prompt-log branches
+
+This default applies to every team member. For tasks that change this repository,
+publish the contributor's new prompt-log entries at handoff. Derive the branch
+`docs/<contributor>-prompt-logs` from the contributor's confirmed log folder name.
+
+| Contributor | Prompt-log branch |
+| --- | --- |
+| Injoon | `docs/injoon-prompt-logs` |
+| Jaewon | `docs/jaewon-prompt-logs` |
+| Jooyoung | `docs/jooyoung-prompt-logs` |
+| Seoyeon | `docs/seoyeon-prompt-logs` |
+
+Honor task-specific directions about where to log or whether to publish. Keep
+unconfirmed attribution local until it is resolved.
+
+1. Resolve the destination before writing. Check the team remote for the branch.
+   Reuse its local worktree or attach the local branch in a dedicated worktree.
+   If it exists only on the remote, start the local branch at that ref. If it is
+   new, create it from the team remote's current default branch. Verify the
+   checked-out branch and write the iteration log using its worktree path.
+2. At handoff, review the exact new entries for public sharing. Omit secrets and
+   private material, and label any redactions in quoted prompts.
+   Stage only this task's log changes under `docs/ai-collaboration/prompt-logs/<contributor>/`.
+   Check the entire staged diff before committing. Preserve unrelated staged and
+   unstaged changes, including earlier edits to the same log file.
+3. Before pushing, verify that every outgoing commit is in the authorized prompt-log
+   scope. Compare with the remote log branch, or with the verified default-branch
+   base when publishing a new branch. Push only the matching ref with
+   `git push <team-remote> HEAD:refs/heads/<branch>`. If someone updated the remote,
+   refresh it and retry only when both sets of entries can be preserved safely.
+4. If identity, branch setup, edit scope or push access blocks the workflow, report
+   the blocker and keep pending work local. Keep the implementation checkout free
+   of new prompt-log edits. At handoff, report the destination and what was pushed.
+
+This policy authorizes the agent to commit and push the reviewed prompt-log changes
+for the current task without separate approval. Other repository changes follow
+the regular review and publication rules below.
+
 ## Work from the current request and checkout
 
 - Read the request and relevant conversation; carry forward confirmed decisions and
