@@ -1,6 +1,6 @@
 # Meetings
 
-The [meeting guide](meeting-guide.md) provides a template for adding a dated record. The records below mirror the [published meeting log](https://github.com/snuhcs-course/swpp-2026-project-team-07/wiki/Daily-Standup-Meeting-Log).
+The [meeting guide](meeting-guide.md) provides a template for adding a dated record. Earlier entries also appear in the [published meeting log](https://github.com/snuhcs-course/swpp-2026-project-team-07/wiki/Daily-Standup-Meeting-Log).
 
 ## Iteration 1
 
@@ -13,3 +13,7 @@ The [meeting guide](meeting-guide.md) provides a template for adding a dated rec
 - [2026-10-11 · Iteration 2 kickoff](2026-10-11-iteration-2-kickoff.md)
 - [2026-10-14 · Iteration 2 meeting](2026-10-14-iteration-2-meeting.md)
 - [2026-10-16 · Iteration 2 implementation review (Zoom)](2026-10-16-iteration-2-implementation-review-zoom.md)
+
+## Iteration 5
+
+- [2026-11-19 · Iteration 5 kickoff](2026-11-19-iteration-5-kickoff.md)
