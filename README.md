@@ -1,132 +1,104 @@
-# OutLoud · Team 07
+# <img src="docs/design/figures/svg/outloud-logo.svg" alt="OutLoud" width="220" height="64" align="absmiddle"> · Team 07
 
-An Android presentation rehearsal app that connects PDF slides, recordings, slide-aligned transcripts and AI feedback.
+OutLoud is an Android presentation rehearsal app for students and professionals. Users can upload PDF slides, record rehearsals, and receive feedback on their delivery. OutLoud uses AI to transcribe rehearsals, evaluate how well speakers cover each slide, suggest improvements, and generate audience questions and follow-ups for Q&A practice.
 
-- **Mobile:** Expo SDK 57 / React Native 0.86 / TypeScript.
-- **Backend:** Django / Celery, with PostgreSQL and Redis.
-- **Repository:** `mobile/` for the app, `backend/` for the API and workers, `docs/` for guides and evidence, `compose.yaml` for local services.
+<a name="try-the-published-demo-flow"></a>
 
-## Current status
+## Try the v10 demo
 
-The [Requirements & Specifications v4.0](docs/requirements/requirements-and-specifications.md), [Design Rev.4.0](docs/design/design-documentation.md) and [dated evidence reconciliation](docs/testing/evidence/iteration-3-reconciliation-2026-11-05.md) describe the published [demo v8](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103), source `cdb8055`, and distinguish the later release-reported backend repair and unreleased local candidates. The Iteration 2 comparison baseline is main `7b7ef3b` / PR31 application `c4a3f48`.
+[Download the v10 APK](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/download/outloud-demo-v10-20261115/OutLoud-demo-v10-live-feedback.apk) for **Android 7.0 (API 24) or later**. Open OutLoud while online and enter the **demo code** from Team 07. [Release details](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v10-20261115)
 
-This source includes feedback v3 and the continuous per-slide capture used by demo v10. Release-specific historical links retain their original revision. The setup commands below build the checked-out source. Use the release APK to exercise the documented published demo.
+1. On **Home**, swipe up to import a PDF. Set the audience and presentation length, then tap the **save checkmark**.
+2. Tap the **record button**. If the live feedback prompt appears, tap **Use live feedback**, then grant microphone access when prompted. Use the **rotate button** to switch to landscape.
+3. Speak as you move through the slides. Check **Cues** for points to cover.
+4. Tap **Stop**. In the review overview, open **Feedback** to read advice or **Listen back** to replay the rehearsal with its transcript.
+5. Tap a **slide number** to see feedback for that slide.
+6. To retake **one slide**, return to it on the rehearsal screen and tap the record button. To retake the **entire presentation**, press and hold the same button. Confirm the redo.
+7. After recording the retake, **Compare takes** opens. Select **Old take** or **New take**, then tap **Keep this take**.
+8. From the review overview, swipe up to open **Audience Q&A**. Read the questions and record your answers.
 
-- **This copy has the redesigned mobile UI** (design prototype rebuild, October 14, 2026). See [REDESIGN.md](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/42c2154a54e209f4c9e931fd4db5777d6816c3d6/REDESIGN.md) for setup, the screen-to-feature map and verification limits.
-- **Iteration 3 documentation baseline for Iteration 4.** Existing task entries retain their recorded iteration labels. Iteration 1 features were merged into `main` on October 11, 2026 (PRs #17–#21).
+## What Iteration 4 adds
 
-- **Feedback v3 (off by default):** the rebuilt feedback pipeline uses per-slide calls and server-calculated Rubric V2 scores. Review, Full Review and Home display available results with pending states. The continuation includes a built standalone ARM64 APK; physical microphone and real-provider verification are recorded separately in the [active collaboration log](docs/ai-collaboration-prompts-iteration-2.md#continuous-per-slide-transcription-and-feedback--november-15-2026). See the [reimplementation design](docs/reference/ai-feedback-reimplementation.md#app-integration).
-- **Continuous per-slide feedback:** the Android recorder seals WAV segments on slide changes while keeping one microphone stream and a full playback WAV. Durable uploads, revisits, per-slide assessment reuse and final ordered transcript assembly are implemented. Enable `INCREMENTAL_CAPTURE_ENABLED` with Scribe and v3 credentials; the slide-counter mode selector or an unavailable capability retains the original after-Stop recorder. See the [contract](docs/reference/api-contract.md#continuous-capture-and-incremental-feedback-november-15-2026) and [phone test](docs/testing/evidence/incremental-phone-test-2026-11-15.md).
-- Available features include PDF import, recording with slide tracking, saved audio playback, ElevenLabs Scribe v2 transcription, synchronized transcript review and AI feedback.
-- Local import, recording and saved-media playback work without the backend. Upload, transcription and feedback require the configured server; provider work requires internet and credentials.
-- Iteration 2 Phase 2 adds cached image-aware slide profiles with zero to three essential Must Cover points and zero to three optional Further Insight suggestions per slide, aiming for 8–16 words (maximum 25) with expandable supporting details. PDF upload admits them automatically when feedback is configured; the permanent Cues panel shows both categories, progress and saved results beside selected-slide playback. Historical description/coaching functionality remains separate. See the [phase ledger](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/42c2154a54e209f4c9e931fd4db5777d6816c3d6/docs/iteration-2-ai-feedback.md).
-- Phase 3 derives exact-sum per-slide timing from explicitly saved duration requirements and uses mono AAC at 64 kbps for new captures up to thirty minutes. Missing duration retains labeled suggested timing; time and audience are editable through the shared presentation setup overlay. See [Phase 3 evidence](docs/testing/evidence/recording-timing-verification-2026-10-15.md).
-- Phase 5 adds automatic initial selected-slide feedback in Review: up to four prioritized evidence-linked findings, with separate pending, failed, insufficient-evidence, successful and outdated states. The evaluator also critiques idea ordering/connections and can suggest a clearer way to express the same meaning for a future rehearsal, without editing the transcript. Accepted transcript corrections invalidate results without automatically regenerating them. Audience/time checks require explicit requirements; the shared setup overlay saves those requirements. See [Phase 5 evidence](docs/testing/evidence/selected-slide-feedback-verification-2026-10-16.md).
-- Phase 6 adds durable audience Q&A using saved presentation audience and selected slide takes. New recording workflows admit one initial question set; changes mark it outdated and require an explicit update. Answers retain their own recording identity and cached transcription through retries. Saved Q&A remains playable in the existing screen. Apply backend migrations before loading this client against an older API. See [Phase 6 evidence and device limits](docs/testing/evidence/audience-qa-verification-2026-10-16.md).
-- New imports initialize saved requirements to **General audience** and **10 minutes**, using existing context APIs and labeled defaults in the current screens. Existing presentation preferences are preserved; the shared setup overlay can edit these values. [Verification](docs/testing/evidence/presentation-defaults-verification-2026-10-16.md).
-- App LLM prompts use OpenRouter with `openai/gpt-6-luna` and are **disabled by default** until configured. This covers slide profiles, feedback, transcript suggestions, scoring and Q&A. Suggestions link to evidence; they still require human judgment.
-- The [Azure demo v10](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v10-20261115) connects directly over public HTTPS and supports live per-slide feedback. It needs internet and the existing private reviewer code, with no running laptop or USB forwarding. See [hosting and rebuild instructions](docs/azure-hosting.md) and the [phone test](docs/testing/evidence/incremental-phone-test-2026-11-15.md). Code holders share the reviewer workspace; separate accounts are not implemented. Agent-operated device/provider checks are recorded separately from human usefulness assessment in the active collaboration log.
-- [Verification evidence and remaining limits](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/42c2154a54e209f4c9e931fd4db5777d6816c3d6/docs/verification.md) distinguish automated tests, agent-operated emulator checks and controlled provider evaluation. Sample previews remain separate from real results.
+- **Feedback while you rehearse.** Live feedback transcribes audio from completed slides and shows advice while you’re still recording. You can also choose **After Stop** to process the recording when you finish.
+- **Updated feedback when you revisit a slide.** OutLoud keeps what you said on earlier visits and updates that slide’s feedback after your new speech is transcribed. Feedback for unchanged slides stays available.
+- **Upload recovery and full-presentation review.** If the connection drops during a live rehearsal, OutLoud keeps recording and uploads the pending audio when you reconnect. After you tap **Stop**, you can review completed slide feedback while feedback for the full presentation is still processing.
 
-## Quick start
+<a name="quick-start"></a>
 
-Automatic presentation scoring now uses the existing durable feedback jobs. It produces validated overall and per-slide scores, refreshes after synchronized input changes, and retains explicit failure/uncertainty recovery. Existing review screens show level colors, direct advice and evidence; Home shows the overall score, total findings, duration and WPM. See the [v2 contract](docs/reference/presentation-scoring.md) and [source snapshot verification](docs/testing/evidence/presentation-scoring-source-verification-2026-10-17.md). Scores remain provisional; provider usefulness requires human testing.
+## Local Setup
 
-Step 1 compact feedback requests and cue/feedback reliability are integrated alongside scoring. Cached cues reconnect after connection failures, pause in the background or while covered, and resume on return. New feedback remains independent per slide; discontinued grouping and experiment tools are removed. See [compact context](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/42c2154a54e209f4c9e931fd4db5777d6816c3d6/docs/feedback-compact-context.md) and [retained-feature verification](docs/testing/evidence/retained-features-verification-2026-10-17.md).
+Install Git, Node.js 24 LTS (minimum 22.13), npm, Docker Compose, Android Studio, Android SDK Platform 36, and JDK 17. Set `JAVA_HOME` and Android Studio’s Gradle JDK to JDK 17.
 
-### 1. Prerequisites and clone
-
-- Node.js 24 LTS recommended (minimum 22.13), npm and Git.
-- Android Studio, **JDK 17**, Android SDK Platform 36, and an emulator or USB-debug-enabled Android phone.
-- Docker Desktop or another Docker Compose-compatible runtime for the backend.
-- Set both shell `JAVA_HOME` and Android Studio's project Gradle JDK to **JDK 17**.
+### 1. Start the backend
 
 ```sh
 git clone https://github.com/snuhcs-course/swpp-2026-project-team-07.git
 cd swpp-2026-project-team-07
-```
-
-### 2. Start the backend
-
-From the repository root, copy the example only on first setup; preserve any existing `.env`:
-
-```sh
 cp -n backend/.env.example backend/.env
-docker compose up --build
+docker compose up -d --build
 ```
 
-- Compose starts PostgreSQL, Redis, Django on port 8000, a Celery worker and one recovery scheduler; the API applies migrations.
-- Database and media volumes persist. Services bind to loopback for local development.
-- `http://127.0.0.1:8000/api/health/` checks API liveness; `/api/ready/` checks database/broker connectivity.
-- Check the worker with `docker compose exec worker celery -A config inspect ping`.
+The API applies migrations on startup. Once it starts, check readiness at `http://127.0.0.1:8000/api/ready/`.
 
-### 3. Start Android
-
-In a second terminal, from the repository root:
+### 2. Run the Android app
 
 ```sh
 cd mobile
 npm ci
 cp -n .env.example .env
-npm run android
 ```
 
-- Start the emulator first. The command builds and installs an Android development client and starts Metro; keep Metro running.
-- Use the development client, **not Expo Go**: native PDF rendering and SQLite require a native build. No EAS account or cloud build is required.
-- Expect the first build to download Gradle and Android dependencies.
+Set `EXPO_PUBLIC_API_URL` in `mobile/.env` for your device.
 
-### 4. Connect the app
+- **Emulator.** Start an Android Studio emulator and use `http://10.0.2.2:8000/api`.
+- **USB-connected phone.** Enable USB debugging and use `http://127.0.0.1:8000/api`. Run `adb reverse tcp:8000 tcp:8000` for the API and `adb reverse tcp:8081 tcp:8081` for Metro.
 
-- **Emulator:** set `EXPO_PUBLIC_API_URL=http://10.0.2.2:8000/api` in `mobile/.env`.
-- **USB phone:** run `adb reverse tcp:8000 tcp:8000` and use `EXPO_PUBLIC_API_URL=http://127.0.0.1:8000/api`. For a development client using Metro over USB, also run `adb reverse tcp:8081 tcp:8081`; debug builds can use Metro over the Mac's LAN address as well.
-- The Android release build permits local HTTP only for the USB-forwarded loopback address or Android emulator host. The backend must be running for uploads and transcription; offline recording and playback stay local.
-- Restart Metro after changing `.env`, then import a PDF and check the upload status in the redesigned app.
-- [Detailed setup](docs/local-development.md) includes Android Studio launching, macOS Java/Android/Docker troubleshooting, local Python development and dependency maintenance.
+Run `npm run android` from `mobile/` to build and install the development client. Keep Metro running while you use it. [Local development guide](docs/local-development.md)
 
-## Try the published demo flow
+<a name="configuration-and-limits"></a>
 
-1. On Home, pull up to add a PDF. After slide analysis, choose a 1–30 minute presentation time and audience in the setup overlay, then tap the checkmark. Choices synchronize through the existing presentation context API; offline saves remain pending and visible. Tap **Edit time & audience** in the idle recording header to edit them later. Conflicts offer Use server or Keep mine; dependent AI updates wait for synchronization.
-2. Record while navigating forward or backward through slides, then finish the recording. Repeated visits retain their source audio times.
-3. With the server available, the app uploads the PDF/audio and starts transcription after first-use ElevenLabs disclosure covering audio and visited-slide vocabulary hints. Failures preserve the local recording. The selected compact UI does not expose the earlier saved-recording retry tools.
-4. Open a presentation from Home. The normal recording layout shows the selected slide's Must Cover and Further Insight cues before and during capture. Tap Play beside Cues to play or pause its saved audio when not recording. Rotation enlarges the PDF; returning restores the current slide's Cues panel. Retaking a recorded slide opens the existing comparison screen, where you choose **Keep current** or **Overwrite**. The new recording stays pending until you decide. If a capture is interrupted, tap the status beneath the timer to inspect and recover its audio; close the sheet and tap again to inspect another interrupted capture. A recovered redo uses the same choice.
-5. After a new selected recording is transcribed, its first feedback starts automatically. Select a recorded slide in Review. The existing four rows show measured timing, a filler count, and verified content/delivery feedback for that exact recording. Per-slide timing is Under time, On time or Over time using an inclusive ±15% allocation range; a completed category with no finding says No issue flagged. Existing feedback details retain the complete observations and suggestions, including timing/filler advice; unavailable or incomplete results retain their status. Transcript-correction and explicit feedback-update tools are not exposed by this selected UI.
-6. An incremental take opens Full Review immediately after Stop, showing available feedback while final segments finish. The fallback retains its first-take Wait screen and later selected-slide review. Keep/Overwrite decisions retain their selected slide and return route. Review has a persistent Full Review button above its scroll content.
-7. Compact Review shows selected-slide playback and feedback. Full Review retains whole-run playback, transcripts and slide navigation and is also accessible from the Home assessment ring. Home and Full Review share a verified overall score for an exact complete original recording; slide rings and tiles show validated per-slide scores. Home also shows total current findings, recording duration and WPM. Scores start after transcription and saved settings synchronize. Combined recordings do not receive a whole-run grade. Full Review warns before playing a run with missing source audio.
+### 3. Enable AI features
 
-- Previously saved local media and cached results remain stored through network or provider failures. The selected compact Review has no manual remote-audio download control.
-- Refreshing, downloading and replaying do not start transcription or feedback. Opening a presentation may automatically score its selected recordings; unused history is not backfilled. Indicator GET requests never admit work. PDF upload may generate the reusable AI cue profile; failed/uncertain generation requires explicit recovery. Rehearsal coaching generation remains explicit and does not retranscribe audio.
-- History covers locally known presentations for the selected API, not an account-wide archive. [Recording, playback and recovery details](docs/reference/rehearsal-review.md).
+Add `ELEVENLABS_API_KEY` and `OPENROUTER_API_KEY` to `backend/.env`. Set `FEEDBACK_V3_ENABLED=true` and `INCREMENTAL_CAPTURE_ENABLED=true` for Live feedback. Set `FEEDBACK_V3_AUTO_START=true` to start feedback automatically after transcription in **After Stop** mode. Slide cues and Audience Q&A also require `FEEDBACK_ENABLED=true` and provider quotas. [Provider configuration](docs/reference/ai-feedback.md#provider-configuration-and-operational-bounds)
 
-## Configuration and limits
-
-- Keep provider keys in ignored `backend/.env`; never put secrets in `EXPO_PUBLIC_*` variables.
-- Hosted transcription uses ElevenLabs `scribe_v2` exclusively and requires `ELEVENLABS_API_KEY`. Up to 100 vocabulary hints come only from visited slides; see [Scribe transcription](docs/reference/scribe-transcription.md). Detected no-speech recordings produce an empty transcript without a provider request.
-- To enable LLM requests, set `FEEDBACK_ENABLED=true`, `FEEDBACK_PROVIDER=openrouter`, `OPENROUTER_API_KEY`, `FEEDBACK_OPENROUTER_MODEL=openai/gpt-6-luna`, a nonsecret `FEEDBACK_OPENROUTER_PROJECT_ID` and positive `FEEDBACK_OPENROUTER_RPM`/`FEEDBACK_OPENROUTER_TPM` allowances. OpenRouter is the default provider; its key never falls back to `OPENAI_API_KEY`. Use an OpenRouter workspace/key that excludes personal OpenAI BYOK credentials. Follow the [activation and saved-job cutover](docs/reference/ai-feedback.md#openrouter-activation-and-saved-job-cutover) and [configuration reference](docs/reference/ai-feedback.md#provider-configuration-and-operational-bounds).
-- **Input limits:** any positive slide count, 50 MiB PDF, thirty-minute recordings and 25,000,000 audio bytes. Oversized legacy audio remains playable locally; record a shorter attempt to upload.
-- Failed or uncertain provider submissions retain explicit recovery/confirmation controls. A retry may incur another charge; the system does not guarantee exactly-once provider execution or a spending cap.
-- [Dependency assessment](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/42c2154a54e209f4c9e931fd4db5777d6816c3d6/docs/whisper-transcription.md#packaged-gate-dependency-assessment-2026-10-08) records unresolved Torch advisories and their assessed scope.
+After editing `backend/.env`, run `docker compose up -d --force-recreate api worker scheduler` from the repository root.
 
 ## Checks
 
-From `mobile/`:
+Run the mobile type check, lint, and tests from `mobile/`.
 
 ```sh
 npm run check
-npm run bundle:android
 ```
 
-With Compose running, from the repository root:
+Run the Django test suite from the repository root with Docker Compose running.
 
 ```sh
-docker compose exec api python manage.py check
 docker compose exec api python manage.py test --noinput
-docker compose exec api python manage.py makemigrations --check --dry-run
 ```
 
-- [Verification guide](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/42c2154a54e209f4c9e931fd4db5777d6816c3d6/docs/verification.md) covers local Python/SQLite commands, PostgreSQL concurrency tests, worker recovery and historical evidence.
-- [Coverage checks](docs/testing/testing.md#coverage-on-main) show how to run the same coverage checks as CI. GitHub Actions retains the reports when a check fails.
-- SQLite tests skip PostgreSQL-specific races. An Android JavaScript export does not establish APK, physical-device or human-usefulness results.
+### v10 results
 
-## Documentation
+On November 15, 2026, v10 (`5745502`) passed **669 mobile tests** and **710 backend tests on PostgreSQL**, with zero skips. Phone checks covered both **Live feedback** during recording and **After Stop** processing. [Automated test results](docs/testing/evidence/incremental-phone-test-2026-11-15.md#resumed-azure-phone-check) · [Phone checks](docs/testing/evidence/incremental-phone-test-2026-11-15.md#final-v10-phone-checks)
 
-See the [documentation index](docs/README.md) for requirements, design, testing, technical references, meetings and collaboration reports. The [course Wiki](https://github.com/snuhcs-course/swpp-2026-project-team-07/wiki) holds published documentation. The [submission archive](outputs/README.md) holds the original eTL ZIPs.
+## Known Limitations
+
+- **Shared demo access.** Home only shows presentations in your device’s library. Anyone with the demo code and the direct server URL for an uploaded slide deck or recording can open that file. Use sample slides and recordings for the demo. [Hosted access](docs/azure-hosting.md#access-and-data-boundary)
+- **UI bugs.** Some screens still have layout issues. For example, Home hints can overlap the PDF import progress screen when offline, and cue status text can be clipped at larger Android text sizes.
+- **Rubric validation.** We still need to check how closely OutLoud’s scores match independent human ratings on real presentations and whether presenters find the feedback useful.
+
+See [Testing Documentation](docs/testing/testing.md#4-acceptance-testing-starting-from-iteration-3) for the remaining acceptance checks.
+
+## Repository and Documentation
+
+| Folder | What’s inside |
+| --- | --- |
+| `mobile/` | Android app and mobile tests |
+| `backend/` | Django API, background workers, and backend tests |
+| `deploy/` | Hosted demo configuration and maintenance scripts |
+| `tools/` | Coverage reporting tools |
+| `docs/` | Project documentation and technical references |
+| `outputs/` | Original course submission archives |
+
+- **Project documentation** — [Requirements and Specifications](docs/requirements/requirements-and-specifications.md) · [Design](docs/design/design-documentation.md) · [Testing](docs/testing/testing.md) · [Full documentation index](docs/README.md)
+- **Course records** — [AI collaboration](docs/ai-collaboration/README.md) · [Meeting notes](docs/meetings/README.md) · [Project Wiki](https://github.com/snuhcs-course/swpp-2026-project-team-07/wiki) · [Submitted archives](outputs/README.md)
