@@ -8,7 +8,7 @@ export function resolve(specifier, context, next) {
   if (specifier === 'expo-file-system' || specifier === 'expo/fetch') {
     return { url: new URL('./upload-native.mjs', import.meta.url).href, shortCircuit: true };
   }
-  if (['react-native', 'react-native-reanimated', 'react-native-gesture-handler',
+  if (['expo-router', 'react-native', 'react-native-reanimated', 'react-native-gesture-handler',
     'react-native-svg', 'expo-haptics', 'react-native-safe-area-context'].includes(specifier) ||
     (context.parentURL?.includes('/src/screens/') &&
       ['./HomeFeedbackStats', './PresentationSetup', '../design/PanView'].includes(specifier))) {

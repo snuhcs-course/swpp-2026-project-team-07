@@ -33,7 +33,7 @@ async function firstTake(t) {
   captures.at(-1).uri = `file:///synthetic-first-${serial}.m4a`;
   await tap(record()); await countdown(t); assert.equal(record().props.label, 'Stop recording');
   captures.at(-1).durationMillis = 5000; await tap(record());
-  assert.equal(runtime.routes.at(-1)[0], 'full');
+  assert.equal(runtime.routes.at(-1)[0], 'wait');
   return savedAttempts(runtime.model.deck.id)[0];
 }
 async function returnFromReview(t) {
@@ -42,7 +42,7 @@ async function returnFromReview(t) {
   await act(async () => renderer.update(screen(true)));
 }
 async function confirmRedo(t) {
-  await tap(record()); assert.equal(renderer.root.findByType('dialog').props.confirm, 'Redo');
+  await tap(record()); assert.equal(renderer.root.findByType('dialog').props.confirm, 'Redo slide 2');
   await act(async () => renderer.root.findByType('dialog').props.onConfirm()); await countdown(t);
 }
 afterEach(async () => { if (renderer) await act(async () => renderer.unmount()); renderer = null; });

@@ -1,5 +1,6 @@
 import React from 'react';
-export { StyleSheet, View, Pressable, Txt, Circle, Defs, Path, Rect, Stop, LinearGradient,
+export { useFocusEffect } from './recording-screen-ui.mjs';
+export { AppState, StyleSheet, View, Pressable, Txt, Circle, Defs, Path, Rect, Stop, LinearGradient,
   useSharedValue, withTiming, runOnJS } from './ai-overview-screen-native.mjs';
 
 export const Text = 'text', Image = 'image', G = 'group', Ellipse = 'ellipse';

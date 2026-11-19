@@ -6,7 +6,8 @@ import { normalizeApi } from './analysisStorage';
 import { reviewKey } from './reviewStorage';
 import { isUuid, mediaUrl, validDuration } from './reviewValidation';
 
-export const MEDIA_LIMITS = { audio: 25_000_000, pdf: 50 * 1024 * 1024 };
+// Incremental capture retains a full PCM WAV (about 58 MB at its 30-minute limit).
+export const MEDIA_LIMITS = { audio: 60_000_044, pdf: 50 * 1024 * 1024 };
 export type MediaSpec = { api: string; id: string; kind: 'audio' | 'pdf'; url: string; durationMs?: number; pageCount?: number };
 export type MediaRecord = MediaSpec & { uri: string; bytes: number; md5: string; validated: true };
 export type Validator = (uri: string, spec: MediaSpec, signal: AbortSignal) => Promise<void>;

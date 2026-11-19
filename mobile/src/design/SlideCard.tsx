@@ -9,10 +9,10 @@ import { Image, StyleSheet, View } from 'react-native';
 import Svg, { ClipPath, Defs, G, Image as SvgImage, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 import type { HueName } from '../domain/hues';
 import type { PageImage } from '../features/presentations/store';
-import { Txt } from './frame';
+import { Txt, useFrame } from './frame';
 import { F, HUES } from './tokens';
 
-export const CARD_W = 358, CARD_H = 202, FOLD = 34, FOLD_R = 6;
+export const CARD_W = 358, CARD_H = 200, FOLD = 34, FOLD_R = 6;
 
 type Pt = [number, number, number];
 /** Rounded polygon: each point is [x, y, radius] (port of the prototype's roundPoly). */
@@ -32,10 +32,10 @@ export function roundPoly(pts: Pt[]): string {
   return out + 'Z';
 }
 const CLIPS: Record<string, string> = {};
-export function cardClip(cutL: boolean, cutR: boolean): string {
-  const key = (cutL ? 'L' : '') + (cutR ? 'R' : '');
+export function cardClip(cutL: boolean, cutR: boolean, height = CARD_H): string {
+  const key = `${height}:` + (cutL ? 'L' : '') + (cutR ? 'R' : '');
   if (CLIPS[key]) return CLIPS[key];
-  const W = CARD_W, H = CARD_H, pts: Pt[] = [[0, 0, 22], [W, 0, 22]];
+  const W = CARD_W, H = height, pts: Pt[] = [[0, 0, 22], [W, 0, 22]];
   if (cutR) pts.push([W, H - FOLD, FOLD_R], [W - FOLD, H, FOLD_R]); else pts.push([W, H, 22]);
   if (cutL) pts.push([FOLD, H, FOLD_R], [0, H - FOLD, FOLD_R]); else pts.push([0, H, 22]);
   return (CLIPS[key] = roundPoly(pts));
@@ -54,17 +54,18 @@ export const SlideCard = memo(function SlideCard({ hue, page, deckTitle, title, 
   hue: HueName; page?: PageImage; deckTitle: string; title: string; points: readonly string[]; num: number; foldL: boolean; foldR: boolean; shadow?: boolean;
 }) {
   const h = HUES[hue];
+  const cardHeight = useFrame().compact ? 170 : CARD_H;
   const clipKey = 'clip' + (foldL ? 'L' : '') + (foldR ? 'R' : '');
-  const box = page ? contain(page.w, page.h, CARD_W, CARD_H) : null;
+  const box = page ? contain(page.w, page.h, CARD_W, cardHeight) : null;
   return (
-    <View style={[styles.card, shadow && { boxShadow: `0px 24px 40px ${h.glow}` }]}>
-      <Svg width={CARD_W} height={CARD_H} style={StyleSheet.absoluteFill}>
+    <View style={[styles.card, { height: cardHeight }, shadow && { boxShadow: `0px 24px 40px ${h.glow}` }]}>
+      <Svg width={CARD_W} height={cardHeight} style={StyleSheet.absoluteFill}>
         <Defs>
-          <ClipPath id={clipKey}><Path d={cardClip(foldL, foldR)} /></ClipPath>
+          <ClipPath id={clipKey}><Path d={cardClip(foldL, foldR, cardHeight)} /></ClipPath>
           <LinearGradient id={'face' + hue} x1="0" y1="0" x2="1" y2="1"><Stop offset="0" stopColor={h.face[0]} /><Stop offset="1" stopColor={h.face[1]} /></LinearGradient>
         </Defs>
         <G clipPath={`url(#${clipKey})`}>
-          <Rect width={CARD_W} height={CARD_H} fill={`url(#face${hue})`} />
+          <Rect width={CARD_W} height={cardHeight} fill={`url(#face${hue})`} />
           {page && box && <SvgImage href={{ uri: page.uri }} x={box.x} y={box.y} width={box.width} height={box.height} preserveAspectRatio="none" />}
           <Rect x={0} y={0} width={CARD_W} height={1} fill="rgba(255, 255, 255, 0.2)" />
         </G>
@@ -76,9 +77,9 @@ export const SlideCard = memo(function SlideCard({ hue, page, deckTitle, title, 
           <View style={styles.rule} />
           {points.length ? (
             <View style={{ gap: 5, marginTop: 2 }}>
-              {points.slice(0, 4).map(p => (
+              {points.slice(0, cardHeight < CARD_H ? 3 : 4).map(p => (
                 <View key={p} style={{ flexDirection: 'row', gap: 8 }}>
-                  <View style={styles.dot} /><Txt numberOfLines={2} style={styles.bullet}>{p}</Txt>
+                  <View style={styles.dot} /><Txt numberOfLines={cardHeight < CARD_H ? 1 : 2} style={styles.bullet}>{p}</Txt>
                 </View>
               ))}
             </View>
@@ -122,12 +123,12 @@ export function MiniSlide({ hue, page, title, width, height, radius, num }: { hu
       </Svg>
       {page ? <Image source={{ uri: page.uri }} resizeMode="contain" style={StyleSheet.absoluteFill} /> : (
         <View style={{ padding: big ? 12 : 7, paddingHorizontal: big ? 14 : 8, gap: big ? 6 : 4 }}>
-          <Txt numberOfLines={1} style={{ fontFamily: F.display, fontSize: big ? 15 : 9, color: '#FFFFFF' }}>{title}</Txt>
+          <Txt numberOfLines={1} style={{ fontFamily: F.display, fontSize: 13.5, color: '#FFFFFF' }}>{title}</Txt>
           <View style={{ width: big ? 24 : 14, height: big ? 3 : 2, borderRadius: 1, backgroundColor: 'rgba(255, 255, 255, 0.85)' }} />
           {(big ? [0.82, 0.66, 0.52] : [0.8, 0.62]).map((w, i) => (
             <View key={w} style={{ width: `${w * 100}%`, height: big ? 5 : 3, marginTop: big && i === 0 ? 4 : 0, borderRadius: 3, backgroundColor: big ? 'rgba(255, 255, 255, 0.26)' : 'rgba(255, 255, 255, 0.3)' }} />
           ))}
-          {big && num != null && <Txt style={{ position: 'absolute', right: 12, bottom: 9, fontFamily: F.semibold, fontSize: 10, color: 'rgba(255, 255, 255, 0.82)' }}>{num}</Txt>}
+          {big && num != null && <Txt style={{ position: 'absolute', right: 12, bottom: 9, fontFamily: F.semibold, fontSize: 13.5, color: 'rgba(255, 255, 255, 0.82)' }}>{num}</Txt>}
         </View>
       )}
     </View>
@@ -135,14 +136,14 @@ export function MiniSlide({ hue, page, title, width, height, radius, num }: { hu
 }
 
 const styles = StyleSheet.create({
-  card: { width: CARD_W, height: CARD_H, borderRadius: 22 },
-  standIn: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, paddingVertical: 16, paddingHorizontal: 18, gap: 6 },
-  over: { paddingRight: 24, fontFamily: F.bold, fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: 'rgba(255, 255, 255, 0.75)' },
+  card: { width: CARD_W, height: CARD_H, borderRadius: 18 },
+  standIn: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, paddingVertical: 12, paddingHorizontal: 18, gap: 5 },
+  over: { paddingRight: 24, fontFamily: F.bold, fontSize: 13.5, letterSpacing: 1, textTransform: 'uppercase', color: 'rgba(255, 255, 255, 0.75)' },
   title: { fontFamily: F.display, fontSize: 21, lineHeight: 23, letterSpacing: -0.4, color: '#FFFFFF', textShadowColor: 'rgba(0, 0, 0, 0.18)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
   rule: { width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255, 255, 255, 0.85)' },
   dot: { width: 5, height: 5, marginTop: 5, borderRadius: 1.5, backgroundColor: '#FFFFFF' },
-  bullet: { flex: 1, fontFamily: F.regular, fontSize: 12, lineHeight: 15, color: 'rgba(255, 255, 255, 0.94)' },
+  bullet: { flex: 1, fontFamily: F.regular, fontSize: 13.5, lineHeight: 18, color: 'rgba(255, 255, 255, 0.94)' },
   bar: { height: 7, borderRadius: 4, backgroundColor: 'rgba(255, 255, 255, 0.24)' },
-  num: { position: 'absolute', bottom: 12, fontFamily: F.semibold, fontSize: 11, color: 'rgba(255, 255, 255, 0.82)' },
+  num: { position: 'absolute', bottom: 12, fontFamily: F.semibold, fontSize: 13.5, color: 'rgba(255, 255, 255, 0.82)' },
   flap: { position: 'absolute', bottom: 0, width: FOLD, height: FOLD },
 });

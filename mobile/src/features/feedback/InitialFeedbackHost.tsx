@@ -1,3 +1,4 @@
+import { isIncrementalAttempt } from '../recording/incrementalState';
 /** Selected-run initial feedback workflow; independent of which screen is open. */
 import { useSyncExternalStore } from 'react';
 import { API_URL } from '../../services/api';
@@ -9,6 +10,7 @@ import { readReview } from '../transcription/reviewStorage';
 import { reviewScope } from './slideReview';
 import { initialFeedbackEnabled } from './automaticFeedback';
 import { useSlideReview } from './useSlideReview';
+import { feedbackV3Capability, feedbackV3CapabilityChecked } from './feedbackRunClient';
 import type { ReviewAttempt } from '../../contracts';
 import type { ReviewScope } from './slideReview';
 
@@ -17,13 +19,15 @@ type InitialReviewTask={id:string;scope:ReviewScope;review:ReviewAttempt;revisio
 export function InitialFeedbackHost() {
  useStore(s=>s.version);
  useSyncExternalStore(subscribeRequirements,getRequirementsVersion);
+ // Claude Code, prompted by Seoyeon (2026-11-15): automatic v2 slide reviews run only once the server is known to lack feedback v3.
+ if(!feedbackV3CapabilityChecked(API_URL)||feedbackV3Capability(API_URL)!==false)return null;
  const tasks:InitialReviewTask[]=[];
  for(const deck of visibleDecks()) {
   const saved=getDeckState(deck.id);
   // Pending comparisons have not yet authorized a new selected take.
   if(saved.compare||defaultRequirementsPending(deck.id,API_URL)||requirementsPending(deck.id,API_URL))continue;
   saved.run?.parts.forEach((part,index)=>{
-   if(!part||!initialFeedbackEnabled(API_URL,part.attemptId))return;
+   if(!part||isIncrementalAttempt(API_URL,part.attemptId)||!initialFeedbackEnabled(API_URL,part.attemptId))return;
    try{
     const review=readReview(API_URL,part.attemptId);
     if(!review?.transcript?.words.length||!review.deck_id)return;

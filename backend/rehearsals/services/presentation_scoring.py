@@ -18,12 +18,12 @@ from .feedback import FeedbackError, json_bytes, restore_analysis
 from .feedback_config import Selection, QuotaPolicy, assert_selection, selection_descriptor
 
 VERSION = 'presentation-score-v2'
-PROMPT_VERSION = 'presentation-score-prompt-v2.3'
+PROMPT_VERSION = 'presentation-score-prompt-v2.4'
 SCHEMA_VERSION = VERSION
 
 # Exact prior protocols, including rubric, evidence, measurements and schema.
 # Old receipts remain bound to their immutable protocol, never normalized using
-# replacement measurements. Only the two most recent terminal protocols can read through.
+# replacement measurements. Only exact v2.2/v2.3 terminal protocols can read through.
 # Canonical fingerprints also verify values after JSONB reorders object fields.
 _PREVIOUS_PROTOCOLS = (
     ('presentation-score-v2',
@@ -39,6 +39,10 @@ _PREVIOUS_PROTOCOLS = (
     ('presentation-score-prompt-v2.3',
      'c7ae3c9576e57a2729054563292ae1816a8e187b580e72d90d9f6f72475e65ba',
      'c35712151598808fef66e27f4f34132fe3f797e05ac05578959c4470695d288b'),
+    # Exact deployed v2.3 + measurements-v2 policy (12k tokens, 64 KiB inner JSON).
+    ('presentation-score-prompt-v2.3',
+     'bd44f68efa7b7f308962fb01e6f884ff7f051104fd848d251eb600f793337282',
+     '84eb8821468072046279ef18f15dc96865dc51f9be78a923596c9004364d1bed'),
 )
 _TERMINAL_READ_PROTOCOLS = tuple(p for p in _PREVIOUS_PROTOCOLS
                                if p[0] in ('presentation-score-prompt-v2.2', 'presentation-score-prompt-v2.3'))

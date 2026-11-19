@@ -62,7 +62,8 @@ test('home carousel opens rehearsal or saved review and restores a deck after Un
   savePresentation(deck('Second talk', 2));
   saveDeckState('First talk', { ...getDeckState('First talk'), run: { id: 'saved-run' } });
   const { routes, home } = await mount(HomeScreen, { mode: 'home', uploadLook: null });
-  await click('Full review and AI assessment of First talk');
+  await click('Close tutorial');
+  await act(async () => renderer.root.findByType('home-stats').props.onOpenReview());
   assert.deepEqual(routes.pop(), ['full', { nav: 'fade', deckId: 'First talk', from: 'home' }]);
   await action('increment');
   assert.equal(home.p.value, 1);
@@ -79,7 +80,7 @@ test('home carousel opens rehearsal or saved review and restores a deck after Un
   assert.deepEqual(routes.pop(), ['upload', { nav: 'fade' }]);
 });
 
-test('home opens the icon picker and About, and leaves the last presentation in the library', async () => {
+test('home opens the icon picker, help and credits, and leaves the last presentation in the library', async () => {
   savePresentation(deck('Only talk', 1));
   const { routes } = await mount(HomeScreen, { mode: 'home', uploadLook: null });
   await action('delete');
@@ -88,8 +89,14 @@ test('home opens the icon picker and About, and leaves the last presentation in 
   assert.equal(textShown('Choose an icon'), true);
   await click('Literature');
   assert.equal(deckById('Only talk').icon, 'book');
+  assert.equal(textShown('Choose an icon'), true);
+  await click('Close icon picker');
   assert.equal(textShown('Choose an icon'), false);
-  await click('About OutLoud');
+  await click('How OutLoud works');
+  assert.equal(renderer.root.findAllByProps({ accessibilityLabel: 'Close tutorial' }).length, 1);
+  await act(async () => assert.equal(pressBack(), true));
+  assert.equal(renderer.root.findAllByProps({ accessibilityLabel: 'Close tutorial' }).length, 0);
+  await act(async () => byLabel('How OutLoud works').props.onLongPress());
   await act(async () => assert.equal(pressBack(), true));
   assert.equal(routes.length, 0);
 });
@@ -117,7 +124,7 @@ function extractedText(method) {
 test('upload saves an offline deck, opens rehearsal, and recovers slide text when the API returns', async () => {
   const { routes, home } = await mount(UploadScreen);
   await click('Choose a PDF to upload');
-  assert.equal(textShown('Tap the icon to upload'), true);
+  assert.equal(textShown('Tap the icon to upload · PDF · up to 50 MB'), true);
   await choosePdf('Offline talk');
   network.respond = async () => { throw new Error('Offline fixture'); };
   await click('Choose a PDF to upload');

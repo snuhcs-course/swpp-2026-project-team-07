@@ -4,8 +4,8 @@ import type { PresentationScore, ScoreEvidence, ScoreLevel, ScoreTarget } from '
 export const scoreLevelLabel = (level: ScoreLevel | null) => level ? level[0].toUpperCase() + level.slice(1) : '';
 export const scoreNumber = (score: number | null | undefined) => Number.isSafeInteger(score) && score! >= 0 && score! <= 100 ? score! : null;
 /** Color by the validated exact backend level; rounded points never choose a level. */
-export function scoreLevelColor(level: ScoreLevel | null, palette: Pick<Palette, 'bad'|'warn'|'good'|'info'|'secondary'>): string {
- return level === 'beginning' ? palette.bad : level === 'emerging' ? palette.warn : level === 'competent' ? palette.good : level === 'advanced' ? palette.info : palette.secondary;
+export function scoreLevelColor(level: ScoreLevel | null, palette: Pick<Palette, 'bad'|'warn'|'good'|'gold'|'secondary'>): string {
+ return level === 'beginning' ? palette.bad : level === 'emerging' ? palette.warn : level === 'competent' ? palette.gold : level === 'advanced' ? palette.good : palette.secondary;
 }
 /** Keep ring labels short; panels retain the full explanation and recovery action. */
 export function scoreRingStatus(status: string): string {

@@ -41,5 +41,5 @@ export function ScoreRing({ id, percent, value, label, labelColor, gradient, ani
 const styles = StyleSheet.create({
   box: { width: 120, height: 120, alignItems: 'center', justifyContent: 'center' },
   value: { fontFamily: F.display, fontSize: 30, lineHeight: 31, letterSpacing: -0.8, fontVariant: ['tabular-nums'] },
-  label: { marginTop: 4, fontFamily: F.semibold, fontSize: 11, lineHeight: 12, letterSpacing: 0.3 },
+  label: { marginTop: 4, fontFamily: F.semibold, fontSize: 13.5, lineHeight: 16, letterSpacing: 0.3 },
 });

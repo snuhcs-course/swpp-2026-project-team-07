@@ -24,6 +24,29 @@ def recover_work():
     recover_coaching()
     from .services.audience_qa import recover_answers
     recover_answers()
+    from .feedback_v3.pipeline import recover as recover_feedback_v3
+    recover_feedback_v3()
+    from .services.incremental import recover as recover_capture
+    recover_capture()
+
+
+@shared_task(time_limit=300, ignore_result=True)
+def transcribe_capture_segment(segment_id):
+    from .services.incremental import transcribe_segment
+    transcribe_segment(segment_id)
+
+
+@shared_task(time_limit=300, ignore_result=True)
+def assess_capture_part(assessment_id):
+    from .services.incremental import assess_part
+    assess_part(assessment_id)
+
+
+# Claude Code, prompted by Seoyeon (2026-11-14): v3 feedback run; see docs/ai-feedback-reimplementation.md.
+@shared_task(time_limit=300, ignore_result=True)
+def run_feedback_v3(run_id: str):
+    from .feedback_v3.pipeline import run
+    run(run_id)
 
 
 @shared_task(time_limit=300, ignore_result=True)

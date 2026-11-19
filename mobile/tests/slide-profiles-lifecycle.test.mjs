@@ -87,6 +87,9 @@ test('stale saved content is hidden and generation occurs only after an explicit
     await act(async()=>renderer.update(tree({localId:'profile-stale-recovery',slide:1})));
     await act(async()=>renderer.root.findByType('theme-toggle').props.onPress());
     assert.deepEqual(calls.map(c=>c.method),['GET']);
+    assert.equal(renderer.root.findAllByType('pressable').find(p=>p.props.accessibilityLabel==='Generate AI cues'),undefined);
+    await act(async()=>renderer.root.findAllByType('pressable').find(p=>p.props.accessibilityLabel==='Open Must cover cues').props.onPress());
+    assert.deepEqual(calls.map(c=>c.method),['GET']);
     const generate=renderer.root.findAllByType('pressable').find(p=>p.props.accessibilityLabel==='Generate AI cues');
     await act(async()=>{generate.props.onPress();});
     assert.equal(calls.filter(c=>c.method==='POST').length,1);
@@ -133,7 +136,8 @@ test('current cached cues remain visible through a failed read and successful sa
  await createProfileClient(API_URL,async()=>new Response(JSON.stringify(profileResponse()))).read(deckId,3);
  globalThis.fetch=async()=>{if(++reads===1)throw Error('offline');return new Response(JSON.stringify(profileResponse()));};
  try{
-  await act(async()=>{r=create(tree({localId:'cue-cache-reconnect'}));});assert.match(json(r),/Explain the change/);assert.match(json(r),/Saved cues are retained/);
+  await act(async()=>{r=create(tree({localId:'cue-cache-reconnect'}));});assert.match(json(r),/Explain the change/);assert.match(json(r),/Status · Tap for detail/);
+  await act(async()=>r.root.findAllByType('pressable').find(p=>p.props.accessibilityLabel==='Open Must cover cues').props.onPress());assert.match(json(r),/Saved cues are retained/);
   await act(async()=>t.mock.timers.tick(2500));assert.match(json(r),/Explain the change/);assert.equal(current.error,'');
  }finally{if(r)await act(async()=>r.unmount());globalThis.fetch=old;t.mock.timers.reset();}
 });

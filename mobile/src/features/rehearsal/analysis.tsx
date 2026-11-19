@@ -1,3 +1,5 @@
+import { captureVersion, readCapture, subscribeCaptures } from '../recording/incrementalState';
+import { retryCapture } from '../recording/incremental';
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
 // Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-043
 // OutLoud redesign: background upload + hosted transcription for each take.
@@ -11,7 +13,7 @@ import { API_URL } from '../../services/api';
 import { getSavedAttempt, saveAttempt, type SavedAttempt } from '../recording/storage';
 import { uploadAttempt } from '../recording/upload';
 import { enableInitialQa } from '../qa/automatic';
-import { enableInitialFeedback } from '../feedback/automaticFeedback';
+import { enableInitialFeedback, enableAutomaticFeedbackV3 } from '../feedback/automaticFeedback';
 import { enableAutomaticScore } from '../feedback/automaticPresentationScore';
 import { normalizeApi, readAnalysis } from '../transcription/analysisStorage';
 import { readReview } from '../transcription/reviewStorage';
@@ -101,6 +103,31 @@ export function audioOf(id: string): string | null {
 const STAGE_TEXT: Record<string, string> = { queued: 'Queued', checking_audio: 'Checking audio', transcribing: 'Transcribing', aligning: 'Matching words to slides' };
 
 function AttemptWorker({ id }: { id: string }) {
+  useSyncExternalStore(subscribeCaptures, captureVersion);
+  return readCapture(id) ? <IncrementalWorker id={id} /> : <LegacyAttemptWorker id={id} />;
+}
+function IncrementalWorker({ id }: { id: string }) {
+  useSyncExternalStore(subscribeCaptures, captureVersion);
+  const item = readCapture(id);
+  const [uncertain, setUncertain] = useState(false);
+  const failed = item?.remote?.segments.some(s => s.status === 'failed' || s.status === 'uncertain');
+  const done = item?.remote?.finalized;
+  const retry = useCallback(() => {
+    if (readCapture(id)?.remote?.segments.some(s => s.requires_confirmation)) { setUncertain(true); return; }
+    void retryCapture(id).catch(() => undefined);
+  }, [id, setUncertain]);
+  const detail = item?.error || item?.refreshError || (failed ? 'A segment needs retry. Saved audio and available slide feedback are retained.'
+    : done ? '' : `${item?.remote?.segments.filter(s => s.status === 'completed').length ?? 0} / ${item?.manifest.segments.length ?? 0} segments transcribed. Available slide feedback is ready to read.`);
+  useEffect(() => {
+    publish(id, { stage: done ? 'done' : failed ? 'failed' : item?.error ? 'upload_failed' : 'processing', detail,
+      prompt: uncertain ? 'uncertain' : null, busy: false, retryAvailable: !!failed || !!item?.error, retryAt: null,
+      retry, retryUpload: retry, refresh: retry, continuePrompt: () => { setUncertain(false); void retryCapture(id, true).catch(() => undefined); },
+      cancelPrompt: () => setUncertain(false) });
+  }, [id, done, failed, detail, item?.error, retry, uncertain]);
+  useEffect(() => () => publish(id, null), [id]);
+  return null;
+}
+function LegacyAttemptWorker({ id }: { id: string }) {
   const address = API_URL;
   const [saved, setSaved] = useState<SavedAttempt | null>(() => { try { return getSavedAttempt(id); } catch { return null; } });
   const [uploadError, setUploadError] = useState('');
@@ -139,6 +166,7 @@ function AttemptWorker({ id }: { id: string }) {
       saveAttempt({ ...saved, auto_process_api: undefined });
       enableInitialQa(address,id);
       enableAutomaticScore(address,id);
+      enableAutomaticFeedbackV3(address,id);  // Claude Code, prompted by Seoyeon (2026-11-15)
       handedOff.add(id);
     } catch { handOffFailed.add(id); }
     notify();

@@ -1,12 +1,14 @@
 """Score lifecycle through the existing worker; synthetic evidence and blocked network."""
 from copy import deepcopy
+from contextlib import contextmanager
+from dataclasses import replace
 from datetime import timedelta
 import json
 from unittest.mock import patch
 from django.test import TestCase
 from django.utils import timezone
 from .models import (FeedbackAnalysis, FeedbackJob, FeedbackRequest, PresentationContext,
-                     SlideReviewMembership, TranscriptCorrection)
+                     SlideReviewMembership, TranscriptCorrection, FeedbackReservation)
 from .services import coaching, feedback_provider as provider, presentation_scoring as scoring
 from .services.feedback import FeedbackError
 from .test_coaching import SyntheticCoaching
@@ -204,6 +206,7 @@ class PresentationScoreLifecycleTests(SyntheticCoaching, TestCase):
 
     def prior_protocol(self, job):
         previous = deepcopy(scoring.protocol())
+        previous['definition'].pop('request_policy')
         previous['measurement_version'] = 'presentation-measurements-v1'
         previous['prompt_version'] = 'presentation-score-v2'
         previous['definition']['prompt_version'] = 'presentation-score-prompt-v2'
@@ -313,6 +316,7 @@ class PresentationScoreLifecycleTests(SyntheticCoaching, TestCase):
 
     def prior_v21_protocol(self, job):
         previous = deepcopy(scoring.protocol())
+        previous['definition'].pop('request_policy')
         previous['measurement_version'] = 'presentation-measurements-v1'
         previous['prompt_version'] = 'presentation-score-prompt-v2.1'
         previous['definition']['prompt_version'] = 'presentation-score-prompt-v2.1'
@@ -341,7 +345,7 @@ class PresentationScoreLifecycleTests(SyntheticCoaching, TestCase):
         response = self.post_score(feedback_revision=1, expected_selection=state['selection']['token'])
         self.assertEqual(response.status_code, 202, response.content)
         fresh = self.job(owner)
-        self.assertEqual(fresh.prompt_version, 'presentation-score-prompt-v2.3')
+        self.assertEqual(fresh.prompt_version, 'presentation-score-prompt-v2.4')
         self.assertEqual(fresh.source_snapshot['presentation_score']['protocol'], scoring.protocol())
         self.assertNotEqual(fresh.prompt_digest, old.prompt_digest)
         old.refresh_from_db(); request.refresh_from_db()
@@ -396,6 +400,7 @@ class PresentationScoreLifecycleTests(SyntheticCoaching, TestCase):
     # OpenAI Codex, 2026-11-03: #45 prompt-upgrade receipt preservation.
     def prior_v22_protocol(self, job):
         previous = deepcopy(scoring.protocol())
+        previous['definition'].pop('request_policy')
         previous['measurement_version'] = 'presentation-measurements-v1'
         previous['prompt_version'] = 'presentation-score-prompt-v2.2'
         previous['definition']['prompt_version'] = 'presentation-score-prompt-v2.2'
@@ -433,7 +438,7 @@ class PresentationScoreLifecycleTests(SyntheticCoaching, TestCase):
         response = self.post_score(feedback_revision=1, expected_selection=state['selection']['token'])
         self.assertEqual(response.status_code, 202, response.content)
         fresh = self.job(owner)
-        self.assertEqual(fresh.prompt_version, 'presentation-score-prompt-v2.3')
+        self.assertEqual(fresh.prompt_version, 'presentation-score-prompt-v2.4')
         self.assertNotEqual(fresh.prompt_digest, old.prompt_digest)
         with self.assertRaises(FeedbackError) as caught:
             scoring.normalize(old.description_set, old, None, None)
@@ -445,6 +450,20 @@ class PresentationScoreLifecycleTests(SyntheticCoaching, TestCase):
         self.assertEqual(old.result, result)
         self.assertEqual(bytes(request.raw_body), receipt)
 
+    @contextmanager
+    def legacy_protocol(self, measurement_version='presentation-measurements-v1'):
+        from .services import presentation_score_v2 as core
+        previous = deepcopy(core.protocol_descriptor())
+        previous.pop('request_policy')
+        previous['prompt_version'] = 'presentation-score-prompt-v2.3'
+        with patch.object(scoring, 'PROMPT_VERSION', 'presentation-score-prompt-v2.3'), \
+             patch.object(core, 'PROMPT_VERSION', 'presentation-score-prompt-v2.3'), \
+             patch.object(core, 'protocol_descriptor', return_value=previous), \
+             patch.object(core, 'OUTPUT_TOKEN_LIMIT', 12000), patch.object(core, 'OUTPUT_JSON_BYTES', 65536), \
+             patch.object(core, 'REQUEST_TIMEOUT_SECONDS', None), \
+             patch('rehearsals.services.presentation_measurements.VERSION', measurement_version):
+            yield
+
     def legacy_score(self, version='v2.3', *, failed=False, context_id=None):
         self.complete()
         current = self.measurements
@@ -453,7 +472,7 @@ class PresentationScoreLifecycleTests(SyntheticCoaching, TestCase):
         if failed:
             self.measurements.update(status='unavailable', items=[], limitations=['Historical 100 ms duration mismatch.'])
         try:
-            with patch('rehearsals.services.presentation_measurements.VERSION', 'presentation-measurements-v1'):
+            with self.legacy_protocol():
                 self.assertEqual(self.post_score(context_id=context_id).status_code, 202)
                 owner = self.owner()
                 self.assertEqual(self.execute_score(owner), (1, 0 if failed else 1))
@@ -577,7 +596,7 @@ class PresentationScoreLifecycleTests(SyntheticCoaching, TestCase):
 
     def test_unsent_v23_v1_job_and_current_worker_with_v1_measurements_fail_closed(self):
         self.complete()
-        with patch('rehearsals.services.presentation_measurements.VERSION', 'presentation-measurements-v1'):
+        with self.legacy_protocol():
             self.assertEqual(self.post_score().status_code, 202)
         owner = self.owner(); old = self.job(owner)
         snapshot = deepcopy(old.source_snapshot)
@@ -634,3 +653,82 @@ class PresentationScoreLifecycleTests(SyntheticCoaching, TestCase):
                 self.assertEqual(response.status_code, 503, response.content)
                 self.assertEqual(response.json()['error']['code'], 'snapshot_unavailable')
                 self.assertEqual(owner.jobs.count(), 1)
+
+    def deployed_v23_v2_score(self, *, incomplete=False):
+        self.complete()
+        original_receipt = self.score_receipt
+        def receipt(prepared):
+            saved = original_receipt(prepared)
+            if not incomplete: return saved
+            body = json.loads(saved.body)
+            if prepared.config.provider in provider.RESPONSES_PROVIDERS:
+                body.update(status='incomplete', incomplete_details={'reason': 'max_output_tokens'})
+            else:
+                body['candidates'][0]['finishReason'] = 'MAX_TOKENS'
+            return replace(saved, body=provider.json_bytes(body))
+        with self.legacy_protocol('presentation-measurements-v2'):
+            self.assertEqual(self.post_score().status_code, 202)
+            owner = self.owner()
+            with patch.object(self, 'score_receipt', side_effect=receipt):
+                self.assertEqual(self.execute_score(owner), (1, 1))
+        old = self.job(owner)
+        self.assertEqual(old.prompt_digest, 'bd44f68efa7b7f308962fb01e6f884ff7f051104fd848d251eb600f793337282')
+        self.assertEqual(scoring.v1._digest(old.source_snapshot['presentation_score']['protocol']),
+                         '84eb8821468072046279ef18f15dc96865dc51f9be78a923596c9004364d1bed')
+        return owner, old
+
+    def test_deployed_v23_v2_completed_result_reads_without_reinterpreting_receipt(self):
+        owner, old = self.deployed_v23_v2_score()
+        snapshot, result = deepcopy(old.source_snapshot), deepcopy(old.result)
+        request = FeedbackRequest.objects.get(coaching_job=old)
+        receipt = bytes(request.raw_body)
+        with patch.object(provider, 'request_raw') as call, \
+             patch('rehearsals.services.presentation_measurements.measure_audio') as measure:
+            state = self.client.get(self.url).json()
+            self.assertFalse(state['stale']); self.assertEqual(state['state'], 'completed')
+            self.assertEqual(state['result']['overall']['score'], 100)
+            self.assertEqual(self.post_score(feedback_revision=1).status_code, 200)
+            call.assert_not_called(); measure.assert_not_called()
+        with self.assertRaises(FeedbackError): scoring.prepared(old.description_set, old)
+        with self.assertRaises(FeedbackError): scoring.normalize(old.description_set, old, None, None)
+        old.refresh_from_db(); request.refresh_from_db()
+        self.assertEqual((old.source_snapshot, old.result, bytes(request.raw_body)), (snapshot, result, receipt))
+        self.assertEqual(owner.jobs.count(), 1)
+
+    def test_deployed_v23_v2_incomplete_retry_preserves_receipt_and_reserves_exact_new_budget(self):
+        owner, old = self.deployed_v23_v2_score(incomplete=True)
+        snapshot = deepcopy(old.source_snapshot)
+        request = FeedbackRequest.objects.get(coaching_job=old)
+        old_receipt = bytes(request.raw_body)
+        old_reservation = FeedbackReservation.objects.get(request=request)
+        original_reservation = list(FeedbackReservation.objects.filter(pk=old_reservation.pk).values())
+        with patch.object(provider, 'request_raw') as call, \
+             patch('rehearsals.services.presentation_measurements.measure_audio') as measure:
+            state = self.client.get(self.url).json()
+            self.assertEqual((state['state'], state['stale'], state['error']['code']), ('failed', False, 'provider_incomplete'))
+            self.assertTrue(state['retry_available']); self.assertFalse(state['requires_confirmation'])
+            self.assertEqual(self.post_score().status_code, 409)
+            self.assertEqual(self.post_score(feedback_revision=0).status_code, 409)
+            self.assertEqual(self.post_score(feedback_revision=1, expected_selection=state['selection']['token']).status_code, 202)
+            call.assert_not_called(); measure.assert_not_called()
+        fresh = self.job(owner)
+        self.assertEqual(fresh.prompt_version, 'presentation-score-prompt-v2.4')
+        self.assertNotIn('measurements', fresh.source_snapshot['presentation_score'])
+        captured = {}
+        original_receipt = self.score_receipt
+        def receipt(prepared):
+            captured['units'] = len(prepared.payload) + 24000
+            self.assertEqual(provider.output_token_limit(prepared), 24000)
+            return original_receipt(prepared)
+        with patch.object(self, 'score_receipt', side_effect=receipt):
+            owner.refresh_from_db(); self.assertEqual(self.execute_score(owner), (1, 1))
+        fresh.refresh_from_db()
+        new_request = FeedbackRequest.objects.get(coaching_job=fresh)
+        self.assertEqual(FeedbackReservation.objects.get(request=new_request).units, captured['units'])
+        self.assertNotEqual(new_request.input_hash, request.input_hash)
+        self.assertEqual(self.client.get(self.url).json()['result']['overall']['score'], 100)
+        old.refresh_from_db(); request.refresh_from_db()
+        self.assertEqual(old.source_snapshot, snapshot)
+        self.assertEqual(bytes(request.raw_body), old_receipt)
+        self.assertEqual(list(FeedbackReservation.objects.filter(pk=old_reservation.pk).values()), original_reservation)
+        self.assertEqual(owner.jobs.count(), 2)

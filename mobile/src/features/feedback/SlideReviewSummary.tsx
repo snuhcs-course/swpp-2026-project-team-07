@@ -72,8 +72,8 @@ export function FindingCard({finding:f,onEvidence}:{finding:Finding;onEvidence:(
 const styles=createThemedStyles({
  root:{gap:10,marginTop:14},heading:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},
  headingText:{fontFamily:F.display,fontSize:18,color:C.text},status:{fontFamily:F.semibold,fontSize:14,color:C.text},
- note:{fontFamily:F.medium,fontSize:12,lineHeight:18,color:C.secondary},
+ note:{fontFamily:F.medium,fontSize:15,lineHeight:21,color:C.secondary},
  card:{paddingTop:12,gap:8,borderTopWidth:1,borderTopColor:'rgba(255,255,255,.12)'},
- category:{fontFamily:F.bold,fontSize:10,letterSpacing:1,color:C.warn},
- problem:{fontFamily:F.semibold,fontSize:15,lineHeight:21,color:C.text},advice:{fontFamily:F.medium,fontSize:13,lineHeight:19,color:C.body},
+ category:{fontFamily:F.bold,fontSize:13.5,letterSpacing:.5,color:C.warn},
+ problem:{fontFamily:F.semibold,fontSize:15,lineHeight:21,color:C.text},advice:{fontFamily:F.medium,fontSize:15,lineHeight:21,color:C.body},
 });

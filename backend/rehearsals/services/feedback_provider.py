@@ -24,6 +24,7 @@ from .slide_profile_schema import (SlideProfiles, GuidanceProfiles, PROFILE_SCHE
 MAX_REQUEST_BYTES = 12 * 1024 * 1024
 MAX_RESPONSE_BYTES = 256 * 1024
 TIMEOUT_SECONDS = 120.0
+MAX_TIMEOUT_SECONDS = 240.0
 OUTPUT_TOKENS = {"descriptions": 6000, "coaching": 2500}
 # OpenRouter migration AI-assisted by OpenAI Codex; see the Iteration 2 collaboration log.
 RESPONSES_PROVIDERS = {"openai", "openrouter"}
@@ -349,6 +350,15 @@ class PreparedRequest:
     input_hash: str
     descriptions: Descriptions | None = field(default=None, repr=False)
     description_schema_version: str | None = None
+    timeout_seconds: float | None = None
+
+
+def request_timeout_seconds(prepared):
+    """None preserves the historical default, including its test override."""
+    limit = TIMEOUT_SECONDS if prepared.timeout_seconds is None else prepared.timeout_seconds
+    if type(limit) not in (int, float) or not 0 < limit <= MAX_TIMEOUT_SECONDS:
+        raise FeedbackError("invalid_configuration")
+    return limit
 
 
 def output_token_limit(prepared):
@@ -480,6 +490,7 @@ def _usage(body, provider):
 class _BoundedTransport(httpx.BaseTransport):
     def __init__(self, prepared, inner):
         self.prepared, self.inner, self.receipt = prepared, inner, None
+        self.timeout_seconds = request_timeout_seconds(prepared)
         self.outbound_started = False
 
     def handle_request(self, request):
@@ -518,7 +529,7 @@ class _BoundedTransport(httpx.BaseTransport):
                     if len(chunk) > remaining:
                         issue = "response_too_large"
                         break
-                    if time.monotonic() - started > TIMEOUT_SECONDS:
+                    if time.monotonic() - started > self.timeout_seconds:
                         issue = "response_timeout"
                         break
         except httpx.TimeoutException:
@@ -552,7 +563,7 @@ def request_raw(prepared: PreparedRequest, *, _transport=None) -> RawReceipt:
     if len(prepared.payload) > MAX_REQUEST_BYTES:
         raise FeedbackError("request_too_large")
     transport = _BoundedTransport(prepared, _transport or httpx.HTTPTransport(retries=0, trust_env=False))
-    timeout = httpx.Timeout(TIMEOUT_SECONDS, connect=10.0, write=30.0, pool=5.0)
+    timeout = httpx.Timeout(transport.timeout_seconds, connect=10.0, write=30.0, pool=5.0)
     try:
         with _private_logging(), httpx.Client(transport=transport, trust_env=False, follow_redirects=False, timeout=timeout) as http:
             if prepared.config.provider in RESPONSES_PROVIDERS:
@@ -611,7 +622,9 @@ def receipt_is_uncertain(status_code, body_complete, body=None, provider=None):
     return False
 
 
-def _output(receipt):
+def _output(receipt, *, max_output_bytes=MAX_OUTPUT_BYTES):
+    if type(max_output_bytes) is not int or not 0 < max_output_bytes <= MAX_RESPONSE_BYTES:
+        raise FeedbackError("invalid_configuration")
     uncertain = receipt_is_uncertain(receipt.status_code, receipt.body_complete, receipt.body, receipt.provider)
     if receipt.status_code != 200:
         code = {401: "provider_auth", 402: "provider_credits", 403: "provider_auth", 429: "provider_rate_limit"}.get(
@@ -667,7 +680,7 @@ def _output(receipt):
                     texts.append(part["text"])
         if len(texts) != 1 or type(texts[0]) is not str or not texts[0].strip():
             raise FeedbackError("empty_output")
-        return strict_json(texts[0].encode("utf-8"))
+        return strict_json(texts[0].encode("utf-8"), max_output_bytes)
     except (KeyError, TypeError, AttributeError, UnicodeError):
         raise FeedbackError("invalid_response") from None
 
@@ -691,6 +704,6 @@ def gemini_schema(schema):
     return _gemini_schema(schema, None)
 
 
-def output_json(receipt: RawReceipt):
-    """Parsed JSON output of a complete 200 receipt; FeedbackError otherwise."""
-    return _output(receipt)
+def output_json(receipt: RawReceipt, *, max_output_bytes=MAX_OUTPUT_BYTES):
+    """Parse a complete receipt within the caller's frozen bound; defaults remain 64 KiB."""
+    return _output(receipt, max_output_bytes=max_output_bytes)

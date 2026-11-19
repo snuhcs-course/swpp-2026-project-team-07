@@ -9,6 +9,9 @@ const appListeners=new Set();
 export const AppState={currentState:'active',addEventListener(_event,listener){appListeners.add(listener);return {remove(){appListeners.delete(listener);}};},emit(state){this.currentState=state;for(const listener of appListeners)listener(state);}};
 export function useDeckModel(){return runtime.model;}
 export function useRunFeedbackStatus(_model,active){return {...runtime.feedback,active};}
+// Claude Code, prompted by Seoyeon (2026-11-15): screens read scores through useRunScores; these
+// screen tests keep exercising the v2 path unless a test supplies runtime.v3.
+export function useRunScores(model,active,slide){const v2=useRunPresentationScores(model,active,slide);return runtime.v3?{kind:'v3',scores:{items:runtime.v3.items,overall:runtime.v3.overall},v3:runtime.v3,v2}:{kind:'v2',scores:v2,v3:null,v2};}
 export function useRunPresentationScores(model,active,slide){runtime.scoreSelections??=[];runtime.scoreSelections.push(slide);if(runtime.scores)return runtime.scores;const empty={score:null,level:null,status:'Not graded',state:null,result:null,target:null};return {items:Array.from({length:model?.n??0},(_,slide)=>({...empty,slide})),overall:empty,target:null,controller:{state:null,busy:false,notice:'',ask:false,refresh:async()=>{},generate:async()=>{},confirm:()=>{},cancel:()=>{}},notice:'',refresh:async()=>{}};}
 export const SlideReviewSummary='slide-feedback',TakePlayback='take-playback',TranscriptCorrections='inline-transcript',ReviewRecordingTools='recording-tools';
 export const subscribePlaybackId=()=>()=>{};

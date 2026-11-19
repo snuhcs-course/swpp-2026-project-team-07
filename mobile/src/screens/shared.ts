@@ -9,7 +9,7 @@ import { BackHandler } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import type { EnterKind } from '../design/frame';
 
-export type ScreenName = 'home' | 'upload' | 'rehearse' | 'review' | 'full' | 'compare' | 'qa';
+export type ScreenName = 'home' | 'upload' | 'rehearse' | 'review' | 'wait' | 'full' | 'listen' | 'feedback' | 'compare' | 'qa';
 export type NavState = { screen: ScreenName; nav: EnterKind; deckId: string | null; slide: number; sel: number; from: ScreenName | null; visit: number; editRequirements?: boolean };
 export type Go = (screen: ScreenName, patch?: Partial<Omit<NavState, 'screen' | 'visit'>>) => void;
 
@@ -26,7 +26,7 @@ export type HomeShared = {
   picker: SharedValue<number>;
 };
 
-export const ShellContext = createContext<{ go: Go; nav: NavState; home: HomeShared } | null>(null);
+export const ShellContext = createContext<{ go: Go; nav: NavState; home: HomeShared; setFullscreenLandscape: (value: boolean) => void } | null>(null);
 export const HomeContext = createContext<{ go: Go; home: HomeShared } | null>(null);
 export function useShell() {
   const value = useContext(ShellContext);
