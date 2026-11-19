@@ -6,9 +6,12 @@ These rules apply across project tasks; read detailed guides only when relevant.
 
 ## Current iteration and prompt logging
 
-Use the [prompt log index by iteration](docs/ai-collaboration/README.md#prompt-logs). Record new entries in the appropriate contributor and iteration file. Use the unattributed column when authorship is unconfirmed.
+**Current iteration: 2.** Record new project-task prompts in the
+[active Iteration 2 log](docs/ai-collaboration-prompts-iteration-2.md), as specified
+by the current task instructions. Earlier contributor logs remain in the
+[prompt log index](docs/ai-collaboration/README.md#prompt-logs).
 
-- Record each actual project-task prompt and follow-up verbatim in the contributor’s iteration log during
+- Record each actual project-task prompt and follow-up verbatim in the active iteration log during
   work, under the contributor/task, with date, tool and model. Group related prompts
   in one entry; label excerpts/redactions and write `not recorded` for unknown metadata.
   Do not reconstruct missing prompts, alter wording or duplicate existing entries.

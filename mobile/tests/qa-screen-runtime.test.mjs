@@ -67,9 +67,12 @@ test('question Hear selects English or Korean from its own text and retains fall
   setup([{...question(1),question:text}]);let r;
   try{
    await act(async()=>{r=create(React.createElement(QAScreen));});
-   await act(async()=>button(r,'Hear the question: '+text).props.onPress());
+   assert.ok(button(r,'Stop the question: '+text),'automatic speech exposes its Stop control');
    assert.equal(runtime.speeches.length,1);assert.equal(runtime.speeches[0].text,text);
    assert.equal(runtime.speeches[0].options.language,language,text);
+   const stops=runtime.speechStops;await act(async()=>button(r,'Stop the question: '+text).props.onPress());
+   assert.equal(runtime.speechStops,stops+1);assert.equal(runtime.speeches.length,1);
+   await act(async()=>button(r,'Hear the question: '+text).props.onPress());assert.equal(runtime.speeches.length,2);assert.equal(runtime.speeches.at(-1).options.language,language);
   }finally{if(r)await act(async()=>r.unmount());}
  }
 });
@@ -82,10 +85,9 @@ test('follow-up Hear selects its language independently from the main question',
  saveQaV2(API_URL,'runtime-deck',cached.jobId,{...cached,answers:{'0-0':answer}});let r;
  try{
   await act(async()=>{r=create(React.createElement(QAScreen));});
-  await act(async()=>button(r,'Hear the question: '+first.question).props.onPress());
-  assert.equal(runtime.speeches.at(-1).options.language,'ko');
-  await act(async()=>button(r,'Follow-up from '+first.panelist+': '+first.follow_up).props.onPress());
-  await act(async()=>button(r,'Hear the follow-up: '+first.follow_up).props.onPress());
+  assert.equal(runtime.speeches.length,0,'an already answered question is not automatically replayed');
+  await act(async()=>button(r,'Answer the follow-up from '+first.panelist).props.onPress());
+  assert.ok(button(r,'Stop the follow-up: '+first.follow_up));
   assert.equal(runtime.speeches.at(-1).text,first.follow_up);
   assert.equal(runtime.speeches.at(-1).options.language,'en');
  }finally{if(r)await act(async()=>r.unmount());}
@@ -95,15 +97,15 @@ test('Hear toggles off and question navigation, Back and unmount still stop spee
  const cached=setup();let r;
  try{
   await act(async()=>{r=create(React.createElement(QAScreen));});
-  await act(async()=>button(r,'Hear the question: '+cached.questions[0].question).props.onPress());
+  assert.ok(button(r,'Stop the question: '+cached.questions[0].question));
   let stops=runtime.speechStops;
   await act(async()=>button(r,'Stop the question: '+cached.questions[0].question).props.onPress());
   assert.equal(runtime.speechStops,stops+1);assert.equal(runtime.speeches.length,1);
   await act(async()=>button(r,'Hear the question: '+cached.questions[0].question).props.onPress());
   stops=runtime.speechStops;
   await act(async()=>button(r,'Next').props.onPress());
-  assert.equal(runtime.speechStops,stops+1);
-  await act(async()=>button(r,'Hear the question: '+cached.questions[1].question).props.onPress());
+  assert.equal(runtime.speechStops,stops+2,'Next stops the old question before starting the new one');
+  assert.ok(button(r,'Stop the question: '+cached.questions[1].question));
   stops=runtime.speechStops;
   await act(async()=>button(r,'Back').props.onPress());
   assert.equal(runtime.speechStops,stops+1);assert.equal(runtime.routes.at(-1)[0],'review');

@@ -46,8 +46,9 @@ async function render(run) {
   finally { if (renderer) await act(async () => renderer.unmount()); }
 }
 const text = renderer => JSON.stringify(renderer.toJSON());
-const rows = renderer => renderer.root.findAllByType('view').filter(node => node.props.style?.minHeight === 22);
+const rows = renderer => renderer.root.findAllByType('pressable').filter(node => node.props.style?.[0]?.height === 34);
 const rowTexts = renderer => rows(renderer).map(row => row.findByType('text').props.children);
+const showIssue = async (renderer,index) => act(async()=>button(renderer,`Show issue ${index}`).props.onPress());
 const button = (renderer,label) => renderer.root.findAllByType('pressable').find(node => node.props.accessibilityLabel === label);
 const openFinding = async renderer => {
   const finding = renderer.root.findAllByType('pressable').find(node => node.props.accessibilityLabel?.startsWith('Read slide 1 feedback'));
@@ -56,58 +57,61 @@ const openFinding = async renderer => {
   await act(async () => finding.props.onPress());
 };
 
-test('measured metrics and verified advice reach the same four compact rows with the existing icons', async () => {
+test('measured metrics and verified advice reach the four chips and current issue card', async () => {
   const findings = [finding('timing', 1, 'Verified timing observation'), finding('fillers', 2, 'Verified filler observation'),
     finding('content', 3, 'Verified content observation'), finding('delivery', 4, 'Verified delivery observation')];
   const { item } = setup({ findings }); assert.equal(item.status, 'reviewed');
-  await render(renderer => {
-    assert.deepEqual(rowTexts(renderer), ['On time', '—', 'Verified content observation', 'Verified delivery observation']);
-    assert.deepEqual(rows(renderer).map(row => row.findAllByType('icon')[0].props.name), ['i-clock', 'i-bubble', 'i-flag', 'i-wave']);
+  await render(async renderer => {
+    assert.deepEqual(rowTexts(renderer), ['Time On time', 'Fillers —', 'Points —', 'Delivery']);
+    assert.match(text(renderer), /Verified filler observation/);
+    await showIssue(renderer,2);assert.match(text(renderer), /Verified content observation/);
+    await showIssue(renderer,3);assert.match(text(renderer), /Verified delivery observation/);
     assert.doesNotMatch(text(renderer), /Legacy observation/);
-    assert.equal(rows(renderer).length, 4); assert.equal(renderer.root.findAllByType('slide-feedback').length, 0);
-    assert.ok(renderer.root.findAllByType('pressable').some(node => node.props.accessibilityLabel === 'Full review'));
+    assert.equal(rows(renderer).length, 4);assert.equal(renderer.root.findAllByType('slide-feedback').length, 0);
+    await openFinding(renderer);assert.match(text(renderer), /Verified timing observation/);
   });
 });
 
-test('each compact category chooses its highest-priority verified finding, including audience and repetition', async () => {
+test('verified issues preserve priority across content, audience and repetition', async () => {
   setup({ findings: [finding('graph', 1, 'First content priority'), finding('content', 2, 'Lower content priority'), finding('repetition', 3, 'Verified repetition')] });
-  await render(renderer => { assert.equal(rowTexts(renderer)[2], 'First content priority'); assert.equal(rowTexts(renderer)[3], 'Verified repetition'); assert.doesNotMatch(text(renderer), /Lower content priority/); });
+  await render(async renderer => {
+    assert.match(text(renderer),/First content priority/);assert.doesNotMatch(text(renderer),/Lower content priority/);
+    await showIssue(renderer,2);assert.match(text(renderer),/Lower content priority/);
+    await showIssue(renderer,3);assert.match(text(renderer),/Verified repetition/);
+  });
   setup({ findings: [finding('audience', 1, 'Verified audience observation')] });
-  await render(renderer => assert.equal(rowTexts(renderer)[2], 'Verified audience observation'));
+  await render(renderer => assert.match(text(renderer),/Verified audience observation/));
 });
 
-test('stale, failed, disabled, no-speech and untimed states never show clean claims or fabricate a zero filler count', async () => {
+test('stale, failed, disabled, no-speech and untimed states never claim clean feedback or fabricate filler counts', async () => {
   for (const change of [{ stale: true }, { state: 'failed' }, { state: 'disabled' }, { stage: 'no_speech', words: false }, { words: false }, { state: 'queued' }, { changedSource: true }, { changedVisit: true }]) {
     const { item } = setup({ ...change, findings: [finding('content', 1, 'Must not leak old feedback')] });
     assert.notEqual(item.status, 'reviewed');
-    await render(renderer => {
-      assert.doesNotMatch(text(renderer), /Spot On!|Must not leak old feedback|Legacy observation/);
-      const label = renderer.root.findAllByType('text').find(node => node.props.children === 'fillers');
-      assert.equal(label.parent.findAllByType('text')[0].props.children, '—');
-      assert.ok(rowTexts(renderer).includes(item.label));
+    await render(async renderer => {
+      assert.doesNotMatch(text(renderer), /Spot On!|Nothing to fix|Must not leak old feedback|Legacy observation/);
+      assert.ok(rowTexts(renderer).includes('Fillers —'));
+      await openFinding(renderer);assert.ok(text(renderer).includes(item.label));
     });
   }
 });
 
-test('partial assessments display only verified advice; a complete empty assessment says no issue flagged', async () => {
+test('partial assessments display only verified advice; a complete empty assessment may say nothing to fix', async () => {
   const { item } = setup({ status: 'partial', findings: [finding('content', 1, 'Verified partial observation')] });
   assert.equal(item.assessed, false);
-  await render(renderer => { assert.equal(rowTexts(renderer)[2], 'Verified partial observation'); assert.doesNotMatch(text(renderer), /Spot On!/);
-    assert.ok(button(renderer, 'Read slide 1 feedback: Partially assessed'), 'the accessible button preserves the partial-assessment warning'); });
-  setup(); await render(renderer => assert.deepEqual(rowTexts(renderer), ['On time', '—', 'No issue flagged', 'No issue flagged']));
+  await render(renderer => {assert.match(text(renderer), /Verified partial observation/);assert.doesNotMatch(text(renderer), /Nothing to fix/);
+    assert.ok(button(renderer, 'Read slide 1 feedback: Partially assessed'));});
+  setup();await render(renderer=>{assert.deepEqual(rowTexts(renderer),['Time On time','Fillers —','Points —','Delivery']);assert.match(text(renderer),/Nothing to fix on this slide/);});
 });
 
-test('the reported 17/28-second slide consistently shows under time and three fillers without a positive filler verdict', async () => {
+test('the reported 17/28-second slide shows under time and three measured fillers without a positive filler verdict', async () => {
   const { model } = setup();
   model.times[0] = 17; model.deck.targets[0] = 28;
   model.lines = [{ slide: 0, text: 'Um, uh, like, this is a synthetic example.' }];
   await render(renderer => {
-    assert.deepEqual(rowTexts(renderer), ['Under time', '3 fillers', 'No issue flagged', 'No issue flagged']);
-    assert.match(text(renderer), /0:28 allocation/);
+    assert.deepEqual(rowTexts(renderer), ['Time Under time', 'Fillers 3', 'Points 0 of 0', 'Delivery']);
+    assert.match(text(renderer), /0:17 \/ 0:28 planned/);
     assert.doesNotMatch(text(renderer), /required target|On target|Spot On!/);
-    const rows = renderer.root.findAllByType('text').filter(node => node.props.children === 'Under time');
-    assert.equal(rows.length, 2, 'the compact timing row and slide card share the same rule');
-    assert.equal(renderer.root.findAllByType('icon').filter(node => node.props.name === 'i-arrow').length, 0, 'a duration status alone is not generated advice');
+    assert.equal(renderer.root.findAllByType('pressable').filter(n=>n.props.accessibilityLabel?.startsWith('Show issue')).length,0);
   });
 });
 
@@ -150,7 +154,7 @@ test('long feedback opens complete text in a bounded scroll area and closes with
     await act(async () => assert.equal(runtime.back(), true));
     assert.equal(renderer.root.findAllByType('scroll').length, 0); assert.deepEqual(runtime.routes, []);
     await act(async () => runtime.back());
-    assert.equal(runtime.routes[0][0], 'rehearse');
+    assert.equal(runtime.routes[0][0], 'full');
   });
 });
 

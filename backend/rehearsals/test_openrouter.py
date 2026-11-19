@@ -125,7 +125,7 @@ class OpenRouterTests(TestCase):
             qa._payload(base.config, 'qa_answer', qa.ANSWER_RULES, {}, qa.AnswerReview.model_json_schema()),
             presentation_score.prepare(bundle, base.config), presentation_score_v2.prepare(bundle, base.config),
         ]
-        for prepared, limit in zip(requests, (2500, 2500, 2500, 2500, 1500, 800, 12000, 12000)):
+        for prepared, limit in zip(requests, (2500, 2500, 2500, 2500, 1500, 800, 12000, 24000)):
             with self.subTest(limit=limit, stage=prepared.stage):
                 payload = json.loads(prepared.payload)
                 self.assertEqual(payload['model'], 'openai/gpt-6-luna')

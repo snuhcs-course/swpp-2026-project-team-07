@@ -111,10 +111,14 @@ class Issue49MeasurementsTests(SimpleTestCase):
         self.assertEqual(bundle.eligibility['source_identity'], 'f4a67c41441e04358ba23fc444acc78f35f29bd4f62bd6a12930e05210ba8ed8')
         self.assertNotIn('reason', bundle.measurements)
 
-    def test_new_protocol_bumps_only_measurement_identity(self):
+    def test_measurement_v2_predecessor_identity_remains_frozen(self):
+        from copy import deepcopy
         from .services import presentation_scoring as scoring
-        self.assertEqual(scoring.prompt_digest(), 'bd44f68efa7b7f308962fb01e6f884ff7f051104fd848d251eb600f793337282')
-        self.assertEqual(scoring.v1._digest(scoring.protocol()), '84eb8821468072046279ef18f15dc96865dc51f9be78a923596c9004364d1bed')
+        previous = deepcopy(scoring.protocol())
+        previous['prompt_version'] = previous['definition']['prompt_version'] = 'presentation-score-prompt-v2.3'
+        previous['definition'].pop('request_policy')
+        self.assertEqual(scoring.coaching._digest(previous), 'bd44f68efa7b7f308962fb01e6f884ff7f051104fd848d251eb600f793337282')
+        self.assertEqual(scoring.v1._digest(previous), '84eb8821468072046279ef18f15dc96865dc51f9be78a923596c9004364d1bed')
 
     def test_eligibility_supports_v2_without_changing_v1_coverage(self):
         from .test_presentation_eligibility import evidence

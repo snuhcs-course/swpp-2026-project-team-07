@@ -1,3 +1,4 @@
+import { IncrementalCaptureHost } from '../features/recording/IncrementalCaptureHost';
 // Scribe migration: OpenAI Codex, Iteration 2 (2026-10-16); see active collaboration log.
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
 // OpenAI Codex light-mode ambient: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-081
@@ -17,6 +18,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
 import { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import * as ScreenOrientation from 'expo-screen-orientation';
 import { Enter, Frame } from '../design/frame';
 import { useTheme } from '../design/theme';
 import { Dialog, GlowLayer } from '../design/ui';
@@ -27,6 +29,8 @@ import { AnalysisHost, stageOf, usePlaybackIds, useWorkers } from '../features/r
 import { DefaultRequirementsHost } from '../features/presentations/DefaultRequirementsHost';
 import { InitialQaHost } from '../features/qa/InitialQaHost';
 import { InitialFeedbackHost } from '../features/feedback/InitialFeedbackHost';
+// Claude Code, prompted by Seoyeon (2026-11-15): starts feedback v3 right after transcription.
+import { FeedbackV3Host } from '../features/feedback/FeedbackV3Host';
 import { InitialPresentationScoreHost } from '../features/feedback/InitialPresentationScoreHost';
 import { CoachHost, useCoaches } from '../features/rehearsal/coaching';
 import { deckById, getDeckState, loadPresentations, nextHue, useStore, visibleDecks } from '../features/presentations/store';
@@ -34,9 +38,12 @@ import { HomeScreen } from './HomeScreen';
 import { UploadScreen } from './UploadScreen';
 import { RehearseScreen } from './RehearseScreen';
 import { ReviewScreen } from './ReviewScreen';
-import { FullReviewScreen } from './FullReviewScreen';
+import { ListenBackKaraokeScreen } from './ListenBackKaraokeScreen';
+import { OverviewScreen } from './OverviewScreen';
 import { CompareScreen } from './CompareScreen';
 import { QAScreen } from './QAScreen';
+import { WaitScreen } from './WaitScreen';
+import { FeedbackScreen } from './FeedbackScreen';
 import { HomeContext, ShellContext, type Go, type HomeShared, type NavState } from './shared';
 
 export function AppShell() {
@@ -45,6 +52,7 @@ export function AppShell() {
   const layersRef = useRef(layers);
   const visitRef = useRef(0);
   const [retiredRehearse, setRetiredRehearse] = useState<NavState | null>(null);
+  const [fullscreenLandscape, setFullscreenLandscape] = useState(false);
   const [uploadLook, setUploadLook] = useState<{ hue: HueName; order: number } | null>(null);
   const p = useSharedValue(0), vy = useSharedValue(0), gap = useSharedValue(0), hold = useSharedValue(0);
   const uploadBlur = useSharedValue(0), analyzing = useSharedValue(0), setup = useSharedValue(0);
@@ -85,9 +93,14 @@ export function AppShell() {
     return () => sub.remove();
   }, []);
   const nav = layers[layers.length - 1];
-  const ctx = useMemo(() => ({ go, nav, home }), [go, nav, home]);
+  const ctx = useMemo(() => ({ go, nav, home, setFullscreenLandscape }), [go, nav, home]);
   const homeCtx = useMemo(() => ({ go, home }), [go, home]);
   const s = nav.screen;
+  useEffect(()=>{
+    // Rehearsal chooses portrait or explicit landscape fullscreen itself. Keep
+    // the shell from silently unlocking sensor-driven rotation underneath it.
+    void ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(()=>undefined);
+  },[s]);
   useEffect(() => {
     if (s !== 'home' || !retiredRehearse) return;
     // Keep the moved PDF tree hidden until Home has painted, then release it.
@@ -98,7 +111,9 @@ export function AppShell() {
     return () => { cancelAnimationFrame(firstFrame); cancelAnimationFrame(nextFrame); };
   }, [s, retiredRehearse]);
   const homeMode = s === 'home' ? 'home' : s === 'upload' ? 'upload' : 'covered';
-  const homeVisible = layers.length <= 2;
+  // In explicit landscape fullscreen the Home carousel must not show through
+  // the safe-area gutters around Frame's scaled landscape canvas.
+  const homeVisible = layers.length <= 2 && !(s === 'rehearse' && fullscreenLandscape);
   const visibleLayers = layers.slice(1);
   const underlayVisit = layers.length > 1 ? layers[layers.length - 2].visit : null;
   const renderedLayers = retiredRehearse && !visibleLayers.some(layer => layer.visit === retiredRehearse.visit)
@@ -106,7 +121,7 @@ export function AppShell() {
   return (
     <ShellContext.Provider value={ctx}>
       <HomeContext.Provider value={homeCtx}>
-      <Frame background={homeVisible ? <Ambient screen={s} deckId={nav.deckId} home={home} uploadHue={uploadLook?.hue ?? null} /> : null}>
+      <Frame background={(s === 'home' || s === 'upload') ? <Ambient screen={s} deckId={nav.deckId} home={home} uploadHue={uploadLook?.hue ?? null} /> : null} landscape={s === 'rehearse' && fullscreenLandscape}>
         <Enter kind={null} style={homeVisible ? undefined : styles.hiddenPage}>
           <HomeScreen mode={homeMode} uploadLook={uploadLook} />
         </Enter>
@@ -116,7 +131,7 @@ export function AppShell() {
           const visible = active || layer.visit === underlayVisit;
           return <View key={layer.visit} style={visible && !retired ? styles.page : styles.hiddenPage} pointerEvents={active ? 'auto' : 'none'}
             accessibilityElementsHidden={!active} importantForAccessibility={active ? 'auto' : 'no-hide-descendants'}>
-            <ShellContext.Provider value={{ go, nav: layer, home }}>
+            <ShellContext.Provider value={{ go, nav: layer, home, setFullscreenLandscape }}>
               <LayerScreen screen={layer.screen} active={active} />
             </ShellContext.Provider>
           </View>;
@@ -124,10 +139,12 @@ export function AppShell() {
         <Prompts />
       </Frame>
       <Workers />
+      <IncrementalCaptureHost />
       <CoachHost />
       <DefaultRequirementsHost />
       <InitialFeedbackHost />
-      <InitialPresentationScoreHost openedDeckId={['rehearse','review','full'].includes(s)?nav.deckId:null} />
+      <FeedbackV3Host />
+      <InitialPresentationScoreHost openedDeckId={['rehearse','review','wait','full','listen','feedback'].includes(s)?nav.deckId:null} />
       <InitialQaHost />
       </HomeContext.Provider>
     </ShellContext.Provider>
@@ -143,7 +160,10 @@ function LayerScreen({ screen, active }: { screen: NavState['screen']; active: b
   if (screen === 'upload') return <UploadScreen />;
   if (screen === 'rehearse') return <RehearseScreen active={active} />;
   if (screen === 'review') return <ReviewScreen active={active} />;
-  if (screen === 'full') return <FullReviewScreen active={active} />;
+  if (screen === 'wait') return <WaitScreen active={active} />;
+  if (screen === 'full') return <OverviewScreen active={active} />;
+  if (screen === 'listen') return <ListenBackKaraokeScreen active={active} />;
+  if (screen === 'feedback') return <FeedbackScreen active={active} />;
   if (screen === 'compare') return <CompareScreen />;
   if (screen === 'qa') return <QAScreen active={active} />;
   return null;

@@ -8,6 +8,7 @@ export const Screen = 'screen';
 export const styles = {};
 export const colors = {};
 export const DemoNotice = 'demo-notice';
+export const Alert = { alert() { throw new Error('Unexpected consent dialog in recording fixture.'); } };
 export function Action(props) { return React.createElement('action', props); }
 export function SlidePreview(props) { return React.createElement('slide', props); }
 export const routes = [];

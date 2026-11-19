@@ -66,7 +66,7 @@ export function ReviewSlidePreview({ model, slide }: { model: DeckModel; slide: 
 }
 const styles = StyleSheet.create({
  card: { borderWidth: 1, borderRadius: 20, padding: 14, gap: 12 }, previewRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
- slideLabel: { fontFamily: F.semibold, fontSize: 13 }, previewTitle: { fontFamily: F.display, fontSize: 17, lineHeight: 22 },
+ slideLabel: { fontFamily: F.semibold, fontSize: 13.5 }, previewTitle: { fontFamily: F.display, fontSize: 17, lineHeight: 22 },
  playback: { flexDirection: 'row', alignItems: 'center', gap: 8 }, playButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
- track: { flex: 1, height: 6, borderRadius: 3, overflow: 'hidden' }, label: { fontFamily: F.medium, fontSize: 12, lineHeight: 17 }, note: { fontFamily: F.medium, fontSize: 12, lineHeight: 18 },
+ track: { flex: 1, height: 6, borderRadius: 3, overflow: 'hidden' }, label: { fontFamily: F.medium, fontSize: 15, lineHeight: 21 }, note: { fontFamily: F.medium, fontSize: 15, lineHeight: 21 },
 });

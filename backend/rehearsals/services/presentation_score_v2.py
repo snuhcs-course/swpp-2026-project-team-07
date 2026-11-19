@@ -22,7 +22,12 @@ from .feedback import (FeedbackError, PrivateModel, has_nul, json_bytes,
                        strict_json, validated, MAX_CONTEXT_BYTES)
 
 VERSION = 'presentation-score-v2'
-PROMPT_VERSION = 'presentation-score-prompt-v2.3'
+PROMPT_VERSION = 'presentation-score-prompt-v2.4'
+# AI-assisted by OpenAI Codex; see docs/ai-collaboration-prompts-iteration-2.md.
+REQUEST_POLICY_VERSION = 'presentation-score-request-policy-v2'
+OUTPUT_TOKEN_LIMIT = 24000
+OUTPUT_JSON_BYTES = 128 * 1024
+REQUEST_TIMEOUT_SECONDS = 240
 SCHEMA_VERSION = 'presentation-score-selection-v2'
 Text = Annotated[str, Field(min_length=1, max_length=1000)]
 Index = Annotated[int, Field(ge=0)]
@@ -204,7 +209,9 @@ def protocol_descriptor():
     return {'version': VERSION, 'rubric': rubric.descriptor(),
             'evidence_version': visits.VERSION, 'prompt_version': PROMPT_VERSION,
             'schema_version': SCHEMA_VERSION, 'prompt_sha256': v1._digest(RULES),
-            'schema_sha256': v1._digest(Output.model_json_schema())}
+            'schema_sha256': v1._digest(Output.model_json_schema()),
+            'request_policy': {'version': REQUEST_POLICY_VERSION, 'max_output_tokens': OUTPUT_TOKEN_LIMIT,
+                               'max_output_bytes': OUTPUT_JSON_BYTES, 'timeout_seconds': REQUEST_TIMEOUT_SECONDS}}
 
 
 def source_identity(bundle):
@@ -675,15 +682,16 @@ def prepare(bundle, config):
         payload['instructions'] = RULES
         payload['input'][0]['content'] = [{'type': 'input_text', 'text': encoded_context.decode()}]
         payload['text']['format'].update(name='presentation_score_v2', schema=schema)
-        payload['max_output_tokens'] = 12000
+        payload['max_output_tokens'] = OUTPUT_TOKEN_LIMIT
     else:
         payload['systemInstruction']['parts'] = [{'text': RULES}]
         payload['contents'][0]['parts'] = [{'text': encoded_context.decode()}]
-        payload['generationConfig'].update(responseJsonSchema=provider.gemini_schema(schema), maxOutputTokens=12000)
+        payload['generationConfig'].update(responseJsonSchema=provider.gemini_schema(schema), maxOutputTokens=OUTPUT_TOKEN_LIMIT)
     body = json_bytes(payload)
     if len(body) > provider.MAX_REQUEST_BYTES:
         raise FeedbackError('input_limit')
-    return replace(base, payload=body, input_hash=hashlib.sha256(body).hexdigest())
+    return replace(base, payload=body, input_hash=hashlib.sha256(body).hexdigest(),
+                   timeout_seconds=REQUEST_TIMEOUT_SECONDS)
 
 
 def normalize_with_audit(bundle, prepared, receipt):
@@ -698,9 +706,9 @@ def normalize_with_audit(bundle, prepared, receipt):
             or prepared.descriptions != bundle.descriptions
             or prepared.description_schema_version != rebuilt.description_schema_version
             or rebuilt.payload != prepared.payload
-            or rebuilt.input_hash != prepared.input_hash):
+            or rebuilt.input_hash != prepared.input_hash or prepared.timeout_seconds != rebuilt.timeout_seconds):
         raise FeedbackError('source_mismatch')
-    raw = provider.output_json(receipt)
+    raw = provider.output_json(receipt, max_output_bytes=OUTPUT_JSON_BYTES)
     result, reconstruction = _validate(bundle, raw)
     audit = {'binding': {'input_hash': prepared.input_hash, 'source_identity': source_identity(bundle),
                          'attempt_id': bundle.analysis.source.attempt_id,

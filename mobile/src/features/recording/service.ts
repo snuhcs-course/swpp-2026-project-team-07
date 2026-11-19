@@ -5,33 +5,20 @@ import {
   setAudioModeAsync,
   type AudioRecorder,
 } from "expo-audio";
-import type { LocalRecording, SlideEvent } from "../../contracts";
-
-// The eventual service contract: one recording attempt owns its audio file and
-// every slide visit. `stop`/`cancel` will create or discard a LocalRecording
-// once real deck/attempt persistence is connected.
-export interface RecordingService {
-  start(initialSlideIndex: number | (() => number), prepared?: (uri: string, slide: number) => void): Promise<void>;
-  onSlideChanged(slideIndex: number): void;
-  // TODO(recording): implement stop/cancel here, create the complete
-  // LocalRecording, and define interruption/background behavior together with
-  // the timeline policy. RehearsalScreen temporarily owns native stop handling.
-  stop(): Promise<LocalRecording>;
-  cancel(): Promise<void>;
-}
-
-type RecordingTimelineService = Pick<
-  RecordingService,
-  "start" | "onSlideChanged"
-> & {
-  getSlideEvents(durationMillis?: number): SlideEvent[];
-};
-
-// TODO(recording): replace this partial service type once RecordingService
-// creates and returns the complete LocalRecording to the transcription flow.
+import type { SlideEvent } from "../../contracts";
 
 /**
- * Small, screen-local implementation of the capture portion of RecordingService.
+ * Capture timeline primitives used by CaptureEngine. CaptureEngine owns the
+ * durable attempt checkpoint, native stop/finalization, and interruption path.
+ */
+export interface RecordingTimelineService {
+  start(initialSlideIndex: number | (() => number), prepared?: (uri: string, slide: number) => void): Promise<void>;
+  onSlideChanged(slideIndex: number): void;
+  getSlideEvents(durationMillis?: number): SlideEvent[];
+}
+
+/**
+ * Small, take-local implementation of the capture timeline primitives.
  *
  * This deliberately has no wall-clock timer. Audio, its duration, and slide
  * events must share the recorder's clock so a later transcription word at t ms

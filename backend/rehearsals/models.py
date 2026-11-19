@@ -271,3 +271,96 @@ class QaAnswer(models.Model):
 
     class Meta:
         constraints = [models.CheckConstraint(condition=models.Q(part__in=[0, 1]), name='qa_answer_part_range')]
+
+
+class FeedbackRun(models.Model):
+    """One v3 feedback run: measurements, per-slide and whole results, scores.
+
+    AI-assisted with Claude Code, prompted by Seoyeon (November 14, 2026); see
+    docs/ai-collaboration-prompts.md. A new run is created when its inputs
+    (transcript, corrections, presentation context, slide profiles, prompt,
+    rubric or model) change. Retry re-queues the same run and keeps finished parts.
+    """
+    class Status(models.TextChoices):
+        QUEUED = 'queued'
+        RUNNING = 'running'
+        COMPLETED = 'completed'
+        FAILED = 'failed'
+        STALE = 'stale'
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    attempt = models.ForeignKey(Attempt, on_delete=models.CASCADE, related_name='feedback_runs')
+    context = models.ForeignKey(PresentationContext, on_delete=models.SET_NULL, null=True, blank=True,
+                                related_name='feedback_runs')
+    fingerprint = models.CharField(max_length=64)
+    pipeline_version = models.CharField(max_length=40)
+    rubric_version = models.CharField(max_length=40)
+    model = models.CharField(max_length=100)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.QUEUED, db_index=True)
+    result = models.JSONField(default=dict)
+    error = models.JSONField(null=True, blank=True)
+    timings = models.JSONField(default=dict)
+    usage = models.JSONField(default=dict)
+    worker_attempts = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    queued_at = models.DateTimeField()
+    started_at = models.DateTimeField(null=True, blank=True)
+    heartbeat_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=['attempt', '-created_at'], name='feedback_run_latest')]
+
+
+class CaptureSession(models.Model):
+    """Append-only sample-clock manifest for an uninterrupted recording."""
+    attempt = models.OneToOneField(Attempt, primary_key=True, on_delete=models.CASCADE, related_name='capture')
+    context = models.ForeignKey(PresentationContext, null=True, on_delete=models.PROTECT)
+    manifest = models.JSONField(default=dict)
+    revision = models.PositiveIntegerField(default=0)
+    stopped = models.BooleanField(default=False)
+    finalized = models.BooleanField(default=False)
+    audio_hash = models.CharField(max_length=64, blank=True)
+    desired = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class CaptureSegment(models.Model):
+    capture = models.ForeignKey(CaptureSession, on_delete=models.CASCADE, related_name='segments')
+    sequence = models.PositiveIntegerField()
+    slide_index = models.PositiveIntegerField()
+    start_ms = models.PositiveIntegerField()
+    end_ms = models.PositiveIntegerField()
+    audio = models.FileField(upload_to='segments/%Y/%m/', blank=True)
+    upload_hash = models.CharField(max_length=64, blank=True)
+    status = models.CharField(max_length=24, default='awaiting_upload', db_index=True)
+    transcript = models.JSONField(null=True)
+    receipts = models.JSONField(default=list)  # Private durable receipts, never serialized.
+    claim_token = models.UUIDField(null=True)
+    queued_at = models.DateTimeField(null=True)
+    claimed_at = models.DateTimeField(null=True)
+    retry_at = models.DateTimeField(null=True)
+    error = models.JSONField(null=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['capture', 'sequence'], name='unique_capture_segment')]
+
+
+class CaptureAssessment(models.Model):
+    """A durable per-input model result. -1 is the whole-presentation assessment."""
+    capture = models.ForeignKey(CaptureSession, on_delete=models.CASCADE, related_name='assessments')
+    slide_index = models.IntegerField()
+    input_hash = models.CharField(max_length=64)
+    payload = models.JSONField()
+    evidence = models.JSONField(default=dict)  # Frozen sentence/measurement evidence.
+    status = models.CharField(max_length=24, default='queued', db_index=True)
+    result = models.JSONField(null=True)
+    usage = models.JSONField(default=dict)
+    claim_token = models.UUIDField(null=True)
+    queued_at = models.DateTimeField()
+    claimed_at = models.DateTimeField(null=True)
+    error = models.JSONField(null=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['capture', 'slide_index', 'input_hash'], name='unique_capture_assessment')]

@@ -162,7 +162,7 @@ class PresentationScoreV2BoundaryTests(TestCase):
             else:
                 context = json.loads(payload['contents'][0]['parts'][0]['text'])
                 schema = payload['generationConfig']['responseJsonSchema']
-            self.assertEqual(provider.output_token_limit(prepared), 12000)
+            self.assertEqual(provider.output_token_limit(prepared), 24000)
             self.assertEqual([v['visit_id'] for v in context['evidence_registry']['visits']], ['v0', 'v1', 'v2'])
             self.assertEqual([v['slide_index'] for v in context['evidence_registry']['visits']], [0, 1, 0])
             self.assertTrue(all('word_index' not in word for visit in context['evidence_registry']['visits'] for word in visit['words']))
@@ -261,7 +261,7 @@ class PresentationScoreV2BoundaryTests(TestCase):
             scorer.source_identity(altered)
 
     def test_delivery_instructions_require_direct_speech_and_eligible_measurement(self):
-        self.assertEqual(scorer.PROMPT_VERSION, 'presentation-score-prompt-v2.3')
+        self.assertEqual(scorer.PROMPT_VERSION, 'presentation-score-prompt-v2.4')
         for phrase in ('direct supporting speech selection',
                        'Measurements and duration requirements alone',
                        'delivery weakness and delivery deduction'):

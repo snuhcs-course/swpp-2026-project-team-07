@@ -126,6 +126,10 @@ export function setIcon(id: string, icon: IconId) {
   const deck = deckById(id);
   if (deck) savePresentation({ ...deck, icon });
 }
+export function setHue(id: string, hue: HueName) {
+  const deck = deckById(id);
+  if (deck) savePresentation({ ...deck, hue });
+}
 export function setHidden(id: string, hidden: boolean) {
   const next = hidden ? [...new Set([...snapshot.hidden, id])] : snapshot.hidden.filter(x => x !== id);
   writeStored(HIDDEN, next);

@@ -9,7 +9,7 @@ registerHooks({resolve,load});
 const React=await import('react'),{act,create}=await import('react-test-renderer');
 const {runtime}=await import('./helpers/ai-overview-screen-native.mjs');
 const {ReviewScreen}=await import('../src/screens/ReviewScreen.tsx');
-const {FullReviewScreen}=await import('../src/screens/FullReviewScreen.tsx');
+const {ListenBackScreen:LegacyListenBackScreen}=await import('../src/screens/FullReviewScreen.tsx');
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;
 const text=tree=>JSON.stringify(tree.toJSON());
 const button=(tree,label)=>tree.root.findAllByType('pressable').find(node=>node.props.accessibilityLabel===label);
@@ -34,8 +34,8 @@ function setup({state='failed',status='successful',retry=true,availability='avai
 async function render(Component,run){let tree;try{await act(async()=>{tree=create(React.createElement(Component));});await run(tree);}finally{if(tree)await act(async()=>tree.unmount());}}
 async function open(tree){const entry=tree.root.findAllByType('pressable').find(node=>node.props.accessibilityLabel?.startsWith('Read slide 1 feedback:'));assert.ok(entry);await act(async()=>entry.props.onPress());}
 
-test('every affected Full Review slide links to existing selected-slide navigation without generating',async()=>{
- setup();await render(FullReviewScreen,async tree=>{
+test('every affected legacy Listen Back slide links to existing selected-slide navigation without generating',async()=>{
+ setup();await render(LegacyListenBackScreen,async tree=>{
   for(const [label,index] of [['Analysis failed',0],['AI feedback unavailable',1]]) {
    const link=button(tree,`Review slide ${index+1}: ${label}`);assert.ok(link);await act(async()=>link.props.onPress());
    assert.deepEqual(runtime.routes.at(-1),['review',{nav:'fade',deckId:'synthetic-recovery',sel:index,from:'full'}]);

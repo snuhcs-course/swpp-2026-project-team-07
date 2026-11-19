@@ -45,6 +45,20 @@ test('downloads publish only after complete native validation and file move; sco
   f.files.get(value.uri).hash = 'corrupt'; assert.equal(f.manager.cached(spec), null);
   f.files.delete(value.uri); assert.equal(f.manager.cached(spec), null);
 });
+test('a complete 30-minute capture WAV can be downloaded and cached for playback', async () => {
+  const f = fixture(), seconds = 30 * 60;
+  const chunks = [new Uint8Array(44), ...Array(seconds).fill(new Uint8Array(16_000 * 2))];
+  const bytes = 44 + seconds * 16_000 * 2;
+  f.network.response = () => stream(chunks, bytes);
+  let validated = false;
+  const capture = { ...spec, durationMs: seconds * 1000 };
+  const value = await f.manager.download(capture, async (_uri, current) => {
+    assert.equal(current.durationMs, 1_800_000); validated = true;
+  }, signal());
+  assert.equal(validated, true);
+  assert.equal(value.bytes, bytes);
+  assert.equal(f.manager.cached(capture).uri, value.uri);
+});
 for (const kind of ['audio', 'pdf']) {
   test(`${kind} accepts exactly its byte limit without Content-Length and rejects actual overflow before writing it`, async () => {
     const f = fixture(); const current = kind === 'audio' ? spec : { ...spec, kind, pageCount: 2, durationMs: undefined };

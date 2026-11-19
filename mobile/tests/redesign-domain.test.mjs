@@ -21,8 +21,9 @@ test('formatting and hues follow the design', () => {
   assert.equal(fmt(-3), '0:00');
   assert.equal(nearestSlot(9.2, 2, 5), 7);
   assert.equal(quote('a "b" c'), '“a ’b’ c”');
-  assert.equal(pickHue([]), 'cyan');
-  assert.equal(pickHue(['cyan', 'coral']), 'lime');
+  assert.equal(pickHue([]), 'rose');
+  assert.equal(pickHue(['rose', 'orchid']), 'lilac');
+  assert.equal(pickHue(['cyan', 'coral']), 'rose', 'legacy hues remain valid without consuming new palette choices');
 });
 
 test('fillers are whole words, including Korean hesitation sounds', () => {

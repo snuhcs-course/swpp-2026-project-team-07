@@ -3,6 +3,8 @@ import { resolve as storageResolve } from "./storage-native-loader.mjs";
 import { readFileSync, existsSync } from 'node:fs';
 import { transpile } from './transpile.mjs';
 export function resolve(specifier, context, nextResolve) {
+  if (specifier.endsWith('/modules/outloud-recorder') || specifier.endsWith('/recording/incremental'))
+    return { url: new URL('./recording-screen-incremental.mjs', import.meta.url).href, shortCircuit: true };
   if (specifier === 'react-native-pdf') return { url: new URL('./recording-screen-pdf.mjs', import.meta.url).href, shortCircuit: true };
   if (specifier === 'expo-audio') return { url: new URL('./recording-screen-audio.mjs', import.meta.url).href, shortCircuit: true };
   if (['react-native', 'expo-router', 'expo-router/react-navigation'].includes(specifier) || specifier.endsWith('/ui/components') || specifier.endsWith('/SlidePreview')) {

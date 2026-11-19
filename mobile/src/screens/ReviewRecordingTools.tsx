@@ -105,6 +105,6 @@ function Action({ label, text = label, disabled, onPress }: { label: string; tex
 const styles = StyleSheet.create({
   root: { gap: 12 }, card: { gap: 10, padding: 14, borderWidth: 1, borderRadius: 18 },
   heading: { fontFamily: F.semibold, fontSize: 14 }, body: { fontFamily: F.medium, fontSize: 14, lineHeight: 21 },
-  note: { fontFamily: F.medium, fontSize: 12, lineHeight: 18 }, action: { minHeight: 44, padding: 12, borderRadius: 14, justifyContent: 'center' },
-  actionText: { fontFamily: F.semibold, fontSize: 13 },
+  note: { fontFamily: F.medium, fontSize: 15, lineHeight: 21 }, action: { minHeight: 44, padding: 12, borderRadius: 14, justifyContent: 'center' },
+  actionText: { fontFamily: F.semibold, fontSize: 13.5 },
 });

@@ -122,7 +122,7 @@ export function useSegmentPlayer() {
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', s => { if (s !== 'active') stop(); });
-    return () => { sub.remove(); token.current++; current.current = null; try { player.pause(); } catch { /* released */ } };
+    return () => { sub.remove(); stop(); try { player.pause(); } catch { /* released */ } };
   }, [player, stop]);
 
   return { playingKey: state.key, progress: state.progress, elapsedMs: state.elapsedMs, paused: state.paused, positionMs: state.positionMs, uri: state.uri, error, play, playSegments, seekSegments, setPaused, stop };
