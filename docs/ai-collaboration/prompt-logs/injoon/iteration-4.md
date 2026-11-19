@@ -558,3 +558,247 @@ Can you push my prompt branch to github
 ```
 
 Codex verified that GitHub main was at `95cc77c`, that the contributor branch had no remote ref, and that the outgoing commit and pending changes touched only this log. Reviewed the outgoing text for publication and preserved the trailing space in a historical verbatim prompt.
+
+## Apply the README outline section by section — November 19, 2026
+
+**Contributor:** Injoon · **Iteration:** 4 · **Tool:** OpenAI Codex desktop · **Model:** GPT-6.
+
+### Request — verbatim
+
+```text
+let's apply this outline to the README on `docs/iteration-4-readme`, fix the live retake wording, and review it in the Changes page before committing. Keep it local and the prompt log on its separate branch. Let's do this section by section where you show me what should be written and ask me questions for things that you're not sure of
+```
+
+Codex drafted the opening paragraph in the local README and presented it for review, with the existing English title as the default. The demo walkthrough is the next section and will include the live retake clarification. The README diff passed the whitespace check. The final Changes-page review remains pending until the sections are drafted.
+
+### Introduction alternatives — verbatim
+
+```text
+Can you give multiple candidates for the introduction. The title si fine
+```
+
+Confirmed by Injoon in chat on November 19, 2026: keep the title `OutLoud · Team 07`. Codex presented alternative introductions for selection. The current introduction remains the working draft.
+
+### Product overview direction — verbatim
+
+```text
+It should be product overview but I feel like you could make different variations.
+```
+
+Confirmed by Injoon in chat on November 19, 2026: use a product overview for the introduction. Codex proposed additional variations within that approach. The exact introduction remains open.
+
+### User-written introduction and logo — verbatim
+
+```text
+Outloud is a presentation rehearsal app for students and professionals that lets users upload slides, record rehearsal, and receive feedback on their delivery. It uses AI to transcribe presentations, evaluate how well the speaker covers each slide, suggest areas to improve, and generate follow up questions from Q&A practice.
+
+Let's also add the logo (with the app name)
+```
+
+On November 19, 2026, Injoon supplied the product overview and requested the logo beside the app name. Codex applied the overview with light copy edits and used the existing tracked rounded icon beside the confirmed heading. Codex checked the Q&A implementation, which generates audience questions and follow-ups from rehearsal material for practice. The SVG parsed successfully, and both worktree diffs passed the whitespace check. The edits remain local and uncommitted.
+
+### Combined OutLoud logo — verbatim
+
+```text
+The app logo should be the logo with both the icon and the app name
+```
+
+On November 19, 2026, Injoon clarified that the logo itself should include the app name. Codex composed one SVG from the existing app icon and the app's Bricolage Grotesque Bold wordmark, linked it in the README with OutLoud alt text, and kept Team 07 in the heading. Codex validated the SVG and visually checked an AppKit raster preview after the initial conversion utility could not handle the SVG. The SVG and README remain local and uncommitted.
+
+### Move to the v10 demo section — verbatim
+
+```text
+Looks good. Let’s move on to the v10 demo section.
+```
+
+On November 19, 2026, Injoon accepted the introduction and combined logo and moved the review to the demo section. Codex drafted the hosted install, rehearsal walkthrough, and upload and offline notes. The Stop steps distinguish the review overview for a regular live take, the waiting screen for a first After Stop take, and Compare takes for a live retake. Codex matched the screen paths and controls against release source `5745502`, checked the five demo links against existing paths and previously verified release names, and preserved the earlier incoming section link with a custom anchor. The diff passed the whitespace check. The README and prompt-log updates remain local and uncommitted.
+
+### Compare peer APK instructions — verbatim
+
+```text
+Did other teams include this in their readme? How did other teams write this section
+```
+
+Codex rechecked all 18 peer root READMEs for APK file checksums. Team 06 mentions SHA-256 assets under deployment. The other checksum-like references concern signing identities or a model file. Team 09 leads with the APK and access requirements, Team 04 separates installation from demo actions, and Team 19 joins installation and user flows in one numbered list. Codex recommended leading with the APK and putting the checksum with release assets. The README draft was not edited.
+
+### Apply the install-first demo opening — verbatim
+
+```text
+Let’s follow SNU Now’s approach. Put the v10 APK link, Android requirement, and demo code first, keep the checksum and install details on the release page, then go straight into the rehearsal steps.
+```
+
+On November 19, 2026, Injoon selected the install-first format based on SNU Now's README. Codex put the direct v10 APK, Android version and Team 07 demo code first, linked the release for the existing checksum and installation assets, and placed the numbered rehearsal steps immediately below. The shared-workspace note moved to the consent subsection. Verified the opening order, local links, incoming anchor, live-retake wording, and whitespace. The README and prompt-log changes remain local and uncommitted.
+
+### Polish the user-rewritten demo steps — verbatim
+
+```text
+Ok I rewrote the section can you bold appopriate words. yoiu can slightly adjust the wording if you want to
+```
+
+Injoon rewrote the demo walkthrough and removed the consent and offline subsection. Codex kept the user’s workflow, bolded control labels and key choices, made small wording edits for a touch interface, named the retake comparison screen, and corrected step numbering. Codex checked the retake labels against v10 source, verified the sequence and whitespace, and edited only the demo section of the README. This entry remains separate from the uncommitted README.
+
+### Draft the Iteration 4 highlights — verbatim
+
+```text
+Looks good. Let’s move on to the What Iteration 4 adds section. Show me a draft of just that section first.
+```
+
+On November 19, 2026, Injoon accepted the demo section and requested a draft of the next section before editing. Codex checked the v10 release history and dated phone evidence for live per-slide feedback, revisit behavior, upload recovery, and whole-presentation feedback. Codex presented the three-bullet draft in chat. The README was not edited.
+
+### Add the approved highlights and draft Local Setup — verbatim
+
+```text
+Looks good. Add that section to the README, then show me a draft of just the Local Setup section before changing it.
+```
+
+On November 19, 2026, Injoon approved the Iteration 4 highlights. Codex inserted the three approved bullets immediately before Local Setup and verified that removing the insertion yields the original README. Codex checked the current Compose, mobile endpoint defaults, environment examples, and local and release guides for a separate Local Setup draft. The Local Setup text in the README was left for review, and the branch remains uncommitted.
+
+### Approve Local Setup without the optional label — verbatim
+
+```text
+When you say enabling ai features is optional how would the app give ai feedback and transcription then
+```
+
+```text
+I like it the way it is but just remove otpional label. Also is the last paragraph neede?
+```
+
+On November 19, 2026, Injoon approved the Local Setup draft with the optional label removed. Codex applied the section, restored the incoming quick-start anchor, and verified the shell blocks, links, and unchanged surrounding text. The final paragraph about the exact v10 source and signed APK was included in the applied draft while its placement remains open. Changes are local and uncommitted.
+
+### Remove the release-build paragraph — verbatim
+
+```text
+Let’s remove the last paragraph from Local Setup, t
+```
+
+On November 19, 2026, Injoon requested removing the exact-v10 and signed-APK paragraph from Local Setup. Codex removed that paragraph and checked the section boundary and diff whitespace. The edits remain local and uncommitted.
+
+### Compare peer testing sections — verbatim
+
+```text
+Do other groups have checks and evidence section
+```
+
+Codex checked the same 18 peer root READMEs for testing, verification, evaluation, and CI headings. Twelve had a relevant section or subsection. Team 04 and Team 18 present commands alongside dated results, Team 09 separates evaluation from test commands, and Team 01 lists commands under Checks. Codex recommended a short Checks section with reproducible commands and links to dated v10 results. The README was not edited.
+
+### Draft a short Checks section — verbatim
+
+```text
+What is this section supposed to have
+```
+
+```text
+Let’s go with that. Show me a draft of just the Checks section before changing the README.
+```
+
+On November 19, 2026, Injoon selected a short Checks section with reproducible commands and dated v10 results. Codex checked the mobile script and release evidence and drafted the section in chat. The README was not edited.
+
+### Apply Checks and draft Known Limitations — verbatim
+
+```text
+Looks good. Add the Checks section to the README, then show me a draft of just the Known Limitations section before changing it.
+```
+
+On November 19, 2026, Injoon approved the Checks draft. Codex applied it with repository-relative evidence links and checked the commands for shell syntax, both evidence anchors, whitespace, and surrounding text. Codex drafted Known Limitations in chat using the recorded v10 audit and acceptance-testing status. The existing limitations section was kept pending review. Edits remain local and uncommitted.
+
+### Verify proposed limitations against signed v10 — verbatim
+
+```text
+Can you make sure these limitations actually exist? Because I feel like they are actually not a problem
+```
+
+Codex checked release source `5745502`, the hosted-access documentation, and the November 16 signed-APK audit. The code and audit establish the shared reviewer workspace, the scope of local deletion, Back behavior during capture, and working audio and metrics comparison between takes. The audit confirmed the default-audience case and layout defects. Codex inspected the recorded screenshots of import hint overlap and larger-text cue clipping. Rapid navigation lacked a reproduced failure in the checked record, and score quality and full acceptance remain validation gaps. Codex recommended narrowing the README to the confirmed demo constraints and reproducible issues. No fresh device test or README edit was made.
+
+### Check whether the README needs known limitations — verbatim
+
+```text
+Do we need a known limitations section. Can you look at the other gorups
+```
+
+Codex compared the same 18 default-branch peer READMEs. Six use top-level limitations or TODO sections and two use nested limits or demo bugs headings. Codex verified page 11 of the instructor's Project Overview, which explicitly lists known limitations and todos among required demo-README contents. It recommends a short section covering verified v10 constraints and follow-up. The README was not edited.
+
+### Verify what shared demo access means — verbatim
+
+```text
+Do reviewers actually share uploaded slides? So my slides are visible to other people?
+```
+
+Codex checked the v10 Home catalog, server deck handling, and shared-code gateway against the hosting documentation on GitHub main. The app builds Home from device-local presentation entries. Uploaded material is behind a shared code without per-reviewer ownership checks. Codex clarified that other code holders with a server reference can access the material even though it does not automatically appear in their Home library. No uploaded material or access history was retrieved. The README was not edited.
+
+### Apply the verified Known Limitations — verbatim
+
+```text
+Okay, then edit the known limitations by also metioning that the home screen controls what reviews discover but...
+```
+
+On November 19, 2026, Injoon requested the verified limitations and the distinction between Home discovery and shared-code access. Codex applied the three-bullet section covering the hosted demo, audience setup and reproduced layout issues, with a link to the remaining acceptance checks. Codex verified the link anchors, whitespace and unchanged surrounding README text. The README and prompt-log updates remain local and uncommitted.
+
+### Refine the two README limitations — verbatim
+
+```text
+First one should be like although you cannot see on the home screen, someone with a "link" (but idk what link would mean here)
+
+let's remove 2nd limitation and for 3rd limitation be like that there are still some UI bugs especially with layout and for example, home hints...
+```
+
+On November 19, 2026, Injoon asked to clarify the direct server URL, remove the audience bullet, and frame the remaining examples as UI layout bugs. Codex updated the two README bullets and verified the section and whitespace. Both edits remain local and uncommitted on their separate branches.
+
+### Record rubric validation as a limitation — verbatim
+
+```text
+I think another limitation is that how good the rubric is has not been truly evauated
+```
+
+On November 19, 2026, Injoon raised rubric quality as a README limitation. Codex checked the v10 phone evidence and rubric development record, which report controlled evaluation and leave scoring agreement and feedback usefulness open. Codex added that the scores are provisional and need independent human evaluation on real presentations. The README and prompt-log edits remain local and uncommitted.
+
+### Clarify the rubric limitation — verbatim
+
+```text
+Can you replace “the scores are provisional” with something clearer, like “We still need to check how closely OutLoud’s scores match independent human ratings”? Just update that bullet.
+```
+
+Codex replaced the ambiguous wording in the single rubric bullet with the user's phrasing and retained the feedback-usefulness question. The README diff passed the whitespace check. Both edits remain local and uncommitted.
+
+### Draft Repository and Documentation — verbatim
+
+```text
+ok next section
+```
+
+Injoon moved the section-by-section review to the repository and documentation section. Codex checked the current folders and linked files, then presented a short repo map and grouped documentation links in chat. The README was not edited.
+
+### Apply the repository section and review the full diff — verbatim
+
+```text
+Looks good. Add that section to the README, then let’s review the full diff on `docs/iteration-4-readme` in the Changes page before committing. Keep it local and the prompt log on its separate branch.
+```
+
+On November 19, 2026, Injoon approved the repository and documentation section. Codex applied it and reviewed the full README diff against `95cc77c` and the separate new SVG logo. The review checked 14 relative links and image references, seven incoming links, four shell blocks, demo numbering, SVG structure, and whitespace. It found one incoming link that still references the removed configuration section and one omission in the first-use live prompt sequence. No app or provider tests were rerun. Codex attached the worktree and queued the full unstaged Changes panel; the app did not confirm it opened. The README and logo are local and unstaged. The prompt log remains separate and uncommitted.
+
+### Resolve both full-diff findings — verbatim
+
+```text
+Let’s fix both findings on `docs/iteration-4-readme`, then recheck the full diff in Changes before committing.
+```
+
+Codex restored the configuration anchor above Enable AI features and added the first-use Live feedback prompt before microphone access in the demo walkthrough. The full README and logo recheck passed whitespace, 14 relative link and image references, seven incoming links, four shell examples, the prompt sequence against v10 source, and SVG structure. The full unstaged Changes panel was queued. No application tests, staging, commit, or push took place.
+
+### Publish the approved README and logo — verbatim
+
+```text
+Looks good. Commit the README and logo on `docs/iteration-4-readme`.  Push to github
+```
+
+On November 19, 2026, Injoon approved the README and logo for commit and push to `docs/iteration-4-readme`. Codex checked the staged diff and SVG, verified that the outgoing commit contains exactly those two files, committed `936c211cb2167e93d52c0f0c606ce8fe58c604ed`, and confirmed that the GitHub branch points to the same commit. GitHub main had advanced with meeting files only. Codex updated the local course-workspace project index. This prompt-log entry stays local on the separate branch.
+
+## Publish the pending Iteration 4 prompt entries — November 20, 2026
+
+**Contributor:** Injoon · **Iteration:** 4 · **Tool:** OpenAI Codex desktop · **Model:** GPT-6.
+
+### Request — verbatim
+
+```text
+Let’s commit and push the new Iteration 4 prompt log entries on `docs/injoon-prompt-logs` too. Keep the Iteration 5 log out of that commit.
+```
+
+Injoon authorized publishing the pending Iteration 4 entries on the existing prompt-log branch and asked that the Iteration 5 file stay outside the commit. Codex reviewed the added README-session entries for public sharing, checked for credentials and private file references, and verified that the local and GitHub branch tips matched before staging.
