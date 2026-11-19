@@ -8,7 +8,7 @@ GET never starts work. POST starts or reuses the run for the current inputs;
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from ..models import Attempt
+from ..models import Attempt, CaptureSession
 from . import llm, pipeline
 
 
@@ -23,6 +23,21 @@ def feedback_run(request, attempt_id):
     except Attempt.DoesNotExist:
         return _error('not_found', 404)
     try:
+        capture = CaptureSession.objects.filter(pk=attempt_id).select_related('attempt__deck', 'context').first()
+        if capture:
+            from ..services import incremental
+            if request.method == 'POST' and not isinstance(request.data, dict):
+                return _error('invalid_request', 400)
+            context_id = request.query_params.get('context_id') if request.method == 'GET' else request.data.get('context_id')
+            if context_id is not None and str(capture.context_id) != context_id:
+                return _error('invalid_context', 400)
+            if request.method == 'POST':
+                payload = request.data
+                if not isinstance(payload, dict) or set(payload) - {'context_id', 'retry'} or type(payload.get('retry', False)) is not bool:
+                    return _error('invalid_request', 400)
+                incremental.refresh(attempt_id, retry=payload.get('retry', False), update_inputs=True)
+                capture.refresh_from_db()
+            return Response(incremental.feedback(capture))
         if request.method == 'GET':
             context = pipeline.resolve_context(attempt, request.query_params.get('context_id'))
             run = pipeline.latest_run(attempt, context)

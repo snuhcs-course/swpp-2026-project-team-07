@@ -62,5 +62,5 @@ test('question batch retains its historical audience when current presentation a
 });
 test('tapping the mounted Q&A Back hint returns to its selected Review without generating',async()=>{
  setup(3);let r;
- try{await act(async()=>{r=create(React.createElement(QAScreen));});const hint=r.root.findByType('hints').props.hints.find(h=>h.text==='Back');assert.equal(typeof hint?.onPress,'function');await act(async()=>hint.onPress());assert.deepEqual(globalThis.qaScreenRoutes,[['review',{nav:null,deckId:'screen-3',sel:0}]]);}finally{if(r)await act(async()=>r.unmount());}
+ try{await act(async()=>{r=create(React.createElement(QAScreen));});const hint=r.root.findByType('hints').props.hints.find(h=>h.text==='Back');assert.equal(typeof hint?.onPress,'function');await act(async()=>hint.onPress());assert.deepEqual(globalThis.qaScreenRoutes,[['review',{nav:null,deckId:'screen-3',sel:0,from:'full'}]]);}finally{if(r)await act(async()=>r.unmount());}
 });

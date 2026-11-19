@@ -310,3 +310,57 @@ class FeedbackRun(models.Model):
 
     class Meta:
         indexes = [models.Index(fields=['attempt', '-created_at'], name='feedback_run_latest')]
+
+
+class CaptureSession(models.Model):
+    """Append-only sample-clock manifest for an uninterrupted recording."""
+    attempt = models.OneToOneField(Attempt, primary_key=True, on_delete=models.CASCADE, related_name='capture')
+    context = models.ForeignKey(PresentationContext, null=True, on_delete=models.PROTECT)
+    manifest = models.JSONField(default=dict)
+    revision = models.PositiveIntegerField(default=0)
+    stopped = models.BooleanField(default=False)
+    finalized = models.BooleanField(default=False)
+    audio_hash = models.CharField(max_length=64, blank=True)
+    desired = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class CaptureSegment(models.Model):
+    capture = models.ForeignKey(CaptureSession, on_delete=models.CASCADE, related_name='segments')
+    sequence = models.PositiveIntegerField()
+    slide_index = models.PositiveIntegerField()
+    start_ms = models.PositiveIntegerField()
+    end_ms = models.PositiveIntegerField()
+    audio = models.FileField(upload_to='segments/%Y/%m/', blank=True)
+    upload_hash = models.CharField(max_length=64, blank=True)
+    status = models.CharField(max_length=24, default='awaiting_upload', db_index=True)
+    transcript = models.JSONField(null=True)
+    receipts = models.JSONField(default=list)  # Private durable receipts, never serialized.
+    claim_token = models.UUIDField(null=True)
+    queued_at = models.DateTimeField(null=True)
+    claimed_at = models.DateTimeField(null=True)
+    retry_at = models.DateTimeField(null=True)
+    error = models.JSONField(null=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['capture', 'sequence'], name='unique_capture_segment')]
+
+
+class CaptureAssessment(models.Model):
+    """A durable per-input model result. -1 is the whole-presentation assessment."""
+    capture = models.ForeignKey(CaptureSession, on_delete=models.CASCADE, related_name='assessments')
+    slide_index = models.IntegerField()
+    input_hash = models.CharField(max_length=64)
+    payload = models.JSONField()
+    evidence = models.JSONField(default=dict)  # Frozen sentence/measurement evidence.
+    status = models.CharField(max_length=24, default='queued', db_index=True)
+    result = models.JSONField(null=True)
+    usage = models.JSONField(default=dict)
+    claim_token = models.UUIDField(null=True)
+    queued_at = models.DateTimeField()
+    claimed_at = models.DateTimeField(null=True)
+    error = models.JSONField(null=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['capture', 'slide_index', 'input_hash'], name='unique_capture_assessment')]

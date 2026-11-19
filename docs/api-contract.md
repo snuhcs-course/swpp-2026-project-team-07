@@ -1133,7 +1133,9 @@ or STT suggestion. Natural fragments/mixed language are not automatically faults
 no unsupported claims or stronger conclusions may be added. Original indexed speech
 remains the evidence and playback anchor. V2 prompt bytes remain available for saved
 request reconstruction; retained v1/v2 results are outdated and require explicit
-Update feedback. No migration, incremental audio, new screen or requirements sheet.
+Update feedback. That initial v3 rollout did not add a migration, incremental audio,
+new screen or requirements sheet; the continuous-capture extension below adds
+incremental audio and its durable work models.
 
 
 ### Evidence-validation policy (October 16 follow-up)
@@ -1236,3 +1238,101 @@ rollback/deletion or live configuration change accompanies this source cleanup.
 ## Feedback v3 runs (November 14, 2026, branch `ai-feedback-reimplementation`)
 
 `GET|POST /api/attempts/{attempt_id}/feedback-run/` serves the rebuilt feedback pipeline: per-slide and whole-presentation Rubric V2 levels, scores calculated by the server, next-level advice and point gains. It is off unless `FEEDBACK_V3_ENABLED=true` and runs alongside the endpoints above. GET never starts work; POST starts or reuses the run for the current inputs, and `{"retry": true}` re-queues only failed parts. The response shape, statuses and settings are in [the reimplementation design](ai-feedback-reimplementation.md#api).
+
+## Continuous capture and incremental feedback (November 15, 2026)
+
+The Android native recorder keeps one 16 kHz mono PCM stream open. Every sample
+is written both to a full WAV and to a visit segment. A slide transition closes
+its segment; a 60-second chunk boundary closes only a file, not the visit. The
+server uses integer audio-sample timestamps and preserves all visits, including
+backward navigation and equal-time transitions. Initial sentence splitting has
+no overlap across segments.
+
+`GET /api/incremental/capabilities/` returns `enabled`, `max_segment_ms` (60000)
+and `max_audio_bytes` (60000044). Enable with `INCREMENTAL_CAPTURE_ENABLED=true`,
+Scribe credentials and working feedback-v3 configuration. An unavailable or
+disabled capability at capture start selects the existing after-Stop AAC flow.
+An incremental recording retains its mode through network failures; it never
+falls back to transcribing its full audio again.
+Review audio downloads allow the same 60000044-byte bound so a full 30-minute
+PCM recording remains available for playback after its local cache is gone.
+The original after-Stop upload limit remains 25000000 bytes.
+
+`POST /api/attempts/{attempt_id}/capture/` declares a complete manifest snapshot:
+
+```json
+{
+  "deck_id": "uuid", "context_id": null, "audience": "",
+  "duration_ms": 2000,
+  "slide_events": [{"slide_index": 0, "at_ms": 0}, {"slide_index": 1, "at_ms": 2000}],
+  "segments": [{"sequence": 0, "slide_index": 0, "start_ms": 0, "end_ms": 2000}],
+  "stopped": false
+}
+```
+
+Creation at duration 0 is valid. Context/deck/audience identity stays fixed for
+the recording. Its context audience and target duration are also frozen at start;
+later edits become an explicit post-Stop feedback update. Segments form a contiguous zero-based sequence from 0, with no
+gaps or overlaps. A segment cannot cross a slide transition. Earlier manifest
+entries are immutable: identical uploads and delayed prefix snapshots are
+idempotent; changed prior content returns 409. Declare every completed visit
+before uploading its audio. The final snapshot sets `stopped: true`, covers the
+entire duration and retains any final zero-duration slide event. Normal completed
+Attempt output filters only events at the exact end, as required above.
+
+`POST /api/attempts/{attempt_id}/segments/{sequence}/` accepts multipart `file`
+containing a complete mono PCM16 WAV at 16000 Hz. Its decoded sample count must
+match the declared segment interval. Same sequence and bytes are idempotent;
+different bytes return 409. Files are stored before queued transcription. A
+lost upload acknowledgement can therefore retry safely with the same identity.
+
+`GET /api/attempts/{attempt_id}/capture/` is read-only and returns:
+
+```text
+{attempt_id, revision, stopped, finalized, audio_uploaded, error,
+ segments: [{sequence, slide_index, start_ms, end_ms,
+             status, error, retry_available, retry_at, requires_confirmation}],
+ feedback: <feedback-v3 response>}
+```
+
+Segment statuses are `awaiting_upload`, `queued`, `transcribing`, `completed`,
+`failed` and `uncertain`. Upload retry never repeats a submitted transcription.
+Scribe receipts are saved before normalization; a received result is reused on
+retry. A worker lost after submission or an ambiguous provider outcome requires
+explicit acknowledgement. `POST /api/attempts/{attempt_id}/segments/{sequence}/retry/`
+accepts `{}` for a known failure or `{"acknowledge_uncertain": true}` for an
+acknowledged uncertain call, respecting provider cooldowns. Receipts, provider
+bodies and credentials never appear in public results.
+A received result with invalid text/timestamps also requires this acknowledgement
+before a new provider call. Its invalid raw receipt is retained; a transient local
+processing failure instead reuses the received raw result without a new call.
+
+At Stop, `POST /api/attempts/{attempt_id}/capture/audio/` accepts the full WAV as
+multipart `file`. It must match the final duration and the concatenated segment
+PCM bytes. An `audio_mismatch` error leaves `finalized: false` and
+`audio_uploaded: false`; the original full audio can be uploaded again. Segments
+and existing transcripts remain retained. Once every declared segment has a
+transcript and the matching full audio exists, `finalized` becomes true, the
+ordinary Attempt endpoint exposes the assembled transcript, visits and delivery
+measurements, and whole-presentation feedback becomes eligible. Word times are
+segment-relative Scribe times plus the segment's original start offset. No full
+Scribe call is made. The normal `/process/` endpoint rejects incremental attempts.
+Incomplete captures are read through `/capture/` and are excluded from the normal
+completed/uploaded-attempt deck history until finalized.
+
+Feedback uses the existing rubric, normalization and scoring. Every assessment
+has a durable input hash and unique work row. A slide is graded only after leaving
+it and receiving all of its declared segments. A revisit marks its last advice
+`provisional: true`, with `status: pending`, no current score, and reason
+`recording` or `awaiting_segments`. Once the revisit is ready, only that slide's
+changed input is regraded. Unchanged slide payloads use the slide's own language,
+speech and measurements, so later slides and Stop do not repeat their calls.
+Whole assessment waits for Stop and all segment transcripts/full audio; a take
+that missed a gradable slide retains `presentation_incomplete` semantics.
+
+`feedback-run/` GET and POST also support incremental attempts. GET only reads;
+POST explicitly updates changed inputs or retries failed feedback. Corrections
+and settings changes after finalization mark results `outdated` until an explicit
+update. Corrections never delay the first feedback. Every response includes
+`created_at` and `updated_at` for monotonic mobile caching. A lost feedback worker
+is failed for explicit retry, so recovery does not silently repeat model calls.

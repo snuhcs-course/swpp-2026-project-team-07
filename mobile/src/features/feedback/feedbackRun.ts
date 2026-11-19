@@ -16,7 +16,7 @@ export type V3MustCover = { point: string; status: 'covered' | 'partial' | 'miss
 export type V3SlideStatus = 'pending' | 'scored' | 'insufficient_evidence' | 'not_applicable' | 'not_recorded' | 'insufficient_speech' | 'failed';
 export type V3SlideMeasurements = { seconds: number; target_seconds: number | null; words: number; filler_count: number;
   long_pauses: number; rate: { value: number; unit: string; band: 'slow' | 'comfortable' | 'fast' } | null };
-export type V3Slide = { slide_index: number; status: V3SlideStatus; reason: string | null; error: string | null; score: number | null; level: ScoreLevel | null;
+export type V3Slide = { slide_index: number; status: V3SlideStatus; reason: string | null; error: string | null; score: number | null; level: ScoreLevel | null; provisional?: boolean;
   criteria: V3Criterion[]; must_cover: V3MustCover[]; strength: { text: string; evidence: V3Evidence[] } | null;
   improvements: V3Improvement[]; measurements: V3SlideMeasurements | null };
 export type V3Priority = { title: string; action: string; why: string; slide_index: number | null };
@@ -65,7 +65,7 @@ function slide(raw: unknown): V3Slide | null {
   const m = obj(s.measurements), rate = obj(m?.rate);
   return {
     slide_index: index, status: SLIDE_STATUSES.includes(s.status as V3SlideStatus) ? s.status as V3SlideStatus : 'failed',
-    reason: str(s.reason) || null, error: str(s.error) || null, score: score(s.score), level: level(s.level), criteria: criteria(s.criteria),
+    reason: str(s.reason) || null, provisional: s.provisional === true, error: str(s.error) || null, score: score(s.score), level: level(s.level), criteria: criteria(s.criteria),
     must_cover: arr(s.must_cover).flatMap(raw2 => { const c = obj(raw2);
       return c && ['covered', 'partial', 'missing'].includes(str(c.status))
         ? [{ point: str(c.point), status: c.status as V3MustCover['status'], evidence: evidence(c.evidence) }] : []; }),
@@ -152,6 +152,7 @@ export function selectRunFeedbackV3(input: V3Input) {
     const usable = !!v3 && v3.status !== 'pending';
     // Settled = nothing more is coming without a user action; a transcript still in progress is not settled.
     const stage = input.stages.get(part.attemptId), terminal = !ready && (stage === 'no_speech' || stage === 'done');
+    if (v3?.provisional) return { ...base, run, v3, status: v3.reason === 'recording' ? 'Recording this slide' : 'Waiting for slide segments', settled: false, outdated: true };
     if (pending && !usable) return { ...base, run, v3, status: pending,
       settled: terminal || pending === 'Feedback failed' || pending === 'Not graded' };
     if (!v3 || v3.status === 'pending') return { ...base, run, v3, status: 'Scoring…', settled: false };
@@ -187,6 +188,7 @@ export function slideLevel(points: number): ScoreLevel {
   return points >= 250 / 3 ? 'advanced' : points >= 50 ? 'competent' : points >= 100 / 6 ? 'emerging' : 'beginning';
 }
 export function withheldLabel(withheld: V3Scores['withheld']): string {
+  if (withheld.some(w => w.reason === 'capture_incomplete' || w.reason === 'awaiting_segments')) return 'Waiting for all audio segments';
   if (withheld.some(w => w.reason === 'presentation_incomplete')) return 'Record the whole presentation for an overall score';
   const slides = withheld.find(w => w.reason === 'slides_not_scored')?.slides ?? [];
   if (slides.length) return `Overall needs slide${slides.length === 1 ? '' : 's'} ${slides.map(s => s + 1).join(', ')}`;

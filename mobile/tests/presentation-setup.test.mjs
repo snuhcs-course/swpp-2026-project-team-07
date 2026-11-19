@@ -16,24 +16,28 @@ const serverDeck='22222222-2222-4222-8222-222222222222';
 async function mountEditor(local,initialImport=true){let r;await act(async()=>{r=create(React.createElement(ThemeProvider,null,React.createElement(PresentationRequirementsEditor,{deck:local,initialImport,onSaved:()=>{},onBackPan:{}})));});return r;}
 const slider=r=>r.root.findAllByType('pan').find(n=>n.props.accessibilityRole==='adjustable');
 const texts=r=>r.root.findAllByType('text').map(n=>n.children.join('')).join('\n');
+const customLabel='Not sure. Long press to edit a custom audience.';
+const customSave=r=>r.root.findAllByType('pressable').find(n=>n.findAllByType('text').some(t=>t.children.join('')==='Save'));
+const openCustom=r=>act(async()=>button(r,customLabel).props.onLongPress());
+const clearTime=r=>act(async()=>slider(r).props.onAccessibilityAction({nativeEvent:{actionName:'clear'}}));
 const chip=(r,label)=>r.root.findAllByType('pressable').find(n=>n.findAllByType('text').some(t=>t.children.join('')===label));
-test('new-import controls show and save ten minutes and General audience before and after context reservation',async()=>{
+test('new-import controls save ten minutes and leave audience unselected before and after context reservation',async()=>{
  const old=fetch;globalThis.fetch=async()=>{throw Error('Synthetic offline');};
  try{for(const reserved of [false,true]){
   const local={...deck,id:'default-setup-'+reserved};if(reserved)reserveContext(local.id,API_URL,serverDeck);
   const r=await mountEditor(local);
-  try{assert.match(texts(r),/10:00/);assert.equal(slider(r).props.accessibilityValue.now,10);assert.equal(chip(r,'General audience').props.accessibilityState.selected,true);
+  try{assert.match(texts(r),/minutes/);assert.equal(slider(r).props.accessibilityValue.now,10);assert.equal(chip(r,'Not sure').props.accessibilityState.selected,false);
    await act(async()=>r.root.findByType('record-button').props.onPress());
-   assert.deepEqual(readRequirementsDraft(local.id,API_URL).desired,{requiredDurationSeconds:600,audience:'General audience'});
+   assert.deepEqual(readRequirementsDraft(local.id,API_URL).desired,{requiredDurationSeconds:600,audience:''});
   }finally{await act(async()=>r.unmount());}
  }}finally{globalThis.fetch=old;}
 });
 test('untouched editor follows asynchronously accepted requirements',async()=>{
  const old=fetch;globalThis.fetch=async()=>{throw Error('Synthetic offline');};
  const local={...deck,id:'delayed-setup'};reserveContext(local.id,API_URL,serverDeck);let r;
- try{r=await mountEditor(local);assert.match(texts(r),/10:00/);
+ try{r=await mountEditor(local);assert.match(texts(r),/minutes/);
   await act(async()=>saveRequirements(local.id,API_URL,{...readRequirements(local.id,API_URL),revision:1,requiredDurationSeconds:540,audience:'Teachers'}));
-  assert.match(texts(r),/9:00/);assert.equal(slider(r).props.accessibilityValue.now,9);assert.equal(chip(r,'Teachers').props.accessibilityState.selected,true);
+  assert.match(texts(r),/minutes/);assert.equal(slider(r).props.accessibilityValue.now,9);assert.equal(chip(r,'Teachers').props.accessibilityState.selected,true);
   await act(async()=>r.root.findByType('record-button').props.onPress());assert.equal(readRequirementsDraft(local.id,API_URL).desired.requiredDurationSeconds,540);
  }finally{if(r)await act(async()=>r.unmount());globalThis.fetch=old;}
 });
@@ -41,12 +45,12 @@ test('asynchronous accepted defaults do not replace edits or explicit clears in 
  const old=fetch;globalThis.fetch=async()=>{throw Error('Synthetic offline');};
  try{for(const cleared of [false,true]){
   const local={...deck,id:'touched-setup-'+cleared};reserveContext(local.id,API_URL,serverDeck);const r=await mountEditor(local);
-  try{if(cleared){await act(async()=>button(r,'Clear required presentation time').props.onPress());await act(async()=>button(r,'Clear target audience').props.onPress());}
+  try{if(cleared){await clearTime(r);}
    else{await act(async()=>slider(r).props.onAccessibilityAction({nativeEvent:{actionName:'decrement'}}));await act(async()=>chip(r,'Students').props.onPress());}
    await act(async()=>saveRequirements(local.id,API_URL,{...readRequirements(local.id,API_URL),revision:1,requiredDurationSeconds:600,audience:'General audience'}));
-   if(cleared)assert.match(texts(r),/No time limit/);else assert.equal(slider(r).props.accessibilityValue.now,9.5);
+   if(!cleared)assert.equal(slider(r).props.accessibilityValue.now,9);
    await act(async()=>r.root.findByType('record-button').props.onPress());
-   assert.deepEqual(readRequirementsDraft(local.id,API_URL).desired,cleared?{requiredDurationSeconds:null,audience:''}:{requiredDurationSeconds:570,audience:'Students'});
+   assert.deepEqual(readRequirementsDraft(local.id,API_URL).desired,cleared?{requiredDurationSeconds:null,audience:''}:{requiredDurationSeconds:540,audience:'Students'});
   }finally{await act(async()=>r.unmount());}
  }}finally{globalThis.fetch=old;}
 });
@@ -65,21 +69,33 @@ test('pending drafts, saved five-minute choices, explicit clears and legacy abse
  }}finally{globalThis.fetch=old;}
 });
 test('existing arbitrary seconds and custom audience survive opening and Save',async()=>{const r=await mount({requiredDurationSeconds:65,audience:'Middle school beginners'});try{await act(async()=>r.root.findByType('record-button').props.onPress());assert.deepEqual(r.saved,[65,'Middle school beginners']);}finally{await act(async()=>r.unmount());}});
-test('duration adjustment reaches 30 minutes; explicit clear preserves missing time/audience',async()=>{const r=await mount({requiredDurationSeconds:1800,audience:'General audience'});try{const slider=r.root.findAllByType('pan').find(n=>n.props.accessibilityRole==='adjustable');assert.equal(slider.props.accessibilityValue.max,30);await act(async()=>slider.props.onAccessibilityAction({nativeEvent:{actionName:'increment'}}));await act(async()=>r.root.findByType('record-button').props.onPress());assert.equal(r.saved[0],1800);await act(async()=>button(r,'Clear required presentation time').props.onPress());await act(async()=>button(r,'Clear target audience').props.onPress());await act(async()=>r.root.findByType('record-button').props.onPress());assert.deepEqual(r.saved,[null,'']);}finally{await act(async()=>r.unmount());}});
-test('custom audience enforces code-point bound and does not truncate emoji',async()=>{const r=await mount({requiredDurationSeconds:300,audience:'General audience'});try{await act(async()=>button(r,'Other audience').props.onPress());const input=()=>r.root.findByType('input');await act(async()=>input().props.onChangeText('😀'.repeat(500)));await act(async()=>r.root.findByType('record-button').props.onPress());assert.equal([...r.saved[1]].length,500);r.saved=null;await act(async()=>input().props.onChangeText('a'.repeat(501)));await act(async()=>r.root.findByType('record-button').props.onPress());assert.equal(r.saved,null);assert.match(JSON.stringify(r.toJSON()),/500/);}finally{await act(async()=>r.unmount());}});
+test('duration adjustment reaches 30 minutes; explicit clear preserves missing time/audience',async()=>{const r=await mount({requiredDurationSeconds:1800,audience:'General audience'});try{const slider=r.root.findAllByType('pan').find(n=>n.props.accessibilityRole==='adjustable');assert.equal(slider.props.accessibilityValue.max,30);await act(async()=>slider.props.onAccessibilityAction({nativeEvent:{actionName:'increment'}}));await act(async()=>r.root.findByType('record-button').props.onPress());assert.equal(r.saved[0],1800);await clearTime(r);await act(async()=>chip(r,'Not sure').props.onPress());await act(async()=>r.root.findByType('record-button').props.onPress());assert.deepEqual(r.saved,[null,'']);}finally{await act(async()=>r.unmount());}});
+test('custom audience accepts 500 emoji through the native length cap and rejects 501 code points',async()=>{
+ const r=await mount({requiredDurationSeconds:300,audience:'General audience'});
+ try{
+  await openCustom(r);const input=()=>r.root.findByType('input');
+  const emoji='😀'.repeat(500);assert.ok(input().props.maxLength>=emoji.length);
+  await act(async()=>input().props.onChangeText(emoji.slice(0,input().props.maxLength)));
+  await act(async()=>customSave(r).props.onPress());await act(async()=>r.root.findByType('record-button').props.onPress());
+  assert.equal([...r.saved[1]].length,500);r.saved=null;
+  await openCustom(r);await act(async()=>input().props.onChangeText('a'.repeat(501)));
+  await act(async()=>customSave(r).props.onPress());await act(async()=>r.root.findByType('record-button').props.onPress());
+  assert.equal(r.saved,null);assert.match(JSON.stringify(r.toJSON()),/500/);
+ }finally{await act(async()=>r.unmount());}
+});
 
 const flattened=style=>Object.assign({},...[style].flat(Infinity).filter(Boolean));
 test('keyboard viewport uses physical frame scale, reveals custom input and resets on hide',async()=>{
  setupNative.frame={top:24,left:0,s:0.8,width:312,height:760};setupNative.keyboard=null;setupNative.scrolls=[];
  const r=await mount({requiredDurationSeconds:300,audience:'Synthetic custom audience'});
  try{
-  const scroll=()=>r.root.findByType('scroll');assert.equal(flattened(scroll().props.style).height,844);
+  const scroll=()=>r.root.findByType('scroll');assert.equal(flattened(scroll().props.style).height,844);await openCustom(r);
   await act(async()=>emitSetupKeyboard('keyboardDidShow',384));
   const height=flattened(scroll().props.style).height;assert.equal(height,435);assert.equal(scroll().props.keyboardShouldPersistTaps,'handled');
   assert.ok(setupNative.scrolls.some(v=>v.y>0));assert.ok(r.root.findByType('input'));assert.ok(r.root.findByType('record-button'));
   await act(async()=>r.root.findByType('input').props.onChangeText('Edited while keyboard is open'));
   await act(async()=>emitSetupKeyboard('keyboardDidHide'));
-  assert.equal(flattened(scroll().props.style).height,844);assert.equal(setupNative.scrolls.at(-1).y,0);
+  assert.equal(flattened(scroll().props.style).height,844);assert.equal(r.root.findByType('input').props.value,'Edited while keyboard is open');await act(async()=>customSave(r).props.onPress());
   await act(async()=>r.root.findByType('record-button').props.onPress());assert.equal(r.saved[1],'Edited while keyboard is open');
  }finally{await act(async()=>r.unmount());assert.equal([...setupNative.listeners.values()].reduce((n,v)=>n+v.size,0),0);setupNative.frame={top:0,left:0,s:1,width:390,height:844};}
 });
@@ -92,7 +108,7 @@ test('Other audience and conflict recovery use explicit colors in dark and light
   writeStored('settings.theme',mode);const local={...deck,id:'conflict-colors-'+mode};saveRequirements(local.id,API_URL,{contextId,deckId,revision:1,audience:'Students',requiredDurationSeconds:300});confirmRequirements(local.id,API_URL,{requiredDurationSeconds:600,audience:'Clients'});
   const wire={id:contextId,deck_id:deckId,revision:2,audience:'Teachers',required_duration_seconds:900};globalThis.fetch=async()=>Response.json(wire);await synchronizeRequirements(local.id,deckId,API_URL);
   let r;try{await act(async()=>{r=create(React.createElement(ThemeProvider,null,React.createElement(PresentationRequirementsEditor,{deck:local,onSaved:()=>{},onBackPan:{}})));});
-   for(const label of ['Other audience','Use server presentation choices','Keep my presentation choices']){const action=button(r,label);assert.ok(action);const color=flattened(action.findByType('text').props.style).color;assert.equal(color,palette.text);}
+   for(const label of [customLabel,'Use server presentation choices','Keep my presentation choices']){const action=button(r,label);assert.ok(action);const color=flattened(action.findByType('text').props.style).color;assert.equal(color,palette.text);}
   }finally{if(r)await act(async()=>r.unmount());}
  }
  globalThis.fetch=old;writeStored('settings.theme','dark');

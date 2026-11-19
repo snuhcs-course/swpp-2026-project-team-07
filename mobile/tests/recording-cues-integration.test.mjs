@@ -13,8 +13,9 @@ test('recording reserves its normal panel for permanent cues and saved audio pla
  assert.equal(elements(recording, 'TranscriptPanel').length, 0, 'recording must no longer show the transcript body');
  assert.equal(elements(recording, 'CueGuidancePanel').length, 1);
  const props = elements(recording, 'CueGuidancePanel')[0].attributes.getText();
- for (const prop of ['state={profiles.value}', 'slide={cur}', 'canPlayback=', 'slidePlaying=', 'onPlaySlide={playSlide}']) assert.ok(props.includes(prop), prop);
- assert.doesNotMatch(recording, /setCues|Speaker cues/);
+ for (const prop of ['state={profiles.value}', 'slide={cur}', 'onSheetOpenChange=']) assert.ok(props.includes(prop), prop);
+ assert.match(recording, /accessibilityLabel=\{player.playingKey[\s\S]*'Pause saved slide audio' : 'Play saved slide audio'/);
+ assert.match(recording, /onPress=\{playSlide\}/);
  assert.match(recording, /const profiles = useSlideProfiles\(deck.id, n, active\)/);
 });
 // Inline Review playback/corrections are exercised by ai-overview-screens and transcript-corrections-sources.

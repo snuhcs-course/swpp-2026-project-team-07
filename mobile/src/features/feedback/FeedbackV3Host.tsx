@@ -1,3 +1,4 @@
+import { isIncrementalAttempt } from '../recording/incrementalState';
 // Starts feedback v3 for each new recording as soon as its transcription completes, on any screen.
 // AI-assisted with Claude Code, prompted by Seoyeon (November 15, 2026); see docs/ai-collaboration-prompts.md.
 // Screens only display results. The server deduplicates by input fingerprint and reuses unchanged
@@ -13,9 +14,9 @@ import { readReview } from '../transcription/reviewStorage';
 import { normalizeApi } from '../transcription/analysisStorage';
 import { automaticFeedbackV3Enabled } from './automaticFeedback';
 import { feedbackRunNeedsStart, START_RETRY_MS, startsDue, type StartCandidate } from './feedbackRun';
-import { feedbackV3Capability, fetchFeedbackRun, readStartState, startFeedbackRun, writeStartState } from './feedbackRunClient';
+import { feedbackV3Capability, feedbackV3CapabilityChecked, fetchFeedbackRun, readStartState, startFeedbackRun, writeStartState } from './feedbackRunClient';
 
-const inProgress = new Set<string>(), probed = new Set<string>();
+const inProgress = new Set<string>();
 
 function candidates(api: string): StartCandidate[] {
   const found: StartCandidate[] = [];
@@ -27,6 +28,7 @@ function candidates(api: string): StartCandidate[] {
       // A take waiting on Keep/Overwrite starts too: its per-slide feedback is ready when the choice is made.
       const ids = [...new Set([...runAttemptIds(saved.run), ...(saved.compare ? [saved.compare.attemptId] : [])])];
       for (const id of ids) {
+        if (isIncrementalAttempt(api, id)) continue;
         const review = readReview(api, id);
         if (!review?.transcript_id || !review.transcript?.words.length) continue;
         const contextId = r.deckId === review.deck_id ? r.contextId ?? null : null;
@@ -59,8 +61,8 @@ export function FeedbackV3Host() {
   const [tick, setTick] = useState(0);
   const list = candidates(api), capability = feedbackV3Capability(api);
   // Learn once per session whether the server offers v3, before any automatic v2 work starts.
-  const probes = capability !== true && !probed.has(api) ? list.slice(0, 5) : [];
-  const retrying = list.some(c => c.eligible && c.start?.state === 'failed');
+  const probes = !feedbackV3CapabilityChecked(api) ? list.slice(0, 5) : [];
+  const retrying = probes.length > 0 || list.some(c => c.eligible && c.start?.state === 'failed');
   const identity = JSON.stringify({ api, capability, probes, list, tick });
   useEffect(() => {
     if (!retrying) return;
@@ -73,9 +75,9 @@ export function FeedbackV3Host() {
       // Try recordings in turn: one missing on the server (not_found) leaves the answer unknown.
       for (const probe of work.probes) {
         try { await fetchFeedbackRun(work.api, probe.id, probe.contextId); } catch { /* Try the next one. */ }
-        if (feedbackV3Capability(work.api) !== null) { probed.add(work.api); break; }
+        if (feedbackV3CapabilityChecked(work.api)) break;
       }
-      if (feedbackV3Capability(work.api) !== true) return;
+      if (!feedbackV3CapabilityChecked(work.api) || feedbackV3Capability(work.api) !== true) return;
       for (const c of startsDue(work.list, Date.now())) await startOne(work.api, c);
     })();
   }, [identity]);

@@ -93,7 +93,8 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
  if(!model||!model.state.run)return null;
  const {deck,times,state}=model,run=state.run!;
  const t=times[s]??0,target=deck.targets[s]??0,timingLabel=slideTimingLabel(t,target);
- const insufficient=recorded&&(v3?!hasTranscript||v3Slide?.status==='insufficient_speech':!hasTranscript||item?.status==='insufficient'||item?.status==='not_analyzed');
+ const insufficient=recorded&&(v3?v3Slide?.status==='insufficient_speech'||v3Item?.status==='No speech detected':item?.status==='insufficient'||model.stages.get(selectedAttempt??'')==='no_speech');
+ const legacyStatus=!v3&&!item?.assessed?item?.label??'Not analyzed':null;
  const scoreStrength=v3?v3Slide?.strength?.text??null:scoreItem.result&&'slide_index' in scoreItem.result?scoreItem.result.feedback.strengths[0]?.text:null;
  const mustCover=v3Slide?.must_cover??[];
  const pointList=mustCover.length?mustCover.map(m=>m.point):deck.slides[s]?.points??[];
@@ -152,8 +153,8 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
    </View>
    <View style={[styles.issueCard,{backgroundColor:c.surface06,borderColor:c.hair}]}>
     <View style={styles.issueTop}><Txt numberOfLines={1} style={[styles.issueMeta,styles.issueMetaFlex,{color:c.secondary}]}>{`${v3Item?.outdated?'OUTDATED · ':''}${issue?`${issue.category.toUpperCase()} · ${issueIndex+1} OF ${issueItems.length}${issue.gain?` · +${issue.gain} PTS`:''}`:'SLIDE STATUS'}`}</Txt><Txt style={[styles.issueMeta,{color:timingLabel==='Over time'?c.warn:c.secondary}]}>{t>0?`${fmt(t)} / ${fmt(target)} planned`:item?.label??'Not recorded'}</Txt></View>
-    <Txt numberOfLines={2} style={[styles.issueTitle,{color:c.text}]}>{issue?issue.observation:insufficient?'Too little speech to review':v3Empty?v3Empty[0]:'Nothing to fix on this slide'}</Txt>
-    <Txt numberOfLines={issue?.quote?2:5} style={[styles.issueBody,{color:c.secondary}]}>{issue?issue.suggestion:insufficient?`Record slide ${s+1} again to get feedback based on your delivery.`:v3Empty?v3Empty[1]:scoreStrength??'Keep the strongest part of this slide.'}</Txt>
+    <Txt numberOfLines={2} style={[styles.issueTitle,{color:c.text}]}>{issue?issue.observation:insufficient?'Too little speech to review':v3Empty?v3Empty[0]:legacyStatus??'Nothing to fix on this slide'}</Txt>
+    <Txt numberOfLines={issue?.quote?2:5} style={[styles.issueBody,{color:c.secondary}]}>{issue?issue.suggestion:insufficient?`Record slide ${s+1} again to get feedback based on your delivery.`:v3Empty?v3Empty[1]:legacyStatus?'Open full feedback for the current status and recovery options.':scoreStrength??'Keep the strongest part of this slide.'}</Txt>
     {issue?.quote&&<View style={[styles.evidence,{borderColor:c.hair}]}>
      <View style={styles.evidenceHead}><Txt style={[styles.evidenceLabel,{color:c.tertiary}]}>YOU SAID</Txt>
       <Pressable accessibilityRole="button" accessibilityLabel={`Hear cited evidence at ${fmt(issue.quote.start_ms/1000)}`}
@@ -165,7 +166,7 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
      </View>
      <Txt numberOfLines={1} style={[styles.evidenceQuote,{color:c.body}]}>{`“${issue.quote.text}”`}</Txt>
     </View>}
-    {recorded&&!insufficient?<Pressable accessibilityRole="button" onPress={()=>setFeedbackOpen(true)} style={styles.detailsLink}><Txt style={[styles.detailsLinkText,{color:c.accent}]}>Full feedback and recovery options</Txt></Pressable>
+    {recorded&&(!v3||!insufficient)?<Pressable accessibilityRole="button" accessibilityLabel={`Read slide ${s+1} feedback: ${v3Item?.status??item?.label??'Not analyzed'}`} onPress={()=>setFeedbackOpen(true)} style={styles.detailsLink}><Txt style={[styles.detailsLinkText,{color:c.accent}]}>Full feedback and recovery options</Txt></Pressable>
       :<Pressable accessibilityRole="button" onPress={()=>go('rehearse',{deckId:nav.deckId,slide:s,nav:'fade'})} style={styles.detailsLink}><Txt style={[styles.detailsLinkText,{color:c.accent}]}>Rehearse slide {s+1}</Txt></Pressable>}
    </View>
    <View style={styles.dots}>{issueItems.map((_,i)=><Pressable key={i} accessibilityRole="button" accessibilityLabel={`Show issue ${i+1}`} onPress={()=>setIssueIndex(i)} style={styles.dotHit}><View style={[styles.dot,{backgroundColor:i===issueIndex?c.strong:c.dotOff}]}/></Pressable>)}</View>

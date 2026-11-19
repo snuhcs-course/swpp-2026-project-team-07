@@ -139,7 +139,7 @@ export function PresentationSetup({ deck, error, initialValues = { requiredDurat
         <Pressable accessibilityLabel="Close custom audience editor" onPress={()=>{Keyboard.dismiss();setCustomOpen(false);}} style={[StyleSheet.absoluteFill,{backgroundColor:c.scrim}]} />
         <View style={[styles.customPanel,{backgroundColor:c.dialog,borderColor:c.hair}]} accessibilityViewIsModal>
           <Txt style={[styles.customTitle,{color:c.text}]}>Custom audience</Txt>
-          <TextInput accessibilityLabel="Target audience" multiline maxLength={500} value={customDraft} onChangeText={setCustomDraft}
+          <TextInput accessibilityLabel="Target audience" multiline maxLength={1000} value={customDraft} onChangeText={setCustomDraft}
             style={[styles.input,{color:c.text,borderColor:c.border14}]} placeholder="Describe your audience" placeholderTextColor={c.secondary}/>
           <View style={styles.customActions}>
             <Txt style={styles.counter}>{[...customDraft].length}/500</Txt>

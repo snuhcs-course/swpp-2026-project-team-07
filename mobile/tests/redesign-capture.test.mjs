@@ -17,6 +17,7 @@ const { backgroundApp } = await import('./helpers/recording-screen-ui.mjs');
 const { CaptureEngine } = await import('../src/features/rehearsal/CaptureEngine.tsx');
 const { getSavedAttempt, savedAttempts } = await import('../src/features/recording/storage.ts');
 const { API_URL } = await import('../src/services/api.ts');
+const { saveAnalysisConsent } = await import('../src/features/transcription/analysisStorage.ts');
 
 const deck = { id: 'synthetic-capture-deck', title: 'Synthetic', uri: 'file:///synthetic.pdf', pageCount: 3 };
 
@@ -110,4 +111,58 @@ test('leaving the app while recording asks the screen to stop; the meter reports
   backgroundApp('active');
   await act(async () => { await ref.current.stop(); });
   await act(async () => { renderer.unmount(); });
+});
+
+test('unmount while native startup is pending releases the microphone after startup resolves', async () => {
+  resetCaptureFixture();
+  saveAnalysisConsent();
+  let resolveStart, starts = 0, stops = 0;
+  const gate = new Promise(resolve => { resolveStart = resolve; });
+  const manifest = { manifest_uri: 'file:///pending/capture.properties', full_uri: 'file:///pending/full.wav', duration_ms: 0,
+    slide_events: [{ slide_index: 0, at_ms: 0 }], segments: [], stopped: false, isRecording: true, metering: -160, current_slide: 0 };
+  globalThis.continuousCapture = { start: () => { starts++; return gate; }, stop: async () => { stops++; return { ...manifest, stopped: true, isRecording: false }; } };
+  try {
+    const count = savedAttempts(deck.id).length;
+    const { ref, renderer } = await mount();
+    let started, rejected;
+    await act(async () => {
+      started = ref.current.start(() => 0);
+      rejected = assert.rejects(started, /could not start/i);
+      await Promise.resolve();
+    });
+    assert.equal(starts, 1);
+    await act(async () => renderer.unmount());
+    resolveStart(manifest);
+    await rejected;
+    assert.equal(stops, 1);
+    assert.equal(savedAttempts(deck.id).length, count);
+  } finally { delete globalThis.continuousCapture; }
+});
+
+test('native capture failure retains the stopped files and surfaces an interrupted take', async () => {
+  resetCaptureFixture();
+  saveAnalysisConsent();
+  const manifest = { manifest_uri: 'file:///failed/capture.properties', full_uri: 'file:///failed/full.wav', duration_ms: 1200,
+    slide_events: [{ slide_index: 0, at_ms: 0 }], segments: [{ sequence: 0, slide_index: 0, start_ms: 0, end_ms: 1200, uri: 'file:///failed/s0.wav' }],
+    stopped: true, isRecording: false, metering: -160, current_slide: 0, error: 'Microphone stopped unexpectedly.' };
+  globalThis.continuousCapture = {
+    start: async () => ({ ...manifest, duration_ms: 0, segments: [], stopped: false, isRecording: true, error: undefined }),
+    status: () => manifest,
+    stop: async () => manifest,
+  };
+  let renderer;
+  try {
+    const mounted = await mount(); renderer = mounted.renderer;
+    await act(async () => mounted.ref.current.start(() => 0));
+    await act(async () => assert.rejects(mounted.ref.current.stop(), /Microphone stopped unexpectedly/));
+    const failed = savedAttempts(deck.id).find(attempt => attempt.recording.audio_uri === manifest.full_uri);
+    assert.equal(failed.state, 'interrupted');
+    assert.equal(failed.recording.duration_ms, 1200);
+    assert.deepEqual(failed.recording.slide_events, manifest.slide_events);
+    assert.deepEqual(mounted.calls.interrupted, [manifest.error]);
+    assert.equal(mounted.ref.current.isRecording(), false);
+  } finally {
+    if (renderer) await act(async () => renderer.unmount());
+    delete globalThis.continuousCapture;
+  }
 });

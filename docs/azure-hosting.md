@@ -4,9 +4,9 @@ OutLoud's submission APK connects directly to `https://outloud-team07.koreacentr
 
 ## Install and use the APK
 
-The local artifact is `output/public-demo/OutLoud-public-demo-20261102-feedback.apk`, package `com.team07.outloud`, Android version code 5. It is standalone and does not require Metro or a running laptop. Its signing identity matches the previous team APK; its manifest is non-debuggable, while signing still uses the existing internal debug certificate. The APK is 143,224,470 bytes; SHA-256 `9f1e1cbaba83f6c3ea7aef326c2ae163d815ffdedb414658acc29d489d573ffe`. It supports Android API 24+ with arm64-v8a, armeabi-v7a, x86 and x86_64 libraries. APK binaries remain local delivery artifacts, outside Git.
+The current shared release is [OutLoud demo v10 — live slide feedback](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v10-20261115), package `com.team07.outloud`, Android versionCode 10. It is standalone and does not require Metro, USB forwarding or a running laptop. Install it over the previous demo to retain local recordings/settings. It retains the existing internal development signing certificate; it is not a Play Store release. APK binaries, checksums and installation instructions are release assets, outside Git source.
 
-Version 5 preserves PR #34’s selected UI and preloads the supplied seven-slide Seoul presentation once, including its PDF and text for offline use. Existing local presentations and recordings remain intact. It repairs first-Redo lifecycle handling and connects compact Review rows to verified feedback data. [Automated and artifact evidence](testing-evidence/redo-feedback-20261102.md) is separate from the [historical version 4 report](apk-feature-verification-20261102.md).
+The new backend supports continuous per-slide WAV uploads, Scribe transcription and feedback before Stop. It retains the full audio for playback and delivery measurements and assembles the final transcript from segments. Revisits, upload retries and the after-Stop fallback are covered by the [phone test](incremental-phone-test.md). Feedback requires internet; offline segments remain on the phone for retry. Device/provider verification is recorded in the [active collaboration log](ai-collaboration-prompts-iteration-2.md#continuous-per-slide-transcription-and-feedback--november-15-2026).
 
 1. Install the APK on a supported Android phone.
 2. Enter the code from the operator's private `~/.codex/backups/outloud-public-20261101/reviewer-access.txt`. Supply that code separately to intended reviewers, for example in the submission instructions; never commit it or embed it in the APK.
@@ -27,7 +27,7 @@ The standalone [production stack](../compose.production.yaml) plus [public overl
 
 [Caddy](../deploy/Caddyfile) requires HTTP Basic authentication, username `reviewer`, for every public API/media path, including health, PDF/image/audio GET, HEAD and ranged requests. It stores a bcrypt hash, consumes the credential at the edge and strips authorization headers before proxying. Missing/wrong codes receive 401 before file access or application work. Request body/header/idle limits are configured; access logging is off and Caddy runtime error logs omit request metadata. nginx error logs can still include request URIs. [Caddy authentication](https://caddyserver.com/docs/caddyfile/directives/basic_auth), [managed HTTPS](https://caddyserver.com/docs/automatic-https).
 
-Code holders share the same trusted reviewer workspace, including uploaded files and rehearsal history. There are no separate accounts, ownership restrictions or per-user data isolation. The code is not a provider key or a spending cap. Keep it private and rotate it if shared beyond the intended reviewers. Feedback is enabled on this Azure VM through OpenRouter `openai/gpt-6-luna`, with an initial application limit of 300 LLM requests/day shared across prompt families. The API, worker and scheduler use the same configuration/image. This is a request limit, not a money cap; Scribe has separate provider charges. Repository examples remain disabled by default. No personal OpenAI key is present on the VM; the separate OpenRouter account's BYOK settings are unverified.
+Code holders share the same trusted reviewer workspace, including uploaded files and rehearsal history. There are no separate accounts, ownership restrictions or per-user data isolation. The code is not a provider key or a spending cap. Keep it private and rotate it if shared beyond the intended reviewers. Feedback is enabled on this Azure VM through OpenRouter `openai/gpt-6-luna`, with a legacy-pipeline allowance of 300 LLM requests/day. The rebuilt v3 pipeline is separate and does not use that legacy allowance. The API, worker and scheduler use the same configuration/image. This is a request limit, not a money cap; Scribe has separate provider charges. Repository examples remain disabled by default. No personal OpenAI key is present on the VM; the separate OpenRouter account's BYOK settings are unverified.
 
 The mobile client attaches credentials only to the exact HTTPS origin where it validated the code, for both API requests and media downloads. It refuses authenticated redirects and never puts a credential in a URL. A 401 allows code re-entry without unmounting an active recorder, discarding local files/caches or automatically replaying a POST. The public address and `EXPO_PUBLIC_REQUIRE_DEMO_CODE=1` are build configuration; the code and all provider credentials remain outside `EXPO_PUBLIC_*`.
 
@@ -100,3 +100,31 @@ Physical-phone acceptance and AI usefulness remain unverified; the newer live AP
 At 730 hours/month, checked retail rates are USD 0.0468/hour compute + USD 4.80/month disk + USD 0.005/hour public IPv4: **USD 42.614/month before disk transactions, bandwidth, backups or other usage**. USD 100 therefore funds roughly two months, not a promised year of this stack. [VM rate](https://prices.azure.com/api/retail/prices?currencyCode=%27USD%27&%24filter=armRegionName+eq+%27koreacentral%27+and+armSkuName+eq+%27Standard_B2als_v2%27+and+productName+eq+%27Virtual+Machines+Basv2+Series%27+and+meterName+eq+%27B2als+v2%27+and+priceType+eq+%27Consumption%27), [disk rate](https://prices.azure.com/api/retail/prices?currencyCode=%27USD%27&%24filter=armRegionName+eq+%27koreacentral%27+and+productName+eq+%27Standard+SSD+Managed+Disks%27+and+meterName+eq+%27E6+LRS+Disk%27+and+priceType+eq+%27Consumption%27), [IPv4 rate](https://prices.azure.com/api/retail/prices?currencyCode=%27USD%27&%24filter=armRegionName+eq+%27koreacentral%27+and+productName+eq+%27IP+Addresses%27+and+meterName+eq+%27Standard+IPv4+Static+Public+IP%27+and+priceType+eq+%27Consumption%27).
 
 Check actual credit use in Azure Cost Management. Deallocating the VM stops compute charges while retained disks and public IPs can still cost money. Stopping the app or guest OS is insufficient. Plan an explicit semester-end export and resource-retirement review; no automatic shutdown, deletion or backup schedule is configured. Keep backups before approving any deletion. [Azure cost guidance](https://learn.microsoft.com/en-us/azure/virtual-machines/cost-optimization-plan-to-manage-costs).
+
+## Rebuild and deploy the live-feedback release
+
+Apply migration `0013_capturesession_capturesegment_captureassessment` before
+starting the updated API, worker and scheduler. On all three services, enable
+`FEEDBACK_V3_ENABLED=true`, `FEEDBACK_V3_AUTO_START=true` and
+`INCREMENTAL_CAPTURE_ENABLED=true`; retain backend-only Scribe/OpenRouter keys.
+Keep the existing `FEEDBACK_ENABLED` setting for older clients. The 64 MiB edge
+limit accommodates the full 30-minute PCM WAV (at most 60,000,044 accepted bytes);
+legacy audio endpoints retain their existing limits. Follow the backup/deploy
+procedure above and preserve the previous image and private environment for rollback.
+
+Build from `mobile/` with the public settings in the process environment (these
+are public configuration, never provider keys or the reviewer code):
+
+```sh
+export EXPO_PUBLIC_API_URL=https://outloud-team07.koreacentral.cloudapp.azure.com/api
+export EXPO_PUBLIC_REQUIRE_DEMO_CODE=1
+npx expo prebuild --platform android --no-install
+npm run bundle:android
+cd android
+./gradlew assembleRelease -PreactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64 --max-workers=2
+```
+
+The generated `android/` directory remains ignored. Verify APK version, signing
+certificate, packaged API address and enabled reviewer-code gate before publishing.
+Use the [Azure phone procedure](incremental-phone-test.md#azure-setup-no-computer-required)
+with no ADB reverse mapping to establish independence from the local backend.

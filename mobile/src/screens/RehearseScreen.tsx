@@ -1,3 +1,5 @@
+import { LiveFeedbackPanel } from '../features/recording/LiveFeedbackPanel';
+import { captureVersion, readCapture, subscribeCaptures } from '../features/recording/incremental';
 // OpenAI Codex review routing: docs/ai-collaboration-prompts-iteration-2.md#first-recording-review-navigation-october-16-2026
 // OpenAI Codex reliability fixes: docs/ai-collaboration-prompts-iteration-2.md#cue-and-feedback-reliability-october-16-2026
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
@@ -33,6 +35,7 @@
 // OpenAI Codex forward-only live recording: docs/ai-collaboration-prompts-iteration-2.md#forward-only-recording-slide-navigation-october-15-2026
 import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, type GestureResponderEvent } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
@@ -135,6 +138,11 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
   const [recoveryId, setRecoveryId] = useState<string | null>(null);
   const [recoveryCursor, setRecoveryCursor] = useState(0);
   const [engineKey, setEngineKey] = useState(0);
+  const [captureId, setCaptureId] = useState<string | null>(null);
+  const [showLiveFeedback, setShowLiveFeedback] = useState(false);
+  const [preferIncremental, setPreferIncremental] = useState(true);
+  useSyncExternalStore(subscribeCaptures, captureVersion);
+  const liveCapture = captureId ? readCapture(captureId) : null;
   const [burst, setBurst] = useState<{ total: number; compare: boolean } | null>(null);
   const engine = useRef<CaptureHandle>(null);
   const fullRedo = useRef(false);
@@ -156,9 +164,9 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
   const backExiting = useRef(false);
   const player = useSegmentPlayer();
   const stopPlayback = player.stop;
-  const openReview = useCallback((takes: number, selected: number, comparing: boolean, transition: 'fade' | 'rise') => {
+  const openReview = useCallback((takes: number, selected: number, comparing: boolean, transition: 'fade' | 'rise', incremental = false) => {
     stopPlayback();
-    const destination = comparing ? 'compare' : takes === 1 ? 'wait' : reviewDestination(takes);
+    const destination = comparing ? 'compare' : incremental ? 'full' : takes === 1 ? 'wait' : reviewDestination(takes);
     go(destination, { nav: transition, deckId: deck.id, sel: selected, slide: selected,
       from: destination === 'full' ? 'rehearse' : destination === 'wait' ? 'rehearse' : null });
   }, [deck.id, go, stopPlayback]);
@@ -237,6 +245,7 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
     setPhase('starting');
     setError('');
     try {
+      setCaptureId(null);
       await engine.current?.start(() => slideRef.current);
       const cur = slideRef.current;
       // A whole redo replaces every slide; otherwise the start slide always counts as spoken.
@@ -284,7 +293,8 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
       hideRing();
       setBurst({ total: take.durationMs / 1000, compare: !!compare });
       setPhase('burst');
-      openReview(next.takeNo, next.sel, !!compare, compare ? 'rise' : 'fade');
+      setShowLiveFeedback(false);
+      openReview(next.takeNo, next.sel, !!compare, compare ? 'rise' : 'fade', !!readCapture(take.attemptId));
     } catch (e) {
       fullRedo.current = false;
       hideRing();
@@ -432,24 +442,23 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
     openReview(next.takeNo, next.sel, !!compare, 'fade');
   };
 
-  const captureEngine = <CaptureEngine key={engineKey} ref={engine} deck={deck} audience={deck.audience ?? ''} onMeter={onMeter}
+  const captureEngine = <CaptureEngine preferIncremental={preferIncremental} onStarted={setCaptureId} key={engineKey} ref={engine} deck={deck} audience={deck.audience ?? ''} onMeter={onMeter}
     onInterrupted={m => { setError(m); bump(); }} onMustStop={() => { void stopRec(); }} />;
 
-  if (pdfRotated) return <>
+  // The capture owner stays at the same React position when the visual layout changes.
+  return <>
     {captureEngine}
-    <LandscapeRehearse model={model} live={live} slide={cur} phase={phase} glyph={glyph} btnLabel={btnLabel}
+    {showLiveFeedback && captureId && <LiveFeedbackPanel id={captureId} landscape={pdfRotated} close={() => setShowLiveFeedback(false)} />}
+    {pdfRotated ? <LandscapeRehearse model={model} live={live} slide={cur} phase={phase} glyph={glyph} btnLabel={btnLabel}
         recording={recording} take={take} disabled={phase==='starting'||phase==='stopping'} onRecord={toggleRec} onRecordDown={recDown} onRecordUp={recUp}
         ringProgress={ringP} ringVisible={ringV}
         onExit={rotate} onPrevious={()=>goSlide(cur-1,'animate')} onNext={()=>goSlide(cur+1,'animate')}
         cueState={profiles.value} cueBusy={profiles.busy} onCueRecovery={()=>profiles.refresh()}
-        onReview={()=>run&&openReview(state.takes,cur,!!state.compare,'rise')}
+        onReview={()=>recording && liveCapture ? setShowLiveFeedback(true) : run && openReview(state.takes,cur,!!state.compare,'rise')}
+        reviewEnabled={recording ? !!liveCapture : !!run && phase === 'idle'} liveFeedback={recording && !!liveCapture}
         redoAsk={redoAsk} onConfirmRedo={confirmRedo} onCancelRedo={cancelRedo}
         cues={fullscreenCues} onCuesChange={setFullscreenCues} />
-  </>;
-
-  return (
-    <Enter kind={nav.nav}>
-      {captureEngine}
+    : <Enter kind={nav.nav}>
       <PanView style={StyleSheet.absoluteFill} {...back} pointerEvents={setupOpen ? 'none' : 'auto'}
         accessibilityElementsHidden={setupOpen} importantForAccessibility={setupOpen ? 'no-hide-descendants' : 'auto'}>
         <Animated.View style={[StyleSheet.absoluteFill, screen]}>
@@ -468,9 +477,12 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
             disabled={phase !== 'idle' || !partId || !audioOf(partId)} onPress={playSlide} style={styles.headerBalance} hitSlop={8}>
             <UIIcon name="i-wave" size={21} color={phase === 'idle' && partId && audioOf(partId) ? c.text : c.muted2} />
           </Pressable>
-          <Animated.View pointerEvents="none" style={styles.counterWrap}>
-            <Txt style={styles.counter}>{'Slide ' + (cur + 1) + ' of ' + n}</Txt>
-          </Animated.View>
+          <Pressable accessibilityRole="button" accessibilityLabel="Toggle feedback during presentation"
+            accessibilityHint={preferIncremental ? 'Live feedback selected. Switch to feedback after Stop.' : 'Feedback after Stop selected. Switch to live feedback.'}
+            disabled={phase !== 'idle'} onPress={() => setPreferIncremental(v => !v)} hitSlop={8}
+            style={[styles.counterWrap, { left: 65, width: 260, height: 32 }]}>
+            <Txt style={styles.counter}>{`Slide ${cur + 1} of ${n}${phase === 'idle' ? preferIncremental ? ' · Live feedback' : ' · After Stop' : ''}`}</Txt>
+          </Pressable>
           <SlideTrack model={model} slide={cur} trackX={trackX} onSlide={goSlide}
             previousLocked={locksPreviousSlide(phase)} isPreviousLocked={isPreviousLocked}
             navigationFrozen={freezesSlideNavigation(phase)} isNavigationFrozen={isNavigationFrozen}
@@ -491,9 +503,9 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
           <RoundButton glyph="h-landscape" active={pdfRotated}
             label="Open full-screen landscape player" caption="Rotate" onPress={rotate} style={{ left: 49 }} />
           <View pointerEvents="box-none" style={[styles.rightControlLayer, frame.compact && { top: 621 }]}>
-            <RoundButton glyph="h-review-bars" label={reviewDestination(state.takes) === 'full' ? 'Review full presentation' : 'Review current slide'} caption="Review"
-              disabled={!run || recording || phase === 'count'}
-              onPress={() => run && openReview(state.takes, cur, !!state.compare, 'rise')}
+            <RoundButton glyph="h-review-bars" label={recording && liveCapture ? 'Feedback so far' : reviewDestination(state.takes) === 'full' ? 'Review full presentation' : 'Review current slide'} caption={recording && liveCapture ? 'Feedback' : 'Review'}
+              disabled={recording ? !liveCapture : !run || phase === 'count'}
+              onPress={() => recording && liveCapture ? setShowLiveFeedback(true) : run && openReview(state.takes, cur, !!state.compare, 'rise')}
               style={{ left: 0, top: 0 }} />
           </View>
           <RecordRing progress={ringP} visible={ringV} />
@@ -520,20 +532,24 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
       {phase === 'burst' && <Confetti />}
       {recoveryId && <TakePlayback id={recoveryId} deck={deck} initialSlide={cur}
         onClose={closeRecovery} onRecovered={recovered} />}
-    </Enter>
-  );
+    </Enter>}
+  </>;
 }
 
-function LandscapeRehearse({model,live,slide,phase,glyph,btnLabel,recording,take,disabled,onRecord,onRecordDown,onRecordUp,onExit,onPrevious,onNext,cueState:profile,cueBusy,onCueRecovery,onReview,redoAsk,onConfirmRedo,onCancelRedo,ringProgress,ringVisible,externalCorners=false,cues:controlledCues,onCuesChange}:{
+function LandscapeRehearse({model,live,slide,phase,glyph,btnLabel,recording,take,disabled,onRecord,onRecordDown,onRecordUp,onExit,onPrevious,onNext,cueState:profile,cueBusy,onCueRecovery,onReview,reviewEnabled,liveFeedback,redoAsk,onConfirmRedo,onCancelRedo,ringProgress,ringVisible,externalCorners=false,cues:controlledCues,onCuesChange}:{
   model:DeckModel;live:LiveStore;slide:number;phase:Phase;glyph:RecordGlyph;btnLabel:string;recording:boolean;take:boolean;disabled:boolean;
   onRecord:()=>void;onRecordDown:()=>void;onRecordUp:()=>void;onExit:()=>void;onPrevious:()=>void;onNext:()=>void;
   cueState:ProfileState|null;cueBusy:boolean;onCueRecovery:()=>void;onReview:()=>void;redoAsk:false|'slide'|'all';onConfirmRedo:()=>void;onCancelRedo:()=>void;
+  reviewEnabled:boolean;liveFeedback:boolean;
   ringProgress:SharedValue<number>;ringVisible:SharedValue<number>;externalCorners?:boolean;cues?:boolean;onCuesChange?:(open:boolean)=>void;
 }){
   const {c}=useTheme();
   const frame=useFrame();
   const {width,height}=frame;
-  const insets={left:0,right:0,top:0,bottom:0};
+  const portraitInsets=useSafeAreaInsets();
+  // The app stays portrait while Frame rotates the canvas clockwise. Only controls avoid system bars.
+  const insets={left:Math.max(0,portraitInsets.top-frame.top)/frame.s,right:Math.max(0,portraitInsets.bottom-frame.top)/frame.s,
+    top:Math.max(0,portraitInsets.right-frame.left)/frame.s,bottom:Math.max(0,portraitInsets.left-frame.left)/frame.s};
   const [controls,setControls]=useState(true),[localCues,setLocalCues]=useState(false);
   const cues=controlledCues??localCues;
   const setCues=(value:boolean)=>{setLocalCues(value);onCuesChange?.(value);};
@@ -550,8 +566,8 @@ function LandscapeRehearse({model,live,slide,phase,glyph,btnLabel,recording,take
   const cueProgress=useSharedValue(cues?1:0);
   const cuePanelMotion=useAnimatedStyle(()=>({opacity:cueProgress.value,transform:[{translateX:cuePanelWidth*(1-cueProgress.value)}]}),[cuePanelWidth]);
   useEffect(()=>{cueProgress.set(withTiming(cues?1:0,{duration:240,easing:Easing.out(Easing.cubic)}));},[cueProgress,cues]);
-  const cardLeft=cues?Math.max(20,insets.left+12):Math.max(68,insets.left+56);
-  const cardRight=cues?cueWidth+12:Math.max(12,insets.right+12);
+  const cardLeft=cues?20:68;
+  const cardRight=cues?cueWidth+12:12;
   const maxCardWidth=Math.max(120,width-cardLeft-cardRight);
   const maxCardHeight=Math.max(100,height);
   const cardWidth=Math.min(maxCardWidth,maxCardHeight*16/9);
@@ -569,23 +585,28 @@ function LandscapeRehearse({model,live,slide,phase,glyph,btnLabel,recording,take
       <MiniSlide hue={model.deck.hue} page={model.deck.pages[slide]} title={model.deck.slides[slide]?.title??''} width={cardWidth} height={cardHeight} radius={6}/>
     </Pressable>
     {!externalCorners&&<Pressable accessibilityRole="button" accessibilityLabel="Return to portrait rehearsal" onPress={onExit}
-      style={landscapeStyles.returnButton}><Svg width={28} height={28} viewBox="0 0 24 24" accessible={false}>
+      style={[landscapeStyles.returnButton,{right:insets.right+16,bottom:insets.bottom+24}]}><Svg width={28} height={28} viewBox="0 0 24 24" accessible={false}>
         <Path d="M9 3H3v6 M15 3h6v6 M21 15v6h-6 M9 21H3v-6" fill="none" stroke="#FFFFFF" strokeWidth={2.7} strokeLinecap="round" strokeLinejoin="round" />
       </Svg></Pressable>}
     {!externalCorners&&<Pressable accessibilityRole="button" accessibilityLabel={cues?'Close cue panel':'Open cue panel'} onPress={()=>setCues(!cues)}
-      style={[landscapeStyles.cuesButton,{top:Math.max(insets.top,8),right:Math.max(insets.right,12),backgroundColor:c.glass,borderColor:c.border12}]}><UIIcon name="i-bubble" size={22} color="#FFFFFF"/></Pressable>}
+      style={[landscapeStyles.cuesButton,{top:insets.top+8,right:insets.right+12,backgroundColor:c.glass,borderColor:c.border12}]}><UIIcon name="i-bubble" size={22} color="#FFFFFF"/></Pressable>}
+    <Pressable accessibilityRole="button" accessibilityLabel={liveFeedback?'Show live feedback progress':'Review presentation'}
+      disabled={!reviewEnabled} onPress={onReview}
+      style={{position:'absolute',left:insets.left+72,top:insets.top+8,minHeight:48,paddingHorizontal:16,borderRadius:24,justifyContent:'center',backgroundColor:c.glass,opacity:reviewEnabled?1:0.45}}>
+      <Txt style={{color:'#FFFFFF',fontFamily:F.semibold,fontSize:14}}>{liveFeedback?'Feedback so far':'Review'}</Txt>
+    </Pressable>
     {controlsVisible&&<>
-      <Pressable accessibilityRole="button" accessibilityLabel="Previous slide" disabled={slide===0||disabled} onPress={onPrevious} style={[landscapeStyles.arrow,{left:8,top:centerTop,backgroundColor:c.glass}]}><Txt style={landscapeStyles.arrowText}>‹</Txt></Pressable>
-      <Pressable accessibilityRole="button" accessibilityLabel="Next slide" disabled={slide>=model.n-1||disabled} onPress={onNext} style={[landscapeStyles.arrow,{right:cues?cueWidth+8:8,top:centerTop,backgroundColor:c.glass}]}><Txt style={landscapeStyles.arrowText}>›</Txt></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="Previous slide" disabled={slide===0||disabled} onPress={onPrevious} style={[landscapeStyles.arrow,{left:insets.left+8,top:centerTop,backgroundColor:c.glass}]}><Txt style={landscapeStyles.arrowText}>‹</Txt></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="Next slide" disabled={slide>=model.n-1||disabled} onPress={onNext} style={[landscapeStyles.arrow,{right:cues?cueWidth+8:insets.right+8,top:centerTop,backgroundColor:c.glass}]}><Txt style={landscapeStyles.arrowText}>›</Txt></Pressable>
       {recording&&<RecordRing progress={ringProgress} visible={ringVisible} size={buttonSize+20} style={{position:'absolute',left:centerLeft-10,top:centerTop-10}}/>}
       <RecordButton quiet glyph={glyph} label={btnLabel} onPress={()=>{if(!recording)setControls(true);onRecord();}} onPressIn={onRecordDown} onPressOut={onRecordUp} disabled={disabled}
         style={{position:'absolute',left:centerLeft,top:centerTop,width:buttonSize,height:buttonSize,borderRadius:buttonSize/2}}/>
       <View pointerEvents="none" style={[landscapeStyles.readout,{left:Math.max(24,insets.left+16),bottom:Math.max(insets.bottom+38,34)}]}><Txt style={landscapeStyles.elapsed}>{`${fmt(liveValue.E)} / ${fmt(model.deck.target)}`}</Txt><Txt style={landscapeStyles.slideNumber}>{`· Slide ${slide+1} of ${model.n}`}</Txt></View>
       <View style={[landscapeStyles.progress,{left:Math.max(24,insets.left+16),right:Math.max(24,insets.right+16),bottom:Math.max(insets.bottom+17,14)}]}>{model.times.map((seconds,i)=><View key={i} style={[landscapeStyles.segment,{backgroundColor:i===slide?c.accent:seconds>0?c.ink55:c.track}]}/>)}</View>
     </>}
-    {!controlsVisible&&recording&&<View style={landscapeStyles.recordingPill}><View style={landscapeStyles.redDot}/><Txt style={landscapeStyles.pillTime}>{fmt(liveValue.E)}</Txt></View>}
+    {!controlsVisible&&recording&&<View style={[landscapeStyles.recordingPill,{left:insets.left+20,top:insets.top+16}]}><View style={landscapeStyles.redDot}/><Txt style={landscapeStyles.pillTime}>{fmt(liveValue.E)}</Txt></View>}
     <Animated.View pointerEvents={cues?'auto':'none'} accessibilityElementsHidden={!cues} importantForAccessibility={cues?'auto':'no-hide-descendants'}
-      style={[landscapeStyles.cuePanel,{width:cuePanelWidth,paddingTop:Math.max(insets.top+12,20),paddingBottom:Math.max(insets.bottom+12,20),backgroundColor:c.dialog,borderColor:c.hair},cuePanelMotion]}>
+      style={[landscapeStyles.cuePanel,{width:cuePanelWidth,paddingTop:Math.max(insets.top+12,20),paddingBottom:Math.max(insets.bottom+12,20),paddingRight:insets.right+20,backgroundColor:c.dialog,borderColor:c.hair},cuePanelMotion]}>
       <View style={landscapeStyles.cueHeading}><Txt numberOfLines={1} style={[landscapeStyles.cueTitle,{color:c.text}]}>{`Slide ${slide+1} cues`}</Txt><Pressable accessibilityRole="button" accessibilityLabel="Close cues" onPress={()=>setCues(false)} style={landscapeStyles.cueClose}><Txt style={{color:c.text,fontSize:27,lineHeight:30}}>×</Txt></Pressable></View>
       <ScrollView contentContainerStyle={{gap:18,paddingBottom:20}}>
         <View style={{gap:8}}><Txt style={[landscapeStyles.cueKind,{color:c.accent}]}>MUST COVER</Txt>
@@ -741,7 +762,7 @@ function Readout({ live, phase, cur, take, deck, burst, error, recoveryCount, re
     const onSlide = L.E - L.slideStart;
     const pace = paceChip(L.E, cur, L.recStart, deck.targets);
     return <>
-      <View style={styles.paceWrap} pointerEvents="none"><Chip chip={pace} size={14} /></View>
+      <View style={[styles.paceWrap, frame.compact && { top: 466 }]} pointerEvents="none"><Chip chip={pace} size={14} /></View>
       <Txt style={[styles.big, frame.compact && { top: 490 }, { color: c.text }]}>{fmt(L.E)}</Txt>
       <Txt style={[styles.line, frame.compact && { top: 546 }, { color: onSlide > target ? c.coralText : c.secondary }]}>{'Slide ' + (cur + 1) + ' · ' + fmt(onSlide) + ' of ' + fmt(target)}</Txt>
       <Waveform bars={L.wave} live />

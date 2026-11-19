@@ -120,8 +120,8 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
     const identity = `${jobId}:${Q.id}:${part}`;
     if (autoSpoken.current === identity) return;
     autoSpoken.current = identity;
-    speak(part === 0 ? Q.question : Q.follow_up, `auto-${identity}`);
-  }, [active, archived, jobId, part, phase, Q, rec, speak]);
+    speak(part === 0 ? Q.question : Q.follow_up, (part === 0 ? 'q' : 'f') + i);
+  }, [active, archived, i, jobId, part, phase, Q, rec, speak]);
   const playAnswer = () => {
     if (!ans) return;
     stopSpeak();
@@ -274,7 +274,7 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
   const glyph: RecordGlyph = count ? (count as 3 | 2 | 1) : rec ? 'stop' : phase === 'review' ? 'redo' : 'mic';
   const btnLabel = archived?'Saved Q&A · playback only':count ? `Starting in ${count}. Tap to cancel` : rec ? 'Stop answering' : phase === 'review' ? (part ? 'Answer the follow-up again' : 'Answer the question again') : (part ? 'Answer the follow-up' : 'Answer the question');
   const hints: Hint[] = count ? [{ icon: 'h-tap', text: 'Tap to cancel' }] : rec ? [{ icon: 'h-tap', text: 'Tap when done' }]
-    : [...(!Q||last ? [] : [{ icon: 'h-spin' as const, text: 'Next' }]), { icon: 'h-dn', text: 'Back', nudge: 'down' }];
+    : [...(!Q||last ? [] : [{ icon: 'h-spin' as const, text: 'Next', onPress: () => goQ(1) }]), { icon: 'h-dn', text: 'Back', nudge: 'down', onPress: back }];
   const result = ans?.status === 'done' ? ans.result : undefined;
   const short = result?.verdict === 'too_short';
   const verdict = !result ? null : short ? { text: 'Too short', tone: TONE.plain, icon: 'i-clock' as IconKey }

@@ -24,6 +24,8 @@ export function CueGuidancePanel({ state, slide, error, busy, onRecover,
   const common = views.must_cover.message && views.must_cover.message === views.go_deeper.message ? views.must_cover : null;
   const message = busy ? 'Requesting AI cues…' : error || common?.message;
   const action: RecoveryAction | null = error ? 'refresh' : common?.action ?? null;
+  const actionLabel = action ? { refresh: 'Refresh AI cues', generate: 'Generate AI cues', retry: 'Retry AI cues', confirm: 'Confirm AI cue retry' }[action] : null;
+  const notice = [message, requirementsNotice, playbackNotice].filter(Boolean).join(' · ');
   const labels: Record<CueCategory, string> = { must_cover: 'Must cover', go_deeper: 'Further insight' };
   const names: CueCategory[] = ['must_cover', 'go_deeper'];
   const sheetItems = sheet ? views[sheet].cues : [];
@@ -37,17 +39,14 @@ export function CueGuidancePanel({ state, slide, error, busy, onRecover,
         const label = cue ? shortCueLabel(cue.text) : data.message || (state?.state === 'completed' ? 'Nothing extra here' : 'Cues are on the way');
         return <Pressable key={category} accessibilityRole="button"
           accessibilityLabel={`Open ${labels[category]} cues`}
+          accessibilityHint={notice ? 'Includes cue and recording status.' : undefined}
           onPress={() => { setSheet(category); onSheetOpenChange?.(true); }} style={[styles.card, { borderColor: c.hair, backgroundColor: c.surface06, opacity: empty ? 0.8 : 1 }]}>
           <View style={styles.cardTitle}><Txt style={[styles.kind, { color: category === 'must_cover' ? c.accent : c.muted }]}>{labels[category]}</Txt><Txt style={{ color: c.muted, fontSize: 18 }}>›</Txt></View>
           <Txt numberOfLines={2} style={styles.cardLabel}>{label}</Txt>
-          <Txt style={styles.more}>{count > 1 ? `+${count - 1} more` : count === 1 ? 'Tap for detail' : ''}</Txt>
+          <Txt numberOfLines={1} style={styles.more}>{notice ? 'Status · Tap for detail' : count > 1 ? `+${count - 1} more` : count === 1 ? 'Tap for detail' : ''}</Txt>
         </Pressable>;
       })}
     </View>
-    {!!(message && !common?.message || requirementsNotice || playbackNotice) && <Pressable accessibilityRole={action ? 'button' : undefined}
-      onPress={action ? () => onRecover(action) : undefined} style={styles.statusWrap}>
-      <Txt numberOfLines={1} style={styles.status}>{message || requirementsNotice || playbackNotice}</Txt>
-    </Pressable>}
     {sheet && <View style={[styles.sheetLayer, { top: -panelTop, bottom: -(frame.height - panelTop - panelHeight) }]}>
       <Pressable accessibilityLabel="Close cue sheet" onPress={closeSheet} style={[styles.scrim, { backgroundColor: c.scrim }]} />
       <PanView style={[styles.sheet, { backgroundColor: c.dialog, borderColor: c.line }]}
@@ -58,8 +57,13 @@ export function CueGuidancePanel({ state, slide, error, busy, onRecover,
         <View style={styles.sheetHeader}><Txt style={[styles.sheetTitle, { color: sheet === 'must_cover' ? c.accent : c.text }]}>{labels[sheet]}</Txt>
           <Txt numberOfLines={1} style={styles.context}>Slide {slide + 1}</Txt></View>
         <ScrollView style={styles.sheetScroll} contentContainerStyle={styles.sheetItems}>
+          {!!notice && <Txt style={styles.status}>{notice}</Txt>}
+          {action && <Pressable accessibilityRole="button" accessibilityLabel={actionLabel!} disabled={busy}
+            onPress={() => onRecover(action)} style={styles.recovery}>
+            <Txt style={[styles.status, { color: c.accent }]}>{actionLabel}</Txt>
+          </Pressable>}
           {sheetItems.length ? sheetItems.map((item, index) => <CueDetail key={`${sheet}-${index}`} cue={item} />)
-            : <Txt style={styles.emptySheet}>{views[sheet].message || 'Cues are not available yet. Try again when the server is reachable.'}</Txt>}
+            : views[sheet].message === message && notice ? null : <Txt style={styles.emptySheet}>{views[sheet].message || 'Cues are not available yet. Try again when the server is reachable.'}</Txt>}
         </ScrollView>
         <Txt style={styles.closeHint}>↓ Swipe down to close</Txt>
       </PanView>
@@ -94,7 +98,7 @@ const styles = createThemedStyles({
   kind: { fontFamily: F.bold, fontSize: 13.5, lineHeight: 18 },
   cardLabel: { marginTop: 5, fontFamily: F.semibold, fontSize: 16, lineHeight: 20, color: C.text, flex: 1 },
   more: { fontFamily: F.bold, fontSize: 13.5, lineHeight: 17, color: C.secondary },
-  statusWrap: { position: 'absolute', left: 0, right: 0, top: 118, minHeight: 32, justifyContent: 'center' },
+  recovery: { minHeight: 44, justifyContent: 'center' },
   status: { fontFamily: F.medium, fontSize: 13.5, lineHeight: 18, color: C.secondary },
   sheetLayer: { position: 'absolute', top: -372, right: -16, bottom: -844, left: -16, zIndex: 50, justifyContent: 'flex-end' },
   scrim: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },

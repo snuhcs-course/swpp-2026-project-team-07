@@ -8,6 +8,7 @@ import { useTheme } from '../design/theme';
 import { HintRow, PageSurface } from '../design/ui';
 import { fmt } from '../domain/format';
 import { type Line } from '../domain/lines';
+import { listenEntryAt, listenTimeline, type ListenVisit } from '../domain/listenTimeline';
 import { FILLERS, KO_FILLERS } from '../domain/words';
 import { audioOf } from '../features/rehearsal/analysis';
 import { useSegmentPlayer, type Segment } from '../features/rehearsal/useSegmentPlayer';
@@ -15,7 +16,7 @@ import { useDeckModel } from '../features/presentations/useDeckModel';
 import { useBack, useShell } from './shared';
 
 const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
-type AudioPlan = { slide:number; runStart:number; playbackStartMs:number; durationMs:number };
+type AudioPlan = ListenVisit & { playbackStartMs: number };
 
 export function ListenBackKaraokeScreen({ active = true }: { active?: boolean }) {
   const { c } = useTheme();
@@ -24,39 +25,42 @@ export function ListenBackKaraokeScreen({ active = true }: { active?: boolean })
   const model = useDeckModel(nav.deckId);
   const player = useSegmentPlayer();
   const [selectedSlide, setSelectedSlide] = useState(Math.max(0, nav.sel));
+  const [selectedPosition, setSelectedPosition] = useState<number | null>(null);
   const [scrub, setScrub] = useState<number | null>(null);
   const [notice, setNotice] = useState('');
   const run = model?.state.run ?? null;
   const times = useMemo(() => model?.times ?? [], [model?.times]);
-  const starts = useMemo(() => times.map((_, i) => times.slice(0, i).reduce((a, b) => a + b, 0)), [times]);
-  const lines = model?.lines ?? [];
+  const timeline = useMemo(() => listenTimeline(run, times, model?.lines ?? []), [run, times, model?.lines]);
+  const { chapters, lines, total, chronological } = timeline;
   const key = `listen:${model?.deck.id ?? ''}`;
   const audio = useMemo(() => {
     const segments: Segment[] = [], plan:AudioPlan[]=[];
-    if (!run) return {segments,plan};
     let playbackStartMs=0;
-    run.parts.forEach((part,slide) => {
-      if (!part) return;
-      const uri = audioOf(part.attemptId);
-      const slideSegments=uri?part.segments.filter(segment=>segment.endMs>segment.startMs).map(segment=>({uri,...segment})):[];
-      const durationMs=slideSegments.reduce((sum,segment)=>sum+segment.endMs-segment.startMs,0);
-      if(!slideSegments.length||durationMs<=0)return;
-      plan.push({slide,runStart:starts[slide]??0,playbackStartMs,durationMs});
-      segments.push(...slideSegments);playbackStartMs+=durationMs;
-    });
+    for (const visit of timeline.visits) {
+      const uri = audioOf(visit.attemptId);
+      if (!uri) continue;
+      plan.push({ ...visit, playbackStartMs });
+      segments.push({ uri, startMs: visit.startMs, endMs: visit.endMs });
+      playbackStartMs += visit.durationMs;
+    }
     return {segments,plan};
-  }, [run,starts]);
+  }, [timeline.visits]);
   const {segments,plan}=audio;
   const playing = active && player.playingKey === key;
-  const playedSeconds = playing ? positionOnRun(player.elapsedMs,plan) : starts[selectedSlide] ?? 0;
-  const activeSlide = playing ? findSlideAt(playedSeconds, starts, times) : selectedSlide;
-  const activeLineIndex = playing ? currentLineIndex(lines, activeSlide, playedSeconds) : Math.max(0, lines.findIndex(line => line.slide === activeSlide));
-  const currentLine = lines[activeLineIndex]?.slide === activeSlide ? lines[activeLineIndex] : undefined;
+  const idlePosition = selectedPosition ?? (chronological ? 0 : chapters.find(chapter => chapter.slide === selectedSlide)?.runStart ?? 0);
+  const playedSeconds = playing ? positionOnRun(player.elapsedMs,plan) : idlePosition;
+  const position = scrub ?? playedSeconds;
+  const chapter = listenEntryAt(position, chapters);
+  const activeSlide = chapter?.slide ?? selectedSlide;
+  const inVisit = (line: Line) => !chronological || !!chapter && line.t >= chapter.runStart && line.t < chapter.runStart + chapter.durationMs / 1000;
+  const activeLineIndex = playing || scrub !== null
+    ? lines.findLastIndex(line => line.slide === activeSlide && inVisit(line) && line.t <= position)
+    : lines.findIndex(line => line.slide === activeSlide && inVisit(line));
+  const currentLine = activeLineIndex >= 0 ? lines[activeLineIndex] : undefined;
   const currentFillers = currentLine ? fillerIndexes(currentLine.words) : new Set<number>();
-  const previousLine = activeLineIndex > 0 ? lines[activeLineIndex - 1] : undefined;
-  const nextLine = activeLineIndex >= 0 ? lines[activeLineIndex + 1] : undefined;
-  const position = scrub ?? (playing ? playedSeconds : starts[selectedSlide] ?? 0);
-  const shownSlide = scrub === null ? activeSlide : findSlideAt(scrub, starts, times);
+  const followingLineIndex = activeLineIndex >= 0 ? activeLineIndex + 1 : lines.findIndex(line => line.t > position);
+  const previousLine = currentLine ? lines[activeLineIndex - 1] : followingLineIndex < 0 ? lines.at(-1) : lines[followingLineIndex - 1];
+  const nextLine = followingLineIndex >= 0 ? lines[followingLineIndex] : undefined;
   const back = () => {
     player.stop();
     if (nav.from === 'wait') go('wait', { deckId: nav.deckId, sel: nav.sel });
@@ -67,28 +71,33 @@ export function ListenBackKaraokeScreen({ active = true }: { active?: boolean })
   };
   useBack(active, () => { back(); return true; });
   const jump = (delta: number) => {
-    const next = clamp((playing ? activeSlide : selectedSlide) + delta, 0, Math.max(0, times.length - 1));
-    setSelectedSlide(next);
+    const current = chapter ? chapters.indexOf(chapter) : 0;
+    const next = chapters[clamp(current + delta, 0, Math.max(0, chapters.length - 1))];
+    if (!next) return;
+    setSelectedSlide(next.slide);
+    setSelectedPosition(next.runStart);
     setScrub(null);
-    if (playing && segments.length) seek(starts[next] ?? 0, false);
+    if (playing && segments.length) seek(next.runStart, false);
   };
   const seek = (seconds: number, paused: boolean) => {
     if (!segments.length) { setNotice('No saved audio is available on this phone.'); return; }
-    const slide=findSlideAt(seconds,starts,times),entry=plan.find(item=>item.slide===slide);
-    if(!entry){setNotice(`Audio for slide ${slide+1} is not on this phone.`);return;}
+    const slide=listenEntryAt(seconds,chapters)?.slide??selectedSlide,entry=listenEntryAt(seconds,plan);
+    if(!entry||entry.slide!==slide){setNotice(`Audio for slide ${slide+1} is not on this phone.`);return;}
     setNotice('');
     setSelectedSlide(slide);
+    setSelectedPosition(seconds);
+    setScrub(null);
     const elapsed=entry.playbackStartMs+clamp(seconds-entry.runStart,0,entry.durationMs/1000)*1000;
     void player.seekSegments(key, segments, elapsed, paused);
   };
   const toggle = () => {
     if (!segments.length) { setNotice('No saved audio is available on this phone.'); return; }
     if (playing) { player.setPaused(!player.paused); return; }
-    seek(starts[selectedSlide] ?? 0, false);
+    seek(idlePosition, false);
   };
   const scrubAt = (pageX: number) => {
     const x = (pageX - frame.left) / frame.s;
-    setScrub(clamp((x - 24) / (FRAME_W - 48), 0, 1) * (model?.total ?? 0));
+    setScrub(clamp((x - 24) / (FRAME_W - 48), 0, 1) * total);
   };
   const swipeShould = (_e: unknown, g: { dx: number; dy: number }) => (Math.abs(g.dx) > 18 && Math.abs(g.dx) > Math.abs(g.dy)) || (g.dy > 12 && g.dy > Math.abs(g.dx));
   if (!model || !run) return null;
@@ -100,10 +109,10 @@ export function ListenBackKaraokeScreen({ active = true }: { active?: boolean })
       <PageSurface hue={model.deck.hue} />
       <View style={styles.header} pointerEvents="none">
         <Txt numberOfLines={1} style={[styles.title, { color: c.text }]}>Listen back</Txt>
-        <Txt style={[styles.subtitle, { color: c.secondary }]}>{`Whole run · ${fmt(model.total)}`}</Txt>
+        <Txt style={[styles.subtitle, { color: c.secondary }]}>{`Whole run · ${fmt(total)}`}</Txt>
       </View>
       <View style={[styles.slideChip, { backgroundColor: c.surface08 }]}>
-        <Txt numberOfLines={1} style={[styles.slideChipText, { color: c.secondary }]}>{`Slide ${shownSlide + 1} · ${model.deck.slides[shownSlide]?.title ?? `Slide ${shownSlide + 1}`}`}</Txt>
+        <Txt numberOfLines={1} style={[styles.slideChipText, { color: c.secondary }]}>{`Slide ${activeSlide + 1} · ${model.deck.slides[activeSlide]?.title ?? `Slide ${activeSlide + 1}`}`}</Txt>
       </View>
       {lines.length ? <View style={styles.words}>
         <Txt numberOfLines={2} style={[styles.contextLine, { color: c.tertiary }]}>{previousLine?.text ?? ''}</Txt>
@@ -123,9 +132,9 @@ export function ListenBackKaraokeScreen({ active = true }: { active?: boolean })
       </View> : <View style={styles.noTranscript}><Txt style={[styles.noTranscriptText, { color: c.secondary }]}>{model.pending ? 'Transcript is still processing.' : 'No transcript for this run'}</Txt></View>}
       {!!(notice || player.error) && <Txt accessibilityRole="alert" style={[styles.notice, { color: c.secondary }]}>{notice || player.error}</Txt>}
       <PanView style={styles.scrubberHit} accessibilityRole="adjustable" accessibilityLabel="Run audio position"
-        accessibilityValue={{ min: 0, max: model.total, now: position, text: `${fmt(position)} of ${fmt(model.total)}` }}
+        accessibilityValue={{ min: 0, max: total, now: position, text: `${fmt(position)} of ${fmt(total)}` }}
         accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
-        onAccessibilityAction={e => seek(clamp(position + (e.nativeEvent.actionName === 'increment' ? 5 : -5), 0, model.total), player.paused || !playing)}
+        onAccessibilityAction={e => seek(clamp(position + (e.nativeEvent.actionName === 'increment' ? 5 : -5), 0, total), player.paused || !playing)}
         onStartShould={() => segments.length > 0}
         onGrant={e => { player.setPaused(true); scrubAt(e.nativeEvent.pageX); }}
         onMove={e => scrubAt(e.nativeEvent.pageX)}
@@ -133,12 +142,12 @@ export function ListenBackKaraokeScreen({ active = true }: { active?: boolean })
         onTerminate={() => setScrub(null)}
         onTerminationRequest={() => false}>
         <View style={styles.trackRow}>
-          {times.map((t, i) => <View key={i} style={[styles.trackSegment, { flexGrow: Math.max(0.06, t), backgroundColor: c.track }]}>
-            {t > 0 && <View style={[styles.trackFill, { width: `${clamp((position - (starts[i] ?? 0)) / t, 0, 1) * 100}%`, backgroundColor: c.strong }]} />}
+          {chapters.map((entry, i) => <View key={i} style={[styles.trackSegment, { flexGrow: Math.max(0.06, entry.durationMs / 1000), backgroundColor: c.track }]}>
+            {entry.durationMs > 0 && <View style={[styles.trackFill, { width: `${clamp((position - entry.runStart) * 1000 / entry.durationMs, 0, 1) * 100}%`, backgroundColor: c.strong }]} />}
           </View>)}
-          <View pointerEvents="none" style={[styles.playhead, { backgroundColor: c.text, left: `${model.total > 0 ? clamp(position / model.total, 0, 1) * 100 : 0}%` }]} />
+          <View pointerEvents="none" style={[styles.playhead, { backgroundColor: c.text, left: `${total > 0 ? clamp(position / total, 0, 1) * 100 : 0}%` }]} />
         </View>
-        <View style={styles.times}><Txt style={[styles.timeText, { color: c.secondary }]}>{fmt(position)}</Txt><Txt style={[styles.timeText, { color: c.secondary }]}>{fmt(model.total)}</Txt></View>
+        <View style={styles.times}><Txt style={[styles.timeText, { color: c.secondary }]}>{fmt(position)}</Txt><Txt style={[styles.timeText, { color: c.secondary }]}>{fmt(total)}</Txt></View>
       </PanView>
       <View style={styles.controls}>
         <Pressable accessibilityRole="button" accessibilityLabel="Previous slide" onPress={() => jump(-1)} style={styles.skip}><Txt style={[styles.skipArrow,{color:c.text}]}>‹</Txt></Pressable>
@@ -152,18 +161,9 @@ export function ListenBackKaraokeScreen({ active = true }: { active?: boolean })
   </PanView></Enter>;
 }
 
-function findSlideAt(seconds: number, starts: readonly number[], times: readonly number[]) {
-  for (let i = 0; i < starts.length; i++) if (seconds < (starts[i] ?? 0) + (times[i] ?? 0)) return i;
-  return Math.max(0, starts.length - 1);
-}
 function positionOnRun(elapsedMs:number,plan:readonly AudioPlan[]) {
   for(const entry of plan)if(elapsedMs<entry.playbackStartMs+entry.durationMs)return entry.runStart+Math.max(0,elapsedMs-entry.playbackStartMs)/1000;
   const last=plan[plan.length-1];return last?last.runStart+last.durationMs/1000:0;
-}
-function currentLineIndex(lines: readonly Line[], slide: number, seconds: number) {
-  let found = -1;
-  lines.forEach((line, i) => { if (line.slide === slide && line.t <= seconds) found = i; });
-  return found;
 }
 function fillerIndexes(words: Line['words']) {
   const marked = new Set<number>();
