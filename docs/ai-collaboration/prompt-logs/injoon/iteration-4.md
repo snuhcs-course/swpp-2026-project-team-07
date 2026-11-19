@@ -364,3 +364,197 @@ Yes, split my prompt-log changes into `docs/injoon-prompt-logs` and keep them se
 
 - Injoon confirmed a local branch for the Injoon prompt-log changes from the Iteration 4 documentation draft. The branch starts at the same base, `ffe1d3a`.
 - Codex transferred the existing log byte for byte before appending these requests. The contributor log is the only file in the branch diff. No application tests were needed for the split.
+
+## Review the Iteration 4 documentation draft — November 19, 2026
+
+**Contributor:** Injoon · **Iteration:** 4 · **Tool:** OpenAI Codex desktop · **Model:** GPT-6.2-Sol.
+
+### Request — verbatim
+
+```text
+Now let's review the changes on `docs/iteration-4-docs`
+```
+
+### Review and limits
+
+- Codex compared the local documentation draft with its base `ffe1d3a` and checked recording consent, Q&A upload order and setup against the pinned v10 source and Compose configuration. The review identified corrections to the consent descriptions and reproducible setup/coverage instructions. No documentation or runtime fixes were applied in the reviewed worktree.
+- The link check found 380 local references, no new broken links and 32 pre-existing historical failures. The review did not launch a build, contact the Azure backend or execute UAT.
+
+### Follow-up — verbatim
+
+```text
+Yes, fix all four findings on `docs/iteration-4-docs`, then recheck the docs. Keep the changes local and my prompt log on its separate branch.
+```
+
+Codex corrected the shared transcription-consent behavior, the Q&A pre-upload check, both v10 setup paths, and the disposable PostgreSQL coverage instructions on the documentation branch. Checked the descriptions against pinned v10 code and Compose, parsed 16 shell examples for syntax, verified 382 local references with no new failures, and verified frozen criteria and both submission ZIPs. The shell check excluded a historical example containing a placeholder. Docker was unavailable for runtime verification, so the app and coverage suite were not run. No commit or push was made for this follow-up.
+
+## Route prompt logs to a separate branch — November 19, 2026
+
+**Contributor:** Injoon · **Iteration:** 4 · **Tool:** OpenAI Codex desktop · **Model:** GPT-6.
+
+### Request — verbatim
+
+```text
+Can we make sure that when a user says to make a separate branch for ai prompt logs, it makes sure that those prompt logs go into that branch instead of creating prompt logs in the current worktree. Or should we just make branch creation automatic as well if it doesn't already exist
+```
+
+### Workflow and verification
+
+- In the November 19 request, Injoon asked that an explicit branch split route prompt logs to the separate checkout. Codex added the local workspace rule and made branch creation automatic for that request when the branch is missing. The confirmed destination for Injoon's logs is `docs/injoon-prompt-logs`.
+- A temporary Git repository verified branch creation, reuse of an existing checkout, and attachment of existing local and remote-tracking branches while preserving an uncommitted task draft. The first test supplied remote settings for only one command, so the subsequent upstream check failed. With the test remote configured in the temporary repository, all checks passed.
+- Codex recorded this request in the existing log worktree. The new entry remains uncommitted.
+
+### Team default — November 19, 2026
+
+```text
+So let's say that Jooyoung makes some changes then jooyoung-prompt-logs is automatically created and then the prompts logs are  automatically pushed into that branch. Is that right?
+```
+
+```text
+Can we make that the default for everyone on the team? When Jooyoung makes changes, Codex should create or reuse `docs/jooyoung-prompt-logs` and automatically commit and push just his prompt logs there.
+```
+
+- Injoon confirmed the requested team default in chat on November 19. Codex drafted the shared instructions, the reporting guide and the log index on `docs/team-prompt-log-workflow` from `ffe1d3a`, verified against GitHub `main`. The draft authorizes reviewed entries from the current task to be committed and pushed to the contributor branch. GitHub reports public visibility, so the draft calls for reviewing entries for public sharing and labeling redactions.
+- A temporary Git remote accepted synthetic log-only commits for a new and reused branch. The check verified staged task isolation, rejection of a non-fast-forward push, a safe retry that preserved both updates, and detection of unrelated commits even when their net diff was empty. No actual contributor log was published. The policy remains a local draft awaiting review and rollout.
+
+#### Team-wide scope clarification — verbatim
+
+```text
+No but obviously it shouldn't only work just for jooyoung right
+```
+
+Codex made the scope explicit in the shared draft and mapped all four names to branches using their existing contributor folders. The draft remains local.
+
+#### Policy pull request — verbatim
+
+```text
+Okay, commit the shared rule and open a PR so everyone on the team gets automatic log-only commits and pushes to their own prompt-log branch.
+```
+
+Codex reran the synthetic Git check for all four contributors, verified the documentation links and staged scope, and pushed policy commit `4d84ef2`. The GitHub connector returned HTTP 403 for PR creation. Codex used the authenticated GitHub CLI and verified that [PR #59](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/59) is open against `main` with only the three policy and guide files. The PR has not been merged. This task entry remains local.
+
+## Remove redundant local branches — November 19, 2026
+
+**Contributor:** Injoon · **Iteration:** 4 · **Tool:** OpenAI Codex desktop · **Model:** GPT-6.2-Sol.
+
+```text
+Can you first delete the local branches that we don't need
+```
+
+Codex verified six branch tips were ancestors of local `origin/main` and that the `fix/retry-recording` tip matched its archive tag and remote-tracking ref. Git deleted those seven local branches. Three clean linked checkouts kept their existing commits as detached worktrees, and Git pruned one record for an already missing temporary checkout. Branches with uncommitted work or unique history were left in place, along with `main` and the Iteration 2 demo branch. No remote operation was performed.
+
+### Follow-up — verbatim
+
+```text
+Delete ther branches that are not for iteration 4
+```
+
+Deleted eight additional earlier-iteration local branches after verifying a complete bundle containing all eight original refs. Detached seven linked checkouts at their original commits and verified their tracked and untracked status matched the pre-deletion status. Kept main and the three Iteration 4 branches. No remote operation was performed.
+
+### Rubric checkout follow-up — verbatim
+
+```text
+let's bring the rubric evaluation branch if gone
+```
+
+Codex checked the main clone, the branch backup, GitHub branch names and the separate scoring checkout. The rubric evaluation implementation remains in its independent clone on local `codex/scoring-evidence-ids`, with uncommitted changes. No restoration or transfer was needed.
+
+## Check for an existing README update branch — November 19, 2026
+
+**Contributor:** Injoon · **Iteration:** 4 · **Tool:** OpenAI Codex desktop · **Model:** GPT-6.
+
+### Request — verbatim
+
+```text
+Let's create a branch that updates the readme file, if a similar branch doesn't exist
+```
+
+### Result
+
+Codex checked the local branches and linked worktrees. The local `docs/iteration-4-docs` branch already has an uncommitted README draft for the published v10 demo. The earlier `docs/iteration-4-cleanup-remake` branch has an uncommitted v8 README draft. Both README diffs passed `git diff --check`. No branch was created and neither README was edited.
+
+## Open the latest main on Android — November 19, 2026
+
+**Contributor:** Injoon · **Iteration:** 4 · **Tool:** OpenAI Codex desktop · **Model:** GPT-6.
+
+### Request — verbatim
+
+```text
+Download latest main and open in emulator
+```
+
+Codex fetched team `main` at `95cc77c` and created a dedicated `main-emulator` worktree for the fast-forwarded local branch. The existing detached checkout had local edits and was preserved.
+
+Codex installed the locked mobile dependencies, ran Expo Android prebuild, and assembled a standalone arm64 APK with JDK 17 and Android SDK 36. The Android API 36 emulator accepted an in-place install as version code 10. The installed APK SHA-256 matched `10d6c76136bccb67ab037d55c4a11af13e66cee2ef4881cf79466ac2585cd341`. The hierarchy dump could not get an idle state, so Codex verified the focused activity and visually confirmed the first OutLoud tutorial screen from an emulator capture. The backend and AI workflows were outside this launch check. No application code was edited, and this entry was left local and uncommitted.
+
+## Split the Iteration 4 README from the full draft — November 19, 2026
+
+**Contributor:** Injoon · **Iteration:** 4 · **Tool:** OpenAI Codex desktop · **Model:** GPT-6.
+
+### Request — verbatim
+
+```text
+let's rename the branch so that it focus on the readme. I'll make a branch for each iteration 4 document and then merge then iteration-4-demo and then merge that into main does that sound good
+```
+
+### Result
+
+Codex renamed the local branch to `docs/iteration-4-readme`, preserved the full draft and its base `ffe1d3a` in the existing worktree on `docs/iteration-4-docs-draft`, and verified matching hashes for its tracked diff and untracked files. The README branch fast-forwarded to `95cc77c`, where [PR #60](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/60) had already merged the v10 app. Codex copied only the root README, updated its baseline and existing evidence links, and recorded the split in the workspace notes. The per-document and final integration branches remain a proposed workflow. No commit, push or merge into main was performed.
+
+## Review the README-only branch — November 19, 2026
+
+**Contributor:** Injoon · **Iteration:** 4 · **Tool:** OpenAI Codex desktop · **Model:** GPT-6.
+
+### Request — verbatim
+
+```text
+let's review the changes on docs/iteration-4-readme first
+```
+
+### Review findings
+
+Codex compared the README-only diff with main `95cc77c`, release source `5745502`, and the GitHub release metadata. The walkthrough conflates Live feedback with the After Stop fallback, gives obsolete retake controls, and puts microphone permission before the first-use live disclosure. The quick start conflates a local development build with the signed release and applies the standalone cleartext restriction to the debug build. The linked Testing document lacks the workbook evidence for the README's UAT summary.
+
+GitHub confirmed the three asset names and the pinned release commit. The README diff, 20 relative links, and syntax for seven shell examples passed checks. Codex reviewed the source without building the app or testing Azure. The README draft was left as reviewed, and this log entry remains local and uncommitted.
+
+### Follow-up — verbatim
+
+```text
+let's fix all five findings on `docs/iteration-4-readme` and recheck the README. Keep the changes local and the prompt log on its separate branch. After let's restructure the readme top to bottom.
+```
+
+Codex corrected the recording-mode routes and prompt order, v10 retake labels, development versus signed release instructions, acceptance-testing claim, and build-specific HTTP rules. It then rewrote the README around the demo, local setup, checks, configuration, and references. The workbook-specific claim was removed because its supporting evidence is still in the broader draft. The README keeps the statement that full Iteration 4 acceptance remains open and links to the checked-in Testing section.
+
+Codex compared the final walkthrough and setup with v10 source, Compose, and Android build configuration. The final diff, 20 relative links, four inbound section anchors, and syntax for nine shell examples passed. The app and Azure were not exercised. The README is the only modified file in the README worktree. The prompt log is on `docs/injoon-prompt-logs`. Both edits remain local and uncommitted.
+
+### Pre-commit review in Changes — verbatim
+
+```text
+let's review the restructured README on `docs/iteration-4-readme` in the Changes page before committing
+```
+
+Codex reviewed the current unstaged README against base `95cc77c` and v10 release source `5745502`. All five earlier corrections remain present. The Stop step could still distinguish an ordinary Live feedback take, which opens Full Review, from a live retake, which opens the take comparison first. The diff, 20 relative links, four inbound anchors, and eight shell examples passed static checks. Codex attached the README worktree and requested its unstaged review panel. The app queued the panel without confirming that it opened. No README edits, builds, or commits were made during the review.
+
+## Compare peer READMEs for an OutLoud outline — November 19, 2026
+
+**Contributor:** Injoon · **Iteration:** 4 · **Tool:** OpenAI Codex desktop · **Model:** GPT-6.
+
+### Request — verbatim
+
+```text
+I want you to look at the other team's repos readme and suggest a section outline
+```
+
+Codex read the default-branch root READMEs for the other 18 numbered Fall 2026 team repositories in the course GitHub organization. Two still used the course template. The proposed OutLoud outline draws on GymMouse's build-specific milestone summary, SNU Now's install-first flow, My Little Chef's separate hosted and local routes, and Find Me a Time's short repository map. The outline is a recommendation. No changes were made on the README branch.
+
+## Publish Injoon's prompt branch — November 19, 2026
+
+**Contributor:** Injoon · **Iteration:** 4 · **Tool:** OpenAI Codex desktop · **Model:** GPT-6.
+
+### Request — verbatim
+
+```text
+Can you push my prompt branch to github
+```
+
+Codex verified that GitHub main was at `95cc77c`, that the contributor branch had no remote ref, and that the outgoing commit and pending changes touched only this log. Reviewed the outgoing text for publication and preserved the trailing space in a historical verbatim prompt.
