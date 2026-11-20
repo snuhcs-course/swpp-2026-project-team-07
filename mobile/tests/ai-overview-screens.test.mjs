@@ -7,12 +7,15 @@ const {DARK_PALETTE,LIGHT_PALETTE}=await import('../src/design/tokens.ts');runti
 const {ReviewScreen}=await import('../src/screens/ReviewScreen.tsx');
 const {ListenBackScreen:LegacyListenBackScreen}=await import('../src/screens/FullReviewScreen.tsx');
 const {OverviewScreen}=await import('../src/screens/OverviewScreen.tsx');
+const {WaitScreen}=await import('../src/screens/WaitScreen.tsx');
 const {ListenBackKaraokeScreen}=await import('../src/screens/ListenBackKaraokeScreen.tsx');
+const {FeedbackScreen}=await import('../src/screens/FeedbackScreen.tsx');
 const {HomeFeedbackStats}=await import('../src/screens/HomeFeedbackStats.tsx');
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;
 function setup(){
  AppState.currentState='active';
  runtime.scores=null;runtime.scoreSelections=[];runtime.routes=[];runtime.plays=[];runtime.players=[];runtime.scrolls=[];runtime.audio=new Map([['a','file://a.m4a']]);runtime.theme='dark';
+ runtime.reducedMotion=true;
  runtime.nav={deckId:'deck',sel:0,slide:0,from:null,nav:null};
  const parts=[{attemptId:'a',segments:[{startMs:0,endMs:1000},{startMs:2000,endMs:3000}]},{attemptId:'b',segments:[{startMs:0,endMs:2000}]},null];
  runtime.model={deck:{id:'deck',title:'Synthetic deck',hue:'blue',pages:[],slides:[{title:'First'},{title:'Second'},{title:'Third'}],targets:[60,60,60],text:'ready',timing:{source:'suggested'},requirementsDefault:false},n:3,state:{run:{id:'run',parts,createdAt:new Date().toISOString(),sel:0,targetSum:180},fixes:0},times:[2,2,0],total:4,targetSum:180,lines:[],points:[[],[],[]],ai:[],transcripts:new Map([['a',{}],['b',{}]]),stages:new Map(),stats:{coverage:100,said:2,total:2,fpm:0,wpm:130,pace:'steady'}};
@@ -29,7 +32,7 @@ test('Review renders its score badge, four metric chips and selected-slide playb
  assert.equal(r.root.findAllByType('pressable').filter(x=>x.props.style?.[0]?.height===34).length,4);
  assert.equal(r.root.findAllByType('scroll').filter(x=>!x.props.horizontal).length,0);
  assert.ok(button(r,'Play slide 1 audio'));
- await act(async()=>runtime.back());assert.deepEqual(runtime.routes.at(-1),['full',{deckId:'deck',sel:0}]);
+ await act(async()=>runtime.back());assert.deepEqual(runtime.routes.at(-1),['rehearse',{deckId:'deck',slide:0,sel:0}]);
 });});
 
 test('Legacy Listen Back keeps ungraded score/status tiles and discloses partial audio before playing',async()=>{setup();await render(LegacyListenBackScreen,{},async r=>{
@@ -48,7 +51,46 @@ test('Home keeps ungraded metrics neutral and separates measured pace in both th
  });
 }});
 
-test('Review retains Q&A swipe without a page scroll',async()=>{setup();await render(ReviewScreen,{},async r=>{const pan=r.root.findByType('pan');assert.equal(pan.props.onMoveShould({nativeEvent:{pageY:800}},{dx:0,dy:-150}),true);await act(async()=>{pan.props.onMove({}, {dx:0,dy:-150});pan.props.onRelease({}, {dx:0,dy:-150});});assert.equal(runtime.routes.at(-1)[0],'qa');});});
+test('Review stays opaque beneath Q&A during an upward swipe',async()=>{setup();await render(ReviewScreen,{active:true},async r=>{const pan=r.root.findByType('pan');assert.equal(pan.props.onMoveShould({nativeEvent:{pageY:800}},{dx:0,dy:-150}),true);await act(async()=>{pan.props.onMove({}, {dx:0,dy:-150});r.update(React.createElement(ReviewScreen,{active:true}));});assert.ok(r.root.findAllByType('animated').some(n=>n.props.style?.[1]?.opacity===1));await act(async()=>r.root.findByType('pan').props.onRelease({}, {dx:0,dy:-150}));assert.equal(runtime.routes.at(-1)[0],'qa');await act(async()=>r.update(React.createElement(ReviewScreen,{active:false})));assert.ok(r.root.findAllByType('animated').some(n=>n.props.style?.[1]?.opacity===1));assert.ok(r.root.findByType('mini-slide'));});});
+
+test('Review swipes down to its opening page and keeps the selected slide',async()=>{
+ for(const [from,destination] of [['rehearse','rehearse'],['full','full']]){
+  setup();runtime.nav={...runtime.nav,from,sel:1};
+  await render(ReviewScreen,{},async r=>{
+   assert.equal(r.root.findByType('hints').children.at(-1),from==='full'?'Full review':'Slide preview');
+   const pan=r.root.findByType('pan');
+   await act(async()=>{pan.props.onMove({}, {dx:0,dy:130});pan.props.onRelease({}, {dx:0,dy:130});});
+   assert.equal(runtime.routes.at(-1)[0],destination);
+   assert.equal(runtime.routes.at(-1)[1][destination==='rehearse'?'slide':'sel'],1);
+  });
+ }
+});
+
+test('Full Review opened from the icon returns to its selected slide preview',async()=>{
+ setup();runtime.nav={...runtime.nav,from:'rehearse',sel:1};
+ await render(OverviewScreen,{},async r=>{
+  assert.equal(r.root.findByType('hints').children.at(-1),'Slide preview');
+  const pan=r.root.findByType('pan');
+  await act(async()=>{pan.props.onMove({}, {dy:90,dx:0});r.update(React.createElement(OverviewScreen));});
+  assert.equal(r.root.findByType('pan').props.style[1].opacity,0.5);
+  await act(async()=>r.root.findByType('pan').props.onRelease({}, {dy:100,dx:0}));
+  assert.deepEqual(runtime.routes.at(-1),['rehearse',{deckId:'deck',slide:1,sel:1}]);
+ });
+ setup();runtime.nav.from='home';await render(OverviewScreen,{},async r=>{
+  assert.equal(r.root.findByType('hints').children.at(-1),'Home');
+  await act(async()=>runtime.back());assert.deepEqual(runtime.routes.at(-1),['home']);
+ });
+});
+
+test('Review keeps its vertical fade while horizontal issue swipes move the content',async()=>{
+ setup();runtime.reducedMotion=false;
+ await render(ReviewScreen,{},async r=>{
+  await act(async()=>{r.root.findByType('pan').props.onMove({}, {dx:0,dy:90});r.update(React.createElement(ReviewScreen));});
+  assert.ok(r.root.findAllByType('animated').some(n=>n.props.style?.[1]?.opacity===0.5));
+  await act(async()=>{r.root.findByType('pan').props.onMove({}, {dx:-95,dy:2});r.update(React.createElement(ReviewScreen));});
+  assert.ok(r.root.findAllByType('animated').some(n=>n.props.style?.[1]?.transform?.[0]?.translateX<0));
+ });
+});
 
 test('covered Review stops playback and can be reopened',async()=>{setup();await render(ReviewScreen,{active:true},async r=>{await act(async()=>button(r,'Play slide 1 audio').props.onPress());assert.equal(runtime.plays.length,1);await act(async()=>r.update(React.createElement(ReviewScreen,{active:false})));assert.ok(runtime.stops>0);await act(async()=>r.update(React.createElement(ReviewScreen,{active:true})));assert.ok(button(r,'Play slide 1 audio'));});});
 
@@ -72,6 +114,91 @@ test('current Overview opens fixed Feedback and Listen Back controls and selecte
   await act(async()=>button(r,'Slide 3, not graded').props.onPress());assert.deepEqual(runtime.routes.at(-1),['rehearse',{deckId:'deck',slide:2,nav:'fade'}]);
  });
  runtime.nav={...runtime.nav,from:'full',sel:1};await render(ListenBackKaraokeScreen,{},async()=>{await act(async()=>runtime.back());assert.deepEqual(runtime.routes.at(-1),['full',{deckId:'deck',sel:1}]);});
+});
+
+test('Listen Back from Wait returns to Full Review, and Full Review opens Listen Back with its own origin',async()=>{
+ setup();runtime.nav={...runtime.nav,from:'wait',sel:1};
+ await render(ListenBackKaraokeScreen,{},async r=>{
+  await act(async()=>r.root.findByType('pan').props.onRelease({}, {dx:0,dy:100,vy:0}));
+  assert.deepEqual(runtime.routes.at(-1),['full',{deckId:'deck',sel:1,from:'wait'}]);
+ });
+ await render(OverviewScreen,{},async r=>{
+  await act(async()=>byText(r,'Listen back').props.onPress());
+  assert.deepEqual(runtime.routes.at(-1),['listen',{deckId:'deck',sel:1,from:'full'}]);
+ });
+});
+
+test('Full Review and Listen Back fade halfway with a downward swipe before navigating',async()=>{
+ setup();
+ await render(OverviewScreen,{},async r=>{
+  const pan=r.root.findByType('pan');
+  await act(async()=>{pan.props.onMove({}, {dy:90,dx:0});r.update(React.createElement(OverviewScreen));});
+  assert.equal(r.root.findByType('pan').props.style[1].opacity,0.5);
+  await act(async()=>r.root.findByType('pan').props.onRelease({}, {dy:100,dx:0}));
+  assert.equal(runtime.routes.at(-1)[0],'home');
+ });
+ runtime.nav={...runtime.nav,from:'full'};
+ await render(ListenBackKaraokeScreen,{},async r=>{
+  const pan=r.root.findAllByType('pan')[0];
+  await act(async()=>{pan.props.onMove({}, {dy:90,dx:0});r.update(React.createElement(ListenBackKaraokeScreen));});
+  assert.equal(r.root.findAllByType('pan')[0].props.style[1].opacity,0.5);
+  await act(async()=>r.root.findAllByType('pan')[0].props.onRelease({}, {dy:100,dx:0,vy:0}));
+  assert.equal(runtime.routes.at(-1)[0],'full');
+ });
+});
+
+test('Full Review stays opaque underneath the Q&A entrance',async()=>{
+ setup();
+ await render(OverviewScreen,{active:true},async r=>{
+  await act(async()=>{r.root.findByType('pan').props.onMove({}, {dx:0,dy:-90});r.update(React.createElement(OverviewScreen,{active:true}));});
+  assert.equal(r.root.findByType('pan').props.style[1].opacity,1);
+  await act(async()=>r.root.findByType('pan').props.onRelease({}, {dx:0,dy:-100}));
+  assert.equal(runtime.routes.at(-1)[0],'qa');
+  await act(async()=>r.update(React.createElement(OverviewScreen,{active:false})));
+  await act(async()=>r.update(React.createElement(OverviewScreen,{active:false})));
+  assert.equal(r.root.findByType('pan').props.style[1].opacity,1);
+ });
+});
+
+test('Listen Back content follows a slow horizontal swipe and settles after slide selection',async()=>{
+ setup();runtime.reducedMotion=false;
+ await render(ListenBackKaraokeScreen,{},async r=>{
+  const pan=r.root.findAllByType('pan')[0];
+  await act(async()=>{pan.props.onMove({}, {dx:-95,dy:3});r.update(React.createElement(ListenBackKaraokeScreen));});
+  const moving=r.root.findAllByType('animated').find(n=>n.props.style?.[1]?.transform?.[0]?.translateX<0);
+  assert.ok(moving,'content should move with the finger');
+  assert.ok(moving.props.style[1].opacity<0.8,'content should fade while dragged');
+  await act(async()=>r.root.findAllByType('pan')[0].props.onRelease({}, {dx:-95,dy:3,vx:0,vy:0}));
+  const settled=r.root.findAllByType('animated').find(n=>n.props.style?.[1]?.transform?.[0]?.translateX===0);
+  assert.ok(settled,'selected content should settle in place');
+ });
+});
+
+test('Feedback points fade and move with a slow swipe while a diagonal downward swipe returns to review',async()=>{
+ setup();runtime.reducedMotion=false;
+ runtime.feedback.items[0].findings=[{category:'timing',suggestion:'Shorten the opening',speech_quote:'',start_ms:0,end_ms:0}];
+ runtime.feedback.items[1].findings=[{category:'delivery',suggestion:'Pause before the result',speech_quote:'',start_ms:0,end_ms:0}];
+ runtime.feedback.items[2].findings=[];
+ await render(FeedbackScreen,{},async r=>{
+  await act(async()=>{r.root.findByType('pan').props.onMove({}, {dx:-90,dy:2});r.update(React.createElement(FeedbackScreen));});
+  const moving=r.root.findAllByType('animated').find(n=>n.props.style?.[1]?.transform?.[0]?.translateX<0);
+  assert.ok(moving);assert.ok(moving.props.style[1].opacity<0.7);
+  await act(async()=>r.root.findByType('pan').props.onRelease({}, {dx:-90,dy:2}));
+  assert.match(text(r),/2 of 2/);
+  await act(async()=>r.root.findByType('pan').props.onMove({}, {dx:-65,dy:110}));
+  await act(async()=>r.root.findByType('pan').props.onRelease({}, {dx:-65,dy:110}));
+  assert.equal(runtime.routes.at(-1)[0],'full');
+ });
+});
+
+test('Wait opens Listen Back above Full Review so a downward fade has the right destination',async()=>{
+ setup();await render(WaitScreen,{},async r=>{
+  await act(async()=>byText(r,'Listen back while you wait').props.onPress());
+  assert.deepEqual(runtime.routes.slice(-2),[
+   ['full',{deckId:'deck',sel:0,from:'wait',nav:null}],
+   ['listen',{deckId:'deck',sel:0,from:'full'}],
+  ]);
+ });
 });
 
 test('Legacy Listen Back entered from rehearsal returns to the selected rehearsal slide',async()=>{
@@ -149,6 +276,15 @@ test('Home does not invent an overall score for combined recordings',async()=>{s
  runtime.scores={items:[{score:67,level:'competent'},{score:null,level:null}],overall:{score:null,level:null,status:'Combined recordings',state:null,result:null,target:null}};
  await render(HomeFeedbackStats,{deckId:'deck',active:true,home:{p:{value:0},vy:{value:0}},onOpenReview:()=>{}},async r=>{
   assert.match(text(r),/—/);assert.match(text(r),/Record a full run for an overall score/);assert.equal(r.root.findAllByType('pressable').length,0);
+ });
+});
+
+test('Home stats fade continuously at a halfway carousel position',async()=>{
+ setup();const home={p:{value:0.5},vy:{value:0}};
+ for(const index of [0,1])await render(HomeFeedbackStats,{deckId:'deck',home,index,count:2,active:index===0,onOpenReview:()=>{}},async r=>{
+  const panel=r.root.findByType('animated');
+  assert.equal(panel.props.style[1].opacity,0.5);
+  assert.equal(panel.props.pointerEvents,index===0?'box-none':'none');
  });
 });
 

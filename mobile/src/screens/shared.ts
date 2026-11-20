@@ -24,6 +24,8 @@ export type HomeShared = {
   setup: SharedValue<number>;
   press: SharedValue<number>;
   picker: SharedValue<number>;
+  /** 0 while the rehearsal title owns the handoff; 1 when Home's title is visible. */
+  titleReturn: SharedValue<number>;
 };
 
 export const ShellContext = createContext<{ go: Go; nav: NavState; home: HomeShared; setFullscreenLandscape: (value: boolean) => void } | null>(null);

@@ -219,18 +219,18 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
   // ── Navigation between items and questions ────────────────────────────────
   const goQ = (dir: -1 | 1) => {
     const ni = i + dir;
-    if (rec || count || ni < 0 || ni >= qs.length) { dx.set(withTiming(0, { duration: 280, easing: EASE_SNAP })); return; }
+    if (rec || count || ni < 0 || ni >= qs.length) { dx.set(withTiming(0, { duration: 440, easing: EASE_SNAP })); return; }
     stopSpeak(); player.stop();
     setI(ni);
     setPart(set?.answers[answerKey(ni, 1)] ? 1 : 0);
     dx.set(dir * 80);
-    dx.set(withTiming(0, { duration: 280, easing: EASE_SNAP }));
+    dx.set(withTiming(0, { duration: 440, easing: EASE_SNAP }));
   };
   const back = useCallback(() => {
     if (rec || count) return;
     stopSpeak(); player.stop();
     if(nav.from==='full')go('full',{nav:null,deckId:deck.id,sel:nav.sel});
-    else go('review', { nav: null, deckId: deck.id, sel: nav.sel, from:'full' });
+    else go('review', { nav: null, deckId: deck.id, sel: nav.sel });
   }, [count, deck.id, go, nav.from, nav.sel, player, rec, stopSpeak]);
   const g = useRef<'x' | 'y' | null>(null);
   const busy = rec || !!count;
@@ -249,13 +249,13 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
       } else { dy.set(Math.min(BACK_FADE_Y, Math.max(0, gs.dy / frame.s))); }
     },
     onRelease: () => {
-      if (g.current === 'x') { if (Math.abs(dx.get()) > 60) goQ(dx.get() < 0 ? 1 : -1); else dx.set(withTiming(0, { duration: 280, easing: EASE_SNAP })); }
+      if (g.current === 'x') { if (Math.abs(dx.get()) > 60) goQ(dx.get() < 0 ? 1 : -1); else dx.set(withTiming(0, { duration: 440, easing: EASE_SNAP })); }
       else if (dy.get() > BACK_T) {
         backExiting.current = true;
-        dy.set(withTiming(BACK_FADE_Y, { duration: 220, easing: EASE_SCREEN }, finished => {
+        dy.set(withTiming(BACK_FADE_Y, { duration: 460, easing: EASE_SCREEN }, finished => {
           if (finished) runOnJS(back)();
         }));
-      } else dy.set(withTiming(0, { duration: 220, easing: EASE_SCREEN }));
+      } else dy.set(withTiming(0, { duration: 360, easing: EASE_SCREEN }));
       g.current = null;
     },
     onTerminate: () => { dx.set(withTiming(0)); if (!backExiting.current) dy.set(withTiming(0)); g.current = null; },

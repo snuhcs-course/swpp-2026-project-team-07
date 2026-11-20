@@ -33,11 +33,16 @@ export async function serverSlides(local: { id: string; title: string; uri: stri
   const api = normalizeApi(apiUrl);
   const key = `server-deck:${api}:${local.id}`;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let timedOut = false;
+  const timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
   const abort = () => controller.abort();
   if (signal?.aborted) controller.abort();
   signal?.addEventListener('abort', abort, { once: true });
   try { return await request(api, key, local, controller.signal); }
+  catch (cause) {
+    if (timedOut && !signal?.aborted) throw new Error('The server did not confirm the PDF request before the time limit.');
+    throw cause;
+  }
   finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); }
 }
 

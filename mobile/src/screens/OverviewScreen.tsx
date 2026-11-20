@@ -1,7 +1,10 @@
+import { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Enter, Txt } from '../design/frame';
 import { UIIcon } from '../design/icons';
-import { F } from '../design/tokens';
+import { EASE_SCREEN, F } from '../design/tokens';
+import { BACK_FADE_Y } from '../domain/gestures';
 import { useTheme } from '../design/theme';
 import { HintRow, PageSurface } from '../design/ui';
 import { fmt, relativeDay } from '../domain/format';
@@ -16,10 +19,16 @@ import { PanView } from '../design/PanView';
 
 export function OverviewScreen({active=true}:{active?:boolean}) {
   const {c}=useTheme(),{go,nav}=useShell(),model=useDeckModel(nav.deckId),now=useNow();
+  // OpenAI Codex, 2026-11-19: fade Full Review over the page that opened it.
+  const fadeY=useSharedValue(0);
+  const swipeFade=useAnimatedStyle(()=>({opacity:Math.max(0,1-Math.max(0,fadeY.value)/BACK_FADE_Y)}));
+  useEffect(()=>{if(!active)fadeY.set(0);},[active,fadeY]);
   const runScores=useRunScores(model,active),v3=runScores.v3,scores=runScores.scores;
   const feedback=useRunFeedbackStatus(model,active&&!v3);
   const run=model?.state.run;
-  const toBack=()=>go('home');
+  const toBack=()=>nav.from==='rehearse'
+    ? go('rehearse',{deckId:nav.deckId,slide:nav.sel,sel:nav.sel})
+    : go('home');
   useBack(active,()=>{toBack();return true;});
   if(!model||!run)return null;
   const total=model.total,target=model.targetSum;
@@ -33,11 +42,14 @@ export function OverviewScreen({active=true}:{active?:boolean}) {
   const hasSlideScores=scores.items.some(item=>item.score!==null);
   const tiles=Array.from({length:model.n},(_,i)=>scores.items[i]);
   const openFeedback=()=>go('feedback',{deckId:model.deck.id,sel:nav.sel,from:'full'});
-  const openListen=()=>go('listen',{deckId:model.deck.id,sel:nav.sel,from:nav.from??'full'});
+  // OpenAI Codex, 2026-11-19: Listen Back returns to this screen, regardless of how Full Review was opened.
+  const openListen=()=>go('listen',{deckId:model.deck.id,sel:nav.sel,from:'full'});
   const openQA=()=>go('qa',{deckId:model.deck.id,sel:nav.sel,from:'full'});
-  return <Enter kind={nav.nav}><PanView style={StyleSheet.absoluteFill}
+  return <Enter kind={active?nav.nav:null}><PanView style={[StyleSheet.absoluteFill,swipeFade]}
     onMoveShould={(_e,g)=>Math.abs(g.dy)>12&&Math.abs(g.dy)>Math.abs(g.dx)}
-    onRelease={(_e,g)=>{if(g.dy < -60)openQA();else if(g.dy>60)toBack();}}>
+    onMove={(_e,g)=>fadeY.set(Math.max(-BACK_FADE_Y,Math.min(BACK_FADE_Y,g.dy)))}
+    onRelease={(_e,g)=>{if(g.dy < -60){fadeY.set(0);openQA();}else if(g.dy>60)fadeY.set(withTiming(BACK_FADE_Y,{duration:460,easing:EASE_SCREEN},done=>{if(done)runOnJS(toBack)();}));else fadeY.set(withTiming(0,{duration:360,easing:EASE_SCREEN}));}}
+    onTerminate={()=>fadeY.set(withTiming(0,{duration:360,easing:EASE_SCREEN}))}>
     <PageSurface hue={model.deck.hue}/>
     <View style={styles.header}><Txt numberOfLines={1} style={[styles.title,{color:c.text}]}>{model.deck.title}</Txt><Txt style={[styles.sub,{color:c.secondary}]}>{`Review · ${runLabel(run,now,relativeDay)}`}</Txt></View>
     <View style={styles.big}><Txt numberOfLines={1} adjustsFontSizeToFit style={[styles.bigNumber,{color:score.score===null?c.secondary:scoreLevelColor(score.level,c)}]}>{status}</Txt>
@@ -69,7 +81,7 @@ export function OverviewScreen({active=true}:{active?:boolean}) {
     <Pressable accessibilityRole="button" onPress={openListen} style={[styles.door2,{borderColor:c.hair,backgroundColor:c.surface06}]}>
       <View style={styles.doorText}><Txt style={[styles.doorTitle,{color:c.text}]}>Listen back</Txt><Txt style={[styles.doorSub,{color:c.secondary}]}>{`${fmt(total)} with transcript`}</Txt></View><UIIcon name="i-arrow" size={17} color={c.secondary}/>
     </Pressable>
-    <HintRow hints={[{icon:'h-up',text:'Audience Q&A',nudge:'up'},{icon:'h-dn',text:'Home',nudge:'down'}]}/>
+    <HintRow hints={[{icon:'h-up',text:'Audience Q&A',nudge:'up'},{icon:'h-dn',text:nav.from==='rehearse'?'Slide preview':'Home',nudge:'down'}]}/>
   </PanView></Enter>;
 }
 function Stat({value,label}:{value:string;label:string}){const{c}=useTheme();return <View style={styles.stat}><Txt numberOfLines={1} style={[styles.statValue,{color:c.text}]}>{value}</Txt><Txt numberOfLines={1} style={[styles.statLabel,{color:c.secondary}]}>{label}</Txt></View>;}

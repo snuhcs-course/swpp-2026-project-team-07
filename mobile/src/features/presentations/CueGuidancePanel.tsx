@@ -1,6 +1,7 @@
 // OpenAI Codex reliability fixes: docs/ai-collaboration/prompt-logs/unattributed/iteration-2.md#record-138
 import { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
+import { Easing, runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { PanView } from '../../design/PanView';
 import { Txt, useFrame } from '../../design/frame';
 import { createThemedStyles, useTheme } from '../../design/theme';
@@ -12,36 +13,42 @@ type Props = {
   state: ProfileState | null; slide: number; error: string | null; busy: boolean;
   onRecover: (action: RecoveryAction) => void;
   onSheetOpenChange?: (open: boolean) => void;
+  connectionMessage?: string;
   playbackNotice?: string | null; requirementsNotice?: string | null;
 };
 export function CueGuidancePanel({ state, slide, error, busy, onRecover,
-  playbackNotice, requirementsNotice, onSheetOpenChange }: Props) {
+  playbackNotice, requirementsNotice, onSheetOpenChange, connectionMessage }: Props) {
   const { c } = useTheme();
   const frame = useFrame();
   const panelTop = frame.compact ? 320 : 372;
   const panelHeight = 134;
   const [sheet, setSheet] = useState<CueCategory | null>(null);
+  const sheetY = useSharedValue(0);
+  const reducedMotion = useReducedMotion();
+  const sheetMotion = useAnimatedStyle(() => ({opacity:reducedMotion?1:Math.max(0,1-sheetY.value/220),transform:[{translateY:reducedMotion?0:sheetY.value}]}));
   const views = { must_cover: cueState(state, slide, 'must_cover'), go_deeper: cueState(state, slide, 'go_deeper') };
   const common = views.must_cover.message && views.must_cover.message === views.go_deeper.message ? views.must_cover : null;
-  const message = busy ? 'Requesting AI cues…' : error || common?.message;
+  const message = busy ? 'Requesting AI cues…' : error || (!state ? connectionMessage : null) || common?.message;
   const action: RecoveryAction | null = error ? 'refresh' : common?.action ?? null;
   const actionLabel = action ? { refresh: 'Refresh AI cues', generate: 'Generate AI cues', retry: 'Retry AI cues', confirm: 'Confirm AI cue retry' }[action] : null;
   const notice = [message, requirementsNotice, playbackNotice].filter(Boolean).join(' · ');
   const labels: Record<CueCategory, string> = { must_cover: 'Must cover', go_deeper: 'Further insight' };
   const names: CueCategory[] = ['must_cover', 'go_deeper'];
   const sheetItems = sheet ? views[sheet].cues : [];
-  const closeSheet = () => { setSheet(null); onSheetOpenChange?.(false); };
+  const finishClose = () => {setSheet(null);onSheetOpenChange?.(false);sheetY.set(0);};
+  const closeSheet = () => sheetY.set(withTiming(220,{duration:reducedMotion?0:460,easing:Easing.out(Easing.cubic)},done=>{if(done)runOnJS(finishClose)();}));
+  const openSheet = (category:CueCategory) => {sheetY.set(reducedMotion?0:70);setSheet(category);onSheetOpenChange?.(true);sheetY.set(withTiming(0,{duration:reducedMotion?0:420,easing:Easing.out(Easing.cubic)}));};
   return <View style={[styles.panel, { top: panelTop }]}>
     <View style={styles.heading}><Txt style={styles.sectionTitle}>CUES</Txt><View style={styles.rule} /></View>
     <View style={styles.cards}>
       {names.map(category => {
         const data = views[category], cue = data.cues[0], count = data.cues.length;
         const empty = !cue;
-        const label = cue ? shortCueLabel(cue.text) : data.message || (state?.state === 'completed' ? 'Nothing extra here' : 'Cues are on the way');
+        const label = cue ? shortCueLabel(cue.text) : !state && connectionMessage ? connectionMessage : data.message || (state?.state === 'completed' ? 'Nothing extra here' : 'Cues are on the way');
         return <Pressable key={category} accessibilityRole="button"
           accessibilityLabel={`Open ${labels[category]} cues`}
           accessibilityHint={notice ? 'Includes cue and recording status.' : undefined}
-          onPress={() => { setSheet(category); onSheetOpenChange?.(true); }} style={[styles.card, { borderColor: c.hair, backgroundColor: c.surface06, opacity: empty ? 0.8 : 1 }]}>
+          onPress={() => openSheet(category)} style={[styles.card, { borderColor: c.hair, backgroundColor: c.surface06, opacity: empty ? 0.8 : 1 }]}>
           <View style={styles.cardTitle}><Txt style={[styles.kind, { color: category === 'must_cover' ? c.accent : c.muted }]}>{labels[category]}</Txt><Txt style={{ color: c.muted, fontSize: 18 }}>›</Txt></View>
           <Txt numberOfLines={2} style={styles.cardLabel}>{label}</Txt>
           <Txt numberOfLines={1} style={styles.more}>{notice ? 'Status · Tap for detail' : count > 1 ? `+${count - 1} more` : count === 1 ? 'Tap for detail' : ''}</Txt>
@@ -50,10 +57,11 @@ export function CueGuidancePanel({ state, slide, error, busy, onRecover,
     </View>
     {sheet && <View style={[styles.sheetLayer, { top: -panelTop, bottom: -(frame.height - panelTop - panelHeight) }]}>
       <Pressable accessibilityLabel="Close cue sheet" onPress={closeSheet} style={[styles.scrim, { backgroundColor: c.scrim }]} />
-      <PanView style={[styles.sheet, { backgroundColor: c.dialog, borderColor: c.line }]}
+      <PanView style={[styles.sheet, { backgroundColor: c.dialog, borderColor: c.line },sheetMotion]}
         onMoveShould={(_e, g) => g.dy > 8 && g.dy > Math.abs(g.dx)}
-        onMove={() => undefined}
-        onRelease={(_e, g) => { if (g.dy > 90) closeSheet(); }}>
+        onMove={(_e,g)=>sheetY.set(Math.max(0,Math.min(220,g.dy/frame.s)))}
+        onRelease={(_e, g) => { if (g.dy > 90) closeSheet(); else sheetY.set(withTiming(0,{duration:360,easing:Easing.out(Easing.cubic)})); }}
+        onTerminate={()=>sheetY.set(withTiming(0,{duration:360,easing:Easing.out(Easing.cubic)}))}>
         <View style={[styles.handle, { backgroundColor: c.muted2 }]} />
         <View style={styles.sheetHeader}><Txt style={[styles.sheetTitle, { color: sheet === 'must_cover' ? c.accent : c.text }]}>{labels[sheet]}</Txt>
           <Txt numberOfLines={1} style={styles.context}>Slide {slide + 1}</Txt></View>
@@ -64,7 +72,7 @@ export function CueGuidancePanel({ state, slide, error, busy, onRecover,
             <Txt style={[styles.status, { color: c.accent }]}>{actionLabel}</Txt>
           </Pressable>}
           {sheetItems.length ? sheetItems.map((item, index) => <CueDetail key={`${sheet}-${index}`} cue={item} />)
-            : views[sheet].message === message && notice ? null : <Txt style={styles.emptySheet}>{views[sheet].message || 'Cues are not available yet. Try again when the server is reachable.'}</Txt>}
+            : (state ? views[sheet].message : connectionMessage) === message && notice ? null : <Txt style={styles.emptySheet}>{(!state && connectionMessage) || views[sheet].message || 'Cues are not available yet. Try again when the server is reachable.'}</Txt>}
         </ScrollView>
         <Txt style={styles.closeHint}>↓ Swipe down to close</Txt>
       </PanView>

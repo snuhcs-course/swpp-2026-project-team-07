@@ -54,4 +54,7 @@ test('after-Stop fallback retains the existing first-take wait route', async t =
   await start(t, false);
   await tap(renderer.root.findByType('record-button'));
   assert.equal(runtime.routes.at(-1)[0], 'wait');
+  await act(async () => { t.mock.timers.tick(1); });
+  await tap(round('Review full presentation'));
+  assert.equal(runtime.routes.at(-1)[0], 'full', 'reopening the saved first take skips the one-time wait');
 });

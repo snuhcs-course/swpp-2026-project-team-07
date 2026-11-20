@@ -73,13 +73,50 @@ test('theme changes and reopening retain selected-slide cues without generating;
 test('interrupted recovery preserves the current slide cues through the existing recovery interface',async()=>{
  setup({slide:1});const recovered={id:'interrupted-take',state:'interrupted',recording:{duration_ms:3000,slide_events:[{slide_index:1,at_ms:0}]}};runtime.recoveries.push(recovered);const r=await mount();
  await tap(r.root.findAllByType('text').find(n=>n.props.accessibilityLabel==='Open interrupted recording for recovery'));assert.equal(r.root.findByType('take-playback').props.initialSlide,1);assert.match(text(r),/Recap how the final result/);
- await act(async()=>r.root.findByType('take-playback').props.onRecovered(recovered));assert.equal(r.root.findAllByType('take-playback').length,0);assert.match(text(r),/Slide 2 of 2/);assert.match(text(r),/Recap how the final result/);assert.deepEqual(runtime.routes[0],['review',{nav:'fade',deckId:runtime.model.deck.id,sel:1,slide:1,from:null}]);assert.equal(requests.length,1);
+ await act(async()=>r.root.findByType('take-playback').props.onRecovered(recovered));assert.equal(r.root.findAllByType('take-playback').length,0);assert.match(text(r),/Slide 2 of 2/);assert.match(text(r),/Recap how the final result/);assert.deepEqual(runtime.routes[0],['review',{nav:'fade',deckId:runtime.model.deck.id,sel:1,slide:1,from:'rehearse'}]);assert.equal(requests.length,1);
 });
 test('existing presentation opens the shared setup without changing the selected slide or cue set',async()=>{
  setup({slide:1});const r=await mount();const edit=button(r,'Edit presentation time and audience');assert.ok(edit);assert.equal(edit.findByType('icon').props.name,'i-sliders');await tap(edit);assert.ok(button(r,'Not sure. Long press to edit a custom audience.'));assert.match(text(r),/Slide 2 of 2/);assert.ok(runtime.stops>0);assert.equal(requests.filter(q=>q.method==='POST').length,0);
 });
 
-test('Review opens the currently selected slide while automatic completion keeps its own initial review',async()=>{setup({slide:1});const r=await mount();const control=round(r,'Review current slide');assert.ok(control);await tap(control);assert.deepEqual(runtime.routes.at(-1),['review',{nav:'rise',deckId:runtime.model.deck.id,sel:1,slide:1,from:null}]);assert.equal(requests.length,1);});
+test('Review opens the currently selected slide while automatic completion keeps its own initial review',async()=>{setup({slide:1});const r=await mount();const control=round(r,'Review current slide');assert.ok(control);await tap(control);assert.deepEqual(runtime.routes.at(-1),['review',{nav:'rise',deckId:runtime.model.deck.id,sel:1,slide:1,from:'rehearse'}]);assert.equal(requests.length,1);});
+
+test('slide preview title hands off to Home throughout a downward drag',async()=>{
+ setup();const r=await mount();const title=runtime.shell.home.titleReturn;
+ assert.equal(title.value,0);
+ const pan=r.root.findAllByType('pan')[0];
+ await act(async()=>pan.props.onMove({}, {dx:0,dy:90}));
+ assert.equal(title.value,0.5);
+ await act(async()=>pan.props.onMove({}, {dx:0,dy:130}));
+ await act(async()=>pan.props.onRelease());
+ assert.equal(title.value,1);
+});
+
+test('a touch begun during icon pop-out cannot suddenly close the preview',async()=>{
+ setup();runtime.reducedMotion=false;runtime.shell.nav={...runtime.shell.nav,from:'home',nav:'fade'};
+ const r=await mount();const pan=r.root.findAllByType('pan')[0];const event={nativeEvent:{pageY:200}};
+ await act(async()=>pan.props.onMove(event,{dx:0,dy:90}));
+ assert.equal(pan.props.onStartShould(event,{stateID:42}),false);
+ assert.equal(pan.props.onMoveShould(event,{stateID:42,dx:0,dy:100}),false);
+ await act(async()=>pan.props.onMove(event,{dx:0,dy:0}));
+ assert.equal(pan.props.onMoveShould(event,{stateID:42,dx:0,dy:100}),false);
+ assert.equal(pan.props.onStartShould(event,{stateID:43}),false);
+ assert.equal(pan.props.onMoveShould(event,{stateID:43,dx:0,dy:100}),false,'the page is still fading in');
+ const pageFade=runtime.timings.find(t=>t.value===1&&t.duration===600&&t.complete);
+ assert.ok(pageFade,'the page fade starts with the PDF and title');
+ assert.ok(runtime.timings.some(t=>t.value===0&&t.duration===600),'the PDF and title share the page fade duration');
+ assert.equal(pan.props.onMoveShould(event,{stateID:43,dx:0,dy:100}),false);
+ await act(async()=>pageFade.complete(true));
+ assert.equal(pan.props.onStartShould(event,{stateID:44}),false);
+ assert.equal(pan.props.onMoveShould(event,{stateID:44,dx:0,dy:100}),true);
+ const slidePan=r.root.findAllByType('pan').find(node=>node.props.accessibilityRole==='adjustable');
+ await act(async()=>pan.props.onMove(event,{dx:0,dy:90}));
+ assert.equal(slidePan.props.onStartShould(event,{stateID:45}),false);
+ assert.equal(slidePan.props.onMoveShould(event,{stateID:45,dx:-90,dy:0}),false);
+ await act(async()=>pan.props.onMove(event,{dx:0,dy:0}));
+ assert.equal(slidePan.props.onMoveShould(event,{stateID:45,dx:-90,dy:0}),false);
+ assert.equal(slidePan.props.onMoveShould(event,{stateID:46,dx:-90,dy:0}),true);
+});
 
 test('covered rehearsal keeps edit requirements unavailable',async()=>{setup();const r=await mount(false);assert.equal(button(r,'Edit presentation time and audience').props.disabled,true);});
 
@@ -96,11 +133,11 @@ test('covered rehearsal stops cue reconnects and reopening reads immediately wit
 });
 
 
-test('first saved recording Review opens legacy processing repeatedly; a later take opens the current slide',async()=>{
+test('first saved recording Review reopens Full Review; a later take opens the current slide',async()=>{
  setup({slide:1});runtime.model.state.takes=1;const r=await mount();
- await tap(round(r,'Review full presentation'));assert.equal(runtime.routes.at(-1)[0],'wait');assert.equal(runtime.routes.at(-1)[1].from,'rehearse');
- await tap(round(r,'Review full presentation'));assert.equal(runtime.routes.at(-1)[0],'wait');
- await act(async()=>r.unmount());renderer=null;await mount();await tap(round(renderer,'Review full presentation'));assert.equal(runtime.routes.at(-1)[0],'wait');
+ await tap(round(r,'Review full presentation'));assert.equal(runtime.routes.at(-1)[0],'full');assert.equal(runtime.routes.at(-1)[1].from,'rehearse');
+ await tap(round(r,'Review full presentation'));assert.equal(runtime.routes.at(-1)[0],'full');
+ await act(async()=>r.unmount());renderer=null;await mount();await tap(round(renderer,'Review full presentation'));assert.equal(runtime.routes.at(-1)[0],'full');
  await act(async()=>{runtime.model.state.takes=2;runtime.emit();});await tap(round(renderer,'Review current slide'));assert.equal(runtime.routes.at(-1)[0],'review');assert.equal(runtime.routes.at(-1)[1].sel,1);
 });
 test('stopping a first legacy recording opens processing without a duplicate analysis request',async t=>{

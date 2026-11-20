@@ -3,14 +3,19 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { AppState } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { API_URL } from '../../services/api';
+import { backendFetch, demoAccess } from '../../services/backendFetch';
 import { readStored } from '../../services/storage';
 import { normalizeApi } from '../transcription/analysisStorage';
 import { canonicalUuid } from '../feedback/validation';
 import { createProfileClient, readProfiles, type ProfileState } from './slideProfiles';
 
 const active = new Set(['queued', 'preparing', 'submitted', 'normalizing', 'waiting_quota']);
-export function useSlideProfiles(localId: string, pages: number, visible = true) {
+type LocalSource = { id: string; title: string; uri: string; pageCount: number };
+export function useSlideProfiles(localId: string, pages: number, visible = true, source?: LocalSource) {
   const api = normalizeApi(API_URL);
+  const sourceMatches = source?.id === localId && source.pageCount === pages && !!source.uri;
+  const sourceTitle = sourceMatches ? source.title : null;
+  const sourceUri = sourceMatches ? source.uri : null;
   const mapped = readStored<string>(`server-deck:${api}:${localId}`);
   const deck = canonicalUuid(mapped) ? mapped : null;
   const [snapshot, setSnapshot] = useState<{ deck: string | null; value: ProfileState | null }>({ deck, value: deck ? readProfiles(api, deck, pages) : null });
@@ -31,19 +36,54 @@ export function useSlideProfiles(localId: string, pages: number, visible = true)
     const stop = () => { controller?.abort(); if (timer) clearTimeout(timer); };
     const start = () => {
       stop();
-      if (!visible || !deck || AppState.currentState !== 'active') return;
+      if (!visible || AppState.currentState !== 'active' || (!deck && !sourceUri)) return;
       const current = new AbortController(); controller = current;
       const read = async () => {
         try {
+          if (!deck) {
+            // A locally ready PDF (including the bundled demo) may never have
+            // needed text extraction, so link it before reading server cues.
+            const readyController = new AbortController();
+            const abortReady = () => readyController.abort();
+            current.signal.addEventListener('abort', abortReady, { once: true });
+            const readyTimer = setTimeout(abortReady, 15_000);
+            let readiness: Response;
+            try { readiness = await backendFetch(`${api}/ready/`, { method: 'GET', signal: readyController.signal }); }
+            catch (cause) {
+              if (readyController.signal.aborted && !current.signal.aborted) throw Error('Server readiness timed out.');
+              throw cause;
+            } finally { clearTimeout(readyTimer); current.signal.removeEventListener('abort', abortReady); }
+            if (!readiness.ok) throw new Error(`Server readiness HTTP ${readiness.status}`);
+            const { serverSlides } = await import('./serverDeck');
+            await serverSlides({ id: localId, title: sourceTitle!, uri: sourceUri!, pageCount: pages }, api, current.signal, 180_000);
+            if (current.signal.aborted) return;
+            failures = 0;
+            setFailure({ deck: null, message: '' });
+            setRefresh(value => value + 1);
+            return;
+          }
           const next = await createProfileClient(api).read(deck, pages, current.signal);
           if (current.signal.aborted) return;
           failures = 0;
           setFailure({ deck, message: '' });
           setSnapshot({ deck, value: next });
           if (active.has(next.state)) timer = setTimeout(() => { void read(); }, 2500);
-        } catch {
+        } catch (cause) {
           if (current.signal.aborted) return;
-          setFailure({ deck, message: 'Connection interrupted. Saved cues are retained. Reconnecting…' });
+          const detail = cause instanceof Error ? cause.message : String(cause);
+          const codeNeeded = /demo code|server access expired|HTTP 401/i.test(detail);
+          const httpStatus = detail.match(/HTTP (\d{3})/i)?.[1];
+          const unconfirmed = /did not confirm the PDF request/i.test(detail);
+          const message = codeNeeded ? 'Enter the demo code to reconnect server cues.'
+            : unconfirmed ? 'Server did not confirm this PDF. Tap Refresh AI cues to try again.'
+            : httpStatus ? `Server returned HTTP ${httpStatus}. Reconnecting…`
+              : /server readiness timed out/i.test(detail) ? 'Server readiness check timed out. Reconnecting…'
+              : /different presentation/i.test(detail) ? 'The server returned a different presentation. Check this PDF before retrying.'
+                : /network request failed|failed to fetch|timeout|timed out/i.test(detail) ? 'Network upload failed. Reconnecting…'
+                  : deck ? 'Connection interrupted. Saved cues are retained. Reconnecting…'
+                    : 'Could not link this presentation to the server. Reconnecting…';
+          setFailure({ deck, message });
+          if (unconfirmed) return; // A timed-out upload may have completed; never replay it automatically.
           const delay = [2500, 5000, 10000, 30000][Math.min(failures++, 3)];
           timer = setTimeout(() => { void read(); }, delay);
         }
@@ -52,10 +92,13 @@ export function useSlideProfiles(localId: string, pages: number, visible = true)
     };
     start();
     const sub = AppState.addEventListener('change', state => { if (state === 'active') start(); else stop(); });
-    return () => { stop(); sub.remove(); };
+    const accessSub = demoAccess.subscribe(() => {
+      if (failures && demoAccess.getSnapshot().state === 'ready') start();
+    });
+    return () => { stop(); sub.remove(); accessSub(); };
   // Manual refresh deliberately restarts the focus lifecycle.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [api, deck, pages, refresh, visible]));
+  }, [api, deck, localId, pages, refresh, sourceTitle, sourceUri, visible]));
   const recover = useCallback(async (acknowledge = false, expected = value) => {
     if (!deck || locked.current) return;
     if (expected?.description_set_id !== value?.description_set_id || expected?.processing_revision !== value?.processing_revision ||

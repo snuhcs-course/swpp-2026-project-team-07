@@ -29,6 +29,19 @@ test('cue cards open complete category details without generating or replacing s
   });
 });
 
+test('cue sheet follows a downward drag before closing',async()=>{
+  await mounted({},async r=>{
+    await act(async()=>button(r,'Open Must cover cues').props.onPress());
+    const sheet=r.root.findAllByType('animated').find(n=>typeof n.props.onPanResponderMove==='function');
+    assert.ok(sheet);
+    await act(async()=>sheet.props.onPanResponderMove({}, {dx:0,dy:110}));
+    assert.equal(sheet.props.style[2].__animatedStyle.transform[0].translateY,110);
+    assert.equal(sheet.props.style[2].__animatedStyle.opacity,0.5);
+    await act(async()=>sheet.props.onPanResponderRelease({}, {dx:0,dy:110}));
+    assert.equal(r.root.findAllByType('scroll').length,0);
+  });
+});
+
 test('slide navigation updates open details and revisits restore cached cues without regeneration',async()=>{
   await mounted({},async r=>{
     await act(async()=>button(r,'Open Must cover cues').props.onPress());

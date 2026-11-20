@@ -14,7 +14,16 @@ export const HOLD_MS = 3000;
 export const CARD_STEP = 374;
 export const BACK_T = 110;
 /** Downward drag distance in design units at which the current page is fully faded. */
-export const BACK_FADE_Y = 240;
+// OpenAI Codex, 2026-11-19: a shorter fade travel makes slow downward swipes visibly dissolve the page.
+export const BACK_FADE_Y = 180;
+
+// OpenAI Codex, 2026-11-19: keep a Home carousel fling readable without making a single turn sluggish.
+export function homeCarouselRelease(position: number, velocity: number): { target: number; duration: number } {
+  'worklet';
+  const target = Math.round(position + Math.max(-4, Math.min(4, velocity * 0.25)));
+  const distance = Math.abs(target - position);
+  return { target, duration: Math.min(860, Math.max(300, 260 + distance * 145)) };
+}
 
 export type FlowSlot = {
   dd: number; x: number; scale: number; rotateY: number; blur: number; brightness: number;
@@ -63,9 +72,9 @@ export function decideRelease(o: { x: number; base: number; vel: number; step: n
   const next = slide + dir;
   if (dir !== 0 && next >= 0 && next < n) {
     const rem = Math.abs(-dir * step - x);
-    return { dir, ms: Math.round(Math.max(170, Math.min(300, 150 + rem * 0.36 - Math.abs(vel) * 70))) };
+    return { dir, ms: Math.round(Math.max(300, Math.min(480, 250 + rem * 0.4 - Math.abs(vel) * 45))) };
   }
-  return { dir: 0, ms: Math.round(Math.max(170, Math.min(280, 150 + Math.abs(x) * 0.36))) };
+  return { dir: 0, ms: Math.round(Math.max(300, Math.min(440, 250 + Math.abs(x) * 0.4))) };
 }
 
 /** Let Review's body scroll normally; a pull down from its top returns to slides. */

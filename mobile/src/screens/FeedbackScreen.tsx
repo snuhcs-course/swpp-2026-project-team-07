@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Enter, Txt } from '../design/frame';
 import { Glyph, UIIcon } from '../design/icons';
 import { PanView } from '../design/PanView';
-import { F } from '../design/tokens';
+import { EASE_SCREEN, F } from '../design/tokens';
+import { BACK_FADE_Y } from '../domain/gestures';
 import { useTheme } from '../design/theme';
 import { HintRow, PageSurface } from '../design/ui';
 import { fmt } from '../domain/format';
@@ -18,9 +20,14 @@ import { scoreAudioEvidence } from '../features/feedback/presentationScoreDispla
 import type { ScoreAdvice, ScoreEvidence } from '../features/feedback/presentationScore';
 import type { Finding } from '../features/feedback/slideReview';
 import { useBack, useShell } from './shared';
+import { useHorizontalSwipeMotion } from './swipeMotion';
 
 export function FeedbackScreen({active=true}:{active?:boolean}) {
   const {c}=useTheme(),{go,nav}=useShell();
+  // OpenAI Codex, 2026-11-19: preserve horizontal point swipes and fade on downward return.
+  const fadeY=useSharedValue(0);
+  const swipe=useHorizontalSwipeMotion();
+  const swipeFade=useAnimatedStyle(()=>({opacity:Math.max(0,1-fadeY.value/BACK_FADE_Y)}));
   const model=useDeckModel(nav.deckId),runScores=useRunScores(model,active),v3=runScores.v3;
   const feedback=useRunFeedbackStatus(model,active&&!v3),scores=runScores.v2;
   const player=useSegmentPlayer();
@@ -60,11 +67,13 @@ export function FeedbackScreen({active=true}:{active?:boolean}) {
     void player.playSegments(key,[{uri,startMs:finding.start_ms,endMs:finding.end_ms}]);
   };
   if(!model?.state.run)return null;
-  return <Enter kind={nav.nav}><PanView style={StyleSheet.absoluteFill}
+  return <Enter kind={nav.nav}><PanView style={[StyleSheet.absoluteFill,swipeFade]}
     onMoveShould={(_e,g)=>(Math.abs(g.dx)>18&&Math.abs(g.dx)>Math.abs(g.dy))||(g.dy>12&&g.dy>Math.abs(g.dx))}
-    onRelease={(_e,g)=>{if(g.dx < -60)next();else if(g.dx > 60)previous();else if(g.dy>90)back();}}>
-    <View style={StyleSheet.absoluteFill}>
+    onMove={(_e,g)=>{if(Math.abs(g.dx)>Math.abs(g.dy)){swipe.move(g.dx);fadeY.set(0);}else{swipe.settle();fadeY.set(Math.max(0,Math.min(BACK_FADE_Y,g.dy)));}}}
+    onRelease={(_e,g)=>{if(Math.abs(g.dx)>Math.abs(g.dy)&&g.dx < -60){next();swipe.settle();}else if(Math.abs(g.dx)>Math.abs(g.dy)&&g.dx > 60){previous();swipe.settle();}else if(g.dy>90)fadeY.set(withTiming(BACK_FADE_Y,{duration:460,easing:EASE_SCREEN},done=>{if(done)runOnJS(back)();}));else {swipe.settle();fadeY.set(withTiming(0,{duration:360,easing:EASE_SCREEN}));}}}
+    onTerminate={()=>{swipe.settle();fadeY.set(withTiming(0,{duration:360,easing:EASE_SCREEN}));}}>
     <PageSurface hue={model.deck.hue}/>
+    <Animated.View style={[StyleSheet.absoluteFill,swipe.style]}>
     <View style={styles.header}><Txt style={[styles.title,{color:c.text}]}>Feedback</Txt><Txt style={[styles.count,{color:c.secondary}]}>{points.length?`${currentIndex+1} of ${points.length}`:'No reviewed points'}</Txt></View>
     {point?<>
       <View style={[styles.slidePill,{backgroundColor:c.surface08}]}><UIIcon name="i-slides" size={16}/><Txt numberOfLines={1} style={[styles.pillText,{color:c.secondary}]}>{point.kind==='v3'?`${v3?.outdated?'Outdated · ':''}${point.card.slide===null?'Whole presentation':`Slide ${point.card.slide+1} · ${model.deck.slides[point.card.slide]?.title??`Slide ${point.card.slide+1}`}`}${point.card.gain?` · +${point.card.gain} pts`:''}`:point.kind==='slide'?`Slide ${point.slide+1} · ${model.deck.slides[point.slide]?.title??`Slide ${point.slide+1}`}`:'Whole presentation · Overall score'}</Txt></View>
@@ -92,7 +101,7 @@ export function FeedbackScreen({active=true}:{active?:boolean}) {
     </>:<View style={[styles.empty,{backgroundColor:c.surface06,borderColor:c.hair}]}><Txt style={[styles.quote,{color:c.secondary}]}>{v3?'Ways to raise your score appear here when the AI review is ready.':'Verified feedback points will appear here when a slide review is available.'}</Txt></View>}
     <View style={styles.dots}>{points.map((_,i)=><View key={i} style={[styles.dot,i===currentIndex?styles.activeDot:{backgroundColor:c.dotOff},i===currentIndex&&{backgroundColor:c.text}]}/>)}</View>
     <HintRow hints={[{icon:'h-spin',text:'Next point'},{icon:'h-dn',text:'Back to review',nudge:'down'}]}/>
-    </View>
+    </Animated.View>
   </PanView></Enter>;
 }
 

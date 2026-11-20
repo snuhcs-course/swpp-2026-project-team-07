@@ -22,6 +22,7 @@ const { getImportedPdfs } = await import('../src/features/pdf/service.ts');
 const { ensureSlideText, ensurePages } = await import('../src/features/presentations/importer.ts');
 const { defaultRequirementsPending } = await import('../src/features/presentations/defaultRequirements.ts');
 const { API_URL } = await import('../src/services/api.ts');
+const { readStored, writeStored } = await import('../src/services/storage.ts');
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const h = React.createElement;
@@ -62,13 +63,13 @@ test('home carousel opens rehearsal or saved review and restores a deck after Un
   savePresentation(deck('Second talk', 2));
   saveDeckState('First talk', { ...getDeckState('First talk'), run: { id: 'saved-run' } });
   const { routes, home } = await mount(HomeScreen, { mode: 'home', uploadLook: null });
-  await click('Close tutorial');
-  await act(async () => renderer.root.findByType('home-stats').props.onOpenReview());
+  assert.equal(renderer.root.findAllByType('home-stats').length, 2, 'adjacent stats stay mounted for the crossfade');
+  await act(async () => renderer.root.findAllByType('home-stats').find(node => node.props.active).props.onOpenReview());
   assert.deepEqual(routes.pop(), ['full', { nav: 'fade', deckId: 'First talk', from: 'home' }]);
   await action('increment');
   assert.equal(home.p.value, 1);
   await action('activate');
-  assert.deepEqual(routes.pop(), ['rehearse', { nav: 'fade', deckId: 'Second talk', slide: 0 }]);
+  assert.deepEqual(routes.pop(), ['rehearse', { nav: 'fade', deckId: 'Second talk', slide: 0, from: 'home' }]);
   await action('delete');
   assert.deepEqual(visibleDecks().map(d => d.id), ['First talk']);
   const undo = renderer.root.findAllByType('pressable').find(node =>
@@ -80,9 +81,20 @@ test('home carousel opens rehearsal or saved review and restores a deck after Un
   assert.deepEqual(routes.pop(), ['upload', { nav: 'fade' }]);
 });
 
-test('home opens the icon picker, help and credits, and leaves the last presentation in the library', async () => {
+test('Home card tap shows and releases a press response before navigation', async () => {
+  savePresentation(deck('Tap target', 1));
+  const { home } = await mount(HomeScreen, { mode: 'home', uploadLook: null });
+  const tapGesture = renderer.root.findByType('gesture').props.gesture[2];
+  await act(async () => tapGesture.onBegin());
+  assert.equal(home.press.value, 0.93);
+  await act(async () => tapGesture.onFinalize());
+  assert.equal(home.press.value, 1);
+});
+
+test('home opens the icon picker, logo tutorial and credits, and leaves the last presentation in the library', async () => {
   savePresentation(deck('Only talk', 1));
   const { routes } = await mount(HomeScreen, { mode: 'home', uploadLook: null });
+  assert.equal(renderer.root.findAllByProps({ accessibilityLabel: 'Close tutorial' }).length, 0);
   await action('delete');
   assert.equal(visibleDecks().length, 1);
   await action('longpress');
@@ -99,6 +111,23 @@ test('home opens the icon picker, help and credits, and leaves the last presenta
   await act(async () => byLabel('How OutLoud works').props.onLongPress());
   await act(async () => assert.equal(pressBack(), true));
   assert.equal(routes.length, 0);
+});
+
+test('Home language button toggles and saves a preference without translating the app', async () => {
+  writeStored('settings.languagePreference', 'en');
+  savePresentation(deck('Language deck', 1));
+  await mount(HomeScreen, { mode: 'home', uploadLook: null });
+  assert.equal(byLabel('Language preference: English').props.accessibilityState.checked, false);
+  await click('Language preference: English');
+  assert.equal(readStored('settings.languagePreference'), 'ko');
+  assert.equal(byLabel('Language preference: Korean').props.accessibilityState.checked, true);
+  assert.equal(textShown('OutLoud'), true);
+  assert.ok(renderer.root.findAllByType('text').some(node => node.children.join('').includes('screens remain in English')));
+  await act(async () => renderer.unmount()); renderer = undefined;
+  await mount(HomeScreen, { mode: 'home', uploadLook: null });
+  assert.ok(byLabel('Language preference: Korean'));
+  await click('Language preference: Korean');
+  assert.equal(readStored('settings.languagePreference'), 'en');
 });
 
 async function waitFor(predicate) {

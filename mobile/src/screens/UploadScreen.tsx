@@ -156,28 +156,28 @@ export function UploadScreen() {
     onRelease: () => {
       if (dy.get() > BACK_T) {
         backExiting.current = true;
-        dy.set(withTiming(BACK_FADE_Y, { duration: 220, easing: EASE_SCREEN }, finished => {
+        dy.set(withTiming(BACK_FADE_Y, { duration: 460, easing: EASE_SCREEN }, finished => {
           if (finished) runOnJS(leave)();
         }));
-        home.uploadBlur.set(withTiming(0, { duration: 220, easing: EASE_SCREEN }));
-        home.gap.set(withTiming(0, { duration: 220, easing: EASE_SCREEN }));
-        if (phase === 'analyze' || phase === 'configure') home.analyzing.set(withTiming(0, { duration: 220, easing: EASE_SCREEN }));
-        if (phase === 'configure') home.setup.set(withTiming(0, { duration: 220, easing: EASE_SCREEN }));
+        home.uploadBlur.set(withTiming(0, { duration: 460, easing: EASE_SCREEN }));
+        home.gap.set(withTiming(0, { duration: 460, easing: EASE_SCREEN }));
+        if (phase === 'analyze' || phase === 'configure') home.analyzing.set(withTiming(0, { duration: 460, easing: EASE_SCREEN }));
+        if (phase === 'configure') home.setup.set(withTiming(0, { duration: 460, easing: EASE_SCREEN }));
       } else {
-        dy.set(withTiming(0, { duration: 220, easing: EASE_SCREEN }));
-        home.uploadBlur.set(withTiming(1, { duration: 220, easing: EASE_SCREEN }));
-        home.gap.set(withTiming(1, { duration: 220, easing: EASE_SCREEN }));
-        if (phase === 'analyze' || phase === 'configure') home.analyzing.set(withTiming(1, { duration: 220, easing: EASE_SCREEN }));
-        if (phase === 'configure') home.setup.set(withTiming(1, { duration: 220, easing: EASE_SCREEN }));
+        dy.set(withTiming(0, { duration: 360, easing: EASE_SCREEN }));
+        home.uploadBlur.set(withTiming(1, { duration: 360, easing: EASE_SCREEN }));
+        home.gap.set(withTiming(1, { duration: 360, easing: EASE_SCREEN }));
+        if (phase === 'analyze' || phase === 'configure') home.analyzing.set(withTiming(1, { duration: 360, easing: EASE_SCREEN }));
+        if (phase === 'configure') home.setup.set(withTiming(1, { duration: 360, easing: EASE_SCREEN }));
       }
     },
     onTerminate: () => {
       if (backExiting.current) return;
-      dy.set(withTiming(0, { duration: 220, easing: EASE_SCREEN }));
-      home.uploadBlur.set(withTiming(1, { duration: 220, easing: EASE_SCREEN }));
-      home.gap.set(withTiming(1, { duration: 220, easing: EASE_SCREEN }));
-      if (phase === 'analyze' || phase === 'configure') home.analyzing.set(withTiming(1, { duration: 220, easing: EASE_SCREEN }));
-      if (phase === 'configure') home.setup.set(withTiming(1, { duration: 220, easing: EASE_SCREEN }));
+      dy.set(withTiming(0, { duration: 360, easing: EASE_SCREEN }));
+      home.uploadBlur.set(withTiming(1, { duration: 360, easing: EASE_SCREEN }));
+      home.gap.set(withTiming(1, { duration: 360, easing: EASE_SCREEN }));
+      if (phase === 'analyze' || phase === 'configure') home.analyzing.set(withTiming(1, { duration: 360, easing: EASE_SCREEN }));
+      if (phase === 'configure') home.setup.set(withTiming(1, { duration: 360, easing: EASE_SCREEN }));
     },
   };
   useBack(true, () => { leave(); return true; });

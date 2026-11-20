@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Enter, Txt, useFrame } from '../design/frame';
 import { Glyph } from '../design/icons';
 import { PanView } from '../design/PanView';
-import { F, FRAME_W } from '../design/tokens';
+import { EASE_SCREEN, F, FRAME_W } from '../design/tokens';
+import { BACK_FADE_Y } from '../domain/gestures';
 import { useTheme } from '../design/theme';
 import { HintRow, PageSurface } from '../design/ui';
 import { fmt } from '../domain/format';
@@ -14,6 +16,7 @@ import { audioOf } from '../features/rehearsal/analysis';
 import { useSegmentPlayer, type Segment } from '../features/rehearsal/useSegmentPlayer';
 import { useDeckModel } from '../features/presentations/useDeckModel';
 import { useBack, useShell } from './shared';
+import { useHorizontalSwipeMotion } from './swipeMotion';
 
 const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
 type AudioPlan = ListenVisit & { playbackStartMs: number };
@@ -22,6 +25,10 @@ export function ListenBackKaraokeScreen({ active = true }: { active?: boolean })
   const { c } = useTheme();
   const frame = useFrame();
   const { go, nav } = useShell();
+  // OpenAI Codex, 2026-11-19: let the review beneath show through a downward swipe.
+  const fadeY = useSharedValue(0);
+  const swipe = useHorizontalSwipeMotion();
+  const swipeFade = useAnimatedStyle(() => ({ opacity: Math.max(0, 1 - fadeY.value / BACK_FADE_Y) }));
   const model = useDeckModel(nav.deckId);
   const player = useSegmentPlayer();
   const [selectedSlide, setSelectedSlide] = useState(Math.max(0, nav.sel));
@@ -63,7 +70,8 @@ export function ListenBackKaraokeScreen({ active = true }: { active?: boolean })
   const nextLine = followingLineIndex >= 0 ? lines[followingLineIndex] : undefined;
   const back = () => {
     player.stop();
-    if (nav.from === 'wait') go('wait', { deckId: nav.deckId, sel: nav.sel });
+    // OpenAI Codex, 2026-11-19: listening is always allowed to return to the available full review.
+    if (nav.from === 'wait') go('full', { deckId: nav.deckId, sel: nav.sel, from: 'wait' });
     else if (nav.from === 'review') go('review', { deckId: nav.deckId, sel: nav.sel });
     else if (nav.from === 'full') go('full', { deckId: nav.deckId, sel: nav.sel });
     else if (nav.from === 'rehearse') go('rehearse', { nav: null, deckId: nav.deckId, slide: nav.sel });
@@ -79,6 +87,7 @@ export function ListenBackKaraokeScreen({ active = true }: { active?: boolean })
     setScrub(null);
     if (playing && segments.length) seek(next.runStart, false);
   };
+  const animatedJump = (delta: number) => {swipe.move(delta>0?-95:95);jump(delta);swipe.settle();};
   const seek = (seconds: number, paused: boolean) => {
     if (!segments.length) { setNotice('No saved audio is available on this phone.'); return; }
     const slide=listenEntryAt(seconds,chapters)?.slide??selectedSlide,entry=listenEntryAt(seconds,plan);
@@ -102,11 +111,13 @@ export function ListenBackKaraokeScreen({ active = true }: { active?: boolean })
   const swipeShould = (_e: unknown, g: { dx: number; dy: number }) => (Math.abs(g.dx) > 18 && Math.abs(g.dx) > Math.abs(g.dy)) || (g.dy > 12 && g.dy > Math.abs(g.dx));
   if (!model || !run) return null;
 
-  return <Enter kind={nav.nav}><PanView style={StyleSheet.absoluteFill}
+  return <Enter kind={nav.nav}><PanView style={[StyleSheet.absoluteFill, swipeFade]}
     onMoveShould={swipeShould}
-    onRelease={(_e, g) => { if (g.dy > 90 || g.vy > 0.8) back(); else if (g.dx < -60 || g.vx < -0.6) jump(1); else if (g.dx > 60 || g.vx > 0.6) jump(-1); }}>
-    <View style={StyleSheet.absoluteFill}>
-      <PageSurface hue={model.deck.hue} />
+    onMove={(_e, g) => { if(Math.abs(g.dx)>Math.abs(g.dy)){swipe.move(g.dx/frame.s);fadeY.set(0);}else{swipe.settle();fadeY.set(Math.max(0, Math.min(BACK_FADE_Y, g.dy / frame.s)));} }}
+    onRelease={(_e, g) => { const horizontal=Math.abs(g.dx)>Math.abs(g.dy)||Math.abs(g.vx)>0.6&&Math.abs(g.vx)>Math.abs(g.vy);if (!horizontal&&(g.dy > 90 || g.vy > 0.8)) fadeY.set(withTiming(BACK_FADE_Y, { duration: 460, easing: EASE_SCREEN }, done => { if (done) runOnJS(back)(); })); else { fadeY.set(withTiming(0, { duration: 360, easing: EASE_SCREEN })); if (horizontal&&(g.dx < -60 || g.vx < -0.6)){if(Math.abs(g.dx)<18)swipe.move(-95);jump(1);} else if (horizontal&&(g.dx > 60 || g.vx > 0.6)){if(Math.abs(g.dx)<18)swipe.move(95);jump(-1);} swipe.settle(); } }}
+    onTerminate={() => {swipe.settle();fadeY.set(withTiming(0, { duration: 360, easing: EASE_SCREEN }));}}>
+    <PageSurface hue={model.deck.hue} />
+    <Animated.View style={[StyleSheet.absoluteFill,swipe.style]}>
       <View style={styles.header} pointerEvents="none">
         <Txt numberOfLines={1} style={[styles.title, { color: c.text }]}>Listen back</Txt>
         <Txt style={[styles.subtitle, { color: c.secondary }]}>{`Whole run · ${fmt(total)}`}</Txt>
@@ -150,14 +161,14 @@ export function ListenBackKaraokeScreen({ active = true }: { active?: boolean })
         <View style={styles.times}><Txt style={[styles.timeText, { color: c.secondary }]}>{fmt(position)}</Txt><Txt style={[styles.timeText, { color: c.secondary }]}>{fmt(total)}</Txt></View>
       </PanView>
       <View style={styles.controls}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Previous slide" onPress={() => jump(-1)} style={styles.skip}><Txt style={[styles.skipArrow,{color:c.text}]}>‹</Txt></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="Previous slide" onPress={() => animatedJump(-1)} style={styles.skip}><Txt style={[styles.skipArrow,{color:c.text}]}>‹</Txt></Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel={playing && !player.paused ? 'Pause whole run' : 'Play whole run'} onPress={toggle} style={[styles.play, { backgroundColor: c.strong }]}>
           <Glyph name={playing && !player.paused ? 'p-pause' : 'p-play'} size={25} color={c.onAccent} />
         </Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel="Next slide" onPress={() => jump(1)} style={styles.skip}><Txt style={[styles.skipArrow,{color:c.text}]}>›</Txt></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="Next slide" onPress={() => animatedJump(1)} style={styles.skip}><Txt style={[styles.skipArrow,{color:c.text}]}>›</Txt></Pressable>
       </View>
       <HintRow hints={[{ icon: 'h-spin', text: 'Skip a slide' }, { icon: 'h-dn', text: 'Back to review', nudge: 'down' }]} />
-    </View>
+    </Animated.View>
   </PanView></Enter>;
 }
 

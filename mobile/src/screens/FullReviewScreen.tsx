@@ -106,12 +106,12 @@ export function ListenBackScreen({ active = true }: { active?: boolean }) {
     onRelease: () => {
       if (dy.get() > BACK_T) {
         backExiting.current = true;
-        dy.set(withTiming(BACK_FADE_Y, { duration: 220, easing: EASE_SCREEN }, finished => {
+        dy.set(withTiming(BACK_FADE_Y, { duration: 460, easing: EASE_SCREEN }, finished => {
           if (finished) runOnJS(toBack)();
         }));
-      } else dy.set(withTiming(0, { duration: 220, easing: EASE_SCREEN }));
+      } else dy.set(withTiming(0, { duration: 360, easing: EASE_SCREEN }));
     },
-    onTerminate: () => { if (!backExiting.current) dy.set(withTiming(0, { duration: 220, easing: EASE_SCREEN })); },
+    onTerminate: () => { if (!backExiting.current) dy.set(withTiming(0, { duration: 360, easing: EASE_SCREEN })); },
   };
   useBack(active, () => { toBack(); return true; });
   const screen = useAnimatedStyle(() => ({ opacity: Math.max(0, 1 - dy.value / BACK_FADE_Y) }));

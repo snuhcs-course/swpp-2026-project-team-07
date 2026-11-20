@@ -32,7 +32,7 @@ export function useSegmentPlayer(){const[,render]=React.useState(0);const[p]=Rea
  x.play=(key,segment)=>x.playSegments(key,[segment]);return x;});if(!runtime.players.includes(p))runtime.players.push(p);return p;}
 export const Easing={bezier:()=>v=>v},withTiming=(v,_config,complete)=>{complete?.(true);return v;},runOnJS=f=>f;
 export const useSharedValue=value=>{const r=React.useRef({value,get(){return this.value},set(v){this.value=v}});return r.current;};
-export const useAnimatedStyle=()=>({}),useAnimatedProps=()=>({}),useReducedMotion=()=>true;
+export const useAnimatedStyle=fn=>fn(),useAnimatedProps=()=>({}),useReducedMotion=()=>runtime.reducedMotion??true;
 export const createThemedStyles=x=>x;
 export const useTheme=()=>({mode:runtime.theme??'dark',c:runtime.palettes?.[runtime.theme??'dark']??{text:'#fff',body:'#ddd',secondary:'#aaa',tertiary:'#888',good:'#0a0',warn:'#fa0',bad:'#f44',info:'#88f',strong:'#fff'}});
 export const Defs='defs',LinearGradient='gradient',Path='path',Rect='rect',Stop='stop',Circle='circle';

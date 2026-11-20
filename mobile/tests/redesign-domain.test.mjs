@@ -14,7 +14,16 @@ const { parseSlideText, slideTargets, defaultTarget } = await import('../src/dom
 const { mergeTake, takeVisits, runTimes, runLabel } = await import('../src/domain/run.ts');
 const { sentences, buildLines, buildVocabulary, splitFlags } = await import('../src/domain/lines.ts');
 const { reviewInsights, findingsFor, paceChip, heroStats, compareRows, summarizeTake } = await import('../src/domain/analysis.ts');
-const { decideRelease, coverFlow } = await import('../src/domain/gestures.ts');
+const { decideRelease, coverFlow, homeCarouselRelease } = await import('../src/domain/gestures.ts');
+
+test('Home carousel fling slows long spins while a short turn stays responsive', () => {
+  assert.deepEqual(homeCarouselRelease(0, 4), { target: 1, duration: 405 });
+  const fast = homeCarouselRelease(0, 100);
+  assert.equal(fast.target, 4);
+  assert.equal(fast.duration, 840);
+  assert.deepEqual(homeCarouselRelease(0, -100), { target: -4, duration: 840 });
+  assert.equal(homeCarouselRelease(0.1, 0).duration, 300);
+});
 
 test('formatting and hues follow the design', () => {
   assert.equal(fmt(767), '12:47');

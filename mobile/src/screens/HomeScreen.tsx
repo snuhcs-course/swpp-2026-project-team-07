@@ -31,9 +31,10 @@ import { PanView, type PanHandlers } from '../design/PanView';
 import { C, DECK_COLORS, F, HUES } from '../design/tokens';
 import { createThemedStyles, useTheme } from '../design/theme';
 import { ThemeToggle } from '../design/ThemeToggle';
+import { LanguageToggle } from '../design/LanguageToggle';
 import { HintRow, UndoToast } from '../design/ui';
 import { readStored, writeStored } from '../services/storage';
-import { coverFlow, HOLD_MS, PULL_T, PX_PER_CARD, rubber } from '../domain/gestures';
+import { coverFlow, homeCarouselRelease, HOLD_MS, PULL_T, PX_PER_CARD, rubber } from '../domain/gestures';
 import { ICONS, type HueName, type IconId } from '../domain/hues';
 import { mod, nearestSlot, pad2 } from '../domain/format';
 import { HomeFeedbackStats } from './HomeFeedbackStats';
@@ -41,6 +42,7 @@ import { getDeckState, nextHue, setHidden, setHue, setIcon, useStore, visibleDec
 import { savedAttempts } from '../features/recording/storage';
 import { pdfService } from '../features/pdf/service';
 import { useBack, useHomeShell } from './shared';
+import { useHorizontalSwipeMotion } from './swipeMotion';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const SLOT_W = 260, SLOT_H = 223, SLOT_TOP = 61, ORIGIN_Y = 111;
@@ -54,10 +56,24 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode:
   const [front, setFront] = useState(() => (n ? mod(Math.round(home.p.value), n) : 0));
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const [creditsOpen, setCreditsOpen] = useState(false);
-  const [tutorialPage, setTutorialPage] = useState<number | null>(() => {
-    try { return readStored<boolean>('settings.tutorialSeen') ? null : 0; }
-    catch { return null; }
+  const [tutorialPage, setTutorialPage] = useState<number | null>(null);
+  // OpenAI Codex, 2026-11-19: save a future UI-language preference without claiming the app is translated.
+  const [languagePreference, setLanguagePreference] = useState<'en' | 'ko'>(() => {
+    try { return readStored<string>('settings.languagePreference') === 'ko' ? 'ko' : 'en'; }
+    catch { return 'en'; }
   });
+  const [languageNotice, setLanguageNotice] = useState<string | null>(null);
+  const languageNoticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (languageNoticeTimer.current) clearTimeout(languageNoticeTimer.current); }, []);
+  const toggleLanguagePreference = () => {
+    const next = languagePreference === 'en' ? 'ko' : 'en';
+    setLanguagePreference(next);
+    let saved = true;
+    try { writeStored('settings.languagePreference', next); } catch { saved = false; }
+    setLanguageNotice(`${next === 'ko' ? '한국어' : 'English'} preference selected${saved ? '' : ' for this session'}. App translation is coming later; screens remain in English.`);
+    if (languageNoticeTimer.current) clearTimeout(languageNoticeTimer.current);
+    languageNoticeTimer.current = setTimeout(() => setLanguageNotice(null), 4000);
+  };
   const [undo, setUndo] = useState<{ deck: Presentation; at: number } | null>(null);
   const [pullLabel, setPullLabel] = useState<'' | 'add' | 'addPast' | 'del' | 'delPast' | 'keep'>('');
   const newHue = mode === 'upload' && uploadLook ? uploadLook.hue : nextHue();
@@ -70,10 +86,7 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode:
   }, [creditsOpen, creditsOpacity, reducedMotion]);
   const creditsFade = useAnimatedStyle(() => ({ opacity: creditsOpacity.value }));
   const floatEnabled = active && !reducedMotion;
-  const closeTutorial = () => {
-    setTutorialPage(null);
-    try { writeStored('settings.tutorialSeen', true); } catch { /* Tutorial can be opened again from Help. */ }
-  };
+  const closeTutorial = () => setTutorialPage(null);
   const floatPhase = useSharedValue(0);
   useEffect(() => {
     cancelAnimation(floatPhase);
@@ -89,12 +102,12 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode:
 
   const settle = useCallback((target: number) => {
     const dist = Math.abs(target - home.p.value);
-    home.p.set(withTiming(target, { duration: Math.min(560, 230 + dist * 90), easing: Easing.out(Easing.cubic) }));
+    home.p.set(withTiming(target, { duration: Math.min(820, 340 + dist * 150), easing: Easing.out(Easing.cubic) }));
   }, [home.p]);
 
   const openFront = useCallback(() => {
     const deck = decks[mod(Math.round(home.p.value), Math.max(1, n))];
-    if (deck) go('rehearse', { nav: 'fade', deckId: deck.id, slide: 0 });
+    if (deck) go('rehearse', { nav: 'fade', deckId: deck.id, slide: 0, from: 'home' });
   }, [decks, go, home.p, n]);
   const openAdd = useCallback(() => {
     settle(Math.round(home.p.value));
@@ -167,7 +180,7 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode:
     if (!deck) return;
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
     setPickerFor(deck.id);
-    home.picker.set(withTiming(1, { duration: 220 }));
+    home.picker.set(withTiming(1, { duration: 420 }));
   };
   const pan = usePanGesture({
     enabled: active,
@@ -236,9 +249,8 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode:
       labelStage.value = 0;
       if (dragAxis.value === 1 && n) {
         const velocity = e.canceled ? 0 : -e.velocityX / frame.s / PX_PER_CARD;
-        const target = Math.round(home.p.value + Math.max(-8, Math.min(8, velocity * 0.35)));
-        const distance = Math.abs(target - home.p.value);
-        home.p.value = withTiming(target, { duration: Math.min(560, 230 + distance * 90), easing: Easing.out(Easing.cubic) });
+        const { target, duration } = homeCarouselRelease(home.p.value, velocity);
+        home.p.value = withTiming(target, { duration, easing: Easing.out(Easing.cubic) });
       } else if (dragAxis.value === 2 && !e.canceled && !wasDeleted && pulled <= -PULL_T * 0.98) {
         runOnJS(openAdd)();
       }
@@ -253,8 +265,11 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode:
     onFinalize: () => { home.press.value = withTiming(1, { duration: 180 }); },
   });
   const tap = useTapGesture({
+    // OpenAI Codex, 2026-11-19: confirm a card tap before opening its presentation.
     enabled: active, maxDistance: 8,
+    onBegin: () => { home.press.value = withTiming(0.93, { duration: 100 }); },
     onActivate: e => { runOnJS(onTap)(e.absoluteX, e.absoluteY); },
+    onFinalize: () => { home.press.value = withTiming(1, { duration: 220 }); },
   });
   const carouselGesture = useSimultaneousGestures(pan, longPress, tap);
 
@@ -264,7 +279,7 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode:
     else closePicker();
     return true;
   });
-  function closePicker() { home.picker.set(withTiming(0, { duration: 220 })); setPickerFor(null); }
+  function closePicker() { home.picker.set(withTiming(0, { duration: 420 })); setPickerFor(null); }
 
   const frontDeck = n ? decks[shown] : null;
   void storeVersion;
@@ -284,18 +299,22 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode:
   const visibleSlots = decks.map((deck, j) => ({ deck, j })).filter(({ j }) => frame.compact
     ? j === shown
     : Math.min(mod(j - shown, n || 1), mod(shown - j, n || 1)) <= 2);
+  const visibleStats = n ? [...new Set([shown, mod(shown - 1, n), mod(shown + 1, n)])] : [];
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents={mode === 'home' ? 'box-none' : 'none'}
       accessibilityElementsHidden={mode !== 'home'} importantForAccessibility={mode === 'home' ? 'auto' : 'no-hide-descendants'}>
       <Animated.View pointerEvents="box-none" accessibilityElementsHidden={creditsOpen} importantForAccessibility={creditsOpen ? 'no-hide-descendants' : 'auto'}
         style={[StyleSheet.absoluteFill, pickerFor || creditsOpen ? styles.overlayBlur : null, setupDim]}>
-      <View pointerEvents="none" style={styles.logo}><Txt style={styles.logoText}>OutLoud</Txt></View>
+      <Pressable accessibilityRole="button" accessibilityLabel="How OutLoud works" onPress={() => setTutorialPage(0)} onLongPress={() => setCreditsOpen(true)}
+        style={styles.logo}><Txt style={styles.logoText}>OutLoud</Txt></Pressable>
       <Animated.View pointerEvents={mode === 'home' ? 'box-none' : 'none'} style={[StyleSheet.absoluteFill, homeControls]}>
-        {!pickerFor && <Pressable accessibilityRole="button" accessibilityLabel="How OutLoud works" onPress={() => setTutorialPage(0)} onLongPress={() => setCreditsOpen(true)}
-          style={styles.brandMarkButton}><Txt style={[styles.helpGlyph, { color: c.text }]}>?</Txt></Pressable>}
+        {!pickerFor && <LanguageToggle lang={languagePreference} onPress={toggleLanguagePreference} />}
         {!pickerFor && <ThemeToggle />}
       </Animated.View>
+      {languageNotice && <View pointerEvents="none" accessibilityRole="alert" style={[styles.languageNotice, { backgroundColor: c.surface, borderColor: c.hair }]}>
+        <Txt style={[styles.languageNoticeText, { color: c.text }]}>{languageNotice}</Txt>
+      </View>}
       <GestureDetector gesture={carouselGesture}><Animated.View style={[styles.carousel, homeLayer, mode === 'upload' && styles.addBlur]}
         accessible accessibilityRole="adjustable" accessibilityLabel={frontDeck ? `${frontDeck.title}, ${frontDeck.pageCount} slides` : 'No presentations yet'}
         accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }, { name: 'activate', label: 'Open' }, { name: 'longpress', label: 'Choose icon' },
@@ -305,20 +324,20 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode:
           if (a === 'increment') settle(Math.round(home.p.value) + 1);
           else if (a === 'decrement') settle(Math.round(home.p.value) - 1);
           else if (a === 'activate') openFront();
-          else if (a === 'longpress' && frontDeck) { setPickerFor(frontDeck.id); home.picker.set(withTiming(1, { duration: 220 })); }
+          else if (a === 'longpress' && frontDeck) { setPickerFor(frontDeck.id); home.picker.set(withTiming(1, { duration: 420 })); }
           else if (a === 'add') openAdd();
           else if (a === 'delete') deleteFront();
         }}>
         {visibleSlots.map(({ deck, j }) => <Slot key={deck.id} deck={deck} j={j} n={n} home={home}
-          floatPhase={floatPhase} floatEnabled={floatEnabled} isFront={j === shown} compact={frame.compact} showText={mode === 'home'} />)}
+          floatPhase={floatPhase} floatEnabled={floatEnabled} isFront={j === shown} compact={frame.compact} showText={mode !== 'upload'} />)}
       </Animated.View></GestureDetector>
       <View pointerEvents="none" style={styles.ghostLayer}>
         <Ghost home={home} hue={newHue} order={newOrder} empty={!n} showText={mode !== 'upload'} />
       </View>
       <Animated.View pointerEvents={mode === 'home' ? 'box-none' : 'none'} style={[StyleSheet.absoluteFill, homeControls]}>
         <PullIndicator home={home} label={pullLabel} />
-        <HomeFeedbackStats deckId={frontDeck?.id ?? null} home={home} active={mode === 'home'} onOpenReview={openFullReview} />
-        <Dots n={n} front={shown} />
+        {visibleStats.map(index => <HomeFeedbackStats key={decks[index].id} deckId={decks[index].id} index={index} count={n}
+          home={home} active={mode === 'home' && index === shown} onOpenReview={openFullReview} />)}
         <HomeHints home={home} empty={!n} />
         {undo && <UndoToast text={`Deleted “${undo.deck.title}”`} onUndo={undoDelete} />}
       </Animated.View>
@@ -376,13 +395,16 @@ const Slot = memo(function Slot({ deck, j, n, home, floatPhase, floatEnabled, is
     const f = flow.value;
     return { opacity: f.shadowOpacity, transform: [{ scaleX: f.shadowScale }] };
   });
+  const titleHandoff = useAnimatedStyle(() => ({
+    opacity: Math.max(0, Math.min(1, ((home.titleReturn?.value ?? 1) - 0.55) / 0.45)),
+  }));
   return (
     <Animated.View pointerEvents="none" style={[styles.slot, outer]}>
       <Animated.View style={[styles.item, body]}>
-        {showText && <>
+        {showText && <Animated.View style={[styles.slotCopy,titleHandoff]}>
           <Txt numberOfLines={2} style={[styles.title, mode === 'light' && { color: c.text }]}>{deck.title}</Txt>
           <Txt style={styles.meta}>{(deck.pageCount || '—') + ' slides · ' + pad2(j + 1)}</Txt>
-        </>}
+        </Animated.View>}
         <Animated.View renderToHardwareTextureAndroid style={[styles.icon, icon]}>
           <PresentationIcon icon={deck.icon} hue={deck.hue} size={compact ? 120 : 146} />
         </Animated.View>
@@ -492,14 +514,6 @@ function PullIndicator({ home, label }: { home: import('./shared').HomeShared; l
 
 // ── Stats panel for the front presentation ───────────────────────────────────
 
-function Dots({ n, front }: { n: number; front: number }) {
-  const { c } = useTheme();
-  return (
-    <View pointerEvents="none" style={styles.dots}>
-      {Array.from({ length: Math.max(1, n) }, (_, i) => <View key={i} style={{ width: i === front ? 18 : 6, height: 6, borderRadius: 3, backgroundColor: i === front ? c.text : c.dotOff }} />)}
-    </View>
-  );
-}
 function HomeHints({ home, empty }: { home: import('./shared').HomeShared; empty: boolean }) {
   const style = useAnimatedStyle(() => ({ opacity: home.vy.value < 0 ? 1 - Math.min(1, -home.vy.value / PULL_T) : 1 }));
   return (
@@ -517,18 +531,19 @@ function IconPicker({ deckId, onClose }: { deckId: string; onClose: () => void }
   const frame = useFrame();
   const dy = useSharedValue(0);
   const enter = useSharedValue(0);
-  useEffect(() => { enter.set(withTiming(1, { duration: 220, easing: Easing.out(Easing.cubic) })); }, [enter]);
+  useEffect(() => { enter.set(withTiming(1, { duration: 420, easing: Easing.out(Easing.cubic) })); }, [enter]);
+  const close = () => enter.set(withTiming(0, {duration:420,easing:Easing.out(Easing.cubic)},done=>{if(done)runOnJS(onClose)();}));
   const drag: PanHandlers = {
     onMoveShould: (_e, gs) => gs.dy > 8 && Math.abs(gs.dy) > Math.abs(gs.dx),
     onMove: (_e, gs) => { dy.set(Math.max(0, gs.dy / frame.s)); },
-    onRelease: () => { if (dy.get() > 110) onClose(); else dy.set(withTiming(0, { duration: 300, easing: Easing.bezier(0.2, 0.8, 0.2, 1) })); },
-    onTerminate: () => { dy.set(withTiming(0, { duration: 300 })); },
+    onRelease: () => { if (dy.get() > 110) dy.set(withTiming(680, { duration: 460, easing: Easing.out(Easing.cubic) }, done => {if(done)runOnJS(onClose)();})); else dy.set(withTiming(0, { duration: 420, easing: Easing.bezier(0.2, 0.8, 0.2, 1) })); },
+    onTerminate: () => { dy.set(withTiming(0, { duration: 420 })); },
   };
   const sheet = useAnimatedStyle(() => ({ opacity: enter.value, transform: [{ translateY: dy.value }] }));
   if (!deck) return null;
   return (
     <View style={[StyleSheet.absoluteFill, { zIndex: 30 }]}>
-      <Pressable accessibilityLabel="Close icon picker" onPress={onClose} style={StyleSheet.absoluteFill} />
+      <Pressable accessibilityLabel="Close icon picker" onPress={close} style={StyleSheet.absoluteFill} />
       <PanView accessibilityViewIsModal style={[styles.sheet, sheet]} {...drag}>
         <View style={{ paddingHorizontal: 40, alignItems: 'center' }} pointerEvents="none">
           <Txt style={styles.pickTitle}>Choose an icon</Txt>
@@ -571,6 +586,9 @@ function TutorialOverlay({ page, onPage, onClose }: { page: number; onPage: (pag
   const { c } = useTheme();
   const reducedMotion = useReducedMotion();
   const demo = useSharedValue(0);
+  const fadeY = useSharedValue(0);
+  const swipe = useHorizontalSwipeMotion();
+  const fade = useAnimatedStyle(() => ({opacity:reducedMotion?1:Math.max(0,1-fadeY.value/180)}));
   useEffect(() => {
     cancelAnimation(demo);
     demo.set(0);
@@ -600,13 +618,17 @@ function TutorialOverlay({ page, onPage, onClose }: { page: number; onPage: (pag
     ['Delete', 'swipe down to delete with Undo'], ['Score', 'tap a score to see the full review'],
   ];
   const [title, detail] = steps[page] ?? steps[0];
-  const next = () => page >= steps.length - 1 ? onClose() : onPage(page + 1);
-  return <PanView accessibilityViewIsModal style={[StyleSheet.absoluteFill, styles.tutorial, { backgroundColor: c.bg }]}
+  const dismiss = () => fadeY.set(withTiming(180,{duration:reducedMotion?0:460,easing:Easing.out(Easing.cubic)},done=>{if(done)runOnJS(onClose)();}));
+  const next = () => page >= steps.length - 1 ? dismiss() : onPage(page + 1);
+  return <PanView accessibilityViewIsModal style={[StyleSheet.absoluteFill, styles.tutorial, { backgroundColor: c.bg },fade]}
     onMoveShould={(_e,g)=>(Math.abs(g.dx)>18&&Math.abs(g.dx)>Math.abs(g.dy))||(g.dy>18&&g.dy>Math.abs(g.dx))}
+    onMove={(_e,g)=>{if(Math.abs(g.dx)>Math.abs(g.dy)){swipe.move(g.dx);fadeY.set(0);}else{swipe.settle();fadeY.set(Math.max(0,Math.min(180,g.dy)));}}}
     onRelease={(_e,g)=>{
-      if(Math.abs(g.dx)>60||Math.abs(g.vx)>0.6){if(g.dx<0)next();else onPage(Math.max(0,page-1));}
-      else if(g.dy>90||g.vy>0.8)onClose();
+      if(Math.abs(g.dx)>Math.abs(g.dy)&&(Math.abs(g.dx)>60||Math.abs(g.vx)>0.6)){const forward=Math.abs(g.dx)>8?g.dx<0:g.vx<0;if(Math.abs(g.dx)<18)swipe.move(forward?-95:95);if(forward)next();else onPage(Math.max(0,page-1));swipe.settle();}
+      else if(g.dy>90||g.vy>0.8)dismiss();
+      else{swipe.settle();fadeY.set(withTiming(0,{duration:360}));}
     }}>
+    <Animated.View style={[StyleSheet.absoluteFill,swipe.style]}>
     <View style={styles.tutorialHeader}><Txt style={styles.tutorialTitle}>How OutLoud works</Txt><Txt style={styles.tutorialMeta}>{page + 1} of 6</Txt></View>
     <View style={styles.tutorialArt}>
       <View style={styles.tutorialNeighbours}><PresentationIcon icon="present" hue="rose" size={76} /><PresentationIcon icon="present" hue="sky" size={76} /></View>
@@ -616,9 +638,10 @@ function TutorialOverlay({ page, onPage, onClose }: { page: number; onPage: (pag
     <View style={styles.tutorialWords}><Txt style={styles.tutorialAction}>{title}</Txt><Txt style={styles.tutorialDetail}>{detail}</Txt></View>
     <View style={styles.tutorialDots}>{steps.map((_, i) => <View key={i} style={{ width: i === page ? 18 : 6, height: 6, borderRadius: 3, backgroundColor: i === page ? c.text : c.dotOff }} />)}</View>
     <View style={styles.tutorialButtons}>
-      <Pressable accessibilityRole="button" accessibilityLabel="Close tutorial" onPress={onClose}><Txt style={styles.tutorialButtonText}>↓  Close</Txt></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="Close tutorial" onPress={dismiss}><Txt style={styles.tutorialButtonText}>↓  Close</Txt></Pressable>
       <Pressable accessibilityRole="button" accessibilityLabel={page === steps.length - 1 ? 'Finish tutorial' : 'Next tutorial page'} onPress={next}><Txt style={styles.tutorialButtonText}>Next  →</Txt></Pressable>
     </View>
+    </Animated.View>
   </PanView>;
 }
 
@@ -628,8 +651,8 @@ const styles = createThemedStyles({
   logo: { position: 'absolute', left: 0, right: 0, top: 57, height: 36, alignItems: 'center', justifyContent: 'center' },
   logoText: { fontFamily: F.display, fontSize: 26, lineHeight: 27, letterSpacing: -0.5, color: C.text },
   // OpenAI Codex header alignment: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-106
-  brandMarkButton: { position: 'absolute', left: 18, top: 53, width: 44, height: 44, zIndex: 40, alignItems: 'center', justifyContent: 'center' },
-  helpGlyph: { width: 22, height: 22, borderWidth: 2, borderColor: C.text, borderRadius: 11, textAlign: 'center', textAlignVertical: 'center', fontFamily: F.bold, fontSize: 16, lineHeight: 19 },
+  languageNotice: { position: 'absolute', left: 18, right: 18, top: 109, zIndex: 60, borderWidth: 1, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12 },
+  languageNoticeText: { fontFamily: F.medium, fontSize: 13.5, lineHeight: 19, textAlign: 'center' },
   creditsOverlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 50, alignItems: 'center', justifyContent: 'center' },
   creditNames: { alignItems: 'center', gap: 16 },
   creditName: { fontSize: 27, lineHeight: 40, fontWeight: '700', color: '#FFFFFF', textAlign: 'center' },
@@ -637,6 +660,7 @@ const styles = createThemedStyles({
   ghostLayer: { position: 'absolute', left: 0, top: 150, width: 390, height: 400, zIndex: 2 },
   slot: { position: 'absolute', left: 65, top: SLOT_TOP, width: SLOT_W, height: SLOT_FULL_H },
   item: { width: SLOT_W, height: SLOT_H, alignItems: 'center' },
+  slotCopy: { alignItems: 'center' },
   title: { width: 244, textAlign: 'center', fontFamily: F.display, fontSize: 22, lineHeight: 23.8, letterSpacing: -0.4, color: C.text },
   meta: { marginTop: 4, fontFamily: F.semibold, fontSize: 13.5, letterSpacing: 0.2, color: 'rgba(255, 255, 255, 0.62)' },
   icon: { marginTop: 'auto' },
@@ -657,7 +681,6 @@ const styles = createThemedStyles({
   statRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   statVal: { fontFamily: F.display, fontSize: 18, lineHeight: 20, color: C.text, fontVariant: ['tabular-nums'] },
   statUnit: { flexShrink: 1, fontFamily: F.medium, fontSize: 14, color: C.secondary },
-  dots: { position: 'absolute', left: 0, right: 0, bottom: 70, zIndex: 3, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 },
   sheet: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, paddingTop: 46, backgroundColor: C.bg },
   tutorial: { zIndex: 55, paddingTop: 46 },
   tutorialHeader: { alignItems: 'center' },

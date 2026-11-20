@@ -57,12 +57,15 @@ export function AppShell() {
   const p = useSharedValue(0), vy = useSharedValue(0), gap = useSharedValue(0), hold = useSharedValue(0);
   const uploadBlur = useSharedValue(0), analyzing = useSharedValue(0), setup = useSharedValue(0);
   const press = useSharedValue(1), picker = useSharedValue(0);
+  const titleReturn = useSharedValue(1);
   const home = useMemo<HomeShared>(() => ({
-    p, vy, gap, hold, uploadBlur, analyzing, setup, press, picker,
-  }), [p, vy, gap, hold, uploadBlur, analyzing, setup, press, picker]);
+    p, vy, gap, hold, uploadBlur, analyzing, setup, press, picker, titleReturn,
+  }), [p, vy, gap, hold, uploadBlur, analyzing, setup, press, picker, titleReturn]);
   const go: Go = useCallback((screen, patch) => {
     const previous = layersRef.current;
     const top = previous[previous.length - 1];
+    if (screen === 'home') titleReturn.set(1);
+    else if (top.screen === 'rehearse') titleReturn.set(0);
     if (screen === 'upload' && top.screen !== 'upload') {
       setUploadLook({ hue: nextHue(), order: visibleDecks().length + 1 });
     }
@@ -73,12 +76,13 @@ export function AppShell() {
     let next: NavState[];
     if (existing >= 0) {
       // Returning reveals the mounted page underneath, including its local state.
-      next = [...previous.slice(0, existing), { ...previous[existing], ...patch, screen, nav: null }];
+      const changingReviewSlide = screen === 'review' && patch?.sel !== undefined && patch.sel !== previous[existing].sel;
+      next = [...previous.slice(0, existing), { ...previous[existing], ...patch, screen, nav: changingReviewSlide ? 'fade' : null }];
     } else {
       // A newly pushed page fades over its mounted underlay; returning to an existing page does not re-enter.
       const layer: NavState = { ...top, ...patch, screen, nav: 'fade', from: patch?.from ?? null, visit: ++visitRef.current };
-      // Import setup is finished; its temporary layer should not sit behind Rehearse.
-      next = top.screen === 'upload' && screen === 'rehearse'
+      // Import setup and resolved comparison must not sit behind their next page.
+      next = (top.screen === 'upload' && screen === 'rehearse') || (top.screen === 'compare' && screen === 'review')
         ? [...previous.slice(0, -1), layer] : [...previous, layer];
     }
     if (screen === 'review' && patch?.sel !== undefined) {
@@ -86,7 +90,7 @@ export function AppShell() {
     }
     layersRef.current = next;
     setLayers(next);
-  }, []);
+  }, [titleReturn]);
   useEffect(() => {
     void loadPresentations();
     const sub = AppState.addEventListener('change', s => { if (s === 'active') void loadPresentations(); });
@@ -113,9 +117,11 @@ export function AppShell() {
   const homeMode = s === 'home' ? 'home' : s === 'upload' ? 'upload' : 'covered';
   // In explicit landscape fullscreen the Home carousel must not show through
   // the safe-area gutters around Frame's scaled landscape canvas.
-  const homeVisible = layers.length <= 2 && !(s === 'rehearse' && fullscreenLandscape);
+  // OpenAI Codex, 2026-11-19: Wait and Full Review fade down to Home, not through a stale intermediate page.
+  const fullOverRehearse = s === 'full' && nav.from === 'rehearse';
+  const homeVisible = (layers.length <= 2 || s === 'wait' || (s === 'full' && !fullOverRehearse)) && !(s === 'rehearse' && fullscreenLandscape);
   const visibleLayers = layers.slice(1);
-  const underlayVisit = layers.length > 1 ? layers[layers.length - 2].visit : null;
+  const underlayVisit = s === 'wait' || (s === 'full' && !fullOverRehearse) ? null : layers.length > 1 ? layers[layers.length - 2].visit : null;
   const renderedLayers = retiredRehearse && !visibleLayers.some(layer => layer.visit === retiredRehearse.visit)
     ? [...visibleLayers, retiredRehearse] : visibleLayers;
   return (

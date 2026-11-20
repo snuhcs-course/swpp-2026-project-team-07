@@ -31,13 +31,14 @@ import { scoreLevelColor } from '../features/feedback/presentationScoreDisplay';
 import { useRunFeedbackStatus } from '../features/feedback/useRunFeedbackStatus';
 import { SlideReviewDetails } from '../features/feedback/SlideReviewDetails';
 import { useBack, useNow, useShell } from './shared';
+import { useHorizontalSwipeMotion } from './swipeMotion';
 
 const EMPTY_SCORE:ScoreDisplay={score:null,level:null,status:'Not graded',state:null,result:null,target:null};
 
 export function ReviewScreen({active=true}:{active?:boolean}) {
  const {nav}=useShell();const model=useDeckModel(nav.deckId);
  // Selection/source changes reset playback and feedback details together.
- return <ReviewContent key={JSON.stringify([nav.deckId,nav.sel,model?.state.run?.parts[nav.sel],active])} model={model} active={active}/>;
+ return <ReviewContent key={JSON.stringify([nav.deckId,nav.sel,model?.state.run?.parts[nav.sel]])} model={model} active={active}/>;
 }
 function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
  const {c}=useTheme(),{go,nav}=useShell(),frame=useFrame();
@@ -60,10 +61,11 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
  const scores=runScores.scores,scoreItem=scores.items[s]??EMPTY_SCORE;
  const player=useSegmentPlayer(),stopPlayback=player.stop;
  const dy=useSharedValue(0),backExiting=useRef(false);
+ const swipe=useHorizontalSwipeMotion();
  const now=useNow();
  useEffect(()=>{if(!active){backExiting.current=false;dy.set(0);stopPlayback();}},[active,dy,stopPlayback]);
  useEffect(()=>()=>stopPlayback(),[stopPlayback]);
- const toBack=useCallback(()=>{stopPlayback();go('full',{deckId:nav.deckId,sel:s});},[go,nav.deckId,s,stopPlayback]);
+ const toBack=useCallback(()=>{stopPlayback();if(nav.from==='full')go('full',{deckId:nav.deckId,sel:s});else go('rehearse',{deckId:nav.deckId,slide:s,sel:s});},[go,nav.deckId,nav.from,s,stopPlayback]);
  const toQA=useCallback(()=>{stopPlayback();go('qa',{nav:'fade',deckId:nav.deckId,sel:s,from:'review'});},[go,nav.deckId,s,stopPlayback]);
  const toFull=useCallback(()=>{stopPlayback();go('full',nav.from==='full'?{deckId:nav.deckId,sel:s}:{nav:'fade',deckId:nav.deckId,sel:s,from:'review'});},[go,nav.deckId,nav.from,s,stopPlayback]);
  useBack(active,()=>{if(detailsOpen)setFeedbackOpen(false);else toBack();return true;});
@@ -73,23 +75,24 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
    return !detailsOpen&&!backExiting.current&&Math.abs(g.dy)>8&&Math.abs(g.dy)>Math.abs(g.dx)&&
     !(y>264&&y<360&&Math.abs(g.dx)>4) || !detailsOpen&&!backExiting.current&&Math.abs(g.dx)>16&&Math.abs(g.dx)>Math.abs(g.dy);
   },
-  onMove:(_e:GestureResponderEvent,g:PanResponderGestureState)=>dy.set(Math.max(-BACK_FADE_Y,Math.min(BACK_FADE_Y,g.dy/frame.s))),
+  onMove:(_e:GestureResponderEvent,g:PanResponderGestureState)=>{if(Math.abs(g.dx)>Math.abs(g.dy)){swipe.move(g.dx/frame.s);dy.set(0);}else{swipe.settle();dy.set(Math.max(-BACK_FADE_Y,Math.min(BACK_FADE_Y,g.dy/frame.s)));}},
   onRelease:(_e:GestureResponderEvent,g:PanResponderGestureState)=>{
    if(Math.abs(g.dx/frame.s)>48&&Math.abs(g.dx)>Math.abs(g.dy)){
     const direction=g.dx<0?1:-1;dy.set(0);
     if(direction>0&&issueIndex<issueItems.length-1)setIssueIndex(issueIndex+1);
     else if(direction<0&&issueIndex>0)setIssueIndex(issueIndex-1);
     else {const next=s+direction;if(next>=0&&next<n){stopPlayback();go('review',{deckId:nav.deckId,sel:next});}else if(next>=n)toFull();}
+    swipe.settle();
     return;
    }
-   if(dy.get()>BACK_T){backExiting.current=true;dy.set(withTiming(BACK_FADE_Y,{duration:220,easing:EASE_SCREEN},done=>{if(done)runOnJS(toBack)();}));}
-   else if(dy.get() < -BACK_T){backExiting.current=true;dy.set(withTiming(-BACK_FADE_Y,{duration:220,easing:EASE_SCREEN},done=>{if(done)runOnJS(toQA)();}));}
-   else if(Math.abs(dy.get())<8)dy.set(withTiming(0,{duration:160,easing:EASE_SCREEN}));
-   else dy.set(withTiming(0,{duration:220,easing:EASE_SCREEN}));
+   if(dy.get()>BACK_T){backExiting.current=true;dy.set(withTiming(BACK_FADE_Y,{duration:460,easing:EASE_SCREEN},done=>{if(done)runOnJS(toBack)();}));}
+   else if(dy.get() < -BACK_T){backExiting.current=true;dy.set(0);toQA();}
+   else dy.set(withTiming(0,{duration:360,easing:EASE_SCREEN}));
+   swipe.settle();
   },
-  onTerminate:()=>{if(!backExiting.current)dy.set(withTiming(0,{duration:220,easing:EASE_SCREEN}));},
+  onTerminate:()=>{swipe.settle();if(!backExiting.current)dy.set(withTiming(0,{duration:360,easing:EASE_SCREEN}));},
  };
- const screen=useAnimatedStyle(()=>({opacity:Math.max(0,1-Math.abs(dy.value)/BACK_FADE_Y)}));
+ const screen=useAnimatedStyle(()=>({opacity:Math.max(0,1-Math.max(0,dy.value)/BACK_FADE_Y)}));
  if(!model||!model.state.run)return null;
  const {deck,times,state}=model,run=state.run!;
  const t=times[s]??0,target=deck.targets[s]??0,timingLabel=slideTimingLabel(t,target);
@@ -120,6 +123,7 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
   :category==='content'?mustCover.some(m=>m.status!=='covered')||issueItems.some(i=>i.criterion==='essential_coverage')
   :category==='delivery'?issueItems.some(i=>chipCriteria.delivery.includes(i.criterion??'')):false;
  const issue=issueItems[Math.min(issueIndex,Math.max(0,issueItems.length-1))];
+ const chooseIssue=(target:number)=>{if(target<0||target===issueIndex)return;swipe.move(target>issueIndex?-95:95);setIssueIndex(target);swipe.settle();};
  const part=run.parts[s],slidePlayKey=`slide:${deck.id}:${s}`;
  const slideAudioUri=part?audioOf(part.attemptId):null;
  const isSlideSelected=player.playingKey===slidePlayKey,slidePlaying=isSlideSelected&&!player.paused;
@@ -138,10 +142,11 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
   void player.playSegments(key,[{uri:slideAudioUri,startMs:start,endMs:end}]);
  };
 
- return <Enter kind={nav.nav}><PanView style={StyleSheet.absoluteFill} {...pan}>
+ return <Enter kind={active?nav.nav:null}><PanView style={StyleSheet.absoluteFill} {...pan}>
   <PageSurface hue={deck.hue}/>
   <Animated.View pointerEvents={detailsOpen?'none':'auto'} accessibilityElementsHidden={detailsOpen}
    importantForAccessibility={detailsOpen?'no-hide-descendants':'auto'} style={[StyleSheet.absoluteFill,screen]}>
+   <Animated.View style={[StyleSheet.absoluteFill,swipe.style]}>
    <View style={styles.header}>
     <Txt numberOfLines={1} style={[styles.title,{color:c.text}]}>{`Slide ${s+1} of ${n}`}</Txt><Txt numberOfLines={1} style={[styles.label,{color:c.secondary}]}>{deck.slides[s]?.title??runLabel(run,now,relativeDay)}</Txt>
    </View>
@@ -169,15 +174,16 @@ function ReviewContent({model,active}:{model:DeckModel|null;active:boolean}) {
     {recorded&&(!v3||!insufficient)?<Pressable accessibilityRole="button" accessibilityLabel={`Read slide ${s+1} feedback: ${v3Item?.status??item?.label??'Not analyzed'}`} onPress={()=>setFeedbackOpen(true)} style={styles.detailsLink}><Txt style={[styles.detailsLinkText,{color:c.accent}]}>Full feedback and recovery options</Txt></Pressable>
       :<Pressable accessibilityRole="button" onPress={()=>go('rehearse',{deckId:nav.deckId,slide:s,nav:'fade'})} style={styles.detailsLink}><Txt style={[styles.detailsLinkText,{color:c.accent}]}>Rehearse slide {s+1}</Txt></Pressable>}
    </View>
-   <View style={styles.dots}>{issueItems.map((_,i)=><Pressable key={i} accessibilityRole="button" accessibilityLabel={`Show issue ${i+1}`} onPress={()=>setIssueIndex(i)} style={styles.dotHit}><View style={[styles.dot,{backgroundColor:i===issueIndex?c.strong:c.dotOff}]}/></Pressable>)}</View>
+   <View style={styles.dots}>{issueItems.map((_,i)=><Pressable key={i} accessibilityRole="button" accessibilityLabel={`Show issue ${i+1}`} onPress={()=>chooseIssue(i)} style={styles.dotHit}><View style={[styles.dot,{backgroundColor:i===issueIndex?c.strong:c.dotOff}]}/></Pressable>)}</View>
    <View style={styles.chips}>{slideReviewRows.map((row,i)=>{
     const category=['timing','fillers','content','delivery'][i];
     const targetIndex=v3?issueItems.findIndex(value=>category==='timing'?value.category==='timing':(chipCriteria[category]??[]).includes(value.criterion??''))
      :issueItems.findIndex(value=>value.category===category||(category==='content'&&['graph','audience'].includes(value.category)));
     const finding=v3?v3ChipFinding(category):row.status==='finding';
-    return <Pressable key={row.icon} accessibilityRole="button" onPress={()=>targetIndex>=0&&setIssueIndex(targetIndex)} style={[styles.chip,{backgroundColor:c.surface08,borderColor:finding?c.warn:c.hair}]}><Txt numberOfLines={1} style={[styles.chipText,{color:finding?c.text:c.secondary}]}>{category==='timing'?`Time ${timingLabel}`:category==='fillers'?`Fillers ${fillerValue}`:category==='content'?`Points ${pointsSaid===null?'—':`${pointsSaid} of ${pointList.length}`}`:'Delivery'}</Txt></Pressable>;
+    return <Pressable key={row.icon} accessibilityRole="button" onPress={()=>chooseIssue(targetIndex)} style={[styles.chip,{backgroundColor:c.surface08,borderColor:finding?c.warn:c.hair}]}><Txt numberOfLines={1} style={[styles.chipText,{color:finding?c.text:c.secondary}]}>{category==='timing'?`Time ${timingLabel}`:category==='fillers'?`Fillers ${fillerValue}`:category==='content'?`Points ${pointsSaid===null?'—':`${pointsSaid} of ${pointList.length}`}`:'Delivery'}</Txt></Pressable>;
    })}</View>
-   <HintRow hints={[{icon:'h-spin',text:'Next issue'},{icon:'h-up',text:'Q&A',nudge:'up'},{icon:'h-dn',text:'Back',nudge:'down'}]}/>
+   <HintRow hints={[{icon:'h-spin',text:'Next issue'},{icon:'h-up',text:'Q&A',nudge:'up'},{icon:'h-dn',text:nav.from==='full'?'Full review':'Slide preview',nudge:'down'}]}/>
+   </Animated.View>
   </Animated.View></PanView>
   {detailsOpen&&<View style={[StyleSheet.absoluteFill,{backgroundColor:c.scrim}]}>
    <View accessibilityViewIsModal onAccessibilityEscape={()=>setFeedbackOpen(false)} style={[styles.feedbackDetails,{backgroundColor:c.dialog,borderColor:c.hair}]}>

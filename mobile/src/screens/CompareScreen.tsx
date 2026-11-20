@@ -6,10 +6,12 @@
 // OutLoud redesign: Compare takes (SPEC §4.5).
 import { useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Enter, Txt } from '../design/frame';
 import { Glyph } from '../design/icons';
 import { PanView } from '../design/PanView';
-import { C, F } from '../design/tokens';
+import { C, EASE_SCREEN, F } from '../design/tokens';
+import { BACK_FADE_Y } from '../domain/gestures';
 import { createThemedStyles, useTheme } from '../design/theme';
 import { HintRow, PageSurface, RecordButton } from '../design/ui';
 import { summarizeTake } from '../domain/analysis';
@@ -22,6 +24,7 @@ import { audioOf } from '../features/rehearsal/analysis';
 import { useSegmentPlayer } from '../features/rehearsal/useSegmentPlayer';
 import { transcriptsFor, useDeckModel } from '../features/presentations/useDeckModel';
 import { useBack, useShell } from './shared';
+import { useHorizontalSwipeMotion } from './swipeMotion';
 
 export function CompareScreen() {
   const { c: palette } = useTheme();
@@ -29,6 +32,9 @@ export function CompareScreen() {
   const model = useDeckModel(nav.deckId);
   const [keep, setKeep] = useState<'old' | 'new'>('old');
   const player = useSegmentPlayer();
+  const swipe = useHorizontalSwipeMotion();
+  const fadeY = useSharedValue(0);
+  const swipeFade = useAnimatedStyle(() => ({opacity:Math.max(0,1-fadeY.value/BACK_FADE_Y)}));
   const c = model?.state.compare ?? null;
 
   const view = useMemo(() => {
@@ -61,7 +67,8 @@ export function CompareScreen() {
     const fallback = c?.slides.find(i => partSeconds(resolved?.parts[i]) > 0);
     const selected = inScope && partSeconds(resolved?.parts[requested]) > 0 ? requested :
       fallback ?? Math.max(0, resolved?.parts.findIndex(part => partSeconds(part) > 0) ?? -1);
-    go(reviewing ? reviewDestination(model.state.takes) : 'rehearse', { nav: 'fade', deckId: model.deck.id, slide: selected, sel: selected, from: null });
+    const destination=reviewing ? reviewDestination(model.state.takes) : 'rehearse';
+    go(destination, { nav: 'fade', deckId: model.deck.id, slide: selected, sel: selected, from: destination==='review'?'rehearse':null });
   }, [c, go, model, nav.sel, player, view]);
   // Leaving comparison keeps its pending take choice intact.
   const back = useCallback(() => {
@@ -95,17 +102,20 @@ export function CompareScreen() {
   const playActive=player.playingKey===playKey&&!player.paused;
   const togglePlay=()=>{if(player.playingKey===playKey){player.setPaused(!player.paused);return;}playSelected();};
   return (
-    <Enter kind={nav.nav}><PanView style={StyleSheet.absoluteFill}
+    <Enter kind={nav.nav}><PanView style={[StyleSheet.absoluteFill,swipeFade]}
       onMoveShould={(_e,g)=>(Math.abs(g.dx)>18&&Math.abs(g.dx)>Math.abs(g.dy))||(g.dy>12&&g.dy>Math.abs(g.dx))}
-      onRelease={(_e,g)=>{if(g.dy>60){back();}else if(g.dx < -60 || g.vx < -0.6){player.stop();setKeep('new');}else if(g.dx > 60 || g.vx > 0.6){player.stop();setKeep('old');}}}>
+      onMove={(_e,g)=>{if(Math.abs(g.dx)>Math.abs(g.dy)){swipe.move(g.dx);fadeY.set(0);}else{swipe.settle();fadeY.set(Math.max(0,Math.min(BACK_FADE_Y,g.dy)));}}}
+      onRelease={(_e,g)=>{const horizontal=Math.abs(g.dx)>Math.abs(g.dy)||Math.abs(g.vx)>0.6&&Math.abs(g.vx)>Math.abs(g.vy);if(!horizontal&&g.dy>60){fadeY.set(withTiming(BACK_FADE_Y,{duration:460,easing:EASE_SCREEN},done=>{if(done)runOnJS(back)();}));}else{fadeY.set(withTiming(0,{duration:360,easing:EASE_SCREEN}));if(horizontal&&(g.dx < -60 || g.vx < -0.6)){if(Math.abs(g.dx)<18)swipe.move(-95);player.stop();setKeep('new');}else if(horizontal&&(g.dx > 60 || g.vx > 0.6)){if(Math.abs(g.dx)<18)swipe.move(95);player.stop();setKeep('old');}swipe.settle();}}}
+      onTerminate={()=>{swipe.settle();fadeY.set(withTiming(0,{duration:360,easing:EASE_SCREEN}));}}>
       <PageSurface hue={model.deck.hue} />
+      <Animated.View style={[StyleSheet.absoluteFill,swipe.style]}>
       <View style={styles.header} pointerEvents="none">
         <Txt numberOfLines={1} style={styles.title}>{view.title}</Txt>
         <Txt style={styles.label}>Compare takes</Txt>
       </View>
       <View style={[styles.segment, { backgroundColor: palette.raised, borderColor: palette.line }]}>
           {(['old', 'new'] as const).map(kind => <Pressable key={kind} accessibilityRole="button" accessibilityState={{ selected: keep === kind }}
-            onPress={() => { player.stop(); setKeep(kind); }} style={[styles.segmentOption, keep === kind && { backgroundColor: palette.text }]}>
+            onPress={() => { if(keep!==kind){swipe.move(kind==='new'?-95:95);player.stop();setKeep(kind);swipe.settle();} }} style={[styles.segmentOption, keep === kind && { backgroundColor: palette.text }]}>
             <Txt style={[styles.segmentText, { color: keep === kind ? palette.onAccent : palette.secondary }]}>{kind === 'old' ? 'Old take' : 'New take'}</Txt>
           </Pressable>)}
       </View>
@@ -125,6 +135,7 @@ export function CompareScreen() {
       <RecordButton green glyph="check" label="Keep this take" onPress={() => finish(keep,false)} style={styles.keepButton}/>
       <Txt pointerEvents="none" style={styles.keepLabel}>Keep this take</Txt>
       <HintRow style={styles.hints} hints={[{icon:'h-spin',text:'Switch take'},{icon:'h-dn',text:'Back',nudge:'down'}]}/>
+      </Animated.View>
     </PanView></Enter>
   );
 }

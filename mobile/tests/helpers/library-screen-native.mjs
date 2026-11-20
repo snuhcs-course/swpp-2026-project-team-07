@@ -3,7 +3,7 @@ export { useFocusEffect } from './recording-screen-ui.mjs';
 export { AppState, StyleSheet, View, Pressable, Txt, Circle, Defs, Path, Rect, Stop, LinearGradient,
   useSharedValue, withTiming, runOnJS } from './ai-overview-screen-native.mjs';
 
-export const Text = 'text', Image = 'image', G = 'group', Ellipse = 'ellipse';
+export const Text = 'text', Image = 'image', G = 'group', Ellipse = 'ellipse', ClipPath = 'clip-path';
 export const RadialGradient = 'radial-gradient', PanView = 'pan', GestureDetector = 'gesture';
 export const HomeFeedbackStats = 'home-stats', PresentationRequirementsEditor = 'requirements';
 export const useWindowDimensions = () => ({ width: 390, height: 844 });
@@ -18,6 +18,7 @@ export const useAnimatedReaction = (read, react) => {
   React.useEffect(() => { react(next, previous.current); previous.current = next; }, [next]);
 };
 export const withRepeat = value => value;
+export const withDelay = (_delay, value) => value;
 export const cancelAnimation = () => {};
 const identity = value => value;
 export const Easing = { bezier: () => identity, out: () => identity, inOut: () => identity,

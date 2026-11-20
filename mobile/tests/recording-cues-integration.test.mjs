@@ -16,6 +16,6 @@ test('recording reserves its normal panel for permanent cues and saved audio pla
  for (const prop of ['state={profiles.value}', 'slide={cur}', 'onSheetOpenChange=']) assert.ok(props.includes(prop), prop);
  assert.match(recording, /accessibilityLabel=\{player.playingKey[\s\S]*'Pause saved slide audio' : 'Play saved slide audio'/);
  assert.match(recording, /onPress=\{playSlide\}/);
- assert.match(recording, /const profiles = useSlideProfiles\(deck.id, n, active\)/);
+ assert.match(recording, /const profiles = useSlideProfiles\(deck.id, n, active, deck\)/);
 });
 // Inline Review playback/corrections are exercised by ai-overview-screens and transcript-corrections-sources.

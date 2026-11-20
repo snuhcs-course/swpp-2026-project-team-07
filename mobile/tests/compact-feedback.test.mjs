@@ -154,7 +154,7 @@ test('long feedback opens complete text in a bounded scroll area and closes with
     await act(async () => assert.equal(runtime.back(), true));
     assert.equal(renderer.root.findAllByType('scroll').length, 0); assert.deepEqual(runtime.routes, []);
     await act(async () => runtime.back());
-    assert.equal(runtime.routes[0][0], 'full');
+    assert.equal(runtime.routes[0][0], 'rehearse');
   });
 });
 

@@ -276,7 +276,7 @@ export function Dialog({ title, body, confirm, cancel = 'Cancel', onConfirm, onC
   const { c } = useTheme();
   const frame = useFrame();
   const v = useSharedValue(0);
-  useEffect(() => { v.set(withTiming(1, { duration: 260, easing: Easing.bezier(0.2, 0.8, 0.2, 1) })); }, [v]);
+  useEffect(() => { v.set(withTiming(1, { duration: 420, easing: Easing.bezier(0.2, 0.8, 0.2, 1) })); }, [v]);
   const scrim = useAnimatedStyle(() => ({ opacity: Math.min(1, v.value * 1.3) }));
   const card = useAnimatedStyle(() => ({ opacity: v.value, transform: [{ translateY: (1 - v.value) * 12 }, { scale: 0.94 + 0.06 * v.value }] }));
   return (
