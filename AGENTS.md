@@ -6,12 +6,17 @@ These rules apply across project tasks; read detailed guides only when relevant.
 
 ## Current iteration and prompt logging
 
-**Current iteration: 2.** Record new project-task prompts in the
-[active Iteration 2 log](docs/ai-collaboration-prompts-iteration-2.md), as specified
-by the current task instructions. Earlier contributor logs remain in the
-[prompt log index](docs/ai-collaboration/README.md#prompt-logs).
+For every Team 07 project task, including questions and reviews, record the requester's prompts
+on `docs/<contributor>-prompt-logs` in `docs/ai-collaboration/prompt-logs/<contributor>/iteration-<N>.md`.
+The contributor folders are `injoon`, `jaewon`, `jooyoung`, and `seoyeon`. Use the task's
+recorded iteration. If it is unlabelled, check the team schedule and the task it belongs to.
+Ask when overlapping iterations leave the assignment unclear.
 
-- Record each actual project-task prompt and follow-up verbatim in the active iteration log during
+Reuse the contributor's log worktree, or open one from their remote log branch. Start a new
+log branch from the team's current `main`. Create the iteration file with its first entry
+and link it in that branch's [prompt log index](docs/ai-collaboration/README.md#prompt-logs). Keep unconfirmed attribution local until resolved.
+
+- Record each actual project-task prompt and follow-up verbatim in the contributor’s iteration log during
   work, under the contributor/task, with date, tool and model. Group related prompts
   in one entry; label excerpts/redactions and write `not recorded` for unknown metadata.
   Do not reconstruct missing prompts, alter wording or duplicate existing entries.
