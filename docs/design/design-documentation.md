@@ -1,252 +1,290 @@
 # OutLoud Design Documentation
 
-Team 07 | Rev.4.0 | Iteration 3 | 5 November 2026
+Team 07 · Rev. 5.0 · Iteration 4 · November 20, 2026
 
-OutLoud records rehearsal audio and slide visits, transcribes speech, and links feedback to the recording. This revision describes [published demo v8](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103), source `cdb8055`. [Requirements v4.0](../requirements/requirements-and-specifications.md) separates implemented behavior from unmet acceptance criteria. [Testing Documentation](../testing/testing.md) records dated evidence and its limits.
+OutLoud is an Android app for rehearsing slide presentations, reviewing feedback linked to saved audio, and practicing audience Q&A.
 
-### Source and deployment status
-
-| Layer | Baseline and status | Evidence date |
-| --- | --- | --- |
-| Merged repository | `main` at `7b7ef3b`, [PR #32](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/32), documents the PR31 application (`c4a3f48`). Design Rev.3.1 remains valid for that historical baseline. | October 23, 2026 |
-| Published Android product | v8, `cdb8055`, includes the v7 repairs and selected PR #34 UI. GitHub main advanced to this release commit on November 16. Implementation links below point to the release source. | November 3, 2026 |
-| Hosted backend | The v8 release record reports a separately reviewed, deployed v2.4 grading-budget patch compatible with the same APK. The backend patch was [recovered on November 15](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/2c7c337c2c89de6e6714c9e5f0708fb2be2cabc3) on a separate branch. | November 3, 2026; record reviewed November 5 |
-| Local candidates | Early slide-advice preview and v2.5 performance/audience-citation repairs remain local and unreleased. They are not features of the published APK or evidence of current hosted behavior. | November 3–4, 2026 |
-
-This documentation update changes no application source, database schema or runtime configuration. Deployment status above comes from the release record; no fresh service, provider or device check was performed for this revision. The [reconciliation evidence](../testing/evidence/iteration-3-reconciliation-2026-11-05.md) separates dated operational checks, human participation and local candidates.
+See [Requirements v5.0](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/a64ffd571bea09d1a980b8b81c7aa827d5c976e8/docs/requirements/requirements-and-specifications.md) for user-facing behavior and [Testing Documentation](../testing/testing.md) for verification and results.
 
 ## 1. Document Revision History
 
-| Version | Date | Description |
+| Version | Date | Change |
 | --- | --- | --- |
 | 1.0 | 2026-09-28 | Initial design. |
-| 2.0 | 2026-10-09 | Iteration 1 design and proposed extensions. |
-| 3.0 | 2026-10-21 | Iteration 2 design: Scribe transcription, rehearsal/review, saved settings, corrections, scoring and durable Q&A. Separate branch changes and open requirements remain identified. |
-| 3.1 | 2026-10-23 | Clarified upload/consent order, automatic analysis, local run composition, database relationships and recovery. Aligned the roadmap with Requirements v3.0. |
-| 4.0 | 2026-11-05 | Reconciled v8 architecture, reviewer access, provider/default changes, compact UI and recovery. Separated released, deployment-reported and local work; retained unmet requirements and historical evidence. |
+| 2.0 | 2026-10-09 | Documented the Iteration 1 design and proposed extensions. |
+| 3.0 | 2026-10-21 | Documented Scribe transcription, rehearsal review, saved settings, transcript corrections, scoring, and Audience Q&A. |
+| 3.1 | 2026-10-23 | Clarified upload and consent order, automatic analysis, take selection, database relationships, and recovery. |
+| 4.0 | 2026-11-05 | Documented v8 reviewer access, compact review screens, and recovery. [Preserved revision](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/ffe1d3acf8be31e57a113ed2ebe0c71231bc82d0/docs/design/design-documentation.md) |
+| 5.0 | 2026-11-20 | Updated the whole-app design for demo v10, including resumable recording uploads, Feedback v3, and playback across repeated slide visits. |
 
 ## 2. System Architecture
 
+The Android app renders slides, records rehearsals, and plays saved audio. Django prepares PDFs and queues transcription, feedback, and Q&A. Celery workers call the speech and AI providers and save results for the app to retrieve.
+
 ```mermaid
-flowchart TD
-    Presenter[Presenter] --> App[Android app]
-    App <--> Local[App-private PDF/audio and SQLite]
-    App -->|Hosted HTTPS with reviewer code| Edge[Caddy authenticated edge]
-    Edge --> Proxy[nginx media and API proxy]
+flowchart TB
+    subgraph Android
+        App[React Native app] <--> Local[SQLite and local media]
+    end
+    App <-->|HTTPS| Edge[Caddy]
+    Edge --> Proxy[nginx]
     Proxy --> API[Django REST API]
-    App -.->|Local development REST| API
     API <--> DB[(PostgreSQL)]
-    API --> Media[Shared PDF, slide and audio files]
-    API -->|Publish admitted job ID| Redis[Redis broker]
-    Redis --> Worker[Celery worker]
-    Beat[Celery Beat] -->|Recovery task every 30 seconds| Redis
+    API --> Media[Media volume]
+    Proxy --> Media
+    API -->|Job IDs| Queue[Redis]
+    Beat[Celery Beat] -->|Recovery tasks| Queue
+    Queue --> Worker[Celery worker]
     Worker <--> DB
     Worker <--> Media
-    Worker --> VAD[Silero speech-presence gate]
-    Worker -->|Original audio and visited-slide hints| Scribe[ElevenLabs Scribe v2]
-    Worker -->|Slide context and selected speech| Analysis[Configured analysis provider: OpenRouter default]
+    Worker -->|Audio| Scribe[Scribe v2]
+    Worker -->|Analysis| LLM[OpenRouter]
 ```
 
-The app captures and plays local audio; backend workers perform provider analysis. Django stores job admission and revisions in PostgreSQL before dispatch. Redis carries job identifiers. The API and worker share media storage. Celery Beat wakes recovery work from saved database state. Provider keys and raw provider receipts stay on the backend.
+*Hosted v10 deployment.*
 
-[Local Compose](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/compose.yaml) defines loopback development services and persistent database/media volumes. The development API has no application-account authentication. The hosted demo adds [production/public Compose](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/compose.public.yaml), an authenticated HTTPS edge and a media/API proxy. Reviewer access covers the shared server workspace; it does not isolate users or create ownership permissions. Provider receipts remain private backend records. See [hosting guidance](../azure-hosting.md).
+PostgreSQL stores job state, and Redis carries job IDs to Celery. For jobs that use claims, only a worker with a valid claim can save the result. Celery Beat checks for interrupted work every 30 seconds. [Recovery schedule](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/backend/config/settings.py#L48-L56) · [Recovery tasks](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/backend/rehearsals/tasks.py)
 
-The [demo access client](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/mobile/src/services/demoAccess.ts) stores the entered reviewer code in secure device storage scoped to the configured HTTPS origin. It refuses authenticated redirects and never automatically replays an upload or generation POST after code re-entry. Local recording, local playback and cached results remain usable offline; remote media and processing require authorized connectivity. No reviewer code belongs in source, screenshots or documentation.
+Caddy uses one reviewer code for the Azure workspace. **Home** shows the device’s library. Code holders share access to uploaded decks, recordings, and results on the server. The app sends the code only to the configured HTTPS origin. After code re-entry, uploads and generation requests follow their normal retry rules. The local development API is available over loopback. [Azure deployment](../azure-hosting.md#access-and-data-boundary) · [Local development](../local-development.md)
 
-| Layer | Main libraries and services |
+Provider keys and raw transcription responses stay on the server. Scribe receives audio. In the hosted setup, OpenRouter can receive rendered slide images for cue generation. Feedback v3 sends text, including transcript excerpts and delivery measurements. [Provider payloads](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/backend/rehearsals/services/feedback_provider.py#L447-L453) · [Feedback inputs](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/backend/rehearsals/feedback_v3/pipeline.py#L245-L256)
+
+| Layer | Libraries and modules |
 | --- | --- |
-| App | Expo SDK 57, React Native 0.86, TypeScript, Expo Router |
-| Navigation and UI | React state/subscriptions, Gesture Handler, Reanimated, React Native SVG |
-| Device storage and media | expo-audio, react-native-pdf, expo-document-picker, expo-file-system, expo-sqlite |
-| Backend | Django REST Framework, PostgreSQL 16, Celery, Redis 7 |
-| PDF/audio processing | pypdfium2, pypdf, Pillow, PyAV, Silero VAD, ONNX Runtime |
-| External AI | ElevenLabs `scribe_v2` for transcription; OpenRouter analysis defaults to `openai/gpt-6-luna`; retained Gemini/OpenAI adapters are separate configurations |
-
-Dependency versions: [mobile manifest](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/mobile/package.json), [backend lock file](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/backend/requirements.txt). The released configuration defaults to OpenRouter for new analysis and disables feedback until configured. A default is not evidence of enabled services or the model selected by a running deployment. Provider/model identity is retained with saved jobs and receipts; cutover rules fence new work without relabelling historical results. See the [provider configuration](../reference/ai-feedback.md).
+| Android UI | Expo SDK 57, React Native 0.86, TypeScript, Expo Router, Gesture Handler, Reanimated, React Native SVG |
+| Local data and media | SQLite, Expo FileSystem, react-native-pdf, document picker, Expo Audio for After Stop |
+| Live recorder | Local Expo module using Android AudioRecord, PCM16 mono at 16 kHz, and a sample-count clock |
+| Backend | Django REST Framework, PostgreSQL 16, Celery, and Redis 7 |
+| PDF and speech | pypdf, pypdfium2, Pillow, ElevenLabs Scribe v2, and the PyAV/Silero/ONNX speech-presence gate |
+| Analysis | OpenRouter Responses API. Feedback v3 defaults to `openai/gpt-6-luna` when enabled. |
 
 ### Architectural decisions
 
-| Decision | Choice and reason |
+| Decision | Why |
 | --- | --- |
-| Local capture, server analysis | Keep recordings playable during network/provider failure and keep provider credentials off the phone. Analysis requires connectivity. |
-| REST polling | Read persisted processing state after navigation or restart without maintaining a socket. Polling adds requests and update delay. |
-| Database-backed jobs | Retain generations, claims and receipts across worker/broker interruptions. Redis provides delivery; PostgreSQL records work state. |
-| Original evidence identities | Retain attempt, word and visit identities with integer audio-relative milliseconds. Repeated/backward visits remain distinct. |
-| Revisioned inputs | Freeze transcript corrections, settings and selected speech per job. Generation/revision checks guard result writes and expose stale results. |
-| Separate analysis jobs | Transcription, selected-slide feedback, scoring and Q&A have separate admission/state rules. Reading saved results does not request new analysis. |
+| On-device rehearsal, server analysis | Local slides, recording, and saved playback work offline. Text extraction, transcription, and AI analysis use the server. |
+| REST polling | The app can read saved job status after a restart. Updates arrive on the next poll. |
+| Keep recordings separate from take choices | Retakes change which audio plays for a slide while preserving the original recording and evidence timestamps. |
+| Save uploads and job progress | The phone retains audio during outages. The server saves job state before queuing work so recovery can reuse it. |
+| Separate analysis jobs | Slide cues, feedback, and audience questions each track their own progress and retries. |
+| One microphone stream for Live feedback | The recorder writes both a full playback WAV and uploadable segments. This uses more storage and requires the server to check that the audio matches. |
 
-## 3. Data Model
+## 3. Frontend Architecture
+
+`AppShell` manages the screen stack. Returning to a screen still on the stack preserves its local state. Upload and analysis services are available across screens.
+
+The app saves audience and timing edits on the phone before syncing them to the server. For each recorded slide, it remembers which take and audio intervals to play. [AppShell](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/screens/AppShell.tsx) · [Settings draft](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/features/presentations/requirementsDraft.ts) · [Run model](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/domain/run.ts)
+
+| Area | Main components | Responsibility |
+| --- | --- | --- |
+| Home and setup | `HomeScreen`, `UploadScreen`, `PresentationSetup` | Open saved presentations, import PDFs, and set the audience and target duration. |
+| Rehearsal | `RehearseScreen`, `CaptureEngine` | Navigate slides, show cues, manage the microphone, and record slide timestamps. |
+| Upload and analysis | `AnalysisHost`, `IncrementalCaptureHost`, `FeedbackV3Host` | Handle After Stop upload and transcription, resume Live uploads while the app is active, and request feedback for eligible After Stop takes. |
+| Review | `WaitScreen`, `OverviewScreen`, `ReviewScreen`, `FeedbackScreen` | Show processing progress and results, and let presenters play the audio cited in feedback. |
+| Playback and retakes | `ListenBackKaraokeScreen`, `CompareScreen` | Play saved audio with the transcript and let the presenter choose which take to use for the affected slides. |
+| Audience Q&A | `QAScreen` | Present questions and follow-ups, record answers, and display answer feedback. |
+
+## 4. Data Model
+
+A **take** is one rehearsal recording. The server stores each recording, including spoken Q&A answers, as an `Attempt`. A `Run` stores which attempt and audio intervals to play for each slide on the phone. After a retake, selected slides can use the new audio while the rest keep the earlier audio. [Run model](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/domain/run.ts)
+
+SQLite stores presentation metadata, saved runs, pending take choices, and Live upload progress. The app keeps PDFs and audio in app-private files. [Local storage](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/services/storage.ts) · [Live upload state](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/features/recording/incrementalState.ts)
 
 ```mermaid
 erDiagram
     Deck ||--o{ Slide : contains
-    Deck ||--o{ PresentationContext : configures
+    Deck ||--o{ PresentationContext : has_settings
     Deck ||--o{ Attempt : records
-    Deck ||--o{ DescriptionSet : profiles
-    Attempt ||--o{ ProviderRequest : receipts
-    Attempt ||--o| TranscriptCorrection : overlays
-    Attempt ||--o{ FeedbackAnalysis : analyses
-    DescriptionSet ||--o{ DescriptionJob : generations
-    DescriptionSet ||--o{ FeedbackJob : supplies_context
-    FeedbackAnalysis ||--o{ FeedbackJob : generations
-    DescriptionJob ||--o| FeedbackRequest : receipt
-    FeedbackJob ||--o| FeedbackRequest : receipt
-    FeedbackRequest ||--o| FeedbackReservation : reserves
-    FeedbackQuotaBucket ||--o{ FeedbackReservation : accounts_for
-    FeedbackJob ||--o{ QaAnswer : questions
-    Attempt ||--o| QaAnswer : answer_audio
+    Attempt ||--o| CaptureSession : captures
+    PresentationContext o|--o{ CaptureSession : configures
+    CaptureSession ||--o{ CaptureSegment : segments
+    CaptureSession ||--o{ CaptureAssessment : assesses
+    Attempt ||--o{ FeedbackRun : receives
+    PresentationContext o|--o{ FeedbackRun : configures
 ```
 
-The [Django models](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/backend/rehearsals/models.py) define fields and constraints. The diagram omits historical grouping tables that current selected-slide feedback does not write.
+*Core server records for slides, settings, recordings, and feedback. Migrations `0012` and `0013` add the Feedback v3 and Live capture tables.* [Django models](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/backend/rehearsals/models.py) · [Migrations](https://github.com/snuhcs-course/swpp-2026-project-team-07/tree/57455028739ad2d1aeb7f1d04723a01f6fb7190e/backend/rehearsals/migrations)
 
-| Structure | Key fields and responsibility |
+| Records | What they store |
 | --- | --- |
-| Deck / Slide | PDF, content hash, preparation version and ordered slide text/images. Unique PDF hash/version and `(deck, slide_index)` keys prevent duplicate preparation and slide identities. |
-| PresentationContext | Deck, audience, required duration and revision. Several contexts can reference one deduplicated PDF. New untouched imports use General audience and 600 seconds after synchronization through the existing context API. Existing edits, clears and accepted legacy five-minute settings are preserved. The bundled Seoul deck has a separate five-minute offline seed; it needs explicitly saved server choices for audience/duration-dependent analysis. |
-| Attempt | Recording UUID, original audio, duration, slide events, transcript, metrics and processing generation/state. A new recording gets a new UUID; retries keep it. |
-| ProviderRequest | Attempt/generation, provider/model, exact request options, submission state and raw transcription receipt. Unique per attempt/generation. |
-| TranscriptCorrection | One optional overlay per attempt, with base transcript ID, edits and revision. Original words, audio and timing stay intact. |
-| DescriptionSet / DescriptionJob | Cached slide context/cues keyed by deck/source, provider/project, model and prompt/schema versions; jobs retain generation and claim state. |
-| FeedbackAnalysis / FeedbackJob | One analysis per attempt/type; jobs freeze source/settings/correction inputs and the description dependency, then retain validated results. |
-| FeedbackRequest / Reservation / QuotaBucket | Private analysis receipts and provider/model quota accounting. Each receipt belongs to exactly one description job or feedback job. |
-| QaAnswer | One optional binding per answer attempt: question job, question ID and answer part. Audio/transcription stay on that original attempt. |
+| `Deck`, `Slide` | Prepared PDFs are reused by content hash and preparation version. Each slide stores its order, image, and extracted text. |
+| `PresentationContext` | Audience, target duration, and settings revision. Multiple contexts can reference the same deck. If a Live capture references a context, the server snapshots its settings when it accepts the first capture declaration. |
+| `Attempt` | Audio, duration, slide visits, transcript, and processing state. Each recording gets a new UUID. Retries keep that UUID. |
+| `CaptureSession`, `CaptureSegment` | One session per Live recording tracks the append-only list of segments and slide events, Stop and finalization state, and the full audio hash. Each segment has a unique sequence number within the session and stores its slide, time range, audio hash, and transcription state. |
+| `CaptureAssessment` | A result keyed by session, slide, and input hash. Revisiting a slide can produce a new result while keeping earlier results. Slide index `-1` represents the whole presentation. |
+| `FeedbackRun` | After Stop feedback for a recording and a specific set of inputs. Retrying the same run preserves completed parts. |
+| `ProviderRequest`, `TranscriptCorrection` | Private transcription receipts are tracked per recording and processing generation, including Q&A answers. Optional corrections overlay the transcript while preserving the original text and timestamps. |
+| `DescriptionSet`, `DescriptionJob` | Reusable slide profiles for cues, with separate records for generating and retrying them. |
+| `FeedbackAnalysis`, `FeedbackJob`, `QaAnswer` | Analysis and job records hold generated question sets. Each spoken answer has its own `Attempt`, linked to the question job, question ID, and whether it answers the initial question or the follow-up. |
 
-The device uses SQLite's `records(key, value)` table for JSON metadata and keeps media as files. `SavedAttempt` holds recording/checkpoint/upload state. `DeckState` holds the selected `Run`, pending comparison and local presentation state. Each `Run.parts[slide]` identifies an attempt and one or more original audio intervals; a review run can combine slides from different recordings. See [local storage](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/mobile/src/services/storage.ts), [recording metadata](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/mobile/src/features/recording/storage.ts) and [run composition](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/mobile/src/domain/run.ts).
+## 5. Backend API
 
-Hiding a presentation with Undo does not delete its complete server media/results. Protected database relationships also prevent deletion without an explicit cleanup workflow. Full deletion remains Iteration 3 work.
+Routes use the `/api/` prefix. Deck, presentation context, and attempt IDs are UUID strings, slide indexes start at zero, and audio timestamps are integer milliseconds from the start of the recording. [API contract](../reference/api-contract.md) · [Route definitions](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/backend/rehearsals/urls.py)
 
-## 4. Backend API
+### Presentations and setup
 
-Routes below are relative to `/api/`. The [route definitions](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/backend/rehearsals/urls.py), [serializers](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/backend/rehearsals/serializers.py) and [API contract](../reference/api-contract.md) define request fields and validation.
-
-| Endpoint | Responsibility |
+| Route | Behavior |
 | --- | --- |
-| `POST decks/`, `GET decks/{id}/` | Prepare a PDF; read ordered slides and original media. |
-| `POST attempts/`, `GET attempts/{id}/`, `GET decks/{id}/attempts/` | Store original recording/visit metadata; read saved attempts. |
-| `POST attempts/{id}/process/` | Admit transcription or eligible recovery using the same recording identity. |
-| `POST presentation-contexts/`, `GET/PATCH presentation-contexts/{id}/` | Create/read/save audience and duration with revision checks. |
-| `GET decks/{id}/profiles/`, `POST decks/{id}/profiles/generate/` | Read or prepare reusable slide profiles/cues. |
-| `GET/PATCH attempts/{id}/corrections/` | Read/save confirmed transcript overlays. |
-| `GET/POST attempts/{id}/slide-review/` | Read/admit selected-slide feedback. |
-| `GET/POST attempts/{id}/presentation-score/` | Read/admit rubric-based assessment. |
-| `GET/POST attempts/{id}/audience-qa/` | Read/admit durable questions for selected speech and context. |
-| `GET/POST attempts/{id}/qa-answer/` | Bind, process or read a spoken answer for a saved question. |
+| `POST decks/`, `GET decks/{id}/` | Prepare or retrieve a PDF and its slides. |
+| `POST presentation-contexts/`, `GET/PATCH presentation-contexts/{id}/` | Save or read the audience and target duration. Updates require the expected revision. |
+| `GET decks/{id}/profiles/`, `POST decks/{id}/profiles/generate/` | Read cached slide cues or request generation or recovery. |
 
-Upload stores media; a separate request admits processing. A successful read can return cached, pending, failed or stale analysis. New work uses revision/selection assertions; conflicting requests return an error rather than replacing a different recording. Description, whole-attempt feedback, correction-suggestion and synchronous deck-Q&A routes remain for existing callers; current Android Q&A uses the durable routes above.
+### Rehearsal and review
 
-## 5. Recording, Transcription and Alignment
+| Route | Behavior |
+| --- | --- |
+| `POST attempts/` | Upload an After Stop take or a Q&A answer. Upload retries reuse the recording UUID. |
+| `POST attempts/{id}/process/` | Request transcription for an uploaded After Stop rehearsal. |
+| `GET attempts/{id}/`, `GET decks/{id}/attempts/` | Read a recording or list a deck’s rehearsals. Live attempts enter deck history after finalization. |
+| `GET incremental/capabilities/` | Check Live availability and limits. |
+| `GET/POST attempts/{id}/capture/` | Poll Live progress or submit an append-only manifest. Matching duplicates and older snapshots are safe to resend. Changes to earlier entries return `409`. |
+| `POST attempts/{id}/segments/{sequence}/` | Upload a declared segment as multipart `file`. Identical bytes are safe to resend. Changed bytes return `409`. |
+| `POST attempts/{id}/segments/{sequence}/retry/` | Retry eligible transcription after cooldown. Uncertain outcomes or invalid provider receipts require acknowledgement. |
+| `POST attempts/{id}/capture/audio/` | Submit the full playback WAV after Stop. Finalization requires every segment transcript and matching PCM. A mismatch allows re-upload and preserves completed transcripts. |
+| `GET/POST attempts/{id}/feedback-run/` | GET reads saved feedback. POST starts, updates, or retries eligible work. |
 
-### Current rehearsal flow
+### Audience Q&A
+
+| Route | Behavior |
+| --- | --- |
+| `GET/POST attempts/{id}/audience-qa/` | Use a rehearsal attempt ID to read or generate questions for the selected rehearsal sources and audience. |
+| `GET/POST attempts/{id}/qa-answer/` | Use the answer’s own attempt ID. POST links the uploaded recording to its question or follow-up and can start processing. GET reads its status or results. |
+
+The API contract also covers corrections, selected-slide review, and presentation scoring. [Live capture protocol](../reference/api-contract.md#continuous-capture-and-incremental-feedback-november-15-2026)
+
+## 6. Core Workflows
+
+### PDF import and setup
+
+Import a PDF (up to 50 MiB) to open **Setup**. Android renders the slides locally, so import can finish offline and fetch slide text later. Setup saves the audience and target duration on the phone before syncing. If settings conflict, **Use server** loads the server values and **Keep mine** resubmits the draft. Saving opens rehearsal. [PDF import](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/features/presentations/importer.ts) · [Setup](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/screens/PresentationSetup.tsx)
+
+### Rehearsal
+
+The slide counter switches between **Live feedback** and **After Stop** while idle. If Live is unavailable at the start or the presenter declines Live upload, the app uses After Stop. Each take creates a recording with timestamped slide changes. Both modes cap a take at 30 minutes. [Capture engine](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/features/rehearsal/CaptureEngine.tsx)
+
+**When the recording is saved**, the next screen depends on the take. [Released v10 flow](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/a64ffd571bea09d1a980b8b81c7aa827d5c976e8/docs/requirements/requirements-and-specifications.md#71-released-v10-flow) · [Processing screen](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/screens/WaitScreen.tsx)
+
+- **First Live take** opens **Review overview** while feedback can still arrive.
+- **First After Stop take** opens **Processing** with playback. Review normally opens when results settle or the three-minute timeout is reached. Returning from **Listen back** can block that transition in v10. [Known issue](#open-design-work)
+- **Retake with a comparison** opens **Compare takes** in either mode.
+
+#### Live feedback
+
+The app asks for consent before capturing if needed. The native recorder writes a continuous WAV and closes an upload segment at each slide change or after 60 seconds. Segments can wait on the phone while the deck and settings sync. The app polls for feedback on completed slides while recording. [Native recorder](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/modules/outloud-recorder/README.md) · [Capture protocol](../reference/api-contract.md#continuous-capture-and-incremental-feedback-november-15-2026)
 
 ```mermaid
 sequenceDiagram
     participant App as Android app
-    participant Local as Local files and SQLite
-    participant API as Django API
-    participant Jobs as PostgreSQL and Celery
-    participant STT as Scribe v2
-    App->>Local: Save audio and slide events
-    App->>API: Upload PDF if needed, then attempt audio
-    API-->>App: Saved attempt identity
-    App->>App: Request first-use transcription consent
-    alt Consent granted
-        App->>API: Admit processing
-        API->>Jobs: Save generation and dispatch work
-        Jobs->>Jobs: Check speech presence
-        opt Speech present
-            Jobs->>STT: Original audio and visited-slide hints
-            STT-->>Jobs: Raw transcription response
-            Jobs->>Jobs: Save receipt, normalize words and align visits
+    participant Native as Native recorder
+    participant API as Django
+    participant Worker as Celery
+    App->>Native: Start capture
+    loop As segments close
+        Native-->>App: Sealed segment
+        App->>API: Declare and upload segment
+        API->>Worker: Queue transcription
+        App->>API: Poll for slide feedback
+    end
+    App->>API: Send final manifest, remaining segments, and full WAV
+    Note over API,Worker: Verify matching audio and assemble transcript
+    Worker->>Worker: Assess the whole talk when eligible
+```
+
+#### After Stop
+
+The app saves and uploads one AAC file. If transcription consent is needed, it asks after upload. Declining skips transcription and keeps the local and uploaded copies. [Recording limits](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/features/recording/limits.ts) · [Consent gate](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/features/transcription/useAttemptAnalysis.ts#L166-L190)
+
+```mermaid
+sequenceDiagram
+    participant User as Presenter
+    participant App as Android app
+    participant API as Django
+    participant Worker as Celery
+    User->>App: Stop recording
+    App->>API: Upload AAC
+    opt Consent needed
+        App-->>User: Ask for consent
+    end
+    alt Consent available
+        App->>API: Request transcription
+        API->>Worker: Transcribe and align visits
+        opt Eligible after transcription
+            Worker->>Worker: Auto-start if configured
+            App->>API: Start if needed
+            App->>API: Poll status
         end
-        Jobs->>Jobs: Save processing result and metrics
-        App->>API: Poll saved processing state
-        API-->>App: Result or explicit processing/failure state
-    else Consent canceled
-        App->>Local: Keep saved audio playable
+    else Presenter declines
+        App-->>User: Keep playback available
     end
 ```
 
-V8 retains PR31's upload order: rehearsal audio uploads before first-use transcription consent. Cancel prevents the new Scribe request but does not undo the upload. Q&A checks consent before uploading a new answer. Pre-upload rehearsal disclosure remains an unmet requirement; the sequence above describes the implementation, not the required target flow.
+#### Recording recovery
 
-The [capture engine](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/mobile/src/features/rehearsal/CaptureEngine.tsx) uses the recorder's audio clock for slide events and writes durable checkpoints about once a second. Leaving the foreground requests a stop; interrupted capture/upload state remains available for recovery. V8 still blocks Back during recording instead of offering the required stop/save/discard confirmation.
+Saved audio stays playable during failures. Live keeps recording through a disconnect and resumes missing uploads when the app is active and connected. Leaving the foreground triggers a stop. On startup, unfinished recordings are marked as interrupted. When enough audio was saved, the app can rebuild an interrupted segment from the full WAV and saved boundaries. An uncertain transcription request needs confirmation before retry because it may incur another charge. [Upload recovery](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/features/recording/IncrementalCaptureHost.tsx) · [Segment recovery](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/features/recording/captureRecovery.ts)
 
-Audio uses mono AAC at 64 kbps. The capture ceiling is 30 minutes, with automatic stop requested one second early for native finalization. PDFs allow 50 MiB and any positive slide count; audio uploads allow 25,000,000 bytes. Saved duration settings allow 1–30 minutes, independent of the capture ceiling, and audience text allows 500 characters. Offline setting edits remain pending; revision conflicts offer Use server or Keep mine.
+### Review, playback, and retakes
 
-### Preparation and alignment
+**Review overview** shows timing, available grades, and feedback status. Open **Feedback** or a recorded slide to review advice and play the audio it cites. **Listen back** follows speaking order for one recording and slide order for a run that combines takes. A combined run uses each slide’s source feedback and has no overall score. [Review overview](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/screens/OverviewScreen.tsx) · [Playback order](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/domain/listenTimeline.ts)
 
-[PDF preparation](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/backend/rehearsals/services/pdf.py) extracts text, renders slide images and removes NUL characters from extracted text. Extracted-text normalization removes NUL only; surrogate-text handling remains Iteration 3 work.
+Tap Record on a previously recorded slide to redo it, or press and hold for **Redo all**. In **Compare takes**, play **Old take** or **New take**. **Keep this take** saves the choice for the affected slides and returns to rehearsal. Original recordings are preserved. **Home** can reopen rehearsal or review and offers **Undo** when a presentation is removed. [Compare takes](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/screens/CompareScreen.tsx)
 
-For speech, workers send original audio and up to 100 validated terms from visited slides to Scribe v2 with `no_verbatim=false`. No-speech input completes without a Scribe call. The [adapter](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/backend/rehearsals/services/transcription.py) keeps recognized fillers, excludes spacing/audio-event entries and converts seconds to integer milliseconds with decimal half-up rounding. V8 continues the Scribe-only transcription introduced in Iteration 2; OpenRouter is not a transcription replacement.
+### Audience Q&A
 
-[Alignment](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/backend/rehearsals/services/alignment.py) assigns a word by its start time to the current slide visit. A word on a boundary belongs to the new visit; the final event wins when events share a timestamp. Empty and repeated/backward visits retain their place in recording order. Review maps continuous seek positions through the selected run's original attempt intervals, including composite runs. The v7/v8 repair retains the exact selected source, cancels superseded seeks, preserves play/pause state and prevents an outdated load from replacing a newer source. Original audio, word timing and slide events are never rescaled.
+Swipe up from **Review overview** to hear questions based on the synced audience and selected rehearsal takes. Record an answer to a question or follow-up, then replay it and read the evaluation when ready. The app checks consent before uploading and keeps the answer if analysis fails. [Q&A screen](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/screens/QAScreen.tsx) · [Answer client](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/features/qa/client.ts)
 
-## 6. AI Coaching
+## 7. AI and Analysis
 
-### Initial work and updates
+### Slide cues
 
-The app starts initial selected-slide feedback after usable transcription and saved settings are ready. A pending Keep/Overwrite comparison holds this work until selection is settled. Changed inputs can mark feedback outdated. The durable interfaces retain update/retry rules; the selected compact UI exposes targeted recovery controls in feedback details but not the earlier transcript-correction and general feedback-update tools. [Initial feedback](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/mobile/src/features/feedback/InitialFeedbackHost.tsx), [automatic scoring](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/mobile/src/features/feedback/InitialPresentationScoreHost.tsx) and [Q&A](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/mobile/src/features/qa/InitialQaHost.tsx) use separate controllers. Saved reads reuse existing output.
+A background job builds reusable slide profiles from the prepared deck. The cache is tied to the deck content and analysis configuration. Setup can continue while cues are pending or unavailable. [Slide profile jobs](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/backend/rehearsals/services/slide_profiles.py)
 
-### Evidence and scoring
+### Transcription and alignment
 
-Compact selected-review requests include shared deck context once and distinguish selected speech from neighboring context. The backend reconstructs quoted evidence from original word/visit IDs and validates slide and audio bounds. Selected-slide feedback returns up to four prioritized findings. Transcript corrections change the interpretation while preserving source audio and timing.
+Both recording modes use **ElevenLabs Scribe v2** and skip the provider call when speech detection finds no speech. After Stop transcribes the full recording and can include vocabulary hints from visited slides. Live transcribes non-overlapping segments without vocabulary hints and adds each segment’s start time to its word timestamps. A retry can reuse a valid saved Scribe response. The backend assigns words to slide visits by start time, so a word starting exactly at a slide change belongs to the new visit. [After Stop processing](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/backend/rehearsals/services/processing.py) · [Live transcription](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/backend/rehearsals/services/incremental.py) · [Alignment](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/backend/rehearsals/services/alignment.py)
 
-The scoring provider selects ordinal rubric judgments and evidence references; backend code validates them and calculates scores with exact arithmetic. The overall score combines 70% of the mean slide score with 30% whole-presentation criteria. Invalid, insufficient or stale evidence can leave a score unavailable. Composite runs retain eligible per-slide source scores but receive no fabricated whole-run grade. Source validation does not establish advice usefulness, score calibration or judgment correctness. See [selected review](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/42c2154a54e209f4c9e931fd4db5777d6816c3d6/docs/feedback-compact-context.md), [scoring](../reference/presentation-scoring.md) and [Q&A implementation](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/backend/rehearsals/services/audience_qa.py).
+### Feedback and scoring
 
-### Concurrency and recovery
+When enabled, **Feedback v3** sends text to the OpenRouter Responses API. The default model is `openai/gpt-6-luna`. Inputs include the saved audience and target duration, slide context, available profiles, transcript sentences, and delivery measurements. Feedback uses general-audience guidance when the audience is blank. Feedback can use extracted slide text if a profile is missing. [Model configuration](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/backend/rehearsals/feedback_v3/llm.py)
 
-Database transactions, generations and claim tokens guard work admission and result writes. Jobs freeze input revisions. Workers persist raw receipts before validating responses, so eligible recovery can reuse received data. An uncertain provider outcome requires explicit acknowledgement before another potentially charged submission. Separate states distinguish missing media, failed processing, unavailable analysis and stale advice.
-
-### V8 diagnostics and explicit recovery
-
-[Measurements v2](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/backend/rehearsals/services/presentation_measurements.py) shares upload's inclusive ±1,000 ms decoded/capture-duration tolerance. Diagnostics use their valid common window; rates retain the original capture-duration denominator. Audio, transcript timing and visits remain unchanged. Safe error codes distinguish unavailable/invalid audio, decoding or measurement failure and insufficient speech.
-
-Completed singleton slide reviews with invalid evidence, model failure or missing output can expose an explicit revision-fenced Retry. Cooldowns, active-work locks and uncertain-charge acknowledgement remain enforced. An open GitHub issue does not establish that a release lacks its repair. See the [v8 recovery evidence](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/docs/issue49-fix-verification-20261103.md).
-
-The [November 3 release update](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103) reports the later deployed v2.4 grading policy: 24,000 output tokens, 128 KiB inner JSON and a grading-only 240-second response deadline. Prompt wording, rubric, score weights and public API shapes are unchanged. It reports successful grading of the original ten-slide rehearsal with zero evidence rejections after the confirmed audience was saved. This bounded repair result does not establish human score-quality acceptance. Build-time reports retain their earlier pre-deployment outcomes.
-
-## 7. Frontend Architecture
-
-| Component | Responsibility |
+| Step | Responsibility |
 | --- | --- |
-| [AppShell](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/mobile/src/screens/AppShell.tsx) | Mounted screen stack, navigation and shared background analysis hosts. |
-| [RehearseScreen](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/mobile/src/screens/RehearseScreen.tsx) / CaptureEngine | Slide navigation, countdown/capture, recorder lifecycle and cues. |
-| [Presentation store](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/mobile/src/features/presentations/store.ts) / run domain | Persist presentation state, compose selected slide takes and retain pending Keep/Overwrite choices. |
-| [Review](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/mobile/src/screens/ReviewScreen.tsx) / [Full Review](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/mobile/src/screens/FullReviewScreen.tsx) | Read selected recordings, transcript overlays, scores, feedback and evidence playback. |
-| [Q&A client](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/mobile/src/features/qa/client.ts) | Question/answer identity, consent and durable API operations. |
+| Prepare | The backend builds timestamped sentences, measures delivery, and decides which slides qualify for grading. It tracks excluded opening or closing slides, unvisited slides, and slides with too little speech. |
+| Assess | The model returns rubric levels, reasons, and suggestions. It cites transcript sentence IDs and can also cite measurement IDs for whole-talk feedback. |
+| Verify and score | The backend maps known sentence IDs to excerpts and playback times, drops unknown IDs, and converts the levels to Rubric V2 points. |
 
-Must Cover and Further Insight are slide-derived cues, not summaries of the presenter's speech. Keep current/Overwrite selects which take supplies the affected slides; it does not provide the full two-attempt audio/transcript/feedback viewer. V8 includes the first-Redo lifecycle repair: the single-use capture engine is remounted after save/failure so another take can start. This release inclusion does not mean the separate B09 branch or PR #34 has been merged. See Testing Documentation for dated defect and retest evidence.
+Pace excludes pauses of one second or more. English uses words per minute, and Korean uses estimated syllables per minute. Pace bands and filler rules are provisional. The overall score is **70% of the mean applicable slide score + 30% of the whole-talk score**, rounded once. It requires at least one applicable slide, scores for every applicable slide, and a whole-talk score. [Delivery measurements](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/backend/rehearsals/feedback_v3/measurements.py) · [Rubric V2](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/backend/rehearsals/feedback_v3/rubric.py)
 
-Compact Review presents measured timing, informational filler counts and verified content/delivery findings. Timing uses an inclusive ±15% allocation range; nonzero fillers alone do not establish a communication defect. Feedback details retain complete observations and suggestions. Full Review supplies run playback and transcript/evidence access. Earlier recognition-correction, saved-recording upload/transcription retry and manual remote-audio download controls are not exposed by the selected compact UI, even though supporting services remain.
+Slide and whole-talk results save independently. A Live revisit can show earlier advice as provisional while the new segments are processed. After Stop retries keep completed parts, and both modes can reuse results for matching inputs. Transcript corrections or settings changes can make saved feedback outdated. [Feedback pipeline](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/backend/rehearsals/feedback_v3/pipeline.py) · [Live capture protocol](../reference/api-contract.md#continuous-capture-and-incremental-feedback-november-15-2026)
 
-Q&A speech selects Korean when Hangul is present, otherwise English when Latin text is present, with platform fallback for other text. Mixed Hangul/Latin uses Korean. This is a heuristic, not general language detection; voice availability and pronunciation need device/listening checks.
+### Audience Q&A
 
-## 8. Changes Since Iteration 2 and Remaining Design
+A separate job generates questions and follow-ups from selected transcript excerpts. It requires a synced, nonblank audience. Each recorded answer has its own attempt linked to the question and its initial or follow-up part. Evaluation uses that answer’s saved transcript. [Audience Q&A service](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/backend/rehearsals/services/audience_qa.py)
 
-### Changes since Iteration 2
+## 8. Iteration 4 Changes and Remaining Design
 
-| Change | Status and source | Evidence date |
+### Released in v10
+
+Iteration 4 added Live recording with resumable segment uploads, rebuilt slide and whole-talk assessment as Feedback v3, and extended playback to follow repeated slide visits. v10 also restored cue retry controls and fixed Q&A navigation and speech controls. The database changes preserve existing attempts and results. [v10 release](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v10-20261115)
+
+### Open design work
+
+| Area | Current v10 behavior | Remaining work |
 | --- | --- | --- |
-| Azure HTTPS and reviewer access; OpenRouter analysis cutover | Included in v8 `cdb8055`; [hosted configuration](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/docs/azure-hosting.md), [provider policy](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/docs/ai-feedback.md). Scribe, scoring and Q&A already existed in Iteration 2. | November 2–3, 2026 |
-| Redo lifecycle and selected compact UI | Included in v8; [repair and source verification](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/docs/apk-redo-feedback-verification-20261102.md). PR #34 remains administratively open. | November 2, 2026 |
-| Ten-minute/General defaults, full feedback details, seeking, metric labels and Q&A speech language | Included in v7 and retained in v8; [combined verification](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/docs/demo-v7-combined-verification-20261103.md). Human usefulness/audible acceptance is separate. | November 3, 2026 |
-| Duration diagnostics and targeted slide-feedback recovery | Included in v8; [release build record](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/docs/demo-v8-issue49-verification-20261103.md). | November 3, 2026 |
-| V2.4 grading budget/deadline | Deployment reported by the [v8 release update](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103); backend source was [recovered on November 15](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/2c7c337c2c89de6e6714c9e5f0708fb2be2cabc3) on a separate branch. | November 3, 2026 |
-| Early advice preview and v2.5 performance/audience-citation changes | Local, uncommitted and unreleased; see the [dated reconciliation evidence](../testing/evidence/iteration-3-reconciliation-2026-11-05.md). Numeric score streaming is not implemented. | November 3–4, 2026 |
+| Recording | Pressing Android Back leaves the recording active. | Ask whether to stop and save or discard the recording. |
+| Setup | Saving untouched Setup before the default audience loads can save a blank audience and cancel default initialization. | Preserve the intended **General audience** default when saving untouched Setup. |
+| After Stop privacy | The app uploads audio before showing the first transcription consent prompt. | Ask for consent before uploading audio. |
+| Review and accessibility | After returning from **Listen back**, **Processing** can stay open past the three-minute fallback. **Next** can stall at certain slide-visit boundaries. Some text is capped at 1.1× scaling. | Restore the fallback after playback, fix skipping at visit boundaries, and support larger text. |
+| Summaries and retakes | Presenters can redo a slide, play the old or new take, and choose which one to keep. | Add summaries of what the presenter said and label unavailable summaries. Add a slide-selection checklist and compare both takes’ transcripts and feedback, including where feedback is missing. |
+| Deletion | Removing a presentation from **Home** hides it and offers **Undo**. The local PDF can be removed if the presentation has no saved attempts. | Confirm what will be deleted, remove the affected local and server data, and offer recovery if deletion is incomplete. |
 
-### Remaining Iteration 3 requirements
+Rubric scores still need comparison with independent human ratings on real presentations. The usefulness of the advice also needs validation with presenters.
 
-| Work | Existing components affected |
-| --- | --- |
-| Stop/save/discard confirmation | RehearseScreen navigation and capture lifecycle. |
-| Spoken summaries and failure states | Transcript/Review views and backend analysis contracts. |
-| Complete attempt comparison | Run composition, Keep/Overwrite state and Review playback. |
-| Full deletion and partial-failure recovery | Presentation/recording stores, backend model relationships and media lifecycle. |
-| Pre-upload rehearsal disclosure | Capture-to-analysis handoff and recording upload; preserve Q&A's pre-upload check. |
-| Reported bug follow-up | PDF upload, visit display/association, navigation/playback and Q&A. |
-| Numerical targets | Set performance, recognition, feedback-quality and cost targets from pilot measurements. |
+[Requirements and acceptance criteria](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/a64ffd571bea09d1a980b8b81c7aa827d5c976e8/docs/requirements/requirements-and-specifications.md#5-functional-requirements) · [Testing Documentation](../testing/testing.md)
 
-[Requirements v4.0](../requirements/requirements-and-specifications.md#iteration-3-implementation-status) retains the acceptance criteria. Owners, exact dates and numerical targets remain unset. Q&A and separate English/Korean sessions remain in semester scope; broad Korean recognition, advice usefulness and stable/calibrated scores remain unverified. Reported navigation, recording-timer, large-text and import defects need current-build retests. Backward-navigation restrictions and onboarding remain proposals. Model experiments, grouped feedback and local performance work are not adopted by this document.
+### Iteration 5
 
-### Design patterns (Iteration 5)
+Iteration 5 plans include the UI redesign and an English or Korean choice during onboarding. That choice will set the interface and feedback language independently of the language spoken during rehearsal. [Iteration 5 kickoff](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/44f14c7/docs/meetings/2026-11-19-iteration-5-kickoff.md)
 
-Document at least two implemented patterns with their module, motivation, alternatives, component roles, benefit and a short code example.
+#### Design patterns
+
+Document at least two implemented patterns in detail. For each, identify where it is used, the problem it solves, why it was chosen, its benefits, the roles of its components, and a short code example.
