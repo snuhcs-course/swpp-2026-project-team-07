@@ -66,7 +66,7 @@ Agent-operated checks on `codex/scribe-v2-main-integration`:
 
 ## Earlier branch verification
 
-The dated results below were recorded on the original Scribe branch, which includes additional AI-feedback work. They are retained as source evidence, not claimed as tests of this main integration. For subsequent integration checks, see the [contributor and iteration logs](../ai-collaboration/README.md#prompt-logs).
+The dated results below were recorded on the original Scribe branch, which includes additional AI-feedback work. They are retained as source evidence, not claimed as tests of this main integration. Current integration checks are recorded in the active collaboration log.
 
 Agent-operated checks on October 16:
 

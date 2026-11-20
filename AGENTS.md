@@ -6,20 +6,7 @@ These rules apply across project tasks; read detailed guides only when relevant.
 
 ## Current iteration and prompt logging
 
-This rule applies to anyone contributing to this repository. For each project task, including
-questions and reviews, record the requester's prompts on `docs/<contributor>-prompt-logs` in
-`docs/ai-collaboration/prompt-logs/<contributor>/iteration-<N>.md`.
-
-Reuse the person's established folder. Current examples include `injoon`, `jaewon`, `jooyoung`,
-and `seoyeon`. For a first-time contributor, use their confirmed lowercase GitHub login or
-another agreed, unused folder name. Use the same identifier for their branch and future logs.
-Use the task's recorded iteration. If it is unlabelled, check the team schedule and task scope.
-Ask when overlapping iterations leave the assignment unclear.
-
-Reuse the contributor's log worktree, or open one from their remote log branch. Start a new
-log branch from the team's current `main`. Contributors working in a fork use the same branch
-name and file path in their fork. Create the iteration file with its first entry and link it
-in that branch's [prompt log index](docs/ai-collaboration/README.md#prompt-logs). Keep unconfirmed attribution local until resolved.
+Use the [prompt log index by iteration](docs/ai-collaboration/README.md#prompt-logs). Record new entries in the appropriate contributor and iteration file. Use the unattributed column when authorship is unconfirmed.
 
 - Record each actual project-task prompt and follow-up verbatim in the contributor’s iteration log during
   work, under the contributor/task, with date, tool and model. Group related prompts
