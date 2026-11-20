@@ -1,49 +1,10 @@
 # OutLoud Requirements & Specifications
 
 Team 07 (치르치르), Software Development Principles and Practice, Seoul National University<br>
-Version 4.0, 5 November 2026
+Version 5.0, 19 November 2026
 
 <a id="iteration-2-implementation-status"></a>
-
-## Iteration 3 implementation status
-
-**Published product baseline:** [demo v8](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103), source `cdb8055`. **Documentation reviewed:** November 5, 2026. **Evidence dates:** recorded separately below; this update includes no fresh application, provider or device run.
-
-[PR #32](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/32) merged the Iteration 2 documents on October 23. They describe the PR31 application (`c4a3f48`) as recorded on main at `7b7ef3b`. Main advanced to v8 on November 16 and includes the released selection of PR #34 UI changes. [Design Documentation](../design/design-documentation.md) describes that release architecture.
-
-Scribe v2 transcription, saved audience/time settings, cues, corrections, scoring and durable Q&A already existed in Iteration 2. V8 retains those services with a compact UI and the repairs below. Requirements and acceptance criteria remain distinct from implementation status.
-
-### Changes since Iteration 2
-
-| Area | Current implementation and status | Source and evidence date |
-| --- | --- | --- |
-| Hosted access | Published v8 uses Azure HTTPS and an in-app reviewer code. Code holders share one workspace; separate application accounts and user-level sharing permissions are not implemented. Local recording/playback remain available offline. | `cdb8055`; [hosting source](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/docs/azure-hosting.md), November 2, 2026 |
-| Analysis providers | Published source defaults new analysis to OpenRouter `openai/gpt-6-luna`; provider work remains disabled until configured. Scribe v2 remains the transcription provider. Default settings do not establish the configuration of a running server. | `cdb8055`; [provider configuration](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/docs/ai-feedback.md), November 2, 2026 |
-| New-presentation defaults | Untouched imports initialize General audience and 600 seconds (10 minutes), preserving edits, clears and accepted legacy five-minute settings. The bundled Seoul deck's five-minute offline seed is separate and needs explicitly saved server choices. | `cdb8055`; [defaults follow-up](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/docs/presentation-defaults-verification.md#november-3-2026--issues-36-and-43-follow-up), November 3, 2026 |
-| Retakes and compact review | The first-Redo repair is released. Full feedback details, continuous source-aware seeking, timing-allocation labels and informational filler counts are included. Keep/Overwrite remains partial coverage of full comparison. | `cdb8055`; [Redo evidence](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/docs/apk-redo-feedback-verification-20261102.md), November 2; [combined v7 evidence](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/docs/demo-v7-combined-verification-20261103.md), November 3 |
-| Q&A speech | Main/follow-up text uses Korean speech for Hangul, otherwise English for Latin text, with platform fallback otherwise. Mixed Hangul/Latin selects Korean. This heuristic does not establish natural pronunciation or general multilingual detection. | `cdb8055`; [language follow-up](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/docs/presentation-defaults-verification.md#november-3-2026--issues-36-and-43-follow-up), November 3, 2026 |
-| Grading and feedback recovery | V8 includes inclusive ±1,000 ms audio-duration tolerance, specific safe failure reasons and revision-fenced targeted slide-feedback retry. Original recordings and historical results are retained. | `cdb8055`; [v8 evidence](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/docs/demo-v8-issue49-verification-20261103.md), November 3, 2026 |
-| Later backend repair | The release record reports deployed v2.4: 24,000 output tokens, 128 KiB inner JSON and a grading-only 240-second deadline. The patch was [recovered on November 15](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/2c7c337c2c89de6e6714c9e5f0708fb2be2cabc3) on a separate branch. It preserves rubric/weights/API shapes and is compatible with v8. Successful ten-slide grading with zero evidence rejections is a bounded operational result. | [V8 release update](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103), November 3; reviewed November 5, 2026 |
-| Local candidates | Early advice preview and v2.5 Review-performance/audience-citation repairs remain uncommitted and unreleased. They are not published features; numeric score streaming is not implemented. | [Dated reconciliation evidence](../testing/evidence/iteration-3-reconciliation-2026-11-05.md), November 3–4, 2026 |
-
-GitHub issue and PR state is administrative evidence. Several issues remain open even where a repair is included in v8; selected PR #34 UI does not imply the whole PR was merged. Other reported defects, including large-text accessibility, navigation responsiveness and Q&A recording timing, need current-build retests. The local performance candidate does not close those acceptance gaps.
-
-### Remaining requirements and acceptance gaps
-
-| Area | Current status and remaining work |
-| --- | --- |
-| PDF import, AC-01a/b | Jooyoung's Iteration 2 report records two upload HTTP 500 responses associated with a surrogate-character encoding error. A controlled error and matching device retest remain missing. [JY01](../testing/evidence/iteration-2-supporting-records.md#jooyoung-pdf-upload-failure). |
-| Repeated slide visits, AC-02a | Forward, backward and repeated visits are supported. Jaewon and Seoyeon's reported association/display concerns still need source-timing and displayed-identity retests. [JJ02 / SY01](../testing/testing.md#supplementary-manual-testing). |
-| Leave while recording, AC-02d | V8 blocks Back. Stop/save/discard confirmation remains unmet. |
-| Spoken key ideas, AC-03b/d/e | Must Cover/Further Insight describe slides. Separate summaries of what the presenter said, with failure/no-speech states, remain unmet. |
-| Retry and comparison, AC-08 | Released Redo and Keep/Overwrite preserve take selection. Complete two-attempt audio/transcript/feedback comparison and the empty-selection checklist remain unmet. |
-| Full deletion, AC-11a–c | Hide/Undo and local PDF removal do not complete server media/result deletion or partial-deletion recovery. |
-| Disclosure before upload, NFR-05 / Section 7.2 | Rehearsal consent still follows audio upload; Q&A checks before a new answer upload. Pre-upload rehearsal disclosure remains required. |
-| Recovery and corrections in compact UI | Supporting services remain, but the selected compact UI does not expose the earlier saved-recording upload/transcription retry, recognition-correction and manual remote-audio download tools. Targeted feedback recovery is present. |
-| Q&A and Korean, US-17 / US-20 | Implemented workflows do not establish complete Q&A recovery, broad Korean accuracy or useful advice. Quality evaluation remains incomplete. |
-| Numerical targets and human acceptance | Performance, recognition, feedback-quality and cost targets, owners and exact dates remain unset. Existing automated and bounded device/provider checks do not establish full acceptance or calibrated scoring. |
-
-The October 22 full-suite run passed 548 mobile and 554 PostgreSQL backend tests with zero failures/skips. Backend coverage met both groups' targets; both mobile groups missed their line targets. These are historical Iteration 2 results, not reruns against v8. Later release evidence and limitations are recorded in [Testing Documentation](../testing/testing.md) and the [Story-to-Test Matrix](../testing/story-test-matrix.md). Backward-navigation restrictions, onboarding and model/routing experiments remain proposals.
+<a id="iteration-3-implementation-status"></a>
 
 ## Table of Contents
 
@@ -59,12 +20,13 @@ The October 22 full-suite run passed 548 mobile and 554 PostgreSQL backend tests
    - [5.5 Speaking delivery feedback](#55-speaking-delivery-feedback)
    - [5.6 Retry and comparison](#56-retry-and-comparison)
    - [5.7 History, data management and recovery](#57-history-data-management-and-recovery)
-   - [5.8 Original team stories](#58-original-team-stories)
 6. [Non-functional Requirements](#6-non-functional-requirements)
 7. [User Interface Requirements](#7-user-interface-requirements)
-   - [7.1 Navigation flow](#71-navigation-flow)
-   - [7.2 Screen descriptions](#72-screen-descriptions)
+   - [7.1 Released v10 flow](#71-released-v10-flow)
+   - [7.2 v10 wireframes](#72-v10-wireframes)
 8. [Additional Features](#8-additional-features)
+   - [8.1 Semester Scope](#81-semester-scope)
+   - [8.2 Optional Extensions](#82-optional-extensions)
 
 ## 1. Document Revision History
 
@@ -74,70 +36,56 @@ The October 22 full-suite run passed 548 mobile and 554 PostgreSQL backend tests
 | 2.0 | 2026-10-09 | Merged closely related stories into nine mandatory stories in seven functional groups, and added the team's stories on filler words, pauses and student knowledge levels. Added failure and recovery scenarios. Separated automatic transcription from requested AI feedback. Added a competitor comparison table. Replaced text wireframes with Figma screens and navigation flow diagrams. |
 | 3.0 | 2026-10-23 | Added Iteration 2 status and device findings. Updated recording limits and initial-feedback behavior to PR31. Scheduled feature gaps, pre-upload disclosure, bug follow-up and pilot-based target setting for Iteration 3. Clarified Q&A/Korean scope. Acceptance criteria unchanged. |
 | 4.0 | 2026-11-05 | Reconciled published v8, release-reported backend repair and unreleased work. Updated defaults, access, provider and UI specifications; retained requirement IDs, acceptance criteria and unmet requirements. |
+| 5.0 | 2026-11-19 | Updated the specification to the Iteration 4 v10 baseline, covering live feedback, segment upload recovery, and selected-slide retakes. Retained the existing user stories and acceptance criteria. The APK was built from `5745502`, and PR #60 merged the v10 implementation into `main`. [v10 release](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v10-20261115) · [Merged PR #60](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/60) |
 
 ## 2. Project Abstract
 
-The target OutLoud product is an Android application that helps students, professionals, founders and educators rehearse presentations with their PDF slides. A presenter imports a deck, optionally describes the intended audience, and records a rehearsal while moving through the slides. OutLoud connects the recording to the visited slides, so the presenter can revisit each slide with its audio and transcript. After the presenter accepts a data disclosure, the recording is transcribed automatically. A separate summary of key ideas helps users review what they said without replacing their original words. Initial AI feedback starts after usable transcription and saved settings are ready. It points out possible inconsistencies between slides and speech, unclear explanations, and language that may be difficult for the stated audience. Each suggestion links to the relevant slide and recording interval, so users can judge the advice themselves. Delivery feedback covers speaking pace, time spent on each slide, filler words and pauses. Users can practice the full presentation or selected slides again, keep attempts, and compare the same slide across attempts. Saved recordings stay available when analysis fails, so users can retry processing without recording again. OutLoud is for practice, not live presentations, and it does not fact-check claims against external sources.
+OutLoud is an Android presentation rehearsal app for students and professionals. Users can upload PDF slides, record rehearsals, and receive feedback on their delivery. OutLoud uses AI to transcribe rehearsals, assess how well speakers cover each slide, and suggest improvements. Feedback links to the relevant slide and moment in the recording, so presenters can hear the explanation they want to improve. They can get feedback while rehearsing or review it afterward, then retake an individual slide and choose which recording to keep. To prepare for Q&A, presenters can practice answering questions and follow-ups generated from their rehearsal and saved audience settings.
 
 ## 3. Customer
 
-**General audience:** people who prepare spoken presentations with a slide deck and rehearse alone on an Android phone before presenting to others. They want specific, slide-level advice and a quick way to practice weak parts again. The first release is English-first. Audience members do not use the app; the presenter describes them as context for feedback.
+OutLoud is for students and professionals who rehearse slide-based presentations on their own. They want to find explanations that need work, practice those parts again, and prepare for questions from their audience.
 
-**Specific customer types:**
-
-- **University students** preparing class presentations. They record a full practice run, find the slide where their explanation is weak, rehearse only that slide again, and compare the two attempts.
-- **Business and technical presenters** explaining technical proposals to nontechnical clients. They describe the audience before rehearsing and review terms such as "p95 latency" that need a plain-language explanation.
-- **Startup founders** rehearsing pitches with charts and a time limit. They check that spoken claims match the numbers on their slides and review how long they spend on each slide.
-- **Professors and instructors** preparing lessons for students with limited background knowledge. They state the students' level and review explanations that assume too much prior knowledge.
-
-**Example.** A student imports a three-slide deck and records a full rehearsal. During review, feedback on slide 2 notes that the spoken explanation does not make the chart's meaning clear and plays the related part of the recording. The student rehearses slide 2 again and compares the two attempts. If analysis fails, the saved recording stays available for playback and later processing.
-
-**Core constraints:** Android phone, PDF input and English-first rehearsal. Transcription starts after the presenter accepts the data disclosure. Initial selected-slide feedback starts when its prerequisites are ready; users request updates or retries. No feedback is given in real time during a presentation.
-
-**Outside the core product:** real-time coaching during a live presentation, fact-checking against external sources, any requirement to read every slide element aloud, PPTX input and export. Section 8 lists [additional semester features and optional extensions](#8-additional-features).
+- **University students** rehearse class presentations and practice explaining a difficult slide before presenting to classmates.
+- **Business and technical presenters** practice explaining proposals or technical concepts to clients who may be unfamiliar with the subject.
+- **Startup founders** rehearse timed pitches and practice explaining charts or metrics that investors may ask about.
+- **Professors and instructors** rehearse lessons and look for explanations that assume more background knowledge than their students have.
 
 ## 4. Competitive Landscape
 
-The table compares OutLoud with a general AI assistant and two presentation-practice tools. Competitor entries come only from each provider's public help pages, checked on 2026-10-09.
+**Yes** indicates documented support. **—** indicates that the sources reviewed don’t establish support for that capability.
 
-**Legend.** O = documented by the provider. X = the provider's documentation states that it is not available. – = not found in the documentation we checked; the feature may exist. For OutLoud, O = required by this specification, Planned = semester scope with proposed criteria in Section 8, Opt. = optional future feature, X = not planned.
+| Capability | ChatGPT | PowerPoint Speaker Coach | Yoodli | OutLoud v10 |
+| --- | --- | --- | --- | --- |
+| Rehearse while presenting your own slides | — | Yes | Via screen sharing | Yes |
+| Speaking pace and filler-word feedback | — | Yes | Yes | Yes |
+| Flags reading slide text aloud | — | Yes | — | — |
+| Feedback on presentation content | On request | — | With custom screen-sharing goals | Yes |
+| Review saved rehearsal results | — | — | Yes | Yes |
+| Feedback linked to a slide and a moment in the recording | — | — | — | Yes |
+| Retake an individual slide | — | — | — | Yes |
+| Listen to and choose between two takes of the same slide | — | — | — | Yes |
+| Built-in presentation Q&A practice | — | — | Yes | Yes |
 
-| Capability | ChatGPT | Microsoft Speaker Coach | Yoodli | OutLoud |
-| --- | :---: | :---: | :---: | :---: |
-| Rehearse while presenting your own slides | – | O | O ¹ | O |
-| Speaking pace feedback | – | O | – | O |
-| Filler-word feedback | – | O | – | O |
-| Detects when the speaker reads slide text aloud | – | O | – | X |
-| Feedback on presentation content, not only delivery | O ² | O | O ³ | O |
-| Rehearsal results saved for later review | – | X ⁴ | O | O |
-| Feedback linked to a specific slide and moment in the recording | – | – | – | O |
-| Feedback adapted to a described audience | – | – | – | O |
-| Re-record only selected slides as a new attempt | – | – | – | O |
-| Compare the same slide across attempts | – | – | – | O |
-| Practice answering audience questions | – | – | O | Planned |
+**How OutLoud differs.** Presenters can find the slide that needs work, replay their explanation, and retake that slide within the same rehearsal.
 
-¹ Learners can share their screen, such as presentation materials, while practicing.<br>
-² Users can upload PDF or PPTX slides and audio files and ask for feedback in a conversation.<br>
-³ Screensharing Goals score a shared screen against a rubric; Enterprise plan only.<br>
-⁴ The rehearsal report disappears when it is closed unless the user takes a screenshot.
-
-**How OutLoud differs.** Pace and filler-word feedback alone do not differentiate OutLoud; Speaker Coach already provides them. OutLoud's intended difference is the connected workflow: feedback tied to a specific slide and moment of the recording, focused practice of selected slides, and comparison of the same slide across attempts.
-
-Sources: [Microsoft Speaker Coach](https://support.microsoft.com/en-us/powerpoint/rehearse-your-slide-show-with-speaker-coach), [Practice with Yoodli](https://support.yoodli.ai/en/articles/9550465-practice-with-yoodli), [Yoodli Screensharing Goals](https://support.yoodli.ai/en/articles/11591789-screensharing-goals), [Uploading files and audio to ChatGPT](https://help.openai.com/en/articles/8555545-uploading-files-and-audio-to-chatgpt).
+[ChatGPT file and audio uploads](https://help.openai.com/en/articles/8555545-uploading-files-and-audio-to-chatgpt) · [PowerPoint Speaker Coach](https://support.microsoft.com/en-us/powerpoint/rehearse-your-slide-show-with-speaker-coach) · [Yoodli practice](https://support.yoodli.ai/en/articles/9550465-practice-with-yoodli) · [Yoodli delivery feedback](https://yoodli.ai/blog/how-to-stop-using-filler-words) · [Yoodli screen-sharing goals](https://support.yoodli.ai/en/articles/11591789-screensharing-goals) · [OutLoud v10 release](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v10-20261115)
 
 ## 5. Functional Requirements
 
-The nine stories in this section describe the mandatory functionality of the final product. Each story uses the Connextra format. Each acceptance criterion uses Given–When–Then and is labeled **Positive** (expected success) or **Negative** (failure or input that is not allowed). Story IDs follow Version 1.0. The team will select and freeze the user acceptance test (UAT) stories by the end of Iteration 3.
+The nine stories below describe what OutLoud must support, from importing slides to managing saved rehearsals. Each story uses Given–When–Then acceptance criteria to describe expected behavior in successful and failure cases.
 
-| Functional group | Stories |
+**Iteration 4 user acceptance testing (UAT).** The team froze six user stories at the end of Iteration 3 and used them to design the Iteration 4 UAT. The workbook’s **User Story** tab lists them. They cover slide upload and practice, transcription and recording, AI grading, speech habit analysis, AI feedback consistency, and Q&A tailored to the target audience. The workbook records reviewer outcomes and comments by test step. [Iteration 4 UAT workbook](https://docs.google.com/spreadsheets/d/1msuddEecIikY6-PvD1mlmtFlIzOmrz8frR-_GfDpQ7U/edit#gid=0)
+
+| Functional area | User stories |
 | --- | --- |
-| 5.1 Presentation management | US-01 |
-| 5.2 Recording and slide synchronization | US-02 |
-| 5.3 Transcription and rehearsal playback | US-03 |
-| 5.4 Slide-specific and audience feedback | US-05, US-07 |
-| 5.5 Speaking delivery feedback | US-06 |
-| 5.6 Retry and comparison | US-08 |
-| 5.7 History, data management and recovery | US-10, US-11 |
+| 5.1 Presentation management | US-01 · Import and inspect slides |
+| 5.2 Recording and slide synchronization | US-02 · Record a slide-based rehearsal |
+| 5.3 Transcription and rehearsal playback | US-03 · Review recordings, transcripts and key ideas |
+| 5.4 Slide-specific and audience feedback | US-05 · Review evidence-linked content feedback<br>US-07 · Adapt feedback to the audience’s knowledge level |
+| 5.5 Speaking delivery feedback | US-06 · Review pace, slide timing, filler words and pauses |
+| 5.6 Retry and comparison | US-08 · Practice selected slides again and compare attempts |
+| 5.7 History, data management and recovery | US-10 · Reopen saved attempts and recover analysis<br>US-11 · Delete rehearsal data |
 
 ### 5.1 Presentation management
 
@@ -164,6 +112,8 @@ The nine stories in this section describe the mandatory functionality of the fin
 
 **As a** presenter, **I want** to record my speech while changing slides, **so that** I can later review what I said on each slide.
 
+**v10 note.** Pressing Android Back during recording leaves it running. The stop, save, or discard choice in AC-02d remains open.
+
 - **AC-02a. Record repeated slide visits (Positive)**
   - **Given** a loaded deck and microphone permission
   - **When** I record while visiting slides 1, 2 and then 1 again, and press Stop
@@ -186,6 +136,8 @@ The nine stories in this section describe the mandatory functionality of the fin
 #### US-03. Review recordings, transcripts and key ideas
 
 **As a** presenter, **I want** to replay each slide's recording with its transcript and a separate summary of key ideas, **so that** I can find the parts that need improvement without losing my original wording.
+
+**v10 note.** Recordings preserve repeated slide visits. The **Next** control can stall at a visit boundary. The separate summary of what the presenter said and its unavailable state remain incomplete (AC-03d, AC-03e).
 
 - **AC-03a. Play a transcript segment (Positive)**
   - **Given** a processed attempt with speech on slide 2
@@ -279,6 +231,8 @@ An unavailable label is an error state; it does not satisfy AC-06e. Repetition a
 
 **As a** presenter, **I want** to rehearse the whole deck or selected slides again as a new attempt and compare the same slide across attempts, **so that** I can improve weak sections and judge whether my revision helped.
 
+**v10 note.** Presenters can listen to the old and new takes and choose which to keep. The full slide checklist (AC-08b) and comparison of both takes’ transcripts and feedback, including the missing-feedback state (AC-08c, AC-08e), remain incomplete.
+
 - **AC-08a. Retry one slide (Positive)**
   - **Given** attempt A covers slides 1 to 3
   - **When** I select only slide 2 and complete another rehearsal
@@ -323,6 +277,8 @@ An unavailable label is an error state; it does not satisfy AC-06e. Repetition a
 
 **As a** presenter, **I want** to delete an attempt or deck I no longer need, **so that** I can control the rehearsal data retained by the app.
 
+**v10 note.** Presenters can remove a presentation from Home. Complete deletion of local and server data, including confirmation and recovery if deletion fails, remains incomplete (AC-11a–c).
+
 - **AC-11a. Cancel or confirm deletion (Positive)**
   - **Given** a deletion confirmation that names the selected attempt
   - **When** I cancel, **Then** nothing is deleted.
@@ -336,186 +292,80 @@ An unavailable label is an error state; it does not satisfy AC-06e. Repetition a
   - **When** I return to history
   - **Then** the app reports the incomplete deletion and offers recovery, without claiming that all affected data was removed.
 
-### 5.8 Original team stories
-
-The team's user-story exercise produced the four stories below. Their original wording and acceptance criteria are kept here, and each is tested by the criterion in the last column.
-
-| Author | Original story | Original acceptance criterion | Tested by |
-| --- | --- | --- | --- |
-| 최재원 (Jaewon Choi) | As a student preparing a presentation, I want to review feedback on individual slides from my rehearsal, so that I can focus my practice on the parts that need improvement. | Given the student has a recorded rehearsal with feedback available, When the student selects a slide to review, Then the app displays feedback for that slide. | US-05, AC-05a |
-| 박서연 (Seoyeon Park) | As a business presenter, I want feedback on whether my pitch uses language appropriate for nontechnical clients, so that I can explain my ideas more clearly. | Given the presenter has selected a nontechnical audience and recorded a pitch containing potentially confusing language, When the presenter requests feedback, Then the app highlights that language and suggests clearer wording. | US-07, AC-07a |
-| 현주영 (Juyeong Hyeon) | As a presenter, I want to identify filler words and pauses in my rehearsal, so that I can review my speaking habits and improve my delivery. | Given the presenter has recorded a rehearsal containing filler words and pauses, When the presenter requests feedback, Then the app flags the sections containing filler words and pauses for review. | US-06, AC-06e |
-| 전인준 (Injoon Jeon) | As a professor, I want feedback on explanations that may be difficult for my students, so that I can make complex topics easier to follow. | Given the professor has specified the students' knowledge level and recorded a presentation containing an explanation that assumes more advanced knowledge, When the professor requests feedback, Then the app highlights that explanation and suggests a simpler explanation. | US-07, AC-07c |
-
 ## 6. Non-functional Requirements
 
-Each requirement below states testable behavior and how the team will verify it. The team will set numerical targets from Iteration 3 pilot measurements. The table below lists the measures; target values remain unset.
-
-- **NFR-01. Data integrity:** A new attempt never overwrites an earlier attempt. Every evidence link resolves to the correct deck, slide, attempt and a valid time interval within that recording.
-  *Verification:* compare stored attempts before and after a retry; test invalid references and repeated slide visits.
-- **NFR-02. Responsiveness:** Recording and slide navigation remain usable without waiting for transcription or feedback. Long-running processing shows its current status and a failure or retry state.
-  *Verification:* rehearse with a slow or unavailable network on Galaxy S22 and S23; measure input response and processing time separately.
-- **NFR-03. AI quality and transparency:** Users can tell transcripts, AI summaries, measured statistics and suggestions apart. Uncertain advice is phrased as a prompt to review. A category that could not be analyzed is shown as unavailable, never as zero issues.
-  *Verification:* human review of clean, contradictory, noisy and ambiguous examples; report missed issues and false warnings with their totals.
-- **NFR-04. Recovery:** Saved audio survives analysis failure. Retries do not create duplicate attempts or duplicate active analysis jobs. Interrupted recordings are marked as interrupted, not as complete.
-  *Verification:* interrupt uploads and analysis, send duplicate requests, restart the app, and check saved material and recovery actions.
-- **NFR-05. Privacy:** The app explains what rehearsal data is uploaded, lets users cancel, and allows deletion of saved rehearsal data.
-  *Verification:* cancel an upload and a feedback request, then confirm that deleting a rehearsal removes its app-owned audio and results.
-- **NFR-06. Compatibility, usability and accessibility:** The agreed Android build runs on Galaxy S22 and S23. Recording, saving, processing and failure states look different from each other. Screens remain usable with large text and with TalkBack.
-  *Verification:* complete import, recording, review and recovery tasks on both devices, including permission denial, long text and TalkBack navigation. The published v8 build declares Android API 24 minimum and API 36 target; this does not establish acceptance on every supported device.
-- **NFR-07. Cost and maintainability:** Reopening saved results does not repeat paid analysis. Each processing run records the model version, duration, failed stage and cost where available. Retries reuse successful intermediate results.
-  *Verification:* compare provider requests during replay, refresh and retry; produce a pilot report per rehearsal and stage.
-
-**Numerical targets: Iteration 3 pilot measurements**
-
-| Measure | How it will be measured | Status |
+| Requirement | Expected behavior | How to verify |
 | --- | --- | --- |
-| Slide-change response during recording | Time from tapping Next to the next slide appearing, on Galaxy S22/S23 | Iteration 3 pilot; target unset |
-| Save time after Stop | Time from Stop to the saved-session state | Iteration 3 pilot; target unset |
-| Processing time | Time from upload to completed transcript, and from feedback start to completed feedback, per minute of audio | Iteration 3 pilot; target unset |
-| Transcription quality | Word error rate on annotated English sample rehearsals | Iteration 3 pilot; target unset |
-| Feedback quality | Share of suggestions that human reviewers rate correct and useful | Iteration 3 pilot; target unset |
-| Cost per rehearsal | Provider cost per rehearsal minute | Iteration 3 pilot; target unset |
+| **NFR-01 · Data integrity** | A new attempt preserves earlier attempts. Feedback links open the correct slide, attempt, and time interval. | Compare saved attempts before and after a retake. Check links for repeated slide visits and invalid references. |
+| **NFR-02 · Responsiveness** | Recording and slide navigation remain usable while analysis runs. The app shows processing progress and indicates when processing fails or can be retried. | Rehearse on a slow or interrupted connection. Measure slide-change, save, transcription, and feedback times separately. |
+| **NFR-03 · AI quality and transparency** | Transcripts, summaries, delivery statistics, and suggestions have distinct labels. Uncertain advice asks the presenter to check the evidence. Missing measurements are labeled **Unavailable**. | Have independent reviewers check clear, contradictory, noisy, and ambiguous samples. Record missed issues, false warnings, and whether the advice was correct and useful. |
+| **NFR-04 · Recovery** | Saved audio survives analysis failures. Retrying uses the same recording and avoids duplicate attempts or active jobs. Interrupted recordings are marked **Interrupted**. | Interrupt an upload or analysis, restart the app, and retry. Check that saved material remains available and that retries preserve the attempt. |
+| **NFR-05 · Privacy** | Before rehearsal data leaves the device, the app explains what will be uploaded and lets the presenter decline. Deleting a rehearsal removes its app-owned audio and results. | Decline the disclosure and verify that no rehearsal data was sent. Confirm deletion and check the device and server. |
+| **NFR-06 · Compatibility and accessibility** | The agreed Android build supports import, recording, review, and recovery on the Galaxy S22 and S23. Users can distinguish recording, saving, processing, and failure states and navigate with large text and TalkBack. | Run those tasks on both devices, including microphone denial, long text, and TalkBack navigation. |
+| **NFR-07 · Cost and maintainability** | Reopening saved results uses existing analysis. Retries reuse completed work. Processing records the model version, duration, failed stage, and cost where available. | Check provider requests during replay, refresh, and retry. Record provider cost per minute of rehearsal. |
 
-**Current limits (published v8).** PDFs allow up to 50 MiB, at least one slide and no fixed slide-count cap. Recordings allow up to 30 minutes; audio uploads allow up to 25,000,000 bytes. Saved duration settings allow 1–30 minutes and audience text up to 500 characters.
+**Known v10 gaps.** After Stop uploads rehearsal audio before the first transcription disclosure. The signed build also limits text enlargement in some views. [Audio upload](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/features/recording/upload.ts#L79-L89) · [Transcription consent gate](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/features/transcription/useAttemptAnalysis.ts#L166-L190) · [Text scaling limit](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/design/frame.tsx#L78-L81)
+
+**Numerical targets.** Pass thresholds are still open for slide-change and save times, processing time per minute of audio, transcription word error rate, feedback quality, and provider cost per rehearsal minute.
+
+**v10 operating limits.** PDFs must contain at least one slide and be at most 50 MiB. The planned presentation duration can be set from 1 to 30 minutes, and the audience description can contain up to 500 characters. Live recording is capped at 30 minutes. After Stop has a separate audio upload limit of 25,000,000 bytes.
 
 ## 7. User Interface Requirements
 
-### Published v8 navigation and available controls
+<a id="released-v10-navigation-and-available-controls"></a>
 
-The published UI uses Home, presentation setup, Rehearse, compact slide Review, Full Review and durable Audience Q&A. The first saved recording opens Full Review; later recordings open the selected slide. Home's assessment ring also opens Full Review. Retakes preserve source identity and wait for Keep current/Overwrite; this is not the complete comparison interface required below.
+### 7.1 Released v10 flow
 
-Compact Review has measured timing, filler counts and verified content/delivery feedback with complete observations and suggestions in its details. Timing labels use an inclusive ±15% allocation range; fillers are informational unless evidence supports a communication problem. Source-aware seeking preserves play/pause and maps through original recording intervals. Unavailable, stale, incomplete and failed results retain separate states; targeted retries remain explicit and can require uncertain-charge acknowledgement.
+**Setup and recording.** Importing a PDF opens **Setup**. Saving the audience and planned duration opens the rehearsal screen. While the screen is idle, the slide counter switches between **Live feedback** and **After Stop**. If Live feedback is unavailable when recording starts, v10 uses After Stop. If microphone permission is denied, the screen displays an error and returns to idle.
 
-Full Review retains transcript/run playback and cited intervals. Compact Review does not expose every earlier correction, general feedback-update, upload/transcription retry or remote-audio download control. Those missing controls remain gaps; a backend route is not proof of an accessible UI. Passive saved-result reads do not admit work, while app-level hosts may admit initial analysis or synchronized updates for selected recordings. Scores are provisional rubric assessments, not calibrated grades.
+**Stop and review.** The next screen depends on the saved take. If saving fails, the app shows an error and returns to idle. A first Live take opens **Review overview**, where completed slide feedback can appear while other results are pending. A first After Stop take opens **Processing**, where the presenter can listen to the saved recording. The app opens **Review overview** when analysis finishes. From **Review overview**, the presenter can open **Feedback**, select a slide for review, open **Listen back**, or swipe up to open **Audience Q&A**.
 
-### Intended tasks and wireframes
+**Retakes.** Confirming a redo starts a new recording. If the saved retake has a previous take to compare, **Compare takes** opens. The presenter can listen to **Old take** or **New take**, then select **Keep this take** to save the choice and return to rehearsal.
 
-The wireframes come from the team's [OutLoud Figma file](https://www.figma.com/design/e8pS6NF8Jqwjnj3QWkDUKl?node-id=2-2) and show the intended tasks and failure states with sample content. Screen IDs (S01, P02, ...) match the Figma frames. These are intended-task wireframes, not screenshots of v8. They retain earlier tabs, Generate feedback, recovery tools and proposed summary/comparison/deletion screens. Section 7.2 specifies the required target behavior; current deviations are stated with each affected flow. Back confirmation, spoken summaries, complete comparison, full deletion and pre-upload rehearsal disclosure remain unmet.
+```mermaid
+flowchart TB
+    Home -->|Import PDF| Setup
+    Setup -->|Save settings| Ready[Rehearsal ready]
+    Home -->|Open saved presentation| Ready
+    Ready -->|Record or confirm redo| Recording
+    Recording -->|Stop and save| Saved{Saved take}
 
-### 7.1 Navigation flow
+    Saved -->|First After Stop take| Processing
+    Saved -->|First Live take| Overview[Review overview]
+    Saved -->|Retake with comparison| Compare[Compare takes]
+    Processing -->|Analysis finishes or 3-minute fallback| Overview
 
-Figures 1 to 3 show how users move between screens. Arrow labels name the user action or system event. Solid arrows are normal actions. Dashed arrows and boxes are failures or input that is not allowed. Rounded boxes mark where a figure continues in another figure.
+    Overview --> Actions["Feedback · Slide review<br/>Listen back · Audience Q&A"]
+    Compare -->|Keep this take| Return[Return to rehearsal]
+```
 
-<p align="center"><img src="https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2026-project-team-07/assets/requirements/flow-1-record.png" width="760" alt="Figure 1. Navigation flow for importing a PDF, setting up and recording a rehearsal, including import errors, unsupported decks, denied microphone access, leaving during recording, interrupted recordings and the transcription disclosure."></p>
+### 7.2 v10 wireframes
 
-<p align="center"><img src="https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2026-project-team-07/assets/requirements/flow-2-review.png" width="760" alt="Figure 2. Navigation flow for reviewing a rehearsal, requesting AI feedback, recovering from processing failures and practicing selected slides again."></p>
+![Three side-by-side flows showing setup and recording, review and recovery, and retakes and saved presentations](figures/png/outloud-v10-wireframes.png)
 
-<p align="center"><img src="https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2026-project-team-07/assets/requirements/flow-3-history.png" width="760" alt="Figure 3. Navigation flow for practice history, same-slide comparison and deletion, including failure states."></p>
+*Wireframes based on the released OutLoud v10. Slide content, times, and scores are illustrative.* [Open full-size wireframe](figures/png/outloud-v10-wireframes.png)
 
-### 7.2 Screen descriptions
+| Screen or state | What the presenter can do | What v10 does |
+|---|---|---|
+| **Recording** | Tap **Stop** or press Android Back. | **Stop** ends capture and tries to save the take. Android Back leaves recording active. |
+| **Processing** | Open **Listen back** while analysis is pending. | Saved audio can play while the transcript is pending. After returning from **Listen back**, v10 may stay on **Processing** past the three-minute timeout. |
+| **Review overview** | Tap a slide tile. | A recorded slide opens its review. A skipped slide opens rehearsal for that slide. |
+| **Slide feedback** | Play a cited excerpt. | Playback starts at the cited moment in the recording. |
+| **Redo and compare** | Cancel the redo or leave **Compare takes** before keeping a take. | Cancel returns to rehearsal with the existing take. Leaving Compare returns to rehearsal with the choice still pending. |
 
-#### Home and practice setup (S01, S04)
-
-<p align="center"><img src="https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2026-project-team-07/assets/requirements/s01-home.png" width="270" alt="S01 Home with Import PDF, a recent presentation and navigation tabs"> &nbsp; <img src="https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2026-project-team-07/assets/requirements/s04-practice-setup.png" width="270" alt="S04 Practice setup with slide preview, audience field and Start rehearsal"></p>
-
-- **Purpose:** Home (S01) lists recent presentations and starts an import. Practice setup (S04) previews the deck and collects optional audience context.
-- **Input:** Import PDF opens the system file picker. In setup, Previous and Next move through the slide preview, and the audience field accepts free text such as "students new to this topic" or a knowledge level.
-- **Transitions:** Choosing a valid PDF opens setup. Open slides opens setup for a saved deck. Review latest rehearsal opens review (S07). Practice opens practice history (S03). Start rehearsal opens the ready-to-record state; it does not start the microphone.
-- **Errors and input not allowed:** Canceling the picker leaves the library unchanged. An unreadable or non-PDF file shows the reason and allows another choice. Import buttons are disabled while an import is running. Start rehearsal is unavailable while the preview is loading or failed, or when the deck cannot be rehearsed. Previous and Next are disabled at the first and last slide. An empty library explains how to import a presentation. Home shows the current file size and slide limits.
-
-#### Recording (S05, S05P)
-
-**V8 deviation:** Back is blocked during active recording. The stop/save/discard confirmation below remains required. The released Redo lifecycle repair permits a new take; it does not implement this confirmation.
-
-<p align="center"><img src="https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2026-project-team-07/assets/requirements/s05-recording.png" width="270" alt="S05 Recording in progress with timer, slide 2 of 3, Previous and Next slide and Stop recording"> &nbsp; <img src="https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2026-project-team-07/assets/requirements/s05p-microphone-denied.png" width="270" alt="S05P Microphone denied: no recording has started and a message asks the user to allow access"></p>
-
-- **Purpose:** Record the rehearsal while the presenter moves through the slides (S05). S05P is the state after microphone permission is denied.
-- **Input:** Start recording, Previous slide, Next slide and Stop recording.
-- **Transitions:** Start recording asks Android for microphone permission if needed and then starts the timer and recording indicator. Previous and Next change slides; returning to an earlier slide is allowed, and every visit is kept in order. Stop recording saves the attempt and shows the saved-session state, where Open review continues to review and Record again starts a new attempt without replacing the saved one. Back asks whether to stop and save or discard.
-- **Errors and input not allowed:** If permission is denied, no recording starts (S05P) and the app explains how to allow access or return to the deck. Navigation cannot move past the first or last slide. Start, Stop and slide navigation are disabled while recording starts or saves. If recording is interrupted or saving fails, the app keeps recoverable audio, marks the attempt as interrupted, and never shows a failed save as successful.
-
-#### Review overview, processing and no speech (S07, S07P, S07N)
-
-**V8 deviation:** Rehearsal audio uploads before first-use transcription consent. Cancel prevents transcription but does not undo the upload. The pre-upload disclosure below remains the target requirement. The shipped compact/full-review layout replaces the illustrated tab layout and does not expose every listed update/recovery control.
-
-<p align="center"><img src="https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2026-project-team-07/assets/requirements/s07-review-overview.png" width="200" alt="S07 Review overview with duration, words per minute, time on each slide and Generate feedback"> &nbsp; <img src="https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2026-project-team-07/assets/requirements/s07p-processing.png" width="200" alt="S07P Processing with a saved partial transcript and Generate feedback unavailable"> &nbsp; <img src="https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2026-project-team-07/assets/requirements/s07n-no-speech.png" width="200" alt="S07N No speech detected, with the saved recording still playable"></p>
-
-- **Purpose:** Overview (S07) summarizes one attempt: duration, speaking rate, time on each slide, processing status and the entry point for AI feedback. S07P and S07N show the processing and no-speech states.
-- **Input:** The Overview, Slides and Transcript tabs; Refresh analysis; Update feedback or Retry feedback; the shared player (Play or Pause, -5 s, +5 s).
-- **Transitions:** Before the first upload, a transcription disclosure explains which data is sent for external processing. Continue uploads the recording and starts transcription automatically; Cancel keeps the attempt on the device for audio playback. Initial selected-slide feedback starts after usable transcription and saved settings are ready. Update feedback requests new results after changes; Retry feedback retries a failed request. Feedback opens in S07F when ready. Switching tabs keeps the playback position. Leaving review pauses audio, and returning does not start it automatically.
-- **Errors and input not allowed:** While processing (S07P), partial results are labeled and feedback waits for usable transcription. When no speech is recognized (S07N), the app says so and keeps the recording playable; it does not create a transcript or feedback. Failed or unavailable measures are labeled, never shown as normal scores. Reopening saved results does not repeat paid analysis.
-
-#### Slide feedback (S07F)
-
-**V8 implementation:** Complete observations/suggestions and targeted recovery are available in compact feedback details. The wireframe's separate Open slide/View transcript/Practice again controls describe intended tasks, not a claim that each is a button in the shipped layout.
-
-<p align="center"><img src="https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2026-project-team-07/assets/requirements/s07f-slide-feedback.png" width="300" alt="S07F Evidence-linked coaching: a content suggestion for slide 2 showing the slide text, the spoken sentence with its time range, Play evidence, why to review it and what to try next, followed by an audience suggestion about p95 latency and Practice again"></p>
-
-- **Purpose:** Show AI feedback for the rehearsal, one suggestion per issue, each tied to a slide and a moment in the recording. This is the view that connects feedback to evidence.
-- **Input:** Play evidence, Open slide, View transcript, View suggestion, Practice again and the shared player.
-- **Transitions:** Each suggestion shows its type (content or audience), the slide and visit, the slide evidence, what the presenter said with its time range, why it is worth reviewing and what to try next. Play evidence plays exactly that interval from the same attempt and highlights the matching transcript text. Open slide opens slide review (S08) at that visit; View transcript opens the transcript (S09) at the same interval. Practice again opens selected-slide practice (P02). Back returns to the overview and pauses audio.
-- **Errors and input not allowed:** A suggestion whose slide or time range is invalid is not shown as having valid evidence. While feedback is processing, the app shows S07P; if no speech was recognized, S07N; if audio is missing or analysis failed, recovery (S12). When audio is unavailable, Play evidence is disabled but the written evidence stays readable. Without an audience description, regular feedback is shown without an invented audience profile.
-
-#### Slide and transcript review (S08, S09)
-
-**V8 deviation:** Full Review retains transcript/evidence playback. Must Cover and Further Insight are slide-derived cues; they do not satisfy the spoken Key ideas summary below. Recognition-correction tools are not exposed by the selected compact UI.
-
-<p align="center"><img src="https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2026-project-team-07/assets/requirements/s08-slide-review.png" width="270" alt="S08 Slide review showing slide 2, visit 2, time by slide, visit navigation and slide description"> &nbsp; <img src="https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2026-project-team-07/assets/requirements/s09-transcript.png" width="270" alt="S09 Transcript with timed segments and the shared player"></p>
-
-- **Purpose:** Inspect what happened on each slide (S08) and read the recognized speech (S09).
-- **Input:** Previous visit, Next visit, a transcript segment, the Transcript and Key ideas views, and the shared player.
-- **Transitions:** A slide can have several visits; the selected visit shows its time range, and Previous or Next visit follows recording order. Time by slide totals all visits to that slide. Selecting a transcript segment plays that segment's audio interval. Key ideas shows a separately labeled AI summary of what the presenter said. Delivery feedback shows pace per slide and flags filler words and pauses with links to the audio. The slide description explains the slide's content and is separate from the key ideas summary.
-- **Errors and input not allowed:** A missing PDF does not block available audio or transcript. Playback controls are disabled when audio is unavailable. Partial, failed and no-speech results have different labels. An unavailable summary or delivery category is labeled unavailable.
-
-#### Practice history and recovery (S03, S12)
-
-**V8 deviation:** Local presentation/run state and saved data persist, but the selected compact UI does not expose the full recovery toolset illustrated below. Targeted slide-feedback retry is available; it is distinct from recording-upload/transcription recovery.
-
-<p align="center"><img src="https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2026-project-team-07/assets/requirements/s03-practice-history.png" width="270" alt="S03 Practice history with attempts grouped by presentation"> &nbsp; <img src="https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2026-project-team-07/assets/requirements/s12-recovery.png" width="270" alt="S12 Recovery with options to recover audio, upload, download for offline review, refresh and retry analysis"></p>
-
-- **Purpose:** Practice history (S03) lists saved attempts grouped by presentation, newest first. Recovery (S12) appears in review when audio, upload or analysis needs attention.
-- **Input:** Refresh history, Open saved rehearsal, Review earlier rehearsal; in recovery: Recover playable audio, Upload recording, Download audio or PDF for offline review, Refresh and Retry analysis.
-- **Transitions:** Opening an attempt shows review with its saved status. Retry analysis reprocesses the same recording and keeps the same attempt. Downloads make saved material available without a connection; transcription and feedback still need a connection.
-- **Errors and input not allowed:** An empty history explains how to record. A failed refresh keeps the cached list and shows a notice. Retry analysis is unavailable while a retry is already running or during a cooldown, and the app shows when it can be retried.
-
-#### Practice selected slides and compare attempts (P02, P03)
-
-**V8 deviation:** Full/slide retakes and Keep current/Overwrite provide partial coverage. The complete selected-slide checklist and same-slide two-attempt audio/transcript/feedback viewer below remain unmet.
-
-<p align="center"><img src="https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2026-project-team-07/assets/requirements/p02-selected-slide-retry.png" width="270" alt="P02 Practice selected slides with All slides, a slide checklist and Record new attempt"> &nbsp; <img src="https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2026-project-team-07/assets/requirements/p03-compare-slide.png" width="270" alt="P03 Compare slide 2 across attempts A and B with Listen buttons"></p>
-
-- **Purpose:** Practice the whole deck or chosen slides again as a new attempt (P02), and compare the same slide across two attempts (P03).
-- **Input:** All slides or individual slide checkboxes, Record new attempt and Cancel; in comparison, the two attempts, Listen to A, Listen to B and Back to rehearsals.
-- **Transitions:** Record new attempt opens the ready-to-record state for the chosen slides; the new recording becomes a separate attempt. Comparison shows each attempt's audio, transcript and feedback for the shared slide, with clear attempt labels.
-- **Errors and input not allowed:** Record new attempt is unavailable until at least one slide or All slides is selected. Cancel leaves all attempts unchanged. If the chosen attempts share no slide from the same deck, the app explains that nothing can be compared. Missing feedback for one attempt is labeled while its audio and transcript stay available.
-
-#### Delete data (P04)
-
-**V8 deviation:** Hide/Undo and local PDF removal are not complete deletion. The confirmation, server cleanup and partial-failure recovery below remain unmet.
-
-<p align="center"><img src="https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2026-project-team-07/assets/requirements/p04-delete-data.png" width="270" alt="P04 Delete confirmation naming the rehearsal and the data affected, with Cancel and Confirm deletion"></p>
-
-- **Purpose:** Confirm deletion of an attempt or a whole deck.
-- **Input:** Cancel or Confirm deletion.
-- **Transitions:** The confirmation names the attempt or deck and the data affected (audio, transcript, timing and feedback); deck deletion also lists its attempts. Cancel returns to history with nothing deleted. Confirm removes the app-owned data and returns to history.
-- **Errors and input not allowed:** If deletion cannot finish, history reports the incomplete deletion and offers recovery instead of claiming success.
+The table describes released v10 behavior. See [Functional Requirements](#5-functional-requirements) for the acceptance criteria.
 
 ## 8. Additional Features
 
-Audience Q&A and separate English/Korean rehearsal sessions remain in semester scope. Quality evaluation remains incomplete. Slide-description editing, script attachment and team sharing remain optional extensions. The criteria below retain their proposed status.
+### 8.1 Semester Scope
 
-**US-13. Correct slide descriptions.** As a presenter, I want to inspect and correct saved slide descriptions, so that coaching uses slide information I can review.
+**US-20. App and feedback language (planned for Iteration 5).** OutLoud should let presenters choose English or Korean during onboarding. This choice should set the language of the app interface and AI-generated feedback independently of the language spoken during rehearsal.
 
-- **AC-13a (proposed).** Given a saved description, When I save a valid correction, Then the slide keeps its identity and feedback based on the old description is marked out of date.
-- **AC-13b (proposed).** Given an unsaved, invalid or conflicting edit, When I cancel or try to save it, Then canceling keeps the saved version, and an unsuccessful save explains how to correct or reload the draft.
+- **AC-20a (proposed).** If a presenter chooses Korean during onboarding and rehearses in English, the interface and generated feedback appear in Korean, while the transcript and direct quotes from the rehearsal remain in English. The same rule applies when a presenter chooses English and rehearses in Korean.
 
-**US-17. Audience questions.** As a presenter, I want to practice questions about my presentation, so that I can prepare for audience discussion.
+### 8.2 Optional Extensions
 
-- **AC-17a (proposed).** Given a saved presentation with usable content, When I start question practice, Then the questions relate to that presentation and are labeled AI-generated; missing context is explained, not invented.
+- **US-18. Attach a rehearsal script.** **AC-18a.** A supported script is saved separately from the transcript. Canceling or choosing an unsupported file leaves existing rehearsal data intact.
+- **US-19. Share rehearsal material.** **AC-19a.** When an authenticated owner confirms sharing, only the selected recipients gain access to the selected material.
 
-**US-18. Script attachment.** As a presenter, I want to attach a script to a presentation, so that I can consult my intended explanation while preparing.
-
-- **AC-18a (proposed).** Given a selected presentation, When I attach a supported script or cancel the selection, Then a successful attachment stays separate from the transcript, and canceling or unsupported input leaves existing rehearsal data unchanged.
-
-**US-19. Team sharing.** As a presenter working in a team, I want to share rehearsal material with selected teammates, so that we can coordinate improvements.
-
-- **AC-19a (proposed).** Given an authenticated owner and a selected recipient, When I confirm sharing, Then only the selected material becomes accessible to that recipient, and users without permission cannot access it.
-
-**US-20. Korean rehearsal support.** As a Korean-speaking presenter, I want to review Korean rehearsal speech, so that I can practice in the language of my presentation.
-
-- **AC-20a (proposed).** Given a Korean rehearsal, When I review completed analysis, Then the recognized Korean text is readable and each delivery measure is labeled by what it measures. Quality targets require evaluation before support is claimed.
-
-## Original requirement mapping
-
-The [proposal-to-scaffold mapping](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/42c2154a54e209f4c9e931fd4db5777d6816c3d6/docs/source-alignment.md) records the first scaffold. The [story-to-test matrix](../testing/story-test-matrix.md) tracks the later implementation and verification.
+See the [original stories and contributor attributions](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/e6f56fb25cfff6b7506ee348a61e159a24e80bee/docs/requirements/requirements-and-specifications.md#58-original-team-stories) for their mapping to the current criteria and the [story-to-test matrix](../testing/story-test-matrix.md) for verification.
