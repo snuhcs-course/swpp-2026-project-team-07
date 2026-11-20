@@ -653,6 +653,20 @@ ui update not posted
 
 Seoyeon clarified that the teammate’s UI was unpublished. The agent verified readiness and an existing cue profile against the shared backend and ran 41 focused client tests. The cause in the teammate’s build remained unknown.
 
+```text
+stop ive asked friend to post their ui chagne s so we can locate the problem faster
+```
+
+```text
+[https://github.com/snuhcs-course/swpp-2026-project-team-07/tree/codex/smooth-open-language-toggle_hikarimono](https://github.com/snuhcs-course/swpp-2026-project-team-07/tree/codex/smooth-open-language-toggle_hikarimono) this is the ui update first locate the problem and inform to me what it is
+```
+
+```text
+whats our expo_public_api_url
+```
+
+After Seoyeon shared the UI branch, Codex located the 15-second readiness timeout before the app links a local PDF. All 12 branch lifecycle tests passed, including the simulated timeout with zero uploads. Three authenticated Azure readiness requests from the Mac returned 200 in 58–66 ms. The phone's compiled API address remained unverified. Codex supplied the shared Azure API address and the demo-code build setting.
+
 ## Confirm contributor attribution in the shared prompt log — November 20, 2026
 
 **Contributor:** Seoyeon · **Iteration:** 4 · **Tool:** OpenAI Codex desktop · **Model:** GPT-6 (exact variant not recorded)
@@ -711,3 +725,18 @@ currently itssturctured like this. Hence for this iteration we just have to make
 Seoyeon corrected the iteration from 5 to 4, authorized the push, and limited the change to this file and the collaboration README. Codex collected the recorded prompts under Seoyeon’s name and filled the empty Seoyeon cell in the Iteration 4 row.
 
 Codex compared the collected prompts with the source logs and checked their order, the privacy redactions, the index link and the Git diff. The historical application checks above are attributed to their original sessions.
+
+## Restore contributor and iteration prompt routing — November 20, 2026
+
+**Contributor:** Seoyeon · **Iteration:** 4 · **Tool:** OpenAI Codex desktop · **Model:** GPT-6
+
+### Request — verbatim
+
+```text
+why are we still saving to ai-collaboration-prompts-iteration-2.dmd instead of our individual iteration unique logs?&#x20;
+is it an agents.md issue if so change it so it reflects ona ll teammembers as well
+```
+
+Seoyeon asked for team-wide routing after new prompts continued to land in the shared Iteration 2 file. Codex traced the regression from PR #58 to PR #60, corrected the instructions in the working checkout, and prepared the shared correction against current `main`.
+
+Codex verified all four contributor destinations, the links and anchors added by the patch, and preservation of the historical entries. A local Git merge simulation showed that PR #59 conflicts with the original base and merges cleanly with the routing change. Codex opened [PR #63](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/63) for review at `5303b51`. The server inventory and the original cue prompts were already present in this file. Codex added only the missing cue and build follow-ups.
