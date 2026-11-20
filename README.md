@@ -6,10 +6,7 @@ OutLoud is an Android presentation rehearsal app for students and professionals.
 
 ## Try the v10 demo
 
-<a href="https://drive.google.com/file/d/1vKzLlw4Msqz8T7_zMD0Xd58qNSdE8JiG/view">
-  <img src="assets/demo/outloud-v10-preview.png" alt="OutLoud’s review screen showing feedback for each slide" width="640"><br>
-  ▶ Watch the demo video
-</a>
+https://github.com/user-attachments/assets/1785e1b9-d7e4-4816-b370-2897a807dabf
 
 [Download the v10 APK](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/download/outloud-demo-v10-20261115/OutLoud-demo-v10-live-feedback.apk) for **Android 7.0 (API 24) or later**. Open OutLoud while online and enter the **demo code** from Team 07. [Release details](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v10-20261115)
 
