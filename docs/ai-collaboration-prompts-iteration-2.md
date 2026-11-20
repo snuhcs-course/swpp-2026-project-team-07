@@ -168,7 +168,7 @@ the pr should make main look like v10 is that whats happening so new ui new ai f
 
 ## Install current OutLoud on USB phone — November 19, 2026
 
-**Contributor:** unconfirmed · **Tool:** OpenAI Codex desktop and terminal · **Model:** GPT-6 (exact variant not recorded) · **Iteration:** 2.
+**Contributor:** Jaewon · **Tool:** OpenAI Codex desktop and terminal · **Model:** GPT-6 (exact variant not recorded) · **Iteration:** 2.
 
 ### Prompt — verbatim
 
@@ -194,7 +194,7 @@ when i press on review icon, it leads to me to the pending screen even if the wh
 
 ## Slow the Home carousel spin — November 19, 2026
 
-**Contributor:** unconfirmed · **Tool:** OpenAI Codex desktop and terminal · **Model:** GPT-6 (exact variant not recorded) · **Iteration:** 2.
+**Contributor:** Jaewon · **Tool:** OpenAI Codex desktop and terminal · **Model:** GPT-6 (exact variant not recorded) · **Iteration:** 2.
 
 ### Prompt — verbatim
 
@@ -208,7 +208,7 @@ there was some feedback that the spinning animation was too fast? in the main sc
 
 ## Make Home interactions and transitions visible — November 19, 2026
 
-**Contributor:** unconfirmed · **Tool:** OpenAI Codex desktop and terminal · **Model:** GPT-6 (exact variant not recorded) · **Iteration:** 2.
+**Contributor:** Jaewon · **Tool:** OpenAI Codex desktop and terminal · **Model:** GPT-6 (exact variant not recorded) · **Iteration:** 2.
 
 ### Prompts — verbatim, in order
 
@@ -227,7 +227,7 @@ in the main screen, the scores and text at the bottom kind of SNAP instead of fa
 
 ## Remove overlapping Home position dots — November 19, 2026
 
-**Contributor:** unconfirmed · **Tool:** OpenAI Codex desktop and terminal · **Model:** GPT-6 (exact variant not recorded) · **Iteration:** 2.
+**Contributor:** Jaewon · **Tool:** OpenAI Codex desktop and terminal · **Model:** GPT-6 (exact variant not recorded) · **Iteration:** 2.
 
 ### Prompt — verbatim
 
@@ -241,7 +241,7 @@ the bottom dot and slide at the bottom of the page overlaps with the time of the
 
 ## Make downward fades visible — November 19, 2026
 
-**Contributor:** unconfirmed · **Tool:** OpenAI Codex desktop and terminal · **Model:** GPT-6 (exact variant not recorded) · **Iteration:** 2.
+**Contributor:** Jaewon · **Tool:** OpenAI Codex desktop and terminal · **Model:** GPT-6 (exact variant not recorded) · **Iteration:** 2.
 
 ### Prompt — verbatim
 
@@ -256,7 +256,7 @@ make the overall fade animation more prominent and visible
 
 ## Move tutorial to logo and add language preference toggle — November 19, 2026
 
-**Contributor:** unconfirmed · **Tool:** OpenAI Codex desktop and terminal · **Model:** GPT-6 (exact variant not recorded) · **Iteration:** 2.
+**Contributor:** Jaewon · **Tool:** OpenAI Codex desktop and terminal · **Model:** GPT-6 (exact variant not recorded) · **Iteration:** 2.
 
 ### Prompt — verbatim
 
@@ -270,7 +270,7 @@ change the tutorial to appear if u press the outloud logo region, and change the
 
 ## Make all swipe and page animations more visible — November 19, 2026
 
-**Contributor:** unconfirmed · **Tool:** OpenAI Codex desktop and terminal · **Model:** GPT-6 (exact variant not recorded) · **Iteration:** 2.
+**Contributor:** Jaewon · **Tool:** OpenAI Codex desktop and terminal · **Model:** GPT-6 (exact variant not recorded) · **Iteration:** 2.
 
 ### Prompt — verbatim
 
@@ -303,7 +303,7 @@ when swiping up from review tab and to the audience qna, you can see the homescr
 
 ## Shrink slide PDF into Home icon and correct Review return — November 19, 2026
 
-**Contributor:** unconfirmed · **Tool:** OpenAI Codex desktop and terminal · **Model:** GPT-6 (exact variant not recorded) · **Iteration:** 2.
+**Contributor:** Jaewon · **Tool:** OpenAI Codex desktop and terminal · **Model:** GPT-6 (exact variant not recorded) · **Iteration:** 2.
 
 ### Prompts — verbatim
 
@@ -370,7 +370,7 @@ upload this new version to github as a new branch under the name ...\_hikarimono
 
 ## Reconnect bundled PDF to server cues — November 20, 2026
 
-**Contributor:** unconfirmed · **Tool:** OpenAI Codex desktop and terminal · **Model:** GPT-6 (exact variant not recorded) · **Iteration:** 2.
+**Contributor:** Jaewon · **Tool:** OpenAI Codex desktop and terminal · **Model:** GPT-6 (exact variant not recorded) · **Iteration:** 2.
 
 ### Prompt — verbatim
 
