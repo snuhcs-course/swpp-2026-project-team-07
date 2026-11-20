@@ -6,6 +6,11 @@ OutLoud is an Android presentation rehearsal app for students and professionals.
 
 ## Try the v10 demo
 
+<a href="https://drive.google.com/file/d/1vKzLlw4Msqz8T7_zMD0Xd58qNSdE8JiG/view">
+  <img src="assets/demo/outloud-v10-preview.png" alt="OutLoud’s review screen showing feedback for each slide" width="640"><br>
+  ▶ Watch the demo video
+</a>
+
 [Download the v10 APK](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/download/outloud-demo-v10-20261115/OutLoud-demo-v10-live-feedback.apk) for **Android 7.0 (API 24) or later**. Open OutLoud while online and enter the **demo code** from Team 07. [Release details](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v10-20261115)
 
 1. On **Home**, swipe up to import a PDF. Set the audience and presentation length, then tap the **save checkmark**.
@@ -81,13 +86,13 @@ docker compose exec api python manage.py test --noinput
 
 On November 15, 2026, v10 (`5745502`) passed **669 mobile tests** and **710 backend tests on PostgreSQL**, with zero skips. Phone checks covered both **Live feedback** during recording and **After Stop** processing. [Automated test results](docs/testing/evidence/incremental-phone-test-2026-11-15.md#resumed-azure-phone-check) · [Phone checks](docs/testing/evidence/incremental-phone-test-2026-11-15.md#final-v10-phone-checks)
 
+See [Testing Documentation](docs/testing/testing.md#4-acceptance-testing-starting-from-iteration-3) for acceptance testing and the [testing index](docs/testing/README.md#earlier-iterations) for the Iteration 3 heuristic evaluation archive.
+
 ## Known Limitations
 
 - **Shared demo access.** Home only shows presentations in your device’s library. Anyone with the demo code and the direct server URL for an uploaded slide deck or recording can open that file. Use sample slides and recordings for the demo. [Hosted access](docs/azure-hosting.md#access-and-data-boundary)
 - **UI bugs.** Some screens still have layout issues. For example, Home hints can overlap the PDF import progress screen when offline, and cue status text can be clipped at larger Android text sizes.
 - **Rubric validation.** We still need to check how closely OutLoud’s scores match independent human ratings on real presentations and whether presenters find the feedback useful.
-
-See [Testing Documentation](docs/testing/testing.md#4-acceptance-testing-starting-from-iteration-3) for the remaining acceptance checks.
 
 ## Repository and Documentation
 
