@@ -2,7 +2,7 @@
 
 **Team 07 · OutLoud**
 
-New task prompts continue here under the current repository instructions. Earlier entries, including Claude Code's feedback-v3 implementation and reviews, remain in [the original branch log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/366b6cedde16d193adf545dd526d2a202dcbfa6c/docs/ai-collaboration-prompts.md); they are preserved without duplication.
+This shared file preserves historical task records. New prompts go in the [requester's iteration log](../AGENTS.md#current-iteration-and-prompt-logging). Earlier entries, including Claude Code's feedback-v3 implementation and reviews, remain in [the original branch log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/366b6cedde16d193adf545dd526d2a202dcbfa6c/docs/ai-collaboration-prompts.md).
 
 ## Continue Claude Code's feedback v3 work — November 15, 2026
 

@@ -740,3 +740,21 @@ is it an agents.md issue if so change it so it reflects ona ll teammembers as we
 Seoyeon asked for team-wide routing after new prompts continued to land in the shared Iteration 2 file. Codex traced the regression from PR #58 to PR #60, corrected the instructions in the working checkout, and prepared the shared correction against current `main`.
 
 Codex verified all four contributor destinations, the links and anchors added by the patch, and preservation of the historical entries. A local Git merge simulation showed that PR #59 conflicts with the original base and merges cleanly with the routing change. Codex opened [PR #63](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/63) for review at `5303b51`. The server inventory and the original cue prompts were already present in this file. Codex added only the missing cue and build follow-ups.
+
+### Follow-up — verbatim
+
+```text
+Make sure that its applicable to all teammates or people contributing to repo
+```
+
+Seoyeon clarified that the rule must cover any repository contributor. Codex updated PR #63 at `212e933` to cover first-time contributors, their identifiers, and log branches in forks. A disposable Git exercise created, published and read back separate iteration files and index links for the four existing members, a new teammate and a first-time contributor on a fork.
+
+### Follow-up — verbatim
+
+```text
+basically i want wtv pr 58 had
+```
+
+Seoyeon chose the workflow merged in [PR #58](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/58). Codex removed the branch and fork requirements added in the earlier draft. The original workflow records each prompt in the contributor's file for that iteration and uses `unattributed` when the author is unknown. This branch keeps its existing Iteration 4 link in the index.
+
+Codex pushed `ed77d73` to [PR #63](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/63) and verified that its `AGENTS.md` and entire `docs/ai-collaboration/` directory have the same Git hashes as #58. All 13 index entries resolved. On this personal branch, Codex removed the stale shared-file instructions and verified all 14 entries, including this log. The historical entries in the shared file matched the base.

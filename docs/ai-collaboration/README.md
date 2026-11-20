@@ -12,8 +12,6 @@ The [reporting guide](ai-collaboration-guidelines.md) explains how to log prompt
 
 ## Prompt logs
 
-Add Seoyeon's Iteration 4 prompts and follow-ups to the log linked in Seoyeon's column on `docs/seoyeon-prompt-logs`. Tasks assigned to the [shared Iteration 2 log](../ai-collaboration-prompts-iteration-2.md) continue there.
-
 | Iteration | Injoon | Jaewon | Jooyoung | Seoyeon | Unattributed |
 | --- | --- | --- | --- | --- | --- |
 | <a id="iteration-1-logs"></a>Iteration 1 | [Log](prompt-logs/injoon/iteration-1.md) | [Log](prompt-logs/jaewon/iteration-1.md) | [Log](prompt-logs/jooyoung/iteration-1.md) | [Log](prompt-logs/seoyeon/iteration-1.md) | [Log](prompt-logs/unattributed/iteration-1.md) |
