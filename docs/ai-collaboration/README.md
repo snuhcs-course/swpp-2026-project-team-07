@@ -12,8 +12,6 @@ The [reporting guide](ai-collaboration-guidelines.md) explains how to log prompt
 
 ## Prompt logs
 
-New prompts use the [active Iteration 2 log](../ai-collaboration-prompts-iteration-2.md), as specified by the current task instructions. The contributor logs below retain the earlier migrated entries.
-
 | Iteration | Injoon | Jaewon | Jooyoung | Seoyeon | Unattributed |
 | --- | --- | --- | --- | --- | --- |
 | <a id="iteration-1-logs"></a>Iteration 1 | [Log](prompt-logs/injoon/iteration-1.md) | [Log](prompt-logs/jaewon/iteration-1.md) | [Log](prompt-logs/jooyoung/iteration-1.md) | [Log](prompt-logs/seoyeon/iteration-1.md) | [Log](prompt-logs/unattributed/iteration-1.md) |
