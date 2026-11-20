@@ -6,7 +6,12 @@ Based on the [official AI Collaboration Report Guidelines](https://myetl.snu.ac.
 
 Record new prompts and outcomes in the [active Iteration 2 log](../ai-collaboration-prompts-iteration-2.md), following the current task instructions and [shared instructions](../../AGENTS.md#current-iteration-and-prompt-logging). Earlier contributor logs remain available in the [iteration index](README.md#prompt-logs). Do not infer an iteration transition from a date or branch name.
 
-Use the entries from the relevant iteration when drafting its team report. The [Iteration 1 report](ai-collaboration-report-iteration-1.md) is an earlier example. Link to exact prompt entries and original supporting records.
+For tasks that change the repository, publish new entries to the contributor's
+log branch at handoff. Follow the [contributor prompt-log workflow](../../AGENTS.md#contributor-prompt-log-branches).
+
+Use the entries from the relevant iteration across contributor branches and the
+shared log index when drafting the team report. Link to exact prompt entries and
+original supporting records. See the [Iteration 1 report](ai-collaboration-report-iteration-1.md) for an earlier example.
 
 ## Compact task entry
 
