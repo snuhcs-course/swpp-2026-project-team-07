@@ -1,19 +1,19 @@
 # OutLoud Design Documentation
 
-Team 07 | Rev.4.0 | Iteration 3 | 5 November 2026
+Team 07 | Rev.5.0 | Iteration 4 | 20 November 2026
 
-OutLoud records rehearsal audio and slide visits, transcribes speech, and links feedback to the recording. This revision describes [published demo v8](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103), source `cdb8055`. [Requirements v4.0](../requirements/requirements-and-specifications.md) separates implemented behavior from unmet acceptance criteria. [Testing Documentation](../testing/testing.md) records dated evidence and its limits.
+OutLoud records rehearsal audio and slide visits, transcribes speech, and links feedback to the recording. This revision describes [published demo v10](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v10-20261115), built from `57455028739ad2d1aeb7f1d04723a01f6fb7190e` and merged by [PR #60](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/60). [Requirements v5.0](../requirements/requirements-and-specifications.md) separates implemented behavior from unmet acceptance criteria. [Testing Documentation](../testing/testing.md) records dated evidence and its limits.
 
 ### Source and deployment status
 
 | Layer | Baseline and status | Evidence date |
 | --- | --- | --- |
-| Merged repository | `main` at `7b7ef3b`, [PR #32](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/32), documents the PR31 application (`c4a3f48`). Design Rev.3.1 remains valid for that historical baseline. | October 23, 2026 |
-| Published Android product | v8, `cdb8055`, includes the v7 repairs and selected PR #34 UI. GitHub main advanced to this release commit on November 16. Implementation links below point to the release source. | November 3, 2026 |
-| Hosted backend | The v8 release record reports a separately reviewed, deployed v2.4 grading-budget patch compatible with the same APK. The backend patch was [recovered on November 15](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/2c7c337c2c89de6e6714c9e5f0708fb2be2cabc3) on a separate branch. | November 3, 2026; record reviewed November 5 |
-| Local candidates | Early slide-advice preview and v2.5 performance/audience-citation repairs remain local and unreleased. They are not features of the published APK or evidence of current hosted behavior. | November 3–4, 2026 |
+| Merged repository | v10 implementation `5745502`, merged to `main` by [PR #60](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/60). | November 16, 2026 |
+| Published Android product | v10 standalone APK, with both Live feedback and After Stop capture modes. Release record: [v10](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v10-20261115). | November 15, 2026 |
+| Hosted backend | The v10 phone evidence records real Azure API and provider calls for incremental capture and feedback; see [dated phone checks](../testing/evidence/incremental-phone-test-2026-11-15.md). | November 15, 2026 |
+| Local candidates | This document describes the released v10 baseline. Any later local or unreleased changes are outside its scope. | November 20, 2026 |
 
-This documentation update changes no application source, database schema or runtime configuration. Deployment status above comes from the release record; no fresh service, provider or device check was performed for this revision. The [reconciliation evidence](../testing/evidence/iteration-3-reconciliation-2026-11-05.md) separates dated operational checks, human participation and local candidates.
+This documentation update changes no application source, database schema or runtime configuration. Deployment and device statements above refer to dated release and test records; no fresh service or device check was performed for this revision. The [v10 phone evidence](../testing/evidence/incremental-phone-test-2026-11-15.md) distinguishes automated checks, agent-operated synthetic-speech checks and their limits.
 
 ## 1. Document Revision History
 
@@ -24,6 +24,7 @@ This documentation update changes no application source, database schema or runt
 | 3.0 | 2026-10-21 | Iteration 2 design: Scribe transcription, rehearsal/review, saved settings, corrections, scoring and durable Q&A. Separate branch changes and open requirements remain identified. |
 | 3.1 | 2026-10-23 | Clarified upload/consent order, automatic analysis, local run composition, database relationships and recovery. Aligned the roadmap with Requirements v3.0. |
 | 4.0 | 2026-11-05 | Reconciled v8 architecture, reviewer access, provider/default changes, compact UI and recovery. Separated released, deployment-reported and local work; retained unmet requirements and historical evidence. |
+| 5.0 | 2026-11-20 | Updated the baseline to v10 and documented continuous capture, per-slide transcription/feedback, revisit updates, upload recovery and whole-presentation review. Retained open requirements and dated evidence limits. |
 
 ## 2. System Architecture
 
@@ -49,20 +50,20 @@ flowchart TD
 
 The app captures and plays local audio; backend workers perform provider analysis. Django stores job admission and revisions in PostgreSQL before dispatch. Redis carries job identifiers. The API and worker share media storage. Celery Beat wakes recovery work from saved database state. Provider keys and raw provider receipts stay on the backend.
 
-[Local Compose](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/compose.yaml) defines loopback development services and persistent database/media volumes. The development API has no application-account authentication. The hosted demo adds [production/public Compose](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/compose.public.yaml), an authenticated HTTPS edge and a media/API proxy. Reviewer access covers the shared server workspace; it does not isolate users or create ownership permissions. Provider receipts remain private backend records. See [hosting guidance](../azure-hosting.md).
+[Local Compose](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/compose.yaml) defines loopback development services and persistent database/media volumes. The development API has no application-account authentication. The hosted demo adds [production/public Compose](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/compose.public.yaml), an authenticated HTTPS edge and a media/API proxy. Reviewer access covers the shared server workspace; it does not isolate users or create ownership permissions. Provider receipts remain private backend records. See [hosting guidance](../azure-hosting.md).
 
-The [demo access client](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/mobile/src/services/demoAccess.ts) stores the entered reviewer code in secure device storage scoped to the configured HTTPS origin. It refuses authenticated redirects and never automatically replays an upload or generation POST after code re-entry. Local recording, local playback and cached results remain usable offline; remote media and processing require authorized connectivity. No reviewer code belongs in source, screenshots or documentation.
+The [demo access client](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/services/demoAccess.ts) stores the entered reviewer code in secure device storage scoped to the configured HTTPS origin. It refuses authenticated redirects and never automatically replays an upload or generation POST after code re-entry. Local recording, local playback and cached results remain usable offline; remote media and processing require authorized connectivity. No reviewer code belongs in source, screenshots or documentation.
 
 | Layer | Main libraries and services |
 | --- | --- |
-| App | Expo SDK 57, React Native 0.86, TypeScript, Expo Router |
+| App | Expo SDK 57, React Native 0.86, TypeScript, Expo Router; Android continuous PCM capture for Live feedback with AAC After Stop fallback |
 | Navigation and UI | React state/subscriptions, Gesture Handler, Reanimated, React Native SVG |
 | Device storage and media | expo-audio, react-native-pdf, expo-document-picker, expo-file-system, expo-sqlite |
 | Backend | Django REST Framework, PostgreSQL 16, Celery, Redis 7 |
 | PDF/audio processing | pypdfium2, pypdf, Pillow, PyAV, Silero VAD, ONNX Runtime |
 | External AI | ElevenLabs `scribe_v2` for transcription; OpenRouter analysis defaults to `openai/gpt-6-luna`; retained Gemini/OpenAI adapters are separate configurations |
 
-Dependency versions: [mobile manifest](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/mobile/package.json), [backend lock file](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/backend/requirements.txt). The released configuration defaults to OpenRouter for new analysis and disables feedback until configured. A default is not evidence of enabled services or the model selected by a running deployment. Provider/model identity is retained with saved jobs and receipts; cutover rules fence new work without relabelling historical results. See the [provider configuration](../reference/ai-feedback.md).
+Dependency versions: [mobile manifest](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/package.json), [backend lock file](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/backend/requirements.txt). The released configuration defaults to OpenRouter for new analysis and disables feedback until configured. A default is not evidence of enabled services or the model selected by a running deployment. Provider/model identity is retained with saved jobs and receipts; cutover rules fence new work without relabelling historical results. See the [provider configuration](../reference/ai-feedback.md).
 
 ### Architectural decisions
 
@@ -84,6 +85,9 @@ erDiagram
     Deck ||--o{ Attempt : records
     Deck ||--o{ DescriptionSet : profiles
     Attempt ||--o{ ProviderRequest : receipts
+    Attempt ||--o| CaptureSession : incrementally_captures
+    CaptureSession ||--o{ CaptureSegment : contains
+    CaptureSession ||--o{ CaptureAssessment : assesses
     Attempt ||--o| TranscriptCorrection : overlays
     Attempt ||--o{ FeedbackAnalysis : analyses
     DescriptionSet ||--o{ DescriptionJob : generations
@@ -97,13 +101,14 @@ erDiagram
     Attempt ||--o| QaAnswer : answer_audio
 ```
 
-The [Django models](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/backend/rehearsals/models.py) define fields and constraints. The diagram omits historical grouping tables that current selected-slide feedback does not write.
+The [Django models](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/backend/rehearsals/models.py) define fields and constraints. The diagram omits historical grouping tables that current selected-slide feedback does not write.
 
 | Structure | Key fields and responsibility |
 | --- | --- |
 | Deck / Slide | PDF, content hash, preparation version and ordered slide text/images. Unique PDF hash/version and `(deck, slide_index)` keys prevent duplicate preparation and slide identities. |
 | PresentationContext | Deck, audience, required duration and revision. Several contexts can reference one deduplicated PDF. New untouched imports use General audience and 600 seconds after synchronization through the existing context API. Existing edits, clears and accepted legacy five-minute settings are preserved. The bundled Seoul deck has a separate five-minute offline seed; it needs explicitly saved server choices for audience/duration-dependent analysis. |
 | Attempt | Recording UUID, original audio, duration, slide events, transcript, metrics and processing generation/state. A new recording gets a new UUID; retries keep it. |
+| CaptureSession / CaptureSegment / CaptureAssessment | A Live feedback session freezes deck/context identity and retains ordered contiguous audio segments, upload/transcription states and per-input assessment hashes. Repeated visits remain separate segments; unchanged assessment inputs are reused. |
 | ProviderRequest | Attempt/generation, provider/model, exact request options, submission state and raw transcription receipt. Unique per attempt/generation. |
 | TranscriptCorrection | One optional overlay per attempt, with base transcript ID, edits and revision. Original words, audio and timing stay intact. |
 | DescriptionSet / DescriptionJob | Cached slide context/cues keyed by deck/source, provider/project, model and prompt/schema versions; jobs retain generation and claim state. |
@@ -111,19 +116,21 @@ The [Django models](https://github.com/snuhcs-course/swpp-2026-project-team-07/b
 | FeedbackRequest / Reservation / QuotaBucket | Private analysis receipts and provider/model quota accounting. Each receipt belongs to exactly one description job or feedback job. |
 | QaAnswer | One optional binding per answer attempt: question job, question ID and answer part. Audio/transcription stay on that original attempt. |
 
-The device uses SQLite's `records(key, value)` table for JSON metadata and keeps media as files. `SavedAttempt` holds recording/checkpoint/upload state. `DeckState` holds the selected `Run`, pending comparison and local presentation state. Each `Run.parts[slide]` identifies an attempt and one or more original audio intervals; a review run can combine slides from different recordings. See [local storage](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/mobile/src/services/storage.ts), [recording metadata](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/mobile/src/features/recording/storage.ts) and [run composition](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/mobile/src/domain/run.ts).
+The device uses SQLite's `records(key, value)` table for JSON metadata and keeps media as files. `SavedAttempt` holds recording/checkpoint/upload state. `DeckState` holds the selected `Run`, pending comparison and local presentation state. Each `Run.parts[slide]` identifies an attempt and one or more original audio intervals; a review run can combine slides from different recordings. See [local storage](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/services/storage.ts), [recording metadata](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/features/recording/storage.ts) and [run composition](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/domain/run.ts).
 
-Hiding a presentation with Undo does not delete its complete server media/results. Protected database relationships also prevent deletion without an explicit cleanup workflow. Full deletion remains Iteration 3 work.
+Hiding a presentation with Undo does not delete its complete server media/results. Protected database relationships also prevent deletion without an explicit cleanup workflow. Full deletion remains an unmet requirement in the v10 baseline.
 
 ## 4. Backend API
 
-Routes below are relative to `/api/`. The [route definitions](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/backend/rehearsals/urls.py), [serializers](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/backend/rehearsals/serializers.py) and [API contract](../reference/api-contract.md) define request fields and validation.
+Routes below are relative to `/api/`. The [route definitions](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/backend/rehearsals/urls.py), [serializers](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/backend/rehearsals/serializers.py) and [API contract](../reference/api-contract.md) define request fields and validation.
 
 | Endpoint | Responsibility |
 | --- | --- |
 | `POST decks/`, `GET decks/{id}/` | Prepare a PDF; read ordered slides and original media. |
 | `POST attempts/`, `GET attempts/{id}/`, `GET decks/{id}/attempts/` | Store original recording/visit metadata; read saved attempts. |
-| `POST attempts/{id}/process/` | Admit transcription or eligible recovery using the same recording identity. |
+| `POST attempts/{id}/process/` | Admit After Stop transcription or eligible recovery using the same recording identity; incremental captures use the capture endpoints. |
+| `GET incremental/capabilities/`, `POST attempts/{id}/capture/`, `GET attempts/{id}/capture/` | Check live-capture support; create/read an incremental capture manifest and progress. |
+| `POST attempts/{id}/segments/{sequence}/`, `POST .../retry/`, `POST attempts/{id}/capture/audio/` | Upload/retry an immutable slide segment and upload the matching full audio at Stop. |
 | `POST presentation-contexts/`, `GET/PATCH presentation-contexts/{id}/` | Create/read/save audience and duration with revision checks. |
 | `GET decks/{id}/profiles/`, `POST decks/{id}/profiles/generate/` | Read or prepare reusable slide profiles/cues. |
 | `GET/PATCH attempts/{id}/corrections/` | Read/save confirmed transcript overlays. |
@@ -132,7 +139,7 @@ Routes below are relative to `/api/`. The [route definitions](https://github.com
 | `GET/POST attempts/{id}/audience-qa/` | Read/admit durable questions for selected speech and context. |
 | `GET/POST attempts/{id}/qa-answer/` | Bind, process or read a spoken answer for a saved question. |
 
-Upload stores media; a separate request admits processing. A successful read can return cached, pending, failed or stale analysis. New work uses revision/selection assertions; conflicting requests return an error rather than replacing a different recording. Description, whole-attempt feedback, correction-suggestion and synchronous deck-Q&A routes remain for existing callers; current Android Q&A uses the durable routes above.
+Upload stores media; a separate request admits processing. Incremental capture instead declares an immutable segment manifest, uploads segments idempotently and finalizes only when transcripts and matching full audio are available. A successful read can return cached, pending, failed or stale analysis. New work uses revision/selection assertions; conflicting requests return an error rather than replacing a different recording. Description, whole-attempt feedback, correction-suggestion and synchronous deck-Q&A routes remain for existing callers; current Android Q&A uses the durable routes above.
 
 ## 5. Recording, Transcription and Alignment
 
@@ -166,41 +173,43 @@ sequenceDiagram
     end
 ```
 
-V8 retains PR31's upload order: rehearsal audio uploads before first-use transcription consent. Cancel prevents the new Scribe request but does not undo the upload. Q&A checks consent before uploading a new answer. Pre-upload rehearsal disclosure remains an unmet requirement; the sequence above describes the implementation, not the required target flow.
+The After Stop path retains PR31's upload order: rehearsal audio uploads before first-use transcription consent. Cancel prevents the new Scribe request but does not undo the upload. Q&A checks consent before uploading a new answer. Pre-upload rehearsal disclosure remains an unmet requirement; the sequence above describes the implementation, not the required target flow.
 
-The [capture engine](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/mobile/src/features/rehearsal/CaptureEngine.tsx) uses the recorder's audio clock for slide events and writes durable checkpoints about once a second. Leaving the foreground requests a stop; interrupted capture/upload state remains available for recovery. V8 still blocks Back during recording instead of offering the required stop/save/discard confirmation.
+The [capture engine](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/features/rehearsal/CaptureEngine.tsx) selects Live feedback only when the device recorder and server capability are available at capture start; otherwise the app uses After Stop. Live mode holds one 16 kHz mono PCM stream open and writes samples to both a full WAV and ordered per-visit segments. Slide transitions close a segment while 60-second chunk boundaries close only a file. The local outbox retains pending uploads across network loss and retries using the same attempt and segment identities after reconnect. Leaving the foreground requests a stop; interrupted capture/upload state remains available for recovery. The required stop/save/discard confirmation remains open.
 
-Audio uses mono AAC at 64 kbps. The capture ceiling is 30 minutes, with automatic stop requested one second early for native finalization. PDFs allow 50 MiB and any positive slide count; audio uploads allow 25,000,000 bytes. Saved duration settings allow 1–30 minutes, independent of the capture ceiling, and audience text allows 500 characters. Offline setting edits remain pending; revision conflicts offer Use server or Keep mine.
+Each completed slide is transcribed independently; silent segments do not call Scribe. Feedback becomes available after all declared audio for a slide is transcribed, while capture continues. Returning to a slide marks its previous advice provisional until the new segment is ready, then updates only that slide. Stop uploads the complete WAV and final manifest; the backend verifies that it matches the concatenated segments before whole-presentation analysis can run. No full-audio transcription is made in Live mode. See the [continuous-capture API contract](../reference/api-contract.md#continuous-capture-and-incremental-feedback-november-15-2026) and [v10 phone evidence](../testing/evidence/incremental-phone-test-2026-11-15.md).
+
+After Stop uses mono AAC at 64 kbps and a 25,000,000-byte upload limit. Live mode uses mono PCM16 WAV at 16 kHz, with a 30-minute capture ceiling and a 60-second segment cap; full audio is bounded at 60,000,044 bytes. PDFs allow 50 MiB and any positive slide count. Saved duration settings allow 1–30 minutes, independent of the capture ceiling, and audience text allows 500 characters. Offline setting edits remain pending; revision conflicts offer Use server or Keep mine.
 
 ### Preparation and alignment
 
-[PDF preparation](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/backend/rehearsals/services/pdf.py) extracts text, renders slide images and removes NUL characters from extracted text. Extracted-text normalization removes NUL only; surrogate-text handling remains Iteration 3 work.
+[PDF preparation](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/backend/rehearsals/services/pdf.py) extracts text, renders slide images and removes NUL characters from extracted text. Extracted-text normalization removes NUL only; surrogate-text handling remains an open robustness issue.
 
-For speech, workers send original audio and up to 100 validated terms from visited slides to Scribe v2 with `no_verbatim=false`. No-speech input completes without a Scribe call. The [adapter](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/backend/rehearsals/services/transcription.py) keeps recognized fillers, excludes spacing/audio-event entries and converts seconds to integer milliseconds with decimal half-up rounding. V8 continues the Scribe-only transcription introduced in Iteration 2; OpenRouter is not a transcription replacement.
+For After Stop, workers send original audio and up to 100 validated terms from visited slides to Scribe v2 with `no_verbatim=false`. Live mode sends each complete spoken segment to Scribe and offsets returned word times by the segment's original start time. No-speech segments complete without a Scribe call. The [adapter](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/backend/rehearsals/services/transcription.py) keeps recognized fillers, excludes spacing/audio-event entries and converts seconds to integer milliseconds with decimal half-up rounding. OpenRouter is used for assessment, not transcription.
 
-[Alignment](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/backend/rehearsals/services/alignment.py) assigns a word by its start time to the current slide visit. A word on a boundary belongs to the new visit; the final event wins when events share a timestamp. Empty and repeated/backward visits retain their place in recording order. Review maps continuous seek positions through the selected run's original attempt intervals, including composite runs. The v7/v8 repair retains the exact selected source, cancels superseded seeks, preserves play/pause state and prevents an outdated load from replacing a newer source. Original audio, word timing and slide events are never rescaled.
+[Alignment](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/backend/rehearsals/services/alignment.py) assigns a word by its start time to the current slide visit. A word on a boundary belongs to the new visit; the final event wins when events share a timestamp. Empty and repeated/backward visits retain their place in recording order. Review maps continuous seek positions through the selected run's original attempt intervals, including composite runs. The v7/v8 repair retains the exact selected source, cancels superseded seeks, preserves play/pause state and prevents an outdated load from replacing a newer source. Original audio, word timing and slide events are never rescaled.
 
 ## 6. AI Coaching
 
 ### Initial work and updates
 
-The app starts initial selected-slide feedback after usable transcription and saved settings are ready. A pending Keep/Overwrite comparison holds this work until selection is settled. Changed inputs can mark feedback outdated. The durable interfaces retain update/retry rules; the selected compact UI exposes targeted recovery controls in feedback details but not the earlier transcript-correction and general feedback-update tools. [Initial feedback](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/mobile/src/features/feedback/InitialFeedbackHost.tsx), [automatic scoring](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/mobile/src/features/feedback/InitialPresentationScoreHost.tsx) and [Q&A](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/mobile/src/features/qa/InitialQaHost.tsx) use separate controllers. Saved reads reuse existing output.
+The app starts initial selected-slide feedback after usable transcription and saved settings are ready. A pending Keep/Overwrite comparison holds this work until selection is settled. Changed inputs can mark feedback outdated. The durable interfaces retain update/retry rules; the selected compact UI exposes targeted recovery controls in feedback details but not the earlier transcript-correction and general feedback-update tools. [Initial feedback](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/features/feedback/InitialFeedbackHost.tsx), [automatic scoring](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/features/feedback/InitialPresentationScoreHost.tsx) and [Q&A](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/features/qa/InitialQaHost.tsx) use separate controllers. Saved reads reuse existing output.
 
 ### Evidence and scoring
 
 Compact selected-review requests include shared deck context once and distinguish selected speech from neighboring context. The backend reconstructs quoted evidence from original word/visit IDs and validates slide and audio bounds. Selected-slide feedback returns up to four prioritized findings. Transcript corrections change the interpretation while preserving source audio and timing.
 
-The scoring provider selects ordinal rubric judgments and evidence references; backend code validates them and calculates scores with exact arithmetic. The overall score combines 70% of the mean slide score with 30% whole-presentation criteria. Invalid, insufficient or stale evidence can leave a score unavailable. Composite runs retain eligible per-slide source scores but receive no fabricated whole-run grade. Source validation does not establish advice usefulness, score calibration or judgment correctness. See [selected review](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/42c2154a54e209f4c9e931fd4db5777d6816c3d6/docs/feedback-compact-context.md), [scoring](../reference/presentation-scoring.md) and [Q&A implementation](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/backend/rehearsals/services/audience_qa.py).
+The scoring provider selects ordinal rubric judgments and evidence references; backend code validates them and calculates scores with exact arithmetic. The overall score combines 70% of the mean slide score with 30% whole-presentation criteria. Invalid, insufficient or stale evidence can leave a score unavailable. Composite runs retain eligible per-slide source scores but receive no fabricated whole-run grade. Source validation does not establish advice usefulness, score calibration or judgment correctness. See [selected review](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/42c2154a54e209f4c9e931fd4db5777d6816c3d6/docs/feedback-compact-context.md), [scoring](../reference/presentation-scoring.md) and [Q&A implementation](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/backend/rehearsals/services/audience_qa.py).
 
 ### Concurrency and recovery
 
 Database transactions, generations and claim tokens guard work admission and result writes. Jobs freeze input revisions. Workers persist raw receipts before validating responses, so eligible recovery can reuse received data. An uncertain provider outcome requires explicit acknowledgement before another potentially charged submission. Separate states distinguish missing media, failed processing, unavailable analysis and stale advice.
 
-### V8 diagnostics and explicit recovery
+### Diagnostics and explicit recovery
 
-[Measurements v2](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/backend/rehearsals/services/presentation_measurements.py) shares upload's inclusive ±1,000 ms decoded/capture-duration tolerance. Diagnostics use their valid common window; rates retain the original capture-duration denominator. Audio, transcript timing and visits remain unchanged. Safe error codes distinguish unavailable/invalid audio, decoding or measurement failure and insufficient speech.
+[Measurements v2](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/backend/rehearsals/services/presentation_measurements.py) shares upload's inclusive ±1,000 ms decoded/capture-duration tolerance. Diagnostics use their valid common window; rates retain the original capture-duration denominator. Audio, transcript timing and visits remain unchanged. Safe error codes distinguish unavailable/invalid audio, decoding or measurement failure and insufficient speech.
 
-Completed singleton slide reviews with invalid evidence, model failure or missing output can expose an explicit revision-fenced Retry. Cooldowns, active-work locks and uncertain-charge acknowledgement remain enforced. An open GitHub issue does not establish that a release lacks its repair. See the [v8 recovery evidence](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/docs/issue49-fix-verification-20261103.md).
+Completed singleton slide reviews with invalid evidence, model failure or missing output can expose an explicit revision-fenced Retry. Cooldowns, active-work locks and uncertain-charge acknowledgement remain enforced. An open GitHub issue does not establish that a release lacks its repair. See the [v8 recovery evidence](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/docs/issue49-fix-verification-20261103.md).
 
 The [November 3 release update](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103) reports the later deployed v2.4 grading policy: 24,000 output tokens, 128 KiB inner JSON and a grading-only 240-second response deadline. Prompt wording, rubric, score weights and public API shapes are unchanged. It reports successful grading of the original ten-slide rehearsal with zero evidence rejections after the confirmed audience was saved. This bounded repair result does not establish human score-quality acceptance. Build-time reports retain their earlier pre-deployment outcomes.
 
@@ -208,13 +217,15 @@ The [November 3 release update](https://github.com/snuhcs-course/swpp-2026-proje
 
 | Component | Responsibility |
 | --- | --- |
-| [AppShell](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/mobile/src/screens/AppShell.tsx) | Mounted screen stack, navigation and shared background analysis hosts. |
-| [RehearseScreen](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/mobile/src/screens/RehearseScreen.tsx) / CaptureEngine | Slide navigation, countdown/capture, recorder lifecycle and cues. |
-| [Presentation store](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/mobile/src/features/presentations/store.ts) / run domain | Persist presentation state, compose selected slide takes and retain pending Keep/Overwrite choices. |
-| [Review](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/mobile/src/screens/ReviewScreen.tsx) / [Full Review](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/mobile/src/screens/FullReviewScreen.tsx) | Read selected recordings, transcript overlays, scores, feedback and evidence playback. |
-| [Q&A client](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/mobile/src/features/qa/client.ts) | Question/answer identity, consent and durable API operations. |
+| [AppShell](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/screens/AppShell.tsx) | Mounted screen stack, navigation and shared background analysis hosts. |
+| [RehearseScreen](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/screens/RehearseScreen.tsx) / CaptureEngine | Slide navigation, countdown/capture, recorder lifecycle and cues. |
+| [Incremental capture](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/features/recording/incremental.ts) / IncrementalCaptureHost | Persist segment outbox state and resume manifest, upload and finalization work after connectivity returns. |
+| [LiveFeedbackPanel](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/features/recording/LiveFeedbackPanel.tsx) | Show available slide feedback while keeping the active capture mounted and recording. |
+| [Presentation store](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/features/presentations/store.ts) / run domain | Persist presentation state, compose selected slide takes and retain pending Keep/Overwrite choices. |
+| [Review](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/screens/ReviewScreen.tsx) / [Full Review](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/screens/FullReviewScreen.tsx) | Read selected recordings, transcript overlays, scores, feedback and evidence playback. |
+| [Q&A client](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/mobile/src/features/qa/client.ts) | Question/answer identity, consent and durable API operations. |
 
-Must Cover and Further Insight are slide-derived cues, not summaries of the presenter's speech. Keep current/Overwrite selects which take supplies the affected slides; it does not provide the full two-attempt audio/transcript/feedback viewer. V8 includes the first-Redo lifecycle repair: the single-use capture engine is remounted after save/failure so another take can start. This release inclusion does not mean the separate B09 branch or PR #34 has been merged. See Testing Documentation for dated defect and retest evidence.
+Must Cover and Further Insight are slide-derived cues, not summaries of the presenter's speech. Keep current/Overwrite selects which take supplies the affected slides; it does not provide the full two-attempt audio/transcript/feedback viewer. The v10 baseline includes the first-Redo lifecycle repair: the single-use capture engine is remounted after save/failure so another take can start. This release inclusion does not mean the separate B09 branch or PR #34 has been merged. See Testing Documentation for dated defect and retest evidence.
 
 Compact Review presents measured timing, informational filler counts and verified content/delivery findings. Timing uses an inclusive ±15% allocation range; nonzero fillers alone do not establish a communication defect. Feedback details retain complete observations and suggestions. Full Review supplies run playback and transcript/evidence access. Earlier recognition-correction, saved-recording upload/transcription retry and manual remote-audio download controls are not exposed by the selected compact UI, even though supporting services remain.
 
@@ -226,14 +237,15 @@ Q&A speech selects Korean when Hangul is present, otherwise English when Latin t
 
 | Change | Status and source | Evidence date |
 | --- | --- | --- |
-| Azure HTTPS and reviewer access; OpenRouter analysis cutover | Included in v8 `cdb8055`; [hosted configuration](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/docs/azure-hosting.md), [provider policy](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/docs/ai-feedback.md). Scribe, scoring and Q&A already existed in Iteration 2. | November 2–3, 2026 |
-| Redo lifecycle and selected compact UI | Included in v8; [repair and source verification](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/docs/apk-redo-feedback-verification-20261102.md). PR #34 remains administratively open. | November 2, 2026 |
-| Ten-minute/General defaults, full feedback details, seeking, metric labels and Q&A speech language | Included in v7 and retained in v8; [combined verification](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/docs/demo-v7-combined-verification-20261103.md). Human usefulness/audible acceptance is separate. | November 3, 2026 |
-| Duration diagnostics and targeted slide-feedback recovery | Included in v8; [release build record](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/cdb8055f0fd5022aafccb47625889d3f9a403f5f/docs/demo-v8-issue49-verification-20261103.md). | November 3, 2026 |
+| Azure HTTPS and reviewer access; OpenRouter analysis cutover | Included in v8 `cdb8055`; [hosted configuration](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/docs/azure-hosting.md), [provider policy](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/docs/ai-feedback.md). Scribe, scoring and Q&A already existed in Iteration 2. | November 2–3, 2026 |
+| Redo lifecycle and selected compact UI | Included in v8; [repair and source verification](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/docs/apk-redo-feedback-verification-20261102.md). PR #34 remains administratively open. | November 2, 2026 |
+| Ten-minute/General defaults, full feedback details, seeking, metric labels and Q&A speech language | Included in v7 and retained in v8; [combined verification](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/docs/demo-v7-combined-verification-20261103.md). Human usefulness/audible acceptance is separate. | November 3, 2026 |
+| Duration diagnostics and targeted slide-feedback recovery | Included in v8; [release build record](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/57455028739ad2d1aeb7f1d04723a01f6fb7190e/docs/demo-v8-issue49-verification-20261103.md). | November 3, 2026 |
 | V2.4 grading budget/deadline | Deployment reported by the [v8 release update](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103); backend source was [recovered on November 15](https://github.com/snuhcs-course/swpp-2026-project-team-07/commit/2c7c337c2c89de6e6714c9e5f0708fb2be2cabc3) on a separate branch. | November 3, 2026 |
-| Early advice preview and v2.5 performance/audience-citation changes | Local, uncommitted and unreleased; see the [dated reconciliation evidence](../testing/evidence/iteration-3-reconciliation-2026-11-05.md). Numeric score streaming is not implemented. | November 3–4, 2026 |
+| Live feedback and continuous capture | Included in v10: PCM capture, immutable slide-visit segments, reconnect upload recovery, per-slide transcription/feedback, revisit updates and whole-presentation review after Stop. [API contract](../reference/api-contract.md#continuous-capture-and-incremental-feedback-november-15-2026) · [phone evidence](../testing/evidence/incremental-phone-test-2026-11-15.md). | November 15, 2026 |
+| v10 release validation | 669 mobile tests and 710 PostgreSQL backend tests passed; phone checks covered Live feedback and After Stop. The evidence is synthetic-speech and agent-operated, not human usability or scoring-quality acceptance. | November 15, 2026 |
 
-### Remaining Iteration 3 requirements
+### Remaining requirements
 
 | Work | Existing components affected |
 | --- | --- |
@@ -245,7 +257,7 @@ Q&A speech selects Korean when Hangul is present, otherwise English when Latin t
 | Reported bug follow-up | PDF upload, visit display/association, navigation/playback and Q&A. |
 | Numerical targets | Set performance, recognition, feedback-quality and cost targets from pilot measurements. |
 
-[Requirements v4.0](../requirements/requirements-and-specifications.md#iteration-3-implementation-status) retains the acceptance criteria. Owners, exact dates and numerical targets remain unset. Q&A and separate English/Korean sessions remain in semester scope; broad Korean recognition, advice usefulness and stable/calibrated scores remain unverified. Reported navigation, recording-timer, large-text and import defects need current-build retests. Backward-navigation restrictions and onboarding remain proposals. Model experiments, grouped feedback and local performance work are not adopted by this document.
+[Requirements v5.0](../requirements/requirements-and-specifications.md) retains the unmet acceptance criteria, including pre-upload disclosure and deletion. Numerical targets remain unset. Q&A and separate English/Korean sessions remain in semester scope; broad Korean recognition, advice usefulness and stable/calibrated scores remain unverified. The v10 evidence does not establish human usability or scoring quality. Backward-navigation restrictions and onboarding remain proposals. Model experiments and grouped feedback are not adopted by this document.
 
 ### Design patterns (Iteration 5)
 
