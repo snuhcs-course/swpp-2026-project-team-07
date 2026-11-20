@@ -11,7 +11,7 @@ https://github.com/user-attachments/assets/1785e1b9-d7e4-4816-b370-2897a807dabf
 [Download the v10 APK](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/download/outloud-demo-v10-20261115/OutLoud-demo-v10-live-feedback.apk) for **Android 7.0 (API 24) or later**. Open OutLoud while online and enter the **demo code** from Team 07. [Release details](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v10-20261115)
 
 1. On **Home**, swipe up to import a PDF. Set the audience and presentation length, then tap the **save checkmark**.
-2. Tap the **record button**. If the live feedback prompt appears, tap **Use live feedback**, then grant microphone access when prompted. Use the **rotate button** to switch to landscape.
+2. Before recording, tap the **slide counter** to choose **Live feedback** for feedback as you rehearse or **After Stop** for feedback once you finish. Tap the **record button** and allow microphone access when asked. Use the **rotate button** to switch to landscape.
 3. Speak as you move through the slides. Check **Cues** for points to cover.
 4. Tap **Stop**. In the review overview, open **Feedback** to read advice or **Listen back** to replay the rehearsal with its transcript.
 5. Tap a **slide number** to see feedback for that slide.
