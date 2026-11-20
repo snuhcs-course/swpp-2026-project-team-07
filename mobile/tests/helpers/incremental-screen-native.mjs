@@ -12,7 +12,7 @@ export const useTheme = () => ({ c: new Proxy({}, { get: () => '#ffffff' }) });
 export const useShell = () => ({ ...runtime.shell, setFullscreenLandscape: () => {} });
 export const useSlideProfiles = () => ({ value: null, busy: false, refresh() {}, recover() {} });
 export const cueState = () => ({ cues: [], message: '' });
-export const CueGuidancePanel = 'cue-panel', PresentationRequirementsEditor = 'settings';
+export const CueGuidancePanel = 'cue-panel', PresentationRequirementsEditor = 'settings', PresentationSetupHint = 'setup-hint';
 export const requirementsPending = () => false, defaultRequirementsPending = () => false;
 export const readRequirementsDraft = () => null, getRequirementsVersion = () => 0;
 export const subscribeRequirements = () => () => {};

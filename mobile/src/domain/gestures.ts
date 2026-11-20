@@ -1,13 +1,23 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
 // OpenAI Codex finger-linked page fade: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-117
 // OpenAI Codex stationary back crossfade: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-119
+// OpenAI Codex Home carousel positions: docs/ai-collaboration-prompts-iteration-2.md#show-neighbouring-home-presentations
 // Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-043
 // OutLoud redesign: gesture physics from the prototype (SPEC §4.1, §4.4, §8).
 // Functions marked 'worklet' also run on the UI thread inside Reanimated styles.
 
-export const FLOW_X1 = 196;
-export const FLOW_XS = 44;
-export const FLOW_ROT = 55;
+// OpenAI Codex integrated supplied carousel spacing and blur: docs/ai-collaboration-prompts-iteration-2.md#widen-and-blur-home-carousel--november-20-2026
+// Home carousel layout. The cards next to the front one sit 170 from the centre (was 155),
+// leaving more room around the front card while most of their icon stays on a 390-wide
+// screen. Cards two away sit 260 out, just off-screen, and slide in as the carousel spins.
+// Side cards turn 45°.
+export const FLOW_X1 = 170;
+export const FLOW_XS = 90;
+export const FLOW_ROT = 45;
+// Blur (CSS sigma, dp) of the card next to the front one, and the extra for the card two away.
+// The whole card blurs, title included; the front card stays sharp. Android 12+ draws it.
+export const FLOW_BLUR1 = 2;
+export const FLOW_BLUR2 = 1.2;
 export const PX_PER_CARD = 190;
 export const PULL_T = 90;
 export const HOLD_MS = 3000;
@@ -44,7 +54,7 @@ export function coverFlow(j: number, p: number, n: number, spread: number): Flow
   const edge = Math.max(0, Math.min(1, (n / 2 - a) / 0.5));
   return {
     dd, x: sg * (side * FLOW_X1 + far * FLOW_XS), scale: 1 - side * 0.2 - far * 0.08, rotateY: -sg * side * FLOW_ROT,
-    blur: side * 3.2 + far * 1.8, brightness: 1 - side * 0.45, opacity: (1 - depth * 0.5) * edge,
+    blur: side * FLOW_BLUR1 + far * FLOW_BLUR2, brightness: 1 - side * 0.45, opacity: (1 - depth * 0.5) * edge,
     shadowOpacity: (1 - depth * 0.7) * edge, shadowScale: 1 - side * 0.4, z: 150 - Math.round(a * 20), live: a < 1.4,
   };
 }

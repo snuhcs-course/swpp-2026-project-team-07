@@ -76,11 +76,12 @@ export function AppShell() {
     let next: NavState[];
     if (existing >= 0) {
       // Returning reveals the mounted page underneath, including its local state.
-      const changingReviewSlide = screen === 'review' && patch?.sel !== undefined && patch.sel !== previous[existing].sel;
-      next = [...previous.slice(0, existing), { ...previous[existing], ...patch, screen, nav: changingReviewSlide ? 'fade' : null }];
+      next = [...previous.slice(0, existing), { ...previous[existing], ...patch, screen, nav: null,
+        swipeFrom: screen === 'review' ? patch?.swipeFrom : undefined }];
     } else {
       // A newly pushed page fades over its mounted underlay; returning to an existing page does not re-enter.
-      const layer: NavState = { ...top, ...patch, screen, nav: 'fade', from: patch?.from ?? null, visit: ++visitRef.current };
+      const layer: NavState = { ...top, ...patch, screen, nav: 'fade', from: patch?.from ?? null,
+        swipeFrom: screen === 'review' ? patch?.swipeFrom : undefined, visit: ++visitRef.current };
       // Import setup and resolved comparison must not sit behind their next page.
       next = (top.screen === 'upload' && screen === 'rehearse') || (top.screen === 'compare' && screen === 'review')
         ? [...previous.slice(0, -1), layer] : [...previous, layer];
@@ -135,7 +136,7 @@ export function AppShell() {
           const active = layer.visit === nav.visit;
           const retired = s === 'home' && layer.visit === retiredRehearse?.visit;
           const visible = active || layer.visit === underlayVisit;
-          return <View key={layer.visit} style={visible && !retired ? styles.page : styles.hiddenPage} pointerEvents={active ? 'auto' : 'none'}
+          return <View key={layer.visit} style={visible && !retired ? [styles.page, !active && layer.screen === 'rehearse' && styles.clippedUnderlay] : styles.hiddenPage} pointerEvents={active ? 'auto' : 'none'}
             accessibilityElementsHidden={!active} importantForAccessibility={active ? 'auto' : 'no-hide-descendants'}>
             <ShellContext.Provider value={{ go, nav: layer, home, setFullscreenLandscape }}>
               <LayerScreen screen={layer.screen} active={active} />
@@ -159,6 +160,7 @@ export function AppShell() {
 
 const styles = StyleSheet.create({
   page: { ...StyleSheet.absoluteFill },
+  clippedUnderlay: { overflow: 'hidden' },
   hiddenPage: { ...StyleSheet.absoluteFill, display: 'none' },
 });
 

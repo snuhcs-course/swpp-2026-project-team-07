@@ -19,7 +19,7 @@ test('one/two/three ready questions navigate and stop at actual last question',a
    for(let i=0;i<count;i++){
     assert.match(text(r),new RegExp('Question '+(i+1)+' of '+count));
     const pan=r.root.findByType('pan');
-    await act(async()=>{pan.props.onMoveShould({nativeEvent:{pageY:200}},{dx:-100,dy:0});pan.props.onMove({}, {dx:-100,dy:0});pan.props.onRelease();});
+    await act(async()=>{pan.props.onMoveShould({nativeEvent:{pageY:200}},{dx:-100,dy:0});pan.props.onMove({}, {dx:-100,dy:0});pan.props.onRelease({}, {dx:-100,dy:0});});
    }
    assert.match(text(r),new RegExp('Question '+count+' of '+count));
    assert.match(text(r),/Last question/);
@@ -40,9 +40,9 @@ test('pending to complete batch becomes navigable without leaving or regeneratin
   const model=globalThis.qaScreenModel;setup(3);globalThis.qaScreenModel=model;
   await act(async()=>r.update(React.createElement(QAScreen)));
   assert.match(text(r),/Question 1 of 3/);
-  for(let i=0;i<2;i++)await act(async()=>{const pan=r.root.findByType('pan');pan.props.onMoveShould({nativeEvent:{pageY:200}},{dx:-100,dy:0});pan.props.onMove({}, {dx:-100,dy:0});pan.props.onRelease();});
+  for(let i=0;i<2;i++)await act(async()=>{const pan=r.root.findByType('pan');pan.props.onMoveShould({nativeEvent:{pageY:200}},{dx:-100,dy:0});pan.props.onMove({}, {dx:-100,dy:0});pan.props.onRelease({}, {dx:-100,dy:0});});
   assert.match(text(r),/Question 3 of 3/);assert.match(text(r),/Last question/);
-  await act(async()=>{const pan=r.root.findByType('pan');pan.props.onMoveShould({nativeEvent:{pageY:200}},{dx:100,dy:0});pan.props.onMove({}, {dx:100,dy:0});pan.props.onRelease();});
+  await act(async()=>{const pan=r.root.findByType('pan');pan.props.onMoveShould({nativeEvent:{pageY:200}},{dx:100,dy:0});pan.props.onMove({}, {dx:100,dy:0});pan.props.onRelease({}, {dx:100,dy:0});});
   assert.match(text(r),/Question 2 of 3/);
  }finally{if(r)await act(async()=>r.unmount());}
 });

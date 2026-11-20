@@ -9,6 +9,8 @@
 // OpenAI Codex supplied launcher mark and credits: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-104
 // OpenAI Codex transparent Home overlays: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-104
 // OpenAI Codex import setup background correction: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-108
+// OpenAI Codex import-ring geometry: docs/ai-collaboration-prompts-iteration-2.md#centre-pdf-import-ring
+// OpenAI Codex compact carousel visibility: docs/ai-collaboration-prompts-iteration-2.md#show-neighbouring-home-presentations
 // OpenAI Codex UI-thread carousel gesture: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-109
 // OpenAI Codex supplied delete icon: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-110
 // OpenAI Codex continuous Home glow and responsive navigation: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-114
@@ -34,10 +36,11 @@ import { ThemeToggle } from '../design/ThemeToggle';
 import { LanguageToggle } from '../design/LanguageToggle';
 import { HintRow, UndoToast } from '../design/ui';
 import { readStored, writeStored } from '../services/storage';
-import { coverFlow, homeCarouselRelease, HOLD_MS, PULL_T, PX_PER_CARD, rubber } from '../domain/gestures';
+import { BACK_FADE_Y, coverFlow, homeCarouselRelease, HOLD_MS, PULL_T, PX_PER_CARD, rubber } from '../domain/gestures';
 import { ICONS, type HueName, type IconId } from '../domain/hues';
 import { mod, nearestSlot, pad2 } from '../domain/format';
 import { HomeFeedbackStats } from './HomeFeedbackStats';
+import { ANALYZE_ICON_SCALE, CAROUSEL_TOP, deckIconSize, ORIGIN_Y, SLOT_H, SLOT_TOP, SLOT_W } from './homeGeometry';
 import { getDeckState, nextHue, setHidden, setHue, setIcon, useStore, visibleDecks, type Presentation } from '../features/presentations/store';
 import { savedAttempts } from '../features/recording/storage';
 import { pdfService } from '../features/pdf/service';
@@ -45,7 +48,6 @@ import { useBack, useHomeShell } from './shared';
 import { useHorizontalSwipeMotion } from './swipeMotion';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
-const SLOT_W = 260, SLOT_H = 223, SLOT_TOP = 61, ORIGIN_Y = 111;
 export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode: 'home' | 'upload' | 'covered'; uploadLook: { hue: HueName; order: number } | null }) {
   const { c } = useTheme();
   const { go, home } = useHomeShell();
@@ -55,6 +57,7 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode:
   const n = decks.length;
   const [front, setFront] = useState(() => (n ? mod(Math.round(home.p.value), n) : 0));
   const [pickerFor, setPickerFor] = useState<string | null>(null);
+  const [pickerClosing, setPickerClosing] = useState(false);
   const [creditsOpen, setCreditsOpen] = useState(false);
   const [tutorialPage, setTutorialPage] = useState<number | null>(null);
   // OpenAI Codex, 2026-11-19: save a future UI-language preference without claiming the app is translated.
@@ -154,10 +157,10 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode:
   /** Which item a tap at (x, y) in carousel coordinates hit, front first. */
   const hitSlot = (x: number, y: number) => {
     if (!n) return x > 65 && x < 325 && y > SLOT_TOP && y < SLOT_TOP + SLOT_H ? -1 : null;
-    if (frame.compact) return y > SLOT_TOP && y < SLOT_TOP + SLOT_H ? mod(Math.round(home.p.value), n) : null;
     const order = decks.map((_, j) => ({ j, f: coverFlow(j, home.p.value, n, 0) })).filter(o => o.f.live).sort((a, b) => b.f.z - a.f.z);
     for (const { j, f } of order) {
-      const half = (SLOT_W / 2) * f.scale * Math.cos((f.rotateY * Math.PI) / 180);
+      // The side icon reaches inside the front slot's empty edge; keep that edge tappable.
+      const half = (j === mod(Math.round(home.p.value), n) && y > SLOT_TOP + 80 ? 110 : SLOT_W / 2) * f.scale * Math.cos((f.rotateY * Math.PI) / 180);
       if (Math.abs(x - (195 + f.x)) < half && y > SLOT_TOP && y < SLOT_TOP + SLOT_H) return j;
     }
     return null;
@@ -179,6 +182,7 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode:
     const deck = decks[selected];
     if (!deck) return;
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+    setPickerClosing(false);
     setPickerFor(deck.id);
     home.picker.set(withTiming(1, { duration: 420 }));
   };
@@ -279,7 +283,14 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode:
     else closePicker();
     return true;
   });
-  function closePicker() { home.picker.set(withTiming(0, { duration: 420 })); setPickerFor(null); }
+  // OpenAI Codex picker fade: docs/ai-collaboration-prompts-iteration-2.md#fade-icon-picker-on-downward-return--november-20-2026
+  // Keep the picker mounted until its return fade completes.
+  function closePicker() {
+    setPickerClosing(true);
+    home.picker.set(withTiming(0, { duration: 460, easing: Easing.out(Easing.cubic) }, done => {
+      if (done) runOnJS(setPickerFor)(null);
+    }));
+  }
 
   const frontDeck = n ? decks[shown] : null;
   void storeVersion;
@@ -289,6 +300,10 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode:
     if (deck && getDeckState(deck.id).run) go('full', { nav: 'fade', deckId: deck.id, from: 'home' });
   };
   const setupDim = useAnimatedStyle(() => ({ opacity: 1 - 0.96 * home.setup.value }));
+  // Fade the Home backdrop back into focus with the picker instead of snapping its blur off.
+  const pickerBackdrop = useAnimatedStyle(() => ({
+    filter: home.picker.value > 1 / 36 ? [{ blur: 18 * home.picker.value }] : [],
+  }));
   const homeLayer = useAnimatedStyle(() => {
     // A live blur forces Android to upload the entire moving carousel as a bitmap.
     // Dim only the existing cards; the new icon remains crisp above them.
@@ -296,16 +311,15 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode:
   });
   // Keep controls mounted so they appear gradually when Upload fades back to Home.
   const homeControls = useAnimatedStyle(() => ({ opacity: 1 - home.uploadBlur.value }));
-  const visibleSlots = decks.map((deck, j) => ({ deck, j })).filter(({ j }) => frame.compact
-    ? j === shown
-    : Math.min(mod(j - shown, n || 1), mod(shown - j, n || 1)) <= 2);
+  // Compact phones draw the neighbours too; the front card and two either side are mounted.
+  const visibleSlots = decks.map((deck, j) => ({ deck, j })).filter(({ j }) => Math.min(mod(j - shown, n || 1), mod(shown - j, n || 1)) <= 2);
   const visibleStats = n ? [...new Set([shown, mod(shown - 1, n), mod(shown + 1, n)])] : [];
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents={mode === 'home' ? 'box-none' : 'none'}
       accessibilityElementsHidden={mode !== 'home'} importantForAccessibility={mode === 'home' ? 'auto' : 'no-hide-descendants'}>
       <Animated.View pointerEvents="box-none" accessibilityElementsHidden={creditsOpen} importantForAccessibility={creditsOpen ? 'no-hide-descendants' : 'auto'}
-        style={[StyleSheet.absoluteFill, pickerFor || creditsOpen ? styles.overlayBlur : null, setupDim]}>
+        style={[StyleSheet.absoluteFill, pickerFor ? pickerBackdrop : creditsOpen ? styles.overlayBlur : null, setupDim]}>
       <Pressable accessibilityRole="button" accessibilityLabel="How OutLoud works" onPress={() => setTutorialPage(0)} onLongPress={() => setCreditsOpen(true)}
         style={styles.logo}><Txt style={styles.logoText}>OutLoud</Txt></Pressable>
       <Animated.View pointerEvents={mode === 'home' ? 'box-none' : 'none'} style={[StyleSheet.absoluteFill, homeControls]}>
@@ -324,7 +338,7 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode:
           if (a === 'increment') settle(Math.round(home.p.value) + 1);
           else if (a === 'decrement') settle(Math.round(home.p.value) - 1);
           else if (a === 'activate') openFront();
-          else if (a === 'longpress' && frontDeck) { setPickerFor(frontDeck.id); home.picker.set(withTiming(1, { duration: 420 })); }
+          else if (a === 'longpress' && frontDeck) { setPickerClosing(false); setPickerFor(frontDeck.id); home.picker.set(withTiming(1, { duration: 420 })); }
           else if (a === 'add') openAdd();
           else if (a === 'delete') deleteFront();
         }}>
@@ -338,11 +352,11 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode:
         <PullIndicator home={home} label={pullLabel} />
         {visibleStats.map(index => <HomeFeedbackStats key={decks[index].id} deckId={decks[index].id} index={index} count={n}
           home={home} active={mode === 'home' && index === shown} onOpenReview={openFullReview} />)}
-        <HomeHints home={home} empty={!n} />
         {undo && <UndoToast text={`Deleted “${undo.deck.title}”`} onUndo={undoDelete} />}
       </Animated.View>
       </Animated.View>
-      {pickerFor && <IconPicker deckId={pickerFor} onClose={closePicker} />}
+      {mode === 'home' && !pickerFor && tutorialPage === null && !creditsOpen && <HomeHints empty={!n} />}
+      {pickerFor && <IconPicker deckId={pickerFor} closing={pickerClosing} onClose={closePicker} />}
       {tutorialPage !== null && <TutorialOverlay page={tutorialPage} onPage={setTutorialPage} onClose={closeTutorial} />}
       <Animated.View pointerEvents={creditsOpen ? 'auto' : 'none'} accessibilityElementsHidden={!creditsOpen}
         importantForAccessibility={creditsOpen ? 'yes' : 'no-hide-descendants'} accessibilityViewIsModal={creditsOpen}
@@ -384,6 +398,10 @@ const Slot = memo(function Slot({ deck, j, n, home, floatPhase, floatEnabled, is
     const del = front ? (home.hold.value > 0 ? 0.3 + 0.7 * home.hold.value : pull * 0.3) : 0;
     return {
       opacity: f.opacity * (mode === 'light' ? 1 : f.brightness) * (1 - del * 0.45),
+      // OpenAI Codex integrated supplied card blur: docs/ai-collaboration-prompts-iteration-2.md#widen-and-blur-home-carousel--november-20-2026
+      // Side cards (title and icon) blur with their distance from the front; sharp at the front.
+      // React Native draws a blur of 0.5 or less as no blur, so skip the filter there.
+      filter: f.blur > 0.5 ? [{ blur: f.blur }] : [],
       transform: [{ perspective: 700 }, { rotateY: f.rotateY + 'deg' }],
     };
   });
@@ -406,7 +424,7 @@ const Slot = memo(function Slot({ deck, j, n, home, floatPhase, floatEnabled, is
           <Txt style={styles.meta}>{(deck.pageCount || '—') + ' slides · ' + pad2(j + 1)}</Txt>
         </Animated.View>}
         <Animated.View renderToHardwareTextureAndroid style={[styles.icon, icon]}>
-          <PresentationIcon icon={deck.icon} hue={deck.hue} size={compact ? 120 : 146} />
+          <PresentationIcon icon={deck.icon} hue={deck.hue} size={deckIconSize(compact)} />
         </Animated.View>
       </Animated.View>
       <Animated.View style={[styles.ground, shadow]}><GroundShadow icon={deck.icon} /></Animated.View>
@@ -461,9 +479,11 @@ function Ghost({ home, hue, order, empty, showText }: { home: import('./shared')
   const compact = useFrame().compact;
   const style = useAnimatedStyle(() => {
     const spread = empty ? Math.max(1, spreadOf(home)) : spreadOf(home);
-    const gsc = (0.6 + 0.4 * Math.min(1, spread)) * (home.analyzing.value ? 1 - 0.42 * home.analyzing.value : 1);
+    const gsc = (0.6 + 0.4 * Math.min(1, spread)) * (home.analyzing.value ? 1 - (1 - ANALYZE_ICON_SCALE) * home.analyzing.value : 1);
     return { opacity: spread > 0.01 ? Math.min(1, spread * 2.5) : 0, transform: [{ translateY: home.vy.value * 0.35 - (ORIGIN_Y - SLOT_FULL_H / 2) * (1 - gsc) * -1 }, { scale: gsc }] };
   });
+  // OpenAI Codex import-ring fix: docs/ai-collaboration-prompts-iteration-2.md#centre-pdf-import-ring
+  const groundFade = useAnimatedStyle(() => ({ opacity: 1 - home.analyzing.value }));
   return (
     <Animated.View pointerEvents="none" style={[styles.slot, { zIndex: 300 }, style]}>
       <View style={styles.item}>
@@ -471,9 +491,9 @@ function Ghost({ home, hue, order, empty, showText }: { home: import('./shared')
           New presentation
         </Txt>}
         {showText && <Txt style={styles.meta}>{'New · ' + pad2(order)}</Txt>}
-        <View style={styles.icon}><PresentationIcon icon="present" hue={hue} size={compact ? 120 : 146} /></View>
+        <View style={styles.icon}><PresentationIcon icon="present" hue={hue} size={deckIconSize(compact)} /></View>
       </View>
-      <View style={styles.ground}><GroundShadow icon="present" /></View>
+      <Animated.View style={[styles.ground, groundFade]}><GroundShadow icon="present" /></Animated.View>
     </Animated.View>
   );
 }
@@ -514,43 +534,59 @@ function PullIndicator({ home, label }: { home: import('./shared').HomeShared; l
 
 // ── Stats panel for the front presentation ───────────────────────────────────
 
-function HomeHints({ home, empty }: { home: import('./shared').HomeShared; empty: boolean }) {
-  const style = useAnimatedStyle(() => ({ opacity: home.vy.value < 0 ? 1 - Math.min(1, -home.vy.value / PULL_T) : 1 }));
+function HomeHints({ empty }: { empty: boolean }) {
   return (
-    <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, style]}>
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       <HintRow gap={16} hints={empty ? [{ icon: 'h-tap', text: 'Tap to add' }, { icon: 'h-up', text: 'Add' }]
         : [{ icon: 'h-spin', text: 'Spin' }, { icon: 'h-tap', text: 'Open' }, { icon: 'h-hold', text: 'Icon' }, { icon: 'h-up', text: 'Add' }, { icon: 'h-dn', text: 'Delete' }]} />
-    </Animated.View>
+    </View>
   );
 }
 
 // ── Icon picker (SPEC §4.2) ──────────────────────────────────────────────────
-function IconPicker({ deckId, onClose }: { deckId: string; onClose: () => void }) {
+function IconPicker({ deckId, closing, onClose }: { deckId: string; closing: boolean; onClose: () => void }) {
   const { c } = useTheme();
+  const { home } = useHomeShell();
   const deck = useStore(s => s.decks.find(d => d.id === deckId) ?? null);
   const frame = useFrame();
   const dy = useSharedValue(0);
-  const enter = useSharedValue(0);
-  useEffect(() => { enter.set(withTiming(1, { duration: 420, easing: Easing.out(Easing.cubic) })); }, [enter]);
-  const close = () => enter.set(withTiming(0, {duration:420,easing:Easing.out(Easing.cubic)},done=>{if(done)runOnJS(onClose)();}));
+  const fadeY = useSharedValue(0);
   const drag: PanHandlers = {
     onMoveShould: (_e, gs) => gs.dy > 8 && Math.abs(gs.dy) > Math.abs(gs.dx),
-    onMove: (_e, gs) => { dy.set(Math.max(0, gs.dy / frame.s)); },
-    onRelease: () => { if (dy.get() > 110) dy.set(withTiming(680, { duration: 460, easing: Easing.out(Easing.cubic) }, done => {if(done)runOnJS(onClose)();})); else dy.set(withTiming(0, { duration: 420, easing: Easing.bezier(0.2, 0.8, 0.2, 1) })); },
-    onTerminate: () => { dy.set(withTiming(0, { duration: 420 })); },
+    onMove: (_e, gs) => { const y = Math.max(0, gs.dy / frame.s); dy.set(y); fadeY.set(Math.min(BACK_FADE_Y, y)); },
+    onRelease: () => {
+      if (dy.get() > 110) {
+        // OpenAI Codex picker fade: docs/ai-collaboration-prompts-iteration-2.md#fade-icon-picker-on-downward-return--november-20-2026
+        // Fade the picker contents during the downward return; the footer hint stays fixed.
+        fadeY.set(withTiming(BACK_FADE_Y, { duration: 460, easing: Easing.out(Easing.cubic) }));
+        dy.set(withTiming(Math.max(300, dy.get()), { duration: 460, easing: Easing.out(Easing.cubic) }));
+        onClose();
+      } else {
+        dy.set(withTiming(0, { duration: 420, easing: Easing.bezier(0.2, 0.8, 0.2, 1) }));
+        fadeY.set(withTiming(0, { duration: 420, easing: Easing.bezier(0.2, 0.8, 0.2, 1) }));
+      }
+    },
+    onTerminate: () => { dy.set(withTiming(0, { duration: 420 })); fadeY.set(withTiming(0, { duration: 420 })); },
   };
-  const sheet = useAnimatedStyle(() => ({ opacity: enter.value, transform: [{ translateY: dy.value }] }));
+  const overlay = useAnimatedStyle(() => ({ opacity: Math.min(home.picker.value, Math.max(0, 1 - fadeY.value / BACK_FADE_Y)) }));
+  const sheet = useAnimatedStyle(() => ({ transform: [{ translateY: dy.value }] }));
+  // OpenAI Codex, 2026-11-20: start the picker fade at the top on drag and on tap/Back close.
+  const exit = useDerivedValue(() => Math.max(fadeY.value / BACK_FADE_Y, closing ? 1 - home.picker.value : 0));
+  const topFade = useAnimatedStyle(() => ({ opacity: Math.max(0, 1 - exit.value / 0.36) }));
+  const middleFade = useAnimatedStyle(() => ({ opacity: Math.max(0, 1 - Math.max(0, exit.value - 0.08) / 0.58) }));
+  const lowerFade = useAnimatedStyle(() => ({ opacity: Math.max(0, 1 - Math.max(0, exit.value - 0.25) / 0.75) }));
   if (!deck) return null;
   return (
     <View style={[StyleSheet.absoluteFill, { zIndex: 30 }]}>
-      <Pressable accessibilityLabel="Close icon picker" onPress={close} style={StyleSheet.absoluteFill} />
+      <Animated.View style={[StyleSheet.absoluteFill, overlay]}>
+      <Pressable accessibilityLabel="Close icon picker" onPress={onClose} style={StyleSheet.absoluteFill} />
       <PanView accessibilityViewIsModal style={[styles.sheet, sheet]} {...drag}>
-        <View style={{ paddingHorizontal: 40, alignItems: 'center' }} pointerEvents="none">
+        <Animated.View style={[{ paddingHorizontal: 40, alignItems: 'center' }, topFade]} pointerEvents="none">
           <Txt style={styles.pickTitle}>Choose an icon</Txt>
           <Txt numberOfLines={1} style={styles.pickSub}>{deck.title}</Txt>
-        </View>
-        <View style={styles.preview} pointerEvents="none"><PresentationIcon icon={deck.icon} hue={deck.hue} size={104} /></View>
-        <View style={styles.swatches}>
+        </Animated.View>
+        <Animated.View style={[styles.preview, topFade]} pointerEvents="none"><PresentationIcon icon={deck.icon} hue={deck.hue} size={104} /></Animated.View>
+        <Animated.View style={[styles.swatches, middleFade]}>
           {(Object.keys(DECK_COLORS) as (keyof typeof DECK_COLORS)[]).map(name => {
             const selected = name === deck.hue;
             const swatch = DECK_COLORS[name].swatch;
@@ -563,8 +599,8 @@ function IconPicker({ deckId, onClose }: { deckId: string; onClose: () => void }
               </View>
             </Pressable>;
           })}
-        </View>
-        <View style={styles.grid}>
+        </Animated.View>
+        <Animated.View style={[styles.grid, lowerFade]}>
           {ICONS.map(([id, name]) => {
             const sel = id === deck.icon;
             return (
@@ -575,8 +611,10 @@ function IconPicker({ deckId, onClose }: { deckId: string; onClose: () => void }
               </Pressable>
             );
           })}
-        </View>
+        </Animated.View>
       </PanView>
+      </Animated.View>
+      {/* OpenAI Codex, 2026-11-20: keep the bottom gesture cue fixed during picker fade and drag. */}
       <HintRow gap={6} hints={[{ icon: 'h-dn', text: 'Swipe down to close', nudge: 'down' }]} />
     </View>
   );
@@ -656,8 +694,8 @@ const styles = createThemedStyles({
   creditsOverlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 50, alignItems: 'center', justifyContent: 'center' },
   creditNames: { alignItems: 'center', gap: 16 },
   creditName: { fontSize: 27, lineHeight: 40, fontWeight: '700', color: '#FFFFFF', textAlign: 'center' },
-  carousel: { position: 'absolute', left: 0, top: 150, width: 390, height: 400, zIndex: 1 },
-  ghostLayer: { position: 'absolute', left: 0, top: 150, width: 390, height: 400, zIndex: 2 },
+  carousel: { position: 'absolute', left: 0, top: CAROUSEL_TOP, width: 390, height: 400, zIndex: 1 },
+  ghostLayer: { position: 'absolute', left: 0, top: CAROUSEL_TOP, width: 390, height: 400, zIndex: 2 },
   slot: { position: 'absolute', left: 65, top: SLOT_TOP, width: SLOT_W, height: SLOT_FULL_H },
   item: { width: SLOT_W, height: SLOT_H, alignItems: 'center' },
   slotCopy: { alignItems: 'center' },

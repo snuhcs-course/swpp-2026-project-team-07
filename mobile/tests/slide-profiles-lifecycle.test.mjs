@@ -67,16 +67,29 @@ test('a local PDF retries its server link after a connection failure',async t=>{
 test('an unconfirmed PDF upload waits for an explicit refresh before another POST',async t=>{
  t.mock.timers.enable({apis:['setTimeout']});
  const localId='local-unconfirmed-cues';removeStored(`server-deck:${API_URL}:${localId}`);
- const original=globalThis.fetch;let renderer,links=0;
+ const original=globalThis.fetch;let renderer,links=0,unconfirmed=false,finishRetry;
  globalThis.fetch=async()=>new Response('{}');
- globalThis.__cueServerSlides=async()=>{links++;throw Error('The server did not confirm the PDF request before the time limit.');};
+ globalThis.__cueServerPdfUnconfirmed=()=>unconfirmed;
+ globalThis.__cueServerSlides=async(_local,_api,_signal,_timeout,retryUnconfirmed)=>{
+  links++;if(links===1){unconfirmed=true;throw Error('The server did not confirm the PDF request before the time limit.');}
+  assert.equal(retryUnconfirmed,true,'only explicit refresh may repeat an unconfirmed PDF upload');
+  return new Promise(resolve=>{finishRetry=()=>{unconfirmed=false;writeStored(`server-deck:${API_URL}:${localId}`,deckId);
+    resolve({deckId,texts:['','','']});};});
+ };
  try{
   const source={id:localId,title:'Unconfirmed PDF',uri:'file://local.pdf',pageCount:3};
   await act(async()=>{renderer=create(tree({localId,source}));});
-  assert.equal(links,1);assert.match(current.error,/Tap Refresh AI cues/);
+  assert.equal(links,1);assert.match(current.error,/Tap Refresh with server/);
   await act(async()=>t.mock.timers.tick(60000));assert.equal(links,1);
+  const {backgroundApp,setFocused}=await import('./helpers/recording-screen-ui.mjs');
+  await act(async()=>backgroundApp('background'));await act(async()=>backgroundApp('active'));
+  await act(async()=>setFocused(false));await act(async()=>setFocused(true));
+  assert.equal(links,1,'foreground and focus do not repeat an unconfirmed POST');
   await act(async()=>current.refresh());assert.equal(links,2);
- }finally{if(renderer)await act(async()=>renderer.unmount());globalThis.fetch=original;delete globalThis.__cueServerSlides;t.mock.timers.reset();}
+  await act(async()=>{current.refresh();current.refresh();});
+  assert.equal(links,2,'cue sheet and landscape double taps cannot interrupt/repost an in-flight PDF');
+  await act(async()=>finishRetry());
+ }finally{if(renderer)await act(async()=>renderer.unmount());globalThis.fetch=original;delete globalThis.__cueServerSlides;delete globalThis.__cueServerPdfUnconfirmed;t.mock.timers.reset();}
 });
 
 test('unready server does not start a PDF upload',async()=>{

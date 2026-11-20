@@ -21,7 +21,7 @@ export const useSharedValue=value=>{const r=React.useRef({value,get(){return thi
 }});return r.current;};
 export const useAnimatedStyle=()=>({}),useReducedMotion=()=>runtime.reducedMotion;
 const Animated=Object.assign(({children})=>React.createElement('svg',null,children),{View:'animated'});export default Animated;
-export const Rect='rect',Path='path',Circle='circle',Line='line',StatusBar='status-bar',selectionAsync=async()=>{},impactAsync=async()=>{},ImpactFeedbackStyle={Medium:'medium'};
+export const Rect='rect',Path='path',Circle='circle',Line='line',Defs='defs',LinearGradient='linear-gradient',Stop='stop',StatusBar='status-bar',selectionAsync=async()=>{},impactAsync=async()=>{},ImpactFeedbackStyle={Medium:'medium'};
 export const OrientationLock={PORTRAIT_UP:1},lockAsync=async()=>{};
 export const useSafeAreaInsets=()=>({top:0,bottom:0,left:0,right:0});
 const setFullscreenLandscape=()=>{};

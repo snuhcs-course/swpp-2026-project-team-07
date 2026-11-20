@@ -3,7 +3,7 @@ export const View='view',Pressable='pressable',Txt='text';
 export const ScrollView=React.forwardRef(function ScrollView(props,ref){React.useImperativeHandle(ref,()=>({scrollTo:options=>runtime.scrolls.push(options)}));return React.createElement('scroll',props,props.children);});
 export const StyleSheet={create:x=>x,absoluteFill:{}};
 export const Enter=({children})=>React.createElement('enter',null,children),PanView='pan',Glyph='glyph',UIIcon='icon',MiniSlide='mini-slide',ScoreRing='score-ring',PageSurface='page-surface',Pill='pill',IconRow='icon-row',Dialog='dialog';
-export const runtime={model:null,feedback:null,nav:null,routes:[],audio:new Map(),plays:[],stops:0,players:[],scrolls:[]};
+export const runtime={model:null,feedback:null,nav:null,routes:[],audio:new Map(),plays:[],stops:0,players:[],scrolls:[],frameHeight:844,frameCompact:false};
 // OpenAI Codex #44: expose background cancellation and exact queued-seek intent.
 const appListeners=new Set();
 export const AppState={currentState:'active',addEventListener(_event,listener){appListeners.add(listener);return {remove(){appListeners.delete(listener);}};},emit(state){this.currentState=state;for(const listener of appListeners)listener(state);}};
@@ -22,7 +22,7 @@ export const readRequirements=()=>runtime.requirements??{deckId:null,contextId:n
 export const requirementsDirty=()=>!!runtime.requirementsDirty;
 export function useSlideReview(...args){runtime.slideReviewCalls?.push(args);return runtime.slideReview??{state:null,busy:false,initial:null,notice:'',ask:false,refresh:async()=>{},generate:async()=>{},confirm(){},cancel(){}};}
 export function useReviewAudio(_api,id){return {audio:{uri:runtime.audio.get(id)??null,busy:false,error:''},audioSpec:null,validators:null,download:async()=>{}};}
-export const useShell=()=>({nav:runtime.nav,go:(...args)=>runtime.routes.push(args)}),useBack=(_active,callback)=>{runtime.back=callback;},useNow=()=>Date.now(),useFrame=()=>({top:0,left:0,s:1});
+export const useShell=()=>({nav:runtime.nav,go:(...args)=>runtime.routes.push(args)}),useBack=(_active,callback)=>{runtime.back=callback;},useNow=()=>Date.now(),useFrame=()=>({top:0,left:0,s:1,height:runtime.frameHeight,compact:runtime.frameCompact});
 export const audioOf=id=>runtime.audio.get(id)??null,useWorkers=()=>new Map();
 export function useSegmentPlayer(){const[,render]=React.useState(0);const[p]=React.useState(()=>{const x={playingKey:null,paused:false,error:null,progress:0,elapsedMs:0,positionMs:null,uri:null};
  x.stop=()=>{runtime.stops++;x.playingKey=null;x.positionMs=null;x.uri=null;};
@@ -30,7 +30,7 @@ export function useSegmentPlayer(){const[,render]=React.useState(0);const[p]=Rea
  x.seekSegments=async(key,segments,elapsedMs,paused)=>{runtime.plays.push({key,segments,elapsedMs,paused});Object.assign(x,{playingKey:key,elapsedMs,paused,uri:segments[0]?.uri,positionMs:segments[0]?.startMs});render(n=>n+1);};
  x.setPaused=paused=>{if(x.playingKey){x.paused=paused;render(n=>n+1);}};
  x.play=(key,segment)=>x.playSegments(key,[segment]);return x;});if(!runtime.players.includes(p))runtime.players.push(p);return p;}
-export const Easing={bezier:()=>v=>v},withTiming=(v,_config,complete)=>{complete?.(true);return v;},runOnJS=f=>f;
+export const Easing={bezier:()=>v=>v},withTiming=(v,_config,complete)=>{complete?.(true);return v;},runOnJS=f=>f,cancelAnimation=()=>{};
 export const useSharedValue=value=>{const r=React.useRef({value,get(){return this.value},set(v){this.value=v}});return r.current;};
 export const useAnimatedStyle=fn=>fn(),useAnimatedProps=()=>({}),useReducedMotion=()=>runtime.reducedMotion??true;
 export const createThemedStyles=x=>x;

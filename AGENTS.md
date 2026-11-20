@@ -6,8 +6,8 @@ These rules apply across project tasks; read detailed guides only when relevant.
 
 ## Current iteration and prompt logging
 
-**Current iteration: 2.** Record new project-task prompts in the
-[active Iteration 2 log](docs/ai-collaboration-prompts-iteration-2.md), as specified
+**Current iteration: 4.** Record new project-task prompts in the
+[active Iteration 4 log](docs/ai-collaboration-prompts-iteration-4.md), as specified
 by the current task instructions. Earlier contributor logs remain in the
 [prompt log index](docs/ai-collaboration/README.md#prompt-logs).
 

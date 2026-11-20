@@ -106,7 +106,7 @@ playback audio. A final 42-second take on the local ARM64 APK retained all 107 w
 across four visits; full playback and visit skipping followed their original order.
 These used generated test speech through the phone microphone
 and real Scribe/OpenRouter calls; they are not human usability or rubric-quality
-acceptance. See the [task evidence in the active collaboration log](../../ai-collaboration-prompts-iteration-2.md#continuous-per-slide-transcription-and-feedback--november-15-2026)
+acceptance. See the [task evidence in the active collaboration log](../../ai-collaboration-prompts-iteration-4.md#continuous-per-slide-transcription-and-feedback--november-15-2026)
 for attempt IDs, provider counts, checks and APK identity.
 
 

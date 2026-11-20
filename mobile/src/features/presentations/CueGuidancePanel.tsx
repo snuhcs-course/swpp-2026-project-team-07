@@ -74,8 +74,9 @@ export function CueGuidancePanel({ state, slide, error, busy, onRecover,
           {sheetItems.length ? sheetItems.map((item, index) => <CueDetail key={`${sheet}-${index}`} cue={item} />)
             : (state ? views[sheet].message : connectionMessage) === message && notice ? null : <Txt style={styles.emptySheet}>{(!state && connectionMessage) || views[sheet].message || 'Cues are not available yet. Try again when the server is reachable.'}</Txt>}
         </ScrollView>
-        <Txt style={styles.closeHint}>↓ Swipe down to close</Txt>
       </PanView>
+      {/* OpenAI Codex, 2026-11-20: the sheet gesture caption stays anchored during drag. */}
+      <Txt pointerEvents="none" style={styles.closeHint}>↓ Swipe down to close</Txt>
     </View>}
   </View>;
 }
@@ -111,7 +112,7 @@ const styles = createThemedStyles({
   status: { fontFamily: F.medium, fontSize: 13.5, lineHeight: 18, color: C.secondary },
   sheetLayer: { position: 'absolute', top: -372, right: -16, bottom: -844, left: -16, zIndex: 50, justifyContent: 'flex-end' },
   scrim: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
-  sheet: { minHeight: 348, maxHeight: 644, paddingTop: 12, paddingHorizontal: 24, paddingBottom: 24, borderTopWidth: 1, borderColor: C.line, borderTopLeftRadius: 28, borderTopRightRadius: 28 },
+  sheet: { minHeight: 348, maxHeight: 644, paddingTop: 12, paddingHorizontal: 24, paddingBottom: 50, borderTopWidth: 1, borderColor: C.line, borderTopLeftRadius: 28, borderTopRightRadius: 28 },
   handle: { width: 40, height: 5, borderRadius: 3, alignSelf: 'center', opacity: 0.45 },
   sheetHeader: { marginTop: 18, flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 },
   sheetTitle: { fontFamily: F.display, fontSize: 22, lineHeight: 27 },
@@ -124,5 +125,5 @@ const styles = createThemedStyles({
   detailText: { flex: 1, gap: 6 },
   detailTitle: { fontFamily: F.bold, fontSize: 17, lineHeight: 23, color: C.text },
   detailBody: { fontFamily: F.medium, fontSize: 15, lineHeight: 21, color: C.secondary },
-  closeHint: { textAlign: 'center', fontFamily: F.medium, fontSize: 14.5, color: C.secondary },
+  closeHint: { position: 'absolute', bottom: 24, left: 24, right: 24, textAlign: 'center', fontFamily: F.medium, fontSize: 14.5, color: C.secondary },
 });

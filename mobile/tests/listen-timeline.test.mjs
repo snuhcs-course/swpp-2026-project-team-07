@@ -6,6 +6,8 @@ registerHooks({ resolve, load });
 const { listenTimeline, listenEntryAt } = await import('../src/domain/listenTimeline.ts');
 const { ListenBackKaraokeScreen } = await import('../src/screens/ListenBackKaraokeScreen.tsx');
 const { runtime } = await import('./helpers/ai-overview-screen-native.mjs');
+const { DARK_PALETTE, LIGHT_PALETTE } = await import('../src/design/tokens.ts');
+runtime.palettes = { dark: DARK_PALETTE, light: LIGHT_PALETTE };
 const React = await import('react');
 const { act, create } = await import('react-test-renderer');
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -73,8 +75,11 @@ test('actual Listen Back queue, transcript, word highlight, progress and visit s
     assert.equal(scrubber(r).props.accessibilityValue.now, 8);
     assert.equal(scrubber(r).props.accessibilityValue.max, 14);
     assert.match(text(r), /Slide 1 · One/);
-    const sentence = r.root.findByProps({ accessibilityLabel: 'Return A' });
-    assert.equal(sentence.findByType('text').props.style.fontFamily, 'Figtree_700Bold');
+    // Supplied Claude patch, Codex integration 2026-11-21: colour-only highlight keeps the line from reflowing.
+    const sentence = r.root.findAll(node => node.type === 'text' && node.props.accessibilityLabel === 'Return A')[0];
+    const lit = sentence.findAll(node => node.type === 'text' && node !== sentence)[0];
+    assert.equal(lit.props.style.color, '#D485FC');
+    assert.equal(lit.props.style.fontFamily, undefined);
     const context = r.root.findAllByType('text').map(n => n.props.children);
     assert.ok(context.includes('First B')); assert.ok(context.includes('Return B'));
     await tap(button(r, 'Next slide')); assert.equal(runtime.plays.at(-1).elapsedMs, 10000);

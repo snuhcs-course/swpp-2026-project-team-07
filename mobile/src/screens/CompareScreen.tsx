@@ -7,7 +7,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import { Enter, Txt } from '../design/frame';
+import { Enter, Txt, useFrame } from '../design/frame';
 import { Glyph } from '../design/icons';
 import { PanView } from '../design/PanView';
 import { C, EASE_SCREEN, F } from '../design/tokens';
@@ -28,6 +28,7 @@ import { useHorizontalSwipeMotion } from './swipeMotion';
 
 export function CompareScreen() {
   const { c: palette } = useTheme();
+  const frame = useFrame();
   const { go, nav } = useShell();
   const model = useDeckModel(nav.deckId);
   const [keep, setKeep] = useState<'old' | 'new'>('old');
@@ -101,8 +102,11 @@ export function CompareScreen() {
   const currentPoints=selected.ready?selected.said.length:null,otherPoints=other.ready?other.said.length:null;
   const playActive=player.playingKey===playKey&&!player.paused;
   const togglePlay=()=>{if(player.playingKey===playKey){player.setPaused(!player.paused);return;}playSelected();};
+  // Centre the 84 dp action and its label between Play and the footer hints.
+  const hintTop=(frame.compact?760:844)-24-22;
+  const keepTop=(526+hintTop-116)/2;
   return (
-    <Enter kind={nav.nav}><PanView style={[StyleSheet.absoluteFill,swipeFade]}
+    <><Enter kind={nav.nav}><PanView style={[StyleSheet.absoluteFill,swipeFade]}
       onMoveShould={(_e,g)=>(Math.abs(g.dx)>18&&Math.abs(g.dx)>Math.abs(g.dy))||(g.dy>12&&g.dy>Math.abs(g.dx))}
       onMove={(_e,g)=>{if(Math.abs(g.dx)>Math.abs(g.dy)){swipe.move(g.dx);fadeY.set(0);}else{swipe.settle();fadeY.set(Math.max(0,Math.min(BACK_FADE_Y,g.dy)));}}}
       onRelease={(_e,g)=>{const horizontal=Math.abs(g.dx)>Math.abs(g.dy)||Math.abs(g.vx)>0.6&&Math.abs(g.vx)>Math.abs(g.vy);if(!horizontal&&g.dy>60){fadeY.set(withTiming(BACK_FADE_Y,{duration:460,easing:EASE_SCREEN},done=>{if(done)runOnJS(back)();}));}else{fadeY.set(withTiming(0,{duration:360,easing:EASE_SCREEN}));if(horizontal&&(g.dx < -60 || g.vx < -0.6)){if(Math.abs(g.dx)<18)swipe.move(-95);player.stop();setKeep('new');}else if(horizontal&&(g.dx > 60 || g.vx > 0.6)){if(Math.abs(g.dx)<18)swipe.move(95);player.stop();setKeep('old');}swipe.settle();}}}
@@ -132,11 +136,13 @@ export function CompareScreen() {
         <Glyph name={playActive?'p-pause':'p-play'} size={22} color={palette.onAccent}/>
       </Pressable>
       {!!player.error && <Txt accessibilityRole="alert" style={[styles.playError, { color: palette.secondary }]}>{player.error}</Txt>}
-      <RecordButton green glyph="check" label="Keep this take" onPress={() => finish(keep,false)} style={styles.keepButton}/>
-      <Txt pointerEvents="none" style={styles.keepLabel}>Keep this take</Txt>
-      <HintRow style={styles.hints} hints={[{icon:'h-spin',text:'Switch take'},{icon:'h-dn',text:'Back',nudge:'down'}]}/>
+      <RecordButton green glyph="check" label="Keep this take" onPress={() => finish(keep,false)} style={[styles.keepButton,{top:keepTop}]}/>
+      <Txt pointerEvents="none" style={[styles.keepLabel,{top:keepTop+94}]}>Keep this take</Txt>
       </Animated.View>
     </PanView></Enter>
+    {/* OpenAI Codex, 2026-11-20: keep the take-switch cue in one place. */}
+    <HintRow style={styles.hints} hints={[{icon:'h-spin',text:'Switch take'},{icon:'h-dn',text:'Back',nudge:'down'}]}/>
+    </>
   );
 }
 
@@ -163,5 +169,5 @@ const styles = createThemedStyles({
   segmentText: { fontFamily: F.bold, fontSize: 15, lineHeight: 20 },
   playButton:{position:'absolute',left:167,top:470,width:56,height:56,borderRadius:28,alignItems:'center',justifyContent:'center'},
   playError:{position:'absolute',top:538,left:24,right:24,textAlign:'center',fontFamily:F.medium,fontSize:13.5},
-  keepButton:{top:650,left:153},keepLabel:{position:'absolute',top:744,left:24,right:24,textAlign:'center',fontFamily:F.semibold,fontSize:16,color:C.text},hints:{bottom:24},
+  keepButton:{left:153},keepLabel:{position:'absolute',left:24,right:24,textAlign:'center',fontFamily:F.semibold,fontSize:16,color:C.text},hints:{bottom:24},
 });

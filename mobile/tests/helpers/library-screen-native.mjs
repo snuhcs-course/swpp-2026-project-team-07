@@ -5,7 +5,7 @@ export { AppState, StyleSheet, View, Pressable, Txt, Circle, Defs, Path, Rect, S
 
 export const Text = 'text', Image = 'image', G = 'group', Ellipse = 'ellipse', ClipPath = 'clip-path';
 export const RadialGradient = 'radial-gradient', PanView = 'pan', GestureDetector = 'gesture';
-export const HomeFeedbackStats = 'home-stats', PresentationRequirementsEditor = 'requirements';
+export const HomeFeedbackStats = 'home-stats', PresentationRequirementsEditor = 'requirements', PresentationSetupHint = 'setup-hint';
 export const useWindowDimensions = () => ({ width: 390, height: 844 });
 export const useSafeAreaInsets = () => ({ top: 0, right: 0, bottom: 0, left: 0 });
 export const useReducedMotion = () => false;

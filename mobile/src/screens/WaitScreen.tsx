@@ -59,7 +59,7 @@ export function WaitScreen({ active = true }: { active?: boolean }) {
     go('listen', { deckId: deck.id, sel: 0, from: 'full' });
   };
   const terminalCount = v3 ? v3.aggregate.settled : feedback.items.filter(item => ['reviewed','partial','insufficient','unavailable','recovery_needed','outdated','not_analyzed'].includes(item.status)).length;
-  return <Enter kind={nav.nav}><PanView style={[StyleSheet.absoluteFill,{backgroundColor:c.bg},swipeFade]}
+  return <><Enter kind={nav.nav}><PanView style={[StyleSheet.absoluteFill,{backgroundColor:c.bg},swipeFade]}
     onMoveShould={(_e,g)=>g.dy>12&&g.dy>Math.abs(g.dx)}
     onMove={(_e,g)=>fadeY.set(Math.max(0,Math.min(BACK_FADE_Y,g.dy)))}
     onRelease={(_e,g)=>{if(g.dy>60)fadeY.set(withTiming(BACK_FADE_Y,{duration:460,easing:EASE_SCREEN},done=>{if(done)runOnJS(hintHome)();}));else fadeY.set(withTiming(0,{duration:360,easing:EASE_SCREEN}));}}
@@ -99,8 +99,10 @@ export function WaitScreen({ active = true }: { active?: boolean }) {
       <Pressable accessibilityRole="button" onPress={openListen} style={[styles.primary,{backgroundColor:c.strong}]}><Txt style={[styles.buttonText,{color:c.onAccent}]}>Listen back while you wait</Txt></Pressable>
       <Pressable accessibilityRole="button" onPress={hintHome} style={[styles.secondary,{borderColor:c.hair}]}><Txt style={[styles.buttonText,{color:c.text}]}>Go Home</Txt></Pressable>
     </View>
-    <HintRow hints={[{icon:'h-dn',text:'Home',nudge:'down'}]} />
-  </PanView></Enter>;
+  </PanView></Enter>
+  {/* OpenAI Codex, 2026-11-20: the waiting footer stays put on return. */}
+  {active&&<HintRow hints={[{icon:'h-dn',text:'Home',nudge:'down'}]} />}
+  </>;
 }
 
 function Step({label,detail,done,icon}:{label:string;detail:string;done:boolean;icon:string}) {

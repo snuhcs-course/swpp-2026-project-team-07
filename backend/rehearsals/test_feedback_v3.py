@@ -14,7 +14,7 @@ from django.test import SimpleTestCase, TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from .feedback_v3 import llm, measurements, pipeline, prompts, rubric, transcript
+from .feedback_v3 import limits, llm, measurements, pipeline, prompts, rubric, transcript
 from .models import (Attempt, Deck, DescriptionSet, FeedbackAnalysis, FeedbackJob, FeedbackRun,
                      PresentationContext, QaAnswer, Slide)
 
@@ -105,6 +105,55 @@ class MeasurementTests(SimpleTestCase):
         self.assertEqual(result['slides'][0]['repeated_words'], 1)
         self.assertEqual(sum(m['target_seconds'] for m in result['slides'].values()), 120)
         self.assertEqual(result['whole']['time_ratio'], round(10 / 120, 2))
+
+
+# Supplied Claude patch, OpenAI Codex integration, Iteration 2 (2026-11-20): coaching limit coverage.
+class LimitsTests(SimpleTestCase):
+    def test_english_limits_count_words_and_characters(self):
+        self.assertFalse(limits.over('headline', 'Mountains left out', 'en'))
+        self.assertTrue(limits.over('headline', 'Limited access to external feedback', 'en'))  # 35 characters.
+        self.assertTrue(limits.over('headline', 'a b c d e f', 'en'))  # Six words.
+        self.assertFalse(limits.over('steps', 'Link the river and the mountains in one sentence', 'en'))
+        self.assertTrue(limits.over('example', ' '.join(['word'] * 17), 'en'))
+
+    def test_korean_limits_count_characters(self):
+        self.assertFalse(limits.over('headline', '산을 빠뜨렸어요', 'ko'))
+        self.assertTrue(limits.over('headline', '외부 피드백을 받을 기회가 부족함', 'ko'))
+        self.assertTrue(limits.over('example', '가' * 49, 'ko'))
+
+    def test_over_limit_text_is_kept_whole_and_flagged(self):
+        long = 'Say the one in five figure from the slide before you go on to explain why it matters'
+        coach = limits.coaching({'headline': 'Limited access to external feedback.', 'explanation': ['a', 'b', 'c'],
+                                 'example': '""Too many quotes""', 'steps': [long]}, 'en', explanation_items=2)
+        self.assertEqual(coach['headline'], 'Limited access to external feedback')  # Full stop dropped, text kept.
+        self.assertEqual(coach['steps'], [long])
+        self.assertEqual(coach['example'], 'Too many quotes')
+        self.assertEqual(coach['over_limit'], ['headline', 'explanation', 'steps.0'])
+
+    def test_bullets_accept_a_string_and_strip_markers(self):
+        self.assertEqual(limits.bullets('- one\n• two\n\n3) three'), ['one', 'two', 'three'])
+        self.assertEqual(limits.bullets(['  a  b ', 3, '']), ['a b'])
+        self.assertEqual(limits.unquote('“‘nested’”'), 'nested')
+
+    def test_prompt_states_the_same_limits_and_the_version_changed(self):
+        self.assertEqual(prompts.PROMPT_VERSION, 'feedback-v3-prompt-3')
+        for system in (prompts.SLIDE_SYSTEM, prompts.WHOLE_SYSTEM):
+            self.assertIn('at most 5 words and 24 characters (Korean: 11 characters)', system)
+            self.assertIn('at most 16 words and 100 characters (Korean: 48 characters)', system)
+        self.assertIn('1 to 3 bullet points', prompts.WHOLE_SYSTEM)
+
+    def test_normalize_reads_prompt_2_answers(self):
+        old = pipeline.normalize_slide({'improvements': [{'criterion': 'explanation_depth', 'problem': 'no reason',
+                                                          'action': 'say why', 'example': '"Because."', 'evidence': []}]},
+                                       {})
+        item, = old['improvements']
+        self.assertEqual((item['headline'], item['explanation'], item['steps'], item['example']),
+                         ('no reason', [], ['say why'], 'Because.'))
+        self.assertEqual(item['problem'], 'no reason')
+        korean = pipeline.normalize_slide({'improvements': [{'criterion': 'explanation_depth', 'headline': '외부 피드백을 받을 기회가 부족함',
+                                                             'explanation': [], 'example': '', 'steps': ['이유를 말하세요'],
+                                                             'evidence': []}]}, {}, 'ko')
+        self.assertEqual(korean['improvements'][0]['over_limit'], ['headline'])
 
 
 class SchemaTests(SimpleTestCase):
@@ -221,13 +270,17 @@ def fake_answer(kind, payload, level='competent'):
                              for c in rubric.RUBRIC_V2.slide},
                 'must_cover': [{'point': 'p', 'status': 'partial', 'evidence': ids[:1]}, {'point': 'x', 'status': 'bogus', 'evidence': []}],
                 'strength': {'text': 'clear opening', 'evidence': ids[-1:]},
-                'improvements': [{'criterion': 'explanation_depth', 'problem': 'no reason given',
-                                  'action': 'say why it matters', 'example': 'This matters because...', 'evidence': ids[:1]},
-                                 {'criterion': 'not_a_criterion', 'problem': 'x', 'action': 'y', 'example': '', 'evidence': []}]}
+                'improvements': [{'criterion': 'explanation_depth', 'headline': 'No reason given',
+                                  'explanation': ['The slide says why the city grew, but you never say it'],
+                                  'example': '“This matters because jobs drew people in.”',
+                                  'steps': ['Say why it matters', 'Name the jobs that drew people in'], 'evidence': ids[:1]},
+                                 {'criterion': 'not_a_criterion', 'headline': 'x', 'explanation': [], 'example': '',
+                                  'steps': ['y'], 'evidence': []}]}
     else:
         data = {'criteria': {c.id: {'level': level, 'reason': 'fits', 'evidence': ['s1.1', 'm:pace'], 'next_level': 'n'}
                              for c in rubric.RUBRIC_V2.whole},
-                'top_priorities': [{'title': 'Explain why', 'action': 'Add one reason per slide', 'why': 'clarity', 'slide_index': 1},
+                'top_priorities': [{'headline': 'Explain why', 'explanation': ['Reasons are missing on two slides'],
+                                    'example': '', 'steps': ['Add one reason per slide'], 'slide_index': 1},
                                    {'title': 'bad index', 'action': 'a', 'why': 'w', 'slide_index': 99}],
                 'summary': 'Solid rehearsal.'}
     return llm.Result(data, 100, 50, 0.4, 1)
@@ -288,6 +341,16 @@ class PipelineTests(TestCase):
         self.assertEqual(slides[1]['must_cover'], [{'point': 'p', 'status': 'partial', 'evidence': evidence}])
         improvement, = slides[1]['improvements']
         self.assertEqual((improvement['gain_slide_points'], improvement['gain_overall_points']), (11.7, 4.1))
+        self.assertEqual((improvement['headline'], improvement['steps'], improvement['over_limit']),
+                         ('No reason given', ['Say why it matters', 'Name the jobs that drew people in'], []))
+        self.assertEqual(improvement['example'], 'This matters because jobs drew people in.')  # Quotes stripped.
+        self.assertEqual((improvement['problem'], improvement['action']),
+                         ('The slide says why the city grew, but you never say it.',
+                          'Say why it matters. Name the jobs that drew people in.'))
+        first, legacy = body['whole']['top_priorities']
+        self.assertEqual((first['headline'], first['title'], first['why'], first['action']),
+                         ('Explain why', 'Explain why', 'Reasons are missing on two slides.', 'Add one reason per slide.'))
+        self.assertEqual((legacy['headline'], legacy['explanation'], legacy['steps']), ('bad index', ['w'], ['a']))
         self.assertEqual(body['scores']['overall'], 67)
         self.assertEqual(body['scores']['overall_level'], 'competent')
         self.assertEqual(body['whole']['top_priorities'][1]['slide_index'], None)

@@ -5,6 +5,7 @@
 // OutLoud redesign: play one sentence (a stretch of one take's audio).
 // OpenAI Codex Review and Full review: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-122
 // OpenAI Codex #44: exact queued seeks preserve original visits and playback intent.
+// Supplied Claude-generated patch, integrated by OpenAI Codex for Iteration 2 (2026-11-21): count natural ends for Listen back.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
@@ -19,6 +20,8 @@ export function useSegmentPlayer() {
   const player = useAudioPlayer(null, { updateInterval: 50 });
   const [state, setState] = useState<PlaybackState>(idle);
   const [error, setError] = useState<string | null>(null);
+  /** Times playback reached the end of its last segment by itself (not stop(), pause or leaving the app). */
+  const [ends, setEnds] = useState(0);
   const current = useRef<Playback | null>(null);
   const loadedUri = useRef<string | null>(null);
   const token = useRef(0);
@@ -107,7 +110,7 @@ export function useSegmentPlayer() {
       const seg = c.segments[c.index];
       const span = c.segments.reduce((sum, item) => sum + item.endMs - item.startMs, 0);
       if (pos >= seg.endMs || (!player.playing && pos > seg.startMs + 200 && pos >= seg.endMs - 150)) {
-        if (c.index + 1 >= c.segments.length) { stop(); return; }
+        if (c.index + 1 >= c.segments.length) { stop(); setEnds(n => n + 1); return; }
         c.advancing = true;
         c.index++;
         void startSegment(c.token, c.segments[c.index]).then(() => { if (current.current === c) c.advancing = false; }, () => { if (current.current === c) failed(); });
@@ -125,5 +128,5 @@ export function useSegmentPlayer() {
     return () => { sub.remove(); stop(); try { player.pause(); } catch { /* released */ } };
   }, [player, stop]);
 
-  return { playingKey: state.key, progress: state.progress, elapsedMs: state.elapsedMs, paused: state.paused, positionMs: state.positionMs, uri: state.uri, error, play, playSegments, seekSegments, setPaused, stop };
+  return { playingKey: state.key, progress: state.progress, elapsedMs: state.elapsedMs, paused: state.paused, positionMs: state.positionMs, uri: state.uri, error, ends, play, playSegments, seekSegments, setPaused, stop };
 }

@@ -8,6 +8,7 @@ import { readStored } from '../../services/storage';
 import { normalizeApi } from '../transcription/analysisStorage';
 import { canonicalUuid } from '../feedback/validation';
 import { createProfileClient, readProfiles, type ProfileState } from './slideProfiles';
+import { serverPdfUnconfirmed } from './serverDeck';
 
 const active = new Set(['queued', 'preparing', 'submitted', 'normalizing', 'waiting_quota']);
 type LocalSource = { id: string; title: string; uri: string; pageCount: number };
@@ -22,7 +23,11 @@ export function useSlideProfiles(localId: string, pages: number, visible = true,
   const [refresh, setRefresh] = useState(0);
   const [failure, setFailure] = useState({ deck, message: '' });
   const [busy, setBusy] = useState(false);
+  // OpenAI Codex, 2026-11-21: expose a read/link in flight so the preview refresh cannot interrupt an ambiguous PDF upload.
+  const [syncing, setSyncing] = useState(false);
   const locked = useRef(false);
+  const manualLinkRetry = useRef(false);
+  const requestInFlight = useRef(false);
   const mounted = useRef(true);
   const selected = useRef(deck);
   useLayoutEffect(() => { selected.current = deck; }, [deck]);
@@ -33,12 +38,18 @@ export function useSlideProfiles(localId: string, pages: number, visible = true,
     let controller: AbortController | undefined;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let failures = 0;
-    const stop = () => { controller?.abort(); if (timer) clearTimeout(timer); };
+    const stop = () => { controller?.abort(); requestInFlight.current = false; if (timer) clearTimeout(timer); if (mounted.current) setSyncing(false); };
     const start = () => {
       stop();
       if (!visible || AppState.currentState !== 'active' || (!deck && !sourceUri)) return;
+      if (!deck && serverPdfUnconfirmed(localId, api) && !manualLinkRetry.current) {
+        setFailure({ deck: null, message: 'Server did not confirm this PDF. Tap Refresh with server to try again.' });
+        return;
+      }
       const current = new AbortController(); controller = current;
       const read = async () => {
+        requestInFlight.current = true;
+        setSyncing(true);
         try {
           if (!deck) {
             // A locally ready PDF (including the bundled demo) may never have
@@ -55,7 +66,9 @@ export function useSlideProfiles(localId: string, pages: number, visible = true,
             } finally { clearTimeout(readyTimer); current.signal.removeEventListener('abort', abortReady); }
             if (!readiness.ok) throw new Error(`Server readiness HTTP ${readiness.status}`);
             const { serverSlides } = await import('./serverDeck');
-            await serverSlides({ id: localId, title: sourceTitle!, uri: sourceUri!, pageCount: pages }, api, current.signal, 180_000);
+            const retryUnconfirmed = manualLinkRetry.current;
+            manualLinkRetry.current = false;
+            await serverSlides({ id: localId, title: sourceTitle!, uri: sourceUri!, pageCount: pages }, api, current.signal, 180_000, retryUnconfirmed);
             if (current.signal.aborted) return;
             failures = 0;
             setFailure({ deck: null, message: '' });
@@ -75,7 +88,7 @@ export function useSlideProfiles(localId: string, pages: number, visible = true,
           const httpStatus = detail.match(/HTTP (\d{3})/i)?.[1];
           const unconfirmed = /did not confirm the PDF request/i.test(detail);
           const message = codeNeeded ? 'Enter the demo code to reconnect server cues.'
-            : unconfirmed ? 'Server did not confirm this PDF. Tap Refresh AI cues to try again.'
+            : unconfirmed ? 'Server did not confirm this PDF. Tap Refresh with server to try again.'
             : httpStatus ? `Server returned HTTP ${httpStatus}. Reconnecting…`
               : /server readiness timed out/i.test(detail) ? 'Server readiness check timed out. Reconnecting…'
               : /different presentation/i.test(detail) ? 'The server returned a different presentation. Check this PDF before retrying.'
@@ -86,6 +99,9 @@ export function useSlideProfiles(localId: string, pages: number, visible = true,
           if (unconfirmed) return; // A timed-out upload may have completed; never replay it automatically.
           const delay = [2500, 5000, 10000, 30000][Math.min(failures++, 3)];
           timer = setTimeout(() => { void read(); }, delay);
+        } finally {
+          if (controller === current) requestInFlight.current = false;
+          if (!current.signal.aborted && mounted.current) setSyncing(false);
         }
       };
       void read();
@@ -115,5 +131,9 @@ export function useSlideProfiles(localId: string, pages: number, visible = true,
     } catch { if (mounted.current && selected.current === deck) setFailure({ deck, message: 'AI cue request failed. Tap to refresh before retrying.' }); }
     finally { locked.current = false; if (mounted.current) setBusy(false); }
   }, [api, deck, pages, value]);
-  return { value, error, busy, recover, available: !!deck, refresh: () => setRefresh(r => r + 1) };
+  return { value, error, busy, syncing, recover, available: !!deck,
+    // OpenAI Codex, 2026-11-21: every refresh entry point shares the same in-flight guard, including the cue sheet and landscape.
+    refresh: () => { if (locked.current || (!deck && (requestInFlight.current || manualLinkRetry.current))) return;
+      if (!deck) manualLinkRetry.current = true;
+      setRefresh(r => r + 1); } };
 }

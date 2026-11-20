@@ -6,11 +6,16 @@
 import { File } from 'expo-file-system';
 import { backendExpoFetch as fetch } from '../../services/backendFetch';
 import { API_URL } from '../../services/api';
-import { readStored, writeStored } from '../../services/storage';
+import { readStored, removeStored, writeStored } from '../../services/storage';
 import { normalizeApi } from '../transcription/analysisStorage';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export type ServerSlides = { deckId: string; texts: string[] };
+const uncertainKey = (api: string, localId: string) => `server-deck-unconfirmed:${api}:${localId}`;
+// OpenAI Codex, 2026-11-21: a lost PDF upload response must survive import → preview and app restarts.
+export function serverPdfUnconfirmed(localId: string, apiUrl = API_URL) {
+  return readStored<boolean>(uncertainKey(normalizeApi(apiUrl), localId)) === true;
+}
 
 function parse(value: unknown, pageCount: number, expectedId?: string): ServerSlides {
   const v = value as { id?: unknown; page_count?: unknown; slides?: unknown } | null;
@@ -29,7 +34,7 @@ function parse(value: unknown, pageCount: number, expectedId?: string): ServerSl
 
 /** Find or create the server copy of a local PDF and return its extracted slide text. */
 export async function serverSlides(local: { id: string; title: string; uri: string; pageCount: number }, apiUrl = API_URL,
-  signal?: AbortSignal, timeoutMs = 300_000): Promise<ServerSlides> {
+  signal?: AbortSignal, timeoutMs = 300_000, retryUnconfirmed = false): Promise<ServerSlides> {
   const api = normalizeApi(apiUrl);
   const key = `server-deck:${api}:${local.id}`;
   const controller = new AbortController();
@@ -38,7 +43,7 @@ export async function serverSlides(local: { id: string; title: string; uri: stri
   const abort = () => controller.abort();
   if (signal?.aborted) controller.abort();
   signal?.addEventListener('abort', abort, { once: true });
-  try { return await request(api, key, local, controller.signal); }
+  try { return await request(api, key, local, controller.signal, retryUnconfirmed); }
   catch (cause) {
     if (timedOut && !signal?.aborted) throw new Error('The server did not confirm the PDF request before the time limit.');
     throw cause;
@@ -46,21 +51,31 @@ export async function serverSlides(local: { id: string; title: string; uri: stri
   finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); }
 }
 
-async function request(api: string, key: string, local: { title: string; uri: string; pageCount: number }, combined: AbortSignal) {
+async function request(api: string, key: string, local: { id: string; title: string; uri: string; pageCount: number },
+  combined: AbortSignal, retryUnconfirmed: boolean) {
+  const uncertain = uncertainKey(api, local.id);
   const cached = readStored<string>(key);
   if (typeof cached === 'string' && uuid.test(cached)) {
     const response = await fetch(`${api}/decks/${cached}/`, { signal: combined });
-    if (response.ok) return parse(await response.json(), local.pageCount, cached);
+    if (response.ok) { const parsed = parse(await response.json(), local.pageCount, cached); removeStored(uncertain); return parsed; }
     // Only a confirmed missing deck permits a new upload (same rule as attempt uploads).
     if (response.status !== 404) throw new Error(`Could not check the saved presentation (HTTP ${response.status}).`);
   }
+  if (readStored<boolean>(uncertain) === true && !retryUnconfirmed)
+    throw new Error('The server did not confirm the PDF request. Tap Refresh with server before another upload.');
+  if (combined.aborted) throw new Error('PDF request cancelled.');
   const body = new FormData();
   body.append('file', new File(local.uri), 'slides.pdf');
   body.append('title', local.title.slice(0, 255) || 'Presentation');
+  // OpenAI Codex, 2026-11-21: mark before transport starts so a simultaneous preview cannot POST the same uncertain PDF.
+  writeStored(uncertain, true);
   const response = await fetch(`${api}/decks/`, { method: 'POST', body, signal: combined });
-  if (!response.ok) throw new Error(`The server could not read this PDF (HTTP ${response.status}). Check the 50 MiB file limit.`);
-  const data = (await response.json()) as { deck?: { id?: unknown; page_count?: unknown }; slides?: unknown };
-  const parsed = parse({ ...data.deck, slides: data.slides }, local.pageCount);
-  writeStored(key, parsed.deckId);
-  return parsed;
+  if (!response.ok) { removeStored(uncertain); throw new Error(`The server could not read this PDF (HTTP ${response.status}). Check the 50 MiB file limit.`); }
+  try {
+    const data = (await response.json()) as { deck?: { id?: unknown; page_count?: unknown }; slides?: unknown };
+    const parsed = parse({ ...data.deck, slides: data.slides }, local.pageCount);
+    writeStored(key, parsed.deckId);
+    removeStored(uncertain);
+    return parsed;
+  } catch (cause) { writeStored(uncertain, true); throw cause; }
 }

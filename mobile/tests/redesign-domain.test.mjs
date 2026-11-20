@@ -169,6 +169,8 @@ test('home stats and compare rows come from the merged transcript', () => {
   assert.deepEqual(compareRows(a, b, ['We start']).map(r => r.text), ['“basically” 2 → 0']);
 });
 
+// OpenAI Codex integrated supplied cover-flow regression: docs/ai-collaboration-prompts-iteration-2.md#show-neighbouring-home-presentations
+// OpenAI Codex integrated supplied carousel geometry and blur assertions: docs/ai-collaboration-prompts-iteration-2.md#widen-and-blur-home-carousel--november-20-2026
 test('slide carousel release rules and cover flow match the prototype', () => {
   assert.deepEqual(decideRelease({ x: -40, base: 0, vel: -0.5, step: 374, slide: 2, n: 5 }).dir, 1);
   assert.deepEqual(decideRelease({ x: -80, base: 0, vel: 0, step: 374, slide: 2, n: 5 }).dir, 1);
@@ -178,7 +180,22 @@ test('slide carousel release rules and cover flow match the prototype', () => {
   assert.equal(front.x, 0);
   assert.equal(front.scale, 1);
   const side = coverFlow(1, 0, 5, 0);
-  assert.equal(side.x, 196);
-  assert.equal(side.rotateY, -55);
-  assert.ok(Math.abs(side.blur - 3.2) < 1e-9);
+  assert.equal(side.x, 170);
+  assert.equal(side.rotateY, -45);
+  assert.equal(front.blur, 0);
+  assert.ok(Math.abs(side.blur - 2) < 1e-9);
+  assert.deepEqual([coverFlow(4, 0, 5, 0).x, coverFlow(4, 0, 5, 0).rotateY], [-170, 45]);
+  // Two away is off a 390-wide screen except a thin edge, which sits behind the neighbour.
+  const far = coverFlow(2, 0, 5, 0);
+  assert.equal(far.x, 260);
+  assert.ok(Math.abs(far.blur - 3.2) < 1e-9);
+  assert.ok(195 + far.x - (260 / 2) * far.scale * Math.cos(Math.abs(far.rotateY) * Math.PI / 180) > 380);
+  // At least 80% of the neighbour's 146 icon (full-height phones) stays on screen. Its outer
+  // edge turns away from the viewer, so the 700 perspective draws it slightly nearer the centre.
+  const turn = Math.abs(side.rotateY) * Math.PI / 180, half = 146 / 2;
+  const outer = half * Math.cos(turn) * 700 / (700 + half * Math.sin(turn)) * side.scale;
+  const inner = half * Math.cos(turn) * 700 / (700 - half * Math.sin(turn)) * side.scale;
+  assert.ok((390 - (195 + side.x - inner)) / (inner + outer) > 0.8);
+  // Halfway through a turn the blur is halfway too.
+  assert.ok(Math.abs(coverFlow(1, 0.5, 5, 0).blur - 1) < 1e-9);
 });

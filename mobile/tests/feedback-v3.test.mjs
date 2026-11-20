@@ -238,3 +238,25 @@ test('embedded capture feedback rejects a foreign recording or settings without 
   assert.throws(() => client.receiveFeedbackRun(api, 'a1', 'c1', body({ context_id: 'other' })), /different recording/);
   assert.equal(client.readSavedRun(api, 'a1', 'c1').scores.overall, 67);
 });
+
+// Supplied Claude patch, OpenAI Codex integration, Iteration 2 (2026-11-20): prompt-3 coaching fields.
+test('prompt-3 coaching fields fill the Feedback cards and older runs still map from problem and action', () => {
+  const fresh = scoredSlide(1, { improvements: [{ criterion: 'explanation_depth', problem: 'The slide shows X; you never say it.', action: 'Say X. Link X to Y.',
+    example: '“"Because X."”', headline: 'X left out', explanation: ['The slide shows X; you never say it'], steps: ['Say X', 'Link X to Y'],
+    over_limit: ['steps.1'], evidence: [speech('s2', 1, 5000)], gain_slide_points: 11.7, gain_overall_points: 4.1 }] });
+  const base = body();
+  const view = select({ a1: body({ slides: [base.slides[0], fresh], whole: { ...base.whole, top_priorities: [{ headline: 'Close on one point',
+    explanation: ['The talk ends on a thank-you', 'People forget the main point'], steps: ['Add one closing sentence'], example: '',
+    title: 'Close on one point', action: 'Add one closing sentence.', why: 'The talk ends on a thank-you. People forget the main point.',
+    over_limit: [], slide_index: null }] } }) });
+  const [priority, card] = run.runCards(view.items, view.overall);
+  assert.deepEqual([card.headline, card.explanation, card.steps, card.example, card.overLimit],
+    ['X left out', ['The slide shows X; you never say it'], ['Say X', 'Link X to Y'], 'Because X.', true]);
+  assert.deepEqual([priority.headline, priority.explanation, priority.steps, priority.overLimit],
+    ['Close on one point', ['The talk ends on a thank-you', 'People forget the main point'], ['Add one closing sentence'], false]);
+  const old = select({ a1: body() });
+  const [oldPriority, oldCard] = run.runCards(old.items, old.overall);
+  assert.deepEqual([oldCard.headline, oldCard.explanation, oldCard.steps, oldCard.example], ['No reason', [], ['Say why'], 'Because…']);
+  assert.deepEqual([oldPriority.headline, oldPriority.explanation, oldPriority.steps], ['Explain why', ['clarity'], ['Add one reason per slide']]);
+  assert.equal(run.unquote('“"nested"”'), 'nested');
+});
