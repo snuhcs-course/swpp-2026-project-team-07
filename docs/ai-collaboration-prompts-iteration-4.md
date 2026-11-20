@@ -1120,6 +1120,21 @@ upload this to the github... we're done...&#x20;
 name of this is going to be "...nitoryu"
 ```
 
-- **AI work:** Prepared `codex/outloud-complete_nitoryu` from the latest `codex/smooth-open-language-toggle_hikarimono` head `90b4ce7ce7849a88682a5d50d3fb91be63564cf0`. The supplied local source is a snapshot without `.git`; a separate temporary clone was used to compare the source and prepare publication. The staged selection has 64 paths: 56 modified files, seven added files and the retired Iteration 2 log deleted in favor of the Iteration 4 log. The unrelated Iteration 5 meeting record and its index entry remain as they are on the remote branch. Generated Android projects, APKs, dependencies, private environment files and local recordings were excluded.
+### Follow-ups — verbatim
+
+```text
+no publish at the end
+```
+
+```text
+just nitoryu
+```
+
+```text
+upload the branch i think the error is because i pressed cancel on the github desktop popup just now
+```
+
+- **Human clarification and action:** The brief “no publish” wording was ambiguous. In the follow-up choice, the user selected “Upload `nitoryu` to GitHub” rather than keeping it local, and confirmed the exact branch name `nitoryu`. The user reported cancelling an initial GitHub Desktop popup, then accepted the repository and selected “Publish branch” in GitHub Desktop. This was user-operated publication, not agent-operated UI testing.
+- **AI work:** Prepared `nitoryu` from the latest `codex/smooth-open-language-toggle_hikarimono` head `90b4ce7ce7849a88682a5d50d3fb91be63564cf0`. The supplied local source is a snapshot without `.git`; a separate temporary clone was used to compare the source and prepare publication. The staged selection has 64 paths: 56 modified files, seven added files and the retired Iteration 2 log deleted in favor of the Iteration 4 log. The unrelated Iteration 5 meeting record and its index entry remain as they are on the remote branch. Generated Android projects, APKs, dependencies, private environment files and local recordings were excluded.
 - **Preparation checks:** Every staged added or modified file matched the local source byte for byte. The staged paths contained no APK, recording, environment file, generated native project or dependency directory. A scan of added lines found no private-key marker or long token assignment. `git diff --cached --check` reported three trailing spaces inside preserved verbatim user prompts in the collaboration log; no code whitespace issue was reported. The latest Q&A fade had already passed TypeScript, Expo lint, 12 focused tests, an ARM64 release build and installation on Samsung SM-S901N. The previously isolated Listen Back full-suite failures were not rerun for this publication.
-- **Publication outcome:** In progress; record the commit, push and GitHub readback here before handoff.
+- **Publication outcome:** The reviewed source commit is `642b521416cd11d215a5b170268841aff3aa306c` with tree `05edb27cba933bc206581c6b90be78c9089f45ba`. Direct HTTPS push lacked local Git credentials, SSH authentication was denied, and the connected GitHub app returned HTTP 403 for creating the branch. macOS denied agent assistive access to GitHub Desktop; its credential bridge did not authorize direct shell pushes. The user then published the prepared branch from GitHub Desktop. Agent readback via GitHub branch search and `git ls-remote` confirmed `nitoryu` at the exact prepared commit. No PR or merge was made.
