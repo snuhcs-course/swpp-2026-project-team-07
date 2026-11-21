@@ -20,6 +20,7 @@
 // OpenAI Codex stable import hue: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-123
 // OpenAI Codex supplied stopwatch brand: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-126
 // The carousel stays mounted behind Upload, which blurs it and opens a gap for the new item.
+// Claude prototype guide integrated by OpenAI Codex, Iteration 4 (2026-11-21): eight tutorial pages with native swipes.
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
@@ -36,6 +37,7 @@ import { ThemeToggle } from '../design/ThemeToggle';
 import { LanguageToggle } from '../design/LanguageToggle';
 import { HintRow, UndoToast } from '../design/ui';
 import { useUiText } from '../design/language';
+import { readStored, writeStored } from '../services/storage';
 import { BACK_FADE_Y, coverFlow, homeCarouselRelease, HOLD_MS, PULL_T, PX_PER_CARD, rubber } from '../domain/gestures';
 import { ICONS, type HueName, type IconId } from '../domain/hues';
 import { mod, nearestSlot, pad2 } from '../domain/format';
@@ -45,7 +47,7 @@ import { getDeckState, nextHue, setHidden, setHue, setIcon, useStore, visibleDec
 import { savedAttempts } from '../features/recording/storage';
 import { pdfService } from '../features/pdf/service';
 import { useBack, useHomeShell } from './shared';
-import { useHorizontalSwipeMotion } from './swipeMotion';
+import { TUTORIAL_SEEN, TutorialOverlay } from './HomeTutorial';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDeckChange }: {
@@ -63,12 +65,16 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const [pickerClosing, setPickerClosing] = useState(false);
   const [creditsOpen, setCreditsOpen] = useState(false);
-  const [tutorialPage, setTutorialPage] = useState<number | null>(null);
+  const [tutorialPage, setTutorialPage] = useState<number | null>(() => {
+    try { return mode === 'home' && !readStored<boolean>(TUTORIAL_SEEN) ? 0 : null; } catch { return null; }
+  });
+  const [tutorialClosing, setTutorialClosing] = useState(false);
+  const tutorialCover = useSharedValue(0);
   const [undo, setUndo] = useState<{ deck: Presentation; at: number } | null>(null);
   const [pullLabel, setPullLabel] = useState<'' | 'add' | 'addPast' | 'del' | 'delPast' | 'keep'>('');
   const newHue = mode === 'upload' && uploadLook ? uploadLook.hue : nextHue();
   const newOrder = mode === 'upload' && uploadLook ? uploadLook.order : n + 1;
-  const active = mode === 'home' && !pickerFor && !creditsOpen;
+  const active = mode === 'home' && !pickerFor && !creditsOpen && tutorialPage === null;
   const reducedMotion = useReducedMotion();
   const creditsOpacity = useSharedValue(0);
   useEffect(() => {
@@ -76,7 +82,12 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
   }, [creditsOpen, creditsOpacity, reducedMotion]);
   const creditsFade = useAnimatedStyle(() => ({ opacity: creditsOpacity.value }));
   const floatEnabled = active && !reducedMotion;
-  const closeTutorial = () => setTutorialPage(null);
+  const openTutorial = () => { setTutorialClosing(false); setTutorialPage(0); };
+  const closeTutorial = () => {
+    setTutorialPage(null);
+    setTutorialClosing(false);
+    try { writeStored(TUTORIAL_SEEN, true); } catch { /* Reopen automatically next launch. */ }
+  };
   const floatPhase = useSharedValue(0);
   useEffect(() => {
     cancelAnimation(floatPhase);
@@ -266,7 +277,7 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
 
   useBack(mode === 'home' && (creditsOpen || !!pickerFor || tutorialPage !== null), () => {
     if (creditsOpen) setCreditsOpen(false);
-    else if (tutorialPage !== null) closeTutorial();
+    else if (tutorialPage !== null) setTutorialClosing(true);
     else closePicker();
     return true;
   });
@@ -288,7 +299,7 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
     const deck = decks[mod(Math.round(home.p.value), Math.max(1, n))];
     if (deck && getDeckState(deck.id).run) go('full', { nav: 'fade', deckId: deck.id, from: 'home' });
   };
-  const setupDim = useAnimatedStyle(() => ({ opacity: 1 - 0.96 * home.setup.value }));
+  const setupDim = useAnimatedStyle(() => ({ opacity: (1 - 0.96 * home.setup.value) * (1 - tutorialCover.value) }));
   // Fade the Home backdrop back into focus with the picker instead of snapping its blur off.
   const pickerBackdrop = useAnimatedStyle(() => ({
     filter: home.picker.value > 1 / 36 ? [{ blur: 18 * home.picker.value }] : [],
@@ -307,9 +318,11 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents={mode === 'home' ? 'box-none' : 'none'}
       accessibilityElementsHidden={mode !== 'home'} importantForAccessibility={mode === 'home' ? 'auto' : 'no-hide-descendants'}>
-      <Animated.View pointerEvents="box-none" accessibilityElementsHidden={creditsOpen} importantForAccessibility={creditsOpen ? 'no-hide-descendants' : 'auto'}
+      <Animated.View pointerEvents={tutorialPage !== null ? 'none' : 'box-none'}
+        accessibilityElementsHidden={creditsOpen || tutorialPage !== null}
+        importantForAccessibility={creditsOpen || tutorialPage !== null ? 'no-hide-descendants' : 'auto'}
         style={[StyleSheet.absoluteFill, pickerFor ? pickerBackdrop : creditsOpen ? styles.overlayBlur : null, setupDim]}>
-      <Pressable accessibilityRole="button" accessibilityLabel={ui("How OutLoud works")} onPress={() => setTutorialPage(0)} onLongPress={() => setCreditsOpen(true)}
+      <Pressable accessibilityRole="button" accessibilityLabel={ui("How OutLoud works")} onPress={openTutorial} onLongPress={() => setCreditsOpen(true)}
         style={styles.logo}><Txt style={styles.logoText}>OutLoud</Txt></Pressable>
       <Animated.View pointerEvents={mode === 'home' ? 'box-none' : 'none'} style={[StyleSheet.absoluteFill, homeControls]}>
         {mode === 'home' && !pickerFor && <LanguageToggle />}
@@ -343,7 +356,8 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
       </Animated.View>
       {mode === 'home' && !pickerFor && tutorialPage === null && !creditsOpen && <HomeHints empty={!n} />}
       {pickerFor && <IconPicker deckId={pickerFor} closing={pickerClosing} onClose={closePicker} />}
-      {tutorialPage !== null && <TutorialOverlay page={tutorialPage} onPage={setTutorialPage} onClose={closeTutorial} />}
+      {tutorialPage !== null && <TutorialOverlay page={tutorialPage} onPage={setTutorialPage} onClose={closeTutorial}
+        cover={tutorialCover} closing={tutorialClosing} />}
       <Animated.View pointerEvents={creditsOpen ? 'auto' : 'none'} accessibilityElementsHidden={!creditsOpen}
         importantForAccessibility={creditsOpen ? 'yes' : 'no-hide-descendants'} accessibilityViewIsModal={creditsOpen}
         style={[styles.creditsOverlay, creditsFade]}>
@@ -607,70 +621,6 @@ function IconPicker({ deckId, closing, onClose }: { deckId: string; closing: boo
   );
 }
 
-function TutorialOverlay({ page, onPage, onClose }: { page: number; onPage: (page: number | null) => void; onClose: () => void }) {
-  const ui = useUiText();
-  const { c } = useTheme();
-  const reducedMotion = useReducedMotion();
-  const demo = useSharedValue(0);
-  const fadeY = useSharedValue(0);
-  const swipe = useHorizontalSwipeMotion();
-  const fade = useAnimatedStyle(() => ({opacity:reducedMotion?1:Math.max(0,1-fadeY.value/180)}));
-  useEffect(() => {
-    cancelAnimation(demo);
-    demo.set(0);
-    if (reducedMotion) return;
-    demo.set(withRepeat(withTiming(1, { duration: 1200, easing: Easing.inOut(Easing.cubic) }), -1, true));
-    return () => cancelAnimation(demo);
-  }, [demo, page, reducedMotion]);
-  const demoCard = useAnimatedStyle(() => {
-    const travel = (demo.value - 0.5) * 2;
-    if (page === 0) return { transform: [{ translateX: travel * 34 }, { rotate: `${travel * 5}deg` }] };
-    if (page === 3) return { transform: [{ translateY: -demo.value * 24 }, { scale: 1 - demo.value * 0.04 }] };
-    if (page === 4) return { transform: [{ translateY: demo.value * 24 }, { scale: 1 - demo.value * 0.04 }] };
-    if (page === 2) return { transform: [{ scale: 1 + demo.value * 0.08 }] };
-    return { transform: [{ scale: 1 - demo.value * 0.035 }] };
-  }, [page]);
-  const demoHand = useAnimatedStyle(() => {
-    const travel = (demo.value - 0.5) * 2;
-    const horizontal = page === 0 ? travel * 74 : 0;
-    const vertical = page === 3 ? (1 - demo.value) * 68 : page === 4 ? demo.value * 68 :
-      page === 2 ? -demo.value * 14 : (1 - demo.value) * 22;
-    const scale = page === 1 || page === 5 ? 0.88 + demo.value * 0.18 : 1;
-    return { transform: [{ translateX: horizontal }, { translateY: vertical }, { scale }] };
-  }, [page]);
-  const steps = [
-    ['Spin', 'to browse your presentations'], ['Open', 'tap a presentation to rehearse'],
-    ['Icon', 'hold to choose its icon and colour'], ['Add', 'swipe up to add a PDF'],
-    ['Delete', 'swipe down to delete with Undo'], ['Score', 'tap a score to see the full review'],
-  ];
-  const [title, detail] = steps[page] ?? steps[0];
-  const dismiss = () => fadeY.set(withTiming(180,{duration:reducedMotion?0:460,easing:Easing.out(Easing.cubic)},done=>{if(done)runOnJS(onClose)();}));
-  const next = () => page >= steps.length - 1 ? dismiss() : onPage(page + 1);
-  return <PanView accessibilityViewIsModal style={[StyleSheet.absoluteFill, styles.tutorial, { backgroundColor: c.bg },fade]}
-    onMoveShould={(_e,g)=>(Math.abs(g.dx)>18&&Math.abs(g.dx)>Math.abs(g.dy))||(g.dy>18&&g.dy>Math.abs(g.dx))}
-    onMove={(_e,g)=>{if(Math.abs(g.dx)>Math.abs(g.dy)){swipe.move(g.dx);fadeY.set(0);}else{swipe.settle();fadeY.set(Math.max(0,Math.min(180,g.dy)));}}}
-    onRelease={(_e,g)=>{
-      if(Math.abs(g.dx)>Math.abs(g.dy)&&(Math.abs(g.dx)>60||Math.abs(g.vx)>0.6)){const forward=Math.abs(g.dx)>8?g.dx<0:g.vx<0;if(Math.abs(g.dx)<18)swipe.move(forward?-95:95);if(forward)next();else onPage(Math.max(0,page-1));swipe.settle();}
-      else if(g.dy>90||g.vy>0.8)dismiss();
-      else{swipe.settle();fadeY.set(withTiming(0,{duration:360}));}
-    }}>
-    <Animated.View style={[StyleSheet.absoluteFill,swipe.style]}>
-    <View style={styles.tutorialHeader}><Txt style={styles.tutorialTitle}>How OutLoud works</Txt><Txt style={styles.tutorialMeta}>{page + 1} of 6</Txt></View>
-    <View style={styles.tutorialArt}>
-      <View style={styles.tutorialNeighbours}><PresentationIcon icon="present" hue="rose" size={76} /><PresentationIcon icon="present" hue="sky" size={76} /></View>
-      <Animated.View style={demoCard}><PresentationIcon icon="present" hue="iris" size={150} /></Animated.View>
-      <Animated.View pointerEvents="none" style={[styles.tutorialHand, demoHand]}><Txt style={[styles.tutorialHandGlyph,{color:c.accent}]}>☝</Txt></Animated.View>
-    </View>
-    <View style={styles.tutorialWords}><Txt style={styles.tutorialAction}>{title}</Txt><Txt style={styles.tutorialDetail}>{detail}</Txt></View>
-    <View style={styles.tutorialDots}>{steps.map((_, i) => <View key={i} style={{ width: i === page ? 18 : 6, height: 6, borderRadius: 3, backgroundColor: i === page ? c.text : c.dotOff }} />)}</View>
-    <View style={styles.tutorialButtons}>
-      <Pressable accessibilityRole="button" accessibilityLabel={ui("Close tutorial")} onPress={dismiss}><Txt style={styles.tutorialButtonText}>↓  Close</Txt></Pressable>
-      <Pressable accessibilityRole="button" accessibilityLabel={ui(page === steps.length - 1 ? 'Finish tutorial' : 'Next tutorial page')} onPress={next}><Txt style={styles.tutorialButtonText}>Next  →</Txt></Pressable>
-    </View>
-    </Animated.View>
-  </PanView>;
-}
-
 const styles = createThemedStyles({
   overlayBlur: { filter: [{ blur: 18 }] },
   addBlur: { filter: [{ blur: 8 }] },
@@ -706,20 +656,6 @@ const styles = createThemedStyles({
   statVal: { fontFamily: F.display, fontSize: 18, lineHeight: 20, color: C.text, fontVariant: ['tabular-nums'] },
   statUnit: { flexShrink: 1, fontFamily: F.medium, fontSize: 14, color: C.secondary },
   sheet: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, paddingTop: 46, backgroundColor: C.bg },
-  tutorial: { zIndex: 55, paddingTop: 46 },
-  tutorialHeader: { alignItems: 'center' },
-  tutorialTitle: { fontFamily: F.display, fontSize: 18, lineHeight: 23, color: C.text },
-  tutorialMeta: { marginTop: 3, fontFamily: F.medium, fontSize: 14.5, lineHeight: 19, color: C.secondary },
-  tutorialArt: { position: 'absolute', top: 210, left: 0, right: 0, height: 270, alignItems: 'center', justifyContent: 'center' },
-  tutorialNeighbours: { position: 'absolute', left: -24, right: -24, top: 75, flexDirection: 'row', justifyContent: 'space-between', opacity: 0.35 },
-  tutorialHand: { position: 'absolute', top: 174, left: 0, right: 0, alignItems: 'center' },
-  tutorialHandGlyph: { fontFamily: F.display, fontSize: 48, lineHeight: 56, textShadowColor: 'rgba(0,0,0,0.25)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 },
-  tutorialWords: { position: 'absolute', top: 520, left: 24, right: 24, alignItems: 'center' },
-  tutorialAction: { fontFamily: F.display, fontSize: 32, lineHeight: 36, color: C.text, textAlign: 'center' },
-  tutorialDetail: { marginTop: 8, fontFamily: F.medium, fontSize: 15, lineHeight: 21, color: C.secondary, textAlign: 'center' },
-  tutorialDots: { position: 'absolute', left: 0, right: 0, bottom: 86, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10 },
-  tutorialButtons: { position: 'absolute', left: 0, right: 0, bottom: 30, flexDirection: 'row', justifyContent: 'center', gap: 24 },
-  tutorialButtonText: { fontFamily: F.medium, fontSize: 14.5, color: C.secondary },
   pickTitle: { fontFamily: F.display, fontSize: 18, lineHeight: 22, color: C.text },
   pickSub: { marginTop: 3, fontFamily: F.medium, fontSize: 14.5, color: C.secondary },
   preview: { position: 'absolute', top: 106, left: 143, width: 104, height: 104, alignItems: 'center', justifyContent: 'center' },

@@ -23,7 +23,10 @@ const { ensureSlideText, ensurePages } = await import('../src/features/presentat
 const { serverSlides, serverPdfUnconfirmed } = await import('../src/features/presentations/serverDeck.ts');
 const { defaultRequirementsPending } = await import('../src/features/presentations/defaultRequirements.ts');
 const { API_URL } = await import('../src/services/api.ts');
-const { readStored, writeStored } = await import('../src/services/storage.ts');
+const { readStored, writeStored, removeStored } = await import('../src/services/storage.ts');
+// Claude prototype guide integrated by OpenAI Codex, Iteration 4 (2026-11-21): skip first-run overlay in older Home tests.
+const { TUTORIAL_SEEN, TUTORIAL_PAGES } = await import('../src/screens/HomeTutorial.tsx');
+writeStored(TUTORIAL_SEEN, true);
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const h = React.createElement;
@@ -209,6 +212,18 @@ test('Korean copy translates formatted feedback and controls while preserving th
   assert.equal(koreanText('toString'), 'toString');
 });
 
+test('Korean tutorial covers all eight page topics, titles, descriptions and navigation hints', async () => {
+  const { koreanText } = await import('../src/design/koreanText.ts');
+  for (const page of TUTORIAL_PAGES) {
+    for (const key of [page.topic, page.title, page.body]) {
+      assert.notEqual(koreanText(key), key, key);
+    }
+  }
+  for (const key of ['Swipe for more', 'Swipe down to close', 'Got it', 'Next page']) {
+    assert.notEqual(koreanText(key), key, key);
+  }
+});
+
 test('Korean recording labels cover new slides, saved takes, the long press action, and interrupted recording', async () => {
   const { koreanText } = await import('../src/design/koreanText.ts');
   const hold = '. Hold 1.5 seconds to redo the whole presentation';
@@ -337,4 +352,43 @@ test('analysis ring is centred on the shrunk New presentation icon and the stage
   const stages = flat(renderer.root.findByProps({ accessibilityLiveRegion: 'polite' }).props.style);
   assert.deepEqual([stages.top, stages.bottom, stages.justifyContent, stages.alignItems], [ringAt.bottom, 0, 'center', 'center']);
   assert.equal(renderer.root.findByProps({ accessibilityLiveRegion: 'polite' }).props.pointerEvents, 'box-none');
+});
+
+// OpenAI Codex, Iteration 4 (2026-11-21): first-run prototype guide and its native swipe stay usable on the bilingual branch.
+test('the guide opens once, walks eight pages and responds to native page swipes', async () => {
+  removeStored(TUTORIAL_SEEN);
+  savePresentation(deck('Tour talk', 1));
+  await mount(HomeScreen, { mode: 'home', uploadLook: null });
+  assert.equal(TUTORIAL_PAGES.length, 8);
+  assert.equal(textShown('1 of 8 · Gestures'), true);
+  const tutorialPan = () => renderer.root.findAllByType('gesture').find(node =>
+    node.findAllByProps({ accessibilityLabel: 'Close tutorial' }).length > 0).props.gesture;
+  await act(async () => {
+    const pan = tutorialPan();
+    pan.onActivate();
+    pan.onUpdate({ translationX: -65, translationY: 2 });
+    pan.onDeactivate({ translationX: -65, translationY: 2, canceled: false });
+  });
+  assert.equal(textShown('2 of 8 · Add'), true);
+  await act(async () => {
+    const pan = tutorialPan();
+    pan.onActivate();
+    pan.onUpdate({ translationX: 65, translationY: 2 });
+    pan.onDeactivate({ translationX: 65, translationY: 2, canceled: false });
+  });
+  assert.equal(textShown('1 of 8 · Gestures'), true);
+  for (let i = 1; i < TUTORIAL_PAGES.length; i++) {
+    await click('Next page');
+    assert.equal(textShown(`${i + 1} of 8 · ${TUTORIAL_PAGES[i].topic}`), true);
+  }
+  assert.equal(textShown('Swipe for more'), false);
+  await click('Got it');
+  assert.equal(readStored(TUTORIAL_SEEN), true);
+  await act(async () => renderer.unmount()); renderer = undefined;
+  await mount(HomeScreen, { mode: 'home', uploadLook: null });
+  assert.equal(renderer.root.findAllByProps({ accessibilityLabel: 'Close tutorial' }).length, 0);
+  await click('How OutLoud works');
+  assert.equal(textShown('1 of 8 · Gestures'), true);
+  await act(async () => assert.equal(pressBack(), true));
+  assert.equal(renderer.root.findAllByProps({ accessibilityLabel: 'Close tutorial' }).length, 0);
 });

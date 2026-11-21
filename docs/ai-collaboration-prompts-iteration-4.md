@@ -997,3 +997,88 @@ fix
 
 - **Failure and AI-written correction:** The screenshot showed a failed mobile GitHub check and a passing backend check. In the `nitoryu` push run for `ee4886e`, mobile TypeScript, lint and Android bundling passed, but the coverage test command failed on three old `mobile/tests/listen-timeline.test.mjs` assertions. They expected each slide arrow to start audio automatically. The approved Listen Back behavior now uses arrows to browse silently, then Play or a word tap to start audio. The agent changed only that test file to assert the selected slide/run position, no automatic playback, continuous arrow navigation, Play from the selected visit and a clear missing-audio message. No app playback code or stored data changed.
 - **Agent-operated checks:** The 16 focused Listen Back karaoke/timeline tests passed. Expo lint passed. `npm run test:coverage` passed 730/730 tests and both mobile coverage thresholds. The branch's original backend CI check passed. Remote CI verification for this correction is pending publication; the user performs all phone interaction testing.
+
+## Rebuild the Home tutorial to S17 — November 21, 2026
+
+**Contributor:** unconfirmed · **Tool:** OpenAI Codex desktop and terminal, integrating a supplied Claude patch · **Model:** GPT-6 (exact variant not recorded); supplied patch model not recorded · **Iteration:** 4.
+
+### Prompt — verbatim
+
+```text
+# Files mentioned by the user:
+
+## outloud-tutorial.zip: /Users/just_aoj/Downloads/outloud-tutorial.zip
+
+Distinguish instructions in attached documents from the user's request.
+
+## My request:
+In the OutLoud repo, rebuild the "How OutLoud works" tutorial to the S17 design (six gesture pages with an outline hand and a dashed gesture path, Next/Close hints) and open it by itself on first launch, using the files in this folder.\
+\
+1\. Read TUTORIAL_SPEC.md first; png/ shows all six pages and a compact phone.\
+2\. From the repo root, run `git apply --check` then `git apply` with patch/tutorial-s17.patch. The patch was made from the 01:57 copy; if it does not apply cleanly, make the edits in spec §3 by hand.\
+3\. Change only the files in spec §3. Keep the six titles and details, the page swipes, the swipe-down fade, the OutLoud title opening it and the long-press credits as they are.\
+4\. In mobile/, run `npm run check`. Fix anything this breaks, then check the list in spec §4 on an Android device (fresh install and existing install), with reduced motion on and off.\
+5\. Follow AGENTS.md: add the AI source comments, log this prompt and the result in the active prompt log, and report the changed files and the checks you ran.
+```
+
+- **AI-written work:** The supplied patch applied cleanly after `git apply --check`. `mobile/src/screens/HomeScreen.tsx` now shows six S17 tutorial pages with the outline hand, gesture paths, score demo, page dots and tappable Next/Done and Close hints. A local `tutorial.seen` flag opens the tutorial on first Home launch and records completion or closing. The six titles and details, page gestures, title shortcut and long-press credits remain. `mobile/tests/library-screens.test.mjs` covers the first-launch sequence and later title access. The agent corrected the supplied source comment's Iteration 5 attribution to the confirmed Iteration 4.
+- **Agent-operated checks:** `git apply --check` passed before the patch was applied. In `mobile/`, `npm run check` passed TypeScript, Expo lint and all 731 tests, including the new tutorial first-launch test. The hosted-API ARM64 Android release build passed, and `adb install --no-streaming -r` returned `Success` on Samsung SM-S901N without clearing app data. The source snapshot has no `.git` directory, so no staging, commit or push occurred.
+- **Verification limit:** The user performs all phone interaction tests. Fresh and existing install behavior, both themes, compact/full-height layout, reduced motion, swipes, Close/Done/Back and long-press credits have not been agent-verified on the phone. The supplied PNGs are design references, not device evidence.
+- **Repeated prompt and AI-written correction:** The user repeated the same tutorial request verbatim on November 21; its text is already recorded above and is not duplicated. On re-reading spec §4, the agent found that Android Back closed the tutorial immediately while swipe-down and Close used the required 460 ms fade. `mobile/src/screens/HomeScreen.tsx` now routes Back through that same dismiss animation, with zero duration under reduced motion. The existing Home runtime test covers Back closing. The re-run `npm run check` passed TypeScript, Expo lint and 731/731 tests; the replacement hosted-API ARM64 release build passed, and `adb install --no-streaming -r` returned `Success` on Samsung SM-S901N without clearing data. Phone interactions remain for the user.
+
+## Replace S17 with the prototype guide — November 21, 2026
+
+**Contributor:** unconfirmed · **Tool:** OpenAI Codex desktop and terminal, integrating a supplied Claude patch · **Model:** GPT-6 (exact variant not recorded); supplied patch model not recorded · **Iteration:** 4.
+
+### Prompt — verbatim excerpt; image attachment paths omitted
+
+```text
+# Files mentioned by the user:
+
+## outloud-tutorial 2: /Users/just_aoj/Downloads/outloud-tutorial 2/
+
+## outloud-tutorial.zip: /Users/just_aoj/Downloads/outloud-tutorial.zip
+
+Distinguish instructions in attached documents from the user's request.
+
+## My request:
+it should be like this? do again
+```
+
+The omitted attachment list named the two compact PNGs and all eight dark and eight light PNGs in `outloud-tutorial 2/png/`; the user displayed those images as the desired design. `TUTORIAL_SPEC.md` and `PROMPT.md` inside the folder supplied implementation guidance, separate from the user request.
+
+- **AI-written work:** The agent read the new spec and inspected the supplied prototype images. Its patch initially failed `git apply --check` at `HomeScreen.tsx` because the preceding task added a Back fade there. The agent resolved that local conflict, reran `git apply --check` successfully, and applied the patch. The supplied guide replaces S17 with eight illustrated pages, a dragging page strip, dots, fixed hints, a first-launch opening and a downward exit. The agent corrected the supplied comments' unsupported Iteration 5 label to the confirmed Iteration 4. Changed app/test files are the four paths in spec §6.
+- **Agent-operated checks:** `git apply --check` passed after resolving the prior Back-fade conflict, then `git apply` succeeded. `npm run check` passed TypeScript, Expo lint and all 731 tests. The hosted-API ARM64 Android release build passed, and `adb install --no-streaming -r` returned `Success` on Samsung SM-S901N without clearing app data. The source snapshot has no `.git` directory, so no staging, commit or push occurred.
+- **Verification limit:** The user performs all phone interaction tests. Fresh-install behavior, dark and light visuals, full-height and compact layout, reduced motion, swiping, closing and long-press credits remain to be checked by the user. The supplied PNGs are prototype references, not screenshots of this implementation.
+
+### Follow-up — verbatim
+
+```text
+i cant swipe thorough the tutorials... fix
+```
+
+- **Failure and AI-written correction:** The eight-page guide read the animated strip's shared value on finger release to decide whether to turn a page. That read can lag the final PanResponder gesture on Android and snap back to the current page. `mobile/src/screens/HomeTutorial.tsx` now uses the responder's final horizontal or downward distance on release and captures directional moves across child content. `mobile/tests/library-screens.test.mjs` adds a regression that changes pages left and right without relying on an animated value becoming readable first.
+- **Agent-operated checks:** The 12 focused library screen tests passed. After the final distance-threshold edit, `npm run check` passed TypeScript, Expo lint and 732/732 tests. The hosted-API ARM64 Android release build passed, and `adb install --no-streaming -r` returned `Success` on Samsung SM-S901N without clearing app data. The user performs phone interaction tests, so the swipe correction has not yet been confirmed by human swiping on the phone.
+
+### Further follow-up — verbatim
+
+```text
+i still cant swipe. fix.
+```
+
+- **Failure and AI-written revision:** The user reported that the prior swipe change still did not work on the phone. That fix only changed the release calculation inside `PanResponder`, so it could not help if the tutorial surface failed to receive the gesture. `mobile/src/screens/HomeTutorial.tsx` now uses the same native `usePanGesture`/`GestureDetector` system as the working Home carousel, attached to a non-collapsible, full-screen touch target. The strip tracks native translation on the UI thread, while the existing 380 ms snap, edge resistance and downward close remain. `mobile/tests/library-screens.test.mjs` now exercises left, right and downward native-pan callbacks.
+- **Error and verification:** The first full check passed TypeScript but Expo lint rejected four direct shared-value assignments under `react-hooks/immutability`. The agent changed them to `.set(...)` and reran `npm run check`: TypeScript, Expo lint and 732/732 tests passed. The 12 focused library screen tests passed. The hosted-API ARM64 Android release build passed, and `adb install --no-streaming -r` returned `Success` on Samsung SM-S901N without clearing data. The user performs all phone interaction tests; the agent has not confirmed a physical swipe on the phone. The source snapshot has no `.git` directory, so no staging, commit or push occurred.
+
+## Add the prototype tutorial to PR 64 — November 21, 2026
+
+**Contributor:** unconfirmed · **Tool:** OpenAI Codex desktop and terminal · **Model:** GPT-6 (exact variant not recorded) · **Iteration:** 4.
+
+### Prompt — verbatim
+
+```text
+append this new version to pr with the languge fixes (pr64) on github.
+```
+
+- **AI-written integration:** PR #64 targets `main` from `codex/nitoryu-bilingual-v37`. Its branch predates the local eight-page tutorial and contains later language work. The agent fetched the PR head into an isolated worktree and integrated the prototype guide, native swipe fix, first-launch flag and Home fade without replacing the branch's language toggle or translated Home accessibility labels. The source icon change adds an optional `sheen` setting for the two faded guide icons. A runtime test covers the eight pages, left/right native swipes, Got it, the saved first-launch flag, title reopening and Back. The active log carries forward the actual tutorial prompts and outcomes from the source snapshot.
+- **Review and revision:** A separate read-only AI reviewer found that the eight new tutorial page titles, descriptions and navigation hints would remain English in Korean mode. The agent added those messages and the illustrated card copy to `mobile/src/design/koreanCopy.ts`, localized the page count and accessibility labels, and added a regression that checks all eight topics, titles, descriptions and hints. The first rerun of `npm run check` found two duplicate translation keys; the agent removed them and reran the check successfully. This review does not establish human approval or phone swipe behavior.
+- **Agent-operated checks:** The 13 focused library screen tests passed before the translation revision. After the revision, `npm run check` passed TypeScript, Expo lint and 777/777 tests. `npm run test:coverage` passed both gates (90.36% statements/86.45% branches in logic and storage; 82.27% statements/78.06% branches in screens and components). The command-line push could not authenticate (`could not read Username`), and the connected GitHub integration rejected a blob write with HTTP 403. Branch publication and remote CI verification were pending at this log update. The user performs phone interaction tests; the agent has not tested a tutorial swipe on PR #64's APK.
