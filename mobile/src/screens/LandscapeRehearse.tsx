@@ -10,6 +10,7 @@
 // Spec: FULLSCREEN_DOCK_SPEC.md. Reference renders: png/.
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useUiText } from '../design/language';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
@@ -58,6 +59,7 @@ export function LandscapeRehearse({model,live,slide,phase:_phase,glyph,btnLabel,
   reviewEnabled:boolean;liveFeedback:boolean;comparePending:boolean;
   ringProgress:SharedValue<number>;ringVisible:SharedValue<number>;externalCorners?:boolean;cues?:boolean;onCuesChange?:(open:boolean)=>void;
 }){
+  const ui=useUiText();
   const {c}=useTheme();
   const frame=useFrame();
   const {width,height}=frame;
@@ -105,13 +107,13 @@ export function LandscapeRehearse({model,live,slide,phase:_phase,glyph,btnLabel,
   const count=`${slide+1}/${model.n}`;
   const segments=model.times.map((seconds,i)=><View key={i} style={[styles.segment,{backgroundColor:i===slide?c.accent:seconds>0?c.ink55:c.track}]}/>);
   const panelText=(items:ReturnType<typeof cueState>)=>items.cues.slice(0,4);
-  const review=<Pressable accessibilityRole="button" accessibilityLabel={liveFeedback?'Show live feedback progress':comparePending?'Compare takes':'Review overall feedback'}
+  const review=<Pressable accessibilityRole="button" accessibilityLabel={ui(liveFeedback?'Show live feedback progress':comparePending?'Compare takes':'Review overall feedback')}
     disabled={!reviewEnabled} onPress={onReview} style={[styles.review,{backgroundColor:c.glass,opacity:reviewEnabled?1:0.45}]}>
     <Txt style={styles.reviewText}>{liveFeedback?'Feedback so far':comparePending?'Compare':'Review'}</Txt></Pressable>;
 
   return <View style={[StyleSheet.absoluteFill,{backgroundColor:'#000000'}]}>
     <StatusBar hidden />
-    <Pressable accessibilityRole="button" accessibilityLabel="Show or hide rehearsal controls" onPress={()=>setControls(v=>!v)}
+    <Pressable accessibilityRole="button" accessibilityLabel={ui("Show or hide rehearsal controls")} onPress={()=>setControls(v=>!v)}
       style={{position:'absolute',left:cardLeft,top:cardTop,width:cardWidth,height:cardHeight,alignItems:'center',justifyContent:'center',overflow:'hidden',borderRadius:6}}>
       <MiniSlide hue={model.deck.hue} page={model.deck.pages[slide]} title={model.deck.slides[slide]?.title??''} width={cardWidth} height={cardHeight} radius={6}/>
     </Pressable>
@@ -120,9 +122,9 @@ export function LandscapeRehearse({model,live,slide,phase:_phase,glyph,btnLabel,
       importantForAccessibility={controlsVisible?'auto':'no-hide-descendants'} style={[StyleSheet.absoluteFill,controlsMotion]}>
       {!cues&&<BottomShade/>}
       {/* Arrows: side walls; with cues open they flank record under the slide. */}
-      <Pressable accessibilityRole="button" accessibilityLabel="Previous slide" disabled={slide===0||disabled} onPress={onPrevious}
+      <Pressable accessibilityRole="button" accessibilityLabel={ui("Previous slide")} disabled={slide===0||disabled} onPress={onPrevious}
         style={[styles.arrow,{left:cues?controlCenter-108-ARROW/2:insets.left+8,top:arrowTop,backgroundColor:c.glass,opacity:slide===0?0.35:1}]}><Txt style={styles.arrowText}>‹</Txt></Pressable>
-      <Pressable accessibilityRole="button" accessibilityLabel="Next slide" disabled={slide>=model.n-1||disabled} onPress={onNext}
+      <Pressable accessibilityRole="button" accessibilityLabel={ui("Next slide")} disabled={slide>=model.n-1||disabled} onPress={onNext}
         style={[styles.arrow,cues?{left:controlCenter+108-ARROW/2}:{right:insets.right+8},{top:arrowTop,backgroundColor:c.glass,opacity:slide>=model.n-1?0.35:1}]}><Txt style={styles.arrowText}>›</Txt></Pressable>
 
       {/* Progress bar just above the dock. */}
@@ -134,7 +136,7 @@ export function LandscapeRehearse({model,live,slide,phase:_phase,glyph,btnLabel,
         style={{position:'absolute',left:recLeft-(84-REC)/2,top:rowTop-(84-REC)/2,width:84,height:84,borderRadius:42,transform:[{scale:REC_SCALE}]}}/>
 
       {/* Timer + pace: left of the dock, or above the slide when cues are open. */}
-      <View pointerEvents="none" style={[styles.readout,cues?{left:cardLeft,top:topRow}:{left:sideLeft,top:rowTop+(REC-30)/2}]}>
+      <View pointerEvents="none" style={[styles.readout,cues?{left:insets.left+70,top:topRow}:{left:sideLeft,top:rowTop+(REC-30)/2}]}>
         <Txt style={styles.elapsed}>{`${fmt(liveValue.E)} / ${fmt(model.deck.target)}`}</Txt>
         {cues&&<Txt style={styles.count}>{`· ${count}`}</Txt>}
         {pace&&<Chip chip={pace} size={14}/>}
@@ -144,32 +146,32 @@ export function LandscapeRehearse({model,live,slide,phase:_phase,glyph,btnLabel,
         ? <>
             {/* Cues open: Review top-right of the slide area; exit at the end of the prev · record · next row. */}
             <View style={[styles.cueTop,{top:topRow-7,right:cueWidth+12}]}>{review}</View>
-            {!externalCorners&&<Pressable accessibilityRole="button" accessibilityLabel="Return to portrait rehearsal" onPress={onExit}
+            {!externalCorners&&<Pressable accessibilityRole="button" accessibilityLabel={ui("Return to portrait rehearsal")} onPress={onExit}
               style={[styles.iconButton,{left:areaRight-12-48,top:rowTop+(REC-48)/2}]}><ExitIcon/></Pressable>}
           </>
         : <View style={[styles.dockRight,{right:insets.right+12,top:rowTop+(REC-48)/2}]}>
             {review}
             <Txt style={styles.count}>{count}</Txt>
-            {!externalCorners&&<Pressable accessibilityRole="button" accessibilityLabel="Open cue panel" onPress={()=>setCues(true)} style={styles.iconButtonInline}><UIIcon name="i-bubble" size={24} color="#FFFFFF"/></Pressable>}
-            {!externalCorners&&<Pressable accessibilityRole="button" accessibilityLabel="Return to portrait rehearsal" onPress={onExit} style={styles.iconButtonInline}><ExitIcon/></Pressable>}
+            {!externalCorners&&<Pressable accessibilityRole="button" accessibilityLabel={ui("Open cue panel")} onPress={()=>setCues(true)} style={styles.iconButtonInline}><UIIcon name="i-bubble" size={24} color="#FFFFFF"/></Pressable>}
+            {!externalCorners&&<Pressable accessibilityRole="button" accessibilityLabel={ui("Return to portrait rehearsal")} onPress={onExit} style={styles.iconButtonInline}><ExitIcon/></Pressable>}
           </View>}
     </Animated.View>
 
     {/* Controls hidden while recording: red-dot timer and a thin progress line. */}
     {!controlsVisible&&recording&&<>
-      <View style={[styles.recordingPill,{left:insets.left+20,top:insets.top+16}]}><View style={styles.redDot}/><Txt style={styles.pillTime}>{fmt(liveValue.E)}</Txt></View>
+      <View style={[styles.recordingPill,{left:insets.left+70,top:insets.top+16}]}><View style={styles.redDot}/><Txt style={styles.pillTime}>{fmt(liveValue.E)}</Txt></View>
       <View pointerEvents="none" style={[styles.thinProgress,{bottom:0}]}>{model.times.map((seconds,i)=><View key={i} style={[styles.thinSegment,{backgroundColor:i===slide?c.accent:seconds>0?c.ink55:c.track}]}/>)}</View>
     </>}
 
     <Animated.View pointerEvents={cues?'auto':'none'} accessibilityElementsHidden={!cues} importantForAccessibility={cues?'auto':'no-hide-descendants'}
       style={[styles.cuePanel,{width:cuePanelWidth,paddingTop:Math.max(insets.top+12,20),paddingBottom:Math.max(insets.bottom+12,20),paddingRight:insets.right+20,backgroundColor:c.dialog,borderColor:c.hair},cuePanelMotion]}>
-      <View style={styles.cueHeading}><Txt numberOfLines={1} style={[styles.cueTitle,{color:c.text}]}>{`Slide ${slide+1} cues`}</Txt><Pressable accessibilityRole="button" accessibilityLabel="Close cues" onPress={()=>setCues(false)} style={styles.cueClose}><Txt style={{color:c.text,fontSize:27,lineHeight:30}}>×</Txt></Pressable></View>
+      <View style={styles.cueHeading}><Txt numberOfLines={1} style={[styles.cueTitle,{color:c.text}]}>{`Slide ${slide+1} cues`}</Txt><Pressable accessibilityRole="button" accessibilityLabel={ui("Close cues")} onPress={()=>setCues(false)} style={styles.cueClose}><Txt style={{color:c.text,fontSize:27,lineHeight:30}}>×</Txt></Pressable></View>
       <ScrollView contentContainerStyle={{gap:18,paddingBottom:20}}>
         <View style={{gap:8}}><Txt style={[styles.cueKind,{color:c.accent}]}>MUST COVER</Txt>
-          {panelText(must).map((cue,i)=><View key={i} style={styles.cueRow}><View style={[styles.cueBullet,{backgroundColor:c.accent}]}/><View style={{flex:1,gap:4}}><Txt style={[styles.cueStrong,{color:c.text}]}>{cue.text}</Txt>{'information_needed' in cue&&!!cue.information_needed&&<Txt style={[styles.cueText,{color:c.secondary}]}>{cue.information_needed}</Txt>}</View></View>)}
+          {panelText(must).map((cue,i)=><View key={i} style={styles.cueRow}><View style={[styles.cueBullet,{backgroundColor:c.accent}]}/><View style={{flex:1,gap:4}}><Txt verbatim style={[styles.cueStrong,{color:c.text}]}>{cue.text}</Txt>{'information_needed' in cue&&!!cue.information_needed&&<Txt verbatim style={[styles.cueText,{color:c.secondary}]}>{cue.information_needed}</Txt>}</View></View>)}
           {!must.cues.length&&<Txt style={[styles.cueText,{color:c.secondary}]}>{cueBusy?'Cues are on the way':must.message||'No cues yet'}</Txt>}</View>
         <View style={{gap:8}}><Txt style={[styles.cueKind,{color:c.secondary}]}>FURTHER INSIGHT</Txt>
-          {panelText(deeper).map((cue,i)=><View key={i} style={styles.cueRow}><View style={[styles.cueBullet,{backgroundColor:c.secondary}]}/><View style={{flex:1,gap:4}}><Txt style={[styles.cueStrong,{color:c.text}]}>{cue.text}</Txt>{'information_needed' in cue&&!!cue.information_needed&&<Txt style={[styles.cueText,{color:c.secondary}]}>{cue.information_needed}</Txt>}</View></View>)}
+          {panelText(deeper).map((cue,i)=><View key={i} style={styles.cueRow}><View style={[styles.cueBullet,{backgroundColor:c.secondary}]}/><View style={{flex:1,gap:4}}><Txt verbatim style={[styles.cueStrong,{color:c.text}]}>{cue.text}</Txt>{'information_needed' in cue&&!!cue.information_needed&&<Txt verbatim style={[styles.cueText,{color:c.secondary}]}>{cue.information_needed}</Txt>}</View></View>)}
           {!deeper.cues.length&&<Txt style={[styles.cueText,{color:c.secondary}]}>{deeper.message||'No further cues yet'}</Txt>}</View>
         <Pressable accessibilityRole="button" onPress={onCueRecovery} style={styles.refresh}><Txt style={{color:c.secondary}}>Refresh cues</Txt></Pressable>
       </ScrollView>

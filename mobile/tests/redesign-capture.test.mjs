@@ -18,6 +18,7 @@ const { CaptureEngine } = await import('../src/features/rehearsal/CaptureEngine.
 const { getSavedAttempt, savedAttempts } = await import('../src/features/recording/storage.ts');
 const { API_URL } = await import('../src/services/api.ts');
 const { saveAnalysisConsent } = await import('../src/features/transcription/analysisStorage.ts');
+const { initialQaEnabled } = await import('../src/features/qa/automatic.ts');
 
 const deck = { id: 'synthetic-capture-deck', title: 'Synthetic', uri: 'file:///synthetic.pdf', pageCount: 3 };
 
@@ -157,12 +158,35 @@ test('native capture failure retains the stopped files and surfaces an interrupt
     await act(async () => assert.rejects(mounted.ref.current.stop(), /Microphone stopped unexpectedly/));
     const failed = savedAttempts(deck.id).find(attempt => attempt.recording.audio_uri === manifest.full_uri);
     assert.equal(failed.state, 'interrupted');
+    assert.equal(initialQaEnabled(API_URL, failed.id), false);
     assert.equal(failed.recording.duration_ms, 1200);
     assert.deepEqual(failed.recording.slide_events, manifest.slide_events);
     assert.deepEqual(mounted.calls.interrupted, [manifest.error]);
     assert.equal(mounted.ref.current.isRecording(), false);
   } finally {
     if (renderer) await act(async () => renderer.unmount());
+    delete globalThis.continuousCapture;
+  }
+});
+
+test('only a successfully stopped live recording is handed off for initial audience questions', async () => {
+  resetCaptureFixture();
+  saveAnalysisConsent();
+  const manifest = {manifest_uri:'file:///synthetic-live/capture.properties',full_uri:'file:///synthetic-live/presentation.wav',
+    duration_ms:2400,slide_events:[{slide_index:0,at_ms:0}],segments:[],stopped:true,isRecording:false,metering:-160,current_slide:0};
+  globalThis.continuousCapture = {
+    start:async()=>({...manifest,duration_ms:0,stopped:false,isRecording:true}),status:()=>manifest,stop:async()=>manifest,
+  };
+  let renderer,attemptId;
+  try {
+    const mounted=await mount({onStarted:id=>{attemptId=id;}});renderer=mounted.renderer;
+    await act(async()=>mounted.ref.current.start(()=>0));
+    assert.equal(initialQaEnabled(API_URL,attemptId),false);
+    const take=await act(async()=>await mounted.ref.current.stop());
+    assert.equal(take.attemptId,attemptId);
+    assert.equal(initialQaEnabled(API_URL,attemptId),true);
+  } finally {
+    if(renderer)await act(async()=>renderer.unmount());
     delete globalThis.continuousCapture;
   }
 });

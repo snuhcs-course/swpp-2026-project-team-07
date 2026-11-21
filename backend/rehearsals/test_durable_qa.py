@@ -81,6 +81,57 @@ class DurableQaTests(SyntheticCoaching, TestCase):
         with patch.object(provider,'request_raw',side_effect=lambda p:self.coaching_receipt(p,output=output)):self.execute_feedback(owner)
         return self.job(owner)
 
+    def test_history_recovers_original_questions_by_exact_visits_without_rebinding_audience(self):
+        job = self.completed_questions()
+        original = job.result['questions']
+        other = PresentationContext.objects.create(deck=self.deck, audience='Synthetic library visitors')
+        self.coaching_broker.reset_mock()
+        with patch.object(provider, 'request_raw', side_effect=AssertionError('A history read cannot call the provider')):
+            for ctx in (None, str(other.pk)):
+                scope = {**self.scope, 'context_id': ctx}
+                state = self.client.get(self.url, {'scope': json.dumps(scope)}).json()
+                self.assertEqual((state['state'], state['result'], state['requirements']['context_id']), ('absent', None, ctx))
+                saved, = state['saved_question_sets']
+                self.assertEqual((saved['job_id'], saved['feedback_revision'], saved['questions']), (job.pk, job.generation, original))
+                self.assertEqual(saved['scope'], self.scope)
+                self.assertEqual(saved['requirements']['audience'], self.context.audience)
+                self.assertTrue(saved['completed_at'])
+            # Only this recording's original visit boundaries may match its stored questions.
+            self.attempt.slide_events = [{'slide_index': 0, 'at_ms': 0}, {'slide_index': 0, 'at_ms': 950}]
+            self.attempt.save(update_fields=['slide_events'])
+            slides = [{'slide_index': 0, 'attempt_id': str(self.attempt.pk), 'segments': [
+                {'start_ms': 0, 'end_ms': 950}, {'start_ms': 950, 'end_ms': 2000}]}]
+            changed = self.client.get(self.url, {'scope': json.dumps({'context_id': None, 'slides': slides})})
+            self.assertEqual(changed.status_code, 200)
+            self.assertEqual(changed.json()['saved_question_sets'], [])
+        self.assertEqual(FeedbackJob.objects.count(), 1)
+        self.coaching_broker.assert_not_called()
+
+    def test_history_preserves_distinct_saved_audiences_and_revisions(self):
+        first = self.completed_questions()
+        self.context = PresentationContext.objects.create(deck=self.deck, audience='Another saved audience')
+        self.scope = {**self.scope, 'context_id': str(self.context.pk)}
+        self.assertEqual(self.submit_qa().status_code, 202)
+        owner = self.attempt.analyses.exclude(pk=first.analysis_id).get(analysis_type__startswith='qa_')
+        output = {'questions': [{'panelist': 'P2', 'role': 'Reader', 'slide_index': 0, 'topic': 'Context',
+                                 'question': 'Which?', 'follow_up': 'Why?'}]}
+        with patch.object(provider, 'request_raw', side_effect=lambda p: self.coaching_receipt(p, output=output)):
+            self.execute_feedback(owner)
+            second = self.job(owner)
+            self.context.audience = 'New audience revision'
+            self.context.revision += 1
+            self.context.save()
+            self.assertEqual(self.submit_qa(feedback_revision=1).status_code, 202)
+            owner.refresh_from_db()
+            self.execute_feedback(owner)
+        latest = self.job(owner)
+        missing = {**self.scope, 'context_id': None}
+        state = self.client.get(self.url, {'scope': json.dumps(missing)}).json()
+        self.assertIsNone(state['result'])
+        self.assertEqual([(s['job_id'], s['questions'][0]['id']) for s in state['saved_question_sets']],
+                         [(j.pk, j.result['questions'][0]['id']) for j in (latest, second, first)])
+        self.assertEqual(len({s['scope']['context_id'] for s in state['saved_question_sets']}), 2)
+
     def test_other_selected_source_correction_fences_late_question_result(self):
         from .models import TranscriptCorrection,Slide
         from .services import coaching,audience_qa

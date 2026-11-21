@@ -73,14 +73,14 @@ export const SlideCard = memo(function SlideCard({ hue, page, deckTitle, title, 
       </Svg>
       {!page && (
         <View style={styles.standIn} pointerEvents="none">
-          <Txt numberOfLines={1} style={styles.over}>{deckTitle}</Txt>
-          <Txt numberOfLines={2} style={styles.title}>{title}</Txt>
+          <Txt verbatim numberOfLines={1} style={styles.over}>{deckTitle}</Txt>
+          <Txt verbatim numberOfLines={2} style={styles.title}>{title}</Txt>
           <View style={styles.rule} />
           {points.length ? (
             <View style={{ gap: 5, marginTop: 2 }}>
               {points.slice(0, cardHeight < CARD_H ? 3 : 4).map(p => (
                 <View key={p} style={{ flexDirection: 'row', gap: 8 }}>
-                  <View style={styles.dot} /><Txt numberOfLines={cardHeight < CARD_H ? 1 : 2} style={styles.bullet}>{p}</Txt>
+                  <View style={styles.dot} /><Txt verbatim numberOfLines={cardHeight < CARD_H ? 1 : 2} style={styles.bullet}>{p}</Txt>
                 </View>
               ))}
             </View>
@@ -124,7 +124,7 @@ export function MiniSlide({ hue, page, title, width, height, radius, num }: { hu
       </Svg>
       {page ? <Image source={{ uri: page.uri }} resizeMode="contain" style={StyleSheet.absoluteFill} /> : (
         <View style={{ padding: big ? 12 : 7, paddingHorizontal: big ? 14 : 8, gap: big ? 6 : 4 }}>
-          <Txt numberOfLines={1} style={{ fontFamily: F.display, fontSize: 13.5, color: '#FFFFFF' }}>{title}</Txt>
+          <Txt verbatim numberOfLines={1} style={{ fontFamily: F.display, fontSize: 13.5, color: '#FFFFFF' }}>{title}</Txt>
           <View style={{ width: big ? 24 : 14, height: big ? 3 : 2, borderRadius: 1, backgroundColor: 'rgba(255, 255, 255, 0.85)' }} />
           {(big ? [0.82, 0.66, 0.52] : [0.8, 0.62]).map((w, i) => (
             <View key={w} style={{ width: `${w * 100}%`, height: big ? 5 : 3, marginTop: big && i === 0 ? 4 : 0, borderRadius: 3, backgroundColor: big ? 'rgba(255, 255, 255, 0.26)' : 'rgba(255, 255, 255, 0.3)' }} />

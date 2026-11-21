@@ -2,6 +2,7 @@
 // OpenAI Codex Review and Full review: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-122
 // Real merged-run audio, timed transcript and verified AI assessment status.
 // OpenAI Codex #44: continuous within-section seeking preserves saved-source and pause intent.
+import { useUiText } from '../design/language';
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Pressable, ScrollView, StyleSheet, View, type GestureResponderEvent, type PanResponderGestureState } from 'react-native';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -30,13 +31,14 @@ type Mode = { kind: 'run' } | { kind: 'slide'; slide: number } | null;
 type RowLayout = { y: number; h: number };
 
 export function ListenBackScreen({ active = true }: { active?: boolean }) {
+  const ui = useUiText();
   const { c, mode: themeMode } = useTheme();
   const { go, nav } = useShell();
   const frame = useFrame();
   const model = useDeckModel(nav.deckId);
   const run = model?.state.run ?? null;
   const feedback = useRunFeedbackStatus(model, active);
-  const scores = useRunPresentationScores(model, active);
+  const scores = useRunPresentationScores(model, active, undefined, true);
   const scoreSource = useRef({item:scores.overall,target:scores.target,active});
   useLayoutEffect(()=>{scoreSource.current={item:scores.overall,target:scores.target,active};return()=>{scoreSource.current.active=false;};},[scores.overall,scores.target,active]);
   const [missingAudio, setMissingAudio] = useState<{slides:number[];signature:string;target:RunSeekPosition;paused:boolean;resumeKey:string|null}|null>(null);
@@ -239,8 +241,9 @@ export function ListenBackScreen({ active = true }: { active?: boolean }) {
   const rightText = audioNote || (scrubbing&&scrubTarget ? `${fmt(scrubTarget.positionMs/1000)} / ${fmt(total)}` : (runPlaying || slidePlaying) && playbackSlide != null
     ? runPlaying ? `${fmt(pos)} / ${fmt(total)}` : `${fmt(pos - starts[playbackSlide])} / ${fmt(times[playbackSlide])}`
     : `Slide ${sliderSlide+1} of ${times.length} · drag to seek`);
-  const headerText = scrubbing&&scrubTarget?`Slide ${scrubTarget.slide+1} · ${deck.slides[scrubTarget.slide]?.title??'Slide '+(scrubTarget.slide+1)}`:(runPlaying || slidePlaying) && playbackSlide != null
-    ? `Slide ${playbackSlide + 1} · ${deck.slides[playbackSlide]?.title ?? 'Slide ' + (playbackSlide + 1)}` : 'Whole run';
+  const headerSlide = scrubbing && scrubTarget ? scrubTarget.slide : runPlaying || slidePlaying ? playbackSlide : null;
+  const headerLabel = headerSlide == null ? '' : ui('Slide ' + (headerSlide + 1));
+  const headerText = headerSlide == null ? ui('Whole run') : headerLabel + ' · ' + (deck.slides[headerSlide]?.title ?? headerLabel);
   const visibleSliderSlide=scrubbing?sliderSlide:playbackSlide??sliderSlide;
   const visiblePosition=scrubbing&&scrubTarget?scrubTarget.positionMs/1000:(runPlaying||slidePlaying)?pos:starts[sliderSlide]??0;
   const visibleOffset=(times[visibleSliderSlide]??0)>0?clamp((visiblePosition-(starts[visibleSliderSlide]??0))/times[visibleSliderSlide]):0;
@@ -250,7 +253,7 @@ export function ListenBackScreen({ active = true }: { active?: boolean }) {
       <Animated.View style={[StyleSheet.absoluteFill, screen]}>
         <PageSurface hue={deck.hue} />
         <View style={styles.header} pointerEvents="none">
-          <Txt numberOfLines={1} style={[styles.title, { color: c.text }]}>{deck.title}</Txt>
+          <Txt verbatim numberOfLines={1} style={[styles.title, { color: c.text }]}>{deck.title}</Txt>
           <Txt numberOfLines={1} style={[styles.label, { color: c.secondary }]}>{'Listen back · ' + runLabel(run, now, relativeDay)}</Txt>
         </View>
         <View style={styles.ringRow}>
@@ -268,17 +271,17 @@ export function ListenBackScreen({ active = true }: { active?: boolean }) {
         </View>
         <View style={styles.whole}>
           <View style={styles.wholeHeader}>
-            <Txt numberOfLines={1} style={[styles.wholeTitle, { color: c.text }]}>{headerText}</Txt>
+            <Txt verbatim numberOfLines={1} style={[styles.wholeTitle, { color: c.text }]}>{headerText}</Txt>
             <Txt numberOfLines={1} style={[styles.wholeHint, { color: c.tertiary }]}>{rightText}</Txt>
           </View>
           <View style={styles.controls}>
-            <Pressable accessibilityRole="button" accessibilityLabel={runPlaying && !player.paused ? 'Pause' : `Play the whole run, ${fmt(total)}`}
+            <Pressable accessibilityRole="button" accessibilityLabel={ui(runPlaying && !player.paused ? 'Pause' : `Play the whole run, ${fmt(total)}`)}
               onPress={() => toggleWhole()} style={styles.wholePlay}>
               <Glyph name={runPlaying && !player.paused ? 'p-pause' : 'p-play'} size={20} color={c.text} />
             </Pressable>
-            <PanView style={styles.sections} accessibilityRole="adjustable" accessibilityLabel="Whole run audio review"
-              accessibilityValue={{min:0,max:total,now:Math.max(0,Math.min(total,visiblePosition)),text:`${fmt(visiblePosition)} of ${fmt(total)}, slide ${visibleSliderSlide+1} of ${times.length}`}}
-              accessibilityActions={[{name:'increment',label:'Seek forward 5 seconds'},{name:'decrement',label:'Seek backward 5 seconds'}]}
+            <PanView style={styles.sections} accessibilityRole="adjustable" accessibilityLabel={ui("Whole run audio review")}
+              accessibilityValue={{min:0,max:total,now:Math.max(0,Math.min(total,visiblePosition)),text:ui(`${fmt(visiblePosition)} of ${fmt(total)}, slide ${visibleSliderSlide+1} of ${times.length}`)}}
+              accessibilityActions={[{name:'increment',label:ui('Seek forward 5 seconds')},{name:'decrement',label:ui('Seek backward 5 seconds')}]}
               onAccessibilityAction={e=>adjustSlider(e.nativeEvent.actionName==='increment'?1:-1)}
               onLayout={e=>{sectionTrack.current={x:e.nativeEvent.layout.x,width:e.nativeEvent.layout.width};}}
               onStartShould={()=>times.some(time=>time>0)} onGrant={e=>beginSlider(e.nativeEvent.pageX)}
@@ -306,15 +309,15 @@ export function ListenBackScreen({ active = true }: { active?: boolean }) {
           onScrollEndDrag={() => { transcriptDrag.current = false; }} onMomentumScrollBegin={() => { transcriptDrag.current = true; }}
           onMomentumScrollEnd={() => { transcriptDrag.current = false; }} showsVerticalScrollIndicator={false}>
           <PresentationScorePanel key={`${scores.target?.id??'composed'}:${scores.target?.contextId??''}`} item={scores.overall} controller={scores.controller} target={scores.target} overall active={active} notice={scores.notice} refresh={scores.refresh} onEvidence={onScoreEvidence}/>
-          <View style={styles.assessmentSummary} accessibilityLabel="AI assessment summary">
+          <View style={styles.assessmentSummary} accessibilityLabel={ui("AI assessment summary")}>
             <Txt style={[styles.slidesTitle,{color:c.text}]}>{`${a.assessed} of ${a.recorded} recorded slides assessed`}</Txt>
             <View style={styles.assessmentCounts}>{assessmentCounts.map(([label,count])=><Txt key={label} style={[styles.assessmentCount,{color:c.secondary}]}>{`${count} ${label.toLowerCase()}`}</Txt>)}</View>
             {!!recoverySlides.length&&<View style={styles.assessmentCounts}>{recoverySlides.map(item=><Pressable key={item.slide}
-              accessibilityRole="button" accessibilityLabel={`Review slide ${item.slide+1}: ${item.label}`} onPress={()=>openSlide(item.slide)} style={styles.refresh}>
+              accessibilityRole="button" accessibilityLabel={ui(`Review slide ${item.slide+1}: ${item.label}`)} onPress={()=>openSlide(item.slide)} style={styles.refresh}>
               <Txt style={[styles.assessmentCount,{color:c.text}]}>{`Slide ${item.slide+1} · ${item.label}`}</Txt>
             </Pressable>)}</View>}
             {!!feedback.notice&&<Txt style={[styles.emptyTranscript,{color:c.secondary}]}>{feedback.notice}</Txt>}
-            <Pressable accessibilityRole="button" accessibilityLabel="Refresh AI assessment status" onPress={()=>void feedback.refresh()} style={styles.refresh}><Txt style={[styles.assessmentCount,{color:c.text}]}>Refresh status</Txt></Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel={ui("Refresh AI assessment status")} onPress={()=>void feedback.refresh()} style={styles.refresh}><Txt style={[styles.assessmentCount,{color:c.text}]}>Refresh status</Txt></Pressable>
             <Txt style={[styles.slidesTitle,{color:c.text}]}>Transcript</Txt>
           </View>
           {lines.length ? lines.map((line, i) => <TranscriptRow key={line.key} line={line}
@@ -340,7 +343,7 @@ export function ListenBackScreen({ active = true }: { active?: boolean }) {
               const badge=score?.score!=null?String(score.score):score?.status.includes('…')?'…':score?.status.toLowerCase().includes('outdated')?'↻':'—';
               const selected = (runPlaying || slidePlaying) && playbackSlide === i;
               return <Pressable key={i} accessibilityRole="button"
-                accessibilityLabel={`Slide ${i + 1}, ${deck.slides[i]?.title ?? 'Slide ' + (i + 1)}, ${t > 0 ? fmt(t) : 'not reached'}, ${score?.score!=null?`${score.score} points, ${scoreLevelLabel(score.level)}`:score?.status??'Not graded'}, ${item?.label??'Not analyzed'}. Open its review`}
+                accessibilityLabel={ui('Slide ' + (i + 1)) + ', ' + (deck.slides[i]?.title ?? ui('Slide ' + (i + 1))) + ', ' + (t > 0 ? fmt(t) : ui('not reached')) + ', ' + ui(score?.score != null ? `${score.score} points, ${scoreLevelLabel(score.level)}` : score?.status ?? 'Not graded') + ', ' + ui(item?.label ?? 'Not analyzed') + '. ' + ui('Open its review')}
                 onPress={() => openSlide(i)} style={styles.tileWrap}>
                 {selected && <View style={[styles.tileOutline, { borderColor: c.strong }]} />}
                 <View style={[styles.tile, { backgroundColor: fill }]}>
@@ -385,15 +388,16 @@ function Stat({ icon, value, unit, color, opacity = 1 }: {
 const TranscriptRow = memo(function TranscriptRow({ line, first, active, playing, layouts }: {
   line: Line; first: boolean; active: boolean; playing: boolean; layouts: React.RefObject<Map<string, RowLayout>>;
 }) {
+  const ui = useUiText();
   const { c } = useTheme();
   return <View style={styles.transcriptRow} onLayout={e => {
     layouts.current.set(line.key, { y: e.nativeEvent.layout.y, h: e.nativeEvent.layout.height });
   }}
-    accessible accessibilityLabel={first ? `Slide ${line.slide + 1}. ${line.text}` : line.text}>
+    accessible accessibilityLabel={first ? ui(`Slide ${line.slide + 1}`) + '. ' + line.text : line.text}>
     {first ? <View style={[styles.badge, { backgroundColor: c.ink14 }]}>
       <Txt style={[styles.badgeText, { color: c.body }]}>{line.slide + 1}</Txt>
     </View> : <View style={styles.badgeSpacer} />}
-    <Txt style={[styles.transcriptText, { color: !playing ? c.body : active ? c.strong : c.secondary,
+    <Txt verbatim style={[styles.transcriptText, { color: !playing ? c.body : active ? c.strong : c.secondary,
       fontFamily: active ? F.semibold : F.medium }]}>{line.text}</Txt>
   </View>;
 });

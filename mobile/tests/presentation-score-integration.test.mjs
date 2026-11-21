@@ -22,9 +22,9 @@ function setup(){
  const result=scoreState();const rename=v=>{if(!v||typeof v!=='object')return;for(const [k,x]of Object.entries(v)){if(k==='attempt_id')v[k]=id;else rename(x);}};rename(result);
  return {id,review,model,absent,result};
 }
-function Probe({model,slide,active=true}){
+function Probe({model,slide,active=true,showProse=false}){
  assert.equal(typeof overview.useRunPresentationScores,'function','run scoring adapter must exist');
- latest=overview.useRunPresentationScores(model,active,slide);const item=slide===undefined?latest.overall:latest.items[slide];
+ latest=overview.useRunPresentationScores(model,active,slide,showProse);const item=slide===undefined?latest.overall:latest.items[slide];
  return React.createElement(React.Fragment,null,React.createElement(InitialPresentationScoreHost,{openedDeckId:model.deck.id}),React.createElement(PresentationScoreRing,{id:'test-score',label:slide===undefined?'Overall score':'Slide score',item}),
   React.createElement(PresentationScorePanel,{item,controller:latest.controller,target:latest.target,overall:slide===undefined,active,refresh:latest.refresh,onEvidence:()=>{}}));
 }
@@ -115,4 +115,27 @@ test('active automatic submission shows scoring across readers without an uncert
   assert.equal(latest.items[1].status,'Scoring…');assert.equal(latest.controller.notice,'');
   await act(async()=>{finish(response({...s.absent,state:'queued',assessment_status:'pending',feedback_revision:1},202));await flush();});
  }finally{finish?.(response({...s.absent,state:'queued',assessment_status:'pending',feedback_revision:1},202));if(r)await act(async()=>r.unmount());globalThis.fetch=old;}
+});
+
+test('the legacy overall score panel displays translated advice and keeps its original scores and evidence',async()=>{
+ const {setAppLanguage}=await import('../src/design/language.ts');
+ const s=setup(),network=mockNetwork(s),old=globalThis.fetch,calls=[];let r;network.set(s.result);
+ globalThis.fetch=async(url,init={})=>{
+  if(!url.endsWith('/localization/'))return network.fetcher(url,init);
+  const req=JSON.parse(init.body);calls.push(req);
+  const korean={
+   'No additional supported advice.':'추가로 제안할 사항이 없어요.',
+   'Synthetic rubric explanation.':'예시 평가 기준 설명입니다.',
+   'Synthetic slide explanation.':'예시 슬라이드 설명입니다.',
+  };
+  return response({id:'9'.repeat(64),language:req.language,state:'completed',translations:Object.fromEntries(Object.entries(req.fields).map(([key,original])=>[key,korean[original]]))});
+ };
+ try{
+  setAppLanguage('ko');
+  await act(async()=>{r=create(React.createElement(Probe,{model:s.model,showProse:true}));await flush();});
+  assert.match(JSON.stringify(r.toJSON()),/추가로 제안할 사항이 없어요/);
+  assert.equal(latest.overall.score,67);assert.deepEqual(latest.overall.result.evidence,s.result.result.evidence);
+  assert.ok(calls.length);assert.ok(calls.every(c=>c.kind==='score'&&c.resource_id===s.id&&c.language==='ko'));
+  assert.equal(network.posts.length,0);
+ }finally{if(r)await act(async()=>r.unmount());setAppLanguage('en');globalThis.fetch=old;}
 });

@@ -1,3 +1,7 @@
+import { displayTranslations, useDisplayTranslation } from '../features/localization/useDisplayTranslation';
+import { firstWordingPending } from '../features/localization/firstWording';
+import { translatedProfile } from '../features/localization/generatedProse';
+import { getAppLanguage, useUiText } from '../design/language';
 import { LiveFeedbackPanel } from '../features/recording/LiveFeedbackPanel';
 import { captureVersion, readCapture, subscribeCaptures } from '../features/recording/incremental';
 // OpenAI Codex review routing: docs/ai-collaboration/prompt-logs/seoyeon/iteration-2.md#record-137
@@ -116,6 +120,7 @@ export const RehearseScreen = memo(function RehearseScreen({ active = true }: { 
 });
 
 function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
+  const ui = useUiText();
   const { c } = useTheme();
   const { go, nav, home, setFullscreenLandscape } = useShell();
   const frame = useFrame();
@@ -161,6 +166,18 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
   useEffect(() => () => { if (holdTimer.current) clearTimeout(holdTimer.current); }, []);
   const [live] = useState(createLive);
   const profiles = useSlideProfiles(deck.id, n, active, deck);
+  const {value: displayProfiles} = useDisplayTranslation(active, scope => {
+    const saved = profiles.value;
+    if (!saved?.descriptions || !saved.description_set_id || saved.state !== 'completed' || saved.stale) return saved;
+    const field = scope('profiles', saved.description_set_id, String(saved.description_revision));
+    const slides = saved.descriptions.slides.map(s => s.slide_index === slide ? translatedProfile(s, field) : s);
+    const current = saved.descriptions.slides.find(s => s.slide_index === slide);
+    if (active && current && firstWordingPending(API_URL, { kind: 'profiles', resource_id: saved.description_set_id,
+      revision: String(saved.description_revision) }, 'slides.' + slide, getAppLanguage(), displayTranslations, text => translatedProfile(current, text))) {
+      return { ...saved, state: 'preparing' as const, descriptions: null, retry_available: false };
+    }
+    return {...saved, descriptions: {slides}};
+  });
   const profilesAvailable = profiles.available;
   const profileState = profiles.value?.state;
   const recoverProfiles = profiles.recover;
@@ -534,7 +551,7 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
         recording={recording} take={take} disabled={phase==='starting'||phase==='stopping'} onRecord={toggleRec} onRecordDown={recDown} onRecordUp={recUp}
         ringProgress={ringP} ringVisible={ringV}
         onExit={rotate} onPrevious={()=>goSlide(cur-1,'animate')} onNext={()=>goSlide(cur+1,'animate')}
-        cueState={profiles.value} cueBusy={profiles.busy || profiles.syncing} onCueRecovery={()=>profiles.refresh()}
+        cueState={displayProfiles} cueBusy={profiles.busy || profiles.syncing} onCueRecovery={()=>profiles.refresh()}
         onReview={()=>recording && liveCapture ? setShowLiveFeedback(true) : run && (state.compare ? openReview(state.takes,cur,true,'rise') : openOverallReview(cur))}
         comparePending={!!state.compare}
         reviewEnabled={recording ? !!liveCapture : !!run && phase === 'idle'} liveFeedback={recording && !!liveCapture}
@@ -547,15 +564,15 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
           <PageSurface hue={deck.hue} />
         </Animated.View>
         <Animated.View pointerEvents={openingControls ? 'none' : 'auto'} style={[StyleSheet.absoluteFill, screen]}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Edit presentation time and audience"
-            accessibilityHint="Open presentation time and audience settings"
+          <Pressable accessibilityRole="button" accessibilityLabel={ui("Edit presentation time and audience")}
+            accessibilityHint={ui("Open presentation time and audience settings")}
             accessibilityState={{ disabled: !active || phase !== 'idle' }} disabled={!active || phase !== 'idle'}
             onPress={openSetup} style={styles.editRequirements} hitSlop={8}>
             <UIIcon name="i-sliders" size={24} color={c.text} />
           </Pressable>
           {/* OpenAI Codex, 2026-11-21: refresh links an unmapped PDF and checks cues; initial analysis may start, while failed provider retries stay in Cues. */}
-          <Pressable accessibilityRole="button" accessibilityLabel="Refresh with server"
-            accessibilityHint="Reconnect this PDF and check its AI cues. First-time analysis may start; retry failed analysis from Cues."
+          <Pressable accessibilityRole="button" accessibilityLabel={ui("Refresh with server")}
+            accessibilityHint={ui("Reconnect this PDF and check its AI cues. First-time analysis may start; retry failed analysis from Cues.")}
             accessibilityState={{ disabled: !active || phase !== 'idle' || profiles.syncing || profiles.busy }}
             disabled={!active || phase !== 'idle' || profiles.syncing || profiles.busy}
             onPress={() => { void Haptics.selectionAsync().catch(() => undefined); setRefreshAsk(true); }}
@@ -563,8 +580,8 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
             <UIIcon name="i-loop" size={23} color={profiles.syncing || profiles.busy ? c.muted2 : c.text} />
           </Pressable>
           <Animated.View pointerEvents="box-none" style={[styles.counterWrap, { left: 65, width: 260, height: 32 }, counterMotion]}>
-            <Pressable accessibilityRole="button" accessibilityLabel="Toggle feedback during presentation"
-              accessibilityHint={preferIncremental ? 'Live feedback selected. Switch to feedback after Stop.' : 'Feedback after Stop selected. Switch to live feedback.'}
+            <Pressable accessibilityRole="button" accessibilityLabel={ui("Toggle feedback during presentation")}
+              accessibilityHint={ui(preferIncremental ? 'Live feedback selected. Switch to feedback after Stop.' : 'Feedback after Stop selected. Switch to live feedback.')}
               disabled={phase !== 'idle'} onPress={() => setPreferIncremental(v => !v)} hitSlop={8}
               style={[StyleSheet.absoluteFill, styles.counterCenter]}>
               <Txt style={styles.counter}>{`Slide ${cur + 1} of ${n}${phase === 'idle' ? preferIncremental ? ' · Live feedback' : ' · After Stop' : ''}`}</Txt>
@@ -585,7 +602,7 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
           <RecordRing progress={ringP} visible={ringV} />
           <RecordButton glyph={glyph} label={btnLabel} onPress={toggleRec} onPressIn={recDown} onPressOut={recUp}
             style={frame.compact ? { top: 607 } : undefined}
-            accessibilityActions={anyTake ? [{ name: 'redoAllSlides', label: 'Redo all slides' }] : undefined}
+            accessibilityActions={anyTake ? [{ name: 'redoAllSlides', label: ui('Redo all slides') }] : undefined}
             onAccessibilityAction={event => {
               if (event.nativeEvent.actionName !== 'redoAllSlides' || !anyTake || phaseRef.current !== 'idle' || redoAsk) return;
               player.stop();
@@ -599,10 +616,10 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
           rotated={false} rotating={false} rotation={pdfRotation} closeY={backDy} openPage={pageOpen}
           opening={openingControls} closingToHome={closingToHome} />
         <Animated.View pointerEvents="none" style={[styles.header,titleMotion]}>
-          <Txt numberOfLines={1} style={styles.deckTitle}>{deck.title}</Txt>
+          <Txt verbatim numberOfLines={1} style={styles.deckTitle}>{deck.title}</Txt>
         </Animated.View>
         <Animated.View pointerEvents={openingControls ? 'none' : 'box-none'} style={[StyleSheet.absoluteFill,screen]}>
-          <CueGuidancePanel key={cueCloseRequest} state={profiles.value} slide={cur} error={profiles.error} busy={profiles.busy || profiles.syncing}
+          <CueGuidancePanel key={cueCloseRequest} state={displayProfiles} slide={cur} error={profiles.error} busy={profiles.busy || profiles.syncing}
             onSheetOpenChange={setCueSheetOpen}
             connectionMessage={profiles.available ? undefined : profiles.error || 'Connecting this presentation to server cues…'}
             requirementsNotice={requirementsPending(deck.id, API_URL) ? (readRequirementsDraft(deck.id, API_URL)?.conflict ? 'Presentation choices conflict · tap the title to resolve' : 'Presentation choices saved on phone · sync pending. Targets use last synchronized time.') : defaultRequirementsPending(deck.id, API_URL) ? 'Presentation requirements · sync pending' : null}
@@ -646,6 +663,7 @@ const SlideTrack = memo(function SlideTrack({ model, slide, trackX, onSlide, pre
   rotated: boolean; rotating: boolean; rotation: SharedValue<number>; closeY: SharedValue<number>; openPage: SharedValue<number>;
   opening: boolean; closingToHome: SharedValue<boolean>;
 }) {
+  const ui = useUiText();
   const { deck, n } = model;
   const { c } = useTheme();
   const step = CARD_STEP;
@@ -725,31 +743,31 @@ const SlideTrack = memo(function SlideTrack({ model, slide, trackX, onSlide, pre
     <Animated.View style={[styles.slideStage, closeMotion]} pointerEvents="box-none">
       <Animated.View style={[styles.slidePosition, frame.compact && { height: cardHeight }, slidePosition]} pointerEvents="box-none">
         <PanView style={[styles.slideZoom, frame.compact && { height: cardHeight }, slideRotation]} {...responder}
-          accessible accessibilityRole="adjustable" accessibilityLabel={`Slide ${slide + 1} of ${n}: ${deck.slides[slide]?.title ?? ''}`}
+          accessible accessibilityRole="adjustable" accessibilityLabel={ui(`Slide ${slide + 1} of ${n}: ${deck.slides[slide]?.title ?? ''}`)}
           accessibilityActions={navigationFrozen ? [] : previousLocked ? [{ name: 'increment' }] : [{ name: 'increment' }, { name: 'decrement' }]}
           onAccessibilityAction={e => { if (rotating || isNavigationFrozen()) return; if (e.nativeEvent.actionName === 'increment') next(); else if (!isPreviousLocked()) prev(); }}>
           <Animated.View style={[styles.track, frame.compact && { height: cardHeight }, track]}>
             {Array.from({ length: Math.min(n - 1, slide + 2) - Math.max(0, slide - 2) + 1 }, (_, offset) => Math.max(0, slide - 2) + offset).map(i => (
               <View key={i} style={[styles.cardSlot, frame.compact && { height: cardHeight }, { left: i * step }]}>
-                <SlideCard hue={deck.hue} page={deck.pages[i]} deckTitle={deck.title} title={deck.slides[i]?.title ?? 'Slide ' + (i + 1)}
+                <SlideCard hue={deck.hue} page={deck.pages[i]} deckTitle={deck.title} title={deck.slides[i]?.title ?? ui('Slide ' + (i + 1))}
                   points={deck.slides[i]?.points ?? []} num={i + 1} foldL={false} foldR={false} shadow={!rotated && !deck.pages[i]} />
               </View>
             ))}
           </Animated.View>
         </PanView>
       </Animated.View>
-      {!rotating && !navigationFrozen && !previousLocked && rotated && slide > 0 && <Pressable accessibilityRole="button" accessibilityLabel={`Previous slide, ${slide}: ${deck.slides[slide - 1]?.title ?? ''}`}
+      {!rotating && !navigationFrozen && !previousLocked && rotated && slide > 0 && <Pressable accessibilityRole="button" accessibilityLabel={ui(`Previous slide, ${slide}: ${deck.slides[slide - 1]?.title ?? ''}`)}
         onPress={prev} style={[styles.rotatedCorner, { top: 0 }]} />}
-      {!rotating && !navigationFrozen && rotated && slide < n - 1 && <Pressable accessibilityRole="button" accessibilityLabel={`Next slide, ${slide + 2}: ${deck.slides[slide + 1]?.title ?? ''}`}
+      {!rotating && !navigationFrozen && rotated && slide < n - 1 && <Pressable accessibilityRole="button" accessibilityLabel={ui(`Next slide, ${slide + 2}: ${deck.slides[slide + 1]?.title ?? ''}`)}
         onPress={next} style={[styles.rotatedCorner, { bottom: 0 }]} />}
       {/* OpenAI Codex, 2026-11-21: visible side arrows replace the folded-corner tap zones in portrait preview. */}
       {!rotated && <>
-        <Pressable accessibilityRole="button" accessibilityLabel={slide===0?'Previous slide':`Previous slide, ${slide}: ${deck.slides[slide - 1]?.title ?? ''}`}
+        <Pressable accessibilityRole="button" accessibilityLabel={ui(slide===0?'Previous slide':`Previous slide, ${slide}: ${deck.slides[slide - 1]?.title ?? ''}`)}
           disabled={rotating || navigationFrozen || previousLocked || slide === 0} onPress={prev}
           style={[styles.previewArrow, { left: 4, top: 16 + cardHeight / 2 - 24, opacity: slide === 0 || previousLocked ? 0.4 : 1 }]}>
           <PreviewChevron left color={c.text} outline={c.bg} />
         </Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel={slide===n-1?'Next slide':`Next slide, ${slide + 2}: ${deck.slides[slide + 1]?.title ?? ''}`}
+        <Pressable accessibilityRole="button" accessibilityLabel={ui(slide===n-1?'Next slide':`Next slide, ${slide + 2}: ${deck.slides[slide + 1]?.title ?? ''}`)}
           disabled={rotating || navigationFrozen || slide === n - 1} onPress={next}
           style={[styles.previewArrow, { right: 4, top: 16 + cardHeight / 2 - 24, opacity: slide === n - 1 ? 0.4 : 1 }]}>
           <PreviewChevron color={c.text} outline={c.bg} />
@@ -768,6 +786,7 @@ function PreviewChevron({ left = false, color, outline }: { left?: boolean; colo
 }
 
 function TickStrip({ n, cur, disabled, onPick }: { n: number; cur: number; disabled: boolean; onPick: (i: number) => void }) {
+  const ui = useUiText();
   const { c } = useTheme();
   const frame = useFrame();
   const pickAt = (e: GestureResponderEvent) => {
@@ -783,7 +802,7 @@ function TickStrip({ n, cur, disabled, onPick }: { n: number; cur: number; disab
   return (
     <PanView style={[styles.strip, frame.compact && { top: 286 }]} {...responder} disabled={disabled}>
       {Array.from({ length: ticks }, (_, i) => (
-        <View key={i} accessible accessibilityRole="button" accessibilityLabel={'Go near slide ' + (Math.floor((i * n) / ticks) + 1)}
+        <View key={i} accessible accessibilityRole="button" accessibilityLabel={ui('Go near slide ' + (Math.floor((i * n) / ticks) + 1))}
           style={{ flex: 1, height: i === active ? 12 : 6, borderRadius: 3, backgroundColor: i === active ? c.strong : i < active ? c.ink55 : c.ink16 }} />
       ))}
     </PanView>
@@ -795,6 +814,7 @@ function Readout({ live, phase, cur, take, deck, burst, error, recoveryCount, re
   live: LiveStore; phase: Phase; cur: number; take: boolean; deck: DeckModel['deck']; burst: { total: number } | null; error: string;
   recoveryCount: number; recoveryNumber: number; onRecovery: () => void;
 }) {
+  const ui = useUiText();
   const { c } = useTheme();
   const frame = useFrame();
   const L = useSyncExternalStore(live.subscribe, live.get);
@@ -816,7 +836,7 @@ function Readout({ live, phase, cur, take, deck, burst, error, recoveryCount, re
   return <>
     <Txt style={[styles.big, frame.compact && { top: 490 }, { color: phase === 'burst' ? c.text : c.strong }]}>{phase === 'burst' && burst ? fmt(burst.total) : '0:00'}</Txt>
     <Txt numberOfLines={2} accessibilityRole={recovery && phase === 'idle' ? 'button' : 'text'}
-      accessibilityLabel={recovery && phase === 'idle' ? 'Open interrupted recording for recovery' : undefined}
+      accessibilityLabel={ui(recovery && phase === 'idle' ? 'Open interrupted recording for recovery' : undefined)}
       onPress={recovery && phase === 'idle' ? onRecovery : undefined}
       style={[styles.line, frame.compact && { top: 546 }, { color: error || recovery ? c.bad : c.secondary }]}>{line}</Txt>
     <Waveform bars={IDLE_WAVE} live={false} />
@@ -840,7 +860,7 @@ const styles = createThemedStyles({
   counterWrap: { position: 'absolute', left: 120, top: 75, width: 150, height: 18, alignItems: 'center', justifyContent: 'center' },
   counterCenter: { alignItems: 'center', justifyContent: 'center' },
   counter: { fontFamily: F.medium, fontSize: 13.5, color: C.secondary },
-  editRequirements: { position: 'absolute', left: 16, top: 39, width: 44, height: 44,
+  editRequirements: { position: 'absolute', left: 16, top: 60, width: 44, height: 44,
     alignItems: 'center', justifyContent: 'center', zIndex: 20 },
   headerBalance: { position: 'absolute', right: 16, top: 39, width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
   slideStage: { position: 'absolute', left: 0, top: 100, width: 390, height: 510, overflow: 'hidden' },

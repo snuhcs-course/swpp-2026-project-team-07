@@ -1,3 +1,4 @@
+import { useUiText } from '../design/language';
 import { useEffect } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -18,6 +19,7 @@ import { useBack, useNow, useShell } from './shared';
 import { PanView } from '../design/PanView';
 
 export function OverviewScreen({active=true}:{active?:boolean}) {
+  const ui = useUiText();
   const {c}=useTheme(),{go,nav}=useShell(),model=useDeckModel(nav.deckId),now=useNow();
   // OpenAI Codex, 2026-11-19: fade Full Review over the page that opened it.
   const fadeY=useSharedValue(0);
@@ -51,11 +53,11 @@ export function OverviewScreen({active=true}:{active?:boolean}) {
     onRelease={(_e,g)=>{if(g.dy < -60){fadeY.set(0);openQA();}else if(g.dy>60)fadeY.set(withTiming(BACK_FADE_Y,{duration:460,easing:EASE_SCREEN},done=>{if(done)runOnJS(toBack)();}));else fadeY.set(withTiming(0,{duration:360,easing:EASE_SCREEN}));}}
     onTerminate={()=>fadeY.set(withTiming(0,{duration:360,easing:EASE_SCREEN}))}>
     <PageSurface hue={model.deck.hue}/>
-    <View style={styles.header}><Txt numberOfLines={1} style={[styles.title,{color:c.text}]}>{model.deck.title}</Txt><Txt style={[styles.sub,{color:c.secondary}]}>{`Overall feedback · ${runLabel(run,now,relativeDay)}`}</Txt></View>
+    <View style={styles.header}><Txt verbatim numberOfLines={1} style={[styles.title,{color:c.text}]}>{model.deck.title}</Txt><Txt style={[styles.sub,{color:c.secondary}]}>{`Overall feedback · ${runLabel(run,now,relativeDay)}`}</Txt></View>
     <View style={styles.big}><Txt numberOfLines={1} adjustsFontSizeToFit style={[styles.bigNumber,{color:score.score===null?c.secondary:scoreLevelColor(score.level,c)}]}>{status}</Txt>
-      {v3?.failures?<Pressable accessibilityRole="button" accessibilityLabel="Retry failed AI feedback" disabled={v3.busy} onPress={()=>void v3.retry()} style={styles.retry}>
+      {v3?.failures?<Pressable accessibilityRole="button" accessibilityLabel={ui("Retry failed AI feedback")} disabled={v3.busy} onPress={()=>void v3.retry()} style={styles.retry}>
         <Txt style={[styles.grade,{color:c.accent}]}>{v3.busy?'Retrying…':'Some feedback failed · Tap to retry'}</Txt></Pressable>
-      :v3&&(v3.outdated||v3.missing)?<Pressable accessibilityRole="button" accessibilityLabel={v3.outdated?'Update AI feedback for the latest changes':'Get AI feedback for this recording'} disabled={v3.busy||v3.blocked} onPress={()=>void v3.update()} style={styles.retry}>
+      :v3&&(v3.outdated||v3.missing)?<Pressable accessibilityRole="button" accessibilityLabel={ui(v3.outdated?'Update AI feedback for the latest changes':'Get AI feedback for this recording')} disabled={v3.busy||v3.blocked} onPress={()=>void v3.update()} style={styles.retry}>
         <Txt numberOfLines={1} style={[styles.grade,{color:c.accent}]}>{v3.busy?'Requesting…':v3.outdated?'From before your latest changes · Tap to update':'No AI feedback yet · Tap to request'}</Txt></Pressable>
       :<Txt numberOfLines={2} style={[styles.grade,styles.gradeCenter,{color:c.secondary}]}>{composed?'Record a full run for an overall score':stale?'Updating saved score…':score.score===null?score.status:scoreLevelLabel(score.level)}</Txt>}</View>
     <View style={styles.stats}>
@@ -71,7 +73,7 @@ export function OverviewScreen({active=true}:{active?:boolean}) {
         const slideIndex=row*7+i;
         const score=scores.items[slideIndex],isRecorded=(model.times[slideIndex]??0)>0;
         const color=isRecorded&&score?.score!=null?scoreLevelColor(score.level,c):isRecorded?c.surface:c.track;
-        return <Pressable key={slideIndex} accessibilityRole="button" accessibilityLabel={`Slide ${slideIndex+1}, ${score?.score==null?'not graded':`${score.score} percent`}`} onPress={()=>go('review',{deckId:model.deck.id,sel:slideIndex,from:'full'})} style={[styles.tile,{backgroundColor:color,borderColor:isRecorded&&score?.score==null?c.hair:'transparent',borderWidth:isRecorded&&score?.score==null?1:0}]}>
+        return <Pressable key={slideIndex} accessibilityRole="button" accessibilityLabel={ui(`Slide ${slideIndex+1}, ${score?.score==null?'not graded':`${score.score} percent`}`)} onPress={()=>go('review',{deckId:model.deck.id,sel:slideIndex,from:'full'})} style={[styles.tile,{backgroundColor:color,borderColor:isRecorded&&score?.score==null?c.hair:'transparent',borderWidth:isRecorded&&score?.score==null?1:0}]}>
           <Txt style={[styles.tileNumber,{color:score?.score!=null?c.gradeOnFill:c.secondary}]}>{slideIndex+1}</Txt>
           {score?.score!=null&&<Txt style={[styles.tileScore,{color:c.gradeOnFill}]}>{score.score}</Txt>}
           {score?.level==='beginning'&&<Txt style={[styles.tileWarning,{color:c.gradeOnFill}]}>!</Txt>}

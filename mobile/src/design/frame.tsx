@@ -15,6 +15,7 @@ import Animated, { Easing, cancelAnimation, runOnJS, useAnimatedStyle, useReduce
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FRAME_H, FRAME_W } from './tokens';
 import { useTheme } from './theme';
+import { useUiText } from './language';
 
 export type FrameInfo = { s: number; left: number; top: number; width: number; height: number; compact: boolean };
 const FrameContext = createContext<FrameInfo>({ s: 1, left: 0, top: 0, width: FRAME_W, height: FRAME_H, compact: false });
@@ -76,8 +77,11 @@ export function Frame({ children, background, landscape = false }: { children: R
 }
 
 /** Text that keeps the design's sizes, allowing only a little system font scaling. */
-export function Txt(props: TextProps) {
-  return <Text maxFontSizeMultiplier={1.1} {...props} />;
+export function Txt({ verbatim, children, ...props }: TextProps & { verbatim?: boolean }) {
+  const t = useUiText();
+  const display = (node: ReactNode): ReactNode => typeof node === 'string' ? t(node)
+    : Array.isArray(node) ? node.map(display) : node;
+  return <Text maxFontSizeMultiplier={1.1} {...props}>{verbatim ? children : display(children)}</Text>;
 }
 
 export type EnterKind = 'rise' | 'zoom' | 'fade' | null;

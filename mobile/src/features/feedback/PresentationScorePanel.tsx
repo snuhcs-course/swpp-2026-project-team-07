@@ -1,4 +1,5 @@
 // Rubric scores use the scoring transport only; legacy findings stay separate.
+import { useUiText } from '../../design/language';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Txt } from '../../design/frame';
 import { ScoreRing } from '../../design/ScoreRing';
@@ -32,16 +33,16 @@ export function PresentationScorePanel({item,controller,target,overall=false,act
   {!!(notice||controller.notice)&&<Txt accessibilityRole="alert" style={[styles.note,{color:c.secondary}]}>{notice||controller.notice}</Txt>}
   {state?.state==='failed'&&state.error&&<Txt style={[styles.note,{color:c.secondary}]}>{state.error.message}</Txt>}
   {!!result&&<>
-   {!!feedback?.summary&&<View style={styles.list}><Txt style={[styles.body,{color:c.text}]}>{feedback.summary.text}</Txt><Evidence refs={feedback.summary.evidence} title="Score summary" onEvidence={onEvidence}/></View>}
-   {'justification' in result&&!!result.justification&&<Txt style={[styles.body,{color:c.text}]}>{result.justification}</Txt>}
+   {!!feedback?.summary&&<View style={styles.list}><Txt verbatim style={[styles.body,{color:c.text}]}>{feedback.summary.text}</Txt><Evidence refs={feedback.summary.evidence} title="Score summary" onEvidence={onEvidence}/></View>}
+   {'justification' in result&&!!result.justification&&<Txt verbatim style={[styles.body,{color:c.text}]}>{result.justification}</Txt>}
    {!!feedback&&<Feedback value={feedback} onEvidence={onEvidence}/>}
   </>}
  </View>;
 }
 function Feedback({value,onEvidence}:{value:ScoreFeedback;onEvidence:(refs:ScoreEvidence[])=>void}) {
  const {c}=useTheme();return <View style={styles.list}>
-  {(['strengths','weaknesses','improvements'] as const).map(key=>value[key].length>0&&<View key={key} style={styles.list}><Txt style={[styles.criterion,{color:c.text}]}>{key==='improvements'?'Actionable improvements':key[0].toUpperCase()+key.slice(1)}</Txt>{value[key].map((advice,i)=><View key={i} style={styles.list}><Txt style={[styles.body,{color:c.text}]}>{advice.text}</Txt><Evidence refs={advice.evidence} title={`${key} ${i+1}`} onEvidence={onEvidence}/></View>)}</View>)}
-  {!!value.improvement_shortage&&<Txt style={[styles.note,{color:c.secondary}]}>{value.improvement_shortage}</Txt>}
+  {(['strengths','weaknesses','improvements'] as const).map(key=>value[key].length>0&&<View key={key} style={styles.list}><Txt style={[styles.criterion,{color:c.text}]}>{key==='improvements'?'Actionable improvements':key[0].toUpperCase()+key.slice(1)}</Txt>{value[key].map((advice,i)=><View key={i} style={styles.list}><Txt verbatim style={[styles.body,{color:c.text}]}>{advice.text}</Txt><Evidence refs={advice.evidence} title={`${key} ${i+1}`} onEvidence={onEvidence}/></View>)}</View>)}
+  {!!value.improvement_shortage&&<Txt verbatim style={[styles.note,{color:c.secondary}]}>{value.improvement_shortage}</Txt>}
  </View>;
 }
 function Evidence({refs,title,onEvidence}:{refs:ScoreEvidence[];title:string;onEvidence:(refs:ScoreEvidence[])=>void}) {
@@ -50,13 +51,14 @@ function Evidence({refs,title,onEvidence}:{refs:ScoreEvidence[];title:string;onE
   {audio.length>1&&<Action label={`Play cited audio for ${title}`} text={`Listen to ${audio.length} cited intervals`} onPress={()=>onEvidence(audio)}/>}
   {refs.map((ref,i)=><View key={i} style={styles.list}>
    <Txt style={[styles.source,{color:c.secondary}]}>{scoreEvidenceLabel(ref)}</Txt>
-   {'quote' in ref&&<Txt style={[styles.note,{color:c.secondary}]}>{'“'+ref.quote+'”'}</Txt>}
+   {'quote' in ref&&<Txt verbatim style={[styles.note,{color:c.secondary}]}>{'“'+ref.quote+'”'}</Txt>}
    {ref.kind==='slide'?<Action label={`Show slide ${ref.slide_index+1} evidence`} text={`Open slide ${ref.slide_index+1}`} onPress={()=>onEvidence([ref])}/>:
     'start_ms' in ref?(ref.end_ms>ref.start_ms?<Action label={`Listen to evidence ${i+1} for ${title}`} text="Listen to this interval" onPress={()=>onEvidence([ref])}/>:<Txt style={[styles.note,{color:c.secondary}]}>No playable interval</Txt>):null}
   </View>)}
  </View>;
 }
 function Action({label,text=label,onPress,disabled=false}:{label:string;text?:string;onPress:()=>void;disabled?:boolean}) {
- const {c}=useTheme();return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{disabled}} disabled={disabled} onPress={onPress} style={[styles.action,{backgroundColor:c.surface10,opacity:disabled ? .45 : 1}]}><Txt style={[styles.actionText,{color:c.text}]}>{text}</Txt></Pressable>;
+  const ui = useUiText();
+ const {c}=useTheme();return <Pressable accessibilityRole="button" accessibilityLabel={ui(label)} accessibilityState={{disabled}} disabled={disabled} onPress={onPress} style={[styles.action,{backgroundColor:c.surface10,opacity:disabled ? .45 : 1}]}><Txt style={[styles.actionText,{color:c.text}]}>{text}</Txt></Pressable>;
 }
 const styles=StyleSheet.create({root:{gap:10,borderTopWidth:1,paddingTop:14,marginBottom:12},heading:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},title:{fontFamily:F.display,fontSize:18},status:{fontFamily:F.semibold,fontSize:14},note:{fontFamily:F.medium,fontSize:15,lineHeight:21},body:{fontFamily:F.medium,fontSize:15,lineHeight:21},criterion:{fontFamily:F.semibold,fontSize:15,lineHeight:21},card:{gap:8,paddingTop:12,borderTopWidth:1},list:{gap:8},source:{fontFamily:F.medium,fontSize:13.5,lineHeight:18},action:{minHeight:44,paddingHorizontal:14,paddingVertical:10,borderRadius:16,alignSelf:'flex-start',justifyContent:'center'},actionText:{fontFamily:F.semibold,fontSize:14}});

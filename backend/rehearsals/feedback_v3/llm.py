@@ -115,10 +115,14 @@ def _call(http, config, name, system, user, schema, max_output_tokens, timeout):
     try:
         response = http.post(f'{config.base_url}/responses', json=payload, timeout=timeout,
                              headers={'Authorization': f'Bearer {config.api_key}'})
-    except httpx.TimeoutException:
-        raise LLMError('timeout', retryable=True) from None
-    except httpx.RequestError:  # Transport, protocol and body-decoding failures.
-        raise LLMError('connection_error', retryable=True) from None
+    except httpx.TimeoutException as failure:
+        error = LLMError('timeout', retryable=True)
+        error.pre_submission = isinstance(failure, (httpx.ConnectTimeout, httpx.PoolTimeout))
+        raise error from None
+    except httpx.RequestError as failure:
+        error = LLMError('connection_error', retryable=True)
+        error.pre_submission = isinstance(failure, httpx.ConnectError)
+        raise error from None
     if response.status_code != 200:
         error = LLMError(_status_code(response.status_code), retryable=response.status_code in RETRYABLE_STATUS)
         error.retry_after = _retry_after(response.headers.get('retry-after'))

@@ -52,3 +52,17 @@ test('panelist names accept reasonable labels and reject unbounded metadata',()=
  assert.equal(parseQaState(value,'a',scope).result.questions[0].panelist,'Professor Kim');
  value.result.questions[0].panelist='x'.repeat(65);assert.throws(()=>parseQaState(value,'a',scope));
 });
+test('an optional read-only historical set must match every selected source and visit and its own original context',()=>{
+ const contextId='88888888-8888-4888-8888-888888888888';
+ const original={...base.result,scope:{...scope,context_id:contextId},requirements:{...base.requirements,context_id:contextId},
+  completed_at:null,feedback_revision:2};
+ const wire={...base,result:null,state:'absent',saved_question_sets:[original]};
+ assert.equal(parseQaState(wire,'a',scope).saved_question_sets[0].job_id,original.job_id);
+ for(const edit of [batch=>{batch.scope.slides[0].segments[0].end_ms++;},batch=>{batch.scope.slides[0].attempt_id='another-take';},
+  batch=>{batch.requirements.context_id=null;},batch=>{batch.questions[0].id='invalid';},
+  batch=>{batch.completed_at='not a time';}]){
+  const invalid=structuredClone(wire);edit(invalid.saved_question_sets[0]);
+  assert.throws(()=>parseQaState(invalid,'a',scope),/Invalid Q&A response/);
+ }
+ assert.throws(()=>parseQaState({...wire,saved_question_sets:[original,original]},'a',scope));
+});

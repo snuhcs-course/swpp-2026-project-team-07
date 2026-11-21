@@ -495,6 +495,9 @@ def _save(run: FeedbackRun, **fields) -> None:
     for key, value in fields.items():
         setattr(run, key, value)
     run.save(update_fields=list(fields))
+    if 'result' in fields:
+        from ..services.prepared_display import changed
+        changed('feedback', run.pk)
 
 
 def run(run_id) -> None:

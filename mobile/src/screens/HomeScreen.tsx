@@ -35,7 +35,7 @@ import { createThemedStyles, useTheme } from '../design/theme';
 import { ThemeToggle } from '../design/ThemeToggle';
 import { LanguageToggle } from '../design/LanguageToggle';
 import { HintRow, UndoToast } from '../design/ui';
-import { readStored, writeStored } from '../services/storage';
+import { useUiText } from '../design/language';
 import { BACK_FADE_Y, coverFlow, homeCarouselRelease, HOLD_MS, PULL_T, PX_PER_CARD, rubber } from '../domain/gestures';
 import { ICONS, type HueName, type IconId } from '../domain/hues';
 import { mod, nearestSlot, pad2 } from '../domain/format';
@@ -48,7 +48,11 @@ import { useBack, useHomeShell } from './shared';
 import { useHorizontalSwipeMotion } from './swipeMotion';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
-export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode: 'home' | 'upload' | 'covered'; uploadLook: { hue: HueName; order: number } | null }) {
+export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDeckChange }: {
+  mode: 'home' | 'upload' | 'covered'; uploadLook: { hue: HueName; order: number } | null;
+  onFrontDeckChange?: (id: string | null) => void;
+}) {
+  const ui = useUiText();
   const { c } = useTheme();
   const { go, home } = useHomeShell();
   const frame = useFrame();
@@ -60,23 +64,6 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode:
   const [pickerClosing, setPickerClosing] = useState(false);
   const [creditsOpen, setCreditsOpen] = useState(false);
   const [tutorialPage, setTutorialPage] = useState<number | null>(null);
-  // OpenAI Codex, 2026-11-19: save a future UI-language preference without claiming the app is translated.
-  const [languagePreference, setLanguagePreference] = useState<'en' | 'ko'>(() => {
-    try { return readStored<string>('settings.languagePreference') === 'ko' ? 'ko' : 'en'; }
-    catch { return 'en'; }
-  });
-  const [languageNotice, setLanguageNotice] = useState<string | null>(null);
-  const languageNoticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => { if (languageNoticeTimer.current) clearTimeout(languageNoticeTimer.current); }, []);
-  const toggleLanguagePreference = () => {
-    const next = languagePreference === 'en' ? 'ko' : 'en';
-    setLanguagePreference(next);
-    let saved = true;
-    try { writeStored('settings.languagePreference', next); } catch { saved = false; }
-    setLanguageNotice(`${next === 'ko' ? '한국어' : 'English'} preference selected${saved ? '' : ' for this session'}. App translation is coming later; screens remain in English.`);
-    if (languageNoticeTimer.current) clearTimeout(languageNoticeTimer.current);
-    languageNoticeTimer.current = setTimeout(() => setLanguageNotice(null), 4000);
-  };
   const [undo, setUndo] = useState<{ deck: Presentation; at: number } | null>(null);
   const [pullLabel, setPullLabel] = useState<'' | 'add' | 'addPast' | 'del' | 'delPast' | 'keep'>('');
   const newHue = mode === 'upload' && uploadLook ? uploadLook.hue : nextHue();
@@ -293,6 +280,8 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode:
   }
 
   const frontDeck = n ? decks[shown] : null;
+  const frontId = frontDeck?.id ?? null;
+  useEffect(() => { if (mode === 'home') onFrontDeckChange?.(frontId); }, [mode, onFrontDeckChange, frontId]);
   void storeVersion;
   const openFullReview = () => {
     if (mode !== 'home' || pickerFor || creditsOpen || Math.abs(home.p.value - Math.round(home.p.value)) >= 0.2 || home.vy.value !== 0) return;
@@ -320,19 +309,16 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode:
       accessibilityElementsHidden={mode !== 'home'} importantForAccessibility={mode === 'home' ? 'auto' : 'no-hide-descendants'}>
       <Animated.View pointerEvents="box-none" accessibilityElementsHidden={creditsOpen} importantForAccessibility={creditsOpen ? 'no-hide-descendants' : 'auto'}
         style={[StyleSheet.absoluteFill, pickerFor ? pickerBackdrop : creditsOpen ? styles.overlayBlur : null, setupDim]}>
-      <Pressable accessibilityRole="button" accessibilityLabel="How OutLoud works" onPress={() => setTutorialPage(0)} onLongPress={() => setCreditsOpen(true)}
+      <Pressable accessibilityRole="button" accessibilityLabel={ui("How OutLoud works")} onPress={() => setTutorialPage(0)} onLongPress={() => setCreditsOpen(true)}
         style={styles.logo}><Txt style={styles.logoText}>OutLoud</Txt></Pressable>
       <Animated.View pointerEvents={mode === 'home' ? 'box-none' : 'none'} style={[StyleSheet.absoluteFill, homeControls]}>
-        {!pickerFor && <LanguageToggle lang={languagePreference} onPress={toggleLanguagePreference} />}
+        {mode === 'home' && !pickerFor && <LanguageToggle />}
         {!pickerFor && <ThemeToggle />}
       </Animated.View>
-      {languageNotice && <View pointerEvents="none" accessibilityRole="alert" style={[styles.languageNotice, { backgroundColor: c.surface, borderColor: c.hair }]}>
-        <Txt style={[styles.languageNoticeText, { color: c.text }]}>{languageNotice}</Txt>
-      </View>}
       <GestureDetector gesture={carouselGesture}><Animated.View style={[styles.carousel, homeLayer, mode === 'upload' && styles.addBlur]}
-        accessible accessibilityRole="adjustable" accessibilityLabel={frontDeck ? `${frontDeck.title}, ${frontDeck.pageCount} slides` : 'No presentations yet'}
-        accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }, { name: 'activate', label: 'Open' }, { name: 'longpress', label: 'Choose icon' },
-          { name: 'add', label: 'Add presentation' }, { name: 'delete', label: 'Delete presentation' }]}
+        accessible accessibilityRole="adjustable" accessibilityLabel={ui(frontDeck ? `${frontDeck.title}, ${frontDeck.pageCount} slides` : 'No presentations yet')}
+        accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }, { name: 'activate', label: ui('Open') }, { name: 'longpress', label: ui('Choose icon') },
+          { name: 'add', label: ui('Add presentation') }, { name: 'delete', label: ui('Delete presentation') }]}
         onAccessibilityAction={e => {
           const a = e.nativeEvent.actionName;
           if (a === 'increment') settle(Math.round(home.p.value) + 1);
@@ -361,9 +347,9 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook }: { mode:
       <Animated.View pointerEvents={creditsOpen ? 'auto' : 'none'} accessibilityElementsHidden={!creditsOpen}
         importantForAccessibility={creditsOpen ? 'yes' : 'no-hide-descendants'} accessibilityViewIsModal={creditsOpen}
         style={[styles.creditsOverlay, creditsFade]}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Close credits" onPress={() => setCreditsOpen(false)} style={StyleSheet.absoluteFill} />
+        <Pressable accessibilityRole="button" accessibilityLabel={ui("Close credits")} onPress={() => setCreditsOpen(false)} style={StyleSheet.absoluteFill} />
         <View pointerEvents="none" style={styles.creditNames}>
-          {['박서연', '전인준', '최재원', '현주영'].map(name => <Txt key={name} style={[styles.creditName, { color: c.strong }]}>{name}</Txt>)}
+          {['박서연', '전인준', '최재원', '현주영'].map(name => <Txt verbatim key={name} style={[styles.creditName, { color: c.strong }]}>{name}</Txt>)}
         </View>
       </Animated.View>
     </View>
@@ -420,7 +406,7 @@ const Slot = memo(function Slot({ deck, j, n, home, floatPhase, floatEnabled, is
     <Animated.View pointerEvents="none" style={[styles.slot, outer]}>
       <Animated.View style={[styles.item, body]}>
         {showText && <Animated.View style={[styles.slotCopy,titleHandoff]}>
-          <Txt numberOfLines={2} style={[styles.title, mode === 'light' && { color: c.text }]}>{deck.title}</Txt>
+          <Txt verbatim numberOfLines={2} style={[styles.title, mode === 'light' && { color: c.text }]}>{deck.title}</Txt>
           <Txt style={styles.meta}>{(deck.pageCount || '—') + ' slides · ' + pad2(j + 1)}</Txt>
         </Animated.View>}
         <Animated.View renderToHardwareTextureAndroid style={[styles.icon, icon]}>
@@ -545,6 +531,7 @@ function HomeHints({ empty }: { empty: boolean }) {
 
 // ── Icon picker (SPEC §4.2) ──────────────────────────────────────────────────
 function IconPicker({ deckId, closing, onClose }: { deckId: string; closing: boolean; onClose: () => void }) {
+  const ui = useUiText();
   const { c } = useTheme();
   const { home } = useHomeShell();
   const deck = useStore(s => s.decks.find(d => d.id === deckId) ?? null);
@@ -579,11 +566,11 @@ function IconPicker({ deckId, closing, onClose }: { deckId: string; closing: boo
   return (
     <View style={[StyleSheet.absoluteFill, { zIndex: 30 }]}>
       <Animated.View style={[StyleSheet.absoluteFill, overlay]}>
-      <Pressable accessibilityLabel="Close icon picker" onPress={onClose} style={StyleSheet.absoluteFill} />
+      <Pressable accessibilityLabel={ui("Close icon picker")} onPress={onClose} style={StyleSheet.absoluteFill} />
       <PanView accessibilityViewIsModal style={[styles.sheet, sheet]} {...drag}>
         <Animated.View style={[{ paddingHorizontal: 40, alignItems: 'center' }, topFade]} pointerEvents="none">
           <Txt style={styles.pickTitle}>Choose an icon</Txt>
-          <Txt numberOfLines={1} style={styles.pickSub}>{deck.title}</Txt>
+          <Txt verbatim numberOfLines={1} style={styles.pickSub}>{deck.title}</Txt>
         </Animated.View>
         <Animated.View style={[styles.preview, topFade]} pointerEvents="none"><PresentationIcon icon={deck.icon} hue={deck.hue} size={104} /></Animated.View>
         <Animated.View style={[styles.swatches, middleFade]}>
@@ -591,7 +578,7 @@ function IconPicker({ deckId, closing, onClose }: { deckId: string; closing: boo
             const selected = name === deck.hue;
             const swatch = DECK_COLORS[name].swatch;
             const hue = name as HueName;
-            return <Pressable key={name} accessibilityRole="button" accessibilityLabel={`${name} colour`} accessibilityState={{ selected }}
+            return <Pressable key={name} accessibilityRole="button" accessibilityLabel={ui(`${name} colour`)} accessibilityState={{ selected }}
               onPress={() => setHue(deck.id, hue)} style={styles.swatchHit}>
               <View style={styles.swatchOuter}>
                 {selected && <View pointerEvents="none" style={[styles.swatchRing, { borderColor: HUES[deck.hue].accent }]} />}
@@ -604,7 +591,7 @@ function IconPicker({ deckId, closing, onClose }: { deckId: string; closing: boo
           {ICONS.map(([id, name]) => {
             const sel = id === deck.icon;
             return (
-              <Pressable key={id} accessibilityRole="button" accessibilityLabel={name + (sel ? ', current icon' : '')} accessibilityState={{ selected: sel }}
+              <Pressable key={id} accessibilityRole="button" accessibilityLabel={ui(name + (sel ? ', current icon' : ''))} accessibilityState={{ selected: sel }}
                 onPress={() => setIcon(deck.id, id as IconId)}
                 style={[styles.tile, { backgroundColor: sel ? HUES[deck.hue].glow : c.surface06, borderColor: sel ? DECK_COLORS[deck.hue as keyof typeof DECK_COLORS]?.swatch ?? c.accent : c.line }, sel && { borderWidth: 2 }]}>
                 <PresentationIcon icon={id} hue={deck.hue} size={34} />
@@ -621,6 +608,7 @@ function IconPicker({ deckId, closing, onClose }: { deckId: string; closing: boo
 }
 
 function TutorialOverlay({ page, onPage, onClose }: { page: number; onPage: (page: number | null) => void; onClose: () => void }) {
+  const ui = useUiText();
   const { c } = useTheme();
   const reducedMotion = useReducedMotion();
   const demo = useSharedValue(0);
@@ -676,8 +664,8 @@ function TutorialOverlay({ page, onPage, onClose }: { page: number; onPage: (pag
     <View style={styles.tutorialWords}><Txt style={styles.tutorialAction}>{title}</Txt><Txt style={styles.tutorialDetail}>{detail}</Txt></View>
     <View style={styles.tutorialDots}>{steps.map((_, i) => <View key={i} style={{ width: i === page ? 18 : 6, height: 6, borderRadius: 3, backgroundColor: i === page ? c.text : c.dotOff }} />)}</View>
     <View style={styles.tutorialButtons}>
-      <Pressable accessibilityRole="button" accessibilityLabel="Close tutorial" onPress={dismiss}><Txt style={styles.tutorialButtonText}>↓  Close</Txt></Pressable>
-      <Pressable accessibilityRole="button" accessibilityLabel={page === steps.length - 1 ? 'Finish tutorial' : 'Next tutorial page'} onPress={next}><Txt style={styles.tutorialButtonText}>Next  →</Txt></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel={ui("Close tutorial")} onPress={dismiss}><Txt style={styles.tutorialButtonText}>↓  Close</Txt></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel={ui(page === steps.length - 1 ? 'Finish tutorial' : 'Next tutorial page')} onPress={next}><Txt style={styles.tutorialButtonText}>Next  →</Txt></Pressable>
     </View>
     </Animated.View>
   </PanView>;
@@ -689,8 +677,6 @@ const styles = createThemedStyles({
   logo: { position: 'absolute', left: 0, right: 0, top: 57, height: 36, alignItems: 'center', justifyContent: 'center' },
   logoText: { fontFamily: F.display, fontSize: 26, lineHeight: 27, letterSpacing: -0.5, color: C.text },
   // OpenAI Codex header alignment: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-106
-  languageNotice: { position: 'absolute', left: 18, right: 18, top: 109, zIndex: 60, borderWidth: 1, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12 },
-  languageNoticeText: { fontFamily: F.medium, fontSize: 13.5, lineHeight: 19, textAlign: 'center' },
   creditsOverlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 50, alignItems: 'center', justifyContent: 'center' },
   creditNames: { alignItems: 'center', gap: 16 },
   creditName: { fontSize: 27, lineHeight: 40, fontWeight: '700', color: '#FFFFFF', textAlign: 'center' },

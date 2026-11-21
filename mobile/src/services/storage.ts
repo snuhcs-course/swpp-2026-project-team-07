@@ -1,6 +1,11 @@
 import { openDatabaseSync, type SQLiteDatabase } from "expo-sqlite";
 
 let database: SQLiteDatabase | undefined;
+const observers = new Set<(key: string) => void>();
+export function subscribeStored(listener: (key: string) => void) {
+  observers.add(listener);
+  return () => { observers.delete(listener); };
+}
 function db() {
   if (!database) {
     const opened = openDatabaseSync("outloud.db");
@@ -20,8 +25,12 @@ export function readStored<T>(key: string): T | null {
 }
 export function writeStored(key: string, value: unknown) {
   db().runSync("INSERT INTO records (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", key, JSON.stringify(value));
+  for (const observer of observers) observer(key);
 }
-export function removeStored(key: string) { db().runSync("DELETE FROM records WHERE key = ?", key); }
+export function removeStored(key: string) {
+  db().runSync("DELETE FROM records WHERE key = ?", key);
+  for (const observer of observers) observer(key);
+}
 export function listStored<T>(prefix: string): T[] {
   return db().getAllSync<{ value: string }>("SELECT value FROM records WHERE key LIKE ? ORDER BY key DESC", `${prefix}%`)
     .map(row => JSON.parse(row.value) as T);

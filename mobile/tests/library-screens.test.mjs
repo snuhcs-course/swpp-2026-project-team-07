@@ -166,21 +166,62 @@ test('icon picker fades from the top during a drag while its close hint stays fi
   assert.equal(textShown('Choose an icon'), false);
 });
 
-test('Home language button toggles and saves a preference without translating the app', async () => {
+test('Home switches every gesture label and TalkBack, keeps the selected deck, and restores its preference', async () => {
   writeStored('settings.languagePreference', 'en');
-  savePresentation(deck('Language deck', 1));
-  await mount(HomeScreen, { mode: 'home', uploadLook: null });
-  assert.equal(byLabel('Language preference: English').props.accessibilityState.checked, false);
-  await click('Language preference: English');
+  savePresentation(deck('First talk', 1));
+  savePresentation(deck('Open', 2)); // A deck title may also be the English for a button.
+  const { home, routes } = await mount(HomeScreen, { mode: 'home', uploadLook: null });
+  await action('increment');
+  assert.equal(home.p.value, 1);
+  const english = byLabel('App language: English');
+  assert.equal(english.props.accessibilityState.checked, false);
+  assert.equal(english.props.accessibilityHint, 'Switch to Korean.');
+  await click('App language: English');
   assert.equal(readStored('settings.languagePreference'), 'ko');
-  assert.equal(byLabel('Language preference: Korean').props.accessibilityState.checked, true);
-  assert.equal(textShown('OutLoud'), true);
-  assert.ok(renderer.root.findAllByType('text').some(node => node.children.join('').includes('screens remain in English')));
+  assert.equal(byLabel('앱 언어: 한국어').props.accessibilityHint, '영어로 전환합니다.');
+  assert.equal(byLabel('앱 언어: 한국어').props.accessibilityState.checked, true);
+  for (const label of ['돌리기', '열기', '아이콘', '추가', '삭제', 'Open']) assert.ok(textShown(label), label);
+  const card = byLabel('Open, 슬라이드 1장');
+  assert.equal(card.props.accessibilityActions.find(a => a.name === 'activate').label, '열기');
+  assert.equal(home.p.value, 1);
+  assert.deepEqual(routes, []);
   await act(async () => renderer.unmount()); renderer = undefined;
   await mount(HomeScreen, { mode: 'home', uploadLook: null });
-  assert.ok(byLabel('Language preference: Korean'));
-  await click('Language preference: Korean');
+  assert.ok(byLabel('앱 언어: 한국어'));
+  const toggle = byLabel('앱 언어: 한국어').props.onPress;
+  await act(async () => { toggle(); toggle(); });
+  assert.equal(readStored('settings.languagePreference'), 'ko');
+  await click('앱 언어: 한국어');
   assert.equal(readStored('settings.languagePreference'), 'en');
+  for (const label of ['Spin', 'Open', 'Icon', 'Add', 'Delete']) assert.ok(textShown(label), label);
+});
+
+test('Korean copy translates formatted feedback and controls while preserving the exact evidence or practice sentence', async () => {
+  const { koreanText } = await import('../src/design/koreanText.ts');
+  assert.equal(koreanText('Slide 3 of 6: Open'), '슬라이드 3 / 6: Open');
+  assert.equal(koreanText('Slide score 74 · Strong'), '슬라이드 점수 74 · ' + koreanText('Strong'));
+  assert.equal(koreanText('Try saying: “Open · Delete.”'), '이렇게 말해 보세요: “Open · Delete.”');
+  assert.equal(koreanText('Speech: “Open · Delete”'), '발언: “Open · Delete”');
+  assert.equal(koreanText('Slide description (edited; may differ from PDF text): Open'), '슬라이드 설명 (직접 수정, PDF 원문과 다를 수 있어요): Open');
+  assert.equal(koreanText('From slide 3'), '슬라이드 3에서');
+  assert.equal(koreanText('periwinkle colour'), '연한 남보라색');
+  assert.equal(koreanText('1000 ms'), '1000밀리초');
+  assert.equal(koreanText('toString'), 'toString');
+});
+
+test('Korean recording labels cover new slides, saved takes, the long press action, and interrupted recording', async () => {
+  const { koreanText } = await import('../src/design/koreanText.ts');
+  const hold = '. Hold 1.5 seconds to redo the whole presentation';
+  const prompt = '. 1.5초간 누르면 전체 발표를 다시 녹음해요';
+  assert.equal(koreanText('Redo slide 1' + hold), '슬라이드 1 다시 녹음' + prompt);
+  assert.equal(koreanText('Record slide 12' + hold), '슬라이드 12 녹음' + prompt);
+  assert.equal(koreanText('Record slide 2'), '슬라이드 2 녹음');
+  assert.equal(koreanText('Redo slide 12'), '슬라이드 12 다시 녹음');
+  assert.equal(koreanText('Starting in 3. Tap to cancel'), '3초 후 시작해요. 누르면 취소돼요');
+  assert.equal(koreanText('Stop recording'), '녹음 종료');
+  assert.equal(koreanText('Full run · target 10:00'), '전체 발표 · 목표 10:00');
+  assert.equal(koreanText('Recording interrupted 1 of 2 · tap to inspect'), '녹음이 중단됐어요 (1 / 2) · 눌러서 확인');
+  assert.equal(koreanText('Recording interrupted · tap to inspect'), '녹음이 중단됐어요 · 눌러서 확인');
 });
 
 async function waitFor(predicate) {

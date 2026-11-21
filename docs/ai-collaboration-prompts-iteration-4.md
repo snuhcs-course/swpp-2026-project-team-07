@@ -2,6 +2,8 @@
 
 This file preserves the historical nitoryu entries. Earlier shared entries are in the [Iteration 2 archive](ai-collaboration-prompts-iteration-2.md). The [published nitoryu log](https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/bdf3117dd4a41d55da06407b17ce05d27ae54aab/docs/ai-collaboration-prompts-iteration-4.md) preserves the original order. Record new entries in the [contributor’s iteration log](ai-collaboration/README.md#prompt-logs).
 
+Seoyeon’s bilingual nitoryu work is recorded in the [Iteration 4 contributor log](ai-collaboration/prompt-logs/seoyeon/iteration-4.md#bilingual-nitoryu-ui-and-galaxy-installation).
+
 ## Install current OutLoud on USB phone — November 19, 2026
 
 **Contributor:** unconfirmed · **Tool:** OpenAI Codex desktop and terminal · **Model:** GPT-6 (exact variant not recorded) · **Iteration:** 2.

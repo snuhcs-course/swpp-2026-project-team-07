@@ -1,4 +1,5 @@
 // OpenAI Codex Review and Full review: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-122
+import { useUiText } from './language';
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedProps, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -15,6 +16,7 @@ export function ScoreRing({ id, percent, value, label, labelColor, gradient, ani
   id: string; percent: number | null; value: string; label: string; labelColor: string;
   gradient: readonly [string, string]; animate?: boolean;
 }) {
+  const ui = useUiText();
   const { c } = useTheme();
   const reduced = useReducedMotion();
   const offset = useSharedValue(LENGTH * (1 - Math.max(0, Math.min(100, percent ?? 0)) / 100));
@@ -23,7 +25,7 @@ export function ScoreRing({ id, percent, value, label, labelColor, gradient, ani
     offset.set(animate && !reduced ? withTiming(next, { duration: 450, easing: EASE_SCREEN }) : next);
   }, [animate, offset, percent, reduced]);
   const arc = useAnimatedProps(() => ({ strokeDashoffset: offset.value }));
-  return <View style={styles.box} accessible accessibilityLabel={`${value}, ${label}`}>
+  return <View style={styles.box} accessible accessibilityLabel={ui(value) + ', ' + ui(label)}>
     <Svg width={120} height={120} viewBox="0 0 128 128" style={StyleSheet.absoluteFill}>
       <Defs><LinearGradient id={id} x1="0" y1="0" x2="0.35" y2="1">
         <Stop offset="0" stopColor={gradient[0]} /><Stop offset="1" stopColor={gradient[1]} />

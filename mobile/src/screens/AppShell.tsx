@@ -1,4 +1,5 @@
 import { IncrementalCaptureHost } from '../features/recording/IncrementalCaptureHost';
+import { SelectedPreparationHost } from '../features/localization/SelectedPreparationHost';
 // Scribe migration: OpenAI Codex, Iteration 2 (2026-10-16); see active collaboration log.
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
 // OpenAI Codex light-mode ambient: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-081
@@ -20,6 +21,7 @@ import { AppState, StyleSheet, View } from 'react-native';
 import { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { Enter, Frame } from '../design/frame';
+import { LanguageToggle } from '../design/LanguageToggle';
 import { useTheme } from '../design/theme';
 import { Dialog, GlowLayer } from '../design/ui';
 import { mod } from '../domain/format';
@@ -48,6 +50,7 @@ import { HomeContext, ShellContext, type Go, type HomeShared, type NavState } fr
 
 export function AppShell() {
   useTheme();
+  const [frontDeck, setFrontDeck] = useState<string | null>(null);
   const [layers, setLayers] = useState<NavState[]>([{ screen: 'home', nav: null, deckId: null, slide: 0, sel: 0, from: null, visit: 0 }]);
   const layersRef = useRef(layers);
   const visitRef = useRef(0);
@@ -128,9 +131,10 @@ export function AppShell() {
   return (
     <ShellContext.Provider value={ctx}>
       <HomeContext.Provider value={homeCtx}>
+      <SelectedPreparationHost deckId={s === 'home' ? frontDeck : s === 'upload' ? null : nav.deckId} />
       <Frame background={(s === 'home' || s === 'upload') ? <Ambient screen={s} deckId={nav.deckId} home={home} uploadHue={uploadLook?.hue ?? null} /> : null} landscape={s === 'rehearse' && fullscreenLandscape}>
         <Enter kind={null} style={homeVisible ? undefined : styles.hiddenPage}>
-          <HomeScreen mode={homeMode} uploadLook={uploadLook} />
+          <HomeScreen mode={homeMode} uploadLook={uploadLook} onFrontDeckChange={setFrontDeck} />
         </Enter>
         {renderedLayers.map(layer => {
           const active = layer.visit === nav.visit;
@@ -143,6 +147,7 @@ export function AppShell() {
             </ShellContext.Provider>
           </View>;
         })}
+        {s !== 'home' && <LanguageToggle featureScreen landscape={s === 'rehearse' && fullscreenLandscape} />}
         <Prompts />
       </Frame>
       <Workers />

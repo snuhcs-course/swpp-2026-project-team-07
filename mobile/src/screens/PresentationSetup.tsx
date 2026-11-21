@@ -3,6 +3,7 @@
 // OpenAI Codex dial-arc alignment: docs/ai-collaboration-prompts-iteration-2.md#align-presentation-time-dial-arc
 // OpenAI Codex confirm-green dial: docs/ai-collaboration-prompts-iteration-2.md#match-the-time-dial-to-the-confirm-button
 // Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-107
+import { useUiText } from '../design/language';
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Keyboard, Pressable, ScrollView, StyleSheet, TextInput, View, type KeyboardEvent } from 'react-native';
 import * as Haptics from 'expo-haptics';
@@ -13,7 +14,7 @@ import { C, F, FRAME_H } from '../design/tokens';
 import { createThemedStyles, useTheme } from '../design/theme';
 import { HintRow, RecordButton } from '../design/ui';
 import type { Presentation } from '../features/presentations/store';
-import { validateRequirementValues } from '../domain/presentationRequirements';
+import { AUDIENCES, validateRequirementValues } from '../domain/presentationRequirements';
 import { API_URL } from '../services/api';
 import { readStored } from '../services/storage';
 import { normalizeApi } from '../features/transcription/analysisStorage';
@@ -34,7 +35,6 @@ const DIAL_PAD = 8;
 const DIAL_CANVAS = DIAL_SIZE + 2 * DIAL_PAD;
 // Match the middle stop of the green confirm button on this shared setup screen.
 const DIAL_GREEN = '#22C98F';
-const AUDIENCES = ['Students', 'Teachers', 'Colleagues', 'Clients', 'General public', 'Not sure'] as const;
 
 /** How far round the dial (0–1, clockwise from 12 o'clock) the knob sits for a whole-minute value.
  * 1 minute is at the top and each minute is 1/30 of a turn. The filled arc uses the same value,
@@ -47,6 +47,7 @@ export function PresentationSetup({ deck, error, initialValues = { requiredDurat
   deck: Presentation; error: string; initialValues?: RequirementValues; onConfirm: (seconds: number | null, audience: string) => void; onBackPan: PanHandlers;
   onChange?: () => void; recovery?: ReactNode; disabled?: boolean; fixedHint?: boolean; onHintVisibilityChange?: (visible: boolean) => void;
 }) {
+  const ui = useUiText();
   const frame = useFrame();
   const { c } = useTheme();
   const [target, setTarget] = useState(initialValues.requiredDurationSeconds ?? 600);
@@ -93,20 +94,20 @@ export function PresentationSetup({ deck, error, initialValues = { requiredDurat
   };
   return <View style={StyleSheet.absoluteFill} accessibilityViewIsModal importantForAccessibility="yes">
     <PanView style={StyleSheet.absoluteFill} {...onBackPan}>
-      <ScrollView ref={scroll} accessibilityLabel="Presentation setup choices" style={[styles.viewport, { height: viewportHeight }]}
+      <ScrollView ref={scroll} accessibilityLabel={ui("Presentation setup choices")} style={[styles.viewport, { height: viewportHeight }]}
         contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="none" showsVerticalScrollIndicator>
       <View style={styles.headerBlock}>
       <View style={styles.heading} pointerEvents="none">
-        <Txt numberOfLines={1} style={styles.deckTitle}>{deck.title}</Txt>
+        <Txt verbatim numberOfLines={1} style={styles.deckTitle}>{deck.title}</Txt>
         <Txt style={styles.slideCount}>{deck.pageCount} slides</Txt>
       </View>
       <View style={styles.timeArea} pointerEvents="none">
         <Txt style={styles.time}>{required ? dialValue : '10'}</Txt>
         <Txt style={styles.minutes}>minutes</Txt>
       </View>
-      <PanView style={styles.sliderTouch} accessibilityRole="adjustable" accessibilityLabel="Time of entire presentation"
-        accessibilityValue={{ min: 1, max: 30, now: dialValue, text: `${dialValue} minutes` }}
-        accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }, { name: 'clear', label: 'Clear required presentation time' }]}
+      <PanView style={styles.sliderTouch} accessibilityRole="adjustable" accessibilityLabel={ui("Time of entire presentation")}
+        accessibilityValue={{ min: 1, max: 30, now: dialValue, text: ui(`${dialValue} minutes`) }}
+        accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }, { name: 'clear', label: ui('Clear required presentation time') }]}
         onAccessibilityAction={e => {
           if (e.nativeEvent.actionName === 'clear') { change(); setRequired(false); return; }
           change(); setRequired(true); setTarget(v => Math.max(MIN, Math.min(MAX, v + (e.nativeEvent.actionName === 'increment' ? 60 : -60))));
@@ -135,7 +136,7 @@ export function PresentationSetup({ deck, error, initialValues = { requiredDurat
         <View style={styles.chips}>{AUDIENCES.map(value => {
           const customAudience = !!audience && audience !== 'General audience' && !AUDIENCES.some(v => v === audience);
           const selected = value === 'Not sure' ? audience === 'General audience' || customAudience : audience === value;
-          return <Pressable key={value} accessibilityRole="button" accessibilityLabel={value==='Not sure'?'Not sure. Long press to edit a custom audience.':value}
+          return <Pressable key={value} accessibilityRole="button" accessibilityLabel={ui(value==='Not sure'?'Not sure. Long press to edit a custom audience.':value)}
             accessibilityState={{ selected }} onLongPress={value==='Not sure'?()=>{longPressed.current=true;setCustomDraft(customAudience?audience:'');setCustomOpen(true);}:undefined}
             onPress={() => {if(longPressed.current){longPressed.current=false;return;}change(); setAudience(selected ? '' : value === 'Not sure' ? 'General audience' : value); }} style={[styles.chip, {
               backgroundColor: selected ? c.text : c.raised,
@@ -154,11 +155,11 @@ export function PresentationSetup({ deck, error, initialValues = { requiredDurat
       </ScrollView>
       {keyboardTop === null && !customOpen && !fixedHint && <PresentationSetupHint />}
       {customOpen&&<View style={styles.customOverlay}>
-        <Pressable accessibilityLabel="Close custom audience editor" onPress={()=>{Keyboard.dismiss();setCustomOpen(false);}} style={[StyleSheet.absoluteFill,{backgroundColor:c.scrim}]} />
+        <Pressable accessibilityLabel={ui("Close custom audience editor")} onPress={()=>{Keyboard.dismiss();setCustomOpen(false);}} style={[StyleSheet.absoluteFill,{backgroundColor:c.scrim}]} />
         <View style={[styles.customPanel,{backgroundColor:c.dialog,borderColor:c.hair}]} accessibilityViewIsModal>
           <Txt style={[styles.customTitle,{color:c.text}]}>Custom audience</Txt>
-          <TextInput accessibilityLabel="Target audience" multiline maxLength={1000} value={customDraft} onChangeText={setCustomDraft}
-            style={[styles.input,{color:c.text,borderColor:c.border14}]} placeholder="Describe your audience" placeholderTextColor={c.secondary}/>
+          <TextInput accessibilityLabel={ui("Target audience")} multiline maxLength={1000} value={customDraft} onChangeText={setCustomDraft}
+            style={[styles.input,{color:c.text,borderColor:c.border14}]} placeholder={ui("Describe your audience")} placeholderTextColor={c.secondary}/>
           <View style={styles.customActions}>
             <Txt style={styles.counter}>{[...customDraft].length}/500</Txt>
             <Pressable accessibilityRole="button" onPress={()=>{Keyboard.dismiss();setCustomOpen(false);}}><Txt style={[styles.actionText,{color:c.secondary}]}>Cancel</Txt></Pressable>
@@ -211,6 +212,7 @@ export function PresentationRequirementsEditor({ deck, initialImport = false, on
   deck: Presentation; initialImport?: boolean; onSaved: () => void; onBackPan: PanHandlers; active?: boolean;
   fixedHint?: boolean; onHintVisibilityChange?: (visible: boolean) => void;
 }) {
+  const ui = useUiText();
   const requirementsVersion = useSyncExternalStore(subscribeRequirements, getRequirementsVersion);
   const { c } = useTheme();
   const [base, setBase] = useState(() => readRequirements(deck.id, API_URL));
@@ -246,7 +248,7 @@ export function PresentationRequirementsEditor({ deck, initialImport = false, on
     onChange={() => { touched.current = true; }} onConfirm={save} onBackPan={onBackPan} disabled={!!pending?.conflict || !active}
     fixedHint={fixedHint} onHintVisibilityChange={onHintVisibilityChange}
     recovery={pending?.conflict ? <>
-      <Pressable accessibilityRole="button" accessibilityLabel="Use server presentation choices" onPress={() => { acceptServerRequirements(deck.id, API_URL); onSaved(); }}><Txt style={[styles.recoveryText, { color: c.text }]}>Use server</Txt></Pressable>
-      <Pressable accessibilityRole="button" accessibilityLabel="Keep my presentation choices" onPress={() => { keepLocalRequirements(deck.id, API_URL); sync(); onSaved(); }}><Txt style={[styles.recoveryText, { color: c.text }]}>Keep mine</Txt></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel={ui("Use server presentation choices")} onPress={() => { acceptServerRequirements(deck.id, API_URL); onSaved(); }}><Txt style={[styles.recoveryText, { color: c.text }]}>Use server</Txt></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel={ui("Keep my presentation choices")} onPress={() => { keepLocalRequirements(deck.id, API_URL); sync(); onSaved(); }}><Txt style={[styles.recoveryText, { color: c.text }]}>Keep mine</Txt></Pressable>
     </> : undefined} />;
 }

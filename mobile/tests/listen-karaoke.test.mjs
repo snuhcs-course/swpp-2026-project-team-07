@@ -8,6 +8,7 @@ registerHooks({ resolve, load });
 const k = await import('../src/domain/karaoke.ts');
 const { listenTimeline } = await import('../src/domain/listenTimeline.ts');
 const { ListenBackKaraokeScreen } = await import('../src/screens/ListenBackKaraokeScreen.tsx');
+const { getAppLanguage, setAppLanguage } = await import('../src/design/language.ts');
 const { DARK_PALETTE, LIGHT_PALETTE } = await import('../src/design/tokens.ts');
 const { runtime } = await import('./helpers/ai-overview-screen-native.mjs');
 const React = await import('react');
@@ -99,6 +100,35 @@ const button = (r, label) => r.root.findAllByType('pressable').find(node => node
 const karaoke = r => r.root.findAll(node => node.type === 'text' && node.props.accessibilityHint === 'Tap a word to play from it')[0];
 const words = r => karaoke(r).findAll(node => node.type === 'text' && node !== karaoke(r));
 const word = (r, text) => words(r).find(node => node.props.children === text);
+
+test('switching the flag keeps an English slide title, spoken word and seek time while translating its controls', async () => {
+  setup();
+  runtime.model.deck.slides[0].title = 'Open';
+  runtime.model.lines[0] = line(0, { text: 'Open', words: [w('Open', 500, 800)] });
+  const original = getAppLanguage();
+  try {
+    setAppLanguage('en');
+    await render(async r => {
+      const englishLabel = karaoke(r).props.accessibilityLabel;
+      await act(async () => setAppLanguage('ko'));
+      assert.ok(r.root.findAllByType('text').some(node => node.props.children === '슬라이드 1 · Open' && node.props.verbatim));
+      const korean = r.root.findByProps({ accessibilityHint: '단어를 누르면 그 지점부터 재생해요', numberOfLines: 4 });
+      assert.equal(korean.props.accessibilityLabel, 'Open');
+      const spoken = korean.findByProps({ suppressHighlighting: true });
+      assert.equal(spoken.props.children, 'Open');
+      assert.equal(spoken.props.verbatim, true);
+      assert.equal(runtime.plays.length, 0);
+      await act(async () => spoken.props.onPress());
+      assert.equal(Math.round(runtime.plays.at(-1).elapsedMs), 380);
+      await act(async () => setAppLanguage('en'));
+      assert.equal(karaoke(r).props.accessibilityLabel, englishLabel);
+      assert.equal(runtime.plays.length, 1);
+    });
+  } finally {
+    setAppLanguage(original);
+  }
+});
+
 async function at(r, milliseconds) {
   runtime.players[0].elapsedMs = milliseconds;
   await act(async () => r.update(React.createElement(ListenBackKaraokeScreen)));

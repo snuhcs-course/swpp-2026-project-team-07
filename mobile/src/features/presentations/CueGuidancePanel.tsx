@@ -1,4 +1,5 @@
 // OpenAI Codex reliability fixes: docs/ai-collaboration/prompt-logs/unattributed/iteration-2.md#record-138
+import { useUiText } from '../../design/language';
 import { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { Easing, runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -18,6 +19,7 @@ type Props = {
 };
 export function CueGuidancePanel({ state, slide, error, busy, onRecover,
   playbackNotice, requirementsNotice, onSheetOpenChange, connectionMessage }: Props) {
+  const ui = useUiText();
   const { c } = useTheme();
   const frame = useFrame();
   const panelTop = frame.compact ? 320 : 372;
@@ -46,17 +48,17 @@ export function CueGuidancePanel({ state, slide, error, busy, onRecover,
         const empty = !cue;
         const label = cue ? shortCueLabel(cue.text) : !state && connectionMessage ? connectionMessage : data.message || (state?.state === 'completed' ? 'Nothing extra here' : 'Cues are on the way');
         return <Pressable key={category} accessibilityRole="button"
-          accessibilityLabel={`Open ${labels[category]} cues`}
-          accessibilityHint={notice ? 'Includes cue and recording status.' : undefined}
+          accessibilityLabel={ui(`Open ${labels[category]} cues`)}
+          accessibilityHint={ui(notice ? 'Includes cue and recording status.' : undefined)}
           onPress={() => openSheet(category)} style={[styles.card, { borderColor: c.hair, backgroundColor: c.surface06, opacity: empty ? 0.8 : 1 }]}>
           <View style={styles.cardTitle}><Txt style={[styles.kind, { color: category === 'must_cover' ? c.accent : c.muted }]}>{labels[category]}</Txt><Txt style={{ color: c.muted, fontSize: 18 }}>›</Txt></View>
-          <Txt numberOfLines={2} style={styles.cardLabel}>{label}</Txt>
+          <Txt verbatim={!!cue} numberOfLines={2} style={styles.cardLabel}>{label}</Txt>
           <Txt numberOfLines={1} style={styles.more}>{notice ? 'Status · Tap for detail' : count > 1 ? `+${count - 1} more` : count === 1 ? 'Tap for detail' : ''}</Txt>
         </Pressable>;
       })}
     </View>
     {sheet && <View style={[styles.sheetLayer, { top: -panelTop, bottom: -(frame.height - panelTop - panelHeight) }]}>
-      <Pressable accessibilityLabel="Close cue sheet" onPress={closeSheet} style={[styles.scrim, { backgroundColor: c.scrim }]} />
+      <Pressable accessibilityLabel={ui("Close cue sheet")} onPress={closeSheet} style={[styles.scrim, { backgroundColor: c.scrim }]} />
       <PanView style={[styles.sheet, { backgroundColor: c.dialog, borderColor: c.line },sheetMotion]}
         onMoveShould={(_e, g) => g.dy > 8 && g.dy > Math.abs(g.dx)}
         onMove={(_e,g)=>sheetY.set(Math.max(0,Math.min(220,g.dy/frame.s)))}
@@ -67,7 +69,7 @@ export function CueGuidancePanel({ state, slide, error, busy, onRecover,
           <Txt numberOfLines={1} style={styles.context}>Slide {slide + 1}</Txt></View>
         <ScrollView style={styles.sheetScroll} contentContainerStyle={styles.sheetItems}>
           {!!notice && <Txt style={styles.status}>{notice}</Txt>}
-          {action && <Pressable accessibilityRole="button" accessibilityLabel={actionLabel!} disabled={busy}
+          {action && <Pressable accessibilityRole="button" accessibilityLabel={ui(actionLabel!)} disabled={busy}
             onPress={() => onRecover(action)} style={styles.recovery}>
             <Txt style={[styles.status, { color: c.accent }]}>{actionLabel}</Txt>
           </Pressable>}
@@ -85,9 +87,9 @@ function CueDetail({ cue }: { cue: SlideCue | Enrichment }) {
   const details = 'supporting_detail' in cue && typeof cue.supporting_detail === 'string' ? cue.supporting_detail : '';
   return <View style={styles.detail}>
     <View style={[styles.bullet, { backgroundColor: c.accent }]} />
-    <View style={styles.detailText}><Txt style={styles.detailTitle}>{cue.text}</Txt>
-      {!!details && <Txt style={styles.detailBody}>{details}</Txt>}
-      {'information_needed' in cue && !!cue.information_needed && <Txt style={styles.detailBody}>To clarify: {cue.information_needed}</Txt>}
+    <View style={styles.detailText}><Txt verbatim style={styles.detailTitle}>{cue.text}</Txt>
+      {!!details && <Txt verbatim style={styles.detailBody}>{details}</Txt>}
+      {'information_needed' in cue && !!cue.information_needed && <Txt style={styles.detailBody}>To clarify: <Txt verbatim style={styles.detailBody}>{cue.information_needed}</Txt></Txt>}
     </View>
   </View>;
 }

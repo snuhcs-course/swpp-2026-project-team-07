@@ -8,6 +8,7 @@
 // a local attempt that uploads and transcribes automatically (auto_process_api).
 // The parent remounts this component after every take so a released native recorder
 // can never affect a later take.
+import { useUiText } from '../../design/language';
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
 import { Alert, AppState } from 'react-native';
 import { AudioModule, RecordingPresets, useAudioRecorder } from 'expo-audio';
@@ -21,6 +22,7 @@ import { beginAttempt, checkpointAttempt, interruptAttempt, recoverPendingAttemp
 import { continuousRecorder } from '../../../modules/outloud-recorder';
 import { checkpointCapture, incrementalAvailable, registerCapture } from '../recording/incremental';
 import { hasAnalysisConsent, saveAnalysisConsent } from '../transcription/analysisStorage';
+import { enableInitialQa } from '../qa/automatic';
 
 export type FinishedTake = { attemptId: string; durationMs: number; events: SlideEvent[] };
 export type CaptureHandle = {
@@ -45,6 +47,7 @@ type Props = {
 };
 
 export const CaptureEngine = forwardRef<CaptureHandle, Props>(function CaptureEngine({ deck, audience = '', preferIncremental = true, onStarted, onMeter, onInterrupted, onMustStop }, ref) {
+  const ui = useUiText();
   const attemptId = useRef('');
   const incremental = useRef(false);
   const phase = useRef<'ready' | 'starting' | 'recording' | 'stopping' | 'done'>('ready');
@@ -131,10 +134,10 @@ export const CaptureEngine = forwardRef<CaptureHandle, Props>(function CaptureEn
         recoverPendingAttempts();
         let useIncremental = preferIncremental && continuousRecorder.available() && await incrementalAvailable(API_URL);
         if (useIncremental && !hasAnalysisConsent()) {
-          useIncremental = await new Promise<boolean>(resolve => Alert.alert('Feedback while you present',
-            'Completed slide audio will upload to the configured server during recording. ElevenLabs Scribe transcribes it; transcription may include vocabulary hints from your slides. The configured AI provider receives slide text and transcript for feedback. Audio stays on this phone for retry and playback.',
-            [{ text: 'After Stop instead', onPress: () => resolve(false) },
-             { text: 'Use live feedback', onPress: () => { saveAnalysisConsent(); resolve(true); } }], { cancelable: false }));
+          useIncremental = await new Promise<boolean>(resolve => Alert.alert(ui('Feedback while you present'),
+            ui('Completed slide audio will upload to the configured server during recording. ElevenLabs Scribe transcribes it; transcription may include vocabulary hints from your slides. The configured AI provider receives slide text and transcript for feedback. Audio stays on this phone for retry and playback.'),
+            [{ text: ui('After Stop instead'), onPress: () => resolve(false) },
+             { text: ui('Use live feedback'), onPress: () => { saveAnalysisConsent(); resolve(true); } }], { cancelable: false }));
         }
         if (useIncremental) {
           const permission = await AudioModule.requestRecordingPermissionsAsync();
@@ -184,6 +187,7 @@ export const CaptureEngine = forwardRef<CaptureHandle, Props>(function CaptureEn
           const events = manifest.slide_events.filter(event => event.at_ms < manifest.duration_ms);
           checkpointAttempt(attemptId.current, manifest.full_uri, manifest.duration_ms, events, true);
           if (manifest.error) throw new Error(manifest.error);
+          enableInitialQa(API_URL, attemptId.current);
           phase.current = 'done';
           return { attemptId: attemptId.current, durationMs: manifest.duration_ms, events };
         }
@@ -201,7 +205,7 @@ export const CaptureEngine = forwardRef<CaptureHandle, Props>(function CaptureEn
       }
     },
     isRecording: () => phase.current === 'recording',
-  }), [audience, preferIncremental, onStarted, checkpoint, deck.id, deck.pageCount, deck.title, deck.uri, fail, recorder, service]);
+  }), [audience, preferIncremental, onStarted, checkpoint, deck.id, deck.pageCount, deck.title, deck.uri, fail, recorder, service, ui]);
 
   return null;
 });

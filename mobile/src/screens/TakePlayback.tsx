@@ -1,7 +1,10 @@
+import { useDisplayTranslation } from '../features/localization/useDisplayTranslation';
+import { translatedFinding } from '../features/localization/generatedProse';
 // AI-generated/modified with OpenAI Codex, Iteration 2 (2026-10-14).
 // Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-046
 // OpenAI Codex follow-up: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-047
 // A saved take's validated media, synchronized slide visits and transcript in the redesign UI.
+import { useUiText } from '../design/language';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
@@ -35,6 +38,7 @@ export function TakePlayback({ id, deck, initialSlide, onClose, onSlideChange, o
   id: string; deck: Presentation; initialSlide: number; onClose: () => void;
   onSlideChange?: (slide: number) => void; onRecovered?: (attempt: SavedAttempt) => void;
 }) {
+  const ui = useUiText();
   useTheme();
   const model = useDeckModel(deck.id);
   const correctionPlayer = useSegmentPlayer();
@@ -161,12 +165,12 @@ export function TakePlayback({ id, deck, initialSlide, onClose, onSlideChange, o
       : stage === 'awaiting' && !worker?.prompt ? { label: 'Transcribe recording', press: worker?.analyze } : null;
   return (
     <View style={styles.root} accessibilityViewIsModal>
-      <Pressable accessibilityLabel="Close recording details" onPress={close} style={styles.scrim} />
+      <Pressable accessibilityLabel={ui("Close recording details")} onPress={close} style={styles.scrim} />
       <View style={styles.sheet}>
       {media.validators}
       <View style={styles.header}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Close recording details" onPress={close} style={styles.close}><Txt style={styles.closeText}>×</Txt></Pressable>
-        <View style={{ flex: 1, minWidth: 0 }}><Txt style={styles.eyebrow}>RECORDING DETAILS</Txt><Txt numberOfLines={1} style={styles.title}>{deck.title}</Txt></View>
+        <Pressable accessibilityRole="button" accessibilityLabel={ui("Close recording details")} onPress={close} style={styles.close}><Txt style={styles.closeText}>×</Txt></Pressable>
+        <View style={{ flex: 1, minWidth: 0 }}><Txt style={styles.eyebrow}>RECORDING DETAILS</Txt><Txt verbatim numberOfLines={1} style={styles.title}>{deck.title}</Txt></View>
       </View>
       <ScrollView style={styles.scrollBody} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
         <Txt style={styles.slideLabel}>{'Slide ' + (slide + 1) + ' of ' + deck.pageCount}</Txt>
@@ -176,7 +180,7 @@ export function TakePlayback({ id, deck, initialSlide, onClose, onSlideChange, o
           <View style={styles.progress}><View style={[styles.progressFill, { width: duration ? `${Math.min(100, 100 * position / duration)}%` : '0%' }]} /></View>
           {initialEvidence && <View style={styles.evidence}>
             <Txt style={styles.section}>Feedback evidence</Txt>
-            {!!initialEvidence.observation && <Txt style={styles.transcript}>{initialEvidence.observation}</Txt>}
+            {!!initialEvidence.observation && <Txt verbatim style={styles.transcript}>{initialEvidence.observation}</Txt>}
             {!!initialEvidence.speech_quote && <Txt style={styles.sub}>{'Speech: “' + initialEvidence.speech_quote + '”'}</Txt>}
             {!!initialEvidence.slide_quote && <Txt style={styles.sub}>{'Slide: ' + initialEvidence.slide_quote}</Txt>}
             <Txt style={styles.sub}>{'Source recording · ' + sourceTimestamp(initialEvidence.start_ms) + '–' + sourceTimestamp(initialEvidence.end_ms)}</Txt>
@@ -233,6 +237,12 @@ export function RecordingWideSuggestions({ id, review, coach, feedback }: {
   id: string; review: ReviewAttempt | null; coach: CoachState | undefined; feedback: ReturnType<typeof readFeedback>;
 }) {
   const [descriptionsOpen, setDescriptionsOpen] = useState(false);
+  const {value: displayedSuggestions} = useDisplayTranslation(true, scope => {
+    const result = feedback?.result;
+    if (!result) return [];
+    const field = scope('coaching', id, String(result.feedback_revision), review?.metrics?.detected_language);
+    return result.suggestions.slice(0,3).map((item,i)=>translatedFinding(item,field,'suggestions.'+i));
+  });
   return <View style={styles.card}>
           <Txt style={styles.section}>Recording-wide suggestions</Txt>
           <Txt style={styles.sub}>These suggestions cover the original recording. Selected-slide feedback is shown in Review.</Txt>
@@ -263,10 +273,10 @@ export function RecordingWideSuggestions({ id, review, coach, feedback }: {
           {!!coach?.notice && <Txt style={styles.notice}>{coach.notice}</Txt>}
           {!!feedback?.result && <>
             {feedback.result.stale && <Txt style={styles.notice}>These suggestions are out of date.</Txt>}
-            {feedback.result.suggestions.slice(0, 3).map((item, index) => <View key={index} style={styles.suggestion}>
+            {displayedSuggestions.map((item, index) => <View key={index} style={styles.suggestion}>
               <Txt style={styles.eyebrow}>{item.category + ' · slide ' + (item.slide_index + 1)}</Txt>
-              <Txt style={styles.transcript}>{item.observation}</Txt>
-              <Txt style={styles.sub}>{item.suggestion}</Txt>
+              <Txt verbatim style={styles.transcript}>{item.observation}</Txt>
+              <Txt verbatim style={styles.sub}>{item.suggestion}</Txt>
               <Txt style={styles.sub}>{'Slide description (' + (feedback.result?.description_origin === 'edited' ? 'edited' :
                 feedback.result?.description_origin === 'generated' ? 'AI generated' : 'origin unavailable') + '; may differ from PDF text): ' + item.slide_quote}</Txt>
               <Txt style={styles.sub}>{'Speech evidence: ' + item.speech_quote}</Txt>
@@ -276,6 +286,7 @@ export function RecordingWideSuggestions({ id, review, coach, feedback }: {
 }
 
 function SlideDescriptions({ coach }: { coach: CoachState | undefined }) {
+  const ui = useUiText();
   const [expanded, setExpanded] = useState<number | null>(null);
   const details = coach?.details;
   const saved = details?.descriptions;
@@ -289,13 +300,15 @@ function SlideDescriptions({ coach }: { coach: CoachState | undefined }) {
   const editor = (label: string, fact: DescriptionFact, kind: 'summary' | 'key_ideas' | 'visual_facts', index = 0) =>
     <View key={`${kind}:${index}`} style={styles.fact}>
       <Txt style={styles.sub}>{label} · 400 characters maximum</Txt>
-      <TextInput accessibilityLabel={`${label} text`} style={styles.input} multiline editable={!details?.busy} value={fact.text}
+      <TextInput accessibilityLabel={ui(`${label} text`)} style={styles.input} multiline editable={!details?.busy} value={fact.text}
         onChangeText={text => changeFact(kind, index, { ...fact, text })} />
       <Control label={`${label}: ${fact.uncertain ? 'uncertain' : 'certain'} — toggle`} text={fact.uncertain ? 'Mark certain' : 'Mark uncertain'}
         disabled={details?.busy} onPress={() => changeFact(kind, index, { ...fact, uncertain: !fact.uncertain, uncertainty: fact.uncertain ? '' : fact.uncertainty })} />
-      {fact.uncertain && <TextInput accessibilityLabel={`${label} uncertainty explanation`} style={styles.input} multiline
+      {fact.uncertain && <TextInput accessibilityLabel={ui(`${label} uncertainty explanation`)} style={styles.input} multiline
         editable={!details?.busy} value={fact.uncertainty} onChangeText={uncertainty => changeFact(kind, index, { ...fact, uncertainty })} />}
     </View>;
+  const factLine = (label: string, fact: NonNullable<typeof draftSlide>['summary']) => ui(label) + ' ' + fact.text
+    + (fact.uncertain ? ' · ' + ui('Uncertain:') + ' ' + fact.uncertainty : '');
   if (!details) return <Txt style={styles.sub}>Loading saved descriptions…</Txt>;
   return <View style={styles.fact}>
     <Txt style={styles.sub}>Read and edit saved descriptions without requesting AI. Saving an edit makes existing suggestions stale; regenerate explicitly to use it.</Txt>
@@ -306,9 +319,9 @@ function SlideDescriptions({ coach }: { coach: CoachState | undefined }) {
         text={`Slide ${slide.slide_index + 1} ${expanded === slide.slide_index ? '▴' : '▾'}`}
         onPress={() => setExpanded(expanded === slide.slide_index ? null : slide.slide_index)} />
       {expanded === slide.slide_index && <>
-        <Txt style={styles.sub}>Summary: {slide.summary.text}{slide.summary.uncertain ? ` · Uncertain: ${slide.summary.uncertainty}` : ''}</Txt>
-        {slide.key_ideas.map((fact, i) => <Txt key={`idea:${i}`} style={styles.sub}>Key idea: {fact.text}{fact.uncertain ? ` · Uncertain: ${fact.uncertainty}` : ''}</Txt>)}
-        {slide.visual_facts.map((fact, i) => <Txt key={`visual:${i}`} style={styles.sub}>Visual fact: {fact.text}{fact.uncertain ? ` · Uncertain: ${fact.uncertainty}` : ''}</Txt>)}
+        <Txt verbatim style={styles.sub}>{factLine('Summary:', slide.summary)}</Txt>
+        {slide.key_ideas.map((fact, i) => <Txt verbatim key={`idea:${i}`} style={styles.sub}>{factLine('Key idea:', fact)}</Txt>)}
+        {slide.visual_facts.map((fact, i) => <Txt verbatim key={`visual:${i}`} style={styles.sub}>{factLine('Visual fact:', fact)}</Txt>)}
         <Control label={`Edit slide ${slide.slide_index + 1} description`} text="Edit description"
           disabled={details.busy || !!details.prompt || !!draft} onPress={() => details.edit(slide.slide_index)} />
       </>}
@@ -362,12 +375,12 @@ export const TranscriptWords = memo(function TranscriptWords({ transcript, slide
     <Txt style={styles.sub}>This take has text without usable word timestamps, so it cannot be assigned to slides.</Txt>
     <Control label={showUnaligned ? 'Hide unsplit transcript' : 'Show unsplit transcript'} text={showUnaligned ? 'Hide unsplit transcript' : 'Show unsplit transcript'}
       onPress={() => setOpenUnalignedSlide(value => value === slide ? null : slide)} />
-    {showUnaligned && <Txt style={styles.transcript}>{transcript.text}</Txt>}
+    {showUnaligned && <Txt verbatim style={styles.transcript}>{transcript.text}</Txt>}
   </View>;
   if (!spans.length) return <Txt style={styles.sub}>{visits.length ? 'No words transcribed on this slide.' : 'Slide timing is unavailable for this take.'}</Txt>;
   return <Txt style={styles.transcript}>{spans.map(span => {
     const word = span.wordIndex === null ? null : transcript.words[span.wordIndex];
-    return <Txt key={span.index} onPress={word && canSeek && seekableWord(word, duration) ? () => onSeek(word.start_ms) : undefined}
+    return <Txt verbatim key={span.index} onPress={word && canSeek && seekableWord(word, duration) ? () => onSeek(word.start_ms) : undefined}
       style={span.wordIndex === activeWord ? styles.activeWord : undefined}>{span.text}</Txt>;
   })}</Txt>;
 });
@@ -389,7 +402,8 @@ export function PdfTools({ id, saved, review }: { id: string; saved: SavedAttemp
 }
 
 function Control({ label, text, onPress, disabled, primary }: { label: string; text: string; onPress: () => void; disabled?: boolean; primary?: boolean }) {
-  return <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled} onPress={onPress}
+  const ui = useUiText();
+  return <Pressable accessibilityRole="button" accessibilityLabel={ui(label)} disabled={disabled} onPress={onPress}
     style={[styles.button, primary && styles.primary, disabled && { opacity: 0.4 }]}><Txt style={[styles.buttonText, primary && { color: '#17131A' }]}>{text}</Txt></Pressable>;
 }
 

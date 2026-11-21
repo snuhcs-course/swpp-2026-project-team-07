@@ -17,20 +17,21 @@ export type V3Improvement = { criterion: string; problem: string; action: string
   /** Prompt 3 coaching fields; empty for runs stored before them. */
   headline: string; explanation: string[]; steps: string[]; over_limit: string[] };
 export type V3MustCover = { point: string; status: 'covered' | 'partial' | 'missing'; evidence: V3Evidence[] };
+type FeedbackLanguage = 'en' | 'ko' | 'und';
 export type V3SlideStatus = 'pending' | 'scored' | 'insufficient_evidence' | 'not_applicable' | 'not_recorded' | 'insufficient_speech' | 'failed';
 export type V3SlideMeasurements = { seconds: number; target_seconds: number | null; words: number; filler_count: number;
   long_pauses: number; rate: { value: number; unit: string; band: 'slow' | 'comfortable' | 'fast' } | null };
-export type V3Slide = { slide_index: number; status: V3SlideStatus; reason: string | null; error: string | null; score: number | null; level: ScoreLevel | null; provisional?: boolean;
+export type V3Slide = { slide_index: number; status: V3SlideStatus; language?: FeedbackLanguage; reason: string | null; error: string | null; score: number | null; level: ScoreLevel | null; provisional?: boolean;
   criteria: V3Criterion[]; must_cover: V3MustCover[]; strength: { text: string; evidence: V3Evidence[] } | null;
   improvements: V3Improvement[]; measurements: V3SlideMeasurements | null };
 export type V3Priority = { title: string; action: string; why: string; slide_index: number | null;
   headline: string; explanation: string[]; steps: string[]; example: string; over_limit: string[] };
-export type V3Whole = { status: V3SlideStatus; error: string | null; score: number | null; criteria: V3Criterion[];
+export type V3Whole = { status: V3SlideStatus; language?: FeedbackLanguage; error: string | null; score: number | null; criteria: V3Criterion[];
   top_priorities: V3Priority[]; summary: string };
 export type V3Scores = { overall: number | null; overall_level: ScoreLevel | null; slide_average: number | null;
   whole: number | null; withheld: { reason: string; slides: number[] }[] };
 export type FeedbackRunStatus = 'absent' | 'queued' | 'running' | 'completed' | 'failed' | 'stale';
-export type FeedbackRun = { status: FeedbackRunStatus; enabled: boolean; outdated: boolean; runId: string | null;
+export type FeedbackRun = { status: FeedbackRunStatus; language?: FeedbackLanguage; enabled: boolean; outdated: boolean; runId: string | null;
   attemptId: string | null; contextId: string | null; scores: V3Scores | null; slides: V3Slide[]; whole: V3Whole | null;
   error: { code: string; message: string } | null; progress: { slidesTotal: number; slidesDone: number; wholeDone: boolean } };
 
@@ -41,7 +42,7 @@ type Json = Record<string, unknown>;
 const obj = (v: unknown): Json | null => v && typeof v === 'object' && !Array.isArray(v) ? v as Json : null;
 const arr = (v: unknown): unknown[] => Array.isArray(v) ? v : [];
 const str = (v: unknown): string => typeof v === 'string' ? v : '';
-const strs = (v: unknown): string[] => arr(v).flatMap(x => typeof x === 'string' && x.trim() ? [x.trim()] : []);
+const strs = (v: unknown): string[] => arr(v).filter((x): x is string => typeof x === 'string' && !!x.trim());
 const QUOTES = '"\'“”‘’„«»「」『』';
 /** Strip quotation marks wrapped around the whole text, however many layers (e.g. “"…"”). */
 export function unquote(text: string): string {
@@ -53,6 +54,9 @@ const int = (v: unknown): number | null => Number.isSafeInteger(v) ? v as number
 const num = (v: unknown): number | null => typeof v === 'number' && Number.isFinite(v) ? v : null;
 const level = (v: unknown): ScoreLevel | null => LEVELS.includes(v as ScoreLevel) ? v as ScoreLevel : null;
 const score = (v: unknown): number | null => { const n = int(v); return n !== null && n >= 0 && n <= 100 ? n : null; };
+function languageField(value: unknown): { language?: FeedbackLanguage } {
+  return value === 'en' || value === 'ko' || value === 'und' ? { language: value } : {};
+}
 
 function evidence(value: unknown): V3Evidence[] {
   return arr(value).flatMap((raw): V3Evidence[] => {
@@ -77,7 +81,7 @@ function slide(raw: unknown): V3Slide | null {
   if (!s || index === null || index < 0) return null;
   const m = obj(s.measurements), rate = obj(m?.rate);
   return {
-    slide_index: index, status: SLIDE_STATUSES.includes(s.status as V3SlideStatus) ? s.status as V3SlideStatus : 'failed',
+    ...languageField(s.language), slide_index: index, status: SLIDE_STATUSES.includes(s.status as V3SlideStatus) ? s.status as V3SlideStatus : 'failed',
     reason: str(s.reason) || null, provisional: s.provisional === true, error: str(s.error) || null, score: score(s.score), level: level(s.level), criteria: criteria(s.criteria),
     must_cover: arr(s.must_cover).flatMap(raw2 => { const c = obj(raw2);
       return c && ['covered', 'partial', 'missing'].includes(str(c.status))
@@ -100,13 +104,13 @@ export function parseFeedbackRun(value: unknown): FeedbackRun | null {
   if (!v || !RUN_STATUSES.includes(v.status as FeedbackRunStatus)) return null;
   const sc = obj(v.scores), wh = obj(v.whole), progress = obj(v.progress), error = obj(v.error);
   return {
-    status: v.status as FeedbackRunStatus, enabled: v.enabled === true, outdated: v.outdated === true,
+    ...languageField(v.language), status: v.status as FeedbackRunStatus, enabled: v.enabled === true, outdated: v.outdated === true,
     runId: str(v.run_id) || null, attemptId: str(v.attempt_id) || null, contextId: str(v.context_id) || null,
     scores: sc ? { overall: score(sc.overall), overall_level: level(sc.overall_level), slide_average: num(sc.slide_average),
       whole: score(sc.whole), withheld: arr(sc.withheld).flatMap(raw => { const w = obj(raw);
         return w && str(w.reason) ? [{ reason: str(w.reason), slides: arr(w.slides).filter(Number.isSafeInteger) as number[] }] : []; }) } : null,
     slides: arr(v.slides).map(slide).filter((s): s is V3Slide => !!s),
-    whole: wh ? { status: SLIDE_STATUSES.includes(wh.status as V3SlideStatus) ? wh.status as V3SlideStatus : 'failed',
+    whole: wh ? { ...languageField(wh.language), status: SLIDE_STATUSES.includes(wh.status as V3SlideStatus) ? wh.status as V3SlideStatus : 'failed',
       error: str(wh.error) || null, score: score(wh.score), criteria: criteria(wh.criteria), summary: str(wh.summary),
       top_priorities: arr(wh.top_priorities).flatMap(raw => { const p = obj(raw);
         return p && (str(p.action) || strs(p.steps).length) ? [{ title: str(p.title), action: str(p.action), why: str(p.why), slide_index: int(p.slide_index),
@@ -238,7 +242,7 @@ function coaching(c: { headline: string; explanation: string[]; steps: string[];
 const firstSpeech = (refs: V3Evidence[]) => refs.find((e): e is Extract<V3Evidence, { kind: 'speech' }> => e.kind === 'speech') ?? null;
 
 /** One slide's cards: improvements first (largest point gain first), then next-level advice not already covered. */
-export function slideCards(item: Pick<V3SlideDisplay, 'slide' | 'v3' | 'attemptId'>): V3Card[] {
+export function slideCards(item: Pick<V3SlideDisplay, 'slide' | 'v3' | 'attemptId'>, localizeLevel = (label: string) => label): V3Card[] {
   const v3 = item.v3;
   if (!v3) return [];
   const improvements = v3.improvements.map((i, n): V3Card => ({ key: `i${item.slide}:${n}`, slide: item.slide,
@@ -248,10 +252,10 @@ export function slideCards(item: Pick<V3SlideDisplay, 'slide' | 'v3' | 'attemptI
     .sort((a, b) => (b.gain ?? 0) - (a.gain ?? 0));
   const covered = new Set(improvements.map(c => c.criterion));
   const nextLevels = v3.criteria.filter(c => c.level && c.level !== 'advanced' && c.next_level && !covered.has(c.id))
-    .map((c, n): V3Card => ({ key: `n${item.slide}:${n}`, slide: item.slide, title: `${c.label}: ${levelLabel(c.level)}`,
+    .map((c, n): V3Card => ({ key: `n${item.slide}:${n}`, slide: item.slide, title: `${c.label}: ${localizeLevel(levelLabel(c.level))}`,
       action: c.next_level, example: '', why: c.reason, criterion: c.id, gain: c.maximum_points ? Math.round(c.maximum_points / 3 * 10) / 10 : null,
       evidence: firstSpeech(c.evidence), attemptId: item.attemptId,
-      headline: `${c.label}: ${levelLabel(c.level)}`, explanation: c.reason ? [c.reason] : [], steps: [c.next_level], overLimit: false }));
+      headline: `${c.label}: ${localizeLevel(levelLabel(c.level))}`, explanation: c.reason ? [c.reason] : [], steps: [c.next_level], overLimit: false }));
   return [...improvements, ...nextLevels];
 }
 

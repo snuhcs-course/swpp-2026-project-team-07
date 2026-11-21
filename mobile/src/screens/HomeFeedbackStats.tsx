@@ -1,5 +1,6 @@
 // OpenAI Codex reliability fixes: docs/ai-collaboration/prompt-logs/unattributed/iteration-2.md#record-138
 // Home's v2 score and three compact run statistics (UI spec S01).
+import { useUiText } from '../design/language';
 import { Pressable, View } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { Txt, useFrame } from '../design/frame';
@@ -16,6 +17,7 @@ import type { HomeShared } from './shared';
 
 // OpenAI Codex, 2026-11-19: neighboring decks crossfade with the moving carousel; only the front stats fetch.
 export function HomeFeedbackStats({ deckId, home, active, onOpenReview, index = 0, count = 1 }: { deckId: string | null; home: HomeShared; active: boolean; onOpenReview: () => void; index?: number; count?: number }) {
+  const ui = useUiText();
   const { c } = useTheme();
   const compact = useFrame().compact;
   const model = useDeckModel(deckId);
@@ -40,7 +42,7 @@ export function HomeFeedbackStats({ deckId, home, active, onOpenReview, index = 
   ];
   const composed = !!run && scores.overall.status === 'Combined recordings';
   return <Animated.View pointerEvents={active ? 'box-none' : 'none'} style={[styles.root, style]}>
-    {score !== null ? <Pressable accessibilityRole="button" accessibilityLabel={`Open full review, presentation score ${score} percent`}
+    {score !== null ? <Pressable accessibilityRole="button" accessibilityLabel={ui(`Open full review, presentation score ${score} percent`)}
       onPress={onOpenReview} style={styles.scoreTarget}><Txt style={[styles.score, compact && styles.compactScore, { color }]}>{score}<Txt style={[styles.unit, compact && styles.compactUnit, { color }]}>%</Txt></Txt></Pressable>
       : run ? <Txt style={[styles.score, compact && styles.compactScore, { color: c.muted, opacity: 0.45 }]}>—</Txt>
         : <Txt style={[styles.noRun, { color: c.muted }]}>No run yet</Txt>}

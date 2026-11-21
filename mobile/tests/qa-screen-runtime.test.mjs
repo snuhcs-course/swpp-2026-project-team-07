@@ -13,9 +13,9 @@ const {runtime,flattenStyle}=await import('./helpers/qa-screen-runtime-native.mj
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;
 // Asset identities only; this test never reads the phone or a user recording.
 globalThis.require=asset=>asset;
-const question=i=>({id:String(i).padStart(32,'a'),panelist:'Audience '+i,role:'Student',slide_index:i-1,topic:'Synthetic topic '+i,question:'Synthetic question '+i,follow_up:'Synthetic follow-up '+i});
+const question=i=>({id:String(i).padStart(32,'a'),panelist:'P'+i,role:'Student from the audience',slide_index:i-1,topic:'The evidence for proposal '+i,question:'How does proposal '+i+' work?',follow_up:'Which detail supports proposal '+i+'?'});
 function setup(questions=[1,2,3].map(question)){
- runtime.routes=[];runtime.mounts=0;runtime.unmounts=0;runtime.speeches=[];runtime.speechStops=0;runtime.playerStops=0;
+ runtime.routes=[];runtime.mounts=0;runtime.unmounts=0;runtime.speeches=[];runtime.speechStops=0;runtime.onSpeechStop=null;runtime.captureStarts=0;runtime.playerStops=0;runtime.plays=[];
  const cached={jobId:73001,runId:'runtime-run',audience:'Saved audience',questions,answers:{},createdAt:'2026-01-01T00:00:00Z'};
  saveQaV2(API_URL,'runtime-deck',cached.jobId,cached);
  globalThis.qaScreenModel={transcribed:true,transcripts:new Map(),stages:new Map(),deck:{id:'runtime-deck',hue:'blue',pages:[],slides:[]},state:{run:{id:'runtime-run',parts:[]}}};
@@ -118,34 +118,191 @@ test('Q&A horizontal gesture still changes questions with Reduce Motion',async()
  }finally{runtime.reducedMotion=false;if(r)await act(async()=>r.unmount());}
 });
 
-test('question Hear selects English or Korean from its own text and retains fallback for other scripts',async()=>{
- for(const [text,language]of [
-  ['How does the PDF support your conclusion?','en'],
-  ['이 결과를 어떻게 설명하나요?','ko'],
-  ['AI와 PDF의 차이는 무엇인가요?','ko'],
-  ['한글'.normalize('NFD'),'ko'],
-  ['123 — ?!',undefined],
-  ['結果を説明してください。',undefined],
- ]){
-  setup([{...question(1),question:text}]);let r;
-  try{
-   await act(async()=>{r=create(React.createElement(QAScreen));});
-   assert.ok(button(r,'Stop the question: '+text),'automatic speech exposes its Stop control');
-   assert.equal(runtime.speeches.length,1);assert.equal(runtime.speeches[0].text,text);
-   assert.equal(runtime.speeches[0].options.language,language,text);
-   const stops=runtime.speechStops;await act(async()=>button(r,'Stop the question: '+text).props.onPress());
-   assert.equal(runtime.speechStops,stops+1);assert.equal(runtime.speeches.length,1);
-   await act(async()=>button(r,'Hear the question: '+text).props.onPress());assert.equal(runtime.speeches.length,2);assert.equal(runtime.speeches.at(-1).options.language,language);
-  }finally{if(r)await act(async()=>r.unmount());}
- }
+test('translates a saved question on the active language switch, speaks that version and restores the exact English without generating',async()=>{
+ const {setAppLanguage}=await import('../src/design/language.ts');
+ const {LanguageToggle}=await import('../src/design/LanguageToggle.tsx');
+ const english='How does the PDF support your conclusion?', korean='PDF가 결론을 어떻게 뒷받침하나요?';
+ const second={...question(2),question:english,follow_up:'Which detail supports this claim?'};
+ const saved=setup([question(1),second,question(3)]), requests=[], old=globalThis.fetch;
+ let resolveRequest,r;
+ globalThis.fetch=(url,init)=>{requests.push([String(url),init]);return new Promise(done=>{resolveRequest=done;});};
+ try{
+  setAppLanguage('en');
+  await act(async()=>{r=create(React.createElement(React.Fragment,null,React.createElement(QAScreen),React.createElement(LanguageToggle,{featureScreen:true})));});
+  const surface=r.root.findByType(Surface);
+  await act(async()=>button(r,'Next').props.onPress());
+  assertPageVisible(r,2);
+  assert.deepEqual(runtime.speeches.map(s=>[s.text,s.options.language]),[[question(1).question,'en'],[english,'en']]);
+  await act(async()=>button(r,'App language: English').props.onPress());
+  assert.equal(requests.length,1);
+  const [url,init]=requests[0];assert.ok(url.endsWith('/localization/'));
+  assert.equal(init.method,'POST');
+  const body=JSON.parse(init.body);assert.equal(body.resource_id,String(saved.jobId));
+  assert.equal(body.kind,'questions');assert.equal(body.language,'ko');
+  assert.ok(Object.keys(body.fields).every(k=>k.startsWith('questions.1.')),'only the selected second question is translated');
+  assert.equal(runtime.speeches.length,2,'loading text is never spoken');
+  await act(async()=>button(r,'앱 언어: 한국어').props.onPress());
+  assertPageVisible(r,2);assert.equal(runtime.speeches.at(-1).text,english);
+  await act(async()=>button(r,'App language: English').props.onPress());
+  assert.equal(requests.length,1,'rapid switches share the pending question translation');
+  const translations=Object.fromEntries(Object.keys(body.fields).map(k=>[k,k.endsWith('.question')?korean:'후속 질문']));
+  await act(async()=>{resolveRequest(Response.json({id:'1'.repeat(64),language:'ko',state:'completed',translations}));});
+  assert.equal(runtime.speeches.at(-1).text,korean);assert.equal(runtime.speeches.at(-1).options.language,'ko');
+  await act(async()=>button(r,'앱 언어: 한국어').props.onPress());
+  assert.equal(r.root.findByType(Surface),surface);
+  assert.equal(runtime.speeches.at(-1).text,english);
+  assertPageVisible(r,2);
+  assert.deepEqual(readQaV2(API_URL,'runtime-deck',saved.jobId).questions,saved.questions);
+  await act(async()=>button(r,'App language: English').props.onPress());
+  assert.equal(runtime.speeches.at(-1).text,korean);assert.equal(requests.length,1);
+ }finally{if(r)await act(async()=>r.unmount());setAppLanguage('en');globalThis.fetch=old;}
 });
 
-test('follow-up Hear selects its language independently from the main question',async()=>{
+test('switching languages keeps the compact team panel, initials and original question coordinates',async()=>{
+ const {setAppLanguage}=await import('../src/design/language.ts');
+ const questions=['City resident','Robin','P3'].map((panelist,i)=>({...question(i+1),panelist}));
+ const saved=setup(questions),names=[...audienceNames(questions,saved.jobId).values()];
+ const old=globalThis.fetch,calls=[];let r;
+ globalThis.fetch=async(url,init)=>{
+  assert.ok(url.endsWith('/localization/'));const body=JSON.parse(init.body);calls.push(body);
+  const translations=Object.fromEntries(Object.keys(body.fields).map(k=>[k,k.endsWith('.question')?'제안 1은 어떻게 작동하나요?':'제안 1을 뒷받침하는 점은 무엇인가요?']));
+  return Response.json({id:'3'.repeat(64),language:'ko',state:'completed',translations});
+ };
+ try{
+  setAppLanguage('en');await act(async()=>{r=create(React.createElement(QAScreen));});
+  const first=button(r,'Stop the question: '+questions[0].question);assert.ok(first);
+  await act(async()=>setAppLanguage('ko'));
+  assert.deepEqual([runtime.speeches.at(-1).text,runtime.speeches.at(-1).options.language],['제안 1은 어떻게 작동하나요?','ko']);
+  const text=JSON.stringify(r.toJSON());
+  for(const name of names){assert.ok(text.includes(name));assert.ok(text.includes(JSON.stringify(name.slice(0,2))));}
+  assert.ok(!text.includes('City resident'));
+  assert.equal(calls.length,1);
+  assert.deepEqual(Object.keys(calls[0].fields).sort(),['questions.0.follow_up','questions.0.question']);
+  assert.deepEqual(readQaV2(API_URL,'runtime-deck',saved.jobId).questions,questions);
+ }finally{if(r)await act(async()=>r.unmount());setAppLanguage('en');globalThis.fetch=old;}
+});
+
+test('a Korean first view caches the exact original short question for the first English switch offline',async()=>{
+ const {setAppLanguage}=await import('../src/design/language.ts');
+ const {LanguageToggle}=await import('../src/design/LanguageToggle.tsx');
+ const {createTranslationCache}=await import('../src/features/localization/translationCache.ts');
+ const {readStored,writeStored}=await import('../src/services/storage.ts');
+ const original={...question(1),question:'Carbon cycle?'};
+ const saved=setup([original]);const old=globalThis.fetch,calls=[];let r;
+ globalThis.fetch=async(url,init)=>{
+  const req=JSON.parse(init.body);calls.push(req);
+  assert.ok(url.endsWith('/localization/'));assert.equal(req.language,'ko');
+  return Response.json({id:'6'.repeat(64),language:'ko',state:'completed',
+   translations:Object.fromEntries(Object.keys(req.fields).map(k=>[k,k.endsWith('.question')?'탄소 순환?': '탄소는 어떻게 순환하나요?'])),
+   source_languages:Object.fromEntries(Object.keys(req.fields).map(k=>[k,'en']))});
+ };
+ try{
+  setAppLanguage('ko');
+  await act(async()=>{r=create(React.createElement(React.Fragment,null,React.createElement(QAScreen),React.createElement(LanguageToggle,{featureScreen:true})));});
+  assert.match(JSON.stringify(r.toJSON()),/탄소 순환/);
+  let offlineCalls=0;globalThis.fetch=async()=>{offlineCalls++;throw Error('simulated offline phone');};
+  await act(async()=>button(r,'앱 언어: 한국어').props.onPress());
+  assert.match(JSON.stringify(r.toJSON()),/Carbon cycle/);assert.equal(runtime.speeches.at(-1).text,original.question);
+  assert.equal(offlineCalls,0);assert.equal(calls.length,1);
+  const restarted=createTranslationCache({api:API_URL,read:readStored,write:writeStored,fetch:globalThis.fetch});
+  assert.equal(restarted.get({kind:'questions',resource_id:String(saved.jobId),language:'en'},'questions.0.question',original.question),original.question);
+ }finally{if(r)await act(async()=>r.unmount());setAppLanguage('en');globalThis.fetch=old;}
+});
+
+test('language changes and Hear taps during countdown stay silent until native speech stops and capture starts',async t=>{
+ const {setAppLanguage}=await import('../src/design/language.ts');
+ const q={...question(1),question:'How do the groups differ in this sample?'}, korean='표본에서 두 집단은 어떻게 다른가요?';
+ setup([q]);const old=globalThis.fetch;let r,finishStop;
+ t.mock.timers.enable({apis:['Date','setInterval'],now:1000});
+ globalThis.fetch=async(_url,init)=>{const req=JSON.parse(init.body);return Response.json({id:'5'.repeat(64),language:'ko',state:'completed',translations:Object.fromEntries(Object.keys(req.fields).map(k=>[k,korean]))});};
+ try{
+  setAppLanguage('en');
+  await act(async()=>{r=create(React.createElement(QAScreen));});
+  assert.equal(runtime.speeches.length,1);
+  await act(async()=>button(r,'Answer the question').props.onPress());
+  await act(async()=>{setAppLanguage('ko');});
+  assert.equal(runtime.speeches.length,1,'newly translated questions are not spoken into the countdown');
+  const hear=r.root.findAllByType('pressable').find(n=>n.props.accessibilityLabel?.endsWith(korean));assert.ok(hear);assert.equal(hear.props.disabled,true);
+  await act(async()=>hear.props.onPress());assert.equal(runtime.speeches.length,1);
+  runtime.onSpeechStop=()=>new Promise(done=>{finishStop=done;});
+  await act(async()=>{t.mock.timers.tick(3000);});
+  assert.equal(typeof finishStop,'function');assert.equal(runtime.captureStarts,0,'the microphone waits for native TTS to stop');
+  await act(async()=>{finishStop();});
+  assert.equal(runtime.captureStarts,1);assert.equal(runtime.speeches.length,1);
+ }finally{runtime.onSpeechStop=null;if(r)await act(async()=>r.unmount());setAppLanguage('en');globalThis.fetch=old;t.mock.timers.reset();}
+});
+
+test('long translated questions scroll vertically and still permit horizontal question navigation',async()=>{
+ const {setAppLanguage}=await import('../src/design/language.ts');
+ const translated='이 결과를 발표의 결론과 연결하는 구체적인 근거를 설명해 주세요. '.repeat(10);
+ setup([{...question(1),question:'What additional findings support this result?'},question(2)]);
+ const old=globalThis.fetch;let r;
+ globalThis.fetch=async(url,init)=>{
+  assert.ok(url.endsWith('/localization/'));
+  const request=JSON.parse(init.body);
+  return Response.json({id:'7'.repeat(64),language:'ko',state:'completed',translations:Object.fromEntries(Object.keys(request.fields).map(key=>[key,key.endsWith('.question')?translated:'보충 설명']))});
+ };
+ try{
+  setAppLanguage('ko');
+  await act(async()=>{r=create(React.createElement(QAScreen));});
+  const scroll=()=>r.root.findByType('scroll');
+  const content=()=>scroll().findAllByType('view').find(n=>typeof n.props.onLayout==='function');
+  assert.ok(scroll().findAllByType('text').some(t=>String(t.props.children).includes(translated)&&!t.props.numberOfLines));
+  await act(async()=>content().props.onLayout({nativeEvent:{layout:{height:1100}}}));
+  await act(async()=>content().props.onLayout({nativeEvent:{layout:{height:800}}}));
+  assert.equal(scroll().props.scrollEnabled,true,'long translated chat scrolls when the compact text reaches its minimum scale');
+  const gesture=r.root.findByType(PanView).props;
+  const e={nativeEvent:{pageX:90,pageY:305}},swipe={dx:-90,dy:5};
+  await act(async()=>scroll().props.onScroll({nativeEvent:{contentOffset:{y:100}}}));
+  assert.equal(gesture.onMoveShouldCapture(e,{dx:0,dy:20}),false,'the scrolled text can be read without leaving the question');
+  assert.equal(gesture.onMoveShould(e,swipe),true);
+  await act(async()=>{gesture.onMove(e,swipe);gesture.onRelease(e,swipe);});
+  assert.deepEqual(runtime.routes,[]);
+  assert.ok(r.root.findAllByType('text').some(t=>String(t.props.children).startsWith('질문 2 / 2')));
+ }finally{if(r)await act(async()=>r.unmount());setAppLanguage('en');globalThis.fetch=old;}
+});
+
+test('an unprepared question is never displayed or spoken in the wrong language and becomes answerable on sync', async () => {
+ const {setAppLanguage}=await import('../src/design/language.ts');
+ const {displayTranslations}=await import('../src/features/localization/useDisplayTranslation.ts');
+ const saved=setup([{...question(1),question:'What explains the different outcomes?'}]);
+ const old=globalThis.fetch,requests=[];let r;
+ globalThis.fetch=async(url,init)=>{
+  requests.push([String(url),JSON.parse(init.body)]);
+  return Response.json({id:'8'.repeat(64),language:'ko',state:'failed',translations:{}});
+ };
+ try{
+  setAppLanguage('ko');
+  await act(async()=>{r=create(React.createElement(QAScreen));});
+  const tree=JSON.stringify(r.toJSON());
+  assert.doesNotMatch(tree,/What explains the different outcomes|번역 다시 시도/);
+  assert.match(tree,/한국어 질문 동기화 대기 중/);
+  const hear=button(r,'질문 듣기: 한국어 질문 동기화 대기 중');
+  assert.equal(hear.props.disabled,true);await act(async()=>hear.props.onPress());
+  const record=button(r,'질문 답변');assert.equal(record.props.disabled,true);
+  await act(async()=>record.props.onPress());
+  assert.equal(runtime.speeches.length,0);assert.equal(runtime.captureStarts,0);
+  assert.equal(requests.length,1);
+  const [url,request]=requests[0];assert.ok(url.endsWith('/localization/'));
+  assert.equal(request.resource_id,String(saved.jobId));assert.equal(request.retry,undefined);
+  const localized=Object.fromEntries(Object.entries(request.fields).map(([path,source])=>
+   [path,{source,en:source,ko:path.endsWith('.question')?'결과가 왜 달라졌나요?':'근거는 무엇인가요?'}]));
+  await act(async()=>displayTranslations.install(request,localized,'ko'));
+  assert.equal(runtime.speeches.at(-1).text,'결과가 왜 달라졌나요?');
+  assert.equal(runtime.speeches.at(-1).options.language,'ko');
+  assert.equal(!!button(r,'질문 답변').props.disabled,false);
+  assert.deepEqual(readQaV2(API_URL,'runtime-deck',saved.jobId).questions,saved.questions);
+ }finally{if(r)await act(async()=>r.unmount());setAppLanguage('en');globalThis.fetch=old;}
+});
+
+test('a Korean source question and English follow-up both speak in selected English while the saved answer stays bound',async()=>{
  const first={...question(1),question:'근거는 무엇인가요?',follow_up:'How would you test that conclusion?'};
- const cached=setup([first]);
+ const cached=setup([first]),old=globalThis.fetch,requests=[];
  const answer={audioUri:'file:///unused-synthetic-answer.m4a',durationMs:20000,status:'done',at:'2026-01-01T00:00:00Z',
-  result:{verdict:'answered',did:'Direct answer',evidence:'Relevant example',clarify:'One detail',transcript:{text:'',words:[]},duration_ms:20000}};
+  result:{verdict:'answered',did:'You answered directly',evidence:'The example was relevant',clarify:'Add one detail',transcript:{text:'',words:[]},duration_ms:20000}};
  saveQaV2(API_URL,'runtime-deck',cached.jobId,{...cached,answers:{'0-0':answer}});let r;
+ globalThis.fetch=async(url,init)=>{requests.push(String(url));const request=JSON.parse(init.body);
+  return Response.json({id:'2'.repeat(64),language:'en',state:'completed',translations:Object.fromEntries(Object.entries(request.fields).map(([k,v])=>[k,k.endsWith('.question')?'What is the evidence?':v]))});};
  try{
   await act(async()=>{r=create(React.createElement(QAScreen));});
   assert.equal(runtime.speeches.length,0,'an already answered question is not automatically replayed');
@@ -185,7 +342,47 @@ test('follow-up Hear selects its language independently from the main question',
   assert.equal(flattenStyle(r.root.findByType(Surface).parent.props.style).opacity,1);
   assert.ok(button(r,'Open follow-up page'),'the swipe returns to the answer result');
   assert.deepEqual(runtime.routes,[]);
- }finally{runtime.deferTimings=false;runtime.finishTimings();if(r)await act(async()=>r.unmount());}
+  assert.deepEqual(readQaV2(API_URL,'runtime-deck',cached.jobId).answers['0-0'],answer);
+  assert.ok(requests.every(url=>url.endsWith('/localization/')));
+ }finally{runtime.deferTimings=false;runtime.finishTimings();if(r)await act(async()=>r.unmount());globalThis.fetch=old;}
+});
+
+test('switching phone-only Q&A history translates its actual saved question and answer while playback keeps the original media',async()=>{
+ const {saveQa,readQa}=await import('../src/features/qa/store.ts');
+ const {setAppLanguage}=await import('../src/design/language.ts');
+ const qs=[{...question(19),panelist:'도시 주민',question:'AI와 PDF의 차이를 설명해 주세요.',follow_up:'시장 규모는 얼마인가요?'}];
+ const answer={audioUri:'file:///private-synthetic-saved-answer.wav',durationMs:15000,at:'2026-01-01T00:00:00Z',status:'done',
+  result:{verdict:'answered',did:'기능을 비교했어요.',evidence:'시장 자료를 제시했어요.',clarify:'시장 규모를 더 설명해 주세요.',transcript:{text:'원래 답변',words:[{text:'원래 답변',start_ms:110,end_ms:1200}]},duration_ms:15000}};
+ const saved={runId:'local-older-run',audience:'Audience',createdAt:'2025-06-01',questions:qs,answers:{'0-0':answer}};
+ setup();saveQa('runtime-deck',saved);
+ const old=globalThis.fetch,calls=[];let r;
+ globalThis.fetch=async(url,init)=>{const req=JSON.parse(init.body);calls.push([String(url),req]);
+  return Response.json({id:'3'.repeat(64),language:'en',state:'completed',source_languages:Object.fromEntries(Object.keys(req.fields).map(k=>[k,'ko'])),translations:Object.fromEntries(Object.entries(req.fields).map(([k,v])=>[k,k.endsWith('.panelist')?'City resident':k.endsWith('.question')?'What distinguishes AI from PDF?':k.endsWith('.clarify')?'Explain the size of the market.':k.endsWith('.did')?'You compared the features.':k.endsWith('.evidence')?'You cited the market figures.':k.endsWith('.follow_up')?'How large is the market?':v]))});};
+ try{
+  setAppLanguage('en');await act(async()=>{r=create(React.createElement(QAScreen));});
+  await act(async()=>button(r,'View saved Q&A').props.onPress());
+  assert.ok(calls.length);assert.ok(calls.every(([url,q])=>url.endsWith('/localization/')&&q.kind==='legacy_qa'&&q.resource_id===saved.runId));
+  assert.ok(button(r,'Open follow-up page'));
+  assert.match(JSON.stringify(r.toJSON()),/Explain the size of the market/);
+  await act(async()=>button(r,'Open answer transcript').props.onPress());
+  assert.match(JSON.stringify(r.toJSON()),/What distinguishes AI from PDF/);
+  assert.match(JSON.stringify(r.toJSON()),/원래 답변/);
+  assert.match(JSON.stringify(r.toJSON()),/You compared the features/);
+  assert.match(JSON.stringify(r.toJSON()),/You cited the market figures/);
+  await act(async()=>button(r,'Play your recorded answer').props.onPress());
+  let offlineCalls=0;globalThis.fetch=async()=>{offlineCalls++;throw Error('offline');};
+  await act(async()=>setAppLanguage('ko'));
+  assert.match(JSON.stringify(r.toJSON()),/AI와 PDF의 차이를 설명해 주세요/);
+  assert.match(JSON.stringify(r.toJSON()),/기능을 비교했어요/);
+  await act(async()=>button(r,'내 답변 녹음 재생').props.onPress());
+  await act(async()=>setAppLanguage('en'));
+  assert.match(JSON.stringify(r.toJSON()),/What distinguishes AI from PDF/);
+  assert.match(JSON.stringify(r.toJSON()),/You compared the features/);
+  const clip=['a0-0',{uri:answer.audioUri,startMs:0,endMs:answer.durationMs}];
+  assert.deepEqual(runtime.plays,[clip,clip]);assert.equal(offlineCalls,0);
+  assert.deepEqual(readQa('runtime-deck'),saved);
+  assert.ok(calls.every(([,q])=>!JSON.stringify(q).includes(answer.audioUri)&&!JSON.stringify(q).includes('원래 답변')));
+ }finally{if(r)await act(async()=>r.unmount());setAppLanguage('en');globalThis.fetch=old;}
 });
 
 test('Hear toggles off and question navigation, Back and unmount still stop speech',async()=>{

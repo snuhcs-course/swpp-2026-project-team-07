@@ -5,6 +5,7 @@
 // Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-043
 // OutLoud redesign: Upload and analysis (SPEC §4.3). The Home carousel stays
 // behind, blurred, with the new presentation's icon sharp in the gap.
+import { useUiText } from '../design/language';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View, type GestureResponderEvent, type PanResponderGestureState } from 'react-native';
 import Animated, { Easing, runOnJS, useAnimatedProps, useAnimatedReaction, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -30,6 +31,7 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const FILE_BOX = 40, FILE_GAP = 22;
 
 export function UploadScreen() {
+  const ui = useUiText();
   const { c } = useTheme();
   const { go, home, nav } = useShell();
   const frame = useFrame();
@@ -214,7 +216,7 @@ export function UploadScreen() {
       <PanView style={StyleSheet.absoluteFill} {...pan}>
           {!analyzing && <>
             <View style={styles.pickArea}>
-              <Pressable accessibilityRole="button" accessibilityLabel="Choose a PDF to upload" onPress={() => void pick()} style={styles.pickButton} />
+              <Pressable accessibilityRole="button" accessibilityLabel={ui("Choose a PDF to upload")} onPress={() => void pick()} style={styles.pickButton} />
             </View>
             <View style={styles.newHeader} pointerEvents="none"><Txt style={styles.newTitle}>New presentation</Txt><Txt style={styles.newLabel}>New</Txt></View>
             <View style={styles.text} pointerEvents="none">
@@ -234,7 +236,7 @@ export function UploadScreen() {
               </Svg>
             </Animated.View>
             <View style={[styles.fileWrap, { top: ringAt.top - FILE_GAP - FILE_BOX }]} pointerEvents="none">
-              <Txt numberOfLines={1} style={styles.file}>{info.file || 'Preparing your presentation'}</Txt>
+              <Txt verbatim numberOfLines={1} style={styles.file}>{info.file || ui('Preparing your presentation')}</Txt>
             </View>
             <View style={[styles.progress, { top: ringAt.bottom, bottom: crowded ? 40 : 0 }]} pointerEvents="box-none" accessibilityLiveRegion="polite">
               <View style={[styles.stages, crowded && styles.stagesCrowded]} pointerEvents="none">
@@ -248,8 +250,8 @@ export function UploadScreen() {
                 ))}
               </View>
               {profileFailed && <View style={styles.retryRow}>
-                <Pressable accessibilityRole="button" accessibilityLabel="Try slide profile analysis again" disabled={profiles.busy || !profileState?.retry_available} onPress={() => { if(profileState?.requires_confirmation)setProfileRetryAsk(profileState);else void profiles.recover(); }}><Txt style={[styles.retry,{color:c.accent,opacity:profiles.busy||!profileState?.retry_available?0.45:1}]}>{profiles.busy?'Retrying…':'Try again'}</Txt></Pressable>
-                <Pressable accessibilityRole="button" accessibilityLabel="Continue without slide cues" onPress={() => { setPhase('configure'); home.setup.set(withTiming(1,{duration:260})); }}><Txt style={[styles.retry,{color:c.secondary}]}>Continue</Txt></Pressable>
+                <Pressable accessibilityRole="button" accessibilityLabel={ui("Try slide profile analysis again")} disabled={profiles.busy || !profileState?.retry_available} onPress={() => { if(profileState?.requires_confirmation)setProfileRetryAsk(profileState);else void profiles.recover(); }}><Txt style={[styles.retry,{color:c.accent,opacity:profiles.busy||!profileState?.retry_available?0.45:1}]}>{profiles.busy?'Retrying…':'Try again'}</Txt></Pressable>
+                <Pressable accessibilityRole="button" accessibilityLabel={ui("Continue without slide cues")} onPress={() => { setPhase('configure'); home.setup.set(withTiming(1,{duration:260})); }}><Txt style={[styles.retry,{color:c.secondary}]}>Continue</Txt></Pressable>
               </View>}
               {info.imageOnlySlides && pr >= 1 && <Txt style={[styles.offline, crowded && styles.offlineCrowded]}>Some slides have no text — cues will be thinner.</Txt>}
               {info.textOffline && pr >= 0.66 && <Txt style={[styles.offline, crowded && styles.offlineCrowded]}>Slide text will be read when the server is reachable.</Txt>}

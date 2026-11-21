@@ -7,6 +7,7 @@ import { PanView } from '../design/PanView';
 import { EASE_SCREEN, F } from '../design/tokens';
 import { BACK_FADE_Y } from '../domain/gestures';
 import { useTheme } from '../design/theme';
+import { useUiText } from '../design/language';
 import { HintRow, PageSurface } from '../design/ui';
 import { fmt } from '../domain/format';
 import { audioOf } from '../features/rehearsal/analysis';
@@ -25,14 +26,14 @@ import { SWIPE_ENTRY_X, useHorizontalSwipeMotion } from './swipeMotion';
 // Supplied Claude-generated patch, integrated by OpenAI Codex for Iteration 2 (2026-11-20): two fixed regions (what is wrong + you said ·
 // try saying | do this). Text longer than its box ends in "…"; tapping a region opens the whole point full screen.
 export function FeedbackScreen({active=true}:{active?:boolean}) {
-  const {c}=useTheme(),{go,nav}=useShell(),frame=useFrame();
+  const {c}=useTheme(),{go,nav}=useShell(),frame=useFrame(),ui=useUiText();
   // OpenAI Codex, 2026-11-19: preserve horizontal point swipes and fade on downward return.
   // OpenAI Codex Q&A-matched feedback swipes: docs/ai-collaboration-prompts-iteration-2.md#match-feedback-swipes-to-qa
   const fadeY=useSharedValue(0);
   const swipe=useHorizontalSwipeMotion({slideOnly:true,active});
   const swipeFade=useAnimatedStyle(()=>({opacity:Math.max(0,1-fadeY.value/BACK_FADE_Y)}));
-  const model=useDeckModel(nav.deckId),runScores=useRunScores(model,active),v3=runScores.v3;
-  const feedback=useRunFeedbackStatus(model,active&&!v3),scores=runScores.v2;
+  const model=useDeckModel(nav.deckId),runScores=useRunScores(model,active,undefined,true),v3=runScores.v3;
+  const feedback=useRunFeedbackStatus(model,active&&!v3,v3?undefined:'all'),scores=runScores.v2;
   const player=useSegmentPlayer();
   const v3Cards=v3?runCards(v3.items,v3.overall):null;
   const points=useMemo<FeedbackPoint[]>(()=>v3Cards?v3Cards.map(card=>({kind:'v3' as const,card})):[
@@ -83,16 +84,20 @@ export function FeedbackScreen({active=true}:{active?:boolean}) {
     void player.playSegments(key,[{uri,startMs:finding.start_ms,endMs:finding.end_ms}]);
   };
   if(!model?.state.run)return null;
-  const slideLabel=(slide:number|null)=>slide===null?'Whole presentation':`Slide ${slide+1} · ${model.deck.slides[slide]?.title??`Slide ${slide+1}`}`;
+  const slideLabel=(slide:number|null)=>{
+    if(slide===null)return ui('Whole presentation');
+    const label=ui('Slide '+(slide+1));
+    return label+' · '+(model.deck.slides[slide]?.title??label);
+  };
   const view:PointView|null=!point?null:point.kind==='v3'?{
-    chip:`${v3?.outdated?'Outdated · ':''}${slideLabel(point.card.slide)}`,gain:point.card.gain,headline:point.card.headline||point.card.title,
+    chip:`${v3?.outdated?ui('Outdated')+' · ':''}${slideLabel(point.card.slide)}`,gain:point.card.gain,headline:point.card.headline||point.card.title,
     category:point.card.criterion,explanation:point.card.explanation,example:point.card.example,steps:point.card.steps,overLimit:point.card.overLimit,
     said:point.card.evidence?{text:point.card.evidence.text,startMs:point.card.evidence.start_ms,key:`feedback-v3:${point.card.key}`,play:()=>playCard(point.card)}:null,
   }:point.kind==='slide'?{
-    chip:slideLabel(point.slide),gain:null,headline:headline(point.finding),category:point.finding.category,explanation:[],example:'',steps:[point.finding.suggestion],overLimit:false,
+    chip:slideLabel(point.slide),gain:null,headline:ui(headline(point.finding)),category:point.finding.category,explanation:[],example:'',steps:[point.finding.suggestion],overLimit:false,
     said:point.finding.speech_quote?{text:point.finding.speech_quote,startMs:point.finding.start_ms,key:`feedback:${model.state.run.parts[point.slide]?.attemptId}:${point.finding.start_ms}`,play:()=>play(point.finding,point.slide)}:null,
   }:{
-    chip:'Whole presentation · Overall score',gain:null,headline:'One change to make',category:null,explanation:[],example:'',steps:[point.advice.text],overLimit:false,
+    chip:ui('Whole presentation · Overall score'),gain:null,headline:ui('One change to make'),category:null,explanation:[],example:'',steps:[point.advice.text],overLimit:false,
     said:scoreQuote(point.advice)?{text:scoreQuote(point.advice)!.quote,startMs:scoreQuote(point.advice)!.start_ms,key:`feedback-score:${currentIndex}`,play:()=>playEvidence(point.advice.evidence)}:null,
   };
   const count=points.length?`${currentIndex+1} of ${points.length}`:'No reviewed points';
@@ -123,10 +128,10 @@ export function FeedbackScreen({active=true}:{active?:boolean}) {
     <Animated.View style={[StyleSheet.absoluteFill,swipe.style]}>
     {view?<>
       {/* Region 1 · what is wrong, with what was said pinned to the bottom. Keyed by point so each text is measured afresh. */}
-      <Pressable key={`r1-${currentIndex}`} disabled={!open} onPress={open} accessibilityRole={open?'button':undefined} accessibilityHint={open?'Opens the whole point':undefined}
+      <Pressable key={`r1-${currentIndex}`} disabled={!open} onPress={open} accessibilityRole={open?'button':undefined} accessibilityHint={open?ui('Opens the whole point'):undefined}
         style={[styles.region1,frame.compact&&styles.region1Compact,{top:r.r1[0],height:r.r1[1]-r.r1[0],backgroundColor:c.surface06,borderColor:c.hair}]}>
         <View style={[styles.chipRow,frame.compact&&styles.chipRowCompact]}>
-          <View style={[styles.chip,frame.compact&&styles.chipCompact,{backgroundColor:c.surface08}]}><UIIcon name="i-slides" size={16}/><Txt numberOfLines={1} style={[styles.chipText,{color:c.text}]}>{view.chip}</Txt></View>
+          <View style={[styles.chip,frame.compact&&styles.chipCompact,{backgroundColor:c.surface08}]}><UIIcon name="i-slides" size={16}/><Txt verbatim numberOfLines={1} style={[styles.chipText,{color:c.text}]}>{view.chip}</Txt></View>
           <Txt style={[styles.count,{color:c.tertiary}]}>{count}</Txt>
         </View>
         <View style={styles.topCopy}>
@@ -137,7 +142,7 @@ export function FeedbackScreen({active=true}:{active?:boolean}) {
         </View>
         {view.said&&<View style={[styles.said,frame.compact&&styles.saidCompact,{backgroundColor:c.surface08}]}>
           <View style={[styles.saidHead,frame.compact&&styles.saidHeadCompact]}><Txt style={[styles.kicker,{color:c.tertiary}]}>YOU SAID</Txt>
-            <Pressable accessibilityRole="button" accessibilityLabel={`Play the cited audio at ${fmt(view.said.startMs/1000)}`} onPress={view.said.play} hitSlop={10} style={styles.play}>
+            <Pressable accessibilityRole="button" accessibilityLabel={ui(`Play the cited audio at ${fmt(view.said.startMs/1000)}`)} onPress={view.said.play} hitSlop={10} style={styles.play}>
               <Glyph name={playing(view.said.key)?'p-pause':'p-play'} size={14} color={c.accent}/><Txt style={[styles.playText,{color:c.accent}]}>{fmt(view.said.startMs/1000)}</Txt></Pressable></View>
           <Clamp text={`“${view.said.text}”`} lines={quoteLines} style={[styles.quote,{color:c.body}]} onCut={markCut('said')}
             onLines={lines=>setQuoteMeasure(prev=>prev.index===currentIndex&&prev.lines===lines?prev:{index:currentIndex,lines})}/>
@@ -145,7 +150,7 @@ export function FeedbackScreen({active=true}:{active?:boolean}) {
         <View style={[styles.categoryRow,frame.compact&&styles.categoryRowCompact]}><Txt style={[styles.categoryTag,{color:c.secondary,backgroundColor:c.surface08}]}>{categoryLabel(view.category)}</Txt></View>
       </Pressable>
       {/* Region 2 · try saying, a split line half-way down, then do this. */}
-      <Pressable key={`r2-${currentIndex}`} disabled={!open} onPress={open} accessibilityRole={open?'button':undefined} accessibilityHint={open?'Opens the whole point':undefined}
+      <Pressable key={`r2-${currentIndex}`} disabled={!open} onPress={open} accessibilityRole={open?'button':undefined} accessibilityHint={open?ui('Opens the whole point'):undefined}
         style={[styles.region2,{top:r.r2[0],height:r.r2[1]-r.r2[0],backgroundColor:c.accentSoft,borderColor:c.accent}]}>
         {!!view.example&&<View style={[styles.half,{top:14,height:(r.r2[1]-r.r2[0])/2-14}]}>
           <View style={styles.tryHead}><Txt style={[styles.kicker,{color:c.accent}]}>SAY:</Txt>
@@ -201,8 +206,8 @@ function Clamp({text,lines,style,onCut,onLines}:{text:string;lines:number;style:
     if(onLines&&lastLines.current!==shown){lastLines.current=shown;onLines(shown);}
   };
   return <View>
-    <Txt numberOfLines={lines} ellipsizeMode="tail" style={style}>{text}</Txt>
-    <Txt aria-hidden accessibilityElementsHidden importantForAccessibility="no-hide-descendants" pointerEvents="none"
+    <Txt verbatim numberOfLines={lines} ellipsizeMode="tail" style={style}>{text}</Txt>
+    <Txt verbatim aria-hidden accessibilityElementsHidden importantForAccessibility="no-hide-descendants" pointerEvents="none"
       style={[style,styles.measure]} onTextLayout={e=>report(e.nativeEvent.lines.length)}>{text}</Txt>
   </View>;
 }
@@ -212,31 +217,31 @@ function Bullet({dot,children}:{dot:string;children:ReactNode}){
 
 /** The whole point, nothing cut: opened by tapping a region whose text ends in "…". */
 function FeedbackDetail({view,count,playing,onClose}:{view:PointView;count:string;playing:(key:string)=>boolean;onClose:()=>void}){
-  const {c}=useTheme();
+  const {c}=useTheme(),ui=useUiText();
   const scrollY=useRef(0);
   return <View style={[StyleSheet.absoluteFill,styles.detail,{backgroundColor:c.bg}]} accessibilityViewIsModal>
     <PanView style={StyleSheet.absoluteFill} onMoveShould={(_e,g)=>scrollY.current<=0&&g.dy>12&&g.dy>Math.abs(g.dx)}
       onRelease={(_e,g)=>{if(g.dy>90)onClose();}}>
       <ScrollView style={StyleSheet.absoluteFill} contentContainerStyle={styles.detailBody} onScroll={e=>{scrollY.current=e.nativeEvent.contentOffset.y;}} scrollEventThrottle={32}>
         <View style={styles.chipRow}>
-          <View style={[styles.chip,{backgroundColor:c.surface08}]}><UIIcon name="i-slides" size={16}/><Txt style={[styles.chipText,{color:c.text}]}>{view.chip}</Txt></View>
+          <View style={[styles.chip,{backgroundColor:c.surface08}]}><UIIcon name="i-slides" size={16}/><Txt verbatim style={[styles.chipText,{color:c.text}]}>{view.chip}</Txt></View>
           <Txt style={[styles.count,{color:c.tertiary}]}>{count}</Txt>
         </View>
-        <Txt style={[styles.headline,{color:c.text}]}>{view.headline}</Txt>
-        {view.explanation.length>0&&<View style={styles.bullets}>{view.explanation.map((t,i)=><Bullet key={i} dot={c.tertiary}><Txt style={[styles.why,{color:c.secondary}]}>{t}</Txt></Bullet>)}</View>}
+        <Txt verbatim style={[styles.headline,{color:c.text}]}>{view.headline}</Txt>
+        {view.explanation.length>0&&<View style={styles.bullets}>{view.explanation.map((t,i)=><Bullet key={i} dot={c.tertiary}><Txt verbatim style={[styles.why,{color:c.secondary}]}>{t}</Txt></Bullet>)}</View>}
         {view.said&&<View style={[styles.said,styles.detailBlock,{backgroundColor:c.surface08}]}>
           <View style={styles.saidHead}><Txt style={[styles.kicker,{color:c.tertiary}]}>YOU SAID</Txt>
-            <Pressable accessibilityRole="button" accessibilityLabel={`Play the cited audio at ${fmt(view.said.startMs/1000)}`} onPress={view.said.play} hitSlop={10} style={styles.play}>
+            <Pressable accessibilityRole="button" accessibilityLabel={ui(`Play the cited audio at ${fmt(view.said.startMs/1000)}`)} onPress={view.said.play} hitSlop={10} style={styles.play}>
               <Glyph name={playing(view.said.key)?'p-pause':'p-play'} size={14} color={c.accent}/><Txt style={[styles.playText,{color:c.accent}]}>{fmt(view.said.startMs/1000)}</Txt></Pressable></View>
-          <Txt style={[styles.quote,{color:c.body}]}>{`“${view.said.text}”`}</Txt>
+          <Txt verbatim style={[styles.quote,{color:c.body}]}>{`“${view.said.text}”`}</Txt>
         </View>}
         <View style={[styles.detailTry,styles.detailBlock,{backgroundColor:c.accentSoft,borderColor:c.accent}]}>
           {!!view.example&&<><View style={styles.tryHead}><Txt style={[styles.kicker,{color:c.accent}]}>SAY:</Txt>
             {!!view.gain&&<Txt style={[styles.gain,{color:c.accent,backgroundColor:c.accentSoft}]}>{`+${view.gain} pts`}</Txt>}</View>
-            <Txt style={[styles.example,{color:c.text}]}>{`“${unquote(view.example)}”`}</Txt>
+            <Txt verbatim style={[styles.example,{color:c.text}]}>{`“${unquote(view.example)}”`}</Txt>
             <View style={[styles.detailSplit,{backgroundColor:c.accent}]}/></>}
           <Txt style={[styles.kicker,{color:c.accent}]}>TRY:</Txt>
-          <View style={styles.bullets}>{view.steps.map((t,i)=><Bullet key={i} dot={c.accent}><Txt style={[styles.step,{color:c.text}]}>{t}</Txt></Bullet>)}</View>
+          <View style={styles.bullets}>{view.steps.map((t,i)=><Bullet key={i} dot={c.accent}><Txt verbatim style={[styles.step,{color:c.text}]}>{t}</Txt></Bullet>)}</View>
         </View>
       </ScrollView>
       <HintRow hints={[{icon:'h-dn',text:'Close',nudge:'down',onPress:onClose}]}/>

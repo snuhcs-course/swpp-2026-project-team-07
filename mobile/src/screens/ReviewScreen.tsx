@@ -12,6 +12,7 @@ import { Glyph } from '../design/icons';
 import { PanView } from '../design/PanView';
 import { EASE_SCREEN, F } from '../design/tokens';
 import { useTheme } from '../design/theme';
+import { useUiText } from '../design/language';
 import { HintRow, PageSurface } from '../design/ui';
 import { MiniSlide } from '../design/SlideCard';
 import { fmt, relativeDay } from '../domain/format';
@@ -43,11 +44,11 @@ export function ReviewScreen({active=true}:{active?:boolean}) {
  return <ReviewContent key={JSON.stringify([nav.deckId,nav.sel,model?.state.run?.parts[nav.sel]])} model={model} active={active} initialX={initialX}/>;
 }
 function ReviewContent({model,active,initialX}:{model:DeckModel|null;active:boolean;initialX:number}) {
- const {c}=useTheme(),{go,nav}=useShell(),frame=useFrame();
+ const {c}=useTheme(),{go,nav}=useShell(),frame=useFrame(),ui=useUiText();
  const n=model?.n??0;
  const s=Math.max(0,Math.min(Math.max(0,n-1),nav.sel));
- const runScores=useRunScores(model,active,s),v3=runScores.v3,v3Item=v3?.items[s]??null,v3Slide=v3Item?.v3??null;
- const feedback=useRunFeedbackStatus(model,active&&!v3),item=feedback.items[s];
+ const runScores=useRunScores(model,active,s,true),v3=runScores.v3,v3Item=v3?.items[s]??null,v3Slide=v3Item?.v3??null;
+ const feedback=useRunFeedbackStatus(model,active&&!v3,v3?undefined:s),item=feedback.items[s];
  const duration=model?.times[s]??0,allocation=model?.deck.targets[s]??0;
  const spokenText=slideText(model?.lines??[],s);
  const selectedAttempt=model?.state.run?.parts[s]?.attemptId;
@@ -104,9 +105,9 @@ function ReviewContent({model,active,initialX}:{model:DeckModel|null;active:bool
  type Issue={category:string;observation:string;suggestion:string;icon:'i-clock'|'i-flag';quote:{text:string;start_ms:number;end_ms:number}|null;gain:number|null;criterion:string|null;
   headline:string;explanation:string[];example:string;steps:string[]};
  const timingIssues:Issue[]=timingLabel==='Over time'?[{category:'timing',observation:`This slide ran ${fmt(t-target)} over its ${fmt(target)} allocation.`,suggestion:'Trim or simplify this slide to stay within its planned time.',icon:'i-clock',quote:null,gain:null,criterion:null,
-  headline:'Over time',explanation:[`This slide ran ${fmt(t-target)} over its ${fmt(target)} allocation.`],example:'',steps:['Trim or simplify this slide to stay within its planned time.']}]:[];
+  headline:ui('Over time'),explanation:[ui(`This slide ran ${fmt(t-target)} over its ${fmt(target)} allocation.`)],example:'',steps:[ui('Trim or simplify this slide to stay within its planned time.')]}]:[];
  const issueItems:Issue[]=[...timingIssues,...(v3&&v3Item
-  ?slideCards(v3Item).map(card=>({category:v3Slide?.criteria.find(cr=>cr.id===card.criterion)?.label??'feedback',observation:card.title,
+  ?slideCards(v3Item,ui).map(card=>({category:v3Slide?.criteria.find(cr=>cr.id===card.criterion)?.label??'feedback',observation:card.title,
     suggestion:[card.action,card.example?`Try saying: “${card.example}”`:''].filter(Boolean).join(' '),icon:'i-flag' as const,
     quote:card.evidence?{text:card.evidence.text,start_ms:card.evidence.start_ms,end_ms:card.evidence.end_ms}:null,gain:card.gain,criterion:card.criterion,
     headline:card.headline||card.title,explanation:card.explanation,example:card.example,steps:card.steps.length?card.steps:card.action?[card.action]:[]}))
@@ -158,7 +159,7 @@ function ReviewContent({model,active,initialX}:{model:DeckModel|null;active:bool
   <Animated.View style={[StyleSheet.absoluteFill,screen]}>
    {/* OpenAI Codex, 2026-11-21: keep slide identity and audio fixed while review pages move. */}
    <View style={styles.header}>
-    <Txt numberOfLines={1} style={[styles.title,{color:c.text}]}>{`Slide ${s+1} of ${n}`}</Txt><Txt numberOfLines={1} style={[styles.label,{color:c.secondary}]}>{deck.slides[s]?.title??runLabel(run,now,relativeDay)}</Txt>
+    <Txt numberOfLines={1} style={[styles.title,{color:c.text}]}>{`Slide ${s+1} of ${n}`}</Txt><Txt verbatim numberOfLines={1} style={[styles.label,{color:c.secondary}]}>{deck.slides[s]?.title ?? ui(runLabel(run,now,relativeDay))}</Txt>
    </View>
    {/* Slide row: thumbnail with the score, the three numbers, and the slide's play button (the only playback here). */}
    <View style={styles.slideRow}>
@@ -171,11 +172,11 @@ function ReviewContent({model,active,initialX}:{model:DeckModel|null;active:bool
      <Txt numberOfLines={1} style={[styles.fact,{color:c.secondary}]}>{`${fillerValue} filler${fillerValue==='1'?'':'s'}`}</Txt>
      <Txt numberOfLines={1} style={[styles.fact,{color:pointsSaid!==null&&pointsSaid<pointList.length?c.warn:c.secondary}]}>{pointList.length?`${pointsSaid===null?'—':pointsSaid} of ${pointList.length} points said`:'No slide points'}</Txt>
     </View>
-    <Pressable accessibilityRole="button" accessibilityLabel={slidePlaying?'Pause slide audio':`Play slide ${s+1} audio`} disabled={!slideAudioUri||!part} onPress={playSlide} style={[styles.play,{backgroundColor:c.surface,borderColor:c.hair}]}><Glyph name={slidePlaying?'p-pause':'p-play'} size={18} color={c.text}/></Pressable>
+    <Pressable accessibilityRole="button" accessibilityLabel={ui(slidePlaying?'Pause slide audio':`Play slide ${s+1} audio`)} disabled={!slideAudioUri||!part} onPress={playSlide} style={[styles.play,{backgroundColor:c.surface,borderColor:c.hair}]}><Glyph name={slidePlaying?'p-pause':'p-play'} size={18} color={c.text}/></Pressable>
    </View>
    <Animated.View style={[styles.box,{top:boxTop,height:boxHeight},swipe.style]}>
-    <FitPage key={`${s}:${page}`} height={boxHeight} onReady={revealPage}>
-     {issue?<ReviewCard issue={issue} meta={`${v3Item?.outdated?'OUTDATED · ':''}${issue.category==='timing'?'TIMING':issue.category.toUpperCase()}`} count={`${page+1} of ${issueItems.length}`}/>
+    <FitPage key={JSON.stringify([s,page,ui('Review'),issue?[issue.headline,issue.explanation,issue.steps]:[scoreStrength,mustCover.map(m=>m.point),v3Slide?.criteria.map(cr=>[cr.label,cr.reason])]])} height={boxHeight} onReady={revealPage}>
+     {issue?<ReviewCard issue={issue} meta={`${v3Item?.outdated?ui('OUTDATED')+' · ':''}${ui(issue.category).toUpperCase()}`} count={ui(`${page+1} of ${issueItems.length}`)}/>
       :<SlideSummary status={status} empty={issueItems.length?null:[emptyTitle,emptyBody]} notices={[v3?.notice??'',v3Slide?.reason?CODE_REASON_TEXT[v3Slide.reason]??v3Slide.reason:'',v3Item?.outdated?'These results are from before your latest transcript or settings changes.':''].filter(Boolean)}
         strength={scoreStrength} mustCover={mustCover} criteria={v3Slide?.criteria??[]}
         actions={needsRetry||needsUpdate||needsRequest?<>
@@ -189,7 +190,7 @@ function ReviewContent({model,active,initialX}:{model:DeckModel|null;active:bool
       </SlideSummary>}
     </FitPage>
    </Animated.View>
-   <View style={[styles.dots,{top:boxBottom+8}]}>{Array.from({length:pageCount},(_,i)=><Pressable key={i} accessibilityRole="button" accessibilityLabel={i<issueItems.length?`Show issue ${i+1}`:'Show grades and actions'} onPress={()=>changePage(i)} style={styles.dotHit}><View style={[styles.dot,{backgroundColor:i===page?c.strong:c.dotOff}]}/></Pressable>)}</View>
+   <View style={[styles.dots,{top:boxBottom+8}]}>{Array.from({length:pageCount},(_,i)=><Pressable key={i} accessibilityRole="button" accessibilityLabel={ui(i<issueItems.length?`Show issue ${i+1}`:'Show grades and actions')} onPress={()=>changePage(i)} style={styles.dotHit}><View style={[styles.dot,{backgroundColor:i===page?c.strong:c.dotOff}]}/></Pressable>)}</View>
   </Animated.View></PanView>
 </Enter>
  {/* OpenAI Codex, 2026-11-20: issue navigation moves content while the footer stays in place. */}
@@ -220,7 +221,7 @@ type ReviewIssue={headline:string;explanation:string[];example:string;steps:stri
 function Bullets({items,color,dot,size,line}:{items:string[];color:string;dot:string;size:number;line:number}){
  const z=useFit();
  return <View style={{gap:z(7)}}>{items.map((text,i)=><View key={i} style={[styles.bullet,{gap:z(10)}]}>
-  <View style={[styles.bulletDot,{width:z(5),height:z(5),borderRadius:z(3),backgroundColor:dot,marginTop:z(line/2-2.5)}]}/><Txt style={[styles.bulletText,{color,fontSize:z(size),lineHeight:z(line)}]}>{text}</Txt></View>)}</View>;
+  <View style={[styles.bulletDot,{width:z(5),height:z(5),borderRadius:z(3),backgroundColor:dot,marginTop:z(line/2-2.5)}]}/><Txt verbatim style={[styles.bulletText,{color,fontSize:z(size),lineHeight:z(line)}]}>{text}</Txt></View>)}</View>;
 }
 /** One review, every word shown: what is wrong, why, what you said, what to say and do instead. */
 function ReviewCard({issue,meta,count}:{issue:ReviewIssue;meta:string;count:string}){
@@ -229,12 +230,12 @@ function ReviewCard({issue,meta,count}:{issue:ReviewIssue;meta:string;count:stri
  return <View style={[styles.card,{padding:z(18),borderRadius:z(22),borderColor:c.hair,backgroundColor:c.surface06}]}>
   <View style={[styles.cardTop,{gap:z(8)}]}>{kicker(`${meta} · ${count.toUpperCase()}`,c.secondary)}
    {!!issue.gain&&<Txt style={[styles.gain,{color:c.accent,backgroundColor:c.accentSoft,fontSize:z(13),lineHeight:z(18),paddingHorizontal:z(9),paddingVertical:z(2)}]}>{`+${issue.gain} pts`}</Txt>}</View>
-  <Txt style={[styles.headline,{color:c.text,marginTop:z(8),fontSize:z(22),lineHeight:z(28)}]}>{issue.headline}</Txt>
+  <Txt verbatim style={[styles.headline,{color:c.text,marginTop:z(8),fontSize:z(22),lineHeight:z(28)}]}>{issue.headline}</Txt>
   {!!issue.explanation.length&&<View style={{marginTop:z(8)}}><Bullets items={issue.explanation} color={c.secondary} dot={c.tertiary} size={15} line={21}/></View>}
   {!!issue.quote&&<View style={[styles.said,{borderRadius:z(16),marginTop:z(14),padding:z(12),paddingHorizontal:z(14),backgroundColor:c.surface08}]}>{kicker('YOU SAID',c.tertiary)}
-   <Txt style={[styles.quote,{color:c.body,marginTop:z(5),fontSize:z(15.5),lineHeight:z(21)}]}>{`“${issue.quote.text}”`}</Txt></View>}
+   <Txt verbatim style={[styles.quote,{color:c.body,marginTop:z(5),fontSize:z(15.5),lineHeight:z(21)}]}>{`“${issue.quote.text}”`}</Txt></View>}
   {!!(issue.example||issue.steps.length)&&<View style={[styles.try,{borderRadius:z(16),marginTop:z(10),padding:z(14),backgroundColor:c.accentSoft,borderColor:c.accent}]}>
-   {!!issue.example&&<>{kicker('TRY SAYING',c.accent)}<Txt style={[styles.example,{color:c.text,marginTop:z(5),fontSize:z(16.5),lineHeight:z(22)}]}>{`“${issue.example}”`}</Txt>
+   {!!issue.example&&<>{kicker('TRY SAYING',c.accent)}<Txt verbatim style={[styles.example,{color:c.text,marginTop:z(5),fontSize:z(16.5),lineHeight:z(22)}]}>{`“${issue.example}”`}</Txt>
     {!!issue.steps.length&&<View style={[styles.split,{backgroundColor:c.accent,marginVertical:z(12)}]}/>}</>}
    {!!issue.steps.length&&<>{kicker('DO THIS',c.accent)}<View style={{marginTop:z(6)}}><Bullets items={issue.steps} color={c.text} dot={c.accent} size={15} line={20}/></View></>}
   </View>}
@@ -244,9 +245,9 @@ type Criterion={id:string;label:string;level:Parameters<typeof levelLabel>[0];po
 /** The last page leads with the three feedback sections; exceptional and legacy recovery follows them. */
 function SlideSummary({status,empty,notices,strength,mustCover,criteria,actions,children}:{status:string;empty:[string,string]|null;notices:string[];strength:string|null;
  mustCover:{point:string;status:'covered'|'partial'|'missing'}[];criteria:Criterion[];actions:ReactNode;children:ReactNode}){
- const {c}=useTheme(),z=useFit();
+ const {c}=useTheme(),z=useFit(),ui=useUiText();
  const kicker=(text:string,color:string)=><Txt style={[styles.kicker,{color,fontSize:z(12.5),lineHeight:z(16)}]}>{text}</Txt>;
- const body=(text:string,color:string)=><Txt style={[styles.bodyText,{color,fontSize:z(15),lineHeight:z(21)}]}>{text}</Txt>;
+ const body=(text:string,color:string)=><Txt verbatim style={[styles.bodyText,{color,fontSize:z(15),lineHeight:z(21)}]}>{text}</Txt>;
  const block={padding:z(20),borderRadius:z(22),borderWidth:1,borderColor:c.hair,backgroundColor:c.surface04,gap:z(10)};
  const hasFeedback=!!strength||mustCover.length>0||criteria.length>0;
  const hasRecovery=!!children||notices.length>0||!!actions;
@@ -258,11 +259,11 @@ function SlideSummary({status,empty,notices,strength,mustCover,criteria,actions,
    {mustCover.map((m,i)=><View key={i} style={[styles.must,{gap:z(8)}]}><Txt style={[styles.mustIcon,{width:z(18),color:m.status==='covered'?c.good:m.status==='partial'?c.gold:c.bad,fontSize:z(15),lineHeight:z(21)}]}>{m.status==='covered'?'✓':m.status==='partial'?'◐':'✗'}</Txt>
     <View style={styles.flex}>{body(m.point,c.text)}</View></View>)}</View>}
   {!!criteria.length&&<View style={block}>{kicker('HOW IT WAS GRADED',c.secondary)}
-   {criteria.map(cr=><View key={cr.id} style={{gap:z(3)}}><View style={[styles.criterionTop,{gap:z(8)}]}><Txt style={[styles.criterion,{color:c.text,fontSize:z(15.5),lineHeight:z(21)}]}>{cr.label}</Txt>
-    <Txt style={[styles.level,{color:scoreLevelColor(cr.level,c),fontSize:z(13.5),lineHeight:z(21)}]}>{cr.level?`${levelLabel(cr.level)} · ${Math.round((cr.points??0)*10)/10}/${cr.maximum_points}`:'Not assessed'}</Txt></View>
+   {criteria.map(cr=><View key={cr.id} style={{gap:z(3)}}><View style={[styles.criterionTop,{gap:z(8)}]}><Txt verbatim style={[styles.criterion,{color:c.text,fontSize:z(15.5),lineHeight:z(21)}]}>{cr.label}</Txt>
+    <Txt style={[styles.level,{color:scoreLevelColor(cr.level,c),fontSize:z(13.5),lineHeight:z(21)}]}>{cr.level?`${ui(levelLabel(cr.level))} · ${Math.round((cr.points??0)*10)/10}/${cr.maximum_points}`:'Not assessed'}</Txt></View>
     {!!cr.reason&&body(cr.reason,c.secondary)}</View>)}</View>}
   {(!hasFeedback||hasRecovery)&&<View style={block}>{kicker('FEEDBACK STATUS',c.secondary)}
-   {!hasFeedback&&empty?<><Txt style={[styles.headline,{color:c.text,fontSize:z(22),lineHeight:z(28)}]}>{empty[0]}</Txt>{!!empty[1]&&body(empty[1],c.secondary)}</>:null}
+   {!hasFeedback&&empty?<><Txt style={[styles.headline,{color:c.text,fontSize:z(22),lineHeight:z(28)}]}>{empty[0]}</Txt>{!!empty[1]&&body(ui(empty[1]),c.secondary)}</>:null}
    <Txt accessibilityLiveRegion="polite" style={[styles.status,{color:c.text,fontSize:z(15),lineHeight:z(21)}]}>{status}</Txt>
    {notices.map((text,i)=><Txt key={i} style={[styles.bodyText,{color:c.secondary,fontSize:z(14),lineHeight:z(20)}]}>{text}</Txt>)}
    {actions&&<View style={[styles.actions,{gap:z(10),marginTop:z(4)}]}>{actions}</View>}
@@ -273,13 +274,13 @@ function SlideSummary({status,empty,notices,strength,mustCover,criteria,actions,
 /** A legacy timing finding: it has no page of its own, so it is shown in full on the last page. */
 function SummaryFinding({observation,suggestion}:{observation:string;suggestion:string}){
  const {c}=useTheme(),z=useFit();
- return <View style={{gap:z(4)}}><Txt style={[styles.status,{color:c.text,fontSize:z(15),lineHeight:z(21)}]}>{observation}</Txt>
-  {!!suggestion&&<Txt style={[styles.bodyText,{color:c.secondary,fontSize:z(15),lineHeight:z(21)}]}>{suggestion}</Txt>}</View>;
+ return <View style={{gap:z(4)}}><Txt verbatim style={[styles.status,{color:c.text,fontSize:z(15),lineHeight:z(21)}]}>{observation}</Txt>
+  {!!suggestion&&<Txt verbatim style={[styles.bodyText,{color:c.secondary,fontSize:z(15),lineHeight:z(21)}]}>{suggestion}</Txt>}</View>;
 }
 function Action({label,onPress,disabled=false,primary=false}:{label:string;onPress:()=>void;disabled?:boolean;primary?:boolean}){
  // OpenAI Codex, 2026-11-21: actions shrink with the rest of a fitted last page.
- const {c}=useTheme(),z=useFit();
- return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{disabled}} disabled={disabled} onPress={onPress}
+ const {c}=useTheme(),z=useFit(),ui=useUiText();
+ return <Pressable accessibilityRole="button" accessibilityLabel={ui(label)} accessibilityState={{disabled}} disabled={disabled} onPress={onPress}
   style={[styles.action,{minHeight:z(44),paddingHorizontal:z(16),borderRadius:z(16)},primary?{backgroundColor:c.accent}:{borderWidth:1,borderColor:c.hair},{opacity:disabled?0.45:1}]}>
   <Txt style={[styles.actionText,{fontSize:z(15),color:primary?c.onAccent:c.text}]}>{label}</Txt></Pressable>;
 }

@@ -92,6 +92,49 @@ test('rotation removes portrait Cues and refresh from accessibility/interactions
  await navigate(r,'Next');assert.match(text(r),/2\/2/);await tap(button(r,'Return to portrait rehearsal'));assert.match(text(r),/Recap how the final result/);assert.match(text(r),/Connect the conclusion/);assert.ok(button(r,'Refresh with server'));await navigate(r,'Previous');assertFirst(r);assert.equal(requests.length,1);
 });
 
+test('fullscreen and portrait share translated cues without changing the slide or starting profile generation', async () => {
+  const { setAppLanguage } = await import('../src/design/language.ts');
+  const state = profiles();
+  setup({slide: 1, state});
+  setupNative.frame = {top: 0, left: 0, s: 1, width: 844, height: 390};
+  const r = await mount();
+  const screenType = RehearseScreen.type;
+  const surface = r.root.findByType(screenType);
+  await tap(round(r, 'Open full-screen landscape player'));
+  await tap(button(r, 'Open cue panel'));
+  const original = state.descriptions.slides[1].must_cover[0].text;
+  const korean = '마지막 결과가 결론을 어떻게 뒷받침하는지 정리하세요.';
+  assert.ok(text(r).includes(original));
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    const body = JSON.parse(options.body);
+    calls.push({url, method: options.method, body});
+    const translations = Object.fromEntries(Object.keys(body.fields).map(key =>
+      [key, key.includes('.must_cover.') ? korean : '결론을 활용할 수 있는 다른 사례를 제시하세요.']));
+    return Response.json({id: '4'.repeat(64), state: 'completed', language: 'ko', translations});
+  };
+  try {
+    await act(async () => setAppLanguage('ko'));
+    assert.equal(r.root.findByType(screenType), surface);
+    assert.ok(button(r, '발표 도움말 닫기'));
+    assert.ok(text(r).includes(korean));
+    await tap(button(r, '세로 발표 연습으로 돌아가기'));
+    assert.ok(text(r).includes(korean));
+    assert.ok(button(r, '다음 슬라이드').props.disabled);
+    assert.match(button(r, '서버와 동기화').props.accessibilityHint, /발표 도움말/);
+    await act(async () => setAppLanguage('en'));
+    assert.ok(button(r, 'Refresh with server'));
+    assert.ok(text(r).includes(original));
+    assert.equal(r.root.findByType(screenType), surface);
+    assert.equal(calls.length, 1);
+    assert.ok(calls[0].url.endsWith('/localization/'));
+    assert.equal(calls[0].method, 'POST');
+    assert.equal(calls[0].body.kind, 'profiles');
+    assert.equal(calls[0].body.resource_id, state.description_set_id);
+    assert.ok(Object.keys(calls[0].body.fields).every(key => key.startsWith('slides.1.')));
+  } finally { await act(async () => setAppLanguage('en')); }
+});
+
 test('covered full-screen rehearsal renders portrait preview beneath Review and restores landscape on return',async()=>{
  setup();setupNative.frame={top:0,left:0,s:1,width:844,height:390};const r=await mount();
  await tap(round(r,'Open full-screen landscape player'));

@@ -5,6 +5,7 @@ import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } fro
 import { Pressable, StyleSheet, View, type TextStyle } from 'react-native';
 import { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
+import { useUiText } from '../design/language';
 import { Enter, Txt, useFrame } from '../design/frame';
 import { Glyph } from '../design/icons';
 import { PanView } from '../design/PanView';
@@ -24,6 +25,7 @@ const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(ma
 type AudioPlan = ListenVisit & { playbackStartMs: number };
 
 export function ListenBackKaraokeScreen({ active = true }: { active?: boolean }) {
+  const ui = useUiText();
   const { c } = useTheme();
   const frame = useFrame();
   const { go, nav } = useShell();
@@ -224,20 +226,20 @@ export function ListenBackKaraokeScreen({ active = true }: { active?: boolean })
       </View>
       <View style={styles.chipRow} pointerEvents="none">
         <View style={[styles.slideChip, { backgroundColor: c.ink05, borderColor: c.line }]}>
-          <Txt numberOfLines={1} style={[styles.slideChipText, { color: c.text }]}>{`Slide ${activeSlide + 1} · ${model.deck.slides[activeSlide]?.title ?? `Slide ${activeSlide + 1}`}`}</Txt>
+          <Txt verbatim numberOfLines={1} style={[styles.slideChipText, { color: c.text }]}>{ui(`Slide ${activeSlide + 1}`) + ' · ' + (model.deck.slides[activeSlide]?.title ?? ui(`Slide ${activeSlide + 1}`))}</Txt>
         </View>
       </View>
       {lines.length ? <>
-        <Txt numberOfLines={1} ellipsizeMode="head" style={[styles.previous, { color: c.tertiary }]}>{previousText}</Txt>
+        <Txt verbatim numberOfLines={1} ellipsizeMode="head" style={[styles.previous, { color: c.tertiary }]}>{previousText}</Txt>
         <View style={styles.current}>
           {page ? <KaraokeText page={page} lit={lit} onWord={onWord} /> :
             <Txt style={[styles.currentText, { color: c.secondary }]}>{live ? '…' : 'Tap play to listen to your run.'}</Txt>}
         </View>
-        <Txt numberOfLines={2} style={[styles.next, { color: c.tertiary }]}>{nextText}</Txt>
+        <Txt verbatim numberOfLines={2} style={[styles.next, { color: c.tertiary }]}>{nextText}</Txt>
       </> : <View style={styles.noTranscript}><Txt style={[styles.noTranscriptText, { color: c.secondary }]}>{model.pending ? 'Transcript is still processing.' : 'No transcript for this run'}</Txt></View>}
       {!!(notice || player.error) && <Txt accessibilityRole="alert" style={[styles.notice, { color: c.secondary }]}>{notice || player.error}</Txt>}
-      <PanView style={styles.scrubberHit} accessibilityRole="adjustable" accessibilityLabel="Run audio position"
-        accessibilityValue={{ min: 0, max: total, now: position, text: `${fmt(position)} of ${fmt(total)}` }}
+      <PanView style={styles.scrubberHit} accessibilityRole="adjustable" accessibilityLabel={ui("Run audio position")}
+        accessibilityValue={{ min: 0, max: total, now: position, text: ui(`${fmt(position)} of ${fmt(total)}`) }}
         accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
         onAccessibilityAction={e => seek(clamp(position + (e.nativeEvent.actionName === 'increment' ? 5 : -5), 0, total), player.paused || !playing)}
         onStartShould={() => segments.length > 0}
@@ -257,12 +259,12 @@ export function ListenBackKaraokeScreen({ active = true }: { active?: boolean })
         <View style={styles.times}><Txt style={[styles.timeText, { color: c.secondary }]}>{fmt(position)}</Txt><Txt style={[styles.timeText, { color: c.secondary }]}>{fmt(total)}</Txt></View>
       </PanView>
       <View style={styles.controls}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Previous slide" onPress={() => jump(-1)} style={styles.skip}><Chevron d="M14.5 5.5 L8 12 L14.5 18.5" color={c.text} /></Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel={playing && !player.paused ? 'Pause whole run' : 'Play whole run'} onPress={toggle}
+        <Pressable accessibilityRole="button" accessibilityLabel={ui('Previous slide')} onPress={() => jump(-1)} style={styles.skip}><Chevron d="M14.5 5.5 L8 12 L14.5 18.5" color={c.text} /></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={ui(playing && !player.paused ? 'Pause whole run' : 'Play whole run')} onPress={toggle}
           style={[styles.play, { backgroundColor: c.accent, boxShadow: `0px 10px 24px ${c.accent}59` }]}>
           <Glyph name={playing && !player.paused ? 'p-pause' : 'p-play'} size={30} color={c.onAccent} />
         </Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel="Next slide" onPress={() => jump(1)} style={styles.skip}><Chevron d="M9.5 5.5 L16 12 L9.5 18.5" color={c.text} /></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={ui('Next slide')} onPress={() => jump(1)} style={styles.skip}><Chevron d="M9.5 5.5 L16 12 L9.5 18.5" color={c.text} /></Pressable>
       </View>
     </View>
   </PanView></Enter>
@@ -276,12 +278,13 @@ export function ListenBackKaraokeScreen({ active = true }: { active?: boolean })
  * Re-renders only when the page or the lit word changes, not on every 50 ms clock tick. */
 const KaraokeText = memo(function KaraokeText({ page, lit, onWord }: { page: KaraokePage; lit: number | null; onWord: (page: KaraokePage, index: number) => void }) {
   const { c } = useTheme();
-  return <Txt numberOfLines={4} adjustsFontSizeToFit minimumFontScale={0.8} accessibilityLabel={page.text} accessibilityHint="Tap a word to play from it"
+  const ui = useUiText();
+  return <Txt verbatim numberOfLines={4} adjustsFontSizeToFit minimumFontScale={0.8} accessibilityLabel={page.text} accessibilityHint={ui('Tap a word to play from it')}
     style={[styles.currentText, { color: c.text }]}>
     {page.tokens.map((token, i) => {
       // The trailing space sits outside the word's span so a filler's underline and tint stop at the word.
       const core = token.text.trimEnd(), space = token.text.slice(core.length);
-      return <Fragment key={i}><Txt suppressHighlighting onPress={() => onWord(page, i)}
+      return <Fragment key={i}><Txt verbatim suppressHighlighting onPress={() => onWord(page, i)}
         style={wordStyle(wordState(i, lit), token.filler, c)}>{core}</Txt>{space}</Fragment>;
     })}
   </Txt>;

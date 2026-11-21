@@ -4,6 +4,7 @@
 // Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-043
 // OpenAI Codex follow-up: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-047
 // OutLoud redesign: Compare takes (SPEC §4.5).
+import { useUiText } from '../design/language';
 import { useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -27,6 +28,7 @@ import { useBack, useShell } from './shared';
 import { useHorizontalSwipeMotion } from './swipeMotion';
 
 export function CompareScreen() {
+  const ui = useUiText();
   const { c: palette } = useTheme();
   const frame = useFrame();
   const { go, nav } = useShell();
@@ -114,7 +116,7 @@ export function CompareScreen() {
       <PageSurface hue={model.deck.hue} />
       <Animated.View style={[StyleSheet.absoluteFill,swipe.style]}>
       <View style={styles.header} pointerEvents="none">
-        <Txt numberOfLines={1} style={styles.title}>{view.title}</Txt>
+        <Txt verbatim={view.whole || (view.slides.length === 1 && !!model.deck.slides[view.first]?.title)} numberOfLines={1} style={styles.title}>{view.title}</Txt>
         <Txt style={styles.label}>Compare takes</Txt>
       </View>
       <View style={[styles.segment, { backgroundColor: palette.raised, borderColor: palette.line }]}>
@@ -132,7 +134,7 @@ export function CompareScreen() {
         <Metric label="Key points" value={currentPoints==null||!view.points.length?'—':`${currentPoints} of ${view.points.length}`} delta={currentPoints!=null&&otherPoints!=null?statDelta(currentPoints,otherPoints):'—'} />
         <Metric label="Pace" value={selected.wpm==null?'—':`${selected.wpm} wpm`} delta={selected.wpm!=null&&other.wpm!=null?statDelta(selected.wpm,other.wpm):'—'} />
       </View>
-      <Pressable accessibilityRole="button" accessibilityLabel={playActive?'Pause selected take':`Play ${keep} take`} onPress={togglePlay} style={[styles.playButton,{backgroundColor:palette.strong}]}>
+      <Pressable accessibilityRole="button" accessibilityLabel={ui(playActive?'Pause selected take':`Play ${keep} take`)} onPress={togglePlay} style={[styles.playButton,{backgroundColor:palette.strong}]}>
         <Glyph name={playActive?'p-pause':'p-play'} size={22} color={palette.onAccent}/>
       </Pressable>
       {!!player.error && <Txt accessibilityRole="alert" style={[styles.playError, { color: palette.secondary }]}>{player.error}</Txt>}

@@ -1,4 +1,5 @@
 // AI-assisted demo access migration, OpenAI Codex, November 1, 2026.
+import { useUiText } from '../design/language';
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { Txt } from '../design/frame';
@@ -9,6 +10,7 @@ import { demoAccess, enterDemoCode } from '../services/backendFetch';
 
 /** Once opened, the app stays mounted when server access expires mid-recording. */
 export function DemoAccessGate({ children }: { children: ReactNode }) {
+  const ui = useUiText();
   const { c } = useTheme();
   const access = useSyncExternalStore(demoAccess.subscribe, demoAccess.getSnapshot, demoAccess.getSnapshot);
   const [opened, setOpened] = useState(false), [offline, setOffline] = useState(false);
@@ -28,7 +30,7 @@ export function DemoAccessGate({ children }: { children: ReactNode }) {
   return <>
     {mounted && children}
     {mounted && access.state === 'locked' && !visible && <View style={[styles.banner, { backgroundColor: c.bg, borderColor: c.track }]}>
-      <Pressable accessibilityRole="button" accessibilityLabel="Enter demo code to reconnect" onPress={() => setOpened(true)} style={styles.bannerButton}>
+      <Pressable accessibilityRole="button" accessibilityLabel={ui("Enter demo code to reconnect")} onPress={() => setOpened(true)} style={styles.bannerButton}>
         <Txt style={{ fontFamily: F.semibold, color: c.strong }}>Server access locked · Enter demo code</Txt>
       </Pressable>
     </View>}
@@ -38,13 +40,13 @@ export function DemoAccessGate({ children }: { children: ReactNode }) {
           <View style={styles.card} accessibilityViewIsModal>
             <Txt style={[styles.title, { color: c.strong }]}>Open OutLoud</Txt>
             <Txt style={[styles.body, { color: c.body }]}>Enter the demo code provided with this app. Reviewers share this workspace, including uploaded slides and recordings.</Txt>
-            {access.state === 'loading' ? <ActivityIndicator accessibilityLabel="Opening saved access" color={c.strong} /> : <>
-              <TextInput accessibilityLabel="Demo code" placeholder="Demo code" placeholderTextColor={c.secondary}
+            {access.state === 'loading' ? <ActivityIndicator accessibilityLabel={ui("Opening saved access")} color={c.strong} /> : <>
+              <TextInput accessibilityLabel={ui("Demo code")} placeholder={ui("Demo code")} placeholderTextColor={c.secondary}
                 value={code} onChangeText={setCode} secureTextEntry autoCapitalize="none" autoCorrect={false}
                 autoComplete="off" maxLength={256} returnKeyType="go" onSubmitEditing={() => { void connect(); }}
                 editable={!busy} style={[styles.input, { color: c.strong, borderColor: c.track }]} />
               {!!(error || access.notice) && <Txt accessibilityLiveRegion="polite" style={[styles.body, { color: c.body }]}>{error || access.notice}</Txt>}
-              <Pressable accessibilityRole="button" accessibilityLabel="Connect to OutLoud" disabled={busy || !code.trim()} onPress={() => { void connect(); }}
+              <Pressable accessibilityRole="button" accessibilityLabel={ui("Connect to OutLoud")} disabled={busy || !code.trim()} onPress={() => { void connect(); }}
                 style={[styles.connect, { backgroundColor: c.strong, opacity: busy || !code.trim() ? 0.5 : 1 }]}>
                 {busy ? <ActivityIndicator color={c.bg} /> : <Txt style={{ fontFamily: F.bold, color: c.bg }}>Connect</Txt>}
               </Pressable>

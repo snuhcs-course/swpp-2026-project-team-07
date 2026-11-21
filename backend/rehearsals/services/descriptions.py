@@ -577,6 +577,9 @@ def finish(value, job, result=None, error=None):
         locked_job.completed_at = None if waiting else timezone.now()
         locked_job.claim_token = None
         locked_job.save(update_fields=['state', 'error_code', 'retry_at', 'completed_at', 'claim_token'])
+        if result is not None and locked_job.state == 'completed':
+            from .prepared_display import changed
+            changed('profiles', current.pk)
         if result is None:
             current.save(update_fields=['updated_at'])
 

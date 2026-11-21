@@ -1,4 +1,5 @@
 // Confirmed transcript corrections shared by inline Review and the playback sheet.
+import { useUiText } from '../design/language';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, type GestureResponderEvent } from 'react-native';
 import { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -40,13 +41,14 @@ export function TranscriptCorrections(props: TranscriptCorrectionProps) {
     {props.inline && untimed && <View style={{ gap: 8, paddingBottom: 14 }}>
       <Txt style={styles.txHeadText}>Transcript</Txt>
       <Txt style={styles.txVisit}>Word timing is unavailable. This original text cannot be assigned to a slide.</Txt>
-      <Txt style={[styles.lineText, { color: c.body }]}>{transcript!.text}</Txt>
+      <Txt verbatim style={[styles.lineText, { color: c.body }]}>{transcript!.text}</Txt>
     </View>}
     {sources.map(source => <SourceTranscriptCorrections key={`${props.slide}:${source}`} {...props} id={source}
     movedSource={source !== props.id} />)}</>;
 }
 
 function SourceTranscriptCorrections({ model, id, slide, player, onBeforePlay, nativePlayback, movedSource, inline, audioUri }: TranscriptCorrectionProps & { movedSource: boolean }) {
+  const ui = useUiText();
   const { c } = useTheme();
   const { deck, n, state } = model;
   const run = state.run;
@@ -137,8 +139,8 @@ function SourceTranscriptCorrections({ model, id, slide, player, onBeforePlay, n
       <Txt style={[styles.altLead, { color: c.text }]}>Retry transcription suggestions?</Txt>
       <Txt style={styles.txVisit}>The previous request has an uncertain outcome. Retrying may incur another charge.</Txt>
       <View style={styles.alts}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Confirm transcription suggestion retry" onPress={corrections.confirm} style={styles.altChip}><Txt style={styles.altText}>Retry</Txt></Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel="Cancel transcription suggestion retry" onPress={corrections.cancel} style={styles.altChip}><Txt style={styles.altText}>Cancel</Txt></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={ui("Confirm transcription suggestion retry")} onPress={corrections.confirm} style={styles.altChip}><Txt style={styles.altText}>Retry</Txt></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={ui("Cancel transcription suggestion retry")} onPress={corrections.cancel} style={styles.altChip}><Txt style={styles.altText}>Cancel</Txt></Pressable>
       </View>
     </View>}
   </>;
@@ -156,6 +158,7 @@ type PanelProps = {
   onAlt: (l: Line, fi: number) => void; onApplyAlt: (l: Line, fi: number, v: string) => void; onKeepFlag: (l: Line, fi: number) => void; onMove: (l: Line, dir: -1 | 1) => void;
 };
 function TranscriptPanel(p: PanelProps) {
+  const ui = useUiText();
   const { c } = useTheme();
   const workers = useWorkers();
   const worker = p.partId ? workers.get(p.partId) : undefined;
@@ -192,11 +195,11 @@ function TranscriptPanel(p: PanelProps) {
           {!!status && <Txt style={styles.txVisit}>{status}</Txt>}
           {needsSync && <View style={styles.alts}>
             {correction?.conflict ? <>
-              <Pressable accessibilityRole="button" accessibilityLabel="Use server corrections" onPress={p.corrections.keepServer}><Txt style={styles.altText}>Use server</Txt></Pressable>
-              <Pressable accessibilityRole="button" accessibilityLabel="Keep my corrections and synchronize" onPress={p.corrections.keepLocal}><Txt style={styles.altText}>Keep mine</Txt></Pressable>
-            </> : <Pressable accessibilityRole="button" accessibilityLabel="Synchronize transcript corrections" disabled={p.corrections.busy} onPress={() => void p.corrections.synchronize()}><Txt style={styles.altText}>Sync corrections</Txt></Pressable>}
+              <Pressable accessibilityRole="button" accessibilityLabel={ui("Use server corrections")} onPress={p.corrections.keepServer}><Txt style={styles.altText}>Use server</Txt></Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel={ui("Keep my corrections and synchronize")} onPress={p.corrections.keepLocal}><Txt style={styles.altText}>Keep mine</Txt></Pressable>
+            </> : <Pressable accessibilityRole="button" accessibilityLabel={ui("Synchronize transcript corrections")} disabled={p.corrections.busy} onPress={() => void p.corrections.synchronize()}><Txt style={styles.altText}>Sync corrections</Txt></Pressable>}
           </View>}
-          {!!suggestion?.dependency?.retry_action && <Pressable accessibilityRole="button" accessibilityLabel="Retry slide context for transcription suggestions"
+          {!!suggestion?.dependency?.retry_action && <Pressable accessibilityRole="button" accessibilityLabel={ui("Retry slide context for transcription suggestions")}
             disabled={p.corrections.busy} onPress={() => void p.corrections.retryContext()} style={styles.alts}><Txt style={styles.altText}>Retry slide context</Txt></Pressable>}
         </View>}
         {!p.recording && !!(p.playbackError || p.fixNote) && <Txt style={styles.txVisit}>{p.playbackError ? 'Audio failed · tap Play to retry' : p.fixNote}</Txt>}
@@ -215,7 +218,7 @@ function TranscriptPanel(p: PanelProps) {
             <LineRow line={l} {...p} playing={playing} altFi={p.alt?.key === l.key ? p.alt.fi : -1} />
             {!p.recording && p.alt?.key === l.key && l.flags[p.alt.fi] && <View style={[styles.correctionChoices, { backgroundColor: c.surface06, borderColor: c.hair }]}>
               <CorrectionChoices {...p} line={l} altFi={p.alt.fi} />
-              <Pressable accessibilityRole="button" accessibilityLabel="Close transcription choices" onPress={() => p.onAlt(l, p.alt!.fi)} style={styles.altChip}><Txt style={styles.altText}>Close</Txt></Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel={ui("Close transcription choices")} onPress={() => p.onAlt(l, p.alt!.fi)} style={styles.altChip}><Txt style={styles.altText}>Close</Txt></Pressable>
             </View>}
           </View>;
         })}
@@ -223,16 +226,16 @@ function TranscriptPanel(p: PanelProps) {
   return <>
     <View style={styles.txHead}>
       {p.inline ? <Txt style={styles.txHeadText}>{p.movedSource ? 'Moved speech transcript' : 'Transcript'}</Txt> :
-      <Pressable accessibilityRole="button" accessibilityLabel={`${p.slidePlaying ? 'Pause' : 'Play'} ${p.movedSource ? 'moved speech on' : ''} slide ${p.cur + 1} transcript audio`}
+      <Pressable accessibilityRole="button" accessibilityLabel={ui(`${p.slidePlaying ? 'Pause' : 'Play'} ${p.movedSource ? 'moved speech on' : ''} slide ${p.cur + 1} transcript audio`)}
         disabled={!p.canPlayback || !p.partId} onPress={p.onPlaySlide} hitSlop={8}>
         <Txt style={styles.txHeadText}>{'Slide ' + (p.cur + 1) + ' transcript'}</Txt>
       </Pressable>}
       <View style={styles.txRule} />
-      {!!correction && !p.recording && <Pressable accessibilityRole="button" accessibilityLabel="Check transcription for AI correction suggestions"
+      {!!correction && !p.recording && <Pressable accessibilityRole="button" accessibilityLabel={ui("Check transcription for AI correction suggestions")}
         disabled={p.corrections.busy || !!correction.conflict || suggestionActive(suggestion)} onPress={() => void p.corrections.generate()} hitSlop={6}>
         <Txt style={[styles.txCheck, (p.corrections.busy || correction.conflict || suggestionActive(suggestion)) && { opacity: 0.5 }]}>Check transcription</Txt>
       </Pressable>}
-      {!p.inline && <Pressable accessibilityRole="button" accessibilityLabel={p.movedSource ? `${p.slidePlaying ? 'Pause' : 'Play'} moved speech on slide ${p.cur + 1}` : `${p.slidePlaying ? 'Pause' : 'Play'} slide ${p.cur + 1} recording`}
+      {!p.inline && <Pressable accessibilityRole="button" accessibilityLabel={ui(p.movedSource ? `${p.slidePlaying ? 'Pause' : 'Play'} moved speech on slide ${p.cur + 1}` : `${p.slidePlaying ? 'Pause' : 'Play'} slide ${p.cur + 1} recording`)}
         disabled={!p.canPlayback || !p.partId} onPress={p.onPlaySlide}
         style={[styles.txPlay, (!p.canPlayback || !p.partId) && { opacity: 0.28 }]}>
         <Glyph name={p.slidePlaying ? 'p-pause' : 'p-play'} size={15} color={p.slidePlaying ? c.text : c.secondary} />
@@ -248,26 +251,28 @@ function TranscriptPanel(p: PanelProps) {
 }
 
 export function CorrectionChoices(p: Pick<PanelProps, 'onApplyAlt'|'onKeepFlag'|'onPlay'> & {line:Line;altFi:number}) {
+  const ui = useUiText();
   const { c } = useTheme();
   const flag = p.line.flags[p.altFi];
   if (!flag) return null;
   return <View style={{ gap: 10 }}>
     <Txt style={styles.altLead}>{'Did you say “' + flag.w + '”?'}</Txt>
-    {!!flag.reason && <Txt style={styles.txVisit}>{flag.reason}</Txt>}
-    {flag.alts.map(a => <Pressable key={a} accessibilityRole="button" accessibilityLabel={`Replace “${flag.w}” with “${a}”`}
+    {!!flag.reason && <Txt verbatim style={styles.txVisit}>{flag.reason}</Txt>}
+    {flag.alts.map(a => <Pressable key={a} accessibilityRole="button" accessibilityLabel={ui(`Replace “${flag.w}” with “${a}”`)}
       onPress={() => p.onApplyAlt(p.line, p.altFi, a)} style={[styles.altChip, { minHeight: 44, justifyContent: 'center', backgroundColor: 'rgba(255,216,102,.18)' }]}>
-      <Txt style={[styles.altText, { color: c.goldText }]}>{a}</Txt>
+      <Txt verbatim style={[styles.altText, { color: c.goldText }]}>{a}</Txt>
     </Pressable>)}
-    <Pressable accessibilityRole="button" accessibilityLabel={`Keep “${flag.w}” as heard`} onPress={() => p.onKeepFlag(p.line, p.altFi)} style={[styles.altChip, { minHeight: 44, justifyContent: 'center' }]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={ui(`Keep “${flag.w}” as heard`)} onPress={() => p.onKeepFlag(p.line, p.altFi)} style={[styles.altChip, { minHeight: 44, justifyContent: 'center' }]}>
       <Txt style={styles.altText}>Keep original</Txt>
     </Pressable>
-    <Pressable accessibilityRole="button" accessibilityLabel="Play audio for this transcription suggestion" onPress={() => p.onPlay(p.line)} style={[styles.altChip, { minHeight: 44, justifyContent: 'center' }]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={ui("Play audio for this transcription suggestion")} onPress={() => p.onPlay(p.line)} style={[styles.altChip, { minHeight: 44, justifyContent: 'center' }]}>
       <Txt style={styles.altText}>Play audio</Txt>
     </Pressable>
   </View>;
 }
 
 export function LineRow(p: PanelProps & { line: Line; playing: boolean; altFi: number }) {
+  const ui = useUiText();
   const { c } = useTheme();
   const { line } = p;
   const canMoveLine = line.canMove !== false;
@@ -322,25 +327,25 @@ export function LineRow(p: PanelProps & { line: Line; playing: boolean; altFi: n
             <Rect x={`${pct}%`} y="0" width={`${100 - pct}%`} height="100%" fill={c.ink05} />
           </Svg>
         )}
-        <Pressable disabled={p.recording} accessibilityRole="button" accessibilityLabel={'Play sentence at ' + fmt(line.t)} onPress={() => p.onPlay(line)} style={styles.playCol}>
+        <Pressable disabled={p.recording} accessibilityRole="button" accessibilityLabel={ui('Play sentence at ' + fmt(line.t))} onPress={() => p.onPlay(line)} style={styles.playCol}>
           <Txt style={styles.lineTime}>{fmt(line.t)}</Txt>
         </Pressable>
-          <Txt disabled={p.recording} accessibilityRole="button" accessibilityLabel={'Play sentence: ' + line.text}
+          <Txt disabled={p.recording} accessibilityRole="button" accessibilityLabel={ui('Play sentence: ' + line.text)}
             accessibilityActions={[{ name: 'activate' },
-          ...(canMoveLine && p.cur > 0 ? [{ name: 'movePrev', label: 'Move to slide ' + p.cur }] : []), ...(canMoveLine && p.cur < p.n - 1 ? [{ name: 'moveNext', label: 'Move to slide ' + (p.cur + 2) }] : [])]}
+          ...(canMoveLine && p.cur > 0 ? [{ name: 'movePrev', label: ui('Move to slide ' + p.cur) }] : []), ...(canMoveLine && p.cur < p.n - 1 ? [{ name: 'moveNext', label: ui('Move to slide ' + (p.cur + 2)) }] : [])]}
             onAccessibilityAction={e => { const a = e.nativeEvent.actionName; if (a === 'activate') p.onPlay(line); else if (canMoveLine && a === 'movePrev') p.onMove(line, -1); else if (canMoveLine && a === 'moveNext') p.onMove(line, 1); }}
             onPress={() => p.onPlay(line)} style={[styles.lineText, { color: p.playing ? c.text : c.body }]}>
-            {segs.map((sg, i) => sg.fi < 0 ? <Txt key={i} style={sg.active ? { backgroundColor: p.accent, color: c.bg } : undefined}>{sg.t}</Txt> : (
-              <Txt key={i} accessibilityRole="button" accessibilityLabel={'Possibly misheard: ' + line.flags[sg.fi].w + '. Show corrections'} onPress={e => { e.stopPropagation(); p.onAlt(line, sg.fi); }}
+            {segs.map((sg, i) => sg.fi < 0 ? <Txt verbatim key={i} style={sg.active ? { backgroundColor: p.accent, color: c.bg } : undefined}>{sg.t}</Txt> : (
+              <Txt verbatim key={i} accessibilityRole="button" accessibilityLabel={ui('Possibly misheard: ' + line.flags[sg.fi].w + '. Show corrections')} onPress={e => { e.stopPropagation(); p.onAlt(line, sg.fi); }}
                 style={[styles.flag, sg.active && { backgroundColor: p.accent, color: c.bg }]}>{sg.t}</Txt>
             ))}
           </Txt>
       </PanView>
       {!p.recording && line.flags.map((flag, fi) => <Pressable key={fi} accessibilityRole="button"
-        accessibilityLabel={'Show replacements for ' + flag.w} onPress={() => p.onAlt(line, fi)} style={styles.altChip}>
+        accessibilityLabel={ui('Show replacements for ' + flag.w)} onPress={() => p.onAlt(line, fi)} style={styles.altChip}>
         <Txt style={styles.altText}>{'Correct “' + flag.w + '”'}</Txt>
       </Pressable>)}
-      {line.fixed && !p.recording && <Pressable accessibilityRole="button" accessibilityLabel="Restore original transcript sentence" onPress={() => p.onRestore(line)} style={styles.alts}>
+      {line.fixed && !p.recording && <Pressable accessibilityRole="button" accessibilityLabel={ui("Restore original transcript sentence")} onPress={() => p.onRestore(line)} style={styles.alts}>
         <Txt style={styles.altText}>Restore original</Txt>
       </Pressable>}
       {!!line.edge && !p.recording && (

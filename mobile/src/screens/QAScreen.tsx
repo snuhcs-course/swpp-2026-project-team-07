@@ -1,3 +1,7 @@
+import { displayTranslations, useDisplayTranslation } from '../features/localization/useDisplayTranslation';
+import { firstWordingPending, markNewWording } from '../features/localization/firstWording';
+import { sourceLanguage } from '../features/localization/translationCache';
+import { translatedAnswer } from '../features/localization/generatedProse';
 // Scribe-only compatibility: OpenAI Codex, October 17, 2026; docs/testing/evidence/scribe-only-integration-verification-2026-10-17.md.
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
 // OpenAI Codex finger-linked page fade: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-117
@@ -7,8 +11,9 @@
 // OutLoud redesign: Audience Q&A (SPEC §4.7, §5.7).
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-11-21): question page as canvas S15 (panel on top, the
 // question as a chat message, its slide under it, a fixed space for your answer above the record button); audience names.
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, type GestureResponderEvent, type PanResponderGestureState } from 'react-native';
+import { getAppLanguage, useAppLanguage, useUiText } from '../design/language';
 import * as Speech from 'expo-speech';
 import * as Haptics from 'expo-haptics';
 import Animated, { Easing, cancelAnimation, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -20,17 +25,18 @@ import { C, EASE_SCREEN, F, TONE } from '../design/tokens';
 import { createThemedStyles, useTheme } from '../design/theme';
 import { Dialog, HintRow, IDLE_WAVE, PageSurface, RecordButton, RecordRing, Waveform, type Hint, type RecordGlyph } from '../design/ui';
 import type { IconKey } from '../domain/analysis';
+import { AUDIENCES } from '../domain/presentationRequirements';
 import { fmt, quote } from '../domain/format';
 import { BACK_FADE_Y, BACK_T } from '../domain/gestures';
 import { randomUUID } from 'expo-crypto';
 import { API_URL } from '../services/api';
 import { readReview } from '../features/transcription/reviewStorage';
 import { useDurableQa } from '../features/qa/useDurableQa';
-import { qaActive,qaHistoryJobs,qaScreenKey } from '../features/qa/state';
+import { qaActive,qaHistoryJobs,qaScreenKey,qaUsable } from '../features/qa/state';
 import { saveAnalysisConsent } from '../features/transcription/analysisStorage';
 import { AnswerRecorder, type AnswerHandle } from '../features/qa/AnswerRecorder';
 import { reviewDurableAnswer, QaError, type QaResult } from '../features/qa/client';
-import { answerKey, readQaV2, readQaHistory, saveQaV2, saveAnswerAttempt, type QaSet, type StoredAnswer } from '../features/qa/store';
+import { answerKey, readQaV2, readQaHistory, savedForSelectedRun, saveQaV2, saveAnswerAttempt, type QaSet, type StoredAnswer } from '../features/qa/store';
 import { useSegmentPlayer } from '../features/rehearsal/useSegmentPlayer';
 import { useDeckModel, type DeckModel } from '../features/presentations/useDeckModel';
 import { useBack, useShell } from './shared';
@@ -61,28 +67,44 @@ export function QAScreen({ active = true }: { active?: boolean }) {
 }
 
 function QABound({model,active}:{model:DeckModel;active:boolean}){
-  const qa=useDurableQa(model,false,active);
-  const [archivedIndex,setArchivedIndex]=useState<number|null>(null);
-  const history=qaHistoryJobs(readQaHistory(API_URL,model.deck.id),qa.state);
-  const archived=archivedIndex===null?null:history[archivedIndex]??null;
-  const nextHistory=()=>setArchivedIndex(i=>i===null?0:i+1<history.length?i+1:null);
+  const source=useDurableQa(model,false,active), language=useAppLanguage();
+  useSyncExternalStore(displayTranslations.subscribe, displayTranslations.version);
+  const batch=source.state?.result, first=batch?.questions[0];
+  const waiting=active&&batch&&first&&qaUsable(source.state)&&firstWordingPending(API_URL,
+    {kind:'questions',resource_id:String(batch.job_id)},'initial',language,displayTranslations,
+    text=>text('questions.0.question',first.question));
+  useDisplayTranslation(!!waiting, scope => waiting && scope('questions', String(batch!.job_id))('questions.0.question', first!.question));
+  const qa=waiting&&source.state?{...source,state:{...source.state,state:'preparing',result:null}}:source;
+  // Keep an explicit history choice on the same batch when a status refresh changes the list.
+  const [selection,setSelection]=useState<string|null>();
+  const history=qaHistoryJobs(readQaHistory(API_URL,model.deck.id),qa.state).filter(saved=>saved.questions.length);
+  const archiveKey=(saved:QaSet)=>saved.jobId===undefined?'legacy':String(saved.jobId);
+  const archived=selection===undefined
+    ? (!qaUsable(qa.state)&&!qaActive(qa.state)?savedForSelectedRun(history,model.state.run!.id,
+      qa.scope??{context_id:qa.requirements.contextId??null,slides:[]},qa.requirements.audience):null)??null
+    : history.find(saved=>archiveKey(saved)===selection)??null;
+  const nextHistory=()=>{
+    const next=history[archived?history.indexOf(archived)+1:0];
+    setSelection(next?archiveKey(next):null);
+  };
   return <QA key={archived?`saved-${archived.jobId??'legacy'}`:qaScreenKey(qa.state)} model={model} qa={qa}
     archived={archived} historyAvailable={!!history.length} onHistory={nextHistory} active={active}/>;
 }
 function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: DeckModel;qa:ReturnType<typeof useDurableQa>;archived:QaSet|null;historyAvailable:boolean;onHistory:()=>void;active:boolean }) {
+  const ui = useUiText();
   const { c } = useTheme();
   const { go, nav } = useShell();
   const frame = useFrame();
   const { deck, state } = model;
   const run = state.run!;
-  const jobId=archived?.jobId??qa.state?.result?.job_id??0;
+  const jobId=archived ? archived.jobId ?? 0 : qa.state?.result?.job_id ?? 0;
   const questions=archived?.questions??(qa.state&&!qa.state.stale&&!qa.state.result?.stale&&qa.state.state==='completed'?qa.state.result?.questions??[]:[]);
   const [set,setSet]=useState<QaSet|null>(()=>{
     if(archived)return archived;
     if(!jobId||!questions.length)return null;
     const cached=readQaV2(API_URL,deck.id,jobId);
     // Adopt the complete validated server batch, retaining answers for this job.
-    const next={...cached,runId:run.id,audience:qa.state!.requirements.audience,questions,answers:cached?.answers??{},createdAt:cached?.createdAt??new Date().toISOString()};
+    const next={...cached,runId:run.id,scope:qa.state!.scope,audience:qa.state!.requirements.audience,questions,answers:cached?.answers??{},createdAt:cached?.createdAt??new Date().toISOString()};
     saveQaV2(API_URL,deck.id,jobId,next);return next;
   });
   const [load,setLoad]=useState<{kind:'idle'|'loading'|'error';message?:string}>({kind:'idle'});
@@ -102,6 +124,7 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
   const [elapsed, setElapsed] = useState(0);
   const recorder = useRef<AnswerHandle>(null);
   const [wave, setWave] = useState<number[]>(IDLE_WAVE);
+  const startingCapture = useRef(false);
   const countTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const ringP = useSharedValue(0), ringV = useSharedValue(0);
   const questionSwipe=useHorizontalSwipeMotion({slideOnly:true,active});
@@ -117,16 +140,46 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
   const regenerate=()=>{setLoad({kind:'idle'});void qa.generate();};
   const qs = archived?.questions??(questions.length?set?.questions??questions:[]);
   const i=Math.min(position,Math.max(0,qs.length-1));
-  const Q = qs[i];
   const names = audienceNames(qs, jobId);
-  const who = (q: (typeof qs)[number]) => names.get(qs.indexOf(q)) ?? AUDIENCE_NAMES[0];
+  const panelist = (index: number) => names.get(index) ?? AUDIENCE_NAMES[0];
   const key = answerKey(i, part);
-  const ans: StoredAnswer | undefined = set?.answers[key];
+  const savedAnswer: StoredAnswer | undefined = set?.answers[key];
+  const answerWaiting=active&&savedAnswer?.status==='done'&&savedAnswer.result&&savedAnswer.id&&jobId&&
+    firstWordingPending(API_URL,{kind:'answer',resource_id:savedAnswer.id},'evaluation',getAppLanguage(),displayTranslations,
+      text=>translatedAnswer(savedAnswer.result!,(p,s)=>text(p,s,sourceLanguage(savedAnswer.result!.transcript.text)),i,part));
+  const ans = answerWaiting ? {...savedAnswer!,status:'judging' as const} : savedAnswer;
+  const original = qs[i];
+  const localId = archived?.runId ?? run.id;
+  const questionDisplay = useDisplayTranslation(active, scope => {
+    if (!original) return undefined;
+    const text = scope(jobId ? 'questions' : 'legacy_qa', jobId ? String(jobId) : localId);
+    const path = 'questions.' + i;
+    return { ...original, question: text(path + '.question', original.question), follow_up: text(path + '.follow_up', original.follow_up) };
+  });
+  const Q = questionDisplay.value;
+  const questionReady = !questionDisplay.missing.has('questions.' + i + (part ? '.follow_up' : '.question'));
+  const displayedAnswer = useDisplayTranslation(active, scope => {
+    if (savedAnswer?.status !== 'done' || !savedAnswer.result) return undefined;
+    const durable = !!jobId && !!savedAnswer.id;
+    const hint = sourceLanguage(savedAnswer.result.transcript.text);
+    const fields = scope(durable ? 'answer' : 'legacy_qa', durable ? savedAnswer.id! : localId, undefined, hint);
+    return translatedAnswer(savedAnswer.result, fields, i, part);
+  });
+  const language = questionDisplay.language;
   const currentAudience=qa.requirements.audience;
+  const audience = Q ? set?.audience ?? qa.state?.requirements.audience ?? '' : currentAudience;
+  const audienceLabel = audience === 'General audience' || AUDIENCES.some(value => value === audience) ? ui(audience) : audience;
+  const questionNumber = ui('Question ' + (i + 1) + ' of ' + qs.length);
+  const presenterHeader = panelist(i) + ' · ' + questionNumber;
+  const questionHeader = Q
+    ? questionNumber + ' · ' + audienceLabel + (!archived && deck.requirementsDefault ? ' ' + ui('(default)') : '')
+    : (qaActive(qa.state) ? ui('Writing audience questions…') + ' · ' : '') + (audienceLabel || ui('Audience not set'));
   const sourcesPending=!model.transcribed;
+  const generationAction=qa.state?.stale?'Update questions':qa.state?.feedback_revision?'Retry questions':'Generate questions';
+  const serviceUnavailable=qa.state?.availability?.state==='disabled'||qa.state?.availability?.state==='unavailable';
   const recoverySlide=run.parts.findIndex(part=>!!part&&!model.transcripts.has(part.attemptId)&&model.stages.get(part.attemptId)!=='no_speech');
   const readinessMessage=qa.requirementsDirty?'Presentation choices are saved on this phone. Synchronize them before preparing questions.':sourcesPending?'Finish uploading and transcribing the selected recordings before preparing audience questions.':'';
-  const statusMessage=load.message||readinessMessage||qa.notice||(qa.state?.stale?'Questions outdated. Update using the selected recordings.':!currentAudience.trim()?'Presentation audience is missing. Edit presentation time and audience to add it.':qaActive(qa.state)?'Your audience questions are being prepared…':qa.state?.dependency?.retry_action?'Slide profile analysis needs recovery.':qa.state?.state==='failed'?'Question generation failed. Your recordings are preserved.':'Audience questions are not ready.');
+  const statusMessage=load.message||readinessMessage||qa.notice||(qa.state?.stale?'Questions outdated. Update using the selected recordings.':!currentAudience.trim()?'Presentation audience is missing. Edit presentation time and audience to add it.':qaActive(qa.state)?'Your audience questions are being prepared…':qa.state?.dependency?.retry_action?'Slide profile analysis needs recovery.':qa.state?.state==='failed'?'Question generation failed. Your recordings are preserved.':serviceUnavailable?'Q&A is unavailable on this server.':'Audience questions are not ready.');
   const phase: 'ask' | 'rec' | 'review' = rec ? 'rec' : ans && questionViewKey !== key ? 'review' : 'ask';
   const last = i === qs.length - 1;
   const answerTop = (frame.compact ? 607 : 674) - 26 - ANSWER_HEIGHT;
@@ -135,25 +188,27 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
   const resultScrollBottom = frame.compact ? 66 : 0;
 
   // ── Speech ────────────────────────────────────────────────────────────────
-  const stopSpeak = useCallback(() => { Speech.stop(); setHear(null); }, []);
-  const speak = useCallback((text: string, k: string) => {
-    if (hear === k) { stopSpeak(); return; }
+  const speechEpoch = useRef(0);
+  const stopSpeak = useCallback(() => { speechEpoch.current++; setHear(null); return Speech.stop(); }, []);
+  const speak = useCallback((text: string, k: string, automatic = false) => {
+    if (!active || !questionReady || count || countTimer.current !== null || startingCapture.current || rec) return;
+    if (!automatic && hear === language + ':' + k) { stopSpeak(); return; }
+    const epoch = ++speechEpoch.current;
     Speech.stop(); player.stop();
-    setHear(k);
-    // shortcut: mixed Hangul/Latin uses Korean; add language metadata if more precise multilingual speech is needed.
-    const language = /\p{Script=Hangul}/u.test(text) ? 'ko' : /\p{Script=Latin}/u.test(text) ? 'en' : undefined;
-    Speech.speak(text, { language, onDone: () => setHear(h => (h === k ? null : h)), onStopped: () => setHear(h => (h === k ? null : h)), onError: () => setHear(null) });
-  }, [hear, player, stopSpeak]);
-  useEffect(() => () => { Speech.stop(); }, []);
-  useEffect(() => { if (!active) { Speech.stop(); player.stop(); } }, [active, player]);
+    setHear(language + ':' + k);
+    const finish = () => { if (epoch === speechEpoch.current) setHear(null); };
+    Speech.speak(text, { language, onDone: finish, onStopped: finish, onError: finish });
+  }, [active, count, hear, language, player, questionReady, rec, stopSpeak]);
   const autoSpoken = useRef<string | null>(null);
+  useEffect(() => { autoSpoken.current = null; return () => { Speech.stop(); }; }, [language]);
+  useEffect(() => { if (!active) { Speech.stop(); player.stop(); } }, [active, player]);
   useEffect(() => {
-    if (!active || archived || !Q || rec || phase === 'review') return;
-    const identity = `${jobId}:${Q.id}:${part}`;
+    if (!active || archived || !Q || !questionReady || count || startingCapture.current || rec || phase === 'review') return;
+    const identity = `${jobId}:${Q.id}:${part}:${language}`;
     if (autoSpoken.current === identity) return;
     autoSpoken.current = identity;
-    speak(part === 0 ? Q.question : Q.follow_up, (part === 0 ? 'q' : 'f') + i);
-  }, [active, archived, i, jobId, part, phase, Q, rec, speak]);
+    speak(part === 0 ? Q.question : Q.follow_up, (part === 0 ? 'q' : 'f') + i, true);
+  }, [active, archived, count, i, jobId, language, part, phase, Q, questionReady, rec, speak]);
   const playAnswer = () => {
     if (!ans) return;
     stopSpeak();
@@ -182,6 +237,7 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
     try{
       const result:QaResult=await reviewDurableAnswer({id:a.id,deckId,audioUri:a.audioUri,durationMs:a.durationMs,
         questionJobId:a.questionJobId,questionId:a.questionId,part:p,slideIndex:q.slide_index},confirmed,controller.signal,retry);
+      markNewWording(API_URL,'answer',a.id);
       update(k,{...a,status:'done',result});
     }catch(e){
       if(controller.signal.aborted)return;
@@ -200,8 +256,11 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
   const stopCount = () => { if (countTimer.current) { clearInterval(countTimer.current); countTimer.current = null; } };
   useEffect(() => () => stopCount(), []);
   const startRec = async () => {
+    startingCapture.current = true;
     try {
-      await recorder.current?.start();
+      await stopSpeak();
+      if (!recorder.current) return;
+      await recorder.current.start();
       setWave(Array(28).fill(6));
       setElapsed(0); setRec(true);
       ringP.set(0); ringV.set(1);
@@ -209,7 +268,7 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
       ringV.set(withTiming(0));
       setLoad({ kind: 'error', message: e instanceof Error ? e.message : 'Could not start recording.' });
       setRecKey(k => k + 1);
-    }
+    } finally { startingCapture.current = false; setCount(0); }
   };
   const stopRec = async () => {
     if (!recorder.current?.recording()) return;
@@ -228,16 +287,17 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
     }
   };
   const toggleRec = () => {
-    if (!Q||archived) return;
+    if (!active || !Q || archived || startingCapture.current) return;
     if (rec) { void stopRec(); return; }
     if (count) { stopCount(); setCount(0); ringV.set(withTiming(0)); return; }
+    if (!questionReady) return;
     stopSpeak(); player.stop();
     setCount(3); ringV.set(1); ringP.set(1);
     ringP.set(withTiming(0, { duration: 3000, easing: Easing.linear }));
     const t0 = Date.now();
     countTimer.current = setInterval(() => {
       const el = Date.now() - t0;
-      if (el >= 3000) { stopCount(); setCount(0); void startRec(); return; }
+      if (el >= 3000) { stopCount(); void startRec(); return; }
       setCount(c => { const nx = 3 - Math.floor(el / 1000); if (nx !== c) void Haptics.selectionAsync().catch(() => undefined); return nx; });
     }, 50);
   };
@@ -319,7 +379,7 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
   const showQuestion = () => {
     // OpenAI Codex, Iteration 2 (2026-11-21): the result fades over its own question, then reveals the saved transcript.
     stopSpeak(); player.stop();
-    if (Q) autoSpoken.current = `${jobId}:${Q.id}:${part}`;
+    if (Q) autoSpoken.current = `${jobId}:${Q.id}:${part}:${language}`;
     setQuestionViewKey(key);
     backExiting.current = false;
   };
@@ -331,7 +391,8 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
     }));
   };
   useEffect(() => { if (phase !== 'review') resultDy.set(0); }, [phase, resultDy]);
-  useEffect(() => { reviewScrollY.current = 0; chatScrollY.current = 0; }, [i, part]);
+  useEffect(() => { reviewScrollY.current = 0; }, [i, part]);
+  useEffect(() => { chatScrollY.current = 0; }, [i, part, language, Q?.question, Q?.follow_up]);
   const g = useRef<'x' | 'y' | null>(null);
   const busy = rec || !!count;
   const shouldCaptureDown = (e: GestureResponderEvent, gs: PanResponderGestureState) => {
@@ -402,14 +463,14 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
 
   // ── View ──────────────────────────────────────────────────────────────────
   // Fixed regions: panel 112–164, chat from 180, the answer space ends 26 above the record button (674; compact 607).
-  const hearing = (k: string) => hear === k;
+  const hearing = (k: string) => hear === language + ':' + k;
   const glyph: RecordGlyph = count ? (count as 3 | 2 | 1) : rec ? 'stop' : ans ? 'redo' : 'mic';
   const btnLabel = archived?'Saved Q&A · playback only':count ? `Starting in ${count}. Tap to cancel` : rec ? 'Stop answering' : ans ? (part ? 'Answer the follow-up again' : 'Answer the question again') : (part ? 'Answer the follow-up' : 'Answer the question');
   const hints: Hint[] = subpage === 'transcript' ? [{ icon: 'h-dn', text: 'Answer review', nudge: 'down', onPress: closeTranscript }]
     : count ? [{ icon: 'h-tap', text: 'Tap to cancel' }] : rec ? [{ icon: 'h-tap', text: 'Tap when done' }]
     : [...(!Q||last ? [] : [{ icon: 'h-spin' as const, text: 'Next', onPress: () => goQ(1) }]), { icon: 'h-dn', text: phase === 'review' ? 'Question' : subpage === 'followup' ? 'Answer review' : 'Back', nudge: 'down', onPress: phase === 'review' ? returnToQuestion : subpage === 'followup' ? returnFromFollowup : back }];
-  const result = ans?.status === 'done' ? ans.result : undefined;
-  const transcriptPreview = result?.transcript.text.trim();
+  const result = answerWaiting ? undefined : displayedAnswer.value;
+  const transcriptPreview = savedAnswer?.result?.transcript.text.trim();
   const short = result?.verdict === 'too_short';
   const verdict = !result ? null : short ? { text: 'Too short', tone: TONE.plain, icon: 'i-clock' as IconKey }
     : result.verdict === 'answered' ? { text: 'Answered', tone: TONE.good, icon: 'i-check' as IconKey } : { text: 'Partly answered', tone: TONE.warn, icon: 'i-flag' as IconKey };
@@ -425,10 +486,10 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
           <View style={StyleSheet.absoluteFill} pointerEvents={subpage==='transcript'?'none':'auto'} importantForAccessibility={subpage==='transcript'?'no-hide-descendants':'auto'}>
           <Animated.View style={[styles.header,slideStyle]} pointerEvents="none">
             <Txt style={styles.title}>{subpage === 'followup' ? 'Follow-up' : archived?"Saved Q&A":"Audience Q&A"}</Txt>
-            <Txt numberOfLines={1} style={styles.label}>{subpage === 'followup' && Q ? `${who(Q)} · question ${i + 1} of ${qs.length}` : Q ? 'Question ' + (i + 1) + ' of ' + qs.length + ' · ' + ((set?.audience ?? qa.state?.requirements.audience ?? '')+(!archived&&model.deck.requirementsDefault?' (default)':'')) : (qaActive(qa.state)?'Writing audience questions… · ':'') + (currentAudience || 'Audience not set')}</Txt>
+            <Txt verbatim numberOfLines={1} style={styles.label}>{subpage === 'followup' && Q ? presenterHeader : questionHeader}</Txt>
           </Animated.View>
-          {historyAvailable&&<Pressable accessibilityRole="button" accessibilityLabel={archived?'Next saved Q&A or return to current questions':'View saved Q&A'} onPress={()=>{if(rec||count)return;stopSpeak();player.stop();onHistory();}}
-            style={{position:'absolute',top:18,left:16,zIndex:10,paddingVertical:6,paddingHorizontal:10}}>
+          {historyAvailable&&<Pressable accessibilityRole="button" accessibilityLabel={ui(archived?'Next saved Q&A or return to current questions':'View saved Q&A')} onPress={()=>{if(rec||count)return;stopSpeak();player.stop();onHistory();}}
+            style={{position:'absolute',top:4,right:16,zIndex:10,minHeight:44,justifyContent:'center',paddingHorizontal:10}}>
             <Txt style={{fontSize:13.5,color:c.secondary}}>{archived?'Next saved / Current Q&A':'Saved Q&A'}</Txt>
           </Pressable>}
           {Q && (
@@ -436,31 +497,31 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
               <View style={StyleSheet.absoluteFill} pointerEvents={phase==='review'?'none':'auto'} importantForAccessibility={phase==='review'?'no-hide-descendants':'auto'}>
               <View style={styles.panel} pointerEvents="none">
                 {qs.slice(0,3).map((question,qi)=>{const now=qi===i,done=!!set?.answers[answerKey(qi,0)];
-                  return <View key={`${question.id}:${qi}`} accessibilityLabel={`${who(question)}${done?', answered':''}`} style={[now?styles.panelNow:styles.panelMember,{backgroundColor:now?c.accentSoft:c.raised}]}>
-                    <Txt style={[now?styles.panelNowText:styles.panelText,{color:now?c.accent:qi<i?c.secondary:c.tertiary}]}>{initials(who(question))}</Txt>
+                  return <View key={`${question.id}:${qi}`} accessibilityLabel={panelist(qi) + (done?', ' + ui('Answered'):'')} style={[now?styles.panelNow:styles.panelMember,{backgroundColor:now?c.accentSoft:c.raised}]}>
+                    <Txt verbatim style={[now?styles.panelNowText:styles.panelText,{color:now?c.accent:qi<i?c.secondary:c.tertiary}]}>{initials(panelist(qi))}</Txt>
                     {done&&<View style={[styles.panelDone,{backgroundColor:c.good}]}><UIIcon name="i-check" size={14} color={c.onAccent}/></View>}
                   </View>;})}
               </View>
               <View style={[styles.chat,{top:CHAT_TOP,height:layout.chatHeight}]}>
-                <FitBox key={`${jobId}:${i}:${part}:${rec?1:0}`} height={layout.chatHeight}
+                <FitBox key={JSON.stringify([jobId,i,part,rec,language,Q.question,part?Q.follow_up:''])} height={layout.chatHeight}
                   onScrollY={y=>{chatScrollY.current=y;}}>
-                  <ChatQuestion name={who(Q)} slideNumber={Q.slide_index+1} slideTitle={deck.slides[Q.slide_index]?.title??''}
+                  <ChatQuestion name={panelist(i)} slideNumber={Q.slide_index+1} slideTitle={deck.slides[Q.slide_index]?.title??''}
                     slide={(w,h)=><MiniSlide hue={deck.hue} page={deck.pages[Q.slide_index]} title={deck.slides[Q.slide_index]?.title ?? ''} width={w} height={h} radius={10} />}
-                    question={quote(Q.question)} followUp={part===1?quote(Q.follow_up):null} recording={rec}
-                    questionLabel={part===1?'Back to the question: '+Q.question:(hearing('q' + i) ? 'Stop the question: ' : 'Hear the question: ') + Q.question}
+                    question={quote(Q.question)} followUp={part===1?quote(Q.follow_up):null} recording={rec} countdown={!!count} speechReady={questionReady}
+                    questionLabel={ui(part===1?'Back to the question: '+Q.question:(hearing('q' + i) ? 'Stop the question: ' : 'Hear the question: ') + Q.question)}
                     onQuestion={()=>{if(rec||count)return;if(part===1){stopSpeak();setPart(0);setQuestionViewKey(answerKey(i,0));setSubpage(null);}else speak(Q.question,'q'+i);}}
-                    followLabel={(hearing('f' + i) ? 'Stop the follow-up: ' : 'Hear the follow-up: ') + Q.follow_up}
+                    followLabel={ui((hearing('f' + i) ? 'Stop the follow-up: ' : 'Hear the follow-up: ') + Q.follow_up)}
                     onFollow={()=>{if(!rec)speak(Q.follow_up,'f'+i);}} playing={hearing(part===1?'f'+i:'q'+i)} last={last}/>
                 </FitBox>
               </View>
-              <Pressable accessibilityRole={ans&&!rec?'button':undefined} accessibilityLabel={ans&&!rec?'View answer review':undefined} disabled={!ans||rec}
+              <Pressable accessibilityRole={ans&&!rec?'button':undefined} accessibilityLabel={ans&&!rec?ui('View answer review'):undefined} disabled={!ans||rec}
                 onPress={()=>{stopSpeak();player.stop();setQuestionViewKey(null);}}
                 style={[styles.answerSpace,{top:layout.answerTop,height:ANSWER_HEIGHT,borderColor:rec?c.accent:c.tertiary,borderStyle:rec?'solid':'dashed',backgroundColor:rec?c.surface06:'transparent'}]}>
                 {/* OpenAI Codex, Iteration 2 (2026-11-21): preview the saved transcript in the fixed answer space. */}
                 <View style={styles.answerHead}><UIIcon name="i-mic" size={18} color={rec?c.text:c.secondary}/>
                   <Txt style={[styles.answerTitle,{color:rec?c.text:c.secondary}]}>{rec?`Your answer · ${fmt(elapsed)}`:'Your answer'}</Txt></View>
                 {rec?<><Waveform bars={wave} live /><Txt numberOfLines={2} style={[styles.answerNote,{color:c.secondary}]}>Listening… your words are written out when you stop.</Txt></>
-                  :<Txt numberOfLines={3} ellipsizeMode="tail" style={[styles.answerNote,{color:transcriptPreview?c.text:c.tertiary}]}>
+                  :<Txt verbatim={!!transcriptPreview && !count} numberOfLines={3} ellipsizeMode="tail" style={[styles.answerNote,{color:transcriptPreview?c.text:c.tertiary}]}>
                     {count?'Get ready to answer…':transcriptPreview|| (ans ? ans.status==='judging'?'Transcribing your answer…':'Transcript unavailable. Tap to see the answer review.' : 'Tap the mic and answer out loud. Your words are written out when you stop.')}
                   </Txt>}
               </Pressable>
@@ -476,17 +537,17 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
                   })}</View>
                   <View style={styles.verdictBarLabels}>{(['Missed','Partly','Answered'] as const).map(label=><Txt key={label} style={[styles.verdictBarLabel,{color:c.tertiary}]}>{label}</Txt>)}</View>
                 </View>
-                {ans&&<Pressable accessibilityRole="button" accessibilityLabel="Play your recorded answer" onPress={playAnswer} style={[styles.playChip,styles.reviewPlay]}><Glyph name={player.playingKey==='a'+key?'p-pause':'p-play'} size={15}/><Txt style={styles.playText}>{'Your answer · '+fmt(ans.durationMs/1000)}</Txt></Pressable>}
-                <View style={styles.nextTime}><Txt style={[styles.over,{color:c.tertiary}]}>NEXT TIME</Txt><Txt style={styles.nextTimeText}>{short?'Answer for at least 8 seconds.':result?.clarify||'Keep the answer clear and tied to the question.'}</Txt></View>
+                {ans&&<Pressable accessibilityRole="button" accessibilityLabel={ui("Play your recorded answer")} onPress={playAnswer} style={[styles.playChip,styles.reviewPlay]}><Glyph name={player.playingKey==='a'+key?'p-pause':'p-play'} size={15}/><Txt style={styles.playText}>{'Your answer · '+fmt(ans.durationMs/1000)}</Txt></Pressable>}
+                <View style={styles.nextTime}><Txt style={[styles.over,{color:c.tertiary}]}>NEXT TIME</Txt><Txt verbatim={!!result?.clarify && !short} style={styles.nextTimeText}>{short?'Answer for at least 8 seconds.':result?.clarify||'Keep the answer clear and tied to the question.'}</Txt></View>
                 {ans?.status==='judging'&&<Row icon="i-wave" k="Answer review" t="Transcribing and reviewing your answer…"/>}
                 {ans?.status==='error'&&!archived&&<Pressable accessibilityRole="button" onPress={()=>void judge(key,i,part,ans)}><Row icon="i-flag" k="Couldn’t review this answer" t={(ans.error||'')+' Tap to try again.'}/></Pressable>}
                 {/* OpenAI Codex, Iteration 4 (2026-11-21): dedicated follow-up and transcript pages replace inline result details. */}
                 <View style={styles.detailActions}>
-                  <Pressable accessibilityRole="button" accessibilityLabel="Open follow-up page" disabled={part!==0||!result||short||!Q.follow_up}
+                  <Pressable accessibilityRole="button" accessibilityLabel={ui('Open follow-up page')} disabled={part!==0||!result||short||!Q.follow_up}
                     onPress={openFollowup} style={[styles.detailAction,{borderColor:c.hair,backgroundColor:c.surface06},(part!==0||!result||short||!Q.follow_up)&&styles.detailDisabled]}>
                     <UIIcon name="i-bubble" size={19} color={c.secondary}/><Txt style={styles.detailLabel}>Follow-up</Txt><UIIcon name="i-arrow" size={15} color={c.secondary}/>
                   </Pressable>
-                  <Pressable accessibilityRole="button" accessibilityLabel="Open answer transcript" disabled={!result}
+                  <Pressable accessibilityRole="button" accessibilityLabel={ui('Open answer transcript')} disabled={!result}
                     onPress={openTranscript} style={[styles.detailAction,{borderColor:c.hair,backgroundColor:c.surface06},!result&&styles.detailDisabled]}>
                     <UIIcon name="i-text" size={19} color={c.secondary}/><Txt style={styles.detailLabel}>Transcript</Txt><UIIcon name="i-arrow" size={15} color={c.secondary}/>
                   </Pressable>
@@ -499,30 +560,32 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
             <View style={styles.status} pointerEvents="box-none">
               <UIIcon name={load.kind === 'error' ? 'i-flag' : 'i-bubble'} size={44} />
               <Txt style={styles.statusText}>{statusMessage}</Txt>
-              {(!currentAudience.trim() || qa.requirementsDirty) && <Pressable accessibilityRole="button" accessibilityLabel="Edit presentation time and audience" onPress={() => { stopSpeak(); player.stop(); go('rehearse', { deckId: deck.id, editRequirements: true }); }} style={styles.retry}><Txt style={styles.retryText}>Edit time and audience</Txt></Pressable>}
-              {sourcesPending && <Pressable accessibilityRole="button" accessibilityLabel="Review selected recordings" onPress={() => { stopSpeak(); player.stop(); go('review', { nav: null, deckId: deck.id, sel: recoverySlide >= 0 ? recoverySlide : run.sel ?? nav.sel }); }} style={styles.retry}><Txt style={styles.retryText}>Review selected recordings</Txt></Pressable>}
-              <Pressable accessibilityRole="button" accessibilityLabel="Refresh audience questions status" disabled={!active || qa.busy} onPress={() => void qa.refresh()} style={styles.retry}><Txt style={styles.retryText}>Refresh status</Txt></Pressable>
-              {!sourcesPending&&!qa.busy&&!qa.requirementsDirty&&!qaActive(qa.state)&&!!qa.state?.requirements.audience&&<Pressable accessibilityRole="button" onPress={regenerate} style={styles.retry}><Txt style={styles.retryText}>{qa.state?.stale?'Update questions':'Retry questions'}</Txt></Pressable>}
+              {(!currentAudience.trim() || qa.requirementsDirty) && <Pressable accessibilityRole="button" accessibilityLabel={ui("Edit presentation time and audience")} onPress={() => { stopSpeak(); player.stop(); go('rehearse', { deckId: deck.id, editRequirements: true }); }} style={styles.retry}><Txt style={styles.retryText}>Edit time and audience</Txt></Pressable>}
+              {sourcesPending && <Pressable accessibilityRole="button" accessibilityLabel={ui("Review selected recordings")} onPress={() => { stopSpeak(); player.stop(); go('review', { nav: null, deckId: deck.id, sel: recoverySlide >= 0 ? recoverySlide : run.sel ?? nav.sel }); }} style={styles.retry}><Txt style={styles.retryText}>Review selected recordings</Txt></Pressable>}
+              <Pressable accessibilityRole="button" accessibilityLabel={ui("Refresh audience questions status")} disabled={!active || qa.busy} onPress={() => void qa.refresh()} style={styles.retry}><Txt style={styles.retryText}>Refresh status</Txt></Pressable>
+              {!sourcesPending&&!qa.requirementsDirty&&!serviceUnavailable&&!qaActive(qa.state)&&!!currentAudience.trim()&&<Pressable accessibilityRole="button" accessibilityLabel={ui(generationAction)} disabled={!active||qa.busy} onPress={regenerate} style={styles.retry}><Txt style={styles.retryText}>{generationAction}</Txt></Pressable>}
             </View>
           )}
           {Q && load.kind === 'error' && <Txt style={styles.inlineError}>{load.message}</Txt>}
           <RecordRing progress={ringP} visible={ringV} />
-          {!archived&&<RecordButton glyph={glyph} label={btnLabel} onPress={toggleRec} disabled={!Q} />}
+          {!archived&&<RecordButton glyph={glyph} label={btnLabel} onPress={toggleRec} disabled={!active || !Q || (!questionReady && !rec && !count)} />}
           </View>
           {subpage==='transcript'&&<Animated.View style={[StyleSheet.absoluteFill,{backgroundColor:c.bg},transcriptFade]}>
             <View style={styles.transcriptHeader}>
               <Txt style={styles.title}>Transcript</Txt>
-              <Txt style={styles.label}>{Q ? `${who(Q)} · question ${i + 1} of ${qs.length}` : 'Your answer'}</Txt>
+              <Txt verbatim style={styles.label}>{Q ? presenterHeader : ui('Your answer')}</Txt>
             </View>
             <ScrollView style={[styles.transcriptScroll,frame.compact&&{bottom:60}]} contentContainerStyle={styles.transcriptContent}
               showsVerticalScrollIndicator={false} onScroll={event=>{transcriptScrollY.current=event.nativeEvent.contentOffset.y;}} scrollEventThrottle={16}>
               <Txt style={[styles.over,{color:c.tertiary}]}>{part===1?'FOLLOW-UP QUESTION':'QUESTION'}</Txt>
-              <Txt style={styles.transcriptQuestion}>{Q ? quote(part===1?Q.follow_up:Q.question) : ''}</Txt>
-              {ans&&<Pressable accessibilityRole="button" accessibilityLabel="Play your recorded answer" onPress={playAnswer} style={[styles.playChip,styles.reviewPlay]}>
+              <Txt verbatim style={styles.transcriptQuestion}>{Q ? quote(part===1?Q.follow_up:Q.question) : ''}</Txt>
+              {ans&&<Pressable accessibilityRole="button" accessibilityLabel={ui('Play your recorded answer')} onPress={playAnswer} style={[styles.playChip,styles.reviewPlay]}>
                 <Glyph name={player.playingKey==='a'+key?'p-pause':'p-play'} size={15}/><Txt style={styles.playText}>{'Your answer · '+fmt(ans.durationMs/1000)}</Txt>
               </Pressable>}
               <Txt style={[styles.over,{color:c.tertiary}]}>YOUR TRANSCRIPT</Txt>
-              <Txt style={styles.transcriptBody}>{result?.transcript.text.trim()||'No speech was recognized in this answer.'}</Txt>
+              <Txt verbatim={!!transcriptPreview} style={styles.transcriptBody}>{transcriptPreview||'No speech was recognized in this answer.'}</Txt>
+              {!!result?.did && !short && <Row icon="i-check" k={language === 'ko' ? '잘한 점' : 'What you covered'} t={result.did} verbatim />}
+              {!!result?.evidence && !short && <Row icon="i-bubble" k={language === 'ko' ? '답변 근거' : 'Answer evidence'} t={result.evidence} verbatim />}
             </ScrollView>
           </Animated.View>}
         </Animated.View>
@@ -562,44 +625,43 @@ function FitBox({ height, onScrollY, children }: { height: number; onScrollY: (y
 const useFit = () => { const z = useContext(Fit); return (n: number) => Math.round(n * z * 10) / 10; };
 
 /** The question as a chat message from the panelist (tap to hear it), the follow-up under it, then the slide it came from. */
-function ChatQuestion({ name, slideNumber, slideTitle, slide, question, followUp, recording, questionLabel, onQuestion, followLabel, onFollow, playing, last }: {
-  name: string; slideNumber: number; slideTitle: string; slide: (width: number, height: number) => ReactNode; question: string; followUp: string | null; recording: boolean;
+function ChatQuestion({ name, slideNumber, slideTitle, slide, question, followUp, recording, countdown, speechReady, questionLabel, onQuestion, followLabel, onFollow, playing, last }: {
+  name: string; slideNumber: number; slideTitle: string; slide: (width: number, height: number) => ReactNode; question: string; followUp: string | null; recording: boolean; countdown: boolean; speechReady: boolean;
   questionLabel: string; onQuestion: () => void; followLabel: string; onFollow: () => void; playing: boolean; last: boolean }) {
-  const { c } = useTheme(), z = useFit();
+  const { c } = useTheme(), z = useFit(), ui = useUiText();
   const bubble = { backgroundColor: c.raised, borderRadius: 20, borderBottomLeftRadius: 6, paddingHorizontal: z(16), paddingVertical: z(14) };
-  const sender = (text: string, color: string) => <Txt style={[styles.sender, { color, fontSize: z(14), lineHeight: z(18) }]}>{text}</Txt>;
-  const hear = !recording && <View style={[styles.hearRow, { marginTop: z(10) }]}><Glyph name={playing ? 'p-pause' : 'p-play'} size={z(14)} color={c.secondary} />
+  const sender = (text: string, color: string) => <Txt verbatim style={[styles.sender, { color, fontSize: z(14), lineHeight: z(18) }]}>{text}</Txt>;
+  const hear = !recording && !countdown && speechReady && <View style={[styles.hearRow, { marginTop: z(10) }]}><Glyph name={playing ? 'p-pause' : 'p-play'} size={z(14)} color={c.secondary} />
     <Txt style={[styles.hearText, { color: c.secondary, fontSize: z(14), lineHeight: z(18) }]}>{playing ? 'Playing…' : 'Tap to hear'}</Txt></View>;
   return <View style={styles.msgRow}>
     <View style={[styles.msgAvatar, { width: z(36), height: z(36), borderRadius: z(18), backgroundColor: c.accentSoft }]}>
-      <Txt style={[styles.msgAvatarText, { color: c.accent, fontSize: z(14) }]}>{initials(name)}</Txt></View>
+      <Txt verbatim style={[styles.msgAvatarText, { color: c.accent, fontSize: z(14) }]}>{initials(name)}</Txt></View>
     <View style={[styles.msgColumn, { gap: z(8) }]}>
-      <Pressable accessibilityRole="button" accessibilityLabel={questionLabel} onPress={onQuestion} style={bubble}>
-        {sender(followUp ? `${name} · question · tap to go back` : `${name} · after slide ${slideNumber}`, c.accent)}
-        <Txt style={[styles.question, { color: followUp ? c.secondary : c.text, marginTop: z(6), fontSize: z(followUp ? 15 : 18), lineHeight: z(followUp ? 21 : 25.6) }]}>{question}</Txt>
+      <Pressable accessibilityRole="button" accessibilityLabel={questionLabel} disabled={recording || countdown || (!followUp && !speechReady)} onPress={onQuestion} style={bubble}>
+        {sender(name + ' · ' + (followUp ? ui('Question · tap to go back') : ui('after slide ' + slideNumber)), c.accent)}
+        <Txt verbatim style={[styles.question, { color: followUp ? c.secondary : c.text, marginTop: z(6), fontSize: z(followUp ? 15 : 18), lineHeight: z(followUp ? 21 : 25.6) }]}>{question}</Txt>
         {!followUp && hear}
       </Pressable>
-      {followUp && <Pressable accessibilityRole="button" accessibilityLabel={followLabel} onPress={onFollow} style={bubble}>
-        {sender(`Follow-up · ${name}`, c.warn)}
-        <Txt style={[styles.question, { color: c.text, marginTop: z(6), fontSize: z(18), lineHeight: z(25.6) }]}>{followUp}</Txt>
+      {followUp && <Pressable accessibilityRole="button" accessibilityLabel={followLabel} disabled={recording || countdown || !speechReady} onPress={onFollow} style={bubble}>
+        {sender(ui('Follow-up') + ' · ' + name, c.warn)}
+        <Txt verbatim style={[styles.question, { color: c.text, marginTop: z(6), fontSize: z(18), lineHeight: z(25.6) }]}>{followUp}</Txt>
         {hear}
       </Pressable>}
       <View style={[styles.attach, { gap: z(10) }]} pointerEvents="none">
         {slide(z(112), z(63))}
-        <Txt numberOfLines={2} style={[styles.attachText, { color: c.tertiary, fontSize: z(13.5), lineHeight: z(18) }]}>{`Slide ${slideNumber}${slideTitle ? ' · ' + slideTitle : ''}`}</Txt>
+        <Txt verbatim numberOfLines={2} style={[styles.attachText, { color: c.tertiary, fontSize: z(13.5), lineHeight: z(18) }]}>{ui('Slide ' + slideNumber) + (slideTitle ? ' · ' + slideTitle : '')}</Txt>
       </View>
       {last && !recording && <Txt style={[styles.attachText, { color: c.tertiary, fontSize: z(13.5), lineHeight: z(18) }]}>Last question · swipe down for your review</Txt>}
     </View>
   </View>;
 }
-
-function Row({ icon, k, t }: { icon: IconKey; k: string; t: string }) {
+function Row({ icon, k, t, verbatim = false }: { icon: IconKey; k: string; t: string; verbatim?: boolean }) {
   return (
     <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
       <UIIcon name={icon} size={22} style={{ marginTop: 1 }} />
       <View style={{ flex: 1, minWidth: 0 }}>
         <Txt style={styles.rowK}>{k}</Txt>
-        <Txt style={styles.rowT}>{t}</Txt>
+        <Txt verbatim={verbatim} style={styles.rowT}>{t}</Txt>
       </View>
     </View>
   );
