@@ -5,6 +5,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { transpile } from './transpile.mjs';
 export function resolve(specifier, context, nextResolve) {
+  if (specifier === 'expo-sqlite') return { url: new URL('./sqlite-node.mjs', import.meta.url).href, shortCircuit: true };
   if (specifier.startsWith('.') && context.parentURL) {
     for (const extension of ['', '.ts', '.tsx']) {
       const url = new URL(specifier + extension, context.parentURL);

@@ -157,6 +157,7 @@ class IncrementalTests(CaptureFixtures, TestCase):
         self.assertEqual(old['status'], 'pending')
         self.assertTrue(old['provisional'])
         self.assertTrue(old['criteria'])
+        self.assertEqual(old['language'], 'en')
         self.declare([0, 1, 0, 2]); self.upload(2)
         inc.transcribe_segment(CaptureSegment.objects.get(sequence=2).pk)
         pending = self.state()['feedback']['slides'][0]
@@ -300,6 +301,68 @@ class IncrementalTests(CaptureFixtures, TestCase):
         self.assertEqual(CaptureAssessment.objects.count(), count)
         self.assertEqual(self.model_calls, [('slide', 0)])
         self.assertEqual(self.client.post(f'/api/attempts/{self.id}/feedback-run/', [], format='json').status_code, 400)
+
+    def test_feedback_get_returns_the_language_requested_for_each_stored_assessment(self):
+        self.declare([0, 1]); self.upload(0); self.process()
+        words = '도서관의 새로운 운영시간은 지역사람들의 방문을 도와줍니다'.split()
+        self.raw.return_value = {'text': ' '.join(words), 'words': [
+            {'type': 'word', 'text': w, 'start': i * .2, 'end': (i + 1) * .2} for i, w in enumerate(words)]}
+        self.declare([0, 1, 2]); self.upload(1); self.process()
+        self.declare([0, 1, 2], stopped=True); self.upload(2); self.full(6000); self.process()
+        url = f'/api/attempts/{self.id}/feedback-run/'
+        initial_calls = len(self.model_calls)
+        result = self.client.get(url).data
+        self.assertEqual([p['language'] for p in result['slides']], ['en', 'ko', 'ko'])
+        self.assertEqual(result['whole']['language'], 'ko')
+        # An old snapshot without an explicit language supplies no claim for the client to trust.
+        old = CaptureAssessment.objects.get(slide_index=0)
+        old.payload['presentation'].pop('language')
+        old.save(update_fields=['payload'])
+        self.assertNotIn('language', self.client.get(url).data['slides'][0])
+        self.assertEqual(len(self.model_calls), initial_calls)
+
+    def test_compact_overflow_uses_the_frozen_spoken_language_for_slide_and_whole(self):
+        words = '이용자의 변화는 늦은 시간에 관찰한 결과입니다'.split()
+        self.raw.return_value = {'text': ' '.join(words), 'words': [
+            {'type': 'word', 'text': w, 'start': i * .2, 'end': (i + 1) * .2} for i, w in enumerate(words)]}
+        headline = '두 집단의 차이를 설명하기'
+        def model(http, config, kind, payload, deadline=None):
+            result = answer(kind, payload)
+            card = {'headline': headline, 'explanation': ['두 집단의 차이가 불분명해요.'], 'steps': ['차이를 말해 보세요.']}
+            result.data['improvements'] = [{**card, 'criterion': rubric.CURRENT.slide[0].id}]
+            result.data['top_priorities'] = [card]
+            return result
+        with mock.patch.object(pipeline, 'call_llm', side_effect=model):
+            self.declare([0, 1, 2], stopped=True)
+            for i in range(3):
+                self.upload(i)
+            self.full(6000)
+            self.process()
+        feedback = self.state()['feedback']
+        for part, field in [(feedback['slides'][0], 'improvements'), (feedback['whole'], 'top_priorities')]:
+            self.assertEqual(part['language'], 'ko')
+            self.assertEqual(part[field][0]['headline'], headline)
+            self.assertIn('headline', part[field][0]['over_limit'])
+
+    def test_final_prompt_2_capture_is_readable_without_grading_after_a_prompt_upgrade(self):
+        with mock.patch.object(pipeline.prompts, 'PROMPT_VERSION', 'feedback-v3-prompt-2'):
+            self.declare([0, 1, 2], stopped=True)
+            for i in range(3):
+                self.upload(i)
+            self.full(6000)
+            self.process()
+            original = self.state()['feedback']
+        rows = list(CaptureAssessment.objects.order_by('pk').values_list('pk', 'input_hash', 'result'))
+        counts = (len(self.model_calls), len(self.scribe_calls))
+        inc.recover()
+        self.process()
+        read = self.client.get(f'/api/attempts/{self.id}/feedback-run/').data
+        self.assertTrue(read['outdated'])
+        self.assertEqual(read['status'], 'completed')
+        for key in ('slides', 'whole', 'scores', 'run_id'):
+            self.assertEqual(read[key], original[key])
+        self.assertEqual(list(CaptureAssessment.objects.order_by('pk').values_list('pk', 'input_hash', 'result')), rows)
+        self.assertEqual((len(self.model_calls), len(self.scribe_calls)), counts)
 
     def test_mismatched_full_audio_is_not_finalized_and_can_be_repaired(self):
         self.declare([0], stopped=True, duration=2000)

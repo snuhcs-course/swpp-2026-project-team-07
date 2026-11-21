@@ -121,3 +121,26 @@ test('long validation, recovery and Save flow in the scroll content instead of o
   const wrapper=scroll.findByProps({accessibilityLabel:'Synthetic recovery'}).parent;assert.notEqual(flattened(wrapper.props.style).position,'absolute');
  }finally{await act(async()=>r.unmount());}
 });
+// OpenAI Codex integrated supplied regression: docs/ai-collaboration-prompts-iteration-2.md#align-presentation-time-dial-arc
+test('the filled dial arc ends under the knob for every minute value',async()=>{
+ const R=112,C=120,L=2*Math.PI*R;
+ for(const minutes of [1,2,3,10,15,29,30]){
+  const r=await mount({requiredDurationSeconds:minutes*60,audience:''});
+  try{
+   const circles=r.root.findAllByType('circle');
+   const arc=circles.find(n=>n.props.r===R&&n.props.strokeDashoffset!==undefined);
+   const knob=circles.find(n=>n.props.r===15);
+   assert.ok(arc&&knob,'dial arc and knob are rendered');
+   let svg=knob.parent;
+   while(svg&&!svg.props.viewBox)svg=svg.parent;
+   assert.ok(svg,'padded dial SVG is rendered');
+   assert.deepEqual([svg.props.width,svg.props.height,svg.props.viewBox],[256,256,'-8 -8 256 256']);
+   assert.ok(knob.props.cx-knob.props.r>=-8&&knob.props.cx+knob.props.r<=248&&
+    knob.props.cy-knob.props.r>=-8&&knob.props.cy+knob.props.r<=248,'entire knob fits the SVG canvas');
+   const filled=1-arc.props.strokeDashoffset/L;
+   const end=filled*Math.PI*2-Math.PI/2;
+   assert.ok(Math.abs(C+Math.cos(end)*R-knob.props.cx)<0.01&&Math.abs(C+Math.sin(end)*R-knob.props.cy)<0.01,
+    `${minutes} min: arc ends at ${(filled*360).toFixed(1)}°, knob at ${((Math.atan2(knob.props.cy-C,knob.props.cx-C)+Math.PI/2+2*Math.PI)%(2*Math.PI)*180/Math.PI).toFixed(1)}°`);
+  }finally{await act(async()=>r.unmount());}
+ }
+});

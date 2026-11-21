@@ -3,6 +3,7 @@
 # Attribution/review scope: https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/42c2154a54e209f4c9e931fd4db5777d6816c3d6/docs/history/ai-collaboration-validation-iteration-1-retired-2026-10-09.md#ai-code-markers
 import uuid
 from django.db import models
+from django.utils import timezone
 
 
 class Deck(models.Model):
@@ -364,3 +365,52 @@ class CaptureAssessment(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=['capture', 'slide_index', 'input_hash'], name='unique_capture_assessment')]
+
+
+class DisplayTranslation(models.Model):
+    """One immutable source/locale pair. Claim tokens fence late worker deliveries."""
+    id = models.CharField(primary_key=True, max_length=64)
+    kind = models.CharField(max_length=16)
+    resource_id = models.CharField(max_length=240)
+    revision = models.CharField(max_length=128, blank=True)
+    language = models.CharField(max_length=2)
+    fields = models.JSONField()
+    translations = models.JSONField(default=dict)
+    source_languages = models.JSONField(default=dict)
+    state = models.CharField(max_length=12, default='queued', db_index=True)
+    prepared_retry_kind = models.CharField(max_length=12, default='', db_default='')
+    prepared_retry_at = models.DateTimeField(null=True, db_index=True)
+    transient_failures = models.PositiveSmallIntegerField(default=0, db_default=0)
+    prepared_retries = models.PositiveSmallIntegerField(default=0, db_default=0)
+    claim = models.UUIDField(null=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+    class Meta:
+        indexes = [models.Index(fields=['kind','resource_id','revision','language'], name='display_resource_locale')]
+
+
+class PreparedDisplayResource(models.Model):
+    """One explicit bilingual opt-in. Old clients and unrelated results create no row."""
+    kind = models.CharField(max_length=16)
+    resource_id = models.CharField(max_length=240)
+    revision = models.CharField(max_length=128, blank=True)
+    preferred_language = models.CharField(max_length=2, default='en')
+    source_state = models.CharField(max_length=12, default='pending')
+    last_requested = models.DateTimeField(default=timezone.now)
+    last_checked = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['kind', 'resource_id', 'revision'], name='unique_prepared_display')]
+
+
+class PreparedDisplayField(models.Model):
+    bundle = models.ForeignKey(PreparedDisplayResource, on_delete=models.CASCADE, related_name='wording')
+    path = models.CharField(max_length=160)
+    source = models.TextField()
+    # A null job means the verified original already supplies that language.
+    en = models.ForeignKey(DisplayTranslation, on_delete=models.PROTECT, null=True, related_name='+')
+    ko = models.ForeignKey(DisplayTranslation, on_delete=models.PROTECT, null=True, related_name='+')
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['bundle', 'path'], name='unique_prepared_field_path')]

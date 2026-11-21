@@ -1,5 +1,6 @@
 """Revisioned selected-run Q&A. GET never submits provider work."""
 from django.db import transaction
+from django.db.models import F
 from rest_framework.decorators import api_view, parser_classes
 from rest_framework.response import Response
 from .models import Attempt, Deck, FeedbackJob, QaAnswer
@@ -37,6 +38,24 @@ def state_for(attempt,scope):
     state['source_revisions']={sid:s['revision'] for sid,s in snapshot['sources'].items()} if snapshot else {}
     return state
 
+
+def saved_question_sets(attempt, scope):
+    """Historical jobs stay tied to their original audience, questions and answer recordings."""
+    jobs = FeedbackJob.objects.filter(
+        analysis__attempt=attempt, state='completed', source_snapshot__audience_qa__version=audience_qa.VERSION,
+        source_snapshot__audience_qa__scope__slides=scope['slides'],
+    ).order_by(F('completed_at').desc(nulls_last=True), '-pk').values_list(
+        'pk', 'generation', 'completed_at', 'source_snapshot__audience_qa__scope__context_id',
+        'source_snapshot__audience_qa__requirements', 'result__questions')[:12]
+    history = []
+    for job_id, revision, completed, context_id, requirements, questions in jobs:
+        if not isinstance(requirements, dict) or not isinstance(questions, list) or not 1 <= len(questions) <= 3:
+            continue
+        history.append({'job_id': job_id, 'feedback_revision': revision, 'qa_version': audience_qa.VERSION,
+                        'completed_at': completed, 'scope': {'context_id': context_id, 'slides': scope['slides']},
+                        'requirements': requirements, 'questions': questions})
+    return history
+
 @api_view(['GET','POST'])
 @parser_classes([])
 def questions(request,attempt_id):
@@ -61,6 +80,8 @@ def questions(request,attempt_id):
                         raise coaching.Conflict('correction_conflict')
                 coaching.generate(attempt.pk,payload,audience_qa.analysis_type(scope),scope)
         state=state_for(attempt,scope)
+        if request.method == 'GET' and (not state.get('result') or state['stale'] or state['result']['stale']):
+            state['saved_question_sets'] = saved_question_sets(attempt, scope)
         return Response(state,status=202 if request.method=='POST' and state['state']!='completed' else 200)
     except processing.ProcessConflict as error:return Response({'error':{'code':error.code,'message':error.message}},status=409)
     except FeedbackJob.DoesNotExist:return Response({'error':{'code':'question_not_found','message':'Question set is unavailable.'}},status=404)

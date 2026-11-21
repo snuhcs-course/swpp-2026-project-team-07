@@ -1070,6 +1070,14 @@ source identities/corrections and selected effective speech. Missing audience is
 400 `missing_audience`, never the legacy Faculty panel default. Cached profiles carry
 full-deck purpose/context; unselected transcript text is excluded from the AI payload.
 
+When a GET has no current result or its result is stale, the optional
+`saved_question_sets` array lists up to 12 completed sets, newest first, for the
+same anchor and exact slide visits across saved audience contexts. Each entry
+contains `job_id`, `feedback_revision`, `qa_version`, `completed_at` (ISO timestamp
+or null), the original `scope`, frozen `requirements`, and original `questions`.
+Selecting an earlier set keeps its question IDs and recorded answers. Reading
+this history leaves the current requirements and assessment unchanged.
+
 Question responses use existing durable feedback states, dependencies, receipts,
 retry/uncertainty/selection controls, plus `scope`, `qa_version`, `requirements` and
 `source_revisions`. `result` adds `job_id`, `qa_version`, and one to three `questions`:
@@ -1346,3 +1354,25 @@ and settings changes after finalization mark results `outdated` until an explici
 update. Corrections never delay the first feedback. Every response includes
 `created_at` and `updated_at` for monotonic mobile caching. A lost feedback worker
 is failed for explicit retry, so recovery does not silently repeat model calls.
+
+## English and Korean display translations
+
+The Android flag sets a device-wide language preference in the app's existing SQLite database. The same saved assessment supplies both languages. App labels come from the bundled catalog. The display service translates generated advice, cue text, questions, follow-ups, and answer assessments. Audio, original transcript quotes, suggested speaking lines, scores, question bindings, evidence links, and slide timings retain their source values.
+
+Incremental feedback can include an optional `language` (`en`, `ko`, or `und`) on each scored slide and on the whole assessment. It comes from the saved input for the result being displayed, including a previous visit shown during an update. Clients can display known same-language prose immediately and can read older results that omit this field. The Android client reads prepared wording during render. Until a previously unsynced field is available, it shows a status in the selected language. Original measurements, transcript evidence and saved audio remain available. The app resumes synchronization automatically.
+
+For a saved feedback card with a `headline`, `explanation` bullets and `steps`, each of these fields can be translated individually. Older cards can use their saved `problem` and `action` paragraphs. In both formats, the suggested speaking line and exact transcript quotations keep the language of the rehearsal.
+
+The bilingual app prepares only resources associated with the selected rehearsal. `POST /api/localization/prepared/` enrolls a resource using `kind`, `resource_id`, and an optional `revision`. Optional `preferred_language` (`en` or `ko`) puts the selected language first when both require translation. A phone-only Q&A history supplies bounded saved coaching fields. Enrollment may precede completion of the underlying assessment. Its normal completion then queues display preparation. Repeated enrollments reuse the saved wording for matching fields. When several slide reviews or score contexts match a resource, the server prepares their available fields and the phone requests each conflicting path using the exact wording from its selected result. Opening or switching a prepared result reads the local cache.
+
+`GET /api/localization/prepared/{kind}/{resource_id}/?revision=…&cursor=…` reads the bundle. Both endpoints return `kind`, `resource_id`, `revision`, `state`, `fields`, and `next_cursor`. States are `absent`, `pending`, `completed`, and `failed`. Each returned field includes its exact `source` and any verified `en` and `ko` variants. Follow the opaque `next_cursor` until null. A partial response can supply usable wording for individual fields before the other language is ready. `terminal_fields` lists the paths that cannot be safely retried for each locale. `terminal` marks a terminal failure. The phone displays a localized availability message for affected fields; successful siblings remain accessible. The phone compares the source bytes and revision before storing either language. Fixed rubric labels and level descriptions are bundled with the Android interface. Client requests for other rubric wording use the same field identity.
+
+`POST /api/localization/` accepts an object with `kind`, `resource_id`, `language` (`en` or `ko`), and `fields`, a map of stable field paths to their saved prose. Optional `revision` identifies the source revision. For an enrolled resource, `retry: true` follows the saved delay for safe retries and permits one automatic correction. A caller can explicitly confirm recovery of a terminal failure by also sending `confirmed_retry_id` with the failed translation’s exact `id` and the same snapshot. On unenrolled resources, `retry: true` retains its original explicit retry behavior. The server supports `feedback`, `profiles`, `questions`, `answer`, `slide_review`, `score`, `coaching`, and `legacy_qa`. Durable questions use their numeric question job ID encoded as a string. Saved run, profile, and attempt resources use their respective UUIDs. The backend checks the submitted prose against the corresponding stored result. A phone-only Q&A archive can supply its bounded question and answer-review fields.
+
+Both POST and `GET /api/localization/{id}/` return `{id, language, state, translations, source_languages}`. An accepted pending request returns 202. A completed or failed request returns 200. GET only reads the translation. The optional per-field source language is `en`, `ko`, `other`, `und` (mixed or undetermined), or `zxx` (a language-neutral panelist name or identifier). When the translator identifies an English or Korean original, the phone also saves its exact wording for the offline return trip. Older cached translations can omit this metadata. The version 37 client automatically recovers missing display wording when a connection is available. A source revision or wording change has a distinct cache identity.
+
+The development API requires migrations through `0016_prepared_display` and the normal Celery worker and recovery scheduler. Repeated requests for the same resource, revision, language, and fields reuse the database entry. A retry of display wording keeps the original assessment and answer recording.
+
+The worker treats a calendar date as one unit when translating coaching. An English “September 15, 1821” can appear as “1821년 9월 15일” while retaining the same year, month and day. Calendar dates inside a speaker’s exact words or suggested practice line stay as written.
+
+Android and the worker check the language and explicit clock times of saved coaching outside exact source quotations and suggested speaking lines. For example, “7 and 8 p.m.” can appear as “오후 7시와 8시”. A status read of a completed entry with a recognizable wrong-language field or a missing morning or evening qualifier reports a failed translation. Posting the same snapshot repairs the affected fields under the existing translation ID and retains the other wording. A worker can request a targeted correction for fields that fail validation, including numeric mismatches, and keeps validated sibling wording. For recent selections, preparation retries known pre-admission failures with backoff. A request whose provider acceptance is uncertain cannot be replayed automatically. Android applies these checks when reading its on-device cache after an upgrade.

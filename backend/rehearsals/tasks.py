@@ -28,6 +28,16 @@ def recover_work():
     recover_feedback_v3()
     from .services.incremental import recover as recover_capture
     recover_capture()
+    from .services.localization import recover as recover_translations
+    recover_translations()
+    from .services.prepared_display import recover as recover_prepared
+    recover_prepared()
+
+
+@shared_task(time_limit=150, rate_limit='12/m', ignore_result=True)
+def translate_display(translation_id: str):
+    from .services.localization import run
+    run(translation_id)
 
 
 @shared_task(time_limit=300, ignore_result=True)

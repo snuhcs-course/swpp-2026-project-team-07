@@ -4,12 +4,15 @@
 // Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-043
 // OpenAI Codex follow-up: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-047
 // OutLoud redesign: Compare takes (SPEC §4.5).
+import { useUiText } from '../design/language';
 import { useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Enter, Txt } from '../design/frame';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { Enter, Txt, useFrame } from '../design/frame';
 import { Glyph } from '../design/icons';
 import { PanView } from '../design/PanView';
-import { C, F } from '../design/tokens';
+import { C, EASE_SCREEN, F } from '../design/tokens';
+import { BACK_FADE_Y } from '../domain/gestures';
 import { createThemedStyles, useTheme } from '../design/theme';
 import { HintRow, PageSurface, RecordButton } from '../design/ui';
 import { summarizeTake } from '../domain/analysis';
@@ -22,13 +25,19 @@ import { audioOf } from '../features/rehearsal/analysis';
 import { useSegmentPlayer } from '../features/rehearsal/useSegmentPlayer';
 import { transcriptsFor, useDeckModel } from '../features/presentations/useDeckModel';
 import { useBack, useShell } from './shared';
+import { useHorizontalSwipeMotion } from './swipeMotion';
 
 export function CompareScreen() {
+  const ui = useUiText();
   const { c: palette } = useTheme();
+  const frame = useFrame();
   const { go, nav } = useShell();
   const model = useDeckModel(nav.deckId);
   const [keep, setKeep] = useState<'old' | 'new'>('old');
   const player = useSegmentPlayer();
+  const swipe = useHorizontalSwipeMotion();
+  const fadeY = useSharedValue(0);
+  const swipeFade = useAnimatedStyle(() => ({opacity:Math.max(0,1-fadeY.value/BACK_FADE_Y)}));
   const c = model?.state.compare ?? null;
 
   const view = useMemo(() => {
@@ -61,7 +70,8 @@ export function CompareScreen() {
     const fallback = c?.slides.find(i => partSeconds(resolved?.parts[i]) > 0);
     const selected = inScope && partSeconds(resolved?.parts[requested]) > 0 ? requested :
       fallback ?? Math.max(0, resolved?.parts.findIndex(part => partSeconds(part) > 0) ?? -1);
-    go(reviewing ? reviewDestination(model.state.takes) : 'rehearse', { nav: 'fade', deckId: model.deck.id, slide: selected, sel: selected, from: null });
+    const destination=reviewing ? reviewDestination(model.state.takes) : 'rehearse';
+    go(destination, { nav: 'fade', deckId: model.deck.id, slide: selected, sel: selected, from: destination==='review'?'rehearse':null });
   }, [c, go, model, nav.sel, player, view]);
   // Leaving comparison keeps its pending take choice intact.
   const back = useCallback(() => {
@@ -94,18 +104,24 @@ export function CompareScreen() {
   const currentPoints=selected.ready?selected.said.length:null,otherPoints=other.ready?other.said.length:null;
   const playActive=player.playingKey===playKey&&!player.paused;
   const togglePlay=()=>{if(player.playingKey===playKey){player.setPaused(!player.paused);return;}playSelected();};
+  // Centre the 84 dp action and its label between Play and the footer hints.
+  const hintTop=(frame.compact?760:844)-24-22;
+  const keepTop=(526+hintTop-116)/2;
   return (
-    <Enter kind={nav.nav}><PanView style={StyleSheet.absoluteFill}
+    <><Enter kind={nav.nav}><PanView style={[StyleSheet.absoluteFill,swipeFade]}
       onMoveShould={(_e,g)=>(Math.abs(g.dx)>18&&Math.abs(g.dx)>Math.abs(g.dy))||(g.dy>12&&g.dy>Math.abs(g.dx))}
-      onRelease={(_e,g)=>{if(g.dy>60){back();}else if(g.dx < -60 || g.vx < -0.6){player.stop();setKeep('new');}else if(g.dx > 60 || g.vx > 0.6){player.stop();setKeep('old');}}}>
+      onMove={(_e,g)=>{if(Math.abs(g.dx)>Math.abs(g.dy)){swipe.move(g.dx);fadeY.set(0);}else{swipe.settle();fadeY.set(Math.max(0,Math.min(BACK_FADE_Y,g.dy)));}}}
+      onRelease={(_e,g)=>{const horizontal=Math.abs(g.dx)>Math.abs(g.dy)||Math.abs(g.vx)>0.6&&Math.abs(g.vx)>Math.abs(g.vy);if(!horizontal&&g.dy>60){fadeY.set(withTiming(BACK_FADE_Y,{duration:460,easing:EASE_SCREEN},done=>{if(done)runOnJS(back)();}));}else{fadeY.set(withTiming(0,{duration:360,easing:EASE_SCREEN}));if(horizontal&&(g.dx < -60 || g.vx < -0.6)){if(Math.abs(g.dx)<18)swipe.move(-95);player.stop();setKeep('new');}else if(horizontal&&(g.dx > 60 || g.vx > 0.6)){if(Math.abs(g.dx)<18)swipe.move(95);player.stop();setKeep('old');}swipe.settle();}}}
+      onTerminate={()=>{swipe.settle();fadeY.set(withTiming(0,{duration:360,easing:EASE_SCREEN}));}}>
       <PageSurface hue={model.deck.hue} />
+      <Animated.View style={[StyleSheet.absoluteFill,swipe.style]}>
       <View style={styles.header} pointerEvents="none">
-        <Txt numberOfLines={1} style={styles.title}>{view.title}</Txt>
+        <Txt verbatim={view.whole || (view.slides.length === 1 && !!model.deck.slides[view.first]?.title)} numberOfLines={1} style={styles.title}>{view.title}</Txt>
         <Txt style={styles.label}>Compare takes</Txt>
       </View>
       <View style={[styles.segment, { backgroundColor: palette.raised, borderColor: palette.line }]}>
           {(['old', 'new'] as const).map(kind => <Pressable key={kind} accessibilityRole="button" accessibilityState={{ selected: keep === kind }}
-            onPress={() => { player.stop(); setKeep(kind); }} style={[styles.segmentOption, keep === kind && { backgroundColor: palette.text }]}>
+            onPress={() => { if(keep!==kind){swipe.move(kind==='new'?-95:95);player.stop();setKeep(kind);swipe.settle();} }} style={[styles.segmentOption, keep === kind && { backgroundColor: palette.text }]}>
             <Txt style={[styles.segmentText, { color: keep === kind ? palette.onAccent : palette.secondary }]}>{kind === 'old' ? 'Old take' : 'New take'}</Txt>
           </Pressable>)}
       </View>
@@ -118,14 +134,17 @@ export function CompareScreen() {
         <Metric label="Key points" value={currentPoints==null||!view.points.length?'—':`${currentPoints} of ${view.points.length}`} delta={currentPoints!=null&&otherPoints!=null?statDelta(currentPoints,otherPoints):'—'} />
         <Metric label="Pace" value={selected.wpm==null?'—':`${selected.wpm} wpm`} delta={selected.wpm!=null&&other.wpm!=null?statDelta(selected.wpm,other.wpm):'—'} />
       </View>
-      <Pressable accessibilityRole="button" accessibilityLabel={playActive?'Pause selected take':`Play ${keep} take`} onPress={togglePlay} style={[styles.playButton,{backgroundColor:palette.strong}]}>
+      <Pressable accessibilityRole="button" accessibilityLabel={ui(playActive?'Pause selected take':`Play ${keep} take`)} onPress={togglePlay} style={[styles.playButton,{backgroundColor:palette.strong}]}>
         <Glyph name={playActive?'p-pause':'p-play'} size={22} color={palette.onAccent}/>
       </Pressable>
       {!!player.error && <Txt accessibilityRole="alert" style={[styles.playError, { color: palette.secondary }]}>{player.error}</Txt>}
-      <RecordButton green glyph="check" label="Keep this take" onPress={() => finish(keep,false)} style={styles.keepButton}/>
-      <Txt pointerEvents="none" style={styles.keepLabel}>Keep this take</Txt>
-      <HintRow style={styles.hints} hints={[{icon:'h-spin',text:'Switch take'},{icon:'h-dn',text:'Back',nudge:'down'}]}/>
+      <RecordButton green glyph="check" label="Keep this take" onPress={() => finish(keep,false)} style={[styles.keepButton,{top:keepTop}]}/>
+      <Txt pointerEvents="none" style={[styles.keepLabel,{top:keepTop+94}]}>Keep this take</Txt>
+      </Animated.View>
     </PanView></Enter>
+    {/* OpenAI Codex, 2026-11-20: keep the take-switch cue in one place. */}
+    <HintRow style={styles.hints} hints={[{icon:'h-spin',text:'Switch take'},{icon:'h-dn',text:'Back',nudge:'down'}]}/>
+    </>
   );
 }
 
@@ -152,5 +171,5 @@ const styles = createThemedStyles({
   segmentText: { fontFamily: F.bold, fontSize: 15, lineHeight: 20 },
   playButton:{position:'absolute',left:167,top:470,width:56,height:56,borderRadius:28,alignItems:'center',justifyContent:'center'},
   playError:{position:'absolute',top:538,left:24,right:24,textAlign:'center',fontFamily:F.medium,fontSize:13.5},
-  keepButton:{top:650,left:153},keepLabel:{position:'absolute',top:744,left:24,right:24,textAlign:'center',fontFamily:F.semibold,fontSize:16,color:C.text},hints:{bottom:24},
+  keepButton:{left:153},keepLabel:{position:'absolute',left:24,right:24,textAlign:'center',fontFamily:F.semibold,fontSize:16,color:C.text},hints:{bottom:24},
 });

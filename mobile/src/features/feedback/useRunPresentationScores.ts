@@ -1,3 +1,5 @@
+import { useDisplayTranslation } from '../localization/useDisplayTranslation';
+import { translatedScore } from '../localization/generatedProse';
 /** A GET-only overview plus one explicit grading owner for the selected original recording. */
 import { useCallback,useEffect,useLayoutEffect,useRef,useState,useSyncExternalStore } from 'react';
 import { AppState } from 'react-native';
@@ -11,7 +13,7 @@ import { createPresentationScoreReader,presentationScoreKey } from './presentati
 import { selectedPresentationScores } from './selectedPresentationScores';
 import { usePresentationScore } from './usePresentationScore';
 
-export function useRunPresentationScores(model:DeckModel|null,active=true,selectedSlide?:number){
+export function useRunPresentationScores(model:DeckModel|null,active=true,selectedSlide?:number,showProse=false){
  const api=normalizeApi(API_URL),version=useStore(s=>s.version);
  const requirementsVersion=useSyncExternalStore(subscribeRequirements,getRequirementsVersion);
  const [foreground,setForeground]=useState(AppState.currentState==='active');
@@ -47,5 +49,17 @@ export function useRunPresentationScores(model:DeckModel|null,active=true,select
   return()=>clearInterval(timer);
  },[active,foreground,offline,pollingIdentity,read]);
  const refresh=async()=>{await Promise.allSettled([controller.refresh(),read(snapshot.current.others)]);};
- return {...derived,controller,refresh,notice:controller.notice||(offline?'Connection interrupted. Saved scores are retained. Reconnecting…':'')};
+ const {value: display}=useDisplayTranslation(active&&foreground, scope=>{
+  if(!showProse)return {items:derived.items,overall:derived.overall};
+  const items=derived.items.map(item=>{
+   if(!item.result||!item.target||(selectedSlide!==undefined&&selectedSlide!==item.slide))return item;
+   const field=scope('score',item.target.id,String(item.state?.feedback_revision??0),item.target.review?.metrics?.detected_language);
+   return {...item,result:translatedScore(item.result,field,'score.slides.'+item.slide)};
+  });
+  const overall=derived.overall;
+  if(!overall.result||!overall.target||selectedSlide!==undefined)return {items,overall};
+  const field=scope('score',overall.target.id,String(overall.state?.feedback_revision??0),overall.target.review?.metrics?.detected_language);
+  return {items,overall:{...overall,result:translatedScore(overall.result,field,'score')}};
+ });
+ return {...derived,...display,controller,refresh,notice:controller.notice||(offline?'Connection interrupted. Saved scores are retained. Reconnecting…':'')};
 }

@@ -5,11 +5,12 @@ import { resolve as domainResolve, load } from './helpers/domain-loader.mjs';
 const stub = source => ({ url: `data:text/javascript,${encodeURIComponent(source)}`, shortCircuit: true });
 globalThis.livePanel = { back: new Set() };
 registerHooks({ load, resolve(specifier, context, next) {
+  if (specifier === 'expo-sqlite') return {url:new URL('./helpers/sqlite-node.mjs', import.meta.url).href, shortCircuit:true};
   if (specifier === 'react-native') return stub(`export const Modal='modal',View='view',Text='text',Pressable='pressable',ScrollView='scroll';
     export const StyleSheet={create:x=>x,absoluteFill:{position:'absolute',top:0,right:0,bottom:0,left:0}};
     export const Alert={alert(){}};export const BackHandler={addEventListener:(_event,fn)=>{globalThis.livePanel.back.add(fn);return{remove(){globalThis.livePanel.back.delete(fn)}}}};`);
   if (specifier === 'react-native-safe-area-context') return stub('export const useSafeAreaInsets=()=>({top:24,bottom:48,left:0,right:0});');
-  if (specifier.endsWith('/design/frame')) return stub('export const useFrame=()=>({s:1,left:0,top:0});');
+  if (specifier.endsWith('/design/frame')) return stub("export const Txt='text'; export const useFrame=()=>({s:1,left:0,top:0});");
   if (specifier.endsWith('/design/theme')) return stub('export const useTheme=()=>({c:{bg:"#000",text:"#fff",muted:"#aaa"}});');
   if (specifier.endsWith('/presentations/store')) return stub('export const useStore=f=>f({version:0});');
   if (specifier === './incremental') return stub('export const captureFeedback=()=>null,captureVersion=()=>0,readCapture=()=>null,retryCapture=async()=>{},subscribeCaptures=()=>()=>{};');

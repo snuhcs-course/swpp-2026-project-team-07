@@ -14,16 +14,107 @@ const {readProfiles}=await import('../src/features/presentations/slideProfiles')
 const {API_URL}=await import('../src/services/api');
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;
 let current;
-function Harness({localId,slide=0,rotated=false}) {
-  current=useSlideProfiles(localId,3);
+function Harness({localId,slide=0,rotated=false,source}) {
+  current=useSlideProfiles(localId,3,true,source);
   const theme=useTheme();
   return React.createElement(React.Fragment,null,
     React.createElement('theme-toggle',{onPress:theme.toggle}),
-    rotated?React.createElement('pdf'):React.createElement(CueGuidancePanel,{state:current.value,slide,error:current.error,busy:current.busy,onRecover:action=>action==='refresh'?current.refresh():current.recover()}));
+    rotated?React.createElement('pdf'):React.createElement(CueGuidancePanel,{state:current.value,slide,error:current.error,busy:current.busy,
+      connectionMessage:current.available?undefined:current.error||'Connecting this presentation to server cues…',
+      onRecover:action=>action==='refresh'?current.refresh():current.recover()}));
 }
 const tree=props=>React.createElement(ThemeProvider,null,React.createElement(Harness,props));
 const json=r=>JSON.stringify(r.toJSON());
 function setup(localId){removeStored(`slide-profiles:v1:${encodeURIComponent(API_URL)}:${deckId}`);writeStored(`server-deck:${API_URL}:${localId}`,deckId);}
+
+test('a locally ready PDF links to the server before loading its cues',async()=>{
+ const localId='local-only-cues';removeStored(`server-deck:${API_URL}:${localId}`);
+ removeStored(`slide-profiles:v1:${encodeURIComponent(API_URL)}:${deckId}`);
+ const original=globalThis.fetch,calls=[];let renderer;
+ globalThis.__cueServerSlides=async(local,api)=>{
+  calls.push(['link',local.id,api]);writeStored(`server-deck:${api}:${local.id}`,deckId);
+  return {deckId,texts:['','','']};
+ };
+ globalThis.fetch=async(url,init)=>{calls.push([init.method,url]);return new Response(JSON.stringify(profileResponse()));};
+ try{
+  const source={id:localId,title:'Local PDF',uri:'file://local.pdf',pageCount:3};
+  await act(async()=>{renderer=create(tree({localId,source}));});
+  assert.deepEqual(calls,[['GET',`${API_URL}/ready/`],['link',localId,API_URL],['GET',`${API_URL}/decks/${deckId}/profiles/`]]);
+  assert.equal(current.available,true);assert.match(json(renderer),/Explain the change in measured growth/);
+ }finally{if(renderer)await act(async()=>renderer.unmount());globalThis.fetch=original;delete globalThis.__cueServerSlides;}
+});
+
+test('a local PDF retries its server link after a connection failure',async t=>{
+ t.mock.timers.enable({apis:['setTimeout']});
+ const localId='local-reconnect-cues';removeStored(`server-deck:${API_URL}:${localId}`);
+ removeStored(`slide-profiles:v1:${encodeURIComponent(API_URL)}:${deckId}`);
+ const original=globalThis.fetch;let renderer,links=0;
+ globalThis.__cueServerSlides=async(local,api)=>{
+  links++;if(links===1)throw Error('offline');
+  writeStored(`server-deck:${api}:${local.id}`,deckId);return {deckId,texts:['','','']};
+ };
+ globalThis.fetch=async()=>new Response(JSON.stringify(profileResponse()));
+ try{
+  const source={id:localId,title:'Reconnect PDF',uri:'file://local.pdf',pageCount:3};
+  await act(async()=>{renderer=create(tree({localId,source}));});
+  assert.equal(links,1);assert.match(current.error,/Reconnecting/);
+  assert.doesNotMatch(json(renderer),/AI cues are unavailable offline/);
+  await act(async()=>t.mock.timers.tick(2500));
+  assert.equal(links,2);assert.equal(current.error,'');assert.match(json(renderer),/Explain the change in measured growth/);
+ }finally{if(renderer)await act(async()=>renderer.unmount());globalThis.fetch=original;delete globalThis.__cueServerSlides;t.mock.timers.reset();}
+});
+
+test('an unconfirmed PDF upload waits for an explicit refresh before another POST',async t=>{
+ t.mock.timers.enable({apis:['setTimeout']});
+ const localId='local-unconfirmed-cues';removeStored(`server-deck:${API_URL}:${localId}`);
+ const original=globalThis.fetch;let renderer,links=0,unconfirmed=false,finishRetry;
+ globalThis.fetch=async()=>new Response('{}');
+ globalThis.__cueServerPdfUnconfirmed=()=>unconfirmed;
+ globalThis.__cueServerSlides=async(_local,_api,_signal,_timeout,retryUnconfirmed)=>{
+  links++;if(links===1){unconfirmed=true;throw Error('The server did not confirm the PDF request before the time limit.');}
+  assert.equal(retryUnconfirmed,true,'only explicit refresh may repeat an unconfirmed PDF upload');
+  return new Promise(resolve=>{finishRetry=()=>{unconfirmed=false;writeStored(`server-deck:${API_URL}:${localId}`,deckId);
+    resolve({deckId,texts:['','','']});};});
+ };
+ try{
+  const source={id:localId,title:'Unconfirmed PDF',uri:'file://local.pdf',pageCount:3};
+  await act(async()=>{renderer=create(tree({localId,source}));});
+  assert.equal(links,1);assert.match(current.error,/Tap Refresh with server/);
+  await act(async()=>t.mock.timers.tick(60000));assert.equal(links,1);
+  const {backgroundApp,setFocused}=await import('./helpers/recording-screen-ui.mjs');
+  await act(async()=>backgroundApp('background'));await act(async()=>backgroundApp('active'));
+  await act(async()=>setFocused(false));await act(async()=>setFocused(true));
+  assert.equal(links,1,'foreground and focus do not repeat an unconfirmed POST');
+  await act(async()=>current.refresh());assert.equal(links,2);
+  await act(async()=>{current.refresh();current.refresh();});
+  assert.equal(links,2,'cue sheet and landscape double taps cannot interrupt/repost an in-flight PDF');
+  await act(async()=>finishRetry());
+ }finally{if(renderer)await act(async()=>renderer.unmount());globalThis.fetch=original;delete globalThis.__cueServerSlides;delete globalThis.__cueServerPdfUnconfirmed;t.mock.timers.reset();}
+});
+
+test('unready server does not start a PDF upload',async()=>{
+ const localId='local-unready-cues';removeStored(`server-deck:${API_URL}:${localId}`);
+ const original=globalThis.fetch;let renderer,links=0;
+ globalThis.fetch=async()=>new Response('{}',{status:503});
+ globalThis.__cueServerSlides=async()=>{links++;throw Error('Unexpected upload');};
+ try{
+  await act(async()=>{renderer=create(tree({localId,source:{id:localId,title:'Unready',uri:'file://local.pdf',pageCount:3}}));});
+  assert.equal(links,0);assert.match(current.error,/HTTP 503/);
+ }finally{if(renderer)await act(async()=>renderer.unmount());globalThis.fetch=original;delete globalThis.__cueServerSlides;}
+});
+
+test('a stalled readiness check times out without uploading the PDF',async t=>{
+ t.mock.timers.enable({apis:['setTimeout']});
+ const localId='local-stalled-readiness';removeStored(`server-deck:${API_URL}:${localId}`);
+ const original=globalThis.fetch;let renderer,links=0;
+ globalThis.fetch=async(_url,init)=>new Promise((_resolve,reject)=>init.signal.addEventListener('abort',()=>reject(Error('cancelled')),{once:true}));
+ globalThis.__cueServerSlides=async()=>{links++;throw Error('Unexpected upload');};
+ try{
+  await act(async()=>{renderer=create(tree({localId,source:{id:localId,title:'Stalled',uri:'file://local.pdf',pageCount:3}}));});
+  await act(async()=>t.mock.timers.tick(15000));
+  assert.equal(links,0);assert.match(current.error,/readiness check timed out/i);
+ }finally{if(renderer)await act(async()=>renderer.unmount());globalThis.fetch=original;delete globalThis.__cueServerSlides;t.mock.timers.reset();}
+});
 
 test('navigation, layout and theme changes reuse the v5 set; offline reopening restores the actual cache with GET only',async()=>{
   setup('profile-lifecycle');const original=globalThis.fetch,calls=[];let renderer;

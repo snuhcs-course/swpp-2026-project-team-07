@@ -114,6 +114,10 @@ test('coaching cards lead with the largest gains and add next-level advice not a
   const view = select({ a1: body() });
   const cards = run.slideCards(view.items[1]);
   assert.deepEqual(cards.map(c => [c.criterion, c.gain]), [['explanation_depth', 11.7], ['essential_coverage', 11.7]]);
+  const translated = {...view.items[1], v3:{...view.items[1].v3, criteria:view.items[1].v3.criteria.map(c=>({...c,label:'필수 내용'}))}};
+  const localizedCards = run.slideCards(translated, level=>level === 'Competent' ? '양호' : level);
+  assert.equal(localizedCards[1].title, '필수 내용: 양호');
+  assert.equal(localizedCards[1].headline, '필수 내용: 양호');
   assert.equal(cards[0].evidence.start_ms, 5000);
   assert.equal(cards[1].action, 'improve essential_coverage');  // Advanced clarity has no next-level card.
   const all = run.runCards(view.items, view.overall);
@@ -237,4 +241,72 @@ test('embedded capture feedback rejects a foreign recording or settings without 
   assert.throws(() => client.receiveFeedbackRun(api, 'a1', 'c1', body({ attempt_id: 'other' })), /different recording/);
   assert.throws(() => client.receiveFeedbackRun(api, 'a1', 'c1', body({ context_id: 'other' })), /different recording/);
   assert.equal(client.readSavedRun(api, 'a1', 'c1').scores.overall, 67);
+});
+
+// Supplied Claude patch, OpenAI Codex integration, Iteration 2 (2026-11-20): prompt-3 coaching fields.
+test('prompt-3 coaching fields fill the Feedback cards and older runs still map from problem and action', () => {
+  const fresh = scoredSlide(1, { improvements: [{ criterion: 'explanation_depth', problem: 'The slide shows X; you never say it.', action: 'Say X. Link X to Y.',
+    example: '“"Because X."”', headline: 'X left out', explanation: ['The slide shows X; you never say it'], steps: ['Say X', 'Link X to Y'],
+    over_limit: ['steps.1'], evidence: [speech('s2', 1, 5000)], gain_slide_points: 11.7, gain_overall_points: 4.1 }] });
+  const base = body();
+  const view = select({ a1: body({ slides: [base.slides[0], fresh], whole: { ...base.whole, top_priorities: [{ headline: 'Close on one point',
+    explanation: ['The talk ends on a thank-you', 'People forget the main point'], steps: ['Add one closing sentence'], example: '',
+    title: 'Close on one point', action: 'Add one closing sentence.', why: 'The talk ends on a thank-you. People forget the main point.',
+    over_limit: [], slide_index: null }] } }) });
+  const [priority, card] = run.runCards(view.items, view.overall);
+  assert.deepEqual([card.headline, card.explanation, card.steps, card.example, card.overLimit],
+    ['X left out', ['The slide shows X; you never say it'], ['Say X', 'Link X to Y'], 'Because X.', true]);
+  assert.deepEqual([priority.headline, priority.explanation, priority.steps, priority.overLimit],
+    ['Close on one point', ['The talk ends on a thank-you', 'People forget the main point'], ['Add one closing sentence'], false]);
+  const old = select({ a1: body() });
+  const [oldPriority, oldCard] = run.runCards(old.items, old.overall);
+  assert.deepEqual([oldCard.headline, oldCard.explanation, oldCard.steps, oldCard.example], ['No reason', [], ['Say why'], 'Because…']);
+  assert.deepEqual([oldPriority.headline, oldPriority.explanation, oldPriority.steps], ['Explain why', ['clarity'], ['Add one reason per slide']]);
+  assert.equal(run.unquote('“"nested"”'), 'nested');
+});
+
+test('both saved formats project exact source fields into bilingual cards without touching the assessment', async () => {
+  const { translatedV3 } = await import('../src/features/localization/generatedProse.ts');
+  const legacy = { ...scoredSlide(1).improvements[0], problem: 'First sentence. Second sentence?', action: '  Say why!  ' };
+  const native = { ...legacy, headline: 'Compare the counts', explanation: ['First count is missing', 'Second count is unclear'],
+    steps: ['Name the two counts', 'Explain the change'], over_limit: ['steps.1'] };
+  const original = body().whole.top_priorities[0];
+  for (const structured of [false, true]) {
+    const stored = run.parseFeedbackRun(body({ slides: [scoredSlide(1, { language: 'en', improvements: [structured ? native : legacy] })],
+      whole: { ...body().whole, language: 'en', top_priorities: [structured ? { ...native, ...original } : original] } }));
+    const before = structuredClone(stored);
+    const fields = new Map();
+    const localize = (path, source, hint) => { fields.set(path, [source, hint]); return '번역 ' + source; };
+    const project = translate => {
+      const slide = translatedV3(stored.slides[0], translate, 'slides.1');
+      const whole = translatedV3(stored.whole, translate, 'whole');
+      return run.runCards([{ slide: 1, attemptId: stored.attemptId, v3: slide }], { attemptId: stored.attemptId, run: { whole } });
+    };
+    const [priority, card] = project(localize);
+    const path = 'slides.1.improvements.0.';
+    assert.deepEqual(fields.get(path + 'problem'), [legacy.problem, 'en']);
+    assert.deepEqual(fields.get(path + 'action'), [legacy.action, 'en']);
+    assert.equal(card.key, 'i1:0');
+    assert.equal(card.evidence.start_ms, 5000);
+    assert.equal(card.example, legacy.example);
+    if (structured) {
+      assert.equal(card.headline, '번역 ' + native.headline);
+      assert.deepEqual(card.steps, native.steps.map(text => '번역 ' + text));
+      assert.deepEqual(priority.explanation, native.explanation.map(text => '번역 ' + text));
+      assert.deepEqual(fields.get(path + 'steps.1'), [native.steps[1], 'en']);
+      assert.deepEqual(fields.get('whole.top_priorities.0.explanation.0'), [native.explanation[0], 'en']);
+      assert.equal(card.overLimit, true);
+    } else {
+      assert.equal(card.headline, '번역 ' + legacy.problem);
+      assert.deepEqual(card.steps, ['번역 ' + legacy.action]);
+      assert.equal(priority.headline, '번역 ' + original.title);
+      assert.deepEqual(fields.get('whole.top_priorities.0.why'), [original.why, 'en']);
+      assert.equal([...fields.keys()].some(key => /\.(headline|steps|explanation)(\.|$)/.test(key)), false);
+    }
+    assert.equal([...fields.keys()].some(key => /\.(example|evidence|over_limit|score)(\.|$)/.test(key)), false);
+    const [englishPriority, englishCard] = project((_path, source) => source);
+    assert.equal(englishCard.headline, structured ? native.headline : legacy.problem);
+    assert.deepEqual(englishPriority.steps, structured ? native.steps : [original.action]);
+    assert.deepEqual(stored, before);
+  }
 });

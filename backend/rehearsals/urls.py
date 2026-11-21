@@ -7,8 +7,13 @@ from . import slide_profile_views
 from . import correction_views, slide_review_views, durable_qa_views, presentation_score_views
 from .feedback_v3 import views as feedback_v3_views  # Claude Code, prompted by Seoyeon (2026-11-14)
 from . import capture_views
+from . import localization_views
 
 urlpatterns = [
+    path('localization/', localization_views.request_translation),
+    path('localization/prepared/', localization_views.prepare),
+    path('localization/prepared/<slug:kind>/<path:resource_id>/', localization_views.prepared),
+    path('localization/<slug:translation_id>/', localization_views.translation_status),
     path('incremental/capabilities/', capture_views.capabilities),
     path('attempts/<uuid:attempt_id>/capture/', capture_views.capture),
     path('attempts/<uuid:attempt_id>/capture/audio/', capture_views.audio),

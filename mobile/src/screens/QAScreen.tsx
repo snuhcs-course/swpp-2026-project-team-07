@@ -1,3 +1,7 @@
+import { displayTranslations, useDisplayTranslation } from '../features/localization/useDisplayTranslation';
+import { firstWordingPending, markNewWording } from '../features/localization/firstWording';
+import { sourceLanguage } from '../features/localization/translationCache';
+import { translatedAnswer } from '../features/localization/generatedProse';
 // Scribe-only compatibility: OpenAI Codex, October 17, 2026; docs/testing/evidence/scribe-only-integration-verification-2026-10-17.md.
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
 // OpenAI Codex finger-linked page fade: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-117
@@ -5,8 +9,11 @@
 // OpenAI Codex light-mode Q&A: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-081
 // Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-043
 // OutLoud redesign: Audience Q&A (SPEC §4.7, §5.7).
-import { useCallback, useEffect, useRef, useState } from 'react';
+// AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-11-21): question page as canvas S15 (panel on top, the
+// question as a chat message, its slide under it, a fixed space for your answer above the record button); audience names.
+import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, type GestureResponderEvent, type PanResponderGestureState } from 'react-native';
+import { getAppLanguage, useAppLanguage, useUiText } from '../design/language';
 import * as Speech from 'expo-speech';
 import * as Haptics from 'expo-haptics';
 import Animated, { Easing, cancelAnimation, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -14,26 +21,43 @@ import { Enter, Txt, useFrame } from '../design/frame';
 import { Glyph, UIIcon } from '../design/icons';
 import { PanView } from '../design/PanView';
 import { MiniSlide } from '../design/SlideCard';
-import { C, EASE_SCREEN, EASE_SNAP, F, HUES, TONE } from '../design/tokens';
+import { C, EASE_SCREEN, F, TONE } from '../design/tokens';
 import { createThemedStyles, useTheme } from '../design/theme';
 import { Dialog, HintRow, IDLE_WAVE, PageSurface, RecordButton, RecordRing, Waveform, type Hint, type RecordGlyph } from '../design/ui';
 import type { IconKey } from '../domain/analysis';
+import { AUDIENCES } from '../domain/presentationRequirements';
 import { fmt, quote } from '../domain/format';
 import { BACK_FADE_Y, BACK_T } from '../domain/gestures';
 import { randomUUID } from 'expo-crypto';
 import { API_URL } from '../services/api';
 import { readReview } from '../features/transcription/reviewStorage';
 import { useDurableQa } from '../features/qa/useDurableQa';
-import { qaActive,qaHistoryJobs,qaScreenKey } from '../features/qa/state';
+import { qaActive,qaHistoryJobs,qaScreenKey,qaUsable } from '../features/qa/state';
 import { saveAnalysisConsent } from '../features/transcription/analysisStorage';
-import { sentences } from '../domain/lines';
 import { AnswerRecorder, type AnswerHandle } from '../features/qa/AnswerRecorder';
 import { reviewDurableAnswer, QaError, type QaResult } from '../features/qa/client';
-import { answerKey, readQaV2, readQaHistory, saveQaV2, saveAnswerAttempt, type QaSet, type StoredAnswer } from '../features/qa/store';
+import { answerKey, readQaV2, readQaHistory, savedForSelectedRun, saveQaV2, saveAnswerAttempt, type QaSet, type StoredAnswer } from '../features/qa/store';
 import { useSegmentPlayer } from '../features/rehearsal/useSegmentPlayer';
 import { useDeckModel, type DeckModel } from '../features/presentations/useDeckModel';
 import { useBack, useShell } from './shared';
+import { SWIPE_ENTRY_X, useHorizontalSwipeMotion } from './swipeMotion';
 
+
+/** The only names the audience panel uses. */
+export const AUDIENCE_NAMES = ['Jaewon', 'Seoyeon', 'Injoon', 'Jooyoung'] as const;
+/** OpenAI Codex, Iteration 2 (2026-11-21): shuffle the four display names per saved set, without repeating one
+ * within its three questions. The job ID seeds the shuffle so reopening a set does not rename its audience. */
+export function audienceNames(questions: readonly { panelist: string }[], jobId: number): Map<number, string> {
+  const shuffled: string[] = [...AUDIENCE_NAMES];
+  let seed = (Math.trunc(jobId) >>> 0) || 1;
+  for (let k = shuffled.length - 1; k > 0; k--) {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    const swap = seed % (k + 1);
+    [shuffled[k], shuffled[swap]] = [shuffled[swap], shuffled[k]];
+  }
+  return new Map(questions.map((_, index) => [index, shuffled[index % shuffled.length]]));
+}
+const initials = (name: string) => name.slice(0, 2);
 
 export function QAScreen({ active = true }: { active?: boolean }) {
   const { nav } = useShell();
@@ -43,28 +67,44 @@ export function QAScreen({ active = true }: { active?: boolean }) {
 }
 
 function QABound({model,active}:{model:DeckModel;active:boolean}){
-  const qa=useDurableQa(model,false,active);
-  const [archivedIndex,setArchivedIndex]=useState<number|null>(null);
-  const history=qaHistoryJobs(readQaHistory(API_URL,model.deck.id),qa.state);
-  const archived=archivedIndex===null?null:history[archivedIndex]??null;
-  const nextHistory=()=>setArchivedIndex(i=>i===null?0:i+1<history.length?i+1:null);
+  const source=useDurableQa(model,false,active), language=useAppLanguage();
+  useSyncExternalStore(displayTranslations.subscribe, displayTranslations.version);
+  const batch=source.state?.result, first=batch?.questions[0];
+  const waiting=active&&batch&&first&&qaUsable(source.state)&&firstWordingPending(API_URL,
+    {kind:'questions',resource_id:String(batch.job_id)},'initial',language,displayTranslations,
+    text=>text('questions.0.question',first.question));
+  useDisplayTranslation(!!waiting, scope => waiting && scope('questions', String(batch!.job_id))('questions.0.question', first!.question));
+  const qa=waiting&&source.state?{...source,state:{...source.state,state:'preparing',result:null}}:source;
+  // Keep an explicit history choice on the same batch when a status refresh changes the list.
+  const [selection,setSelection]=useState<string|null>();
+  const history=qaHistoryJobs(readQaHistory(API_URL,model.deck.id),qa.state).filter(saved=>saved.questions.length);
+  const archiveKey=(saved:QaSet)=>saved.jobId===undefined?'legacy':String(saved.jobId);
+  const archived=selection===undefined
+    ? (!qaUsable(qa.state)&&!qaActive(qa.state)?savedForSelectedRun(history,model.state.run!.id,
+      qa.scope??{context_id:qa.requirements.contextId??null,slides:[]},qa.requirements.audience):null)??null
+    : history.find(saved=>archiveKey(saved)===selection)??null;
+  const nextHistory=()=>{
+    const next=history[archived?history.indexOf(archived)+1:0];
+    setSelection(next?archiveKey(next):null);
+  };
   return <QA key={archived?`saved-${archived.jobId??'legacy'}`:qaScreenKey(qa.state)} model={model} qa={qa}
     archived={archived} historyAvailable={!!history.length} onHistory={nextHistory} active={active}/>;
 }
 function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: DeckModel;qa:ReturnType<typeof useDurableQa>;archived:QaSet|null;historyAvailable:boolean;onHistory:()=>void;active:boolean }) {
+  const ui = useUiText();
   const { c } = useTheme();
   const { go, nav } = useShell();
   const frame = useFrame();
   const { deck, state } = model;
   const run = state.run!;
-  const jobId=archived?.jobId??qa.state?.result?.job_id??0;
+  const jobId=archived ? archived.jobId ?? 0 : qa.state?.result?.job_id ?? 0;
   const questions=archived?.questions??(qa.state&&!qa.state.stale&&!qa.state.result?.stale&&qa.state.state==='completed'?qa.state.result?.questions??[]:[]);
   const [set,setSet]=useState<QaSet|null>(()=>{
     if(archived)return archived;
     if(!jobId||!questions.length)return null;
     const cached=readQaV2(API_URL,deck.id,jobId);
     // Adopt the complete validated server batch, retaining answers for this job.
-    const next={...cached,runId:run.id,audience:qa.state!.requirements.audience,questions,answers:cached?.answers??{},createdAt:cached?.createdAt??new Date().toISOString()};
+    const next={...cached,runId:run.id,scope:qa.state!.scope,audience:qa.state!.requirements.audience,questions,answers:cached?.answers??{},createdAt:cached?.createdAt??new Date().toISOString()};
     saveQaV2(API_URL,deck.id,jobId,next);return next;
   });
   const [load,setLoad]=useState<{kind:'idle'|'loading'|'error';message?:string}>({kind:'idle'});
@@ -74,6 +114,9 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
   useEffect(()=>{const active=submissions.current;return()=>{active.forEach(c=>c.abort());active.clear();};},[]);
   const [position, setI] = useState(0);
   const [part, setPart] = useState<0 | 1>(0);
+  const [questionViewKey, setQuestionViewKey] = useState<string | null>(null);
+  const [subpage, setSubpage] = useState<'followup' | 'transcript' | null>(null);
+  const [followupReveal, setFollowupReveal] = useState(false);
   const [count, setCount] = useState(0);
   const [rec, setRec] = useState(false);
   const [hear, setHear] = useState<string | null>(null);
@@ -81,47 +124,91 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
   const [elapsed, setElapsed] = useState(0);
   const recorder = useRef<AnswerHandle>(null);
   const [wave, setWave] = useState<number[]>(IDLE_WAVE);
+  const startingCapture = useRef(false);
   const countTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const ringP = useSharedValue(0), ringV = useSharedValue(0);
-  const dx = useSharedValue(0), dy = useSharedValue(0);
+  const questionSwipe=useHorizontalSwipeMotion({slideOnly:true,active});
+  const dy = useSharedValue(0);
+  const resultDy = useSharedValue(0);
+  const transcriptDy = useSharedValue(0);
+  const reviewScrollY = useRef(0);
+  const chatScrollY = useRef(0);
+  const transcriptScrollY = useRef(0);
   const backExiting = useRef(false);
   const player = useSegmentPlayer();
-  const hue = HUES[deck.hue];
 
   const regenerate=()=>{setLoad({kind:'idle'});void qa.generate();};
   const qs = archived?.questions??(questions.length?set?.questions??questions:[]);
   const i=Math.min(position,Math.max(0,qs.length-1));
-  const Q = qs[i];
+  const names = audienceNames(qs, jobId);
+  const panelist = (index: number) => names.get(index) ?? AUDIENCE_NAMES[0];
   const key = answerKey(i, part);
-  const ans: StoredAnswer | undefined = set?.answers[key];
+  const savedAnswer: StoredAnswer | undefined = set?.answers[key];
+  const answerWaiting=active&&savedAnswer?.status==='done'&&savedAnswer.result&&savedAnswer.id&&jobId&&
+    firstWordingPending(API_URL,{kind:'answer',resource_id:savedAnswer.id},'evaluation',getAppLanguage(),displayTranslations,
+      text=>translatedAnswer(savedAnswer.result!,(p,s)=>text(p,s,sourceLanguage(savedAnswer.result!.transcript.text)),i,part));
+  const ans = answerWaiting ? {...savedAnswer!,status:'judging' as const} : savedAnswer;
+  const original = qs[i];
+  const localId = archived?.runId ?? run.id;
+  const questionDisplay = useDisplayTranslation(active, scope => {
+    if (!original) return undefined;
+    const text = scope(jobId ? 'questions' : 'legacy_qa', jobId ? String(jobId) : localId);
+    const path = 'questions.' + i;
+    return { ...original, question: text(path + '.question', original.question), follow_up: text(path + '.follow_up', original.follow_up) };
+  });
+  const Q = questionDisplay.value;
+  const questionReady = !questionDisplay.missing.has('questions.' + i + (part ? '.follow_up' : '.question'));
+  const displayedAnswer = useDisplayTranslation(active, scope => {
+    if (savedAnswer?.status !== 'done' || !savedAnswer.result) return undefined;
+    const durable = !!jobId && !!savedAnswer.id;
+    const hint = sourceLanguage(savedAnswer.result.transcript.text);
+    const fields = scope(durable ? 'answer' : 'legacy_qa', durable ? savedAnswer.id! : localId, undefined, hint);
+    return translatedAnswer(savedAnswer.result, fields, i, part);
+  });
+  const language = questionDisplay.language;
   const currentAudience=qa.requirements.audience;
+  const audience = Q ? set?.audience ?? qa.state?.requirements.audience ?? '' : currentAudience;
+  const audienceLabel = audience === 'General audience' || AUDIENCES.some(value => value === audience) ? ui(audience) : audience;
+  const questionNumber = ui('Question ' + (i + 1) + ' of ' + qs.length);
+  const presenterHeader = panelist(i) + ' · ' + questionNumber;
+  const questionHeader = Q
+    ? questionNumber + ' · ' + audienceLabel + (!archived && deck.requirementsDefault ? ' ' + ui('(default)') : '')
+    : (qaActive(qa.state) ? ui('Writing audience questions…') + ' · ' : '') + (audienceLabel || ui('Audience not set'));
   const sourcesPending=!model.transcribed;
+  const generationAction=qa.state?.stale?'Update questions':qa.state?.feedback_revision?'Retry questions':'Generate questions';
+  const serviceUnavailable=qa.state?.availability?.state==='disabled'||qa.state?.availability?.state==='unavailable';
   const recoverySlide=run.parts.findIndex(part=>!!part&&!model.transcripts.has(part.attemptId)&&model.stages.get(part.attemptId)!=='no_speech');
   const readinessMessage=qa.requirementsDirty?'Presentation choices are saved on this phone. Synchronize them before preparing questions.':sourcesPending?'Finish uploading and transcribing the selected recordings before preparing audience questions.':'';
-  const statusMessage=load.message||readinessMessage||qa.notice||(qa.state?.stale?'Questions outdated. Update using the selected recordings.':!currentAudience.trim()?'Presentation audience is missing. Edit presentation time and audience to add it.':qaActive(qa.state)?'Your audience questions are being prepared…':qa.state?.dependency?.retry_action?'Slide profile analysis needs recovery.':qa.state?.state==='failed'?'Question generation failed. Your recordings are preserved.':'Audience questions are not ready.');
-  const phase: 'ask' | 'rec' | 'review' = rec ? 'rec' : ans ? 'review' : 'ask';
+  const statusMessage=load.message||readinessMessage||qa.notice||(qa.state?.stale?'Questions outdated. Update using the selected recordings.':!currentAudience.trim()?'Presentation audience is missing. Edit presentation time and audience to add it.':qaActive(qa.state)?'Your audience questions are being prepared…':qa.state?.dependency?.retry_action?'Slide profile analysis needs recovery.':qa.state?.state==='failed'?'Question generation failed. Your recordings are preserved.':serviceUnavailable?'Q&A is unavailable on this server.':'Audience questions are not ready.');
+  const phase: 'ask' | 'rec' | 'review' = rec ? 'rec' : ans && questionViewKey !== key ? 'review' : 'ask';
   const last = i === qs.length - 1;
+  const answerTop = (frame.compact ? 607 : 674) - 26 - ANSWER_HEIGHT;
+  const layout = { answerTop, chatHeight: answerTop - 12 - CHAT_TOP };
+  // OpenAI Codex, Iteration 4 (2026-11-21): keep the result's bottom gap to Record equal to Record's gap to the footer.
+  const resultScrollBottom = frame.compact ? 66 : 0;
 
   // ── Speech ────────────────────────────────────────────────────────────────
-  const stopSpeak = useCallback(() => { Speech.stop(); setHear(null); }, []);
-  const speak = useCallback((text: string, k: string) => {
-    if (hear === k) { stopSpeak(); return; }
+  const speechEpoch = useRef(0);
+  const stopSpeak = useCallback(() => { speechEpoch.current++; setHear(null); return Speech.stop(); }, []);
+  const speak = useCallback((text: string, k: string, automatic = false) => {
+    if (!active || !questionReady || count || countTimer.current !== null || startingCapture.current || rec) return;
+    if (!automatic && hear === language + ':' + k) { stopSpeak(); return; }
+    const epoch = ++speechEpoch.current;
     Speech.stop(); player.stop();
-    setHear(k);
-    // shortcut: mixed Hangul/Latin uses Korean; add language metadata if more precise multilingual speech is needed.
-    const language = /\p{Script=Hangul}/u.test(text) ? 'ko' : /\p{Script=Latin}/u.test(text) ? 'en' : undefined;
-    Speech.speak(text, { language, onDone: () => setHear(h => (h === k ? null : h)), onStopped: () => setHear(h => (h === k ? null : h)), onError: () => setHear(null) });
-  }, [hear, player, stopSpeak]);
-  useEffect(() => () => { Speech.stop(); }, []);
-  useEffect(() => { if (!active) { Speech.stop(); player.stop(); } }, [active, player]);
+    setHear(language + ':' + k);
+    const finish = () => { if (epoch === speechEpoch.current) setHear(null); };
+    Speech.speak(text, { language, onDone: finish, onStopped: finish, onError: finish });
+  }, [active, count, hear, language, player, questionReady, rec, stopSpeak]);
   const autoSpoken = useRef<string | null>(null);
+  useEffect(() => { autoSpoken.current = null; return () => { Speech.stop(); }; }, [language]);
+  useEffect(() => { if (!active) { Speech.stop(); player.stop(); } }, [active, player]);
   useEffect(() => {
-    if (!active || archived || !Q || rec || phase === 'review') return;
-    const identity = `${jobId}:${Q.id}:${part}`;
+    if (!active || archived || !Q || !questionReady || count || startingCapture.current || rec || phase === 'review') return;
+    const identity = `${jobId}:${Q.id}:${part}:${language}`;
     if (autoSpoken.current === identity) return;
     autoSpoken.current = identity;
-    speak(part === 0 ? Q.question : Q.follow_up, (part === 0 ? 'q' : 'f') + i);
-  }, [active, archived, i, jobId, part, phase, Q, rec, speak]);
+    speak(part === 0 ? Q.question : Q.follow_up, (part === 0 ? 'q' : 'f') + i, true);
+  }, [active, archived, count, i, jobId, language, part, phase, Q, questionReady, rec, speak]);
   const playAnswer = () => {
     if (!ans) return;
     stopSpeak();
@@ -150,6 +237,7 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
     try{
       const result:QaResult=await reviewDurableAnswer({id:a.id,deckId,audioUri:a.audioUri,durationMs:a.durationMs,
         questionJobId:a.questionJobId,questionId:a.questionId,part:p,slideIndex:q.slide_index},confirmed,controller.signal,retry);
+      markNewWording(API_URL,'answer',a.id);
       update(k,{...a,status:'done',result});
     }catch(e){
       if(controller.signal.aborted)return;
@@ -168,8 +256,11 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
   const stopCount = () => { if (countTimer.current) { clearInterval(countTimer.current); countTimer.current = null; } };
   useEffect(() => () => stopCount(), []);
   const startRec = async () => {
+    startingCapture.current = true;
     try {
-      await recorder.current?.start();
+      await stopSpeak();
+      if (!recorder.current) return;
+      await recorder.current.start();
       setWave(Array(28).fill(6));
       setElapsed(0); setRec(true);
       ringP.set(0); ringV.set(1);
@@ -177,14 +268,14 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
       ringV.set(withTiming(0));
       setLoad({ kind: 'error', message: e instanceof Error ? e.message : 'Could not start recording.' });
       setRecKey(k => k + 1);
-    }
+    } finally { startingCapture.current = false; setCount(0); }
   };
   const stopRec = async () => {
     if (!recorder.current?.recording()) return;
     const k = key, qi = i, p = part;
     try {
       const { uri, durationMs } = await recorder.current.stop();
-      setRec(false); ringV.set(withTiming(0, { duration: 200 })); setRecKey(x => x + 1);
+      setQuestionViewKey(null); setRec(false); ringV.set(withTiming(0, { duration: 200 })); setRecKey(x => x + 1);
       const a: StoredAnswer = { id:randomUUID(),questionId:Q?.id,questionJobId:jobId,audioUri: uri, durationMs, status: 'judging', at: new Date().toISOString() };
       // Persist the new identity before any network request; retain previous attempts separately.
       if(set){const next={...set,answers:{...set.answers,[k]:a}};saveQaV2(API_URL,deck.id,jobId,next);setSet(next);}
@@ -196,16 +287,17 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
     }
   };
   const toggleRec = () => {
-    if (!Q||archived) return;
+    if (!active || !Q || archived || startingCapture.current) return;
     if (rec) { void stopRec(); return; }
     if (count) { stopCount(); setCount(0); ringV.set(withTiming(0)); return; }
+    if (!questionReady) return;
     stopSpeak(); player.stop();
     setCount(3); ringV.set(1); ringP.set(1);
     ringP.set(withTiming(0, { duration: 3000, easing: Easing.linear }));
     const t0 = Date.now();
     countTimer.current = setInterval(() => {
       const el = Date.now() - t0;
-      if (el >= 3000) { stopCount(); setCount(0); void startRec(); return; }
+      if (el >= 3000) { stopCount(); void startRec(); return; }
       setCount(c => { const nx = 3 - Math.floor(el / 1000); if (nx !== c) void Haptics.selectionAsync().catch(() => undefined); return nx; });
     }, 50);
   };
@@ -219,124 +311,224 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
   // ── Navigation between items and questions ────────────────────────────────
   const goQ = (dir: -1 | 1) => {
     const ni = i + dir;
-    if (rec || count || ni < 0 || ni >= qs.length) { dx.set(withTiming(0, { duration: 280, easing: EASE_SNAP })); return; }
+    if (rec || count || ni < 0 || ni >= qs.length) { questionSwipe.settle(); return; }
     stopSpeak(); player.stop();
-    setI(ni);
-    setPart(set?.answers[answerKey(ni, 1)] ? 1 : 0);
-    dx.set(dir * 80);
-    dx.set(withTiming(0, { duration: 280, easing: EASE_SNAP }));
+    questionSwipe.exitTo(dir * -390,()=>{
+      reviewScrollY.current = 0;
+      setSubpage(null);
+      setI(ni);
+      setPart(set?.answers[answerKey(ni, 1)] ? 1 : 0);
+      questionSwipe.enterFrom(dir * SWIPE_ENTRY_X);
+    });
   };
   const back = useCallback(() => {
     if (rec || count) return;
+    questionSwipe.cancel();
     stopSpeak(); player.stop();
     if(nav.from==='full')go('full',{nav:null,deckId:deck.id,sel:nav.sel});
-    else go('review', { nav: null, deckId: deck.id, sel: nav.sel, from:'full' });
-  }, [count, deck.id, go, nav.from, nav.sel, player, rec, stopSpeak]);
+    else go('review', { nav: null, deckId: deck.id, sel: nav.sel });
+  }, [count, deck.id, go, nav.from, nav.sel, player, questionSwipe, rec, stopSpeak]);
+  const openFollowup = () => {
+    if (!Q?.follow_up || !ans?.result || ans.result.verdict === 'too_short') return;
+    stopSpeak(); player.stop();
+    dy.set(0);
+    setPart(1);
+    setQuestionViewKey(answerKey(i, 1));
+    setSubpage('followup');
+  };
+  const returnFromFollowup = () => {
+    if (rec || count || backExiting.current) return;
+    backExiting.current = true;
+    stopSpeak(); player.stop();
+    resultDy.set(0);
+    dy.set(withTiming(BACK_FADE_Y, { duration: 380, easing: EASE_SCREEN }, finished => {
+      if (finished) runOnJS(prepareFollowupReveal)();
+    }));
+  };
+  const prepareFollowupReveal = () => {
+    // OpenAI Codex, Iteration 4 (2026-11-21): retain the opaque Q&A backdrop until the answer result has faded in.
+    setFollowupReveal(true);
+    setPart(0);
+    setQuestionViewKey(null);
+    setSubpage(null);
+  };
+  const finishFollowupReveal = () => { setFollowupReveal(false); backExiting.current = false; };
+  useEffect(() => {
+    if (followupReveal) dy.set(withTiming(0, { duration: 420, easing: EASE_SCREEN }, finished => {
+      if (finished) runOnJS(finishFollowupReveal)();
+    }));
+  }, [followupReveal, dy]);
+  const openTranscript = () => {
+    if (!ans?.result) return;
+    stopSpeak(); player.stop();
+    transcriptDy.set(BACK_FADE_Y);
+    transcriptScrollY.current = 0;
+    setSubpage('transcript');
+  };
+  useEffect(() => {
+    if (subpage === 'transcript') transcriptDy.set(withTiming(0, { duration: 420, easing: EASE_SCREEN }));
+  }, [subpage, transcriptDy]);
+  const finishTranscript = () => { setSubpage(null); backExiting.current = false; };
+  const closeTranscript = () => {
+    if (backExiting.current) return;
+    backExiting.current = true;
+    transcriptDy.set(withTiming(BACK_FADE_Y, { duration: 420, easing: EASE_SCREEN }, finished => {
+      if (finished) runOnJS(finishTranscript)();
+    }));
+  };
+  const showQuestion = () => {
+    // OpenAI Codex, Iteration 2 (2026-11-21): the result fades over its own question, then reveals the saved transcript.
+    stopSpeak(); player.stop();
+    if (Q) autoSpoken.current = `${jobId}:${Q.id}:${part}:${language}`;
+    setQuestionViewKey(key);
+    backExiting.current = false;
+  };
+  const returnToQuestion = () => {
+    if (backExiting.current) return;
+    backExiting.current = true;
+    resultDy.set(withTiming(BACK_FADE_Y, { duration: 460, easing: EASE_SCREEN }, finished => {
+      if (finished) runOnJS(showQuestion)();
+    }));
+  };
+  useEffect(() => { if (phase !== 'review') resultDy.set(0); }, [phase, resultDy]);
+  useEffect(() => { reviewScrollY.current = 0; }, [i, part]);
+  useEffect(() => { chatScrollY.current = 0; }, [i, part, language, Q?.question, Q?.follow_up]);
   const g = useRef<'x' | 'y' | null>(null);
   const busy = rec || !!count;
+  const shouldCaptureDown = (e: GestureResponderEvent, gs: PanResponderGestureState) => {
+    if (busy || backExiting.current || gs.dy <= 8 || gs.dy <= Math.abs(gs.dx)) return false;
+    const y = (e.nativeEvent.pageY - frame.top) / frame.s;
+    if (subpage === 'transcript') {
+      if (y > 132 && transcriptScrollY.current > 0) return false;
+      g.current = 'y';
+      return true;
+    }
+    if (phase === 'review' && y > 158 && y < 648 && reviewScrollY.current > 0) return false;
+    if (phase !== 'review' && y > CHAT_TOP && y < layout.answerTop && chatScrollY.current > 0) return false;
+    g.current = 'y';
+    return true;
+  };
   const pan = {
+    // OpenAI Codex, Iteration 2 (2026-11-21): capture a downward pull before the nested question/result scroll view does.
+    onMoveShouldCapture: shouldCaptureDown,
     onMoveShould: (e: GestureResponderEvent, gs: PanResponderGestureState) => {
       if (busy || backExiting.current) return false;
-      const y = (e.nativeEvent.pageY - frame.top) / frame.s;
+      if (subpage === 'transcript') return shouldCaptureDown(e, gs);
       if (Math.abs(gs.dx) > 8 && Math.abs(gs.dx) > Math.abs(gs.dy)) { g.current = 'x'; return true; }
-      if (gs.dy > 8 && gs.dy > Math.abs(gs.dx) && !(phase === 'review' && y > 158 && y < 648)) { g.current = 'y'; return true; }
-      return false;
+      return shouldCaptureDown(e, gs);
     },
     onMove: (_e: GestureResponderEvent, gs: PanResponderGestureState) => {
       if (g.current === 'x') {
         const x = gs.dx / frame.s;
-        dx.set((x > 0 && i === 0) || (x < 0 && i === qs.length - 1) ? x * 0.3 : x);
-      } else { dy.set(Math.min(BACK_FADE_Y, Math.max(0, gs.dy / frame.s))); }
+        dy.set(0); resultDy.set(0);
+        questionSwipe.move((x > 0 && i === 0) || (x < 0 && i === qs.length - 1) ? x * 0.3 : x);
+      } else {
+        questionSwipe.cancel();
+        (subpage === 'transcript' ? transcriptDy : phase === 'review' ? resultDy : dy).set(Math.min(BACK_FADE_Y, Math.max(0, gs.dy / frame.s)));
+      }
     },
-    onRelease: () => {
-      if (g.current === 'x') { if (Math.abs(dx.get()) > 60) goQ(dx.get() < 0 ? 1 : -1); else dx.set(withTiming(0, { duration: 280, easing: EASE_SNAP })); }
+    onRelease: (_e: GestureResponderEvent,gs: PanResponderGestureState) => {
+      if (g.current === 'x') { if (Math.abs(gs.dx / frame.s) > 60) goQ(gs.dx < 0 ? 1 : -1); else questionSwipe.settle(); }
+      else if (subpage === 'transcript' && transcriptDy.get() > BACK_T) closeTranscript();
+      else if (subpage === 'transcript') transcriptDy.set(withTiming(0, { duration: 360, easing: EASE_SCREEN }));
+      else if (phase === 'review' && resultDy.get() > BACK_T) returnToQuestion();
+      else if (phase === 'review') resultDy.set(withTiming(0, { duration: 360, easing: EASE_SCREEN }));
+      else if (subpage === 'followup') {
+        if (dy.get() > BACK_T) returnFromFollowup();
+        else dy.set(withTiming(0, { duration: 360, easing: EASE_SCREEN }));
+      }
       else if (dy.get() > BACK_T) {
         backExiting.current = true;
-        dy.set(withTiming(BACK_FADE_Y, { duration: 220, easing: EASE_SCREEN }, finished => {
+        dy.set(withTiming(BACK_FADE_Y, { duration: 460, easing: EASE_SCREEN }, finished => {
           if (finished) runOnJS(back)();
         }));
-      } else dy.set(withTiming(0, { duration: 220, easing: EASE_SCREEN }));
+      } else dy.set(withTiming(0, { duration: 360, easing: EASE_SCREEN }));
       g.current = null;
     },
-    onTerminate: () => { dx.set(withTiming(0)); if (!backExiting.current) dy.set(withTiming(0)); g.current = null; },
+    onTerminate: () => { questionSwipe.settle(); if (!backExiting.current) { dy.set(withTiming(0)); resultDy.set(withTiming(0)); transcriptDy.set(withTiming(0)); } g.current = null; },
   };
-  useBack(true, () => { back(); return true; });
+  useBack(true, () => {
+    if (subpage === 'transcript') closeTranscript();
+    else if (subpage === 'followup') returnFromFollowup();
+    else back();
+    return true;
+  });
   const screen = useAnimatedStyle(() => ({
-    // Fade to the Review page already mounted beneath Q&A.
     opacity: Math.max(0, 1 - dy.value / BACK_FADE_Y),
   }));
-  const slideStyle = useAnimatedStyle(() => ({ opacity: Math.max(0.2, 1 - Math.abs(dx.value) / 240), transform: [{ translateX: dx.value }] }));
+  const resultFade = useAnimatedStyle(() => ({ opacity: Math.max(0, 1 - resultDy.value / BACK_FADE_Y) }));
+  const transcriptFade = useAnimatedStyle(() => ({ opacity: Math.max(0, 1 - transcriptDy.value / BACK_FADE_Y) }));
+  const slideStyle = questionSwipe.style;
   useEffect(() => () => { cancelAnimation(ringP); }, [ringP]);
 
   // ── View ──────────────────────────────────────────────────────────────────
-  const face = HUES[deck.hue].face;
-  const hearing = (k: string) => hear === k;
-  const glyph: RecordGlyph = count ? (count as 3 | 2 | 1) : rec ? 'stop' : phase === 'review' ? 'redo' : 'mic';
-  const btnLabel = archived?'Saved Q&A · playback only':count ? `Starting in ${count}. Tap to cancel` : rec ? 'Stop answering' : phase === 'review' ? (part ? 'Answer the follow-up again' : 'Answer the question again') : (part ? 'Answer the follow-up' : 'Answer the question');
-  const hints: Hint[] = count ? [{ icon: 'h-tap', text: 'Tap to cancel' }] : rec ? [{ icon: 'h-tap', text: 'Tap when done' }]
-    : [...(!Q||last ? [] : [{ icon: 'h-spin' as const, text: 'Next', onPress: () => goQ(1) }]), { icon: 'h-dn', text: 'Back', nudge: 'down', onPress: back }];
-  const result = ans?.status === 'done' ? ans.result : undefined;
+  // Fixed regions: panel 112–164, chat from 180, the answer space ends 26 above the record button (674; compact 607).
+  const hearing = (k: string) => hear === language + ':' + k;
+  const glyph: RecordGlyph = count ? (count as 3 | 2 | 1) : rec ? 'stop' : ans ? 'redo' : 'mic';
+  const btnLabel = archived?'Saved Q&A · playback only':count ? `Starting in ${count}. Tap to cancel` : rec ? 'Stop answering' : ans ? (part ? 'Answer the follow-up again' : 'Answer the question again') : (part ? 'Answer the follow-up' : 'Answer the question');
+  const hints: Hint[] = subpage === 'transcript' ? [{ icon: 'h-dn', text: 'Answer review', nudge: 'down', onPress: closeTranscript }]
+    : count ? [{ icon: 'h-tap', text: 'Tap to cancel' }] : rec ? [{ icon: 'h-tap', text: 'Tap when done' }]
+    : [...(!Q||last ? [] : [{ icon: 'h-spin' as const, text: 'Next', onPress: () => goQ(1) }]), { icon: 'h-dn', text: phase === 'review' ? 'Question' : subpage === 'followup' ? 'Answer review' : 'Back', nudge: 'down', onPress: phase === 'review' ? returnToQuestion : subpage === 'followup' ? returnFromFollowup : back }];
+  const result = answerWaiting ? undefined : displayedAnswer.value;
+  const transcriptPreview = savedAnswer?.result?.transcript.text.trim();
   const short = result?.verdict === 'too_short';
   const verdict = !result ? null : short ? { text: 'Too short', tone: TONE.plain, icon: 'i-clock' as IconKey }
     : result.verdict === 'answered' ? { text: 'Answered', tone: TONE.good, icon: 'i-check' as IconKey } : { text: 'Partly answered', tone: TONE.warn, icon: 'i-flag' as IconKey };
-  const ansLines = result ? sentences(result.transcript).map(s => ({ time: fmt(result.transcript.words[s.first].start_ms / 1000), text: s.text })) : [];
 
   return (
+    <>
     <Enter kind={nav.nav}>
       <AnswerRecorder key={recKey} ref={recorder} onMeter={onMeter} onMustStop={() => { void stopRec(); }} />
       <PanView style={StyleSheet.absoluteFill} {...pan}>
+        {(subpage === 'followup' || followupReveal) && <View testID="qa-followup-fade-backdrop" pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: c.bg }]} />}
         <Animated.View style={[StyleSheet.absoluteFill, screen]}>
           <PageSurface hue={deck.hue} />
-          <View style={styles.header} pointerEvents="none">
-            <Txt style={styles.title}>{archived?"Saved Q&A":"Audience Q&A"}</Txt>
-            <Txt numberOfLines={1} style={styles.label}>{Q ? 'Question ' + (i + 1) + ' of ' + qs.length + ' · ' + ((set?.audience ?? qa.state?.requirements.audience ?? '')+(!archived&&model.deck.requirementsDefault?' (default)':'')) : (qaActive(qa.state)?'Writing audience questions… · ':'') + (currentAudience || 'Audience not set')}</Txt>
-          </View>
-          {historyAvailable&&<Pressable accessibilityRole="button" accessibilityLabel={archived?'Next saved Q&A or return to current questions':'View saved Q&A'} onPress={()=>{if(rec||count)return;stopSpeak();player.stop();onHistory();}}
-            style={{position:'absolute',top:18,left:16,zIndex:10,paddingVertical:6,paddingHorizontal:10}}>
+          <View style={StyleSheet.absoluteFill} pointerEvents={subpage==='transcript'?'none':'auto'} importantForAccessibility={subpage==='transcript'?'no-hide-descendants':'auto'}>
+          <Animated.View style={[styles.header,slideStyle]} pointerEvents="none">
+            <Txt style={styles.title}>{subpage === 'followup' ? 'Follow-up' : archived?"Saved Q&A":"Audience Q&A"}</Txt>
+            <Txt verbatim numberOfLines={1} style={styles.label}>{subpage === 'followup' && Q ? presenterHeader : questionHeader}</Txt>
+          </Animated.View>
+          {historyAvailable&&<Pressable accessibilityRole="button" accessibilityLabel={ui(archived?'Next saved Q&A or return to current questions':'View saved Q&A')} onPress={()=>{if(rec||count)return;stopSpeak();player.stop();onHistory();}}
+            style={{position:'absolute',top:4,right:16,zIndex:10,minHeight:44,justifyContent:'center',paddingHorizontal:10}}>
             <Txt style={{fontSize:13.5,color:c.secondary}}>{archived?'Next saved / Current Q&A':'Saved Q&A'}</Txt>
           </Pressable>}
           {Q && (
             <Animated.View style={[styles.stage, slideStyle]}>
-              {phase!=='review'&&<View style={styles.panelAvatars} pointerEvents="none">
-                {qs.slice(0,3).map((question,qi)=><View key={`${question.id}:${qi}`} style={[styles.panelAvatar,{backgroundColor:face[0],opacity:qi===i?1:0.48,boxShadow:qi===i?`0px 8px 16px ${hue.glow}`:undefined}]}>
-                  <Txt style={[styles.who,{color:'#14161D'}]}>{question.panelist.slice(0,1).toUpperCase()}</Txt>
-                </View>)}
-              </View>}
-              {phase!=='review'?<View style={[styles.col,styles.askBubble,{height:310,backgroundColor:c.surface06,borderColor:c.hair}]}>
-                <ScrollView scrollEnabled={false} showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 14, paddingBottom: 24, flexGrow: 1 }}>
-                  <View><Txt style={[styles.role,{color:c.secondary}]}>{Q.panelist+' · '+Q.role}</Txt><Txt style={[styles.meta,{color:c.tertiary}]}>{'Asked after slide '+(Q.slide_index+1)+(Q.topic?' · '+Q.topic:'')}</Txt></View>
-                  {part === 0 && (
-                    <Pressable accessibilityRole="button" accessibilityLabel={(hearing('q' + i) ? 'Stop the question: ' : 'Hear the question: ') + Q.question}
-                      onPress={() => !rec && speak(Q.question, 'q' + i)} style={{ gap: 10 }}>
-                      <Txt style={[styles.qBig, { fontSize: rec ? 18 : 22, lineHeight: (rec ? 18 : 22) * 1.28 }]}>{quote(Q.question)}</Txt>
-                      {!rec && <HearHint playing={hearing('q' + i)} />}
-                    </Pressable>
-                  )}
-                  {part === 1 && (
-                    <Pressable accessibilityRole="button" accessibilityLabel={part ? 'Back to the question: ' + Q.question : 'Hear the question: ' + Q.question}
-                      onPress={() => { if (rec || count) return; if (part === 1) { stopSpeak(); setPart(0); } else speak(Q.question, 'q' + i); }}>
-                      <Txt style={styles.over}>{part ? 'Question · tap to go back' : 'Question'}</Txt>
-                      <Txt numberOfLines={3} style={styles.qSmall}>{quote(Q.question)}</Txt>
-                    </Pressable>
-                  )}
-                  {part === 1 && (
-                    <Pressable accessibilityRole="button" accessibilityLabel={(hearing('f' + i) ? 'Stop the follow-up: ' : 'Hear the follow-up: ') + Q.follow_up}
-                      onPress={() => !rec && speak(Q.follow_up, 'f' + i)} style={{ gap: 8 }}>
-                      <Txt style={[styles.over, { color: c.warn }]}>{'Follow-up · ' + Q.panelist}</Txt>
-                      <Txt style={styles.fBig}>{quote(Q.follow_up)}</Txt>
-                      {phase === 'ask' && <HearHint playing={hearing('f' + i)} />}
-                    </Pressable>
-                  )}
-                  {phase === 'ask' && (
-                    <View style={styles.slideBox} pointerEvents="none">
-                      <MiniSlide hue={deck.hue} page={deck.pages[Q.slide_index]} title={deck.slides[Q.slide_index]?.title ?? ''} width={160} height={90} radius={14} num={Q.slide_index + 1} />
-                      <Txt style={styles.slideCap}>{'From slide ' + (Q.slide_index + 1)}</Txt>
-                    </View>
-                  )}
-                  {rec && <View style={styles.listening}><Txt style={styles.listenText}>Listening…</Txt></View>}
-                  {!rec&&<Txt style={styles.end}>{last?'Last question · swipe down for your review':'Swipe for the next question'}</Txt>}
-                </ScrollView>
-              </View>:<ScrollView style={styles.reviewLayout} contentContainerStyle={styles.reviewContent} showsVerticalScrollIndicator={false}>
+              <View style={StyleSheet.absoluteFill} pointerEvents={phase==='review'?'none':'auto'} importantForAccessibility={phase==='review'?'no-hide-descendants':'auto'}>
+              <View style={styles.panel} pointerEvents="none">
+                {qs.slice(0,3).map((question,qi)=>{const now=qi===i,done=!!set?.answers[answerKey(qi,0)];
+                  return <View key={`${question.id}:${qi}`} accessibilityLabel={panelist(qi) + (done?', ' + ui('Answered'):'')} style={[now?styles.panelNow:styles.panelMember,{backgroundColor:now?c.accentSoft:c.raised}]}>
+                    <Txt verbatim style={[now?styles.panelNowText:styles.panelText,{color:now?c.accent:qi<i?c.secondary:c.tertiary}]}>{initials(panelist(qi))}</Txt>
+                    {done&&<View style={[styles.panelDone,{backgroundColor:c.good}]}><UIIcon name="i-check" size={14} color={c.onAccent}/></View>}
+                  </View>;})}
+              </View>
+              <View style={[styles.chat,{top:CHAT_TOP,height:layout.chatHeight}]}>
+                <FitBox key={JSON.stringify([jobId,i,part,rec,language,Q.question,part?Q.follow_up:''])} height={layout.chatHeight}
+                  onScrollY={y=>{chatScrollY.current=y;}}>
+                  <ChatQuestion name={panelist(i)} slideNumber={Q.slide_index+1} slideTitle={deck.slides[Q.slide_index]?.title??''}
+                    slide={(w,h)=><MiniSlide hue={deck.hue} page={deck.pages[Q.slide_index]} title={deck.slides[Q.slide_index]?.title ?? ''} width={w} height={h} radius={10} />}
+                    question={quote(Q.question)} followUp={part===1?quote(Q.follow_up):null} recording={rec} countdown={!!count} speechReady={questionReady}
+                    questionLabel={ui(part===1?'Back to the question: '+Q.question:(hearing('q' + i) ? 'Stop the question: ' : 'Hear the question: ') + Q.question)}
+                    onQuestion={()=>{if(rec||count)return;if(part===1){stopSpeak();setPart(0);setQuestionViewKey(answerKey(i,0));setSubpage(null);}else speak(Q.question,'q'+i);}}
+                    followLabel={ui((hearing('f' + i) ? 'Stop the follow-up: ' : 'Hear the follow-up: ') + Q.follow_up)}
+                    onFollow={()=>{if(!rec)speak(Q.follow_up,'f'+i);}} playing={hearing(part===1?'f'+i:'q'+i)} last={last}/>
+                </FitBox>
+              </View>
+              <Pressable accessibilityRole={ans&&!rec?'button':undefined} accessibilityLabel={ans&&!rec?ui('View answer review'):undefined} disabled={!ans||rec}
+                onPress={()=>{stopSpeak();player.stop();setQuestionViewKey(null);}}
+                style={[styles.answerSpace,{top:layout.answerTop,height:ANSWER_HEIGHT,borderColor:rec?c.accent:c.tertiary,borderStyle:rec?'solid':'dashed',backgroundColor:rec?c.surface06:'transparent'}]}>
+                {/* OpenAI Codex, Iteration 2 (2026-11-21): preview the saved transcript in the fixed answer space. */}
+                <View style={styles.answerHead}><UIIcon name="i-mic" size={18} color={rec?c.text:c.secondary}/>
+                  <Txt style={[styles.answerTitle,{color:rec?c.text:c.secondary}]}>{rec?`Your answer · ${fmt(elapsed)}`:'Your answer'}</Txt></View>
+                {rec?<><Waveform bars={wave} live /><Txt numberOfLines={2} style={[styles.answerNote,{color:c.secondary}]}>Listening… your words are written out when you stop.</Txt></>
+                  :<Txt verbatim={!!transcriptPreview && !count} numberOfLines={3} ellipsizeMode="tail" style={[styles.answerNote,{color:transcriptPreview?c.text:c.tertiary}]}>
+                    {count?'Get ready to answer…':transcriptPreview|| (ans ? ans.status==='judging'?'Transcribing your answer…':'Transcript unavailable. Tap to see the answer review.' : 'Tap the mic and answer out loud. Your words are written out when you stop.')}
+                  </Txt>}
+              </Pressable>
+              </View>
+              {phase==='review'&&<Animated.View style={[styles.resultOverlay,{backgroundColor:c.bg},resultFade]}>
+              <ScrollView style={[styles.reviewLayout,{bottom:resultScrollBottom}]} contentContainerStyle={styles.reviewContent} showsVerticalScrollIndicator={false}
+                onScroll={event=>{reviewScrollY.current=event.nativeEvent.contentOffset.y;}} scrollEventThrottle={16}>
                 <View style={styles.reviewVerdict}>
                   <Txt style={[styles.reviewVerdictText,{color:short?c.tertiary:verdict?.tone.fg??c.secondary}]}>{verdict?.text??(ans?.status==='judging'?'Reviewing answer':'Answer saved')}</Txt>
                   <View style={styles.reviewBar}>{(['Missed','Partly','Answered'] as const).map(label=>{
@@ -345,35 +537,57 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
                   })}</View>
                   <View style={styles.verdictBarLabels}>{(['Missed','Partly','Answered'] as const).map(label=><Txt key={label} style={[styles.verdictBarLabel,{color:c.tertiary}]}>{label}</Txt>)}</View>
                 </View>
-                {ans&&<Pressable accessibilityRole="button" accessibilityLabel="Play your recorded answer" onPress={playAnswer} style={[styles.playChip,styles.reviewPlay]}><Glyph name={player.playingKey==='a'+key?'p-pause':'p-play'} size={15}/><Txt style={styles.playText}>{'Your answer · '+fmt(ans.durationMs/1000)}</Txt></Pressable>}
-                <View style={styles.nextTime}><Txt style={[styles.over,{color:c.tertiary}]}>NEXT TIME</Txt><Txt style={styles.nextTimeText}>{short?'Answer for at least 8 seconds.':result?.clarify||'Keep the answer clear and tied to the question.'}</Txt></View>
+                {ans&&<Pressable accessibilityRole="button" accessibilityLabel={ui("Play your recorded answer")} onPress={playAnswer} style={[styles.playChip,styles.reviewPlay]}><Glyph name={player.playingKey==='a'+key?'p-pause':'p-play'} size={15}/><Txt style={styles.playText}>{'Your answer · '+fmt(ans.durationMs/1000)}</Txt></Pressable>}
+                <View style={styles.nextTime}><Txt style={[styles.over,{color:c.tertiary}]}>NEXT TIME</Txt><Txt verbatim={!!result?.clarify && !short} style={styles.nextTimeText}>{short?'Answer for at least 8 seconds.':result?.clarify||'Keep the answer clear and tied to the question.'}</Txt></View>
                 {ans?.status==='judging'&&<Row icon="i-wave" k="Answer review" t="Transcribing and reviewing your answer…"/>}
                 {ans?.status==='error'&&!archived&&<Pressable accessibilityRole="button" onPress={()=>void judge(key,i,part,ans)}><Row icon="i-flag" k="Couldn’t review this answer" t={(ans.error||'')+' Tap to try again.'}/></Pressable>}
-                {part===0&&result&&!short&&Q.follow_up&&<Pressable accessibilityRole="button" accessibilityLabel={'Answer the follow-up from '+Q.panelist} onPress={()=>{if(count)return;stopSpeak();setPart(1);}} style={styles.followDoor}>
-                  <View style={styles.followAvatar}><Txt style={styles.who}>{Q.panelist.slice(0,1)}</Txt></View><View style={{flex:1}}><Txt style={styles.followDoorTitle}>{`Answer ${Q.panelist}’s follow-up`}</Txt><Txt style={styles.meta}>{quote(Q.follow_up)}</Txt></View><UIIcon name="i-arrow" size={16}/>
-                </Pressable>}
-                {!!ansLines.length&&<View style={styles.ansBox}>{ansLines.map((line,k)=><View key={k} style={{flexDirection:'row',gap:8}}><Txt style={styles.ansTime}>{line.time}</Txt><Txt style={styles.ansText}>{line.text}</Txt></View>)}</View>}
-              </ScrollView>}
-              {phase!=='review'&&<View style={[styles.answerBubble,{backgroundColor:c.surface06,borderColor:c.hair}]}>
-                {rec?<><Txt style={[styles.role,{color:c.text}]}>{`Your answer · ${fmt(elapsed)}`}</Txt><Waveform bars={wave} live /></>
-                  :<><Txt style={[styles.role,{color:c.secondary}]}>Your answer</Txt><Txt style={[styles.answerPlaceholderText,{color:c.tertiary}]}>Your recorded answer will appear here.</Txt></>}
-              </View>}
+                {/* OpenAI Codex, Iteration 4 (2026-11-21): dedicated follow-up and transcript pages replace inline result details. */}
+                <View style={styles.detailActions}>
+                  <Pressable accessibilityRole="button" accessibilityLabel={ui('Open follow-up page')} disabled={part!==0||!result||short||!Q.follow_up}
+                    onPress={openFollowup} style={[styles.detailAction,{borderColor:c.hair,backgroundColor:c.surface06},(part!==0||!result||short||!Q.follow_up)&&styles.detailDisabled]}>
+                    <UIIcon name="i-bubble" size={19} color={c.secondary}/><Txt style={styles.detailLabel}>Follow-up</Txt><UIIcon name="i-arrow" size={15} color={c.secondary}/>
+                  </Pressable>
+                  <Pressable accessibilityRole="button" accessibilityLabel={ui('Open answer transcript')} disabled={!result}
+                    onPress={openTranscript} style={[styles.detailAction,{borderColor:c.hair,backgroundColor:c.surface06},!result&&styles.detailDisabled]}>
+                    <UIIcon name="i-text" size={19} color={c.secondary}/><Txt style={styles.detailLabel}>Transcript</Txt><UIIcon name="i-arrow" size={15} color={c.secondary}/>
+                  </Pressable>
+                </View>
+              </ScrollView>
+              </Animated.View>}
             </Animated.View>
           )}
           {!Q && (
             <View style={styles.status} pointerEvents="box-none">
               <UIIcon name={load.kind === 'error' ? 'i-flag' : 'i-bubble'} size={44} />
               <Txt style={styles.statusText}>{statusMessage}</Txt>
-              {(!currentAudience.trim() || qa.requirementsDirty) && <Pressable accessibilityRole="button" accessibilityLabel="Edit presentation time and audience" onPress={() => { stopSpeak(); player.stop(); go('rehearse', { deckId: deck.id, editRequirements: true }); }} style={styles.retry}><Txt style={styles.retryText}>Edit time and audience</Txt></Pressable>}
-              {sourcesPending && <Pressable accessibilityRole="button" accessibilityLabel="Review selected recordings" onPress={() => { stopSpeak(); player.stop(); go('review', { nav: null, deckId: deck.id, sel: recoverySlide >= 0 ? recoverySlide : run.sel ?? nav.sel }); }} style={styles.retry}><Txt style={styles.retryText}>Review selected recordings</Txt></Pressable>}
-              <Pressable accessibilityRole="button" accessibilityLabel="Refresh audience questions status" disabled={!active || qa.busy} onPress={() => void qa.refresh()} style={styles.retry}><Txt style={styles.retryText}>Refresh status</Txt></Pressable>
-              {!sourcesPending&&!qa.busy&&!qa.requirementsDirty&&!qaActive(qa.state)&&!!qa.state?.requirements.audience&&<Pressable accessibilityRole="button" onPress={regenerate} style={styles.retry}><Txt style={styles.retryText}>{qa.state?.stale?'Update questions':'Retry questions'}</Txt></Pressable>}
+              {(!currentAudience.trim() || qa.requirementsDirty) && <Pressable accessibilityRole="button" accessibilityLabel={ui("Edit presentation time and audience")} onPress={() => { stopSpeak(); player.stop(); go('rehearse', { deckId: deck.id, editRequirements: true }); }} style={styles.retry}><Txt style={styles.retryText}>Edit time and audience</Txt></Pressable>}
+              {sourcesPending && <Pressable accessibilityRole="button" accessibilityLabel={ui("Review selected recordings")} onPress={() => { stopSpeak(); player.stop(); go('review', { nav: null, deckId: deck.id, sel: recoverySlide >= 0 ? recoverySlide : run.sel ?? nav.sel }); }} style={styles.retry}><Txt style={styles.retryText}>Review selected recordings</Txt></Pressable>}
+              <Pressable accessibilityRole="button" accessibilityLabel={ui("Refresh audience questions status")} disabled={!active || qa.busy} onPress={() => void qa.refresh()} style={styles.retry}><Txt style={styles.retryText}>Refresh status</Txt></Pressable>
+              {!sourcesPending&&!qa.requirementsDirty&&!serviceUnavailable&&!qaActive(qa.state)&&!!currentAudience.trim()&&<Pressable accessibilityRole="button" accessibilityLabel={ui(generationAction)} disabled={!active||qa.busy} onPress={regenerate} style={styles.retry}><Txt style={styles.retryText}>{generationAction}</Txt></Pressable>}
             </View>
           )}
           {Q && load.kind === 'error' && <Txt style={styles.inlineError}>{load.message}</Txt>}
           <RecordRing progress={ringP} visible={ringV} />
-          {!archived&&<RecordButton glyph={glyph} label={btnLabel} onPress={toggleRec} disabled={!Q} />}
-          <HintRow hints={hints} />
+          {!archived&&<RecordButton glyph={glyph} label={btnLabel} onPress={toggleRec} disabled={!active || !Q || (!questionReady && !rec && !count)} />}
+          </View>
+          {subpage==='transcript'&&<Animated.View style={[StyleSheet.absoluteFill,{backgroundColor:c.bg},transcriptFade]}>
+            <View style={styles.transcriptHeader}>
+              <Txt style={styles.title}>Transcript</Txt>
+              <Txt verbatim style={styles.label}>{Q ? presenterHeader : ui('Your answer')}</Txt>
+            </View>
+            <ScrollView style={[styles.transcriptScroll,frame.compact&&{bottom:60}]} contentContainerStyle={styles.transcriptContent}
+              showsVerticalScrollIndicator={false} onScroll={event=>{transcriptScrollY.current=event.nativeEvent.contentOffset.y;}} scrollEventThrottle={16}>
+              <Txt style={[styles.over,{color:c.tertiary}]}>{part===1?'FOLLOW-UP QUESTION':'QUESTION'}</Txt>
+              <Txt verbatim style={styles.transcriptQuestion}>{Q ? quote(part===1?Q.follow_up:Q.question) : ''}</Txt>
+              {ans&&<Pressable accessibilityRole="button" accessibilityLabel={ui('Play your recorded answer')} onPress={playAnswer} style={[styles.playChip,styles.reviewPlay]}>
+                <Glyph name={player.playingKey==='a'+key?'p-pause':'p-play'} size={15}/><Txt style={styles.playText}>{'Your answer · '+fmt(ans.durationMs/1000)}</Txt>
+              </Pressable>}
+              <Txt style={[styles.over,{color:c.tertiary}]}>YOUR TRANSCRIPT</Txt>
+              <Txt verbatim={!!transcriptPreview} style={styles.transcriptBody}>{transcriptPreview||'No speech was recognized in this answer.'}</Txt>
+              {!!result?.did && !short && <Row icon="i-check" k={language === 'ko' ? '잘한 점' : 'What you covered'} t={result.did} verbatim />}
+              {!!result?.evidence && !short && <Row icon="i-bubble" k={language === 'ko' ? '답변 근거' : 'Answer evidence'} t={result.evidence} verbatim />}
+            </ScrollView>
+          </Animated.View>}
         </Animated.View>
       </PanView>
       {active&&answerConsent&&<Dialog icon="i-mic" tone="neutral" title="Transcribe with ElevenLabs?"
@@ -384,31 +598,93 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
         confirm="Retry" onConfirm={()=>{if(answerAsk){const a=answerAsk;setAnswerAsk(null);void judge(a.k,a.qi,a.p,a.a,true);}else void qa.confirm();}}
         onCancel={()=>{setAnswerAsk(null);qa.cancel();}}/>}
     </Enter>
+    {/* OpenAI Codex, 2026-11-20: Q&A cards move independently of their gesture cues. */}
+    {active&&!answerConsent&&!qa.ask&&!answerAsk&&<HintRow hints={hints} />}
+    </>
   );
 }
 
-function HearHint({ playing }: { playing: boolean }) {
-  const { c } = useTheme();
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-      <Glyph name={playing ? 'p-pause' : 'p-play'} size={14} color={c.secondary} />
-      <Txt style={styles.hear}>{playing ? 'Playing…' : 'Tap to hear'}</Txt>
-    </View>
-  );
+const CHAT_TOP = 180, ANSWER_HEIGHT = 132, MIN_FIT = 0.72;
+// OpenAI Codex, 2026-11-21, Iteration 2: remeasure after shrinking so a long question scrolls only at the 72% floor.
+const Fit = createContext(1);
+function FitBox({ height, onScrollY, children }: { height: number; onScrollY: (y: number) => void; children: ReactNode }) {
+  const [fit, setFit] = useState({ scale: 1, ready: false, overflow: false });
+  return <ScrollView style={{ height }} scrollEnabled={fit.overflow} showsVerticalScrollIndicator={fit.overflow} bounces={false} overScrollMode="never"
+    onScroll={event=>onScrollY(event.nativeEvent.contentOffset.y)} scrollEventThrottle={16}>
+    <View style={{ opacity: fit.ready ? 1 : 0 }} onLayout={e => {
+      const h = e.nativeEvent.layout.height;
+      if (h > height + 1 && fit.scale > MIN_FIT) {
+        const scale = Math.max(MIN_FIT, fit.scale * height / h);
+        if (scale < fit.scale - 0.001) { setFit({ scale, ready: false, overflow: false }); return; }
+      }
+      const overflow = h > height + 1 && fit.scale <= MIN_FIT + 0.001;
+      if (!fit.ready || overflow !== fit.overflow) setFit({ ...fit, ready: true, overflow });
+    }}><Fit.Provider value={fit.scale}>{children}</Fit.Provider></View>
+  </ScrollView>;
 }
-function Row({ icon, k, t }: { icon: IconKey; k: string; t: string }) {
+const useFit = () => { const z = useContext(Fit); return (n: number) => Math.round(n * z * 10) / 10; };
+
+/** The question as a chat message from the panelist (tap to hear it), the follow-up under it, then the slide it came from. */
+function ChatQuestion({ name, slideNumber, slideTitle, slide, question, followUp, recording, countdown, speechReady, questionLabel, onQuestion, followLabel, onFollow, playing, last }: {
+  name: string; slideNumber: number; slideTitle: string; slide: (width: number, height: number) => ReactNode; question: string; followUp: string | null; recording: boolean; countdown: boolean; speechReady: boolean;
+  questionLabel: string; onQuestion: () => void; followLabel: string; onFollow: () => void; playing: boolean; last: boolean }) {
+  const { c } = useTheme(), z = useFit(), ui = useUiText();
+  const bubble = { backgroundColor: c.raised, borderRadius: 20, borderBottomLeftRadius: 6, paddingHorizontal: z(16), paddingVertical: z(14) };
+  const sender = (text: string, color: string) => <Txt verbatim style={[styles.sender, { color, fontSize: z(14), lineHeight: z(18) }]}>{text}</Txt>;
+  const hear = !recording && !countdown && speechReady && <View style={[styles.hearRow, { marginTop: z(10) }]}><Glyph name={playing ? 'p-pause' : 'p-play'} size={z(14)} color={c.secondary} />
+    <Txt style={[styles.hearText, { color: c.secondary, fontSize: z(14), lineHeight: z(18) }]}>{playing ? 'Playing…' : 'Tap to hear'}</Txt></View>;
+  return <View style={styles.msgRow}>
+    <View style={[styles.msgAvatar, { width: z(36), height: z(36), borderRadius: z(18), backgroundColor: c.accentSoft }]}>
+      <Txt verbatim style={[styles.msgAvatarText, { color: c.accent, fontSize: z(14) }]}>{initials(name)}</Txt></View>
+    <View style={[styles.msgColumn, { gap: z(8) }]}>
+      <Pressable accessibilityRole="button" accessibilityLabel={questionLabel} disabled={recording || countdown || (!followUp && !speechReady)} onPress={onQuestion} style={bubble}>
+        {sender(name + ' · ' + (followUp ? ui('Question · tap to go back') : ui('after slide ' + slideNumber)), c.accent)}
+        <Txt verbatim style={[styles.question, { color: followUp ? c.secondary : c.text, marginTop: z(6), fontSize: z(followUp ? 15 : 18), lineHeight: z(followUp ? 21 : 25.6) }]}>{question}</Txt>
+        {!followUp && hear}
+      </Pressable>
+      {followUp && <Pressable accessibilityRole="button" accessibilityLabel={followLabel} disabled={recording || countdown || !speechReady} onPress={onFollow} style={bubble}>
+        {sender(ui('Follow-up') + ' · ' + name, c.warn)}
+        <Txt verbatim style={[styles.question, { color: c.text, marginTop: z(6), fontSize: z(18), lineHeight: z(25.6) }]}>{followUp}</Txt>
+        {hear}
+      </Pressable>}
+      <View style={[styles.attach, { gap: z(10) }]} pointerEvents="none">
+        {slide(z(112), z(63))}
+        <Txt verbatim numberOfLines={2} style={[styles.attachText, { color: c.tertiary, fontSize: z(13.5), lineHeight: z(18) }]}>{ui('Slide ' + slideNumber) + (slideTitle ? ' · ' + slideTitle : '')}</Txt>
+      </View>
+      {last && !recording && <Txt style={[styles.attachText, { color: c.tertiary, fontSize: z(13.5), lineHeight: z(18) }]}>Last question · swipe down for your review</Txt>}
+    </View>
+  </View>;
+}
+function Row({ icon, k, t, verbatim = false }: { icon: IconKey; k: string; t: string; verbatim?: boolean }) {
   return (
     <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
       <UIIcon name={icon} size={22} style={{ marginTop: 1 }} />
       <View style={{ flex: 1, minWidth: 0 }}>
         <Txt style={styles.rowK}>{k}</Txt>
-        <Txt style={styles.rowT}>{t}</Txt>
+        <Txt verbatim={verbatim} style={styles.rowT}>{t}</Txt>
       </View>
     </View>
   );
 }
 
 const styles = createThemedStyles({
+  // Claude, 2026-11-21: S15 question page.
+  panel: { position: 'absolute', left: 0, right: 0, top: 112, height: 52, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 18 },
+  panelMember: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  panelNow: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
+  panelText: { fontFamily: F.display, fontSize: 16 }, panelNowText: { fontFamily: F.display, fontSize: 19 },
+  panelDone: { position: 'absolute', right: -3, bottom: -3, width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  chat: { position: 'absolute', left: 16, right: 16 },
+  msgRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  msgAvatar: { alignItems: 'center', justifyContent: 'center' }, msgAvatarText: { fontFamily: F.display },
+  msgColumn: { flex: 1, minWidth: 0 },
+  sender: { fontFamily: F.bold }, question: { fontFamily: F.medium },
+  hearRow: { flexDirection: 'row', alignItems: 'center', gap: 6 }, hearText: { fontFamily: F.semibold },
+  attach: { flexDirection: 'row', alignItems: 'center' }, attachText: { flex: 1, minWidth: 0, fontFamily: F.semibold },
+  answerSpace: { position: 'absolute', left: 16, right: 16, borderWidth: 1.5, borderRadius: 20, borderBottomRightRadius: 6, paddingHorizontal: 16, paddingVertical: 14, gap: 8 },
+  answerHead: { flexDirection: 'row', alignItems: 'center', gap: 8 }, answerTitle: { fontFamily: F.bold, fontSize: 16, lineHeight: 21 },
+  answerNote: { fontFamily: F.medium, fontSize: 15, lineHeight: 21 },
+  resultOverlay: { position: 'absolute', left: 0, right: 0, top: 100, bottom: 0 },
   header: { position: 'absolute', left: 40, right: 40, top: 50, alignItems: 'center' },
   title: { fontFamily: F.display, fontSize: 18, lineHeight: 21.6, letterSpacing: -0.3, color: C.text },
   label: { marginTop: 3, fontFamily: F.medium, fontSize: 13.5, color: C.secondary },
@@ -424,8 +700,8 @@ const styles = createThemedStyles({
   askBubble:{top:196,borderWidth:1,borderRadius:22,padding:16},
   answerBubble:{position:'absolute',left:16,right:16,top:520,height:100,borderWidth:1,borderRadius:20,paddingHorizontal:16,paddingVertical:14,justifyContent:'center',gap:8},
   answerPlaceholderText:{fontFamily:F.medium,fontSize:15,lineHeight:21},
-  reviewLayout: { position: 'absolute', left: 24, right: 24, top: 132, bottom: 166 },
-  reviewContent: { gap: 16, paddingBottom: 24 },
+  reviewLayout: { position: 'absolute', left: 24, right: 24, top: 32, bottom: 0 },
+  reviewContent: { flexGrow: 1, justifyContent: 'space-between', gap: 16, paddingBottom: 12 },
   reviewVerdict: { gap: 12 },
   reviewVerdictText: { fontFamily: F.display, fontSize: 32, lineHeight: 40 },
   reviewBar: { height: 9,flexDirection:'row',gap:3,borderRadius:5,overflow:'hidden' },
@@ -435,6 +711,15 @@ const styles = createThemedStyles({
   reviewPlay: { minHeight: 40, alignSelf: 'flex-start', paddingHorizontal: 12 },
   nextTime: { marginTop: 6, gap: 10 },
   nextTimeText: { fontFamily: F.medium, fontSize: 18, lineHeight: 25, color: C.text },
+  detailActions: { flexDirection: 'row', gap: 12 },
+  detailAction: { flex: 1, minHeight: 70, borderWidth: 1, borderRadius: 18, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  detailLabel: { flex: 1, fontFamily: F.semibold, fontSize: 15, color: C.text },
+  detailDisabled: { opacity: 0.42 },
+  transcriptHeader: { position: 'absolute', left: 40, right: 40, top: 50, alignItems: 'center' },
+  transcriptScroll: { position: 'absolute', left: 24, right: 24, top: 132, bottom: 76 },
+  transcriptContent: { gap: 18, paddingBottom: 32 },
+  transcriptQuestion: { fontFamily: F.medium, fontSize: 18, lineHeight: 26, color: C.text },
+  transcriptBody: { fontFamily: F.medium, fontSize: 17, lineHeight: 26, color: C.text },
   followDoor: { minHeight: 70, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, borderRadius: 18, borderWidth: 1, borderColor: C.hair, backgroundColor: C.surface06 },
   followAvatar: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: C.surface12 },
   followDoorTitle: { fontFamily: F.semibold, fontSize: 14, color: C.text },

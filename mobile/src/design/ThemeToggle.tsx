@@ -2,6 +2,7 @@
 // Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-081
 // OpenAI Codex half-turn correction: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-083
 // OpenAI Codex sun dots: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-103
+import { useUiText } from './language';
 import { useEffect, useRef } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -13,6 +14,7 @@ const SUN_DOTS = [[110, -410.5], [300.5, -300.5], [410.5, -110],
   [410.5, 110], [300.5, 300.5], [110, 410.5]];
 
 export function ThemeToggle() {
+  const ui = useUiText();
   const { mode, toggle } = useTheme();
   const reduced = useReducedMotion();
   const turns = useSharedValue(mode === 'light' ? 1 : 0);
@@ -26,7 +28,7 @@ export function ThemeToggle() {
   }, [mode, reduced, turns]);
   const spin = useAnimatedStyle(() => ({ transform: [{ rotate: `${90 + 180 * turns.value}deg` }] }));
   return (
-    <Pressable accessibilityRole="switch" accessibilityLabel="Light mode" accessibilityState={{ checked: mode === 'light' }}
+    <Pressable accessibilityRole="switch" accessibilityLabel={ui("Light mode")} accessibilityState={{ checked: mode === 'light' }}
       onPress={toggle} hitSlop={4} style={styles.hit}>
       <Animated.View style={spin}>
         <Svg width={42} height={42} viewBox="-525 -525 1050 1050" accessibilityElementsHidden>

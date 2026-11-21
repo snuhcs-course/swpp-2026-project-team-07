@@ -1,3 +1,7 @@
+import { displayTranslations, useDisplayTranslation } from '../localization/useDisplayTranslation';
+import { firstFeedback } from '../localization/firstFeedback';
+import { getAppLanguage } from '../../design/language';
+import { translatedV3, translatedV3Cards } from '../localization/generatedProse';
 import { captureFeedback, readCapture, captureVersion, subscribeCaptures } from '../recording/incrementalState';
 // Feedback v3 for the selected run, for screens: reads saved results and polls while a run is on its way.
 // AI-assisted with Claude Code, prompted by Seoyeon (November 15, 2026); see docs/ai-collaboration-prompts.md.
@@ -43,8 +47,8 @@ export function feedbackTargets(model: DeckModel | null, api: string): Target[] 
   });
 }
 
-export function useRunFeedbackV3(model: DeckModel | null, active = true) {
-  const api = normalizeApi(API_URL);
+export function useRunFeedbackV3(model: DeckModel | null, active = true, prose?: number | 'all') {
+  const api = String(normalizeApi(API_URL));
   useSyncExternalStore(subscribeCaptures, captureVersion);
   useStore(s => s.version);
   useSyncExternalStore(subscribeRequirements, getRequirementsVersion);
@@ -55,8 +59,29 @@ export function useRunFeedbackV3(model: DeckModel | null, active = true) {
     const capture = readCapture(t.id);
     return [t.id, captureFeedback(capture?.api === api ? capture : null, readSavedRun(api, t.id, t.contextId))];
   }));
+  const initial = new Map([...runs].map(([id, raw]) => [id, raw && active && foreground ?
+    firstFeedback(api, raw, slide => model?.state.run?.parts[slide]?.attemptId === id, targets.length === 1,
+      typeof prose === 'number' ? prose : undefined, getAppLanguage(), displayTranslations) : raw]));
+  const preparingDisplay = [...initial].some(([id, value]) => runs.get(id) !== value);
+  const { value: displayRuns } = useDisplayTranslation(active && foreground && !!model, scope => {
+    if (prose === undefined) return initial;
+    return new Map([...initial].map(([id, run]) => {
+      if (!run) return [id, run];
+      const field = scope('feedback', run.runId || id, undefined, run.language);
+      const slides = run.slides.map(slide => {
+        const part = model?.state.run?.parts[slide.slide_index];
+        if (part?.attemptId !== id) return slide;
+        const path = 'slides.' + slide.slide_index;
+        if (prose === slide.slide_index) return translatedV3(slide, field, path);
+        return prose === 'all' && part.segments.some(s => s.endMs > s.startMs) ? translatedV3Cards(slide, field, path) : slide;
+      });
+      // A combined recording has no whole-presentation priority cards.
+      const whole = prose === 'all' && targets.length === 1 && run.whole ? translatedV3Cards(run.whole, field, 'whole') : run.whole;
+      return [id, { ...run, slides, whole }];
+    }));
+  });
   const selection = selectRunFeedbackV3({ n: model?.n ?? 0, parts: model?.state.run?.parts ?? [], stages: model?.stages ?? new Map(),
-    runs, ready: new Set(targets.filter(t => t.ready).map(t => t.id)), expected: new Set(targets.filter(t => t.expected).map(t => t.id)),
+    runs: displayRuns, ready: new Set(targets.filter(t => t.ready).map(t => t.id)), expected: new Set(targets.filter(t => t.expected).map(t => t.id)),
     waitingForSettings: new Set(targets.filter(t => t.waitingForSettings).map(t => t.id)) });
   const capability = feedbackV3Capability(api);
   const identity = JSON.stringify(targets);
@@ -68,7 +93,7 @@ export function useRunFeedbackV3(model: DeckModel | null, active = true) {
     if (!visible || feedbackV3Capability(api) !== true) return;  // FeedbackV3Host learns the capability.
     const results = await Promise.allSettled(list.filter(t => t.ready).map(t => fetchFeedbackRun(api, t.id, t.contextId)));
     setOffline(results.some(r => r.status === 'rejected'));
-  }, [api]);
+  }, [api, setOffline]);
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', s => setForeground(s === 'active'));
@@ -92,7 +117,7 @@ export function useRunFeedbackV3(model: DeckModel | null, active = true) {
       }
       setOffline(false);
     } catch { setOffline(true); } finally { setBusy(false); }
-  }, [api]);
+  }, [api, setBusy, setOffline]);
   /** Explicit: request feedback for current inputs (missing or outdated). Unchanged parts are reused, not regenerated. */
   const update = useCallback(() => act(run => !run || feedbackRunNeedsStart(run) || feedbackRunOutdated(run), false), [act]);
   /** Explicit: re-run only the parts that failed. */
@@ -104,7 +129,7 @@ export function useRunFeedbackV3(model: DeckModel | null, active = true) {
     (!runs.get(t.id) || feedbackRunNeedsStart(runs.get(t.id) ?? null)));
   const blocked = targets.some(t => t.blocked);
   return {
-    enabled: capability === true, capability, ...selection, retry, update, refresh: sync, busy, failures, outdated, missing, blocked,
+    enabled: capability === true, capability, ...selection, retry, update, refresh: sync, busy, failures, outdated, missing, blocked, preparingDisplay,
     notice: offline ? 'Connection interrupted. Saved feedback is shown. Reconnecting…'
       : blocked ? 'Presentation settings are saved on this phone. Feedback starts after they synchronize.'
       : outdated ? 'Feedback is from before your latest changes. Update it when you are ready.' : '',
@@ -116,9 +141,9 @@ export type RunFeedbackV3 = ReturnType<typeof useRunFeedbackV3>;
  * Scores for every screen: feedback v3 when the server offers it, otherwise the v2 scores.
  * The v2 hook stays mounted but inactive under v3, so it makes no requests.
  */
-export function useRunScores(model: DeckModel | null, active = true, selectedSlide?: number) {
-  const v3 = useRunFeedbackV3(model, active);
-  const v2 = useRunPresentationScores(model, active && !v3.enabled, selectedSlide);
+export function useRunScores(model: DeckModel | null, active = true, selectedSlide?: number, showProse = false) {
+  const v3 = useRunFeedbackV3(model, active, showProse ? selectedSlide ?? 'all' : undefined);
+  const v2 = useRunPresentationScores(model, active && !v3.enabled, selectedSlide, showProse && !v3.enabled);
   return v3.enabled
     ? { kind: 'v3' as const, scores: { items: v3.items, overall: v3.overall }, v3, v2 }
     : { kind: 'v2' as const, scores: v2, v3: null, v2 };
