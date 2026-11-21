@@ -1,5 +1,6 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
 // OpenAI Codex finger-linked page fade: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-117
+// OpenAI Codex import-ring layout: docs/ai-collaboration-prompts-iteration-2.md#centre-pdf-import-ring
 // OpenAI Codex light-mode upload: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-081
 // Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-043
 // OutLoud redesign: Upload and analysis (SPEC §4.3). The Home carousel stays
@@ -21,17 +22,19 @@ import { useSlideProfiles } from '../features/presentations/useSlideProfiles';
 import type { ProfileState } from '../features/presentations/slideProfiles';
 import { visibleDecks, type Presentation } from '../features/presentations/store';
 import type { LocalPdf } from '../features/pdf/service';
-import { PresentationRequirementsEditor } from './PresentationSetup';
+import { PresentationRequirementsEditor, PresentationSetupHint } from './PresentationSetup';
+import { ANALYZE_RING_STROKE, analyzeRing } from './homeGeometry';
 import { useBack, useShell } from './shared';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
-const RING = 326.73;
+const FILE_BOX = 40, FILE_GAP = 22;
 
 export function UploadScreen() {
   const { c } = useTheme();
   const { go, home, nav } = useShell();
   const frame = useFrame();
   const [phase, setPhase] = useState<'pick' | 'picking' | 'analyze' | 'configure'>('pick');
+  const [setupHintVisible, setSetupHintVisible] = useState(true);
   const [readyDeck, setReadyDeck] = useState<Presentation | null>(null);
   const [profileRetryAsk,setProfileRetryAsk]=useState<ProfileState|null>(null);
   const [error, setError] = useState('');
@@ -156,28 +159,28 @@ export function UploadScreen() {
     onRelease: () => {
       if (dy.get() > BACK_T) {
         backExiting.current = true;
-        dy.set(withTiming(BACK_FADE_Y, { duration: 220, easing: EASE_SCREEN }, finished => {
+        dy.set(withTiming(BACK_FADE_Y, { duration: 460, easing: EASE_SCREEN }, finished => {
           if (finished) runOnJS(leave)();
         }));
-        home.uploadBlur.set(withTiming(0, { duration: 220, easing: EASE_SCREEN }));
-        home.gap.set(withTiming(0, { duration: 220, easing: EASE_SCREEN }));
-        if (phase === 'analyze' || phase === 'configure') home.analyzing.set(withTiming(0, { duration: 220, easing: EASE_SCREEN }));
-        if (phase === 'configure') home.setup.set(withTiming(0, { duration: 220, easing: EASE_SCREEN }));
+        home.uploadBlur.set(withTiming(0, { duration: 460, easing: EASE_SCREEN }));
+        home.gap.set(withTiming(0, { duration: 460, easing: EASE_SCREEN }));
+        if (phase === 'analyze' || phase === 'configure') home.analyzing.set(withTiming(0, { duration: 460, easing: EASE_SCREEN }));
+        if (phase === 'configure') home.setup.set(withTiming(0, { duration: 460, easing: EASE_SCREEN }));
       } else {
-        dy.set(withTiming(0, { duration: 220, easing: EASE_SCREEN }));
-        home.uploadBlur.set(withTiming(1, { duration: 220, easing: EASE_SCREEN }));
-        home.gap.set(withTiming(1, { duration: 220, easing: EASE_SCREEN }));
-        if (phase === 'analyze' || phase === 'configure') home.analyzing.set(withTiming(1, { duration: 220, easing: EASE_SCREEN }));
-        if (phase === 'configure') home.setup.set(withTiming(1, { duration: 220, easing: EASE_SCREEN }));
+        dy.set(withTiming(0, { duration: 360, easing: EASE_SCREEN }));
+        home.uploadBlur.set(withTiming(1, { duration: 360, easing: EASE_SCREEN }));
+        home.gap.set(withTiming(1, { duration: 360, easing: EASE_SCREEN }));
+        if (phase === 'analyze' || phase === 'configure') home.analyzing.set(withTiming(1, { duration: 360, easing: EASE_SCREEN }));
+        if (phase === 'configure') home.setup.set(withTiming(1, { duration: 360, easing: EASE_SCREEN }));
       }
     },
     onTerminate: () => {
       if (backExiting.current) return;
-      dy.set(withTiming(0, { duration: 220, easing: EASE_SCREEN }));
-      home.uploadBlur.set(withTiming(1, { duration: 220, easing: EASE_SCREEN }));
-      home.gap.set(withTiming(1, { duration: 220, easing: EASE_SCREEN }));
-      if (phase === 'analyze' || phase === 'configure') home.analyzing.set(withTiming(1, { duration: 220, easing: EASE_SCREEN }));
-      if (phase === 'configure') home.setup.set(withTiming(1, { duration: 220, easing: EASE_SCREEN }));
+      dy.set(withTiming(0, { duration: 360, easing: EASE_SCREEN }));
+      home.uploadBlur.set(withTiming(1, { duration: 360, easing: EASE_SCREEN }));
+      home.gap.set(withTiming(1, { duration: 360, easing: EASE_SCREEN }));
+      if (phase === 'analyze' || phase === 'configure') home.analyzing.set(withTiming(1, { duration: 360, easing: EASE_SCREEN }));
+      if (phase === 'configure') home.setup.set(withTiming(1, { duration: 360, easing: EASE_SCREEN }));
     },
   };
   useBack(true, () => { leave(); return true; });
@@ -186,10 +189,17 @@ export function UploadScreen() {
     // Home's controls and carousel emerge in place during the downward gesture.
     opacity: Math.max(0, 1 - dy.value / BACK_FADE_Y),
   }));
-  const ring = useAnimatedProps(() => ({ strokeDashoffset: RING * (1 - prog.value) }));
+  // OpenAI Codex import-ring fix: docs/ai-collaboration-prompts-iteration-2.md#centre-pdf-import-ring
+  const ringAt = analyzeRing(frame.compact);
+  const ringLength = 2 * Math.PI * ringAt.r;
+  const ringBox = Math.ceil(2 * ringAt.r + ANALYZE_RING_STROKE) + 2;
+  const ringMid = ringBox / 2;
+  const ring = useAnimatedProps(() => ({ strokeDashoffset: ringLength * (1 - prog.value) }));
+  const ringFade = useAnimatedStyle(() => ({ opacity: home.analyzing.value }));
   const analyzing = phase === 'analyze' || phase === 'configure';
   const pr = pct / 100;
   const profileFailed = profileState?.state === 'failed' || profileState?.state === 'needs_confirmation' || profiles.error !== '';
+  const crowded = frame.compact && (profileFailed || !!(info.imageOnlySlides && pr >= 1) || !!(info.textOffline && pr >= 0.66));
   const stages = [
     { icon: 'i-slides' as const, label: info.pages ? `Found ${info.pages} slides` : 'Finding slides', done: pr >= 0.33, active: pr < 0.33 },
     { icon: 'i-text' as const, label: 'Reading the text', done: profileState?.state === 'completed', active: !!readyDeck && !profileTerminal },
@@ -197,7 +207,7 @@ export function UploadScreen() {
   ];
 
   return (
-    <Enter kind={nav.nav}>
+    <><Enter kind={nav.nav}>
       <Animated.View style={[StyleSheet.absoluteFill, content]}>
       <View pointerEvents={readyDeck && phase === 'configure' ? 'none' : 'box-none'}
         style={[StyleSheet.absoluteFill, readyDeck && phase === 'configure' && styles.setupBlur]}>
@@ -215,42 +225,47 @@ export function UploadScreen() {
             {!!error&&<View accessibilityRole="alert" style={[styles.errorToast,{backgroundColor:c.toast,borderColor:c.toastBorder}]}><Txt style={[styles.errorToastText,{color:c.text}]}>{error}</Txt></View>}
           </>}
           {analyzing && <>
-            <View style={styles.ringWrap} pointerEvents="none">
-              <Svg width={118} height={118} viewBox="0 0 118 118">
+            <Animated.View style={[styles.ringWrap, { top: ringAt.cy - ringMid }, ringFade]} pointerEvents="none">
+              <Svg width={ringBox} height={ringBox} viewBox={`0 0 ${ringBox} ${ringBox}`}>
                 <Defs><LinearGradient id="gMultiUp" x1="0" y1="0" x2="1" y2="1"><Stop offset="0" stopColor={c.accent} /><Stop offset="1" stopColor={c.good} /></LinearGradient></Defs>
-                <Circle cx={59} cy={59} r={52} fill="none" stroke={c.track} strokeWidth={5} />
-                <AnimatedCircle cx={59} cy={59} r={52} fill="none" stroke="url(#gMultiUp)" strokeWidth={5} strokeLinecap="round" strokeDasharray={`${RING}`}
-                  transform="rotate(-90 59 59)" animatedProps={ring} />
+                <Circle cx={ringMid} cy={ringMid} r={ringAt.r} fill="none" stroke={c.track} strokeWidth={ANALYZE_RING_STROKE} />
+                <AnimatedCircle cx={ringMid} cy={ringMid} r={ringAt.r} fill="none" stroke="url(#gMultiUp)" strokeWidth={ANALYZE_RING_STROKE} strokeLinecap="round" strokeDasharray={`${ringLength}`}
+                  transform={`rotate(-90 ${ringMid} ${ringMid})`} animatedProps={ring} />
               </Svg>
-            </View>
-            <View style={styles.progress} pointerEvents="none" accessibilityLiveRegion="polite">
+            </Animated.View>
+            <View style={[styles.fileWrap, { top: ringAt.top - FILE_GAP - FILE_BOX }]} pointerEvents="none">
               <Txt numberOfLines={1} style={styles.file}>{info.file || 'Preparing your presentation'}</Txt>
-              <View style={styles.stages}>
+            </View>
+            <View style={[styles.progress, { top: ringAt.bottom, bottom: crowded ? 40 : 0 }]} pointerEvents="box-none" accessibilityLiveRegion="polite">
+              <View style={[styles.stages, crowded && styles.stagesCrowded]} pointerEvents="none">
                 {stages.map((g, index) => (
                   <View key={g.label} style={styles.stage}>
                     <View style={[styles.stageIcon, g.done && styles.stageDone, index === 1 && profileFailed && styles.stageFailed]}>
                       {index === 1 && profileFailed ? <Txt style={styles.warning}>!</Txt> : g.done ? <Pop duration={380}><UIIcon name="i-check" size={20} color={c.good} /></Pop> : <UIIcon name={g.icon} size={21} color={g.active ? c.text : c.muted2} />}
                     </View>
                     <Txt style={[styles.stageLabel, { color: index === 1 && profileFailed ? c.bad : g.done || g.active ? c.text : c.muted2 }]}>{g.label}</Txt>
-                    {index === 1 && profileFailed && <>
-                      <Pressable accessibilityRole="button" accessibilityLabel="Try slide profile analysis again" disabled={profiles.busy || !profileState?.retry_available} onPress={() => { if(profileState?.requires_confirmation)setProfileRetryAsk(profileState);else void profiles.recover(); }}><Txt style={[styles.retry,{color:c.accent,opacity:profiles.busy||!profileState?.retry_available?0.45:1}]}>{profiles.busy?'Retrying…':'Try again'}</Txt></Pressable>
-                      <Pressable accessibilityRole="button" accessibilityLabel="Continue without slide cues" onPress={() => { setPhase('configure'); home.setup.set(withTiming(1,{duration:260})); }}><Txt style={[styles.retry,{color:c.secondary}]}>Continue</Txt></Pressable>
-                    </>}
                   </View>
                 ))}
               </View>
-              {info.imageOnlySlides && pr >= 1 && <Txt style={styles.offline}>Some slides have no text — cues will be thinner.</Txt>}
-              {info.textOffline && pr >= 0.66 && <Txt style={styles.offline}>Slide text will be read when the server is reachable.</Txt>}
+              {profileFailed && <View style={styles.retryRow}>
+                <Pressable accessibilityRole="button" accessibilityLabel="Try slide profile analysis again" disabled={profiles.busy || !profileState?.retry_available} onPress={() => { if(profileState?.requires_confirmation)setProfileRetryAsk(profileState);else void profiles.recover(); }}><Txt style={[styles.retry,{color:c.accent,opacity:profiles.busy||!profileState?.retry_available?0.45:1}]}>{profiles.busy?'Retrying…':'Try again'}</Txt></Pressable>
+                <Pressable accessibilityRole="button" accessibilityLabel="Continue without slide cues" onPress={() => { setPhase('configure'); home.setup.set(withTiming(1,{duration:260})); }}><Txt style={[styles.retry,{color:c.secondary}]}>Continue</Txt></Pressable>
+              </View>}
+              {info.imageOnlySlides && pr >= 1 && <Txt style={[styles.offline, crowded && styles.offlineCrowded]}>Some slides have no text — cues will be thinner.</Txt>}
+              {info.textOffline && pr >= 0.66 && <Txt style={[styles.offline, crowded && styles.offlineCrowded]}>Slide text will be read when the server is reachable.</Txt>}
             </View>
           </>}
-          <HintRow gap={6} hints={[{ icon: 'h-dn', text: analyzing ? 'Swipe down to cancel' : 'Swipe down to go back', nudge: 'down' }]} />
       </PanView>
       <ThemeToggle />
       </View>
-      {readyDeck && phase === 'configure' && <Enter kind="fade"><PresentationRequirementsEditor deck={readyDeck} initialImport onSaved={finishSetup} onBackPan={pan} /></Enter>}
+      {readyDeck && phase === 'configure' && <Enter kind="fade"><PresentationRequirementsEditor deck={readyDeck} initialImport fixedHint onHintVisibilityChange={setSetupHintVisible} onSaved={finishSetup} onBackPan={pan} /></Enter>}
       {profileRetryAsk && <Dialog title="Retry AI slide analysis?" body="The previous provider request has an uncertain outcome. Retrying may incur another charge." confirm="Retry" onConfirm={() => { const expected=profileRetryAsk;setProfileRetryAsk(null);void profiles.recover(true,expected); }} onCancel={() => setProfileRetryAsk(null)} />}
       </Animated.View>
     </Enter>
+    {/* OpenAI Codex, 2026-11-20: import gestures do not move or fade the footer cue. */}
+    {phase !== 'configure' && !profileRetryAsk && <HintRow gap={6} hints={[{ icon: 'h-dn', text: analyzing ? 'Swipe down to cancel' : 'Swipe down to go back', nudge: 'down' }]} />}
+    {phase === 'configure' && setupHintVisible && <PresentationSetupHint />}
+    </>
   );
 }
 
@@ -267,16 +282,20 @@ const styles = createThemedStyles({
   limit: { marginTop: 4, fontFamily: F.medium, fontSize: 13.5, color: C.tertiary },
   errorToast:{position:'absolute',left:24,right:24,top:98,minHeight:44,paddingHorizontal:16,paddingVertical:10,borderWidth:1,borderRadius:22,alignItems:'center',justifyContent:'center',zIndex:30},
   errorToastText:{fontFamily:F.semibold,fontSize:14,lineHeight:19,textAlign:'center'},
-  ringWrap: { position: 'absolute', left: 0, right: 0, top: 150, alignItems: 'center' },
-  progress: { position: 'absolute', left: 28, right: 28, top: 290, alignItems: 'center' },
+  ringWrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
+  fileWrap: { position: 'absolute', left: 28, right: 28, height: FILE_BOX, justifyContent: 'flex-end', alignItems: 'center' },
+  progress: { position: 'absolute', left: 28, right: 28, bottom: 0, justifyContent: 'center', alignItems: 'center' },
   file: { fontFamily: F.display, fontSize: 20, lineHeight: 26, color: C.text, maxWidth: 320, textAlign: 'center' },
-  stages: { alignSelf: 'stretch', gap: 26, marginTop: 54 },
+  stages: { alignItems: 'flex-start', gap: 26 },
+  stagesCrowded: { gap: 12 },
   stage: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 14 },
+  retryRow: { flexDirection: 'row', justifyContent: 'center', gap: 4, marginTop: 10 },
   stageIcon: { width: 34, height: 34, borderRadius: 17, borderWidth: 1, borderColor: C.hair, alignItems: 'center', justifyContent: 'center' },
   stageDone: { borderColor: C.good },
   stageFailed:{borderColor:C.bad}, warning:{fontFamily:F.bold,fontSize:20,color:C.bad},
   retry:{fontFamily:F.semibold,fontSize:14,minHeight:44,textAlignVertical:'center',paddingHorizontal:8},
   check: { position: 'absolute', right: -8, bottom: -6 },
-  stageLabel: { flex: 1, fontFamily: F.semibold, fontSize: 15, color: C.secondary },
+  stageLabel: { fontFamily: F.semibold, fontSize: 15, color: C.secondary },
   offline: { marginTop: 10, fontFamily: F.medium, fontSize: 13.5, color: C.tertiary, textAlign: 'center' },
+  offlineCrowded: { marginTop: 4 },
 });

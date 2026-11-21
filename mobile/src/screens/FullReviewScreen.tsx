@@ -106,12 +106,12 @@ export function ListenBackScreen({ active = true }: { active?: boolean }) {
     onRelease: () => {
       if (dy.get() > BACK_T) {
         backExiting.current = true;
-        dy.set(withTiming(BACK_FADE_Y, { duration: 220, easing: EASE_SCREEN }, finished => {
+        dy.set(withTiming(BACK_FADE_Y, { duration: 460, easing: EASE_SCREEN }, finished => {
           if (finished) runOnJS(toBack)();
         }));
-      } else dy.set(withTiming(0, { duration: 220, easing: EASE_SCREEN }));
+      } else dy.set(withTiming(0, { duration: 360, easing: EASE_SCREEN }));
     },
-    onTerminate: () => { if (!backExiting.current) dy.set(withTiming(0, { duration: 220, easing: EASE_SCREEN })); },
+    onTerminate: () => { if (!backExiting.current) dy.set(withTiming(0, { duration: 360, easing: EASE_SCREEN })); },
   };
   useBack(active, () => { toBack(); return true; });
   const screen = useAnimatedStyle(() => ({ opacity: Math.max(0, 1 - dy.value / BACK_FADE_Y) }));
@@ -245,7 +245,7 @@ export function ListenBackScreen({ active = true }: { active?: boolean }) {
   const visiblePosition=scrubbing&&scrubTarget?scrubTarget.positionMs/1000:(runPlaying||slidePlaying)?pos:starts[sliderSlide]??0;
   const visibleOffset=(times[visibleSliderSlide]??0)>0?clamp((visiblePosition-(starts[visibleSliderSlide]??0))/times[visibleSliderSlide]):0;
 
-  return <Enter kind={nav.nav}>
+  return <><Enter kind={nav.nav}>
     <PanView style={StyleSheet.absoluteFill} {...pan}>
       <Animated.View style={[StyleSheet.absoluteFill, screen]}>
         <PageSurface hue={deck.hue} />
@@ -351,13 +351,15 @@ export function ListenBackScreen({ active = true }: { active?: boolean }) {
             })}
           </ScrollView>
         </View>
-        <HintRow hints={[{ icon: 'h-dn', text: nav.from === 'wait' ? 'Back to waiting' : nav.from === 'review' ? 'Back to review' : nav.from === 'rehearse' ? 'Back to slides' : 'Back', nudge: 'down', onPress:toBack },
-          { icon: 'h-review-bars', text: 'Full review', onPress:() => go('full', { deckId: nav.deckId, sel: nav.sel }) },
-          { icon: 'h-tap', text: 'Tap a slide to review it' }]} />
       </Animated.View>
     </PanView>
     {active&&missingAudio&&<Dialog title="Some run audio is missing" body={`Audio for slide${missingAudio.slides.length===1?'':'s'} ${missingAudio.slides.map(i=>i+1).join(', ')} is not on this phone. Play only the available recordings?`} confirm="Play available audio" onCancel={()=>{const captured=missingAudio;setMissingAudio(null);if(captured.signature===playbackSource.current.signature&&captured.resumeKey===player.playingKey&&playbackSource.current.active&&playbackSource.current.foreground)player.setPaused(false);}} onConfirm={()=>{const captured=missingAudio;setMissingAudio(null);if(!playbackSource.current.active||!playbackSource.current.foreground||captured.signature!==playbackSource.current.signature){note('Selected recordings changed. Start playback again.');return;}seekWholeAt(captured.target,captured.paused,true);}}/>}
-  </Enter>;
+  </Enter>
+  {/* OpenAI Codex, 2026-11-20: keep Listen back cues fixed during the page gesture. */}
+  {active&&!missingAudio&&<HintRow hints={[{ icon: 'h-dn', text: nav.from === 'wait' ? 'Back to waiting' : nav.from === 'review' ? 'Back to review' : nav.from === 'rehearse' ? 'Back to slides' : 'Back', nudge: 'down', onPress:toBack },
+    { icon: 'h-review-bars', text: 'Full review', onPress:() => go('full', { deckId: nav.deckId, sel: nav.sel }) },
+    { icon: 'h-tap', text: 'Tap a slide to review it' }]} />}
+  </>;
 }
 
 function slideAtElapsed(elapsedMs: number, plan: readonly RunAudioPlanEntry[]): number | null {

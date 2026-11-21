@@ -33,9 +33,13 @@ test('rotation, revisits and live feedback retain one capture owner until Stop',
   runtime.insets = { top: 24, bottom: 48, left: 0, right: 0 };
   await tap(round('Open full-screen landscape player'));
   assert.equal(runtime.captures.length, 1); assert.equal(capture.released, false); assert.equal(capture.recording, true);
-  assert.equal(button('Next slide').props.style.at(-1).right, 56, 'portrait navigation bar maps to landscape right');
-  assert.equal(button('Return to portrait rehearsal').props.style.at(-1).right, 64);
-  assert.equal(button('Previous slide').props.style.at(-1).left, 32, 'portrait top inset maps to landscape left');
+  assert.equal(button('Next slide').props.style.find(part => part.right !== undefined).right, 56, 'portrait navigation bar maps to landscape right');
+  assert.equal(button('Previous slide').props.style.find(part => part.left !== undefined).left, 32, 'portrait top inset maps to landscape left');
+  const dock = button('Return to portrait rehearsal').parent;
+  assert.equal(dock.props.style.find(part => part.right !== undefined).right, 60, 'dock keeps clear of the right inset');
+  assert.deepEqual(dock.findAllByType('pressable').map(node => node.props.accessibilityLabel),
+    ['Show live feedback progress', 'Open cue panel', 'Return to portrait rehearsal']);
+  assert.equal(renderer.root.findAllByType('record-ring').length, 0, 'recording progress uses the dock bar');
   await tap(button('Next slide')); await tap(button('Previous slide'));
   assert.deepEqual(capture.slides, [0, 1, 0]);
   const live = button('Show live feedback progress');
@@ -43,6 +47,15 @@ test('rotation, revisits and live feedback retain one capture owner until Stop',
   assert.ok(renderer.root.findByType('live-feedback')); assert.equal(capture.recording, true);
   assert.equal(renderer.root.findByType('live-feedback').parent.props.landscape, true);
   await act(async () => renderer.root.findByType('live-feedback').props.close());
+  await act(async () => { t.mock.timers.tick(3000); });
+  assert.equal(button('Return to portrait rehearsal').parent.parent.props.pointerEvents, 'none', 'controls become non-interactive after three seconds of recording');
+  assert.ok(runtime.timings.some(timing => timing.value === 0 && timing.duration === 300), 'the dock fades out');
+  assert.ok(renderer.root.findAllByType('view').some(node => Array.isArray(node.props.style) && node.props.style.some(part => part.height === 3)), 'thin progress line remains');
+  await tap(button('Show or hide rehearsal controls'));
+  assert.equal(button('Return to portrait rehearsal').parent.parent.props.pointerEvents, 'auto', 'tapping the slide restores the controls');
+  await act(async () => { t.mock.timers.tick(3000); });
+  assert.equal(button('Return to portrait rehearsal').parent.parent.props.pointerEvents, 'none', 'restored controls hide again');
+  await tap(button('Show or hide rehearsal controls'));
   await tap(button('Return to portrait rehearsal'));
   assert.equal(runtime.captures.length, 1); assert.equal(capture.released, false);
   await tap(renderer.root.findByType('record-button'));
@@ -54,4 +67,7 @@ test('after-Stop fallback retains the existing first-take wait route', async t =
   await start(t, false);
   await tap(renderer.root.findByType('record-button'));
   assert.equal(runtime.routes.at(-1)[0], 'wait');
+  await act(async () => { t.mock.timers.tick(1); });
+  await tap(round('Review overall feedback'));
+  assert.equal(runtime.routes.at(-1)[0], 'full', 'reopening the saved first take skips the one-time wait');
 });

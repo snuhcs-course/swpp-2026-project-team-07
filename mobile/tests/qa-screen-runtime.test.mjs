@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {registerHooks} from 'node:module';
 import {resolve,load} from './helpers/qa-screen-runtime-loader.mjs';registerHooks({resolve,load});
 const React=await import('react');const {act,create}=await import('react-test-renderer');
-const {QAScreen}=await import('../src/screens/QAScreen.tsx');
+const {QAScreen,audienceNames,AUDIENCE_NAMES}=await import('../src/screens/QAScreen.tsx');
 const {PageSurface}=await import('../src/design/ui.tsx');
 const {PanView}=await import('../src/design/PanView.tsx');
 const Surface=PageSurface.type??PageSurface;
@@ -54,6 +54,69 @@ test('actual Next buttons advance a cached three-question page while retaining h
  }finally{if(r)await act(async()=>r.unmount());}
  assert.equal(runtime.unmounts,1);
 });
+test('Q&A question swipe moves horizontally without fading its content',async()=>{
+ setup();let r;
+ try{
+  await act(async()=>{r=create(React.createElement(QAScreen));});
+  const pan=r.root.findByType(PanView);
+  await act(async()=>{pan.props.onMoveShould({nativeEvent:{pageY:200}},{dx:0,dy:50});pan.props.onMove({}, {dx:0,dy:50});});
+  await act(async()=>{pan.props.onMoveShould({nativeEvent:{pageY:200}},{dx:-90,dy:0});pan.props.onMove({}, {dx:-90,dy:0});});
+  const moved=r.root.findAllByType('animated').map(node=>flattenStyle(node.props.style)).find(style=>style.transform?.[0]?.translateX<0);
+  assert.equal(moved?.transform[0].translateX,-90);
+  assert.equal(moved.opacity,1);
+  assert.ok(r.root.findAllByType('animated').map(node=>flattenStyle(node.props.style)).every(style=>style.opacity===undefined||style.opacity===1),
+   'a horizontal swipe resets the vertical page fade');
+  await act(async()=>pan.props.onRelease({}, {dx:-90,dy:0}));
+  assertPageVisible(r,2);
+ }finally{if(r)await act(async()=>r.unmount());}
+});
+
+// OpenAI Codex, Iteration 2 (2026-11-21): the parent catches a short downward start over the chat.
+test('Q&A downward pull is captured over the question while long-question scrolling remains available',async()=>{
+ setup();let r;
+ try{
+  await act(async()=>{r=create(React.createElement(QAScreen));});
+  const pan=r.root.findByType(PanView);
+  const down={dx:0,dy:16};const event={nativeEvent:{pageY:300}};
+  assert.equal(pan.props.onMoveShouldCapture(event,down),true);
+  const chat=r.root.findAllByType('scroll').find(node=>node.props.overScrollMode==='never');
+  await act(async()=>chat.props.onScroll({nativeEvent:{contentOffset:{y:50}}}));
+  assert.equal(pan.props.onMoveShouldCapture(event,down),false,'a displaced long question can scroll back to its top');
+  await act(async()=>chat.props.onScroll({nativeEvent:{contentOffset:{y:0}}}));
+  assert.equal(pan.props.onMoveShouldCapture(event,down),true);
+  await act(async()=>{
+   pan.props.onMoveShouldCapture(event,{dx:0,dy:140});
+   pan.props.onMove({}, {dx:0,dy:140});pan.props.onRelease({}, {dx:0,dy:140});
+  });
+  assert.equal(runtime.routes.at(-1)?.[0],'review','the pull returns to the opening Review page');
+ }finally{if(r)await act(async()=>r.unmount());}
+});
+
+test('Q&A completes the outgoing swipe before changing the question',async()=>{
+ setup();runtime.deferTimings=true;let r;
+ try{
+  await act(async()=>{r=create(React.createElement(QAScreen));});
+  const pan=r.root.findByType(PanView);
+  await act(async()=>{pan.props.onMoveShould({nativeEvent:{pageY:200}},{dx:-90,dy:0});pan.props.onMove({}, {dx:-90,dy:0});pan.props.onRelease({}, {dx:-90,dy:0});});
+  assert.ok(r.root.findAllByType('text').some(node=>node.children.join(' ').startsWith('Question 1 of 3')),
+   'the current question remains mounted through its exit');
+  assert.ok(r.root.findAllByType('animated').map(node=>flattenStyle(node.props.style)).some(style=>style.transform?.[0]?.translateX===-390));
+  assert.ok([...runtime.timings].some(timing=>timing.options?.duration<=130),
+   'the next question should start entering promptly after release');
+  await act(async()=>runtime.finishTimings());
+  assertPageVisible(r,2);
+ }finally{runtime.deferTimings=false;runtime.finishTimings();if(r)await act(async()=>r.unmount());}
+});
+
+test('Q&A horizontal gesture still changes questions with Reduce Motion',async()=>{
+ setup();runtime.reducedMotion=true;let r;
+ try{
+  await act(async()=>{r=create(React.createElement(QAScreen));});
+  const pan=r.root.findByType(PanView);
+  await act(async()=>{pan.props.onMoveShould({nativeEvent:{pageY:200}},{dx:-90,dy:0});pan.props.onMove({}, {dx:-90,dy:0});pan.props.onRelease({}, {dx:-90,dy:0});});
+  assertPageVisible(r,2);
+ }finally{runtime.reducedMotion=false;if(r)await act(async()=>r.unmount());}
+});
 
 test('question Hear selects English or Korean from its own text and retains fallback for other scripts',async()=>{
  for(const [text,language]of [
@@ -86,11 +149,43 @@ test('follow-up Hear selects its language independently from the main question',
  try{
   await act(async()=>{r=create(React.createElement(QAScreen));});
   assert.equal(runtime.speeches.length,0,'an already answered question is not automatically replayed');
-  await act(async()=>button(r,'Answer the follow-up from '+first.panelist).props.onPress());
+  // OpenAI Codex, Iteration 4 (2026-11-21): the follow-up button opens its own question page.
+  await act(async()=>button(r,'Open follow-up page').props.onPress());
+  assert.ok(r.root.findAllByType('text').some(node=>node.children.join('')==='Follow-up'));
   assert.ok(button(r,'Stop the follow-up: '+first.follow_up));
   assert.equal(runtime.speeches.at(-1).text,first.follow_up);
   assert.equal(runtime.speeches.at(-1).options.language,'en');
- }finally{if(r)await act(async()=>r.unmount());}
+  await act(async()=>button(r,'Answer review').props.onPress());
+  assert.ok(button(r,'Open follow-up page'));
+  assert.deepEqual(runtime.routes,[],'closing the follow-up page returns to its answer result');
+  await act(async()=>button(r,'Open follow-up page').props.onPress());
+  const pan=r.root.findByType(PanView);
+  runtime.deferTimings=true;
+  await act(async()=>{
+   pan.props.onMoveShouldCapture({nativeEvent:{pageY:200}},{dx:0,dy:60});
+   pan.props.onMove({}, {dx:0,dy:60});
+   assert.ok(flattenStyle(r.root.findByType(Surface).parent.props.style).opacity<1);
+   pan.props.onRelease({}, {dx:0,dy:60});
+  });
+  await act(async()=>runtime.finishTimings());
+  assert.equal(flattenStyle(r.root.findByType(Surface).parent.props.style).opacity,1,'a short pull fades back to Follow-up');
+  await act(async()=>{
+   assert.equal(pan.props.onMoveShouldCapture({nativeEvent:{pageY:200}},{dx:0,dy:140}),true);
+   pan.props.onMove({}, {dx:0,dy:140});
+   assert.ok(flattenStyle(r.root.findByType(Surface).parent.props.style).opacity<1,'the follow-up fades with the pull');
+   assert.equal(r.root.findAllByProps({testID:'qa-followup-fade-backdrop'}).length,1,'Q&A covers Review throughout the fade');
+   pan.props.onRelease({}, {dx:0,dy:140});
+  });
+  assert.equal(runtime.timings.size,1,'the follow-up finishes fading out before the answer result replaces it');
+  await act(async()=>runtime.finishTimings());
+  assert.equal(r.root.findAllByProps({testID:'qa-followup-fade-backdrop'}).length,1,'the backdrop remains for the answer-result fade in');
+  assert.equal(runtime.timings.size,1,'the answer result fades in after its React commit');
+  await act(async()=>runtime.finishTimings());
+  assert.equal(r.root.findAllByProps({testID:'qa-followup-fade-backdrop'}).length,0);
+  assert.equal(flattenStyle(r.root.findByType(Surface).parent.props.style).opacity,1);
+  assert.ok(button(r,'Open follow-up page'),'the swipe returns to the answer result');
+  assert.deepEqual(runtime.routes,[]);
+ }finally{runtime.deferTimings=false;runtime.finishTimings();if(r)await act(async()=>r.unmount());}
 });
 
 test('Hear toggles off and question navigation, Back and unmount still stop speech',async()=>{
@@ -150,4 +245,92 @@ test('Scribe consent Cancel keeps a saved answer and Continue submits that same 
   const saved=readQaV2(API_URL,'runtime-deck',cached.jobId).answers['0-0'];
   assert.equal(saved.id,answer.id);assert.equal(saved.status,'done');assert.deepEqual(saved.result,result);
  }finally{if(r)await act(async()=>r.unmount());globalThis.fetch=old;files.clear();delete globalThis.qaReviews;}
+});
+
+// Claude, 2026-11-21: S15 question page — team names only, the question as a chat message, its slide, and a fixed answer space.
+test('the panel uses only the four team names and the question page keeps a fixed space for the answer',async()=>{
+ const questions=[question(1),question(2),question(3)].map(q=>({...q,panelist:'Audience 1'}));const cached=setup(questions);let r;
+ try{
+  await act(async()=>{r=create(React.createElement(QAScreen));});
+  const shown=[...audienceNames(questions,cached.jobId).values()];
+  assert.equal(new Set(shown).size,3);for(const name of shown)assert.ok(AUDIENCE_NAMES.includes(name),name);
+  const text=JSON.stringify(r.toJSON());
+  assert.ok(text.includes(`${shown[0]} · after slide 1`));assert.doesNotMatch(text,/Audience 1/);
+  assert.ok(text.includes(`"${shown[0].slice(0,2)}"`),'the panel shows two-letter initials');
+  assert.match(text,/Your answer/);assert.match(text,/Tap the mic and answer out loud/);
+  assert.match(text,/"Slide 1( · [^"]*)?"/,'the slide the question came from sits under the question');
+  // OpenAI Codex, Iteration 2 (2026-11-21): repeated server labels still produce distinct people per question.
+  const duplicateLabels=[{panelist:'A'},{panelist:'A'},{panelist:'A'}];
+  const assigned=[...audienceNames(duplicateLabels,5).values()];
+  assert.equal(new Set(assigned).size,3);
+  assert.deepEqual(assigned,[...audienceNames(duplicateLabels,5).values()],'a saved set keeps its assigned names');
+ }finally{if(r)await act(async()=>r.unmount());}
+});
+
+// OpenAI Codex, 2026-11-21, Iteration 2: long chat text stays within its box before scrolling at the 72% floor.
+test('a long question remeasures after shrinking and scrolls only at the 72% minimum',async()=>{
+ const long='Why does this evidence support the conclusion? '.repeat(12);setup([{...question(1),question:long}]);let r;
+ try{
+  await act(async()=>{r=create(React.createElement(QAScreen));});
+  const content=()=>r.root.findAllByType('view').find(node=>typeof node.props.onLayout==='function');
+  const chat=()=>r.root.findAllByType('scroll').find(node=>node.props.overScrollMode==='never');
+  assert.ok(content());assert.ok(chat());
+  await act(async()=>content().props.onLayout({nativeEvent:{layout:{height:400}}}));
+  assert.equal(chat().props.scrollEnabled,false);
+  await act(async()=>content().props.onLayout({nativeEvent:{layout:{height:330}}}));
+  assert.equal(chat().props.scrollEnabled,false,'an extra shrink takes precedence over scrolling');
+  await act(async()=>content().props.onLayout({nativeEvent:{layout:{height:310}}}));
+  assert.equal(chat().props.scrollEnabled,false);
+  await act(async()=>content().props.onLayout({nativeEvent:{layout:{height:600}}}));
+  assert.equal(chat().props.scrollEnabled,false,'the minimum scale is measured before enabling scroll');
+  await act(async()=>content().props.onLayout({nativeEvent:{layout:{height:400}}}));
+  assert.equal(chat().props.scrollEnabled,true,'overflow scrolls only after reaching the minimum scale');
+ }finally{if(r)await act(async()=>r.unmount());}
+});
+
+// OpenAI Codex, Iteration 2 (2026-11-21): the result returns to its question without leaving Q&A.
+test('swiping down from an answer result reveals its question and a truncated transcript preview',async()=>{
+ const cached=setup([{...question(1),panelist:'Same speaker'}]);
+ const transcript='A detailed answer with many points. '.repeat(12);
+ const answer={audioUri:'file:///synthetic-answer.m4a',durationMs:20000,status:'done',at:'2026-01-01T00:00:00Z',
+  result:{verdict:'answered',did:'Direct answer',evidence:'Relevant example',clarify:'One detail',transcript:{text:transcript,words:[]},duration_ms:20000}};
+ saveQaV2(API_URL,'runtime-deck',cached.jobId,{...cached,answers:{'0-0':answer}});let r;
+ try{
+  await act(async()=>{r=create(React.createElement(QAScreen));});
+  assert.ok(button(r,'Play your recorded answer'));
+  const pan=r.root.findByType(PanView);
+  const resultScroll=r.root.findAllByType('scroll').find(node=>node.props.contentContainerStyle);
+  await act(async()=>resultScroll.props.onScroll({nativeEvent:{contentOffset:{y:90}}}));
+  assert.equal(pan.props.onMoveShould({nativeEvent:{pageY:200}},{dx:0,dy:120}),false,'downward movement first scrolls a displaced result');
+  await act(async()=>resultScroll.props.onScroll({nativeEvent:{contentOffset:{y:0}}}));
+  await act(async()=>{
+   assert.equal(pan.props.onMoveShould({nativeEvent:{pageY:200}},{dx:0,dy:180}),true);
+   pan.props.onMove({}, {dx:0,dy:180});pan.props.onRelease({}, {dx:0,dy:180});
+  });
+  assert.deepEqual(runtime.routes,[],'the swipe stays inside Q&A');
+  assert.equal(button(r,'Play your recorded answer'),undefined);
+  assert.ok(button(r,'View answer review'));
+  const preview=r.root.findAllByType('text').find(node=>node.props.ellipsizeMode==='tail'&&node.props.numberOfLines===3);
+  assert.equal(preview.props.children,transcript.trim());
+  assert.ok(r.root.findAllByType('text').some(node=>node.children.join('').includes(cached.questions[0].question)));
+  await act(async()=>button(r,'View answer review').props.onPress());
+  assert.ok(button(r,'Play your recorded answer'),'the saved result remains accessible');
+  // OpenAI Codex, Iteration 4 (2026-11-21): transcript opens as a full page and returns to this result.
+  assert.ok(button(r,'Open follow-up page'));
+  await act(async()=>button(r,'Open answer transcript').props.onPress());
+  assert.ok(r.root.findAllByType('text').some(node=>node.children.join('')==='Transcript'));
+  const full=r.root.findAllByType('text').find(node=>node.children.join('')===transcript.trim()&&node.props.numberOfLines===undefined);
+  assert.ok(full,'the transcript page keeps the whole answer');
+  const transcriptScroll=r.root.findAllByType('scroll').find(node=>node.props.contentContainerStyle?.gap===18);
+  await act(async()=>transcriptScroll.props.onScroll({nativeEvent:{contentOffset:{y:90}}}));
+  assert.equal(pan.props.onMoveShouldCapture({nativeEvent:{pageY:200}},{dx:0,dy:150}),false);
+  await act(async()=>transcriptScroll.props.onScroll({nativeEvent:{contentOffset:{y:0}}}));
+  await act(async()=>{
+   assert.equal(pan.props.onMoveShouldCapture({nativeEvent:{pageY:200}},{dx:0,dy:150}),true);
+   pan.props.onMove({}, {dx:0,dy:150});pan.props.onRelease({}, {dx:0,dy:150});
+  });
+  assert.equal(button(r,'Answer review'),undefined);
+  assert.ok(button(r,'Open answer transcript'));
+  assert.deepEqual(runtime.routes,[],'transcript closes back to the same answer result');
+ }finally{if(r)await act(async()=>r.unmount());}
 });

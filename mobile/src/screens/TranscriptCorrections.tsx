@@ -299,7 +299,7 @@ export function LineRow(p: PanelProps & { line: Line; playing: boolean; altFi: n
     const s = g.current;
     g.current = null;
     const v = dx.get();
-    dx.set(withTiming(0, { duration: 220, easing: EASE_SNAP })); setDragX(0);
+    dx.set(withTiming(0, { duration: 420, easing: EASE_SNAP })); setDragX(0);
     if (!s || cancelled) return;
     if (s.axis === 'x') { if (canMoveLine && Math.abs(v) > 90) p.onMove(line, v < 0 ? -1 : 1); return; }
     if (!s.axis && event) p.onPlay(line);

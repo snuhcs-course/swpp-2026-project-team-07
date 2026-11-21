@@ -11,17 +11,23 @@ export const useFrame=()=>setupNative.frame;
 export const Glyph='glyph',UIIcon='icon',PanView='pan',SlideCard='slide-card',MiniSlide='mini-slide',CARD_H=196,CARD_W=358;
 export const Chip='chip',Confetti='confetti',Dialog='dialog',HintRow='hints',OrbitalCaption='orbital-caption',PageSurface='page-surface',RecordButton='record-button',RecordRing='record-ring',RoundButton='round-button',Waveform='waveform',IDLE_WAVE=[];
 export const Easing={linear:v=>v,cubic:v=>v,bezier:()=>v=>v,inOut:f=>f,out:f=>f};
-export const cancelAnimation=()=>{},runOnJS=f=>f,withTiming=v=>v;
-export const useSharedValue=value=>{const r=React.useRef({value,get(){return this.value;},set(v){this.value=v;}});return r.current;};
-export const useAnimatedStyle=()=>({}),useReducedMotion=()=>true;
+export const cancelAnimation=()=>{},runOnJS=f=>f,withTiming=(value,config,complete)=>{
+ const timing={value,duration:config?.duration,complete};runtime.timings.push(timing);
+ return value===1&&config?.duration===600&&complete?{openingPage:timing}:value;
+};
+export const useSharedValue=value=>{const r=React.useRef({value,get(){return this.value;},set(v){
+ if(v?.openingPage){const timing=v.openingPage,finish=timing.complete;timing.complete=done=>{if(done)this.value=timing.value;finish?.(done);};return;}
+ this.value=v;
+}});return r.current;};
+export const useAnimatedStyle=()=>({}),useReducedMotion=()=>runtime.reducedMotion;
 const Animated=Object.assign(({children})=>React.createElement('svg',null,children),{View:'animated'});export default Animated;
-export const Rect='rect',Path='path',Circle='circle',Line='line',StatusBar='status-bar',selectionAsync=async()=>{},impactAsync=async()=>{},ImpactFeedbackStyle={Medium:'medium'};
+export const Rect='rect',Path='path',Circle='circle',Line='line',Defs='defs',LinearGradient='linear-gradient',Stop='stop',StatusBar='status-bar',selectionAsync=async()=>{},impactAsync=async()=>{},ImpactFeedbackStyle={Medium:'medium'};
 export const OrientationLock={PORTRAIT_UP:1},lockAsync=async()=>{};
 export const useSafeAreaInsets=()=>({top:0,bottom:0,left:0,right:0});
 const setFullscreenLandscape=()=>{};
-export const runtime={model:null,version:0,listeners:new Set(),shell:null,captures:[],played:[],stops:0,routes:[],recoveries:[],audio:new Map(),startWait:null,
- reset(model,slide=0){this.model=model;this.version++;this.captures=[];this.played=[];this.stops=0;this.routes=[];this.recoveries=[];this.audio=new Map();this.startWait=null;
- this.shell={nav:{deckId:model.deck.id,slide,nav:null},go:(...a)=>this.routes.push(a),setFullscreenLandscape,home:{p:{get:()=>0,set(){}}}};},
+export const runtime={model:null,version:0,listeners:new Set(),shell:null,captures:[],played:[],stops:0,routes:[],recoveries:[],audio:new Map(),startWait:null,reducedMotion:true,timings:[],
+ reset(model,slide=0){this.model=model;this.version++;this.captures=[];this.played=[];this.stops=0;this.routes=[];this.recoveries=[];this.audio=new Map();this.startWait=null;this.reducedMotion=true;this.timings=[];
+ this.shell={nav:{deckId:model.deck.id,slide,nav:null},go:(...a)=>this.routes.push(a),setFullscreenLandscape,home:{p:{get:()=>0,set(){}},titleReturn:{value:1,set(v){this.value=v;}}}};},
  emit(){this.version++;for(const l of this.listeners)l();}};
 const subscribe=l=>{runtime.listeners.add(l);return()=>runtime.listeners.delete(l);};
 export function useDeckModel(){React.useSyncExternalStore(subscribe,()=>runtime.version);return runtime.model;}

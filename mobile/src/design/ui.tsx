@@ -31,14 +31,7 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 // ── Hint row (SPEC §1.2) ─────────────────────────────────────────────────────
 export type Hint = { icon: GlyphName; text: string; nudge?: 'down' | 'up'; hidden?: boolean; onPress?: () => void };
 type IconMotion = 'horizontal' | 'rise' | 'drop' | 'tap' | 'hold' | 'tilt' | 'breathe';
-function motionFor(icon: GlyphName): IconMotion {
-  if (icon === 'h-spin') return 'horizontal';
-  if (icon === 'h-up') return 'rise';
-  if (icon === 'h-dn' || icon === 'h-down') return 'drop';
-  if (icon === 'h-hold') return 'hold';
-  return 'tap';
-}
-/** Animate only footer artwork on Review's 1.6 s nudge cycle; labels and touch targets stay still. */
+/** Animate round action controls; gesture footer artwork is rendered without this motion. */
 function MotionIcon({ children, kind }: { children: ReactNode; kind: IconMotion }) {
   const clock = useFooterMotion();
   const reduced = useReducedMotion();
@@ -59,8 +52,8 @@ export function HintRow({ hints, gap = 18, style }: { hints: Hint[]; gap?: numbe
   const frame = useFrame();
   return <View pointerEvents={hints.some(h => h.onPress && !h.hidden) ? 'box-none' : 'none'} style={[s.hints, frame.compact && { bottom: 12 }, { gap }, style]}>
     {hints.map(h => {
-      const content = <><MotionIcon kind={h.nudge ? (h.nudge === 'down' ? 'drop' : 'rise') : motionFor(h.icon)}>
-        <Glyph name={h.icon} size={18} /></MotionIcon><Txt style={s.hintText}>{h.text}</Txt></>;
+      // OpenAI Codex, 2026-11-20: gesture cues stay still; only action controls retain motion.
+      const content = <><Glyph name={h.icon} size={18} /><Txt style={s.hintText}>{h.text}</Txt></>;
       const rowStyle = [s.hint, { gap: gap === 16 ? 5 : 6 }, h.hidden && { opacity: 0 }];
       return h.onPress && !h.hidden
         ? <Pressable key={h.icon + h.text} accessibilityRole="button" accessibilityLabel={h.text} onPress={h.onPress} style={[rowStyle, { minHeight: 44 }]}>{content}</Pressable>
@@ -276,7 +269,7 @@ export function Dialog({ title, body, confirm, cancel = 'Cancel', onConfirm, onC
   const { c } = useTheme();
   const frame = useFrame();
   const v = useSharedValue(0);
-  useEffect(() => { v.set(withTiming(1, { duration: 260, easing: Easing.bezier(0.2, 0.8, 0.2, 1) })); }, [v]);
+  useEffect(() => { v.set(withTiming(1, { duration: 420, easing: Easing.bezier(0.2, 0.8, 0.2, 1) })); }, [v]);
   const scrim = useAnimatedStyle(() => ({ opacity: Math.min(1, v.value * 1.3) }));
   const card = useAnimatedStyle(() => ({ opacity: v.value, transform: [{ translateY: (1 - v.value) * 12 }, { scale: 0.94 + 0.06 * v.value }] }));
   return (

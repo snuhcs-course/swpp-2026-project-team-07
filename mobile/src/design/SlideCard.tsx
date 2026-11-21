@@ -1,7 +1,7 @@
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
 // Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-043
-// OutLoud redesign: slide cards. The rendered PDF page fills the card
-// (letterboxed on the hue's slide face); the design's stand-in layout (title, rule,
+// OutLoud redesign: slide cards. The rendered PDF page fits the card;
+// the design's stand-in layout (title, rule,
 // bullets) is used only when no page image exists.
 // OpenAI Codex portrait-only correction: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-080
 import { memo } from 'react';
@@ -65,9 +65,10 @@ export const SlideCard = memo(function SlideCard({ hue, page, deckTitle, title, 
           <LinearGradient id={'face' + hue} x1="0" y1="0" x2="1" y2="1"><Stop offset="0" stopColor={h.face[0]} /><Stop offset="1" stopColor={h.face[1]} /></LinearGradient>
         </Defs>
         <G clipPath={`url(#${clipKey})`}>
-          <Rect width={CARD_W} height={cardHeight} fill={`url(#face${hue})`} />
+          {/* OpenAI Codex, 2026-11-21: real PDF pages keep their own aspect ratio; unused width stays transparent. */}
+          {!page && <Rect width={CARD_W} height={cardHeight} fill={`url(#face${hue})`} />}
           {page && box && <SvgImage href={{ uri: page.uri }} x={box.x} y={box.y} width={box.width} height={box.height} preserveAspectRatio="none" />}
-          <Rect x={0} y={0} width={CARD_W} height={1} fill="rgba(255, 255, 255, 0.2)" />
+          {!page && <Rect x={0} y={0} width={CARD_W} height={1} fill="rgba(255, 255, 255, 0.2)" />}
         </G>
       </Svg>
       {!page && (

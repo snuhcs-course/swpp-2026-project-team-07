@@ -23,7 +23,7 @@ from django.db.models import F
 from django.utils import timezone
 
 from ..models import Attempt, DescriptionSet, FeedbackRun, PresentationContext, QaAnswer, Slide
-from . import llm, measurements, prompts, rubric, transcript
+from . import limits, llm, measurements, prompts, rubric, transcript
 
 logger = logging.getLogger(__name__)
 PIPELINE_VERSION = 'feedback-v3.0'
@@ -305,6 +305,12 @@ def _list(value) -> list:
     return value if isinstance(value, list) else []
 
 
+def _capped(coach: dict) -> dict:
+    """Storage bound only (TEXT_LIMIT per string, six bullets); the display limits are in limits.py."""
+    return {key: [v[:TEXT_LIMIT] for v in value[:6]] if isinstance(value, list) and key != 'over_limit'
+            else value[:TEXT_LIMIT] if isinstance(value, str) else value for key, value in coach.items()}
+
+
 def _evidence(ids, sentences: dict, measures: dict | None = None) -> list[dict]:
     """Known sentence ids (and measurement ids, for the whole call) only; others dropped."""
     seen, found = set(), []
@@ -338,7 +344,8 @@ def _criteria(raw: dict, criteria, sentences: dict, measures: dict | None = None
     return rows
 
 
-def normalize_slide(raw: dict, sentences: dict) -> dict:
+# Supplied Claude patch, OpenAI Codex integration, Iteration 2 (2026-11-20): normalize bounded coaching fields.
+def normalize_slide(raw: dict, sentences: dict, language: str = 'en') -> dict:
     criteria = _criteria(raw.get('criteria'), RUBRIC.slide, sentences)
     ids = {c.id for c in RUBRIC.slide}
     must_cover = [{'point': _text(m.get('point')), 'status': m['status'], 'evidence': _evidence(m.get('evidence'), sentences)}
@@ -346,10 +353,12 @@ def normalize_slide(raw: dict, sentences: dict) -> dict:
     strength = raw.get('strength') if isinstance(raw.get('strength'), dict) else None
     improvements = []
     for item in _list(raw.get('improvements')):
-        if (isinstance(item, dict) and isinstance(item.get('criterion'), str) and item['criterion'] in ids
-                and _text(item.get('action'))):
-            improvements.append({'criterion': item['criterion'], 'problem': _text(item.get('problem')),
-                                 'action': _text(item.get('action')), 'example': _text(item.get('example')),
+        if not (isinstance(item, dict) and isinstance(item.get('criterion'), str) and item['criterion'] in ids):
+            continue
+        # Over-long text is kept and flagged (limits.coaching); the app truncates and opens the full text.
+        coach = limits.coaching(item, language, explanation_items=limits.MAX_ITEMS['explanation'])
+        if coach['steps']:
+            improvements.append({'criterion': item['criterion'], **_capped(coach),
                                  'evidence': _evidence(item.get('evidence'), sentences)})
     return {'status': 'scored' if all(c['level'] for c in criteria) else 'insufficient_evidence',
             'criteria': criteria, 'must_cover': must_cover[:5],
@@ -358,14 +367,18 @@ def normalize_slide(raw: dict, sentences: dict) -> dict:
             'improvements': improvements[:3]}
 
 
-def normalize_whole(raw: dict, sentences: dict, slide_count: int, measures: dict | None = None) -> dict:
+def normalize_whole(raw: dict, sentences: dict, slide_count: int, measures: dict | None = None,
+                    language: str = 'en') -> dict:
     criteria = _criteria(raw.get('criteria'), RUBRIC.whole, sentences, measures)
     priorities = []
     for item in _list(raw.get('top_priorities')):
-        if isinstance(item, dict) and _text(item.get('action')):
+        if not isinstance(item, dict):
+            continue
+        coach = limits.coaching(item, language, explanation_items=limits.MAX_ITEMS['priority_explanation'])
+        if coach['steps']:
             index = item.get('slide_index')
-            priorities.append({'title': _text(item.get('title')), 'action': _text(item.get('action')),
-                               'why': _text(item.get('why')),
+            coach = _capped(coach)
+            priorities.append({**coach, 'title': coach['headline'], 'why': coach['problem'],
                                'slide_index': index if type(index) is int and 0 <= index < slide_count else None})
     return {'status': 'scored' if all(c['level'] for c in criteria) else 'insufficient_evidence',
             'criteria': criteria, 'top_priorities': priorities[:3], 'summary': _text(raw.get('summary'))}
@@ -602,11 +615,12 @@ def _execute(job: FeedbackRun) -> None:
                 try:
                     answer = future.result()
                     if kind == 'whole':
-                        part = normalize_whole(answer.data, everything, len(inputs.slides), measures)
+                        part = normalize_whole(answer.data, everything, len(inputs.slides), measures,
+                                               inputs.speech.language)
                     else:
                         # A slide may cite only its own sentences.
                         own = {s.id: s for s in inputs.speech.slides[index].sentences}
-                        part = normalize_slide(answer.data, own)
+                        part = normalize_slide(answer.data, own, inputs.speech.language)
                     part['input_hash'] = digest
                     timings[name] = answer.seconds
                     usage['input_tokens'] += answer.input_tokens

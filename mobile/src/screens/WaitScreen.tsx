@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Enter, Txt } from '../design/frame';
-import { F } from '../design/tokens';
+import { EASE_SCREEN, F } from '../design/tokens';
+import { BACK_FADE_Y } from '../domain/gestures';
 import { useTheme } from '../design/theme';
 import { HintRow, PageSurface } from '../design/ui';
 import { useDeckModel } from '../features/presentations/useDeckModel';
@@ -16,6 +18,9 @@ import { PanView } from '../design/PanView';
 export function WaitScreen({ active = true }: { active?: boolean }) {
   const { c } = useTheme();
   const { go, nav } = useShell();
+  // OpenAI Codex, 2026-11-19: fade the pending page into Home on a downward swipe.
+  const fadeY = useSharedValue(0);
+  const swipeFade = useAnimatedStyle(() => ({ opacity: Math.max(0, 1 - fadeY.value / BACK_FADE_Y) }));
   const model = useDeckModel(nav.deckId);
   const runScores = useRunScores(model, active), v3 = runScores.v3, scores = runScores.scores, v2 = runScores.v2;
   const feedback = useRunFeedbackStatus(model, active && !v3);
@@ -47,9 +52,18 @@ export function WaitScreen({ active = true }: { active?: boolean }) {
   const run = model.state.run;
   if (!run) return null;
   const hintHome = () => { moved.current = true; go('home'); };
-  const openListen = () => { moved.current = true; go('listen', { deckId: deck.id, sel: 0, from: 'wait' }); };
+  const openListen = () => {
+    moved.current = true;
+    // OpenAI Codex, 2026-11-19: keep Full Review beneath Listen Back for its downward fade.
+    go('full', { deckId: deck.id, sel: 0, from: 'wait', nav: null });
+    go('listen', { deckId: deck.id, sel: 0, from: 'full' });
+  };
   const terminalCount = v3 ? v3.aggregate.settled : feedback.items.filter(item => ['reviewed','partial','insufficient','unavailable','recovery_needed','outdated','not_analyzed'].includes(item.status)).length;
-  return <Enter kind={nav.nav}><PanView style={[StyleSheet.absoluteFill,{backgroundColor:c.bg}]} onMoveShould={(_e,g)=>g.dy>12&&g.dy>Math.abs(g.dx)} onRelease={(_e,g)=>{if(g.dy>60)hintHome();}}>
+  return <><Enter kind={nav.nav}><PanView style={[StyleSheet.absoluteFill,{backgroundColor:c.bg},swipeFade]}
+    onMoveShould={(_e,g)=>g.dy>12&&g.dy>Math.abs(g.dx)}
+    onMove={(_e,g)=>fadeY.set(Math.max(0,Math.min(BACK_FADE_Y,g.dy)))}
+    onRelease={(_e,g)=>{if(g.dy>60)fadeY.set(withTiming(BACK_FADE_Y,{duration:460,easing:EASE_SCREEN},done=>{if(done)runOnJS(hintHome)();}));else fadeY.set(withTiming(0,{duration:360,easing:EASE_SCREEN}));}}
+    onTerminate={()=>fadeY.set(withTiming(0,{duration:280,easing:EASE_SCREEN}))}>
     <PageSurface hue={deck.hue} />
     <View style={styles.header}><Txt numberOfLines={1} style={[styles.title,{color:c.text}]}>{deck.title}</Txt>
       <Txt style={[styles.sub,{color:c.secondary}]}>{`Review · ${runLabel(run,now,()=> 'Just now')}`}</Txt></View>
@@ -85,8 +99,10 @@ export function WaitScreen({ active = true }: { active?: boolean }) {
       <Pressable accessibilityRole="button" onPress={openListen} style={[styles.primary,{backgroundColor:c.strong}]}><Txt style={[styles.buttonText,{color:c.onAccent}]}>Listen back while you wait</Txt></Pressable>
       <Pressable accessibilityRole="button" onPress={hintHome} style={[styles.secondary,{borderColor:c.hair}]}><Txt style={[styles.buttonText,{color:c.text}]}>Go Home</Txt></Pressable>
     </View>
-    <HintRow hints={[{icon:'h-dn',text:'Home',nudge:'down'}]} />
-  </PanView></Enter>;
+  </PanView></Enter>
+  {/* OpenAI Codex, 2026-11-20: the waiting footer stays put on return. */}
+  {active&&<HintRow hints={[{icon:'h-dn',text:'Home',nudge:'down'}]} />}
+  </>;
 }
 
 function Step({label,detail,done,icon}:{label:string;detail:string;done:boolean;icon:string}) {

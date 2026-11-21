@@ -2,6 +2,8 @@
 // AI-assisted with Claude Code, prompted by Seoyeon (November 15, 2026); see docs/ai-collaboration-prompts.md
 // and docs/ai-feedback-reimplementation.md#api. The server calculates every score; this module only
 // validates shapes and chooses what each screen shows for the selected run.
+// Supplied Claude-generated patch, integrated by OpenAI Codex for Iteration 2 (2026-11-20): coaching fields headline / explanation /
+// example / steps / over_limit for the two-region Feedback page; older runs map from problem / action.
 import type { SlidePart } from '../../domain/run';
 import type { ScoreLevel } from './presentationScore';
 
@@ -11,7 +13,9 @@ export type V3Evidence =
 export type V3Criterion = { id: string; label: string; maximum_points: number; level: ScoreLevel | null; anchor: string | null;
   points: number | null; reason: string; next_level: string; evidence: V3Evidence[] };
 export type V3Improvement = { criterion: string; problem: string; action: string; example: string; evidence: V3Evidence[];
-  gain_slide_points: number | null; gain_overall_points: number | null };
+  gain_slide_points: number | null; gain_overall_points: number | null;
+  /** Prompt 3 coaching fields; empty for runs stored before them. */
+  headline: string; explanation: string[]; steps: string[]; over_limit: string[] };
 export type V3MustCover = { point: string; status: 'covered' | 'partial' | 'missing'; evidence: V3Evidence[] };
 export type V3SlideStatus = 'pending' | 'scored' | 'insufficient_evidence' | 'not_applicable' | 'not_recorded' | 'insufficient_speech' | 'failed';
 export type V3SlideMeasurements = { seconds: number; target_seconds: number | null; words: number; filler_count: number;
@@ -19,7 +23,8 @@ export type V3SlideMeasurements = { seconds: number; target_seconds: number | nu
 export type V3Slide = { slide_index: number; status: V3SlideStatus; reason: string | null; error: string | null; score: number | null; level: ScoreLevel | null; provisional?: boolean;
   criteria: V3Criterion[]; must_cover: V3MustCover[]; strength: { text: string; evidence: V3Evidence[] } | null;
   improvements: V3Improvement[]; measurements: V3SlideMeasurements | null };
-export type V3Priority = { title: string; action: string; why: string; slide_index: number | null };
+export type V3Priority = { title: string; action: string; why: string; slide_index: number | null;
+  headline: string; explanation: string[]; steps: string[]; example: string; over_limit: string[] };
 export type V3Whole = { status: V3SlideStatus; error: string | null; score: number | null; criteria: V3Criterion[];
   top_priorities: V3Priority[]; summary: string };
 export type V3Scores = { overall: number | null; overall_level: ScoreLevel | null; slide_average: number | null;
@@ -36,6 +41,14 @@ type Json = Record<string, unknown>;
 const obj = (v: unknown): Json | null => v && typeof v === 'object' && !Array.isArray(v) ? v as Json : null;
 const arr = (v: unknown): unknown[] => Array.isArray(v) ? v : [];
 const str = (v: unknown): string => typeof v === 'string' ? v : '';
+const strs = (v: unknown): string[] => arr(v).flatMap(x => typeof x === 'string' && x.trim() ? [x.trim()] : []);
+const QUOTES = '"\'“”‘’„«»「」『』';
+/** Strip quotation marks wrapped around the whole text, however many layers (e.g. “"…"”). */
+export function unquote(text: string): string {
+  let t = text.trim();
+  while (t.length >= 2 && QUOTES.includes(t[0]) && QUOTES.includes(t[t.length - 1])) t = t.slice(1, -1).trim();
+  return t;
+}
 const int = (v: unknown): number | null => Number.isSafeInteger(v) ? v as number : null;
 const num = (v: unknown): number | null => typeof v === 'number' && Number.isFinite(v) ? v : null;
 const level = (v: unknown): ScoreLevel | null => LEVELS.includes(v as ScoreLevel) ? v as ScoreLevel : null;
@@ -71,8 +84,9 @@ function slide(raw: unknown): V3Slide | null {
         ? [{ point: str(c.point), status: c.status as V3MustCover['status'], evidence: evidence(c.evidence) }] : []; }),
     strength: obj(s.strength) && str(obj(s.strength)!.text) ? { text: str(obj(s.strength)!.text), evidence: evidence(obj(s.strength)!.evidence) } : null,
     improvements: arr(s.improvements).flatMap(raw2 => { const i = obj(raw2);
-      return i && str(i.action) ? [{ criterion: str(i.criterion), problem: str(i.problem), action: str(i.action), example: str(i.example),
-        evidence: evidence(i.evidence), gain_slide_points: num(i.gain_slide_points), gain_overall_points: num(i.gain_overall_points) }] : []; }),
+      return i && (str(i.action) || strs(i.steps).length) ? [{ criterion: str(i.criterion), problem: str(i.problem), action: str(i.action), example: str(i.example),
+        evidence: evidence(i.evidence), gain_slide_points: num(i.gain_slide_points), gain_overall_points: num(i.gain_overall_points),
+        headline: str(i.headline), explanation: strs(i.explanation), steps: strs(i.steps), over_limit: strs(i.over_limit) }] : []; }),
     measurements: m ? { seconds: num(m.seconds) ?? 0, target_seconds: int(m.target_seconds), words: int(m.words) ?? 0,
       filler_count: int(m.filler_count) ?? 0, long_pauses: int(m.long_pauses) ?? 0,
       rate: rate && num(rate.value) !== null && ['slow', 'comfortable', 'fast'].includes(str(rate.band))
@@ -95,7 +109,8 @@ export function parseFeedbackRun(value: unknown): FeedbackRun | null {
     whole: wh ? { status: SLIDE_STATUSES.includes(wh.status as V3SlideStatus) ? wh.status as V3SlideStatus : 'failed',
       error: str(wh.error) || null, score: score(wh.score), criteria: criteria(wh.criteria), summary: str(wh.summary),
       top_priorities: arr(wh.top_priorities).flatMap(raw => { const p = obj(raw);
-        return p && str(p.action) ? [{ title: str(p.title), action: str(p.action), why: str(p.why), slide_index: int(p.slide_index) }] : []; }) } : null,
+        return p && (str(p.action) || strs(p.steps).length) ? [{ title: str(p.title), action: str(p.action), why: str(p.why), slide_index: int(p.slide_index),
+          headline: str(p.headline), explanation: strs(p.explanation), steps: strs(p.steps), example: str(p.example), over_limit: strs(p.over_limit) }] : []; }) } : null,
     error: error && str(error.code) ? { code: str(error.code), message: str(error.message) } : null,
     progress: { slidesTotal: int(progress?.slides_total) ?? 0, slidesDone: int(progress?.slides_done) ?? 0, wholeDone: progress?.whole_done === true },
   };
@@ -209,7 +224,17 @@ export function startsDue(candidates: StartCandidate[], now: number): StartCandi
 // ------------------------------------------------------------------ coaching cards
 
 export type V3Card = { key: string; slide: number | null; title: string; action: string; example: string; why: string;
-  criterion: string | null; gain: number | null; evidence: Extract<V3Evidence, { kind: 'speech' }> | null; attemptId: string | null };
+  criterion: string | null; gain: number | null; evidence: Extract<V3Evidence, { kind: 'speech' }> | null; attemptId: string | null;
+  /** Feedback page fields: one-line headline, why-it-is-wrong bullets, what-to-do bullets. */
+  headline: string; explanation: string[]; steps: string[];
+  /** The server found a field longer than its box; the page shows "…" and opens the full text. */
+  overLimit: boolean };
+/** Prompt 3 fields when present; older runs put the whole problem in the headline (shown with "…"). */
+function coaching(c: { headline: string; explanation: string[]; steps: string[]; over_limit: string[] }, legacy: { title: string; why: string; action: string }) {
+  const fresh = !!(c.headline || c.explanation.length || c.steps.length);
+  return fresh ? { headline: c.headline, explanation: c.explanation, steps: c.steps, overLimit: c.over_limit.length > 0 }
+    : { headline: legacy.title, explanation: legacy.why ? [legacy.why] : [], steps: legacy.action ? [legacy.action] : [], overLimit: false };
+}
 const firstSpeech = (refs: V3Evidence[]) => refs.find((e): e is Extract<V3Evidence, { kind: 'speech' }> => e.kind === 'speech') ?? null;
 
 /** One slide's cards: improvements first (largest point gain first), then next-level advice not already covered. */
@@ -217,27 +242,30 @@ export function slideCards(item: Pick<V3SlideDisplay, 'slide' | 'v3' | 'attemptI
   const v3 = item.v3;
   if (!v3) return [];
   const improvements = v3.improvements.map((i, n): V3Card => ({ key: `i${item.slide}:${n}`, slide: item.slide,
-    title: i.problem || i.action, action: i.action, example: i.example, why: '', criterion: i.criterion,
-    gain: i.gain_slide_points, evidence: firstSpeech(i.evidence), attemptId: item.attemptId }))
+    title: i.headline || i.problem || i.action, action: i.action, example: unquote(i.example), why: '', criterion: i.criterion,
+    gain: i.gain_slide_points, evidence: firstSpeech(i.evidence), attemptId: item.attemptId,
+    ...coaching(i, { title: i.problem || i.action, why: '', action: i.action }) }))
     .sort((a, b) => (b.gain ?? 0) - (a.gain ?? 0));
   const covered = new Set(improvements.map(c => c.criterion));
   const nextLevels = v3.criteria.filter(c => c.level && c.level !== 'advanced' && c.next_level && !covered.has(c.id))
     .map((c, n): V3Card => ({ key: `n${item.slide}:${n}`, slide: item.slide, title: `${c.label}: ${levelLabel(c.level)}`,
       action: c.next_level, example: '', why: c.reason, criterion: c.id, gain: c.maximum_points ? Math.round(c.maximum_points / 3 * 10) / 10 : null,
-      evidence: firstSpeech(c.evidence), attemptId: item.attemptId }));
+      evidence: firstSpeech(c.evidence), attemptId: item.attemptId,
+      headline: `${c.label}: ${levelLabel(c.level)}`, explanation: c.reason ? [c.reason] : [], steps: [c.next_level], overLimit: false }));
   return [...improvements, ...nextLevels];
 }
 
 /** Whole-run cards for the Feedback screen: top priorities, then every slide improvement by overall gain. */
 export function runCards(items: V3SlideDisplay[], overall: V3OverallDisplay): V3Card[] {
   const priorities = (overall.run?.whole?.status === 'scored' || overall.run?.whole?.status === 'insufficient_evidence'
-    ? overall.run.whole.top_priorities : []).map((p, n): V3Card => ({ key: `p${n}`, slide: p.slide_index, title: p.title || p.action,
-      action: p.action, example: '', why: p.why, criterion: null, gain: null, evidence: null, attemptId: overall.attemptId }));
+    ? overall.run.whole.top_priorities : []).map((p, n): V3Card => ({ key: `p${n}`, slide: p.slide_index, title: p.headline || p.title || p.action,
+      action: p.action, example: unquote(p.example), why: p.why, criterion: null, gain: null, evidence: null, attemptId: overall.attemptId,
+      ...coaching(p, { title: p.title || p.action, why: p.why, action: p.action }) }));
   const improvements = items.flatMap(item => (item.v3?.improvements ?? []).map((i, n) => ({ item, i, n })))
     .sort((a, b) => (b.i.gain_overall_points ?? 0) - (a.i.gain_overall_points ?? 0))
-    .map(({ item, i, n }): V3Card => ({ key: `i${item.slide}:${n}`, slide: item.slide, title: i.problem || i.action, action: i.action,
-      example: i.example, why: '', criterion: i.criterion, gain: i.gain_overall_points, evidence: firstSpeech(i.evidence),
-      attemptId: item.attemptId }));
+    .map(({ item, i, n }): V3Card => ({ key: `i${item.slide}:${n}`, slide: item.slide, title: i.headline || i.problem || i.action, action: i.action,
+      example: unquote(i.example), why: '', criterion: i.criterion, gain: i.gain_overall_points, evidence: firstSpeech(i.evidence),
+      attemptId: item.attemptId, ...coaching(i, { title: i.problem || i.action, why: '', action: i.action }) }));
   return [...priorities, ...improvements];
 }
 export const levelLabel = (value: ScoreLevel | null) => value ? value[0].toUpperCase() + value.slice(1) : 'Not assessed';

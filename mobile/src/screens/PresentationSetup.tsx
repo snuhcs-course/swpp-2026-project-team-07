@@ -1,5 +1,7 @@
 // AI-generated with OpenAI Codex, Iteration 2 (2026-10-15).
 // OpenAI Codex finger-linked page fade: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-117
+// OpenAI Codex dial-arc alignment: docs/ai-collaboration-prompts-iteration-2.md#align-presentation-time-dial-arc
+// OpenAI Codex confirm-green dial: docs/ai-collaboration-prompts-iteration-2.md#match-the-time-dial-to-the-confirm-button
 // Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-107
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Keyboard, Pressable, ScrollView, StyleSheet, TextInput, View, type KeyboardEvent } from 'react-native';
@@ -25,11 +27,25 @@ const DIAL_SIZE = 240;
 const LEFT = (390 - DIAL_SIZE) / 2;
 const DIAL_CENTER = DIAL_SIZE / 2;
 const DIAL_RADIUS = 112;
+const KNOB_RADIUS = 15;
+// The knob is centred on the ring, so near 12, 3, 6 and 9 o'clock it pokes 7 px past
+// the 240 px dial. Draw on a slightly larger canvas so it isn't clipped there.
+const DIAL_PAD = 8;
+const DIAL_CANVAS = DIAL_SIZE + 2 * DIAL_PAD;
+// Match the middle stop of the green confirm button on this shared setup screen.
+const DIAL_GREEN = '#22C98F';
 const AUDIENCES = ['Students', 'Teachers', 'Colleagues', 'Clients', 'General public', 'Not sure'] as const;
 
-export function PresentationSetup({ deck, error, initialValues = { requiredDurationSeconds: 600, audience: '' }, onConfirm, onBackPan, onChange, recovery, disabled = false }: {
+/** How far round the dial (0–1, clockwise from 12 o'clock) the knob sits for a whole-minute value.
+ * 1 minute is at the top and each minute is 1/30 of a turn. The filled arc uses the same value,
+ * so it always ends under the knob. */
+export function dialTurn(minutes: number) {
+  return (Math.max(1, Math.min(30, minutes)) - 1) / 30;
+}
+
+export function PresentationSetup({ deck, error, initialValues = { requiredDurationSeconds: 600, audience: '' }, onConfirm, onBackPan, onChange, recovery, disabled = false, fixedHint = false, onHintVisibilityChange }: {
   deck: Presentation; error: string; initialValues?: RequirementValues; onConfirm: (seconds: number | null, audience: string) => void; onBackPan: PanHandlers;
-  onChange?: () => void; recovery?: ReactNode; disabled?: boolean;
+  onChange?: () => void; recovery?: ReactNode; disabled?: boolean; fixedHint?: boolean; onHintVisibilityChange?: (visible: boolean) => void;
 }) {
   const frame = useFrame();
   const { c } = useTheme();
@@ -49,6 +65,7 @@ export function PresentationSetup({ deck, error, initialValues = { requiredDurat
     const hiding = Keyboard.addListener('keyboardDidHide', () => setKeyboardTop(null));
     return () => { showing.remove(); changing.remove(); hiding.remove(); };
   }, []);
+  useEffect(() => { onHintVisibilityChange?.(keyboardTop === null && !customOpen); }, [keyboardTop, customOpen, onHintVisibilityChange]);
   // Frame.top is the physical top after its centered scale transform. Convert the
   // keyboard's physical screen coordinate into this 390 × 844 stage's units.
   const viewportHeight = keyboardTop === null ? FRAME_H : Math.max(0, Math.min(FRAME_H, (keyboardTop - frame.top - 12) / frame.s));
@@ -62,7 +79,8 @@ export function PresentationSetup({ deck, error, initialValues = { requiredDurat
   };
   const dialValue = Math.max(1, Math.round(target / 60));
   const arcLength = 2 * Math.PI * DIAL_RADIUS;
-  const knobAngle = ((dialValue - 1) / 30) * Math.PI * 2 - Math.PI / 2;
+  const turn = dialTurn(dialValue);
+  const knobAngle = turn * Math.PI * 2 - Math.PI / 2;
   const knobX = DIAL_CENTER + Math.cos(knobAngle) * DIAL_RADIUS;
   const knobY = DIAL_CENTER + Math.sin(knobAngle) * DIAL_RADIUS;
   const selectAt = (pageX: number, pageY: number) => {
@@ -95,10 +113,10 @@ export function PresentationSetup({ deck, error, initialValues = { requiredDurat
         }}
         onStartShould={() => true} onGrant={e => selectAt(e.nativeEvent.pageX, e.nativeEvent.pageY)} onMove={e => selectAt(e.nativeEvent.pageX, e.nativeEvent.pageY)}
         onTerminationRequest={() => false}>
-        <Svg width={DIAL_SIZE} height={DIAL_SIZE} viewBox={`0 0 ${DIAL_SIZE} ${DIAL_SIZE}`}>
+        <Svg width={DIAL_CANVAS} height={DIAL_CANVAS} viewBox={`${-DIAL_PAD} ${-DIAL_PAD} ${DIAL_CANVAS} ${DIAL_CANVAS}`}>
           <Circle cx={DIAL_CENTER} cy={DIAL_CENTER} r={DIAL_RADIUS} fill="none" stroke={c.track} strokeWidth={6} />
-          <Circle cx={DIAL_CENTER} cy={DIAL_CENTER} r={DIAL_RADIUS} fill="none" stroke={c.accent} strokeWidth={6} strokeLinecap="round"
-            strokeDasharray={`${arcLength}`} strokeDashoffset={arcLength * (1 - dialValue / 30)} transform={`rotate(-90 ${DIAL_CENTER} ${DIAL_CENTER})`} />
+          <Circle cx={DIAL_CENTER} cy={DIAL_CENTER} r={DIAL_RADIUS} fill="none" stroke={DIAL_GREEN} strokeWidth={6} strokeLinecap="round"
+            strokeDasharray={`${arcLength}`} strokeDashoffset={arcLength * (1 - turn)} transform={`rotate(-90 ${DIAL_CENTER} ${DIAL_CENTER})`} />
           {Array.from({ length: 60 }, (_, i) => {
             const angle = i / 60 * Math.PI * 2 - Math.PI / 2;
             const major = i % 5 === 0;
@@ -107,7 +125,7 @@ export function PresentationSetup({ deck, error, initialValues = { requiredDurat
               x2={DIAL_CENTER + Math.cos(angle) * 104} y2={DIAL_CENTER + Math.sin(angle) * 104}
               stroke={major ? c.muted : c.muted2} strokeWidth={major ? 2 : 1.5} strokeLinecap="round" />;
           })}
-          <Circle cx={knobX} cy={knobY} r={15} fill={c.text} />
+          <Circle cx={knobX} cy={knobY} r={KNOB_RADIUS} fill={c.text} />
         </Svg>
       </PanView>
       </View>
@@ -134,7 +152,7 @@ export function PresentationSetup({ deck, error, initialValues = { requiredDurat
         <RecordButton green glyph="check" label="Save presentation time and audience" onPress={confirm} disabled={disabled} style={styles.confirm} />
       </View>
       </ScrollView>
-      {keyboardTop === null && <HintRow gap={18} hints={[{ icon: 'h-spin', text: 'Turn the dial' }, { icon: 'h-dn', text: 'Back', nudge: 'down' }]} />}
+      {keyboardTop === null && !customOpen && !fixedHint && <PresentationSetupHint />}
       {customOpen&&<View style={styles.customOverlay}>
         <Pressable accessibilityLabel="Close custom audience editor" onPress={()=>{Keyboard.dismiss();setCustomOpen(false);}} style={[StyleSheet.absoluteFill,{backgroundColor:c.scrim}]} />
         <View style={[styles.customPanel,{backgroundColor:c.dialog,borderColor:c.hair}]} accessibilityViewIsModal>
@@ -150,6 +168,11 @@ export function PresentationSetup({ deck, error, initialValues = { requiredDurat
       </View>}
     </PanView>
   </View>;
+}
+
+// OpenAI Codex, 2026-11-20: callers can anchor this cue outside their animated editor layer.
+export function PresentationSetupHint() {
+  return <HintRow gap={18} hints={[{ icon: 'h-spin', text: 'Turn the dial' }, { icon: 'h-dn', text: 'Back', nudge: 'down' }]} />;
 }
 
 const styles = createThemedStyles({
@@ -184,8 +207,9 @@ const styles = createThemedStyles({
 });
 
 /** The same editor is used after import and over the idle rehearsal page. */
-export function PresentationRequirementsEditor({ deck, initialImport = false, onSaved, onBackPan, active = true }: {
+export function PresentationRequirementsEditor({ deck, initialImport = false, onSaved, onBackPan, active = true, fixedHint = false, onHintVisibilityChange }: {
   deck: Presentation; initialImport?: boolean; onSaved: () => void; onBackPan: PanHandlers; active?: boolean;
+  fixedHint?: boolean; onHintVisibilityChange?: (visible: boolean) => void;
 }) {
   const requirementsVersion = useSyncExternalStore(subscribeRequirements, getRequirementsVersion);
   const { c } = useTheme();
@@ -220,6 +244,7 @@ export function PresentationRequirementsEditor({ deck, initialImport = false, on
   return <PresentationSetup key={`${base.contextId}:${base.revision}`} deck={deck} initialValues={initialValues}
     error={error || (pending?.conflict ? pending.error : pending ? 'Saved on phone · sync pending' : '')}
     onChange={() => { touched.current = true; }} onConfirm={save} onBackPan={onBackPan} disabled={!!pending?.conflict || !active}
+    fixedHint={fixedHint} onHintVisibilityChange={onHintVisibilityChange}
     recovery={pending?.conflict ? <>
       <Pressable accessibilityRole="button" accessibilityLabel="Use server presentation choices" onPress={() => { acceptServerRequirements(deck.id, API_URL); onSaved(); }}><Txt style={[styles.recoveryText, { color: c.text }]}>Use server</Txt></Pressable>
       <Pressable accessibilityRole="button" accessibilityLabel="Keep my presentation choices" onPress={() => { keepLocalRequirements(deck.id, API_URL); sync(); onSaved(); }}><Txt style={[styles.recoveryText, { color: c.text }]}>Keep mine</Txt></Pressable>
