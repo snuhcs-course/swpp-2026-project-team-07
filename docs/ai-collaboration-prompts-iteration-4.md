@@ -1090,3 +1090,24 @@ just automate the entire process - i dont want to press anything u do it
 ```
 
 - **Publication follow-up:** The agent used the existing GitHub Desktop sign-in to publish tutorial commit `a82feaf` on `codex/nitoryu-bilingual-v37`, then verified that PR #64 points to that commit. The agent edited the PR description to state that the linked version 37 APK predates this tutorial source update. GitHub’s mobile push job passed, including typecheck, lint, coverage and Android bundling. The backend job was still running at this log update.
+
+## Keep the language icon on Home — November 22, 2026
+
+**Contributor:** unconfirmed · **Tool:** OpenAI Codex desktop and terminal · **Model:** GPT-6 (exact variant not recorded) · **Iteration:** 4.
+
+### Prompt — verbatim
+
+```text
+right now the language icon continues on to all different pages of the application - disable this and only have the icon appear on the home page. nowhere else.
+```
+
+- **AI-written result:** `mobile/src/screens/AppShell.tsx` no longer imports or renders its language toggle above every non-Home page. The existing toggle in `HomeScreen.tsx` remains gated to Home. `mobile/app.json` advances to versionCode 38 and version `0.1.0-nitoryu.3` for the device update. No translation state, server call, or other screen was changed.
+- **Agent-operated checks:** In an isolated copy of the extracted PR #64 source, `npm run check` passed TypeScript, Expo lint and 777/777 tests. Expo prebuild and an ARM64 `assembleRelease` passed. `aapt` verified package `com.team07.outloud` versionCode 38, `apksigner` verified the existing development certificate, and the bundle contained the hosted API URL and tutorial title without the emulator URL. `adb install --no-streaming -r` returned `Success` on Samsung SM-S901N; Android reported versionCode 38 with microphone permission retained. The installed APK SHA-256 matched `output/OutLoud-PR64-home-language-v38-arm64.apk` (`766a57bf9386c4d39125f5c80593b165a8ad3b82c3924723d889214f0a57903a`). The agent inspected the source to confirm the only app render of `LanguageToggle` is the Home-gated one. The user performs phone interaction tests, so no on-phone visual check was done. The original extracted source had no `.git`; no commit, push, or backend change occurred in that source copy.
+
+### Follow-up prompt — verbatim
+
+```text
+upload this to the pr as an immediate patch
+```
+
+- **AI-written PR patch:** Ported the verified AppShell fix and version 38 configuration onto the current PR #64 head in an isolated Git worktree, included the matching signed ARM64 APK, and updated the README download and hash. Branch upload and CI verification are pending at this entry.

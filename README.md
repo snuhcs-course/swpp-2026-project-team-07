@@ -8,13 +8,13 @@ An Android presentation rehearsal app that connects PDF slides, recordings, slid
 
 ## Bilingual nitoryu Android build
 
-[Download the version 37 test APK (ARM64)](output/OutLoud-nitoryu-en-ko-v37.apk). Install it over the previous OutLoud test build to keep your saved rehearsals. The app connects to the shared Azure demo and asks for the existing reviewer code.
+[Download the version 38 test APK (ARM64)](output/OutLoud-PR64-home-language-v38-arm64.apk). Install it over the previous OutLoud test build to keep your saved rehearsals. The app connects to the shared Azure demo and asks for the existing reviewer code. The language icon appears only on Home; the tutorial and bilingual coaching are included.
 
 On a fresh install, the library starts with **Seoul**, a seven-slide presentation that opens offline. It is the only presentation bundled in the APK. You can import your own PDFs.
 
 Tap the upper-left flag to switch the interface, slide cues, feedback and Q&A between English and Korean. Once a result has synced to the phone, both versions are available immediately, including offline. A first-time offline view shows the available scores and evidence until coaching can sync. Transcript quotes and suggested speaking lines keep their original rehearsal language. Saved Q&A reopens earlier question sets with their recorded answers. [Display translation API](docs/reference/api-contract.md#english-and-korean-display-translations) · [Azure demo setup](docs/azure-hosting.md)
 
-APK SHA-256 (version `0.1.0-nitoryu.2`) is `01000d5f38cc7b65c8792e8c19dbcca7907237398ac0e631c2a921bcfc706fe2`.
+APK SHA-256 (version `0.1.0-nitoryu.3`) is `766a57bf9386c4d39125f5c80593b165a8ad3b82c3924723d889214f0a57903a`.
 
 ## Current status
 

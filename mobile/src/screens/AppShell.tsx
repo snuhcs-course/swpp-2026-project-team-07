@@ -21,7 +21,6 @@ import { AppState, StyleSheet, View } from 'react-native';
 import { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { Enter, Frame } from '../design/frame';
-import { LanguageToggle } from '../design/LanguageToggle';
 import { useTheme } from '../design/theme';
 import { Dialog, GlowLayer } from '../design/ui';
 import { mod } from '../domain/format';
@@ -118,6 +117,7 @@ export function AppShell() {
     });
     return () => { cancelAnimationFrame(firstFrame); cancelAnimationFrame(nextFrame); };
   }, [s, retiredRehearse]);
+  // OpenAI Codex, Iteration 4 (2026-11-22): HomeScreen alone owns the language switch.
   const homeMode = s === 'home' ? 'home' : s === 'upload' ? 'upload' : 'covered';
   // In explicit landscape fullscreen the Home carousel must not show through
   // the safe-area gutters around Frame's scaled landscape canvas.
@@ -147,7 +147,6 @@ export function AppShell() {
             </ShellContext.Provider>
           </View>;
         })}
-        {s !== 'home' && <LanguageToggle featureScreen landscape={s === 'rehearse' && fullscreenLandscape} />}
         <Prompts />
       </Frame>
       <Workers />
