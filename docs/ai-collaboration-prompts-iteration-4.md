@@ -1110,4 +1110,5 @@ right now the language icon continues on to all different pages of the applicati
 upload this to the pr as an immediate patch
 ```
 
-- **AI-written PR patch:** Ported the verified AppShell fix and version 38 configuration onto the current PR #64 head in an isolated Git worktree, included the matching signed ARM64 APK, and updated the README download and hash. Branch upload and CI verification are pending at this entry.
+- **AI-written PR patch:** Ported the verified AppShell fix and version 38 configuration onto the current PR #64 head in an isolated Git worktree, included the matching signed ARM64 APK, and updated the README download and hash.
+- **Publication and verification:** Reviewed the five staged files and confirmed their staged diff had no whitespace errors. GitHub Desktop pushed commit `f0fbb44` to `codex/nitoryu-bilingual-v37`; the GitHub PR readback showed PR #64 open at that exact head. The connector rejected the PR-description edit with HTTP 403, so the agent used the signed-in GitHub page to update the version 38 APK link, SHA-256 and tutorial note, then read back the saved page. GitHub Actions run `45019370227` was in progress at this log update. The user retains phone interaction testing; no phone UI check or human review was claimed.
