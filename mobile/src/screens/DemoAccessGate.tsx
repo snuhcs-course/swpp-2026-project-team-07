@@ -3,9 +3,10 @@ import { useUiText } from '../design/language';
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { Frame, Txt, useFrameLayout } from '../design/frame';
-import { HOME_LANGUAGE_TOGGLE_BOTTOM, LanguageToggle } from '../design/LanguageToggle';
+import { LanguageToggle } from '../design/LanguageToggle';
+import { ThemeToggle } from '../design/ThemeToggle';
 import { useTheme } from '../design/theme';
-import { F } from '../design/tokens';
+import { F, HOME_HEADER_CONTROL } from '../design/tokens';
 import { DEMO_CODE_REQUIRED } from '../services/apiConfig';
 import { demoAccess, enterDemoCode } from '../services/backendFetch';
 import { hasSeenTutorial } from './shared';
@@ -35,9 +36,9 @@ export function DemoAccessGate({ children }: { children: ReactNode }) {
   const mounted = access.unlockedOnce || offline;
   const visible = access.state !== 'ready' && (opened || !mounted);
   const firstRun = !mounted && !tutorialSeen;
-  const showLanguage = firstRun && !editingCode;
-  // Keep the form below the switch while it is visible.
-  const formTop = frame.top + (HOME_LANGUAGE_TOGGLE_BOTTOM + 12) * frame.s;
+  const showAppearanceControls = firstRun && !editingCode;
+  // Keep the form below both header controls.
+  const formTop = frame.top + (HOME_HEADER_CONTROL.top + HOME_HEADER_CONTROL.height + 12) * frame.s;
   const close = () => { setOpened(false); setOffline(true); setCode(''); setError(''); setEditingCode(false); };
   async function connect() {
     if (busy || !code.trim()) return;
@@ -56,7 +57,7 @@ export function DemoAccessGate({ children }: { children: ReactNode }) {
     <Modal transparent statusBarTranslucent={firstRun} navigationBarTranslucent={firstRun}
       visible={visible} animationType="fade" onRequestClose={close}>
       <View style={[styles.overlay, { backgroundColor: c.bg }]} accessibilityViewIsModal>
-        <KeyboardAvoidingView behavior="padding" style={[styles.overlay, showLanguage && { paddingTop: formTop }]}>
+        <KeyboardAvoidingView behavior="padding" style={[styles.overlay, showAppearanceControls && { paddingTop: formTop }]}>
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scroll}>
             <View style={styles.card}>
               <Txt style={[styles.title, { color: c.strong }]}>Open OutLoud</Txt>
@@ -81,7 +82,10 @@ export function DemoAccessGate({ children }: { children: ReactNode }) {
           </ScrollView>
         </KeyboardAvoidingView>
         {/* OpenAI Codex, 2026-11-23: use Home's frame independently of translated copy and keyboard layout. */}
-        {showLanguage && <Frame overlay><LanguageToggle showLabel /></Frame>}
+        {showAppearanceControls && <Frame overlay>
+          <LanguageToggle showLabel />
+          <ThemeToggle />
+        </Frame>}
       </View>
     </Modal>
   </>;

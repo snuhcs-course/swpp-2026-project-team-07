@@ -12,6 +12,7 @@ import { Txt, useFrame } from '../design/frame';
 import { Glyph, PresentationIcon, UIIcon, type GlyphName } from '../design/icons';
 import { useAppLanguage, useUiText } from '../design/language';
 import { LanguageToggle } from '../design/LanguageToggle';
+import { ThemeToggle } from '../design/ThemeToggle';
 import { EASE_SCREEN, F } from '../design/tokens';
 import { useTheme } from '../design/theme';
 
@@ -423,8 +424,8 @@ function Dot({ on, p, still }: { on: boolean; p: P; still: boolean }) {
  * `cover` is how much the guide covers Home (0–1): it rises in over 460 ms and Home fades out under it; on close
  * it slides down and Home fades back in. `closing` lets Back run the same exit.
  */
-export function TutorialOverlay({ page, onPage, onClose, cover, closing, showLanguage }: { page: number; onPage: (page: number) => void;
-  onClose: () => void; cover: SharedValue<number>; closing: boolean; showLanguage: boolean }) {
+export function TutorialOverlay({ page, onPage, onClose, cover, closing, showAppearanceControls }: { page: number; onPage: (page: number) => void;
+  onClose: () => void; cover: SharedValue<number>; closing: boolean; showAppearanceControls: boolean }) {
   const { mode } = useTheme();
   const language = useAppLanguage();
   const ui = useUiText();
@@ -512,7 +513,10 @@ export function TutorialOverlay({ page, onPage, onClose, cover, closing, showLan
         </Animated.View>
         <View pointerEvents="none" style={s.dots}>{TUTORIAL_PAGES.map((_, i) => <Dot key={i} on={i === page} p={p} still={still} />)}</View>
       </View>
-      {showLanguage && <LanguageToggle />}
+      {showAppearanceControls && <>
+        <LanguageToggle />
+        <ThemeToggle />
+      </>}
       <View style={[s.hints, frame.compact && { bottom: 12 }]} pointerEvents="box-none">
         {!last && <Pressable accessibilityRole="button" accessibilityLabel={ui('Next page')} onPress={() => go(page + 1)} hitSlop={13} style={s.hint}>
           <Glyph name="h-spin" size={18} color={p.tm} /><Txt style={[s.hintText, { color: p.tm }]}>Swipe for more</Txt>

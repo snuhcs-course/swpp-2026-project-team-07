@@ -11,10 +11,12 @@ export function resolve(specifier, context, nextResolve) {
     export const StyleSheet={create:value=>value};`) };
   if (specifier === '../design/frame') return { shortCircuit: true, url: moduleUrl(`
     export const Frame='Frame', Txt='Text', useFrameLayout=()=>({info:{top:24,s:1}});`) };
-  if (specifier === '../design/LanguageToggle') return { shortCircuit: true, url: moduleUrl(`
-    export const LanguageToggle='LanguageToggle', HOME_LANGUAGE_TOGGLE_BOTTOM=97;`) };
+  if (specifier === '../design/LanguageToggle') return { shortCircuit: true, url: moduleUrl(`export const LanguageToggle='LanguageToggle';`) };
+  if (specifier === '../design/ThemeToggle') return { shortCircuit: true, url: moduleUrl(`export const ThemeToggle='ThemeToggle';`) };
   if (specifier === '../design/theme') return { shortCircuit: true, url: moduleUrl(`export const useTheme=()=>({c:{bg:'#fff',strong:'#111',body:'#222',secondary:'#555',track:'#ddd'}});`) };
-  if (specifier === '../design/tokens') return { shortCircuit: true, url: moduleUrl(`export const F={display:'display',medium:'medium',semibold:'semibold',bold:'bold'};`) };
+  if (specifier === '../design/tokens') return { shortCircuit: true, url: moduleUrl(`
+    export const F={display:'display',medium:'medium',semibold:'semibold',bold:'bold'};
+    export const HOME_HEADER_CONTROL={top:53,width:44,height:44};`) };
   if (specifier === 'expo-secure-store') return { shortCircuit: true, url: moduleUrl(`
     export const getItemAsync=async key=>globalThis.__demoAccessStore.get(key)??null;
     export const setItemAsync=async(key,value)=>{globalThis.__demoAccessStore.set(key,value)};

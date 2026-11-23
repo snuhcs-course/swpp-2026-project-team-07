@@ -361,6 +361,7 @@ test('the guide opens once, walks eight pages and responds to native page swipes
   await mount(HomeScreen, { mode: 'home', uploadLook: null });
   assert.equal(TUTORIAL_PAGES.length, 8);
   assert.equal(textShown('1 of 8 · Gestures'), true);
+  assert.ok(byLabel('Light mode'));
   const tutorialPan = () => renderer.root.findAllByType('gesture').find(node =>
     node.findAllByProps({ accessibilityLabel: 'Close tutorial' }).length > 0).props.gesture;
   await act(async () => {
@@ -375,6 +376,7 @@ test('the guide opens once, walks eight pages and responds to native page swipes
   const { koreanText } = await import('../src/design/koreanText.ts');
   assert.equal(textShown(`8개 중 2 · ${koreanText('Add')}`), true);
   assert.ok(byLabel(koreanText('Next page')));
+  assert.ok(byLabel(koreanText('Light mode')));
   await click('앱 언어: 한국어');
   assert.equal(textShown('2 of 8 · Add'), true);
   await act(async () => {
@@ -392,15 +394,16 @@ test('the guide opens once, walks eight pages and responds to native page swipes
   await click('Got it');
   assert.equal(readStored(TUTORIAL_SEEN), true);
   assert.ok(byLabel('App language: English'));
+  assert.ok(byLabel('Light mode'));
   await click('How OutLoud works');
-  assert.equal(renderer.root.findAllByProps({ accessibilityLabel: 'App language: English' }).length, 0);
+  assert.equal(renderer.root.findAllByProps({ accessibilityRole: 'switch' }).length, 0);
   await act(async () => assert.equal(pressBack(), true));
   await act(async () => renderer.unmount()); renderer = undefined;
   await mount(HomeScreen, { mode: 'home', uploadLook: null });
   assert.equal(renderer.root.findAllByProps({ accessibilityLabel: 'Close tutorial' }).length, 0);
   await click('How OutLoud works');
   assert.equal(textShown('1 of 8 · Gestures'), true);
-  assert.equal(renderer.root.findAllByProps({ accessibilityLabel: 'App language: English' }).length, 0);
+  assert.equal(renderer.root.findAllByProps({ accessibilityRole: 'switch' }).length, 0);
   await act(async () => assert.equal(pressBack(), true));
   assert.equal(renderer.root.findAllByProps({ accessibilityLabel: 'Close tutorial' }).length, 0);
 });

@@ -325,8 +325,10 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
       <Pressable accessibilityRole="button" accessibilityLabel={ui("How OutLoud works")} onPress={openTutorial} onLongPress={() => setCreditsOpen(true)}
         style={styles.logo}><Txt style={styles.logoText}>OutLoud</Txt></Pressable>
       <Animated.View pointerEvents={mode === 'home' ? 'box-none' : 'none'} style={[StyleSheet.absoluteFill, homeControls]}>
-        {mode === 'home' && !pickerFor && tutorialPage === null && <LanguageToggle />}
-        {!pickerFor && <ThemeToggle />}
+        {mode === 'home' && !pickerFor && tutorialPage === null && <>
+          <LanguageToggle />
+          <ThemeToggle />
+        </>}
       </Animated.View>
       <GestureDetector gesture={carouselGesture}><Animated.View style={[styles.carousel, homeLayer, mode === 'upload' && styles.addBlur]}
         accessible accessibilityRole="adjustable" accessibilityLabel={ui(frontDeck ? `${frontDeck.title}, ${frontDeck.pageCount} slides` : 'No presentations yet')}
@@ -357,7 +359,7 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
       {mode === 'home' && !pickerFor && tutorialPage === null && !creditsOpen && <HomeHints empty={!n} />}
       {pickerFor && <IconPicker deckId={pickerFor} closing={pickerClosing} onClose={closePicker} />}
       {tutorialPage !== null && <TutorialOverlay page={tutorialPage} onPage={setTutorialPage} onClose={closeTutorial}
-        cover={tutorialCover} closing={tutorialClosing} showLanguage={!tutorialSeen} />}
+        cover={tutorialCover} closing={tutorialClosing} showAppearanceControls={!tutorialSeen} />}
       <Animated.View pointerEvents={creditsOpen ? 'auto' : 'none'} accessibilityElementsHidden={!creditsOpen}
         importantForAccessibility={creditsOpen ? 'yes' : 'no-hide-descendants'} accessibilityViewIsModal={creditsOpen}
         style={[styles.creditsOverlay, creditsFade]}>
