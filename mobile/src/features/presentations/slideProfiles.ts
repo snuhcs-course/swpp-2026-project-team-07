@@ -4,6 +4,7 @@ import {verifiedExcerpt} from '../feedback/evidence';
 import type { DescriptionState, SlideDescription, DescriptionGenerateRequest } from '../../contracts';
 import { parseDescriptionState, canonicalUuid } from '../feedback/validation';
 import { preferDescriptions } from '../feedback/storage';
+import { markNewWording } from '../localization/firstWording';
 import { normalizeApi } from '../transcription/analysisStorage';
 import { readStored, writeStored } from '../../services/storage';
 
@@ -130,6 +131,12 @@ export function createProfileClient(apiUrl: string, fetcher: typeof fetch = fetc
         return next;
       }
       const chosen = preferDescriptions(previous, next) === previous ? previous! : next;
+      const newlyGenerated = payload && (previous?.description_set_id !== chosen.description_set_id ||
+        previous?.description_revision !== chosen.description_revision);
+      if (chosen.description_set_id && (newlyGenerated || ['preparing','submitted','queued','normalizing','waiting_quota'].includes(chosen.state))) {
+        const revision = chosen.description_revision + (chosen.descriptions ? 0 : 1);
+        markNewWording(api, 'profiles', chosen.description_set_id, String(revision));
+      }
       writeStored(cacheKey, chosen);
       return chosen;
     } finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); }

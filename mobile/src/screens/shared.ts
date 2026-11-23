@@ -10,7 +10,7 @@ import type { SharedValue } from 'react-native-reanimated';
 import type { EnterKind } from '../design/frame';
 
 export type ScreenName = 'home' | 'upload' | 'rehearse' | 'review' | 'wait' | 'full' | 'listen' | 'feedback' | 'compare' | 'qa';
-export type NavState = { screen: ScreenName; nav: EnterKind; deckId: string | null; slide: number; sel: number; from: ScreenName | null; visit: number; editRequirements?: boolean };
+export type NavState = { screen: ScreenName; nav: EnterKind; deckId: string | null; slide: number; sel: number; from: ScreenName | null; visit: number; editRequirements?: boolean; swipeFrom?: number };
 export type Go = (screen: ScreenName, patch?: Partial<Omit<NavState, 'screen' | 'visit'>>) => void;
 
 /** Shared values the Home carousel and the Upload screen both drive (the carousel stays mounted behind Upload). */
@@ -24,6 +24,8 @@ export type HomeShared = {
   setup: SharedValue<number>;
   press: SharedValue<number>;
   picker: SharedValue<number>;
+  /** 0 while the rehearsal title owns the handoff; 1 when Home's title is visible. */
+  titleReturn: SharedValue<number>;
 };
 
 export const ShellContext = createContext<{ go: Go; nav: NavState; home: HomeShared; setFullscreenLandscape: (value: boolean) => void } | null>(null);

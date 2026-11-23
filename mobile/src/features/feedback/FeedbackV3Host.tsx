@@ -46,7 +46,11 @@ async function startOne(api: string, c: StartCandidate) {
   try {
     const run = await fetchFeedbackRun(api, c.id, c.contextId);
     if (run && !run.enabled) return;  // v3 switched off: nothing is recorded, so it starts once it is back.
-    if (run?.runId && !feedbackRunNeedsStart(run)) { writeStartState(api, c.id, 'started'); return; }
+    // A saved assessment may predate this phone's start marker. Refreshing it is a user action.
+    if (run?.runId && (run.outdated || !feedbackRunNeedsStart(run))) {
+      writeStartState(api, c.id, 'started');
+      return;
+    }
     const started = await startFeedbackRun(api, c.id, c.contextId);
     writeStartState(api, c.id, started?.runId ? 'started' : 'failed');
   } catch {

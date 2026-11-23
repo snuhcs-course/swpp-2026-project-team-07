@@ -19,8 +19,10 @@ import { useTheme } from './theme';
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** A presentation icon: hue gradient fill plus a white sheen at 28% (SPEC §2 "Chroma icons"). */
-export const PresentationIcon = memo(function PresentationIcon({ icon, hue, size, style }: {
+export const PresentationIcon = memo(function PresentationIcon({ icon, hue, size, style, sheen = true }: {
   icon: IconId; hue: HueName; size: number; style?: StyleProp<ViewStyle>;
+  /** Claude, 2026-11-21: the tutorial's faded side icons omit the sheen shown on Home. */
+  sheen?: boolean;
 }) {
   const shape = PRESENTATION_SHAPES[icon] ?? PRESENTATION_SHAPES.present;
   const [from, to] = HUES[hue].icon;
@@ -38,7 +40,7 @@ export const PresentationIcon = memo(function PresentationIcon({ icon, hue, size
         </LinearGradient>
       </Defs>
       <G fill={`url(#${id})`}>{shape()}</G>
-      <G fill="url(#gIcSheen)" opacity={0.28}>{shape()}</G>
+      {sheen && <G fill="url(#gIcSheen)" opacity={0.28}>{shape()}</G>}
     </Svg>
   );
 });

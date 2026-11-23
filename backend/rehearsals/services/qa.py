@@ -32,7 +32,7 @@ from .feedback_config import QuotaPolicy, Selection
 from .feedback_quota import cooldown
 
 QA_PROMPT_VERSION = "qa-v1"
-OUTPUT_TOKENS = {"qa_questions": 1500, "qa_answer": 800}
+OUTPUT_TOKENS = {"qa_questions": 1500, "qa_answer": 800, "display_translation": 8000}
 MAX_SLIDE_TEXT = 2000
 MIN_ANSWER_WORDS = 15
 MIN_ANSWER_MS = 8000

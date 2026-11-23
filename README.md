@@ -6,6 +6,16 @@ An Android presentation rehearsal app that connects PDF slides, recordings, slid
 - **Backend:** Django / Celery, with PostgreSQL and Redis.
 - **Repository:** `mobile/` for the app, `backend/` for the API and workers, `docs/` for guides and evidence, `compose.yaml` for local services.
 
+## Bilingual nitoryu Android build
+
+[Download the version 38 test APK (ARM64)](output/OutLoud-PR64-home-language-v38-arm64.apk). Install it over the previous OutLoud test build to keep your saved rehearsals. The app connects to the shared Azure demo and asks for the existing reviewer code. The language icon appears only on Home; the tutorial and bilingual coaching are included.
+
+On a fresh install, the library starts with **Seoul**, a seven-slide presentation that opens offline. It is the only presentation bundled in the APK. You can import your own PDFs.
+
+Tap the upper-left flag to switch the interface, slide cues, feedback and Q&A between English and Korean. Once a result has synced to the phone, both versions are available immediately, including offline. A first-time offline view shows the available scores and evidence until coaching can sync. Transcript quotes and suggested speaking lines keep their original rehearsal language. Saved Q&A reopens earlier question sets with their recorded answers. [Display translation API](docs/reference/api-contract.md#english-and-korean-display-translations) · [Azure demo setup](docs/azure-hosting.md)
+
+APK SHA-256 (version `0.1.0-nitoryu.3`) is `766a57bf9386c4d39125f5c80593b165a8ad3b82c3924723d889214f0a57903a`.
+
 ## Current status
 
 The [Requirements & Specifications v4.0](docs/requirements/requirements-and-specifications.md), [Design Rev.4.0](docs/design/design-documentation.md) and [dated evidence reconciliation](docs/testing/evidence/iteration-3-reconciliation-2026-11-05.md) describe the published [demo v8](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-demo-v8-20261103), source `cdb8055`, and distinguish the later release-reported backend repair and unreleased local candidates. The Iteration 2 comparison baseline is main `7b7ef3b` / PR31 application `c4a3f48`.

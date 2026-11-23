@@ -2001,3 +2001,138 @@ Fix those four issues and update PR #31. Keep the original prompts unchanged and
 **Historical source supplement — `published-wiki-i2`.** Unique source wording follows; overlapping older attribution or status is retained as a historical variant, not a new correction.
 
 The Injoon entries below were recovered from local Codex history on October 21. Automated browser context and attachment-path wrappers are omitted; structured replies retain the actual answer text. Prompts are listed in time order within each task, with their recorded timestamps. No missing wording was reconstructed.
+
+
+### Bilingual app labels and saved AI results — November 20, 2026
+
+- **Contributor** Seoyeon
+- **Tool and model** OpenAI Codex, GPT-6.
+- **Scope** English/Korean Android interface and translated views of saved coaching, cues and Q&A.
+
+Initial request (message body; attachment wrapper omitted)
+
+```text
+Let's implement a new version of the app where the app language changes based on the tap of the upper most left corner flag button.&#x20;
+
+When app language changes all labels language has to change open -> 열기
+Feedback cues and QA have to be in the user selected language despite the slides being in a different language, or the recorded transcription being in another language.&#x20;
+if user rehearses english presentation in english but app language is in korean cues, feedback and qa should display korean ver.&#x20;
+
+We will know its complete when users can receive ai feedback features, cues, and qa in their selected lanaguage in an app interface with labels in their selected language and language change must be smooth.&#x20;
+
+for cases such as user uses english at first to generate feedback and q&a then changes app lanaguege to korean, feedbback qa and cues must maintain same content but just language change.&#x20;
+```
+
+Choice — speech_lines
+
+```text
+1 and also if feedback says you should say this then that this should be in english
+```
+
+Choice — first_switch
+
+```text
+Translate on first use
+```
+
+Choice — delivery
+
+```text
+Test APK first (Recommended)
+```
+
+Follow-up
+
+```text
+where is it being saved? also app version should be initially absed on this branch [https://github.com/snuhcs-course/swpp-2026-project-team-07/tree/codex/smooth-open-language-toggle_hikarimono](https://github.com/snuhcs-course/swpp-2026-project-team-07/tree/codex/smooth-open-language-toggle_hikarimono) hence i was thinking we could branch off it cuz friend is applying other ui fixes to the same branch
+```
+
+Implementation request (local paths redacted)
+
+```text
+PLEASE IMPLEMENT THIS PLAN:
+# Bilingual OutLoud test APK
+
+**The bilingual version is currently saved as a plan in this chat.** The [APK already on disk]([local path redacted]) is the earlier flag-button build.
+
+## Branch and save locations
+
+Create **`app-language-switching backend` directly from your friend’s branch**. I verified its current GitHub tip is `90b4ce7`. At implementation time, fetch the latest tip so any UI fixes your friend has already pushed are included. They can keep working on their branch. Before building the test APK, merge any newer fixes into our feature branch and retest the affected screens. [Base branch on GitHub](https://github.com/snuhcs-course/swpp-2026-project-team-07/tree/codex/smooth-open-language-toggle_hikarimono)
+
+| Item | Planned location |
+|---|---|
+| Source code | `[local path redacted]` |
+| Installable test APK | `[local path redacted]` |
+| User’s language choice | On the phone, in the existing `outloud.db` SQLite database under `settings.languagePreference` |
+| AI translations | Cached on the phone and in the development backend’s PostgreSQL database by saved result, revision, and language |
+
+## App behavior
+
+- The upper-left flag switches every app-owned label immediately, including **Open → 열기**, gesture hints, dialogs, and accessibility labels. Preserve the selected deck, slide, and question.
+- Translate feedback, cues, Q&A questions, follow-ups, and answer evaluations on first use. Subsequent switches use the cached wording, including offline. Q&A read-aloud follows the displayed language.
+- Keep scores, question IDs, answer recordings, and evidence timestamps attached to the original assessment. For an English rehearsal viewed in Korean, the explanation and **이렇게 말해 보세요** appear in Korean. The suggested sentence and exact transcript quotes stay in English.
+
+## Acceptance
+
+Install the APK over the previous flag build against the same development backend. Verify mixed slide and speech languages, then switch a completed rehearsal **English → Korean → English**. The original wording must return exactly, each answer must still play under its question, and switching must trigger zero transcription, grading, or question-generation calls. Also check phone-only Q&A history, rapid taps, restart, offline cache, and translation retry alongside the mobile, Django, and worker checks.
+```
+
+**Implementation and decisions.** Seoyeon selected first-use translation, source-language practice lines, and a local test APK. Codex created the separate local branch `app-language-switching-backend` from `codex/smooth-open-language-toggle_hikarimono`. Git disallows spaces in branch names. The source branch still pointed to `90b4ce7ce7849a88682a5d50d3fb91be63564cf0` at the last pre-build fetch. The source checkout and signed APK are under `outputs/app-language-switching-20261120` in the project workspace. The release build uses version code 31 and the USB-forwarded development API.
+
+**Retained AI work.** Codex implemented the persisted language switch, bundled English/Korean interface and accessibility copy, and localized projections of saved feedback, cues, questions, follow-ups, and answer assessments. Q&A read-aloud follows the visible wording. The display-only endpoint validates saved source prose, protects quoted speech, suggested speaking lines and numeric values, and caches the result in PostgreSQL. The phone also saves exact display wording by resource, revision, field and language. Migrations 0014–0015, the mobile and backend tests, and the updated API guide are part of the change. User-provided names, question identities, scores, evidence bounds, recordings and source transcripts retain their bindings.
+
+**Review and revisions.** An independent Codex reviewer identified offline return for short topics, read-aloud during the recording countdown, clipped long questions, and an overlapping fullscreen recording indicator. Agent-operated checks also found an untranslated recording-button label, descriptive panelist labels, and correct Korean numeric wording being rejected. The fixes include per-field source metadata, native speech-stop ordering, vertical scrolling inside the question, translated panelist roles, and numerical validation that accepts equivalent durations. The raw replies from two unsuccessful translation batches were unavailable. Independently written duration examples reproduced the validation failure and passed against the live provider after the fix. API credentials and private recordings are excluded from this entry.
+
+**Agent-operated checks.** `npm run check` passed TypeScript, lint, and 711 tests. `npm run bundle:android` and Gradle `:app:assembleRelease` passed. Django reported 726 tests with 29 skipped under SQLite and one skipped under PostgreSQL. The focused PostgreSQL/Redis suite passed 16 tests, including Celery delivery and concurrent admission and retry. Django system and migration-drift checks passed. Scribe and OpenRouter processed new synthetic English and Korean recordings. In a mixed-language case a genuinely Korean transcript accompanied an English slide, and the English/Korean views retained the Korean practice line and the 14.020–17.880-second evidence interval.
+
+**Android upgrade and saved results.** Codex installed the signed APK over version 30 on a Galaxy S23 Ultra and upgraded the equivalent development-backend version 30 on an isolated Android emulator. Both installed APK hashes matched the delivered file. The Galaxy displayed `Open` and `열기` and returned to its original English preference. On the emulator, a previously recorded answer played under the same question and the complete 51 displayed English strings returned exactly. Rapid toggles, cached results after a disconnected restart, uncached phone-only Q&A retry, the Korean recording-button accessibility label and the cue round trip were checked. The selected rehearsal's saved assessment hashes and transcription, feedback and Q&A job counts stayed identical across the tracked online flag switches. The physical upgrade retained the installed data; the previous physical APK used Azure, so the same-backend upgrade test used the emulator. These are AI-operated checks. Human translation-quality review and teammate approval remain pending.
+
+**Final feedback-card check.** A fresh 19.305-second English library-hours rehearsal produced five Korean cards on Android. The three suggested English sentences matched their stored wording and punctuation, the cited English audio played from its original timestamp, and the first English card returned exactly offline. The final rendering uses the source punctuation for already-quoted practice lines. The delivery APK SHA-256 is `781888fca2b7d8b84f80bd6873f78b69e2611ebf896bd7550bef656b9e86682b`. No commit, remote publication, or hosted deployment was performed.
+
+**Azure phone-build follow-up.** November 20, 2026, Seoyeon, OpenAI Codex, GPT-6.
+
+```text
+add \
+\
+EXPO_PUBLIC_API_URL=https\://outloud-team07.koreacentral.cloudapp.azure.com/api\
+EXPO_PUBLIC_REQUIRE_DEMO_CODE=1
+to mobile/.env as cues and feedback are not working on phone
+```
+
+Codex set both public values in the bilingual checkout’s ignored `mobile/.env`, removed the prior USB-only `.env.local` override and rebuilt the signed arm64 Android APK as version 32 (`0.1.0-en-ko.2`). The teammate’s branch still pointed to `90b4ce7` at build time. The earlier version 31 USB APK was saved separately.
+
+TypeScript, ESLint and all 711 mobile tests passed. Expo’s Android export and Gradle’s release build passed. The app bundle contains the Azure URL. The certificate matched version 31, and in-place upgrades on the Galaxy S23 Ultra and emulator both matched the delivered SHA-256 `18e48903c2d1fdf36167e44ccb0d890acc042e911798da902448019c7db684d0`. The emulator showed the demo-code field, connect button and offline option. The physical install and checksum were verified while the Galaxy was locked.
+
+Azure returned 401 for anonymous health and 200 for authenticated health, readiness, incremental capabilities and route checks on cues, feedback and audience Q&A. Incremental processing was enabled. An authenticated check of `/api/localization/` returned 404. First-time translations need the bilingual API, worker and migrations on Azure. These checks made no new rehearsal or provider request. The configuration update included no hosted deployment.
+
+**Whole-presentation feedback, cues and Q&A follow-up.** November 20, 2026, Seoyeon, OpenAI Codex, GPT-6. Two user-supplied Android screenshots accompanied the report.
+
+```text
+Translation unavailable in both english and korean versions individual slide feedback works fine. Q&A doesnt load .
+```
+
+The user selected the following option when Codex asked whether to update the shared Azure API and worker and apply the bilingual database migrations.
+
+```text
+Deploy the bilingual backend to Azure
+```
+
+Codex reproduced the whole-card failure using the release display hook. Short saved fields were replaced with translation placeholders in both languages when the server lacked `/api/localization/`. The same hook now keeps source wording visible, shows one localized status and retries only the translation. Incremental feedback also supplies each graded part’s original language when available.
+
+The shared server already held three questions for the original audience of the reported rehearsal. A request with the same six slide visits and no audience context had returned an empty result. The read-only Q&A status now returns matching historical sets across contexts, and the client preserves their job IDs and locally recorded answers. Older phone-only results can be recovered offline. Successful new native recordings mark initial Q&A eligibility, and an existing assessment consumes that marker to avoid question generation on a flag switch.
+
+After the user authorized deployment, Codex took and verified a PostgreSQL backup, preserved the prior image, and applied migrations 0014 and 0015 to Azure. A rollout check initially restored the previous image because it compared a Celery task name to a string containing its rate limit. The corrected check verified the active worker’s registration. All seven final services passed. Read-only comparisons on the reported rehearsal preserved its original score, both prior question jobs, original question IDs, and saved slide cues. The live translation checks used invented text. One English response failed language validation and the same translation job completed on explicit retry.
+
+The arm64 APK is version 33 (`0.1.0-en-ko.3`). Its signing certificate matches the preceding build and its SHA-256 is `6330be06ec9cb64fac0d65907c9d00ae4aeb299aa9943330ab963eef28457c75`. Mobile type checking, lint, all 722 tests, Expo Android export and Gradle release assembly passed. The full Django SQLite suite ran 729 tests with 29 skipped and no failures. All 37 focused PostgreSQL tests passed. Codex verified the installed emulator APK checksum.
+
+During the Android check, Codex found that a Korean slide-improvement card displayed German coaching. The API had marked the translation complete and SQLite had saved it. On the invented English study-room rehearsal, all 26 affected coaching fields contained German. The other 18 Korean feedback fields, 44 English feedback fields, and all cached cue and question fields passed the target-language checks. The repair checks prose outside original quotes and practice lines, preserves usable cached wording, and replaces wrong-language fields on first use. The phone validates each complete reply before writing any of its fields to either language cache. Two new mobile tests reproduced the stale cache and partial-write cases before the fix. A legacy score test mock was also corrected to return Korean for each of its three invented English source values.
+
+Codex built and signed version 34 (`0.1.0-en-ko.4`), SHA-256 `1a56de21026eb6b77adf163b75728445a2ef317428431986109cfd9d9e55ce19`. The final pre-build fetch matched the teammate's `90b4ce7` branch. All 725 mobile tests, TypeScript, lint, Expo Android export, Gradle assembly and signature checks passed. The full Django SQLite suite ran 732 tests with 29 skips and zero failures, and all 19 final focused PostgreSQL/Redis checks passed. Django system and migration-drift checks passed. The emulator upgraded in place from version 33 and the installed APK checksum matched the delivery file.
+
+The version 34 Android test confirmed that the previously saved German card changed to Korean on the first open. The original English coaching returned exactly on the next toggle, including the practice line, cited recording and timestamp. Whole-presentation feedback, cues and the recovered question also returned their original English. The same slide cards remained usable in both languages after a force-stop and restart without a network connection.
+
+The live synthetic test also exposed a content error. One question and three feedback fields dropped the “p.m.” from “7 and 8 p.m.”. Version 35 checks explicit clock qualifiers in both saved and newly translated wording, excluding verbatim speech. Azure repaired these fields to “오후 7시와 8시”. The other 23 fields in the same feedback batch, five fields in the same question batch, previously correct profile cues, grade and question IDs matched the prior snapshot. A repeat request returned the identical repaired wording. Codex preserved the existing Azure test fixture so its two submitted provider reservations stay counted against the shared daily quota.
+
+The release APK is version 35 (`0.1.0-en-ko.5`), SHA-256 `dd212c44a69502f705f4b91309cb1b53d9d662359d1dde5b0aa542d528ad7e83`. All 726 mobile tests, lint, TypeScript, Expo export and Gradle assembly passed. Django ran 734 SQLite tests with 29 skips and zero failures, and the final PostgreSQL/Redis worker suite passed all 21 checks. The seven shared Azure services passed health checks, and the API and worker ran the checked code. A read-only recheck of the reported rehearsal recovered its original questions under the missing audience context, the original score, and the saved slide cues.
+
+Codex upgraded the emulator over version 34 and verified the installed checksum. The Korean feedback card, saved Q&A question and cue contained the evening qualifier, and English returned exactly. The device retained the English practice line, transcript quote, and evidence timestamp. The corrected card survived a force-stop and offline restart in both languages. A separate, clearly labeled phone-only archive used an existing 18.489-second synthetic audio file as an answer to question two. Android’s native player started and stopped that same file on question two in English and Korean. The original online fixture’s before-and-after provider rows and IDs matched exactly, with one transcription request, two grading calls, one cue call and one question-generation call in each snapshot. The retained screenshots and verification file are in `outputs/app-language-switching-20261120/verification`. The physical Galaxy was disconnected for the final build. The source was saved locally on its isolated branch.

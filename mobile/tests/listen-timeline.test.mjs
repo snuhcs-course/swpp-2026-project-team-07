@@ -6,6 +6,8 @@ registerHooks({ resolve, load });
 const { listenTimeline, listenEntryAt } = await import('../src/domain/listenTimeline.ts');
 const { ListenBackKaraokeScreen } = await import('../src/screens/ListenBackKaraokeScreen.tsx');
 const { runtime } = await import('./helpers/ai-overview-screen-native.mjs');
+const { DARK_PALETTE, LIGHT_PALETTE } = await import('../src/design/tokens.ts');
+runtime.palettes = { dark: DARK_PALETTE, light: LIGHT_PALETTE };
 const React = await import('react');
 const { act, create } = await import('react-test-renderer');
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -73,15 +75,27 @@ test('actual Listen Back queue, transcript, word highlight, progress and visit s
     assert.equal(scrubber(r).props.accessibilityValue.now, 8);
     assert.equal(scrubber(r).props.accessibilityValue.max, 14);
     assert.match(text(r), /Slide 1 · One/);
-    const sentence = r.root.findByProps({ accessibilityLabel: 'Return A' });
-    assert.equal(sentence.findByType('text').props.style.fontFamily, 'Figtree_700Bold');
+    // Supplied Claude patch, Codex integration 2026-11-21: colour-only highlight keeps the line from reflowing.
+    const sentence = r.root.findAll(node => node.type === 'text' && node.props.accessibilityLabel === 'Return A')[0];
+    const lit = sentence.findAll(node => node.type === 'text' && node !== sentence)[0];
+    assert.equal(lit.props.style.color, '#D485FC');
+    assert.equal(lit.props.style.fontFamily, undefined);
     const context = r.root.findAllByType('text').map(n => n.props.children);
     assert.ok(context.includes('First B')); assert.ok(context.includes('Return B'));
-    await tap(button(r, 'Next slide')); assert.equal(runtime.plays.at(-1).elapsedMs, 10000);
+    // OpenAI Codex, Iteration 4 (2026-11-21): arrows browse immediately; Play or a word tap starts the selected audio.
+    const plays = runtime.plays.length;
+    await tap(button(r, 'Next slide'));
+    assert.equal(runtime.plays.length, plays, 'an arrow does not start playback');
+    assert.equal(scrubber(r).props.accessibilityValue.now, 10);
     assert.match(text(r), /Slide 2 · Two/);
-    await tap(button(r, 'Previous slide')); assert.equal(runtime.plays.at(-1).elapsedMs, 7000);
+    await tap(button(r, 'Previous slide'));
+    assert.equal(runtime.plays.length, plays);
+    assert.equal(scrubber(r).props.accessibilityValue.now, 7);
+    await tap(button(r, 'Play whole run'));
+    assert.equal(runtime.plays.at(-1).elapsedMs, 7000, 'Play starts from the browsed visit');
     await position(r, 4000); await tap(button(r, 'Next slide'));
-    assert.equal(runtime.plays.at(-1).elapsedMs, 7000, 'next from the first slide-2 visit returns to slide 1');
+    assert.equal(runtime.plays.at(-1).elapsedMs, 7000, 'the arrow does not seek automatically');
+    assert.equal(scrubber(r).props.accessibilityValue.now, 7, 'next from the first slide-2 visit browses slide 1');
   });
 });
 
@@ -105,8 +119,12 @@ test('Whole run starts with the first spoken visit even when Review selected an 
     await tap(button(r, 'Play whole run'));
     assert.equal(runtime.plays[0].elapsedMs, 0);
     assert.deepEqual(runtime.plays[0].segments.map(s => [s.startMs, s.endMs]), [[1000, 4000], [4000, 6000]]);
-    await tap(button(r, 'Next slide')); assert.equal(runtime.plays.at(-1).elapsedMs, 3000);
+    await tap(button(r, 'Next slide'));
+    assert.equal(runtime.plays.length, 1, 'the next slide is selected without playback');
+    assert.equal(scrubber(r).props.accessibilityValue.now, 3);
     assert.match(text(r), /Slide 1 · One/);
+    await tap(button(r, 'Play whole run'));
+    assert.equal(runtime.plays.at(-1).elapsedMs, 3000);
   });
 });
 
@@ -115,11 +133,19 @@ test('composed playback still groups slide visits and does not seek a missing sl
   setup(value); await render(async r => {
     await tap(button(r, 'Play whole run'));
     assert.deepEqual(runtime.plays[0].segments.map(s => [s.uri, s.startMs]), [['file:///full.wav', 10000], ['file:///full.wav', 20000], ['file:///redo.wav', 1000]]);
-    await tap(button(r, 'Next slide')); assert.equal(runtime.plays.at(-1).elapsedMs, 6000);
+    await tap(button(r, 'Next slide'));
+    assert.equal(runtime.plays.length, 1, 'browsing the composed source does not start audio');
+    assert.equal(scrubber(r).props.accessibilityValue.now, 6);
+    await tap(button(r, 'Play whole run'));
+    assert.equal(runtime.plays.at(-1).elapsedMs, 6000, 'Play starts the selected composed visit');
   });
   setup(value); runtime.audio.delete('b'); await render(async r => {
     await tap(button(r, 'Play whole run')); const calls = runtime.plays.length;
     await tap(button(r, 'Next slide'));
-    assert.equal(runtime.plays.length, calls); assert.match(text(r), /Audio for slide 2 is not on this phone/);
+    assert.equal(runtime.plays.length, calls);
+    assert.match(text(r), /Slide 2 · Two/);
+    await tap(button(r, 'Play whole run'));
+    assert.equal(runtime.plays.length, calls, 'missing audio cannot start another take');
+    assert.match(text(r), /Audio for slide 2 is not on this phone/);
   });
 });

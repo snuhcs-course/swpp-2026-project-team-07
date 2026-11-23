@@ -1,4 +1,5 @@
 // Review keeps saved-audio playback, synchronized transcript and corrections in its page.
+import { useUiText } from '../design/language';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Txt } from '../design/frame';
@@ -23,6 +24,7 @@ export function ReviewSlidePlayback({ model, id, slide, player, evidence, eviden
  model: DeckModel; id: string; slide: number; player: ReturnType<typeof useSegmentPlayer>;
  evidence: ReviewEvidence | null; evidenceRequest: number; onCloseEvidence: () => void; onEvidenceShown?: (y: number) => void;
 }) {
+  const ui = useUiText();
  const { c } = useTheme(), { deck } = model;
  const version = useStore(state => state.version);
  const saved = useMemo(() => { void version; try { return getSavedAttempt(id); } catch { return null; } }, [id, version]);
@@ -46,7 +48,7 @@ export function ReviewSlidePlayback({ model, id, slide, player, evidence, eviden
   {media.validators}
   <View style={[styles.card, { borderColor: c.hair, backgroundColor: c.surface06 }]}>
    <ReviewSlidePreview model={model} slide={slide}/>
-   <View style={styles.playback}><Pressable accessibilityRole="button" accessibilityLabel={playing ? `Pause slide ${slide + 1}` : `Play slide ${slide + 1}, ${fmt(time)}`}
+   <View style={styles.playback}><Pressable accessibilityRole="button" accessibilityLabel={ui(playing ? `Pause slide ${slide + 1}` : `Play slide ${slide + 1}, ${fmt(time)}`)}
     accessibilityState={{ disabled: !part || time <= 0 || !media.audio.uri }} disabled={!part || time <= 0 || !media.audio.uri} onPress={toggle} style={styles.playButton}>
     <Glyph name={playing ? 'p-pause' : 'p-play'} size={18} color={c.text}/></Pressable>
     <View style={[styles.track, { backgroundColor: c.ink18 }]}><View style={{ height: 6, width: `${100 * (selected ? player.progress : 0)}%`, backgroundColor: c.text }}/></View>
@@ -61,7 +63,7 @@ export function ReviewSlidePlayback({ model, id, slide, player, evidence, eviden
 export function ReviewSlidePreview({ model, slide }: { model: DeckModel; slide: number }) {
  const { c } = useTheme(), { deck } = model;
  return <View style={styles.previewRow}><MiniSlide hue={deck.hue} page={deck.pages[slide]} title={deck.slides[slide]?.title ?? ''} width={156} height={88} radius={12}/>
-  <View style={{ flex: 1, gap: 6 }}><Txt style={[styles.slideLabel, { color: c.secondary }]}>{`Slide ${slide + 1}`}</Txt><Txt style={[styles.previewTitle, { color: c.text }]}>{deck.slides[slide]?.title ?? `Slide ${slide + 1}`}</Txt></View>
+  <View style={{ flex: 1, gap: 6 }}><Txt style={[styles.slideLabel, { color: c.secondary }]}>{`Slide ${slide + 1}`}</Txt><Txt verbatim={!!deck.slides[slide]?.title} style={[styles.previewTitle, { color: c.text }]}>{deck.slides[slide]?.title ?? `Slide ${slide + 1}`}</Txt></View>
  </View>;
 }
 const styles = StyleSheet.create({

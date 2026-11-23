@@ -15,6 +15,7 @@
 // OpenAI Codex supplied Review artwork: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-099
 // OpenAI Codex semantic footer motion: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-101
 // OpenAI Codex precomposed ambient glow: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-109
+import { useUiText } from './language';
 import { memo, useEffect, type ComponentProps, type ReactNode } from 'react';
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { Easing, type SharedValue, useAnimatedProps, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -31,14 +32,7 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 // ── Hint row (SPEC §1.2) ─────────────────────────────────────────────────────
 export type Hint = { icon: GlyphName; text: string; nudge?: 'down' | 'up'; hidden?: boolean; onPress?: () => void };
 type IconMotion = 'horizontal' | 'rise' | 'drop' | 'tap' | 'hold' | 'tilt' | 'breathe';
-function motionFor(icon: GlyphName): IconMotion {
-  if (icon === 'h-spin') return 'horizontal';
-  if (icon === 'h-up') return 'rise';
-  if (icon === 'h-dn' || icon === 'h-down') return 'drop';
-  if (icon === 'h-hold') return 'hold';
-  return 'tap';
-}
-/** Animate only footer artwork on Review's 1.6 s nudge cycle; labels and touch targets stay still. */
+/** Animate round action controls; gesture footer artwork is rendered without this motion. */
 function MotionIcon({ children, kind }: { children: ReactNode; kind: IconMotion }) {
   const clock = useFooterMotion();
   const reduced = useReducedMotion();
@@ -56,14 +50,15 @@ function MotionIcon({ children, kind }: { children: ReactNode; kind: IconMotion 
   return <Animated.View pointerEvents="none" style={motion}>{children}</Animated.View>;
 }
 export function HintRow({ hints, gap = 18, style }: { hints: Hint[]; gap?: number; style?: StyleProp<ViewStyle> }) {
+  const ui = useUiText();
   const frame = useFrame();
   return <View pointerEvents={hints.some(h => h.onPress && !h.hidden) ? 'box-none' : 'none'} style={[s.hints, frame.compact && { bottom: 12 }, { gap }, style]}>
     {hints.map(h => {
-      const content = <><MotionIcon kind={h.nudge ? (h.nudge === 'down' ? 'drop' : 'rise') : motionFor(h.icon)}>
-        <Glyph name={h.icon} size={18} /></MotionIcon><Txt style={s.hintText}>{h.text}</Txt></>;
+      // OpenAI Codex, 2026-11-20: gesture cues stay still; only action controls retain motion.
+      const content = <><Glyph name={h.icon} size={18} /><Txt style={s.hintText}>{h.text}</Txt></>;
       const rowStyle = [s.hint, { gap: gap === 16 ? 5 : 6 }, h.hidden && { opacity: 0 }];
       return h.onPress && !h.hidden
-        ? <Pressable key={h.icon + h.text} accessibilityRole="button" accessibilityLabel={h.text} onPress={h.onPress} style={[rowStyle, { minHeight: 44 }]}>{content}</Pressable>
+        ? <Pressable key={h.icon + h.text} accessibilityRole="button" accessibilityLabel={ui(h.text)} onPress={h.onPress} style={[rowStyle, { minHeight: 44 }]}>{content}</Pressable>
         : <View key={h.icon + h.text} style={rowStyle} accessibilityElementsHidden={!!h.hidden} importantForAccessibility={h.hidden ? 'no-hide-descendants' : 'auto'}>{content}</View>;
     })}
   </View>;
@@ -129,10 +124,11 @@ export function RecordButton({ glyph, label, onPress, onPressIn, onPressOut, onA
   accessibilityActions?: ComponentProps<typeof Pressable>['accessibilityActions'];
   onAccessibilityAction?: ComponentProps<typeof Pressable>['onAccessibilityAction'];
 }) {
+  const ui = useUiText();
   const frame = useFrame();
   const stops = green ? ['#A8F8DB', '#22C98F', '#0A8F62'] : ['#FFB49E', '#FF5747', '#DD1C2C'];
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityActions={accessibilityActions} onAccessibilityAction={onAccessibilityAction}
+    <Pressable accessibilityRole="button" accessibilityLabel={ui(label)} accessibilityActions={accessibilityActions} onAccessibilityAction={onAccessibilityAction}
       disabled={disabled} onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut}
       android_disableSound style={[s.record, frame.compact && { top: 607 }, style, quiet && { backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' }, { boxShadow: quiet ? 'none' : green
         ? '0px 16px 30px rgba(14, 168, 119, 0.4), inset 0px -8px 14px rgba(0, 70, 44, 0.28), inset 0px 6px 10px rgba(255, 255, 255, 0.35)'
@@ -189,11 +185,12 @@ export function RoundButton({ icon, glyph, label, caption, onPress, disabled, ac
   icon?: IconKey; glyph?: GlyphName; label: string; caption: string; onPress: () => void; disabled?: boolean; active?: boolean; style?: StyleProp<ViewStyle>;
   captionRotation?: SharedValue<number>;
 }) {
+  const ui = useUiText();
   const { c, mode } = useTheme();
   const frame = useFrame();
   return (
     <View style={[s.roundWrap, frame.compact && { top: 621 }, { opacity: disabled ? 0.35 : 1 }, style]}>
-      <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: !!disabled, selected: !!active }} disabled={disabled}
+      <Pressable accessibilityRole="button" accessibilityLabel={ui(label)} accessibilityState={{ disabled: !!disabled, selected: !!active }} disabled={disabled}
         onPress={onPress} style={[s.round, active && { backgroundColor: 'rgba(255, 216, 102, 0.18)', borderColor: 'rgba(255, 216, 102, 0.45)' }]}>
         {glyph === 'h-review-bars' ? <Glyph name={glyph} size={28} color={mode === 'dark' ? '#FFFFFF' : '#000000'} />
           : icon || glyph ? <MotionIcon kind={caption === 'Rotate' ? 'tilt' : 'breathe'}>
@@ -273,16 +270,17 @@ function Particle({ b, t, origin }: { b: (typeof BURST)[number]; t: SharedValue<
 export function Dialog({ title, body, confirm, cancel = 'Cancel', onConfirm, onCancel, icon = 'redo', tone = 'red', style, showScrim = true }: {
   title: string; body: string; confirm: string; cancel?: string | null; onConfirm: () => void; onCancel: () => void; icon?: 'redo' | IconKey; tone?: 'red' | 'neutral'; style?: StyleProp<ViewStyle>; showScrim?: boolean;
 }) {
+  const ui = useUiText();
   const { c } = useTheme();
   const frame = useFrame();
   const v = useSharedValue(0);
-  useEffect(() => { v.set(withTiming(1, { duration: 260, easing: Easing.bezier(0.2, 0.8, 0.2, 1) })); }, [v]);
+  useEffect(() => { v.set(withTiming(1, { duration: 420, easing: Easing.bezier(0.2, 0.8, 0.2, 1) })); }, [v]);
   const scrim = useAnimatedStyle(() => ({ opacity: Math.min(1, v.value * 1.3) }));
   const card = useAnimatedStyle(() => ({ opacity: v.value, transform: [{ translateY: (1 - v.value) * 12 }, { scale: 0.94 + 0.06 * v.value }] }));
   return (
     <View style={[StyleSheet.absoluteFill, { zIndex: 40 }]}>
       <Animated.View style={[StyleSheet.absoluteFill, scrim]}>
-        <Pressable accessibilityLabel={cancel ?? 'Close'} onPress={onCancel} style={[StyleSheet.absoluteFill, { backgroundColor: showScrim ? c.scrim : 'transparent' }]} />
+        <Pressable accessibilityLabel={ui(cancel ?? 'Close')} onPress={onCancel} style={[StyleSheet.absoluteFill, { backgroundColor: showScrim ? c.scrim : 'transparent' }]} />
       </Animated.View>
       <Animated.View accessibilityRole="alert" accessibilityViewIsModal style={[s.dialog,
         frame.width > frame.height && { left: 242, right: 242, top: 50 }, style, card]}>

@@ -5,6 +5,7 @@ import { readStored, writeStored } from '../../services/storage';
 import { bump } from '../presentations/store';
 import { normalizeApi } from '../transcription/analysisStorage';
 import { parseFeedbackRun, type FeedbackRun } from './feedbackRun';
+import { markNewWording } from '../localization/firstWording';
 
 type Transport = typeof globalThis.fetch;
 const enc = (api: string) => encodeURIComponent(normalizeApi(api));
@@ -60,6 +61,10 @@ function save(api: string, attemptId: string, contextId: string | null, body: un
   saved.set(key, Math.max(order, saved.get(key) ?? 0));
   // Runs are never deleted, so "absent" can never replace a saved run.
   if (run.status === 'absent' && readSavedRun(api, attemptId, contextId)?.runId) return readSavedRun(api, attemptId, contextId);
+  if (run.runId && (run.status === 'queued' || run.status === 'running' || previous?.status === 'running' ||
+      previous?.status === 'queued' || created && previous?.run_id !== run.runId)) {
+    markNewWording(api, 'feedback', run.runId);
+  }
   // Rewrite (and re-render) only on change: polling repeats identical answers.
   if (JSON.stringify(readStored<unknown>(key)) !== JSON.stringify(body)) { writeStored(key, body); bump(); }
   return run;

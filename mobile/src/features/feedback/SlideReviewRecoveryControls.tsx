@@ -1,4 +1,5 @@
 // OpenAI Codex, issue #49: docs/ai-collaboration/README.md#prompt-logs.
+import { useUiText } from '../../design/language';
 import { Pressable, View } from 'react-native';
 import { Txt } from '../../design/frame';
 import { createThemedStyles, useTheme } from '../../design/theme';
@@ -26,7 +27,8 @@ export function SlideReviewRecoveryControls({feedback:fb,slide,ready,dirty}:{fee
 }
 
 export function SlideReviewAction({label,text,onPress,disabled=false}:{label:string;text:string;onPress:()=>void;disabled?:boolean}) {
- return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{disabled}} disabled={disabled} onPress={onPress}
+  const ui = useUiText();
+ return <Pressable accessibilityRole="button" accessibilityLabel={ui(label)} accessibilityState={{disabled}} disabled={disabled} onPress={onPress}
   style={[styles.action,disabled&&{opacity:.45}]}><Txt style={styles.actionText}>{text}</Txt></Pressable>;
 }
 const styles=createThemedStyles({

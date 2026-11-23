@@ -21,6 +21,6 @@ using those records. [Contributor prompt-log workflow](../../AGENTS.md#contribut
 | <a id="iteration-1-logs"></a>Iteration 1 | [Log](prompt-logs/injoon/iteration-1.md) | [Log](prompt-logs/jaewon/iteration-1.md) | [Log](prompt-logs/jooyoung/iteration-1.md) | [Log](prompt-logs/seoyeon/iteration-1.md) | [Log](prompt-logs/unattributed/iteration-1.md) |
 | <a id="iteration-2-logs"></a>Iteration 2 | [Log](prompt-logs/injoon/iteration-2.md) | [Log](prompt-logs/jaewon/iteration-2.md) | [Log](prompt-logs/jooyoung/iteration-2.md) | [Log](prompt-logs/seoyeon/iteration-2.md) | [Log](prompt-logs/unattributed/iteration-2.md) |
 | <a id="iteration-3-logs"></a>Iteration 3 | — | — | — | [Log](prompt-logs/seoyeon/iteration-3.md) | [Log](prompt-logs/unattributed/iteration-3.md) |
-| <a id="iteration-4-logs"></a>Iteration 4 | [Log](prompt-logs/injoon/iteration-4.md) | — | — | — | — |
+| <a id="iteration-4-logs"></a>Iteration 4 | [Log](prompt-logs/injoon/iteration-4.md) | — | — | [Log](prompt-logs/seoyeon/iteration-4.md) | — |
 
 A dash marks a contributor and iteration with no log in this checkout.

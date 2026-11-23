@@ -429,12 +429,16 @@ def assess_part(pk):
         with httpx.Client() as http:
             result = pipeline.call_llm(http, config, kind, job.payload, deadline=time.monotonic() + pipeline.RUN_BUDGET_SECONDS)
         sentences = {k: speech.Sentence(**v) for k, v in job.evidence['sentences'].items()}
-        part = (pipeline.normalize_whole(result.data, sentences, job.capture.attempt.deck.page_count, job.evidence['measurements'])
-                if job.slide_index == -1 else pipeline.normalize_slide(result.data, sentences))
+        language = (job.payload.get('presentation') or {}).get('language', 'en')
+        part = (pipeline.normalize_whole(result.data, sentences, job.capture.attempt.deck.page_count, job.evidence['measurements'], language)
+                if job.slide_index == -1 else pipeline.normalize_slide(result.data, sentences, language))
         if job.slide_index != -1:
             part['measurements'] = job.payload['measurements']
-        CaptureAssessment.objects.filter(pk=pk, claim_token=token, status='running').update(
+        saved = CaptureAssessment.objects.filter(pk=pk, claim_token=token, status='running').update(
             status='completed', result=part, usage={'calls': result.tries, 'input_tokens': result.input_tokens, 'output_tokens': result.output_tokens})
+        if saved:
+            from .prepared_display import changed
+            changed('feedback', job.capture_id)
     except Exception as error:
         code = error.code if isinstance(error, llm.LLMError) else 'processing_failed'
         CaptureAssessment.objects.filter(pk=pk, claim_token=token, status='running').update(status='failed', error={'code': code, 'message': 'Slide feedback stopped. Retry retains the transcript.'})
@@ -443,16 +447,24 @@ def assess_part(pk):
 
 def feedback(session):
     jobs = {p.pk: p for p in session.assessments.order_by('pk')}
+
+    def displayed(job):
+        result = deepcopy(job.result)
+        language = (job.payload.get('presentation') or {}).get('language')
+        if language in ('en', 'ko', 'und'):
+            result['language'] = language
+        return result
+
     def part(key):
         spec = session.desired.get(key, {'status': 'pending'})
         job = jobs.get(spec.get('assessment'))
         if job and job.result:
-            return deepcopy(job.result)
+            return displayed(job)
         status = ('failed' if job.status in ('failed', 'uncertain') else 'pending') if job else spec.get('status', 'pending')
         body = {'status': status, 'error': job.error['code'] if job.error else None} if job else deepcopy(spec)
         if status in ('pending', 'failed'):
             previous = next((p for p in reversed(list(jobs.values())) if p.slide_index == (int(key) if key != 'whole' else -1) and p.result), None)
-            return {**(deepcopy(previous.result) if previous else {}), **body, 'score': None, 'level': None, 'provisional': True}
+            return {**(displayed(previous) if previous else {}), **body, 'score': None, 'level': None, 'provisional': True}
         return body
     slides = {str(i): part(str(i)) for i in range(session.attempt.deck.page_count)}
     whole = part('whole')

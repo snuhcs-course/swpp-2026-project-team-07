@@ -1,3 +1,5 @@
+import { useDisplayTranslation } from '../localization/useDisplayTranslation';
+import { translatedFinding } from '../localization/generatedProse';
 // OpenAI Codex reliability fixes: docs/ai-collaboration/prompt-logs/unattributed/iteration-2.md#record-138
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { AppState } from 'react-native';
@@ -10,7 +12,7 @@ import { selectedSlideFeedback } from './selectedSlideFeedback';
 import { createSlideReviewReader, slideReviewKey, type SlideReviewTarget } from './slideReviewStore';
 
 /** One cache subscription and one active-job timer per visible overview; never admits generation. */
-export function useRunFeedbackStatus(model: DeckModel | null, active = true) {
+export function useRunFeedbackStatus(model: DeckModel | null, active = true, prose?: number | 'all') {
   const api = normalizeApi(API_URL), version = useStore(state => state.version);
   const requirementsVersion = useSyncExternalStore(subscribeRequirements, getRequirementsVersion);
   const [readVersion, setReadVersion] = useState(0), [offline, setOffline] = useState(false);
@@ -44,6 +46,13 @@ export function useRunFeedbackStatus(model: DeckModel | null, active = true) {
     return () => clearInterval(timer);
   }, [active, activeIdentity, foreground, offline, read]);
   const pending = derived.items.find(item => item.status === 'pending' || item.status === 'transcribing');
-  return { items: derived.items, aggregate: derived.aggregate, refresh, offline,
+  const { value: items } = useDisplayTranslation(active && foreground, scope => prose === undefined ? derived.items : derived.items.map(item => {
+    const source = model?.state.run?.parts[item.slide]?.attemptId;
+    if (!source || !item.findings.length || (prose !== 'all' && prose !== item.slide)) return item;
+    const target = derived.targets.find(t => t.id === source && t.scope.slides.some(s => s.slide_index === item.slide));
+    const field = scope('slide_review', source, undefined, target?.review?.metrics?.detected_language);
+    return { ...item, findings: item.findings.map((finding, i) => translatedFinding(finding, field, 'slides.' + item.slide + '.findings.' + i)) };
+  }));
+  return { items, aggregate: derived.aggregate, refresh, offline,
     notice: offline ? 'Connection interrupted. Saved AI feedback is retained. Reconnecting…' : pending ? `Slide ${pending.slide + 1} · ${pending.label}` : '' };
 }

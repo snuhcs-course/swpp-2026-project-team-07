@@ -1,6 +1,8 @@
 // AI-assisted Phase 1; see docs/ai-collaboration/README.md#prompt-logs.
 import type { Run } from './run';
 
+export const AUDIENCES = ['Students', 'Teachers', 'Colleagues', 'Clients', 'General public', 'Not sure'] as const;
+
 export type PresentationRequirements = {
   contextId: string | null; deckId: string | null;
   requiredDurationSeconds: number | null; audience: string; revision: number;

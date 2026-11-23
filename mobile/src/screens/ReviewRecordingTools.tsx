@@ -1,4 +1,5 @@
 // Shared recording tools rendered in the normal Review flow, without a modal surface.
+import { useUiText } from '../design/language';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Txt } from '../design/frame';
@@ -67,7 +68,7 @@ export function ReviewRecordingTools({ model, id, slide, player, media, evidence
   return <View style={styles.root}>
     {evidence && <View style={[styles.card, { backgroundColor: c.surface06, borderColor: c.hair }]}>
       <Txt style={[styles.heading, { color: c.text }]}>Feedback evidence</Txt>
-      {!!evidence.observation && <Txt style={[styles.body, { color: c.text }]}>{evidence.observation}</Txt>}
+      {!!evidence.observation && <Txt verbatim style={[styles.body, { color: c.text }]}>{evidence.observation}</Txt>}
       {!!evidence.speech_quote && <Txt style={[styles.note, { color: c.secondary }]}>{'Speech: “' + evidence.speech_quote + '”'}</Txt>}
       {!!evidence.slide_quote && <Txt style={[styles.note, { color: c.secondary }]}>{'Slide: ' + evidence.slide_quote}</Txt>}
       <Txt style={[styles.note, { color: c.secondary }]}>{'Source recording · ' + sourceTimestamp(evidence.start_ms) + '–' + sourceTimestamp(evidence.end_ms)}</Txt>
@@ -98,8 +99,9 @@ export function ReviewRecordingTools({ model, id, slide, player, media, evidence
   </View>;
 }
 function Action({ label, text = label, disabled, onPress }: { label: string; text?: string; disabled?: boolean; onPress: () => void }) {
+  const ui = useUiText();
   const { c } = useTheme();
-  return <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled} onPress={onPress}
+  return <Pressable accessibilityRole="button" accessibilityLabel={ui(label)} disabled={disabled} onPress={onPress}
     style={[styles.action, { backgroundColor: c.surface10, opacity: disabled ? 0.4 : 1 }]}><Txt style={[styles.actionText, { color: c.text }]}>{text}</Txt></Pressable>;
 }
 const styles = StyleSheet.create({

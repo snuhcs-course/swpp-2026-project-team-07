@@ -526,6 +526,20 @@ def finish(value, job, result=None, error=None):
         locked_job.completed_at = None if waiting else timezone.now()
         locked_job.claim_token = None
         locked_job.save(update_fields=['result', 'state', 'error_code', 'retry_at', 'completed_at', 'claim_token', 'updated_at'])
+        if locked_job.state == 'completed':
+            from .prepared_display import changed
+            kind = locked_job.analysis.analysis_type
+            if kind.startswith('qa_') and kind != 'qa_answer':
+                changed('questions', locked_job.pk)
+            elif kind == 'qa_answer':
+                changed('answer', locked_job.analysis.attempt_id)
+            elif kind.startswith('review_'):
+                changed('slide_review', locked_job.analysis.attempt_id)
+            elif kind.startswith('score_'):
+                changed('score', locked_job.analysis.attempt_id)
+            elif kind == 'coaching':
+                changed(kind, locked_job.analysis.attempt_id)
+
 
 
 @_private_database_logging()

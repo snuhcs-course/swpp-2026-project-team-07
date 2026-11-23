@@ -1,4 +1,5 @@
 import { IncrementalCaptureHost } from '../features/recording/IncrementalCaptureHost';
+import { SelectedPreparationHost } from '../features/localization/SelectedPreparationHost';
 // Scribe migration: OpenAI Codex, Iteration 2 (2026-10-16); see active collaboration log.
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-10-14).
 // OpenAI Codex light-mode ambient: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-081
@@ -48,6 +49,7 @@ import { HomeContext, ShellContext, type Go, type HomeShared, type NavState } fr
 
 export function AppShell() {
   useTheme();
+  const [frontDeck, setFrontDeck] = useState<string | null>(null);
   const [layers, setLayers] = useState<NavState[]>([{ screen: 'home', nav: null, deckId: null, slide: 0, sel: 0, from: null, visit: 0 }]);
   const layersRef = useRef(layers);
   const visitRef = useRef(0);
@@ -57,12 +59,15 @@ export function AppShell() {
   const p = useSharedValue(0), vy = useSharedValue(0), gap = useSharedValue(0), hold = useSharedValue(0);
   const uploadBlur = useSharedValue(0), analyzing = useSharedValue(0), setup = useSharedValue(0);
   const press = useSharedValue(1), picker = useSharedValue(0);
+  const titleReturn = useSharedValue(1);
   const home = useMemo<HomeShared>(() => ({
-    p, vy, gap, hold, uploadBlur, analyzing, setup, press, picker,
-  }), [p, vy, gap, hold, uploadBlur, analyzing, setup, press, picker]);
+    p, vy, gap, hold, uploadBlur, analyzing, setup, press, picker, titleReturn,
+  }), [p, vy, gap, hold, uploadBlur, analyzing, setup, press, picker, titleReturn]);
   const go: Go = useCallback((screen, patch) => {
     const previous = layersRef.current;
     const top = previous[previous.length - 1];
+    if (screen === 'home') titleReturn.set(1);
+    else if (top.screen === 'rehearse') titleReturn.set(0);
     if (screen === 'upload' && top.screen !== 'upload') {
       setUploadLook({ hue: nextHue(), order: visibleDecks().length + 1 });
     }
@@ -73,12 +78,14 @@ export function AppShell() {
     let next: NavState[];
     if (existing >= 0) {
       // Returning reveals the mounted page underneath, including its local state.
-      next = [...previous.slice(0, existing), { ...previous[existing], ...patch, screen, nav: null }];
+      next = [...previous.slice(0, existing), { ...previous[existing], ...patch, screen, nav: null,
+        swipeFrom: screen === 'review' ? patch?.swipeFrom : undefined }];
     } else {
       // A newly pushed page fades over its mounted underlay; returning to an existing page does not re-enter.
-      const layer: NavState = { ...top, ...patch, screen, nav: 'fade', from: patch?.from ?? null, visit: ++visitRef.current };
-      // Import setup is finished; its temporary layer should not sit behind Rehearse.
-      next = top.screen === 'upload' && screen === 'rehearse'
+      const layer: NavState = { ...top, ...patch, screen, nav: 'fade', from: patch?.from ?? null,
+        swipeFrom: screen === 'review' ? patch?.swipeFrom : undefined, visit: ++visitRef.current };
+      // Import setup and resolved comparison must not sit behind their next page.
+      next = (top.screen === 'upload' && screen === 'rehearse') || (top.screen === 'compare' && screen === 'review')
         ? [...previous.slice(0, -1), layer] : [...previous, layer];
     }
     if (screen === 'review' && patch?.sel !== undefined) {
@@ -86,7 +93,7 @@ export function AppShell() {
     }
     layersRef.current = next;
     setLayers(next);
-  }, []);
+  }, [titleReturn]);
   useEffect(() => {
     void loadPresentations();
     const sub = AppState.addEventListener('change', s => { if (s === 'active') void loadPresentations(); });
@@ -110,26 +117,30 @@ export function AppShell() {
     });
     return () => { cancelAnimationFrame(firstFrame); cancelAnimationFrame(nextFrame); };
   }, [s, retiredRehearse]);
+  // OpenAI Codex, Iteration 4 (2026-11-22): HomeScreen alone owns the language switch.
   const homeMode = s === 'home' ? 'home' : s === 'upload' ? 'upload' : 'covered';
   // In explicit landscape fullscreen the Home carousel must not show through
   // the safe-area gutters around Frame's scaled landscape canvas.
-  const homeVisible = layers.length <= 2 && !(s === 'rehearse' && fullscreenLandscape);
+  // OpenAI Codex, 2026-11-19: Wait and Full Review fade down to Home, not through a stale intermediate page.
+  const fullOverRehearse = s === 'full' && nav.from === 'rehearse';
+  const homeVisible = (layers.length <= 2 || s === 'wait' || (s === 'full' && !fullOverRehearse)) && !(s === 'rehearse' && fullscreenLandscape);
   const visibleLayers = layers.slice(1);
-  const underlayVisit = layers.length > 1 ? layers[layers.length - 2].visit : null;
+  const underlayVisit = s === 'wait' || (s === 'full' && !fullOverRehearse) ? null : layers.length > 1 ? layers[layers.length - 2].visit : null;
   const renderedLayers = retiredRehearse && !visibleLayers.some(layer => layer.visit === retiredRehearse.visit)
     ? [...visibleLayers, retiredRehearse] : visibleLayers;
   return (
     <ShellContext.Provider value={ctx}>
       <HomeContext.Provider value={homeCtx}>
+      <SelectedPreparationHost deckId={s === 'home' ? frontDeck : s === 'upload' ? null : nav.deckId} />
       <Frame background={(s === 'home' || s === 'upload') ? <Ambient screen={s} deckId={nav.deckId} home={home} uploadHue={uploadLook?.hue ?? null} /> : null} landscape={s === 'rehearse' && fullscreenLandscape}>
         <Enter kind={null} style={homeVisible ? undefined : styles.hiddenPage}>
-          <HomeScreen mode={homeMode} uploadLook={uploadLook} />
+          <HomeScreen mode={homeMode} uploadLook={uploadLook} onFrontDeckChange={setFrontDeck} />
         </Enter>
         {renderedLayers.map(layer => {
           const active = layer.visit === nav.visit;
           const retired = s === 'home' && layer.visit === retiredRehearse?.visit;
           const visible = active || layer.visit === underlayVisit;
-          return <View key={layer.visit} style={visible && !retired ? styles.page : styles.hiddenPage} pointerEvents={active ? 'auto' : 'none'}
+          return <View key={layer.visit} style={visible && !retired ? [styles.page, !active && layer.screen === 'rehearse' && styles.clippedUnderlay] : styles.hiddenPage} pointerEvents={active ? 'auto' : 'none'}
             accessibilityElementsHidden={!active} importantForAccessibility={active ? 'auto' : 'no-hide-descendants'}>
             <ShellContext.Provider value={{ go, nav: layer, home, setFullscreenLandscape }}>
               <LayerScreen screen={layer.screen} active={active} />
@@ -153,6 +164,7 @@ export function AppShell() {
 
 const styles = StyleSheet.create({
   page: { ...StyleSheet.absoluteFill },
+  clippedUnderlay: { overflow: 'hidden' },
   hiddenPage: { ...StyleSheet.absoluteFill, display: 'none' },
 });
 

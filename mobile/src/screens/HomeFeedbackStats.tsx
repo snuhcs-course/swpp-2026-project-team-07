@@ -1,5 +1,6 @@
 // OpenAI Codex reliability fixes: docs/ai-collaboration/prompt-logs/unattributed/iteration-2.md#record-138
 // Home's v2 score and three compact run statistics (UI spec S01).
+import { useUiText } from '../design/language';
 import { Pressable, View } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { Txt, useFrame } from '../design/frame';
@@ -14,14 +15,17 @@ import { fmt } from '../domain/format';
 import { useDeckModel } from '../features/presentations/useDeckModel';
 import type { HomeShared } from './shared';
 
-export function HomeFeedbackStats({ deckId, home, active, onOpenReview }: { deckId: string | null; home: HomeShared; active: boolean; onOpenReview: () => void }) {
+// OpenAI Codex, 2026-11-19: neighboring decks crossfade with the moving carousel; only the front stats fetch.
+export function HomeFeedbackStats({ deckId, home, active, onOpenReview, index = 0, count = 1 }: { deckId: string | null; home: HomeShared; active: boolean; onOpenReview: () => void; index?: number; count?: number }) {
+  const ui = useUiText();
   const { c } = useTheme();
   const compact = useFrame().compact;
   const model = useDeckModel(deckId);
   const { scores } = useRunScores(model, active);
   const style = useAnimatedStyle(() => {
-    const pull = Math.min(1, Math.abs(home.vy.value) / PULL_T), fraction = Math.abs(home.p.value - Math.round(home.p.value));
-    return { opacity: (home.vy.value < 0 ? 1 - Math.min(1, pull * 1.6) * 0.9 : 1) * Math.max(0, 1 - fraction * 2.4) };
+    const pull = Math.min(1, Math.abs(home.vy.value) / PULL_T);
+    const distance = count > 1 ? Math.abs((((index - home.p.value + count / 2) % count) + count) % count - count / 2) : 0;
+    return { opacity: (home.vy.value < 0 ? 1 - Math.min(1, pull * 1.6) * 0.9 : 1) * Math.max(0, 1 - distance) };
   });
   if (!model) return null;
   const { stats, state } = model;
@@ -37,8 +41,8 @@ export function HomeFeedbackStats({ deckId, home, active, onOpenReview }: { deck
     { icon: null, value: stats?.wpm == null ? '—' : String(stats.wpm), label: 'wpm', color: c.text },
   ];
   const composed = !!run && scores.overall.status === 'Combined recordings';
-  return <Animated.View pointerEvents="box-none" style={[styles.root, style]}>
-    {score !== null ? <Pressable accessibilityRole="button" accessibilityLabel={`Open full review, presentation score ${score} percent`}
+  return <Animated.View pointerEvents={active ? 'box-none' : 'none'} style={[styles.root, style]}>
+    {score !== null ? <Pressable accessibilityRole="button" accessibilityLabel={ui(`Open full review, presentation score ${score} percent`)}
       onPress={onOpenReview} style={styles.scoreTarget}><Txt style={[styles.score, compact && styles.compactScore, { color }]}>{score}<Txt style={[styles.unit, compact && styles.compactUnit, { color }]}>%</Txt></Txt></Pressable>
       : run ? <Txt style={[styles.score, compact && styles.compactScore, { color: c.muted, opacity: 0.45 }]}>—</Txt>
         : <Txt style={[styles.noRun, { color: c.muted }]}>No run yet</Txt>}
