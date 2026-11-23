@@ -12,6 +12,10 @@ The [reporting guide](ai-collaboration-guidelines.md) explains how to log prompt
 
 ## Prompt logs
 
+For an iteration report, also check each contributor's `docs/<contributor>-prompt-logs`
+branch for entries from the same iteration. Cite the commit and task entry when
+using those records. [Contributor prompt-log workflow](../../AGENTS.md#contributor-prompt-log-branches)
+
 | Iteration | Injoon | Jaewon | Jooyoung | Seoyeon | Unattributed |
 | --- | --- | --- | --- | --- | --- |
 | <a id="iteration-1-logs"></a>Iteration 1 | [Log](prompt-logs/injoon/iteration-1.md) | [Log](prompt-logs/jaewon/iteration-1.md) | [Log](prompt-logs/jooyoung/iteration-1.md) | [Log](prompt-logs/seoyeon/iteration-1.md) | [Log](prompt-logs/unattributed/iteration-1.md) |
