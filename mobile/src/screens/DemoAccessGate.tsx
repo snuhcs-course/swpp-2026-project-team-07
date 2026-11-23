@@ -2,7 +2,7 @@
 import { useUiText } from '../design/language';
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import { Txt } from '../design/frame';
+import { Frame, Txt } from '../design/frame';
 import { LanguageToggle } from '../design/LanguageToggle';
 import { useTheme } from '../design/theme';
 import { F } from '../design/tokens';
@@ -35,32 +35,35 @@ export function DemoAccessGate({ children }: { children: ReactNode }) {
         <Txt style={{ fontFamily: F.semibold, color: c.strong }}>Server access locked · Enter demo code</Txt>
       </Pressable>
     </View>}
-    <Modal transparent visible={visible} animationType="fade" onRequestClose={close}>
-      <KeyboardAvoidingView behavior="padding" style={[styles.overlay, { backgroundColor: c.bg }]}>
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scroll}>
-          <View style={styles.card} accessibilityViewIsModal>
-            {/* OpenAI Codex, 2026-11-23: let first-run users choose a language before entering a code or going offline. */}
-            {!mounted && <LanguageToggle inline />}
-            <Txt style={[styles.title, { color: c.strong }]}>Open OutLoud</Txt>
-            <Txt style={[styles.body, { color: c.body }]}>Enter the demo code provided with this app. Reviewers share this workspace, including uploaded slides and recordings.</Txt>
-            {access.state === 'loading' ? <ActivityIndicator accessibilityLabel={ui("Opening saved access")} color={c.strong} /> : <>
-              <TextInput accessibilityLabel={ui("Demo code")} placeholder={ui("Demo code")} placeholderTextColor={c.secondary}
-                value={code} onChangeText={setCode} secureTextEntry autoCapitalize="none" autoCorrect={false}
-                autoComplete="off" maxLength={256} returnKeyType="go" onSubmitEditing={() => { void connect(); }}
-                editable={!busy} style={[styles.input, { color: c.strong, borderColor: c.track }]} />
-              {!!(error || access.notice) && <Txt accessibilityLiveRegion="polite" style={[styles.body, { color: c.body }]}>{error || access.notice}</Txt>}
-              <Pressable accessibilityRole="button" accessibilityLabel={ui("Connect to OutLoud")} disabled={busy || !code.trim()} onPress={() => { void connect(); }}
-                style={[styles.connect, { backgroundColor: c.strong, opacity: busy || !code.trim() ? 0.5 : 1 }]}>
-                {busy ? <ActivityIndicator color={c.bg} /> : <Txt style={{ fontFamily: F.bold, color: c.bg }}>Connect</Txt>}
+    <Modal transparent statusBarTranslucent={!mounted} navigationBarTranslucent={!mounted}
+      visible={visible} animationType="fade" onRequestClose={close}>
+      <View style={[styles.overlay, { backgroundColor: c.bg }]} accessibilityViewIsModal>
+        <KeyboardAvoidingView behavior="padding" style={styles.overlay}>
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scroll}>
+            <View style={styles.card}>
+              <Txt style={[styles.title, { color: c.strong }]}>Open OutLoud</Txt>
+              <Txt style={[styles.body, { color: c.body }]}>Enter the demo code provided with this app. Reviewers share this workspace, including uploaded slides and recordings.</Txt>
+              {access.state === 'loading' ? <ActivityIndicator accessibilityLabel={ui("Opening saved access")} color={c.strong} /> : <>
+                <TextInput accessibilityLabel={ui("Demo code")} placeholder={ui("Demo code")} placeholderTextColor={c.secondary}
+                  value={code} onChangeText={setCode} secureTextEntry autoCapitalize="none" autoCorrect={false}
+                  autoComplete="off" maxLength={256} returnKeyType="go" onSubmitEditing={() => { void connect(); }}
+                  editable={!busy} style={[styles.input, { color: c.strong, borderColor: c.track }]} />
+                {!!(error || access.notice) && <Txt accessibilityLiveRegion="polite" style={[styles.body, { color: c.body }]}>{error || access.notice}</Txt>}
+                <Pressable accessibilityRole="button" accessibilityLabel={ui("Connect to OutLoud")} disabled={busy || !code.trim()} onPress={() => { void connect(); }}
+                  style={[styles.connect, { backgroundColor: c.strong, opacity: busy || !code.trim() ? 0.5 : 1 }]}>
+                  {busy ? <ActivityIndicator color={c.bg} /> : <Txt style={{ fontFamily: F.bold, color: c.bg }}>Connect</Txt>}
+                </Pressable>
+              </>}
+              <Pressable accessibilityRole="button" onPress={close} style={styles.offline}>
+                <Txt style={{ fontFamily: F.semibold, color: c.body }}>Continue offline</Txt>
               </Pressable>
-            </>}
-            <Pressable accessibilityRole="button" onPress={close} style={styles.offline}>
-              <Txt style={{ fontFamily: F.semibold, color: c.body }}>Continue offline</Txt>
-            </Pressable>
-            <Txt style={[styles.note, { color: c.secondary }]}>Local slides and recordings stay on this phone. Internet access is needed for server features.</Txt>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+              <Txt style={[styles.note, { color: c.secondary }]}>Local slides and recordings stay on this phone. Internet access is needed for server features.</Txt>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+        {/* OpenAI Codex, 2026-11-23: use Home's frame independently of translated copy and keyboard layout. */}
+        {!mounted && <Frame overlay><LanguageToggle showLabel /></Frame>}
+      </View>
     </Modal>
   </>;
 }

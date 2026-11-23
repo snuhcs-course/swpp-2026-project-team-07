@@ -61,8 +61,8 @@ function Arrows({ color }: { color: string }) {
   );
 }
 
-export function LanguageToggle({ featureScreen = false, landscape = false, inline = false }: {
-  featureScreen?: boolean; landscape?: boolean; inline?: boolean;
+export function LanguageToggle({ featureScreen = false, landscape = false, showLabel = false }: {
+  featureScreen?: boolean; landscape?: boolean; showLabel?: boolean;
 }) {
   const lang = useAppLanguage();
   const [saveFailed, setSaveFailed] = useState(false);
@@ -103,17 +103,17 @@ export function LanguageToggle({ featureScreen = false, landscape = false, inlin
     <><Pressable accessibilityRole="switch" accessibilityLabel={lang === 'ko' ? '앱 언어: 한국어' : 'App language: English'}
       accessibilityHint={lang === 'ko' ? '영어로 전환합니다.' : 'Switch to Korean.'}
       accessibilityState={{ checked: lang === 'ko' }} onPress={toggle} hitSlop={4}
-      style={inline ? styles.inlineHit : [styles.hit, featureScreen && featurePosition]}>
+      style={[styles.hit, featureScreen && featurePosition, showLabel && styles.labeledHit]}>
       <View style={styles.box} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         <Animated.View style={[StyleSheet.absoluteFill, enStyle]}><UnionDisc /></Animated.View>
         <Animated.View style={[StyleSheet.absoluteFill, koStyle]}><TaegeukDisc /></Animated.View>
         <View style={StyleSheet.absoluteFill}><Ring color={c.ink20} /></View>
         <Animated.View style={[StyleSheet.absoluteFill, spin]}><Arrows color={c.text} /></Animated.View>
       </View>
-      {inline && <Txt verbatim style={[styles.inlineLabel, { color: c.text }]}>English / 한국어</Txt>}
+      {showLabel && <Txt verbatim style={[styles.label, { color: c.text }]}>English / 한국어</Txt>}
     </Pressable>
     {saveFailed && <View pointerEvents="none" accessibilityRole="alert"
-      style={[styles.notice, inline && styles.inlineNotice, { backgroundColor: c.surface, borderColor: c.hair }]}>
+      style={[styles.notice, { backgroundColor: c.surface, borderColor: c.hair }]}>
       <Txt style={[styles.noticeText, { color: c.text }]}>Language changed for this session. Your preference could not be saved.</Txt>
     </View>}</>
   );
@@ -122,11 +122,10 @@ export function LanguageToggle({ featureScreen = false, landscape = false, inlin
 const styles = StyleSheet.create({
   // Mirrors ThemeToggle (right 18): same y-centre as the Home wordmark (top 57, 36 high → centre 75).
   hit: { position: 'absolute', top: 53, left: 18, width: 44, height: 44, zIndex: 40, alignItems: 'center', justifyContent: 'center' },
-  inlineHit: { alignSelf: 'flex-start', minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 4 },
-  inlineLabel: { fontFamily: F.semibold, fontSize: 15 },
+  labeledHit: { width: 'auto', flexDirection: 'row', paddingLeft: 1, paddingRight: 8, gap: 4 },
+  label: { fontFamily: F.semibold, fontSize: 15 },
   featureHit: { top: 3, left: 16 },
   notice: { position: 'absolute', left: 18, right: 18, top: 109, zIndex: 60, borderWidth: 1, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12 },
-  inlineNotice: { position: 'relative', left: 0, right: 0, top: 0 },
   noticeText: { fontFamily: F.medium, fontSize: 13.5, lineHeight: 19, textAlign: 'center' },
   box: { width: 42, height: 42 },
 });

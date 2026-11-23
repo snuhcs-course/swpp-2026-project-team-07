@@ -19,7 +19,10 @@ test('code entry and 401 re-entry retain the same recorder; offline continuation
   function Recorder(){useEffect(()=>{mounts++;return()=>{unmounts++}},[]);return React.createElement('Recorder');}
   await act(async()=>{renderer=TestRenderer.create(React.createElement(DemoAccessGate,null,React.createElement(Recorder)));});
   assert.equal(mounts,0);
-  assert.equal(renderer.root.findByType('LanguageToggle').props.inline,true);
+  const languageFrame=renderer.root.findByType('Frame');
+  assert.equal(languageFrame.props.overlay,true);
+  assert.equal(languageFrame.findByType('LanguageToggle').props.showLabel,true);
+  assert.equal(renderer.root.findByType('ScrollView').findAllByType('LanguageToggle').length,0);
   assert.ok(JSON.stringify(renderer.toJSON()).includes('Reviewers share this workspace'));
   assert.equal(renderer.root.findByType('TextInput').props.secureTextEntry,true);
   assert.ok(renderer.root.findAllByType('Text').some(text=>text.props.children==='Continue offline'));
