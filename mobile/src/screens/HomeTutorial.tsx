@@ -2,7 +2,7 @@
 // "How OutLoud works": the eight-page guide from the design prototype (project/App.dc.html), drawn 1:1 in the
 // 390 × 844 frame. Fixed header; the pages slide as one strip; dots and hints stay put. Swipe sideways between
 // pages, swipe down (or Back, or "Got it" on the last page) to close. It opens by itself once, on first launch.
-import { memo, useEffect, useMemo, useRef, type ReactNode } from 'react';
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 import Animated, { cancelAnimation, Easing, runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue,
@@ -31,6 +31,8 @@ const N = TUTORIAL_PAGES.length;
 const W = 390;
 // OpenAI Codex, 2026-11-23: give the tutorial content more space below the fixed language switch.
 const CONTENT_OFFSET = 12;
+const DONE_HEIGHT = 48;
+const AGAIN_TOP = 722;
 
 // The prototype's own colours for this screen (its --t1 … --bad variables), so both themes match it exactly.
 const GUIDE = {
@@ -392,6 +394,10 @@ const GuidePage = memo(function GuidePage({ index, current, x, k, p, onDone }: {
   const page = TUTORIAL_PAGES[index];
   const language = useAppLanguage();
   const ui = useUiText();
+  const last = index === N - 1;
+  const [wordsBottom, setWordsBottom] = useState(0);
+  // OpenAI Codex, 2026-11-23: center the button in the available gap as the translated paragraph wraps.
+  const doneTop = Math.max(655, Math.round((wordsBottom + AGAIN_TOP - DONE_HEIGHT) / 2));
   // Neighbours stay at 20% while you drag; the page being reached comes up to full as it arrives.
   const fade = useAnimatedStyle(() => ({ opacity: Math.max(0.2, 1 - Math.abs(index + x.value / W) * 0.8) }));
   return <Animated.View accessibilityLabel={language === 'ko' ? `${N}개 중 ${index + 1}: ${ui(page.title)}` : `${index + 1} of ${N}: ${page.title}`} accessibilityElementsHidden={!current}
@@ -400,12 +406,14 @@ const GuidePage = memo(function GuidePage({ index, current, x, k, p, onDone }: {
     <View pointerEvents="none" style={[s.card, { borderColor: p.hair, backgroundColor: p.s06 }]}>
       <View style={s.cardBody}><Card k={k} p={p} /></View>
     </View>
-    <View pointerEvents="none" style={s.words}>
+    <View pointerEvents="none" style={s.words}
+      onLayout={last ? ({ nativeEvent: { layout } }) => setWordsBottom(layout.y + layout.height) : undefined}>
       <Txt style={[s.title, { color: p.t1 }]}>{page.title}</Txt>
       <Txt style={[s.body, { color: p.t4 }]}>{page.body}</Txt>
     </View>
-    {index === N - 1 && <>
-      <Pressable accessibilityRole="button" accessibilityLabel={ui('Got it')} onPress={onDone} style={[s.done, { backgroundColor: p.t1 }]}>
+    {last && <>
+      <Pressable accessibilityRole="button" accessibilityLabel={ui('Got it')} onPress={onDone}
+        style={[s.done, { top: doneTop, backgroundColor: p.t1 }]}>
         <Txt style={[s.doneText, { color: p.bg }]}>Got it</Txt>
       </Pressable>
       <Txt style={[s.again, { color: p.tm }]}>Tap OutLoud on Home to see this again</Txt>
@@ -543,10 +551,9 @@ const s = StyleSheet.create({
   words: { position: 'absolute', left: 30, right: 30, top: 528, alignItems: 'center' },
   title: { fontFamily: F.display, fontSize: 24, lineHeight: 27.6, letterSpacing: -0.5, textAlign: 'center' },
   body: { marginTop: 10, fontFamily: F.medium, fontSize: 15, lineHeight: 22.05, textAlign: 'center' },
-  // OpenAI Codex, 2026-11-23: balance whitespace around the button without moving the last page's text or footer.
-  done: { position: 'absolute', left: 125, top: 655, width: 140, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  done: { position: 'absolute', left: 125, width: 140, height: DONE_HEIGHT, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   doneText: { fontFamily: F.display, fontSize: 16 },
-  again: { position: 'absolute', left: 30, right: 30, top: 722, fontFamily: F.medium, fontSize: 14.5, textAlign: 'center' },
+  again: { position: 'absolute', left: 30, right: 30, top: AGAIN_TOP, fontFamily: F.medium, fontSize: 14.5, textAlign: 'center' },
   dots: { position: 'absolute', left: 0, right: 0, bottom: 74, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 },
   dot: { height: 6, borderRadius: 3 },
   hints: { position: 'absolute', left: 0, right: 0, bottom: 30, height: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 18 },

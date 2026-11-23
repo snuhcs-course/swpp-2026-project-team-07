@@ -391,6 +391,12 @@ test('the guide opens once, walks eight pages and responds to native page swipes
     assert.equal(textShown(`${i + 1} of 8 · ${TUTORIAL_PAGES[i].topic}`), true);
   }
   assert.equal(textShown('Swipe for more'), false);
+  const description = renderer.root.findAllByType('text').find(node => node.children.join('') === TUTORIAL_PAGES.at(-1).body);
+  const doneStyle = () => flat(byLabel('Got it').props.style);
+  assert.equal(doneStyle().top, 655);
+  await act(async () => hostParent(description).props.onLayout({ nativeEvent: { layout: { y: 528, height: 130 } } }));
+  assert.equal(doneStyle().top, 666);
+  assert.equal(doneStyle().width, 140);
   await click('Got it');
   assert.equal(readStored(TUTORIAL_SEEN), true);
   assert.ok(byLabel('App language: English'));
