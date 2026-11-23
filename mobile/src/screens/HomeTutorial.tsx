@@ -201,10 +201,10 @@ function AddCard({ k, p }: { k: Clocks; p: P }) {
     <View style={[s.centre, { top: 146 }]}>
       <Txt style={[s.small, { color: p.tm }]}>How long is it?</Txt>
       <Txt style={[s.bigTime, { color: p.t1 }]}>10:00</Txt>
-    </View>
-    <View style={s.ruler}>
-      {TICKS.map(i => <View key={i} style={[s.tick, i % 5 === 0 ? { top: 10, height: 16, backgroundColor: p.b50 } : { top: 17, height: 9, backgroundColor: p.b30 }, { left: 19 + i * 10 }]} />)}
-      <View style={[s.tick, { left: 169, top: -2, height: 30, backgroundColor: p.t1 }]} />
+      <View style={s.ruler}>
+        {TICKS.map(i => <View key={i} style={[s.tick, i % 5 === 0 ? { top: 10, height: 16, backgroundColor: p.b50 } : { top: 17, height: 9, backgroundColor: p.b30 }, { left: 19 + i * 10 }]} />)}
+        <View style={[s.tick, { left: 169, top: -2, height: 30, backgroundColor: p.t1 }]} />
+      </View>
     </View>
     <View style={[s.centre, { top: 246 }]}>
       <Txt style={[s.small, { color: p.tm }]}>Who’s listening?</Txt>
@@ -592,7 +592,8 @@ const s = StyleSheet.create({
   fileName: { fontFamily: F.bold, fontSize: 15 },
   fileMeta: { marginTop: 2, fontFamily: F.medium, fontSize: 12 },
   bigTime: { marginTop: 4, fontFamily: F.display, fontSize: 34, lineHeight: 34, letterSpacing: -1, fontVariant: tab },
-  ruler: { position: 'absolute', left: 0, right: 0, top: 200, height: 30 },
+  // OpenAI Codex, 2026-11-23: keep breathing room below the time as text scales.
+  ruler: { alignSelf: 'stretch', marginTop: 8, height: 30 },
   tick: { position: 'absolute', width: 2, borderRadius: 1 },
   audience: { paddingVertical: 6, paddingHorizontal: 11, borderWidth: 1, borderRadius: 999 },
   audienceText: { fontFamily: F.semibold, fontSize: 12.5 },
