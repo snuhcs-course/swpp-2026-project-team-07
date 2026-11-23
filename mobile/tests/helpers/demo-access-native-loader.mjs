@@ -4,6 +4,10 @@ export function resolve(specifier, context, nextResolve) {
   if (specifier === 'react-native') return { shortCircuit: true, url: moduleUrl(`
     export const View='View',Pressable='Pressable',Modal='Modal',TextInput='TextInput',ScrollView='ScrollView',
       KeyboardAvoidingView='KeyboardAvoidingView',ActivityIndicator='ActivityIndicator';
+    export const Keyboard={addListener:(event, callback)=>{
+      globalThis.__demoAccessKeyboard.set(event,callback);
+      return {remove:()=>globalThis.__demoAccessKeyboard.delete(event)};
+    }};
     export const StyleSheet={create:value=>value};`) };
   if (specifier === '../design/frame') return { shortCircuit: true, url: moduleUrl(`
     export const Frame='Frame', Txt='Text', useFrameLayout=()=>({info:{top:24,s:1}});`) };

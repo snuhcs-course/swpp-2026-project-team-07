@@ -1,7 +1,7 @@
 // AI-assisted demo access migration, OpenAI Codex, November 1, 2026.
 import { useUiText } from '../design/language';
-import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { Frame, Txt, useFrameLayout } from '../design/frame';
 import { HOME_LANGUAGE_TOGGLE_BOTTOM, LanguageToggle } from '../design/LanguageToggle';
 import { useTheme } from '../design/theme';
@@ -17,13 +17,25 @@ export function DemoAccessGate({ children }: { children: ReactNode }) {
   const access = useSyncExternalStore(demoAccess.subscribe, demoAccess.getSnapshot, demoAccess.getSnapshot);
   const [opened, setOpened] = useState(false), [offline, setOffline] = useState(false);
   const [code, setCode] = useState(''), [error, setError] = useState(''), [busy, setBusy] = useState(false);
+  const [editingCode, setEditingCode] = useState(false);
+  const codeInput = useRef<TextInput>(null);
   useEffect(() => { void demoAccess.initialize(); }, []);
+  useEffect(() => {
+    if (!editingCode) return;
+    const hiding = Keyboard.addListener('keyboardDidHide', () => {
+      // OpenAI Codex, 2026-11-23: Android can hide the keyboard while the field still has focus.
+      codeInput.current?.blur();
+      setEditingCode(false);
+    });
+    return () => hiding.remove();
+  }, [editingCode]);
   if (!DEMO_CODE_REQUIRED) return children;
   const mounted = access.unlockedOnce || offline;
   const visible = access.state !== 'ready' && (opened || !mounted);
-  // OpenAI Codex, 2026-11-23: keep the scroll viewport below the fixed switch when the keyboard opens.
+  const showLanguage = !mounted && !editingCode;
+  // Keep the form below the switch while it is visible.
   const formTop = frame.top + (HOME_LANGUAGE_TOGGLE_BOTTOM + 12) * frame.s;
-  const close = () => { setOpened(false); setOffline(true); setCode(''); setError(''); };
+  const close = () => { setOpened(false); setOffline(true); setCode(''); setError(''); setEditingCode(false); };
   async function connect() {
     if (busy || !code.trim()) return;
     setBusy(true); setError('');
@@ -41,13 +53,14 @@ export function DemoAccessGate({ children }: { children: ReactNode }) {
     <Modal transparent statusBarTranslucent={!mounted} navigationBarTranslucent={!mounted}
       visible={visible} animationType="fade" onRequestClose={close}>
       <View style={[styles.overlay, { backgroundColor: c.bg }]} accessibilityViewIsModal>
-        <KeyboardAvoidingView behavior="padding" style={[styles.overlay, !mounted && { paddingTop: formTop }]}>
+        <KeyboardAvoidingView behavior="padding" style={[styles.overlay, showLanguage && { paddingTop: formTop }]}>
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scroll}>
             <View style={styles.card}>
               <Txt style={[styles.title, { color: c.strong }]}>Open OutLoud</Txt>
               <Txt style={[styles.body, { color: c.body }]}>Enter the demo code provided with this app. Reviewers share this workspace, including uploaded slides and recordings.</Txt>
               {access.state === 'loading' ? <ActivityIndicator accessibilityLabel={ui("Opening saved access")} color={c.strong} /> : <>
-                <TextInput accessibilityLabel={ui("Demo code")} placeholder={ui("Demo code")} placeholderTextColor={c.secondary}
+                <TextInput ref={codeInput} accessibilityLabel={ui("Demo code")} placeholder={ui("Demo code")} placeholderTextColor={c.secondary}
+                  onFocus={mounted ? undefined : () => setEditingCode(true)} onBlur={() => setEditingCode(false)}
                   value={code} onChangeText={setCode} secureTextEntry autoCapitalize="none" autoCorrect={false}
                   autoComplete="off" maxLength={256} returnKeyType="go" onSubmitEditing={() => { void connect(); }}
                   editable={!busy} style={[styles.input, { color: c.strong, borderColor: c.track }]} />
@@ -65,7 +78,7 @@ export function DemoAccessGate({ children }: { children: ReactNode }) {
           </ScrollView>
         </KeyboardAvoidingView>
         {/* OpenAI Codex, 2026-11-23: use Home's frame independently of translated copy and keyboard layout. */}
-        {!mounted && <Frame overlay><LanguageToggle showLabel /></Frame>}
+        {showLanguage && <Frame overlay><LanguageToggle showLabel /></Frame>}
       </View>
     </Modal>
   </>;
