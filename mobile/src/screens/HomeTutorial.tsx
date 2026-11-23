@@ -15,8 +15,6 @@ import { LanguageToggle } from '../design/LanguageToggle';
 import { EASE_SCREEN, F } from '../design/tokens';
 import { useTheme } from '../design/theme';
 
-/** Set once the guide has been closed or finished, so it only opens by itself on first launch. */
-export const TUTORIAL_SEEN = 'tutorial.seen';
 /** Header topic, page title and the words under the card, in prototype order. */
 export const TUTORIAL_PAGES: readonly { topic: string; title: string; body: string }[] = [
   { topic: 'Gestures', title: 'Spin, tap, pull', body: 'Your presentations sit in one row on Home. Most things work by gesture, and the hints along the bottom of each screen show which ones work there.' },
@@ -30,6 +28,8 @@ export const TUTORIAL_PAGES: readonly { topic: string; title: string; body: stri
 ];
 const N = TUTORIAL_PAGES.length;
 const W = 390;
+// OpenAI Codex, 2026-11-23: give the tutorial content more space below the fixed language switch.
+const CONTENT_OFFSET = 12;
 
 // The prototype's own colours for this screen (its --t1 … --bad variables), so both themes match it exactly.
 const GUIDE = {
@@ -423,8 +423,8 @@ function Dot({ on, p, still }: { on: boolean; p: P; still: boolean }) {
  * `cover` is how much the guide covers Home (0–1): it rises in over 460 ms and Home fades out under it; on close
  * it slides down and Home fades back in. `closing` lets Back run the same exit.
  */
-export function TutorialOverlay({ page, onPage, onClose, cover, closing }: { page: number; onPage: (page: number) => void;
-  onClose: () => void; cover: SharedValue<number>; closing: boolean }) {
+export function TutorialOverlay({ page, onPage, onClose, cover, closing, showLanguage }: { page: number; onPage: (page: number) => void;
+  onClose: () => void; cover: SharedValue<number>; closing: boolean; showLanguage: boolean }) {
   const { mode } = useTheme();
   const language = useAppLanguage();
   const ui = useUiText();
@@ -512,8 +512,7 @@ export function TutorialOverlay({ page, onPage, onClose, cover, closing }: { pag
         </Animated.View>
         <View pointerEvents="none" style={s.dots}>{TUTORIAL_PAGES.map((_, i) => <Dot key={i} on={i === page} p={p} still={still} />)}</View>
       </View>
-      {/* OpenAI Codex, 2026-11-23: keep the language control available over the Home tutorial. */}
-      <LanguageToggle />
+      {showLanguage && <LanguageToggle />}
       <View style={[s.hints, frame.compact && { bottom: 12 }]} pointerEvents="box-none">
         {!last && <Pressable accessibilityRole="button" accessibilityLabel={ui('Next page')} onPress={() => go(page + 1)} hitSlop={13} style={s.hint}>
           <Glyph name="h-spin" size={18} color={p.tm} /><Txt style={[s.hintText, { color: p.tm }]}>Swipe for more</Txt>
@@ -530,10 +529,10 @@ const tab = ['tabular-nums'] as ['tabular-nums'];
 const s = StyleSheet.create({
   overlay: { zIndex: 55, backgroundColor: 'transparent' },
   frame: { position: 'absolute', left: 0, top: 0, width: W, height: 844 },
-  header: { position: 'absolute', left: 40, right: 40, top: 50, alignItems: 'center' },
+  header: { position: 'absolute', left: 40, right: 40, top: 50 + CONTENT_OFFSET, alignItems: 'center' },
   heading: { fontFamily: F.display, fontSize: 18, lineHeight: 21.6, letterSpacing: -0.3 },
   topic: { marginTop: 3, fontFamily: F.medium, fontSize: 13 },
-  strip: { position: 'absolute', left: 0, top: 0, width: W * N, height: 760 },
+  strip: { position: 'absolute', left: 0, top: CONTENT_OFFSET, width: W * N, height: 760 },
   page: { position: 'absolute', top: 0, width: W, height: 760 },
   card: { position: 'absolute', left: 24, right: 24, top: 116, height: 384, borderWidth: 1, borderRadius: 26, overflow: 'hidden' },
   cardBody: { position: 'absolute', left: 0, right: 0, top: 30, bottom: 0 },

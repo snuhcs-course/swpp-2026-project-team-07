@@ -14,6 +14,8 @@ globalThis.__demoAccessKeyboard=new Map();
 globalThis.__demoAccessFetch=async()=>Response.json({service:'outloud-api'});
 const { DemoAccessGate }=await import('../src/screens/DemoAccessGate.tsx');
 const { demoAccess, enterDemoCode, backendFetch }=await import('../src/services/backendFetch.ts');
+const { TUTORIAL_SEEN }=await import('../src/screens/shared.ts');
+const { removeStored, writeStored }=await import('../src/services/storage.ts');
 
 test('code entry and 401 re-entry retain the same recorder; offline continuation remains available',async()=>{
   let mounts=0,unmounts=0,renderer;
@@ -39,6 +41,13 @@ test('code entry and 401 re-entry retain the same recorder; offline continuation
   await act(async()=>input().onFocus());
   await act(async()=>input().onBlur());
   assert.equal(renderer.root.findAllByType('LanguageToggle').length,1);
+  writeStored(TUTORIAL_SEEN,true);
+  let returning;
+  await act(async()=>{returning=TestRenderer.create(React.createElement(DemoAccessGate));});
+  assert.equal(returning.root.findByType('Modal').props.visible,true);
+  assert.equal(returning.root.findAllByType('LanguageToggle').length,0);
+  await act(async()=>returning.unmount());
+  removeStored(TUTORIAL_SEEN);
   assert.ok(renderer.root.findAllByType('Text').some(text=>text.props.children==='Continue offline'));
   await act(async()=>{await enterDemoCode('synthetic-code')});
   assert.equal(mounts,1);assert.equal(unmounts,0);

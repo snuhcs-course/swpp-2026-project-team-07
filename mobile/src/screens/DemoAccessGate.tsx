@@ -8,6 +8,7 @@ import { useTheme } from '../design/theme';
 import { F } from '../design/tokens';
 import { DEMO_CODE_REQUIRED } from '../services/apiConfig';
 import { demoAccess, enterDemoCode } from '../services/backendFetch';
+import { hasSeenTutorial } from './shared';
 
 /** Once opened, the app stays mounted when server access expires mid-recording. */
 export function DemoAccessGate({ children }: { children: ReactNode }) {
@@ -18,6 +19,7 @@ export function DemoAccessGate({ children }: { children: ReactNode }) {
   const [opened, setOpened] = useState(false), [offline, setOffline] = useState(false);
   const [code, setCode] = useState(''), [error, setError] = useState(''), [busy, setBusy] = useState(false);
   const [editingCode, setEditingCode] = useState(false);
+  const [tutorialSeen] = useState(hasSeenTutorial);
   const codeInput = useRef<TextInput>(null);
   useEffect(() => { void demoAccess.initialize(); }, []);
   useEffect(() => {
@@ -32,7 +34,8 @@ export function DemoAccessGate({ children }: { children: ReactNode }) {
   if (!DEMO_CODE_REQUIRED) return children;
   const mounted = access.unlockedOnce || offline;
   const visible = access.state !== 'ready' && (opened || !mounted);
-  const showLanguage = !mounted && !editingCode;
+  const firstRun = !mounted && !tutorialSeen;
+  const showLanguage = firstRun && !editingCode;
   // Keep the form below the switch while it is visible.
   const formTop = frame.top + (HOME_LANGUAGE_TOGGLE_BOTTOM + 12) * frame.s;
   const close = () => { setOpened(false); setOffline(true); setCode(''); setError(''); setEditingCode(false); };
@@ -50,7 +53,7 @@ export function DemoAccessGate({ children }: { children: ReactNode }) {
         <Txt style={{ fontFamily: F.semibold, color: c.strong }}>Server access locked · Enter demo code</Txt>
       </Pressable>
     </View>}
-    <Modal transparent statusBarTranslucent={!mounted} navigationBarTranslucent={!mounted}
+    <Modal transparent statusBarTranslucent={firstRun} navigationBarTranslucent={firstRun}
       visible={visible} animationType="fade" onRequestClose={close}>
       <View style={[styles.overlay, { backgroundColor: c.bg }]} accessibilityViewIsModal>
         <KeyboardAvoidingView behavior="padding" style={[styles.overlay, showLanguage && { paddingTop: formTop }]}>
@@ -60,7 +63,7 @@ export function DemoAccessGate({ children }: { children: ReactNode }) {
               <Txt style={[styles.body, { color: c.body }]}>Enter the demo code provided with this app. Reviewers share this workspace, including uploaded slides and recordings.</Txt>
               {access.state === 'loading' ? <ActivityIndicator accessibilityLabel={ui("Opening saved access")} color={c.strong} /> : <>
                 <TextInput ref={codeInput} accessibilityLabel={ui("Demo code")} placeholder={ui("Demo code")} placeholderTextColor={c.secondary}
-                  onFocus={mounted ? undefined : () => setEditingCode(true)} onBlur={() => setEditingCode(false)}
+                  onFocus={firstRun ? () => setEditingCode(true) : undefined} onBlur={() => setEditingCode(false)}
                   value={code} onChangeText={setCode} secureTextEntry autoCapitalize="none" autoCorrect={false}
                   autoComplete="off" maxLength={256} returnKeyType="go" onSubmitEditing={() => { void connect(); }}
                   editable={!busy} style={[styles.input, { color: c.strong, borderColor: c.track }]} />

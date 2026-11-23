@@ -15,7 +15,7 @@ registerHooks({ resolve, load });
 
 const { HomeScreen } = await import('../src/screens/HomeScreen.tsx');
 const { UploadScreen } = await import('../src/screens/UploadScreen.tsx');
-const { HomeContext, ShellContext } = await import('../src/screens/shared.ts');
+const { HomeContext, ShellContext, TUTORIAL_SEEN } = await import('../src/screens/shared.ts');
 const { deckById, savePresentation, saveDeckState, getDeckState, forgetPresentation, visibleDecks } =
   await import('../src/features/presentations/store.ts');
 const { getImportedPdfs } = await import('../src/features/pdf/service.ts');
@@ -25,7 +25,7 @@ const { defaultRequirementsPending } = await import('../src/features/presentatio
 const { API_URL } = await import('../src/services/api.ts');
 const { readStored, writeStored, removeStored } = await import('../src/services/storage.ts');
 // Claude prototype guide integrated by OpenAI Codex, Iteration 4 (2026-11-21): skip first-run overlay in older Home tests.
-const { TUTORIAL_SEEN, TUTORIAL_PAGES } = await import('../src/screens/HomeTutorial.tsx');
+const { TUTORIAL_PAGES } = await import('../src/screens/HomeTutorial.tsx');
 writeStored(TUTORIAL_SEEN, true);
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -391,11 +391,16 @@ test('the guide opens once, walks eight pages and responds to native page swipes
   assert.equal(textShown('Swipe for more'), false);
   await click('Got it');
   assert.equal(readStored(TUTORIAL_SEEN), true);
+  assert.ok(byLabel('App language: English'));
+  await click('How OutLoud works');
+  assert.equal(renderer.root.findAllByProps({ accessibilityLabel: 'App language: English' }).length, 0);
+  await act(async () => assert.equal(pressBack(), true));
   await act(async () => renderer.unmount()); renderer = undefined;
   await mount(HomeScreen, { mode: 'home', uploadLook: null });
   assert.equal(renderer.root.findAllByProps({ accessibilityLabel: 'Close tutorial' }).length, 0);
   await click('How OutLoud works');
   assert.equal(textShown('1 of 8 · Gestures'), true);
+  assert.equal(renderer.root.findAllByProps({ accessibilityLabel: 'App language: English' }).length, 0);
   await act(async () => assert.equal(pressBack(), true));
   assert.equal(renderer.root.findAllByProps({ accessibilityLabel: 'Close tutorial' }).length, 0);
 });
