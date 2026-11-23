@@ -19,6 +19,7 @@ test('code entry and 401 re-entry retain the same recorder; offline continuation
   function Recorder(){useEffect(()=>{mounts++;return()=>{unmounts++}},[]);return React.createElement('Recorder');}
   await act(async()=>{renderer=TestRenderer.create(React.createElement(DemoAccessGate,null,React.createElement(Recorder)));});
   assert.equal(mounts,0);
+  assert.equal(renderer.root.findByType('LanguageToggle').props.inline,true);
   assert.ok(JSON.stringify(renderer.toJSON()).includes('Reviewers share this workspace'));
   assert.equal(renderer.root.findByType('TextInput').props.secureTextEntry,true);
   assert.ok(renderer.root.findAllByType('Text').some(text=>text.props.children==='Continue offline'));
@@ -31,6 +32,7 @@ test('code entry and 401 re-entry retain the same recorder; offline continuation
   assert.equal(renderer.root.findByType('Modal').props.visible,false);
   await act(async()=>{renderer.root.findByProps({accessibilityLabel:'Enter demo code to reconnect'}).props.onPress()});
   assert.equal(renderer.root.findByType('Modal').props.visible,true);
+  assert.equal(renderer.root.findAllByType('LanguageToggle').length,0);
   assert.equal(mounts,1);assert.equal(unmounts,0);
   await act(async()=>{renderer.root.findByType('Modal').props.onRequestClose()});
   assert.equal(renderer.root.findByType('Modal').props.visible,false);

@@ -3,6 +3,7 @@ import { useUiText } from '../design/language';
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { Txt } from '../design/frame';
+import { LanguageToggle } from '../design/LanguageToggle';
 import { useTheme } from '../design/theme';
 import { F } from '../design/tokens';
 import { DEMO_CODE_REQUIRED } from '../services/apiConfig';
@@ -38,6 +39,8 @@ export function DemoAccessGate({ children }: { children: ReactNode }) {
       <KeyboardAvoidingView behavior="padding" style={[styles.overlay, { backgroundColor: c.bg }]}>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scroll}>
           <View style={styles.card} accessibilityViewIsModal>
+            {/* OpenAI Codex, 2026-11-23: let first-run users choose a language before entering a code or going offline. */}
+            {!mounted && <LanguageToggle inline />}
             <Txt style={[styles.title, { color: c.strong }]}>Open OutLoud</Txt>
             <Txt style={[styles.body, { color: c.body }]}>Enter the demo code provided with this app. Reviewers share this workspace, including uploaded slides and recordings.</Txt>
             {access.state === 'loading' ? <ActivityIndicator accessibilityLabel={ui("Opening saved access")} color={c.strong} /> : <>

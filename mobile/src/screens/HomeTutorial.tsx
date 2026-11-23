@@ -11,6 +11,7 @@ import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop, Text as SvgText } 
 import { Txt, useFrame } from '../design/frame';
 import { Glyph, PresentationIcon, UIIcon, type GlyphName } from '../design/icons';
 import { useAppLanguage, useUiText } from '../design/language';
+import { LanguageToggle } from '../design/LanguageToggle';
 import { EASE_SCREEN, F } from '../design/tokens';
 import { useTheme } from '../design/theme';
 
@@ -403,7 +404,7 @@ const GuidePage = memo(function GuidePage({ index, current, x, k, p, onDone }: {
       <Txt style={[s.body, { color: p.t4 }]}>{page.body}</Txt>
     </View>
     {index === N - 1 && <>
-      <Pressable accessibilityRole="button" accessibilityLabel="Got it" onPress={onDone} style={[s.done, { backgroundColor: p.t1 }]}>
+      <Pressable accessibilityRole="button" accessibilityLabel={ui('Got it')} onPress={onDone} style={[s.done, { backgroundColor: p.t1 }]}>
         <Txt style={[s.doneText, { color: p.bg }]}>Got it</Txt>
       </Pressable>
       <Txt style={[s.again, { color: p.tm }]}>Tap OutLoud on Home to see this again</Txt>
@@ -506,16 +507,18 @@ export function TutorialOverlay({ page, onPage, onClose, cover, closing }: { pag
           <Txt numberOfLines={1} style={[s.heading, { color: p.t1 }]}>How OutLoud works</Txt>
           <Txt numberOfLines={1} style={[s.topic, { color: p.tm }]}>{language === 'ko' ? `${N}개 중 ${page + 1} · ${ui(TUTORIAL_PAGES[page].topic)}` : `${page + 1} of ${N} · ${TUTORIAL_PAGES[page].topic}`}</Txt>
         </View>
-        <Animated.View accessibilityLabel="How OutLoud works" style={[s.strip, strip]} pointerEvents="box-none">
+        <Animated.View accessibilityLabel={ui('How OutLoud works')} style={[s.strip, strip]} pointerEvents="box-none">
           {TUTORIAL_PAGES.map((_, i) => <GuidePage key={i} index={i} current={i === page} x={x} k={k} p={p} onDone={leave} />)}
         </Animated.View>
         <View pointerEvents="none" style={s.dots}>{TUTORIAL_PAGES.map((_, i) => <Dot key={i} on={i === page} p={p} still={still} />)}</View>
       </View>
+      {/* OpenAI Codex, 2026-11-23: keep the language control available over the Home tutorial. */}
+      <LanguageToggle />
       <View style={[s.hints, frame.compact && { bottom: 12 }]} pointerEvents="box-none">
-        {!last && <Pressable accessibilityRole="button" accessibilityLabel="Next page" onPress={() => go(page + 1)} hitSlop={13} style={s.hint}>
+        {!last && <Pressable accessibilityRole="button" accessibilityLabel={ui('Next page')} onPress={() => go(page + 1)} hitSlop={13} style={s.hint}>
           <Glyph name="h-spin" size={18} color={p.tm} /><Txt style={[s.hintText, { color: p.tm }]}>Swipe for more</Txt>
         </Pressable>}
-        <Pressable accessibilityRole="button" accessibilityLabel="Close tutorial" onPress={leave} hitSlop={13} style={s.hint}>
+        <Pressable accessibilityRole="button" accessibilityLabel={ui('Close tutorial')} onPress={leave} hitSlop={13} style={s.hint}>
           <Nudge k={k} up={false}><Glyph name="h-dn" size={18} color={p.tm} /></Nudge><Txt style={[s.hintText, { color: p.tm }]}>Swipe down to close</Txt>
         </Pressable>
       </View>

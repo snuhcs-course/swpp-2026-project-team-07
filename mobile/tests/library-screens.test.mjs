@@ -370,6 +370,13 @@ test('the guide opens once, walks eight pages and responds to native page swipes
     pan.onDeactivate({ translationX: -65, translationY: 2, canceled: false });
   });
   assert.equal(textShown('2 of 8 · Add'), true);
+  await click('App language: English');
+  assert.equal(readStored('settings.languagePreference'), 'ko');
+  const { koreanText } = await import('../src/design/koreanText.ts');
+  assert.equal(textShown(`8개 중 2 · ${koreanText('Add')}`), true);
+  assert.ok(byLabel(koreanText('Next page')));
+  await click('앱 언어: 한국어');
+  assert.equal(textShown('2 of 8 · Add'), true);
   await act(async () => {
     const pan = tutorialPan();
     pan.onActivate();

@@ -325,7 +325,7 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
       <Pressable accessibilityRole="button" accessibilityLabel={ui("How OutLoud works")} onPress={openTutorial} onLongPress={() => setCreditsOpen(true)}
         style={styles.logo}><Txt style={styles.logoText}>OutLoud</Txt></Pressable>
       <Animated.View pointerEvents={mode === 'home' ? 'box-none' : 'none'} style={[StyleSheet.absoluteFill, homeControls]}>
-        {mode === 'home' && !pickerFor && <LanguageToggle />}
+        {mode === 'home' && !pickerFor && tutorialPage === null && <LanguageToggle />}
         {!pickerFor && <ThemeToggle />}
       </Animated.View>
       <GestureDetector gesture={carouselGesture}><Animated.View style={[styles.carousel, homeLayer, mode === 'upload' && styles.addBlur]}

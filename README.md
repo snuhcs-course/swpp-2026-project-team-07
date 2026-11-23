@@ -8,11 +8,11 @@ An Android presentation rehearsal app that connects PDF slides, recordings, slid
 
 ## ONE Store review build
 
-[Download OutLoud 0.1.0 (build 40)](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-onestore-v40-20261122). This is the signed APK submitted for ONE Store review. It updates build 39 signed with the same Team 07 release key. Online coaching requires the shared Azure demo code. The language icon appears on Home, and the tutorial and coaching support English and Korean.
+[Download OutLoud 0.1.0 (build 40)](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-onestore-v40-20261122). This is the signed APK submitted for ONE Store review. It updates build 39 signed with the same Team 07 release key. Online coaching requires the shared Azure demo code. Build 40 has a language switch on Home. This checkout also shows it on the first-run demo access screen and throughout the tutorial.
 
 On a fresh install, the library starts with **Seoul**, a seven-slide presentation that opens offline. Slides 2, 4, and 7 use the replacement photos listed in the [photo credits](mobile/assets/demo/Seoul-credits.md). You can import your own PDFs.
 
-Tap the upper-left flag to switch the interface, slide cues, feedback and Q&A between English and Korean. Once a result has synced to the phone, both versions are available immediately, including offline. A first-time offline view shows the available scores and evidence until coaching can sync. Transcript quotes and suggested speaking lines keep their original rehearsal language. Saved Q&A reopens earlier question sets with their recorded answers. [Display translation API](docs/reference/api-contract.md#english-and-korean-display-translations) · [Azure demo setup](docs/azure-hosting.md)
+Tap the language switch to change the interface, slide cues, feedback and Q&A between English and Korean. The selection persists from first launch through Home and across restarts. Once a result has synced to the phone, both versions are available immediately, including offline. A first-time offline view shows the available scores and evidence until coaching can sync. Transcript quotes and suggested speaking lines keep their original rehearsal language. Saved Q&A reopens earlier question sets with their recorded answers. [Display translation API](docs/reference/api-contract.md#english-and-korean-display-translations) · [Azure demo setup](docs/azure-hosting.md)
 
 The release includes the APK’s SHA-256 file and the build instructions for this source tag.
 

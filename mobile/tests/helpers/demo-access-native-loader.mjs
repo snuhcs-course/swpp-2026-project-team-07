@@ -6,6 +6,7 @@ export function resolve(specifier, context, nextResolve) {
       KeyboardAvoidingView='KeyboardAvoidingView',ActivityIndicator='ActivityIndicator';
     export const StyleSheet={create:value=>value};`) };
   if (specifier === '../design/frame') return { shortCircuit: true, url: moduleUrl(`export const Txt='Text';`) };
+  if (specifier === '../design/LanguageToggle') return { shortCircuit: true, url: moduleUrl(`export const LanguageToggle='LanguageToggle';`) };
   if (specifier === '../design/theme') return { shortCircuit: true, url: moduleUrl(`export const useTheme=()=>({c:{bg:'#fff',strong:'#111',body:'#222',secondary:'#555',track:'#ddd'}});`) };
   if (specifier === '../design/tokens') return { shortCircuit: true, url: moduleUrl(`export const F={display:'display',medium:'medium',semibold:'semibold',bold:'bold'};`) };
   if (specifier === 'expo-secure-store') return { shortCircuit: true, url: moduleUrl(`
