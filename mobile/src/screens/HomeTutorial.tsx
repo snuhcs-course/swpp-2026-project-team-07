@@ -543,7 +543,8 @@ const s = StyleSheet.create({
   words: { position: 'absolute', left: 30, right: 30, top: 528, alignItems: 'center' },
   title: { fontFamily: F.display, fontSize: 24, lineHeight: 27.6, letterSpacing: -0.5, textAlign: 'center' },
   body: { marginTop: 10, fontFamily: F.medium, fontSize: 15, lineHeight: 22.05, textAlign: 'center' },
-  done: { position: 'absolute', left: 125, top: 660, width: 140, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  // OpenAI Codex, 2026-11-23: balance whitespace around the button without moving the last page's text or footer.
+  done: { position: 'absolute', left: 125, top: 655, width: 140, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   doneText: { fontFamily: F.display, fontSize: 16 },
   again: { position: 'absolute', left: 30, right: 30, top: 722, fontFamily: F.medium, fontSize: 14.5, textAlign: 'center' },
   dots: { position: 'absolute', left: 0, right: 0, bottom: 74, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 },
