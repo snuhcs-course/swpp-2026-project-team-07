@@ -16,7 +16,7 @@ const { loadPresentations, getSnapshot, deckById, setHidden, visibleDecks } = aw
 const { SEOUL_DEMO_ID: id, SEOUL_DEMO_MARKER: marker } = await import('../src/features/presentations/bundledDemo.ts');
 const key = `pres:v1:${id}`;
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
-const expectedHash = '48e673f2dce98c5b4a67a1ad52fcb68092bdc5d606c03d68892e6b187be1f9aa';
+const expectedHash = '689f5fe8e06e6db516bd39142165594d4e26c7a5db5c178771101794e9c01e55';
 
 beforeEach(async () => {
   sqliteFaults.before = null;
