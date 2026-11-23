@@ -23,6 +23,8 @@ test('code entry and 401 re-entry retain the same recorder; offline continuation
   assert.equal(languageFrame.props.overlay,true);
   assert.equal(languageFrame.findByType('LanguageToggle').props.showLabel,true);
   assert.equal(renderer.root.findByType('ScrollView').findAllByType('LanguageToggle').length,0);
+  const formTop=()=>Object.assign({},...renderer.root.findByType('KeyboardAvoidingView').props.style.filter(Boolean)).paddingTop;
+  assert.equal(formTop(),133);
   assert.ok(JSON.stringify(renderer.toJSON()).includes('Reviewers share this workspace'));
   assert.equal(renderer.root.findByType('TextInput').props.secureTextEntry,true);
   assert.ok(renderer.root.findAllByType('Text').some(text=>text.props.children==='Continue offline'));
@@ -36,6 +38,7 @@ test('code entry and 401 re-entry retain the same recorder; offline continuation
   await act(async()=>{renderer.root.findByProps({accessibilityLabel:'Enter demo code to reconnect'}).props.onPress()});
   assert.equal(renderer.root.findByType('Modal').props.visible,true);
   assert.equal(renderer.root.findAllByType('LanguageToggle').length,0);
+  assert.equal(formTop(),undefined);
   assert.equal(mounts,1);assert.equal(unmounts,0);
   await act(async()=>{renderer.root.findByType('Modal').props.onRequestClose()});
   assert.equal(renderer.root.findByType('Modal').props.visible,false);

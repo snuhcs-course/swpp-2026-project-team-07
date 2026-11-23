@@ -12,6 +12,9 @@ import { useTheme } from './theme';
 
 // Flag colours are fixed in both themes, like the sun/moon's yellow.
 const KO_RED = '#CD2E3A', KO_BLUE = '#0047A0', EN_BLUE = '#012169', EN_RED = '#C8102E', WHITE = '#FFFFFF';
+const HOME_TOGGLE_TOP = 53;
+const TOGGLE_SIZE = 44;
+export const HOME_LANGUAGE_TOGGLE_BOTTOM = HOME_TOGGLE_TOP + TOGGLE_SIZE;
 const R = 13;
 const ARROW_ARCS = ["M4.90 15.78 A18.2 18.2 0 0 1 25.78 4.20", "M39.10 28.22 A18.2 18.2 0 0 1 18.22 39.80"];
 const ARROW_HEADS = ["M25.82 1.14 L28.91 4.86 L24.57 7.01 Z", "M18.18 42.86 L15.09 39.14 L19.43 36.99 Z"];
@@ -121,7 +124,7 @@ export function LanguageToggle({ featureScreen = false, landscape = false, showL
 
 const styles = StyleSheet.create({
   // Mirrors ThemeToggle (right 18): same y-centre as the Home wordmark (top 57, 36 high → centre 75).
-  hit: { position: 'absolute', top: 53, left: 18, width: 44, height: 44, zIndex: 40, alignItems: 'center', justifyContent: 'center' },
+  hit: { position: 'absolute', top: HOME_TOGGLE_TOP, left: 18, width: TOGGLE_SIZE, height: TOGGLE_SIZE, zIndex: 40, alignItems: 'center', justifyContent: 'center' },
   labeledHit: { width: 'auto', flexDirection: 'row', paddingLeft: 1, paddingRight: 8, gap: 4 },
   label: { fontFamily: F.semibold, fontSize: 15 },
   featureHit: { top: 3, left: 16 },

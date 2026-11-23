@@ -23,19 +23,7 @@ const FooterMotionContext = createContext<SharedValue<number> | null>(null);
 export const useFrame = () => useContext(FrameContext);
 export const useFooterMotion = () => useContext(FooterMotionContext);
 
-export function Frame({ children, background, landscape = false, overlay = false }: {
-  children: ReactNode; background?: ReactNode; landscape?: boolean; overlay?: boolean;
-}) {
-  const { c } = useTheme();
-  const reducedMotion = useReducedMotion();
-  const footerMotion = useSharedValue(0);
-  useEffect(() => {
-    cancelAnimation(footerMotion);
-    footerMotion.set(0);
-    if (reducedMotion || overlay) return;
-    footerMotion.set(withRepeat(withTiming(2 * Math.PI, { duration: 4800, easing: Easing.linear }), -1, false));
-    return () => cancelAnimation(footerMotion);
-  }, [footerMotion, reducedMotion, overlay]);
+export function useFrameLayout(landscape = false) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const designW = landscape ? FRAME_H : FRAME_W;
@@ -61,6 +49,24 @@ export function Frame({ children, background, landscape = false, overlay = false
     left: rotatedPortrait ? (width - designH * s) / 2 : insetLeft + (availW - designW * s) / 2,
     top: rotatedPortrait ? (height - designW * s) / 2 : insetTop + (availH - designH * s) / 2,
   }), [s, width, height, landscape, rotatedPortrait, compact, insetLeft, insetTop, availW, availH, designW, designH]);
+  return { info, width, height, designW, designH, rotatedPortrait };
+}
+
+export function Frame({ children, background, landscape = false, overlay = false }: {
+  children: ReactNode; background?: ReactNode; landscape?: boolean; overlay?: boolean;
+}) {
+  const { c } = useTheme();
+  const reducedMotion = useReducedMotion();
+  const footerMotion = useSharedValue(0);
+  useEffect(() => {
+    cancelAnimation(footerMotion);
+    footerMotion.set(0);
+    if (reducedMotion || overlay) return;
+    footerMotion.set(withRepeat(withTiming(2 * Math.PI, { duration: 4800, easing: Easing.linear }), -1, false));
+    return () => cancelAnimation(footerMotion);
+  }, [footerMotion, reducedMotion, overlay]);
+  const { info, width, height, designW, designH, rotatedPortrait } = useFrameLayout(landscape);
+  const { s } = info;
   return (
     <FrameContext.Provider value={info}>
       <FooterMotionContext.Provider value={footerMotion}>

@@ -2,8 +2,8 @@
 import { useUiText } from '../design/language';
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import { Frame, Txt } from '../design/frame';
-import { LanguageToggle } from '../design/LanguageToggle';
+import { Frame, Txt, useFrameLayout } from '../design/frame';
+import { HOME_LANGUAGE_TOGGLE_BOTTOM, LanguageToggle } from '../design/LanguageToggle';
 import { useTheme } from '../design/theme';
 import { F } from '../design/tokens';
 import { DEMO_CODE_REQUIRED } from '../services/apiConfig';
@@ -13,6 +13,7 @@ import { demoAccess, enterDemoCode } from '../services/backendFetch';
 export function DemoAccessGate({ children }: { children: ReactNode }) {
   const ui = useUiText();
   const { c } = useTheme();
+  const { info: frame } = useFrameLayout();
   const access = useSyncExternalStore(demoAccess.subscribe, demoAccess.getSnapshot, demoAccess.getSnapshot);
   const [opened, setOpened] = useState(false), [offline, setOffline] = useState(false);
   const [code, setCode] = useState(''), [error, setError] = useState(''), [busy, setBusy] = useState(false);
@@ -20,6 +21,8 @@ export function DemoAccessGate({ children }: { children: ReactNode }) {
   if (!DEMO_CODE_REQUIRED) return children;
   const mounted = access.unlockedOnce || offline;
   const visible = access.state !== 'ready' && (opened || !mounted);
+  // OpenAI Codex, 2026-11-23: keep the scroll viewport below the fixed switch when the keyboard opens.
+  const formTop = frame.top + (HOME_LANGUAGE_TOGGLE_BOTTOM + 12) * frame.s;
   const close = () => { setOpened(false); setOffline(true); setCode(''); setError(''); };
   async function connect() {
     if (busy || !code.trim()) return;
@@ -38,7 +41,7 @@ export function DemoAccessGate({ children }: { children: ReactNode }) {
     <Modal transparent statusBarTranslucent={!mounted} navigationBarTranslucent={!mounted}
       visible={visible} animationType="fade" onRequestClose={close}>
       <View style={[styles.overlay, { backgroundColor: c.bg }]} accessibilityViewIsModal>
-        <KeyboardAvoidingView behavior="padding" style={styles.overlay}>
+        <KeyboardAvoidingView behavior="padding" style={[styles.overlay, !mounted && { paddingTop: formTop }]}>
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scroll}>
             <View style={styles.card}>
               <Txt style={[styles.title, { color: c.strong }]}>Open OutLoud</Txt>
