@@ -567,7 +567,7 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
           <Pressable accessibilityRole="button" accessibilityLabel={ui("Edit presentation time and audience")}
             accessibilityHint={ui("Open presentation time and audience settings")}
             accessibilityState={{ disabled: !active || phase !== 'idle' }} disabled={!active || phase !== 'idle'}
-            onPress={openSetup} style={styles.editRequirements} hitSlop={8}>
+            onPress={openSetup} style={[styles.headerControl, styles.editRequirements]} hitSlop={8}>
             <UIIcon name="i-sliders" size={24} color={c.text} />
           </Pressable>
           {/* OpenAI Codex, 2026-11-21: refresh links an unmapped PDF and checks cues; initial analysis may start, while failed provider retries stay in Cues. */}
@@ -576,7 +576,7 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
             accessibilityState={{ disabled: !active || phase !== 'idle' || profiles.syncing || profiles.busy }}
             disabled={!active || phase !== 'idle' || profiles.syncing || profiles.busy}
             onPress={() => { void Haptics.selectionAsync().catch(() => undefined); setRefreshAsk(true); }}
-            style={({ pressed }) => [styles.headerBalance, { opacity: pressed ? 0.5 : 1 }]} hitSlop={8}>
+            style={({ pressed }) => [styles.headerControl, styles.refreshControl, { opacity: pressed ? 0.5 : 1 }]} hitSlop={8}>
             <UIIcon name="i-loop" size={23} color={profiles.syncing || profiles.busy ? c.muted2 : c.text} />
           </Pressable>
           <Animated.View pointerEvents="box-none" style={[styles.counterWrap, { left: 65, width: 260, height: 32 }, counterMotion]}>
@@ -860,9 +860,10 @@ const styles = createThemedStyles({
   counterWrap: { position: 'absolute', left: 120, top: 75, width: 150, height: 18, alignItems: 'center', justifyContent: 'center' },
   counterCenter: { alignItems: 'center', justifyContent: 'center' },
   counter: { fontFamily: F.medium, fontSize: 13.5, color: C.secondary },
-  editRequirements: { position: 'absolute', left: 16, top: 60, width: 44, height: 44,
-    alignItems: 'center', justifyContent: 'center', zIndex: 20 },
-  headerBalance: { position: 'absolute', right: 16, top: 39, width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
+  // OpenAI Codex, 2026-11-23: align both header controls on the same row.
+  headerControl: { position: 'absolute', top: 39, width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  editRequirements: { left: 16, zIndex: 20 },
+  refreshControl: { right: 16 },
   slideStage: { position: 'absolute', left: 0, top: 100, width: 390, height: 510, overflow: 'hidden' },
   slidePosition: { position: 'absolute', left: 16, top: 16, width: CARD_W, height: CARD_H },
   slideZoom: { width: CARD_W, height: CARD_H, overflow: 'hidden' },
