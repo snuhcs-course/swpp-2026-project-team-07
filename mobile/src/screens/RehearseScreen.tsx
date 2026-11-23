@@ -599,9 +599,9 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
               onPress={() => recording && liveCapture ? setShowLiveFeedback(true) : run && (state.compare ? openReview(state.takes,cur,true,'rise') : openOverallReview(cur))}
               style={{ left: 0, top: 0 }} />
           </View>
-          <RecordRing progress={ringP} visible={ringV} />
+          <RecordRing progress={ringP} visible={ringV} style={styles.recordSpacing} />
           <RecordButton glyph={glyph} label={btnLabel} onPress={toggleRec} onPressIn={recDown} onPressOut={recUp}
-            style={frame.compact ? { top: 607 } : undefined}
+            style={styles.recordSpacing}
             accessibilityActions={anyTake ? [{ name: 'redoAllSlides', label: ui('Redo all slides') }] : undefined}
             onAccessibilityAction={event => {
               if (event.nativeEvent.actionName !== 'redoAllSlides' || !anyTake || phaseRef.current !== 'idle' || redoAsk) return;
@@ -869,6 +869,8 @@ const styles = createThemedStyles({
   rotatedStatus: { position: 'absolute', left: 20, right: 20, top: 622, textAlign: 'center',
     fontFamily: F.semibold, fontSize: 13.5 },
   rightControlLayer: { position: 'absolute', top: 690, left: 289, width: 52, height: 90 },
+  // OpenAI Codex, 2026-11-23: give the waveform room while keeping the ring centered on the button.
+  recordSpacing: { transform: [{ translateY: 8 }] },
   rotatedTimerWrap: { position: 'absolute', top: 0, left: 0, width: 52, alignItems: 'center', gap: 6 },
   rotatedTimerFace: { width: 52, height: 52, borderRadius: 26, borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.12)', backgroundColor: 'rgba(255, 255, 255, 0.08)',
