@@ -1275,7 +1275,7 @@ export const koreanCopy: Record<string, string> = {
   "Hear yourself back": "내 발표 다시 듣기",
   "Play back your run and the transcript follows along, line by line, so you can hear where you rushed or drifted.": "녹음을 재생하면 발표 원문이 한 줄씩 따라가요. 어디서 서두르거나 주제에서 벗어났는지 들어 보세요.",
   "Practise the Q&A": "질의응답 연습하기",
-  "On Review, swipe up for Audience Q&A. A simulated panel asks questions drawn from your slides. Answer out loud and get a verdict.": "검토 화면에서 위로 밀면 청중 질의응답이 열려요. 가상의 청중이 슬라이드를 바탕으로 질문해요. 소리 내어 답하고 평가를 확인하세요.",
+  "Swipe up in Review for Audience Q&A. A virtual panel asks about your slides. Answer aloud for a verdict.": "검토 화면에서 위로 밀면 청중 질의응답이 열려요. 가상의 청중이 슬라이드를 바탕으로 질문해요. 소리 내어 답하고 평가를 확인하세요.",
   "Got it": "알겠어요",
   "Tap OutLoud on Home to see this again": "홈에서 OutLoud를 누르면 다시 볼 수 있어요",
   "Next page": "다음 페이지",

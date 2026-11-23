@@ -25,7 +25,7 @@ export const TUTORIAL_PAGES: readonly { topic: string; title: string; body: stri
   { topic: 'Review', title: 'Every slide, colour coded', body: 'Review scores each slide out of 100 and colours it. Work on the red and orange slides first.' },
   { topic: 'Slide review', title: 'One slide up close', body: 'Tap a slide to see its review. The ring scores that slide. Four tiles check time, fillers, key points and delivery; tap one for detail.' },
   { topic: 'Listen back', title: 'Hear yourself back', body: 'Play back your run and the transcript follows along, line by line, so you can hear where you rushed or drifted.' },
-  { topic: 'Q&A', title: 'Practise the Q&A', body: 'On Review, swipe up for Audience Q&A. A simulated panel asks questions drawn from your slides. Answer out loud and get a verdict.' },
+  { topic: 'Q&A', title: 'Practise the Q&A', body: 'Swipe up in Review for Audience Q&A. A virtual panel asks about your slides. Answer aloud for a verdict.' },
 ];
 const N = TUTORIAL_PAGES.length;
 const W = 390;
