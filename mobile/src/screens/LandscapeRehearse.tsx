@@ -176,10 +176,11 @@ export function LandscapeRehearse({model,live,slide,phase:_phase,glyph,btnLabel,
         <Pressable accessibilityRole="button" onPress={onCueRecovery} style={styles.refresh}><Txt style={{color:c.secondary}}>Refresh cues</Txt></Pressable>
       </ScrollView>
     </Animated.View>
+    {/* OpenAI Codex, 2026-11-23: use Dialog's existing centered landscape width. */}
     {redoAsk&&<Dialog title={redoAsk==='all'?'Redo all slides?':`Redo slide ${slide+1}?`}
       body={redoAsk==='all'?'Your current take stays, so you can compare and keep either one.':`Your recording and transcript for slide ${slide+1} will be replaced. This can’t be undone.`}
       confirm={redoAsk==='all'?'Redo all':`Redo slide ${slide+1}`} onConfirm={onConfirmRedo} onCancel={onCancelRedo}
-      style={{left:24,right:24,top:'50%',marginTop:-116}} />}
+      style={{top:'50%',marginTop:-116}} />}
   </View>;
 }
 
