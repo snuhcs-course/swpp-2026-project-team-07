@@ -8,7 +8,7 @@ An Android presentation rehearsal app that connects PDF slides, recordings, slid
 
 ## ONE Store review build
 
-**Build 42 is the public candidate.** It opens directly on a fresh install. Users can keep rehearsals on their phone or enable free online coaching in a private installation workspace. The release operator needs the Team 07 signer and TA-authorized public AI funding to verify the store upload. [Build, deploy and verify the candidate](docs/one-store-release.md)
+**Build 42 is the public candidate.** It opens directly on a fresh install. Users can keep rehearsals on their phone or enable free online coaching in a private installation workspace. A teammate can sign it with the private key used for build 41. Before submission, verify transcription, scoring and Q&A on the signed APK using funding that covers the intended users. [Build, deploy and verify the candidate](docs/one-store-release.md)
 
 The previous [signed build 41](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-onestore-v41-20261123) uses the shared Azure reviewer service and its demo code.
 

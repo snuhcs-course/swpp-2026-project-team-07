@@ -2,9 +2,11 @@
 
 Build 42 opens on Home. Users can use local rehearsal immediately or enable free online coaching after reading the English or Korean upload disclosure. The public API is `https://outloud-team07.koreacentral.cloudapp.azure.com/store/api`. Each installation receives its own credential through the app. Upgrading preserves recordings on the phone. Uploaded reviewer history belongs to the original reviewer service.
 
-## Give the public service its own funding
+## Check provider coverage and set the spending limit
 
-The TAs control the current provider credentials. Ask a TA to authorize public ONE Store use, provision dedicated OpenRouter and ElevenLabs credentials, and confirm hard account allowances totaling at most **US$50 for the lifetime of the release**. Disable overages and automatic replenishment, exclude other consumers, and keep the keys out of Android, GitHub, chat and logs. The cap covers AI usage. Azure hosting has separate charges.
+OutLoud uses OpenRouter for scoring and Q&A and ElevenLabs for transcription. Each provider bills separately. For each provider, existing project funding that covers the intended users and dates is sufficient. If coverage is unclear, check the original allocation with its owner or use a team-funded account. For operation beyond the course beta, use funding that covers that period.
+
+The team set a combined **US$50 limit for the lifetime of the release**. Give the public service restricted credentials with hard provider allowances that add up to at most that amount. Disable overages and automatic replenishment. Keep the keys on the server, outside Android, GitHub, chat and logs. Azure hosting has separate charges.
 
 Verify the OpenRouter model's full context window, maximum input/output prices including applicable fees, and ElevenLabs' maximum effective hourly Scribe v2 price including vocabulary hints and minimum billing. Use the same supported OpenAI model for legacy and v3 feedback. On OpenRouter, use a dedicated workspace without BYOK credentials, private endpoints or default billable plugins. If the provider plan cannot enforce the agreed allowance or its pricing is unknown, leave AI disabled. [OpenRouter routing](https://openrouter.ai/docs/guides/routing/provider-selection) · [ElevenLabs speech-to-text](https://elevenlabs.io/docs/overview/capabilities/speech-to-text)
 
