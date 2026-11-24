@@ -17,6 +17,7 @@ import { scoreLevelColor, scoreLevelLabel } from '../features/feedback/presentat
 import { runLabel } from '../domain/run';
 import { useBack, useNow, useShell } from './shared';
 import { PanView } from '../design/PanView';
+import { STORE_MODE } from '../services/apiConfig';
 
 export function OverviewScreen({active=true}:{active?:boolean}) {
   const ui = useUiText();
@@ -84,7 +85,7 @@ export function OverviewScreen({active=true}:{active?:boolean}) {
       <View style={styles.doorText}><Txt style={[styles.doorTitle,{color:c.text}]}>Feedback</Txt><Txt style={[styles.doorSub,{color:c.secondary}]}>{v3?`${v3.aggregate.improvements} way${v3.aggregate.improvements===1?'':'s'} to raise your score`:`${feedback.aggregate.findings} verified point${feedback.aggregate.findings===1?'':'s'}`}</Txt></View><UIIcon name="i-arrow" size={17} color={c.secondary}/>
     </Pressable>
     <Pressable accessibilityRole="button" onPress={openListen} style={[styles.door2,{borderColor:c.hair,backgroundColor:c.surface06}]}>
-      <View style={styles.doorText}><Txt style={[styles.doorTitle,{color:c.text}]}>Listen back</Txt><Txt style={[styles.doorSub,{color:c.secondary}]}>{`${fmt(total)} with transcript`}</Txt></View><UIIcon name="i-arrow" size={17} color={c.secondary}/>
+      <View style={styles.doorText}><Txt style={[styles.doorTitle,{color:c.text}]}>Listen back</Txt><Txt style={[styles.doorSub,{color:c.secondary}]}>{!STORE_MODE || model.lines.length ? `${fmt(total)} with transcript` : fmt(total)}</Txt></View><UIIcon name="i-arrow" size={17} color={c.secondary}/>
     </Pressable>
   </PanView></Enter>
   {/* OpenAI Codex, 2026-11-20: review content fades without moving its gesture cues. */}

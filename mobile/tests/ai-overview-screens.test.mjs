@@ -109,6 +109,7 @@ test('unrecorded Review retains its slide preview and disables audio playback',a
 
 test('current Overview opens fixed Feedback and Listen Back controls and selected slide review',async()=>{
  setup();await render(OverviewScreen,{},async r=>{
+  assert.match(text(r),/0:04 with transcript/);
   for(const [label,route]of [['Feedback','feedback'],['Listen back','listen']]){
    const action=byText(r,label);assert.ok(action);let parent=action.parent;while(parent){assert.notEqual(parent.type,'scroll');parent=parent.parent;}
    await act(async()=>action.props.onPress());assert.equal(runtime.routes.at(-1)[0],route);assert.equal(runtime.routes.at(-1)[1].sel,0);
@@ -116,7 +117,7 @@ test('current Overview opens fixed Feedback and Listen Back controls and selecte
   await act(async()=>button(r,'Slide 2, not graded').props.onPress());assert.deepEqual(runtime.routes.at(-1),['review',{deckId:'deck',sel:1,from:'full'}]);
   await act(async()=>button(r,'Slide 3, not graded').props.onPress());assert.deepEqual(runtime.routes.at(-1),['review',{deckId:'deck',sel:2,from:'full'}]);
  });
- runtime.nav={...runtime.nav,from:'full',sel:1};await render(ListenBackKaraokeScreen,{},async()=>{await act(async()=>runtime.back());assert.deepEqual(runtime.routes.at(-1),['full',{deckId:'deck',sel:1}]);});
+ runtime.model.pending=true;runtime.nav={...runtime.nav,from:'full',sel:1};await render(ListenBackKaraokeScreen,{},async r=>{assert.match(text(r),/Transcript is still processing/);await act(async()=>runtime.back());assert.deepEqual(runtime.routes.at(-1),['full',{deckId:'deck',sel:1}]);});
 });
 
 // OpenAI Codex, 2026-11-21: scored Review tiles expose both the slide number and score in seven-column rows.

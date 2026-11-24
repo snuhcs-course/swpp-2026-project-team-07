@@ -90,3 +90,48 @@ test('declining uploads still saves a recorder-clock take and local playback URI
     assert.deepEqual(saved.recording.slide_events,[{slide_index:0,at_ms:0},{slide_index:1,at_ms:2000}]);assert.equal(network.requests.length,0);
   }finally{if(tree)await act(async()=>tree.unmount());delete globalThis.continuousCapture;hook.deregister();}
 });
+
+test('public review shows saved words offline and only reports transcription when the take and consent support it', async () => {
+  const hook = registerHooks(await import('./helpers/ai-overview-screen-loader.mjs'));
+  let tree;
+  try {
+    const { OverviewScreen } = await import('../src/screens/OverviewScreen.tsx');
+    const { ListenBackKaraokeScreen } = await import('../src/screens/ListenBackKaraokeScreen.tsx');
+    const { runtime, HintRow } = await import('./helpers/ai-overview-screen-native.mjs');
+    const audio = { attemptId: 'take', startMs: 0, endMs: 4000 };
+    runtime.nav = { deckId: 'deck', sel: 0, from: 'full' };
+    runtime.feedback = { aggregate: { findings: 0 } };
+    runtime.model = {
+      deck: { id: 'deck', title: 'Local talk', slides: [{ title: 'Local slide' }] }, n: 1,
+      state: { run: { core: 'whole run', createdAt: new Date().toISOString(), parts: [{ attemptId: 'take', segments: [audio] }] } },
+      total: 4, times: [4], targetSum: 60, stages: new Map([['take', 'local']]), pending: true, lines: [],
+    };
+    const screens = () => React.createElement(React.Fragment, null, React.createElement(OverviewScreen), React.createElement(ListenBackKaraokeScreen));
+    const labels = () => tree.root.findAllByType('text').map(n => n.props.children);
+    const listenRow = () => tree.root.findAllByType('pressable').find(n => n.findAllByType('text').some(t => t.props.children === 'Listen back'));
+    const textHint = () => tree.root.findAllByType(HintRow).flatMap(n => n.props.hints).find(h => h.text === 'Tap a word');
+    const setStage = async stage => {
+      runtime.model.stages = new Map([['take', stage]]);
+      await act(async () => tree.update(screens()));
+    };
+    storePrivacy.write('offline');
+    await act(async () => { tree = create(screens()); });
+    assert.deepEqual(listenRow().findAllByType('text').map(n => n.props.children), ['Listen back', '0:04']);
+    assert.ok(labels().includes('No transcript for this run'));
+    assert.equal(textHint().hidden, true);
+    await act(async () => storePrivacy.write('enabled'));
+    assert.ok(labels().includes('No transcript for this run'), 'a local-only take has not been submitted');
+    await setStage('awaiting');
+    assert.ok(labels().includes('No transcript for this run'), 'an upload alone does not establish a public transcription job');
+    await setStage('processing');
+    assert.ok(labels().includes('Transcript is still processing.'));
+    await act(async () => storePrivacy.write('expired'));
+    assert.ok(labels().includes('No transcript for this run'), 'a stale job status cannot imply that online coaching is active');
+    runtime.model.lines = [{ key: 'word', slide: 0, text: 'Saved words', audio,
+      words: [{ text: 'Saved', start_ms: 0, end_ms: 300 }, { text: 'words', start_ms: 310, end_ms: 550 }] }];
+    await act(async () => tree.update(screens()));
+    assert.ok(labels().includes('0:04 with transcript'));
+    assert.ok(tree.root.findByProps({ accessibilityLabel: 'Saved words' }));
+    assert.equal(textHint().hidden, false);
+  } finally { if (tree) await act(async () => tree.unmount()); hook.deregister(); }
+});
