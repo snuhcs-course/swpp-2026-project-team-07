@@ -7,7 +7,8 @@ from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
-DEBUG = os.getenv("DJANGO_DEBUG", "1") == "1"
+OUTLOUD_PUBLIC_SERVICE = os.getenv("OUTLOUD_PUBLIC_SERVICE", "0") == "1"
+DEBUG = os.getenv("DJANGO_DEBUG", "1") == "1" and not OUTLOUD_PUBLIC_SERVICE
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "outloud-local-development-only")
 if not DEBUG and SECRET_KEY in {
     "outloud-local-development-only",
@@ -17,10 +18,11 @@ if not DEBUG and SECRET_KEY in {
 ALLOWED_HOSTS = os.getenv(
     "DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,10.0.2.2,testserver"
 ).split(",")
-INSTALLED_APPS = ["django.contrib.contenttypes", "rest_framework", "rehearsals"]
+INSTALLED_APPS = ["django.contrib.contenttypes", "rest_framework", "rehearsals", "public_billing"]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "rehearsals.public_access.InstallationMiddleware",
 ]
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
@@ -39,18 +41,29 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 TIME_ZONE = "UTC"
 USE_TZ = True
 MEDIA_ROOT = BASE_DIR / "media"
+if OUTLOUD_PUBLIC_SERVICE:
+    MEDIA_URL = "/store/media/"
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_AUTHENTICATION_CLASSES": [],
     "UNAUTHENTICATED_USER": None,
 }
-# Local team development only. Add authentication/authorization before remote deployment.
+# The reviewer edge and the installation middleware protect their respective hosted APIs.
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://127.0.0.1:6379/0")
+if OUTLOUD_PUBLIC_SERVICE:
+    # All Gunicorn workers share the enrollment limit. This Redis belongs to the store.
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.redis.RedisCache",
+                          "LOCATION": CELERY_BROKER_URL,
+                          "OPTIONS": {"socket_connect_timeout": 2, "socket_timeout": 2}}}
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 300
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
 # PostgreSQL rows are the queue authority; Beat only wakes the recovery task.
 CELERY_BEAT_SCHEDULE = {"recover-processing": {"task": "rehearsals.tasks.recover_work", "schedule": 30.0}}
+if OUTLOUD_PUBLIC_SERVICE:
+    CELERY_BEAT_SCHEDULE["purge-expired-installations"] = {
+        "task": "rehearsals.tasks.purge_store_installations", "schedule": 3600.0,
+    }
 CELERY_TASK_PUBLISH_RETRY = False
 CELERY_BROKER_TRANSPORT_OPTIONS = {"socket_connect_timeout": 2, "socket_timeout": 2}

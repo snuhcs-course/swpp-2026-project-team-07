@@ -1,3 +1,4 @@
+import { readCoachingJson } from '../../services/storeBudget';
 import { backendFetch as fetch } from '../../services/backendFetch';
 // Automatic scoring and explicit recovery over the existing durable score/correction APIs.
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
@@ -143,7 +144,7 @@ export function usePresentationScore(target:ScoreTarget|null, requirementsRevisi
      body:JSON.stringify({context_id:t.contextId,expected_selection:fresh.selection.token,transcript_revision:synced.server.revision,
       ...(fresh.feedback_revision?{feedback_revision:fresh.feedback_revision}:{}),...(confirmed?{acknowledge_uncertain:true}:{})}),signal:AbortSignal.timeout(15000)});
     if(!response.ok){const e=new Error('Could not grade presentation. Refresh before retrying.') as Error&{definite?:boolean};e.definite=response.status>=400&&response.status<500&&response.status!==408;throw e;}
-    const next=parsePresentationScore(await response.json(),t);if(!valid(op))return;publish(next,t);
+    const next=parsePresentationScore(await readCoachingJson(response),t);if(!valid(op))return;publish(next,t);
    }
    writeStored(pendingKey,false);submitted=false;
    if(valid(op))setMessage({identity,text:''});

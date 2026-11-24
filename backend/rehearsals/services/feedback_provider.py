@@ -1,4 +1,4 @@
-"""One selected provider, two independent stages. No DB, audio, tools or retries."""
+"""One selected provider, two independent stages, no tools or retries."""
 import base64
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -13,6 +13,7 @@ import time
 
 import httpx
 from openai import APIConnectionError, APIError, APIStatusError, APITimeoutError, OpenAI
+from public_billing import budget as public_budget
 
 from .feedback import (
     Descriptions, Suggestions, FeedbackError, MAX_OUTPUT_BYTES, PreparedAnalysis, PreparedDeck,
@@ -30,6 +31,8 @@ OUTPUT_TOKENS = {"descriptions": 6000, "coaching": 2500}
 RESPONSES_PROVIDERS = {"openai", "openrouter"}
 DEFAULT_MODELS = {"gemini": "gemini-3.1-flash-lite", "openai": "gpt-6-luna", "openrouter": "openai/gpt-6-luna"}
 API_KEYS = {"gemini": "GEMINI_API_KEY", "openai": "OPENAI_API_KEY", "openrouter": "OPENROUTER_API_KEY"}
+LOCAL_REFUSALS = {'invalid_request', 'request_too_large', 'invalid_destination', 'missing_api_key',
+                  'invalid_configuration', *public_budget.MESSAGES}
 
 
 def valid_model(name, model):
@@ -497,16 +500,25 @@ class _BoundedTransport(httpx.BaseTransport):
         config = self.prepared.config
         if request.method != "POST" or str(request.url) != config.url:
             raise FeedbackError("invalid_destination")
-        if len(request.content) > MAX_REQUEST_BYTES:
+        content = request.content
+        if len(content) > MAX_REQUEST_BYTES:
             raise FeedbackError("request_too_large")
+        charge = None
+        if public_budget.enabled():
+            payload = strict_json(content, MAX_REQUEST_BYTES)
+            try:
+                charge = public_budget.authorize_openrouter(str(request.url), payload, config.key)
+            except public_budget.BudgetError as failure:
+                raise FeedbackError(failure.code) from None
+            content = json_bytes(payload)
         # Rebuild the header allowlist at the final boundary. SDK env headers,
         # alternate Host/auth/project values and cookies cannot cross it.
         headers = {"Host": request.url.host, "Content-Type": "application/json",
-            "Accept": "application/json", "Accept-Encoding": "identity", "Content-Length": str(len(request.content)),
+            "Accept": "application/json", "Accept-Encoding": "identity", "Content-Length": str(len(content)),
             **({"Authorization": f"Bearer {config.key}"} if config.provider in RESPONSES_PROVIDERS else {"x-goog-api-key": config.key})}
         # Keep SDK-only response-control headers on its original request, without
         # transmitting them or arbitrary environment headers to the provider.
-        wire_request = httpx.Request(request.method, request.url, headers=headers, content=request.content,
+        wire_request = httpx.Request(request.method, request.url, headers=headers, content=content,
                                      extensions={"timeout": request.extensions["timeout"]})
         started = time.monotonic()
         self.outbound_started = True
@@ -539,6 +551,8 @@ class _BoundedTransport(httpx.BaseTransport):
         finally:
             response.close()
         data = bytes(body)
+        if charge is not None and response.status_code == 200 and not issue:
+            public_budget.settle_openrouter(charge, data)
         self.receipt = RawReceipt(config.provider, config.model, self.prepared.stage, self.prepared.input_hash,
                                   response.status_code, data, issue is None, issue,
                                   _retry_time(response.headers.get("retry-after")), _usage(data, config.provider) if not issue else ())

@@ -1,3 +1,4 @@
+import { readCoachingJson } from '../../services/storeBudget';
 import { backendFetch } from '../../services/backendFetch';
 /** Shared validated selected-slide cache and GET-only reads. Generation stays in useSlideReview. */
 import type { ReviewAttempt } from '../../contracts';
@@ -79,7 +80,7 @@ export function createSlideReviewReader(apiUrl: string, transport: typeof global
         method: 'GET', signal: AbortSignal.timeout(15000),
       });
       if (!response.ok) throw new Error('Could not refresh AI feedback. Saved feedback is retained.');
-      const next = parseSlideReview(await response.json(), target.id, target.scope, target.review);
+      const next = parseSlideReview(await readCoachingJson(response), target.id, target.scope, target.review);
       return publishSlideReview(api, next, target.review);
     }).finally(() => { if (flights.get(key) === promise) flights.delete(key); });
     flights.set(key, promise); return promise;

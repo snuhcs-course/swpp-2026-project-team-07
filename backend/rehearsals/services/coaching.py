@@ -14,6 +14,7 @@ import uuid
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
+from public_billing.budget import MESSAGES as PUBLIC_BUDGET_MESSAGES
 
 from ..models import (Attempt, Deck, DescriptionSet, FeedbackAnalysis, FeedbackJob,
                       FeedbackRequest, FeedbackReservation)
@@ -42,6 +43,7 @@ def safe_error(code):
         return {'code': code, 'message': QUOTA_STOPPED_MESSAGE}
     # OpenAI Codex, issue #49: safe diagnostics use the existing error shape.
     messages = {
+        **PUBLIC_BUDGET_MESSAGES,
         'audio_unavailable': 'Could not validate audio for grading. Retry to check it again.',
         'audio_missing': 'The saved audio could not be read. Restore access to the recording, then retry grading.',
         'audio_decode_failed': 'The saved audio could not be decoded. Check that the recording plays, then retry grading.',
@@ -491,7 +493,7 @@ def finish(value, job, result=None, error=None):
         waiting = error and error.code == 'waiting_quota' and (not request or not request.submitted_at)
         uncertain = bool(error and error.uncertain)
         if error and request and request.submitted_at and not request.received_at:
-            uncertain = error.uncertain or error.code not in {'invalid_request', 'request_too_large', 'invalid_destination', 'missing_api_key', 'invalid_configuration'}
+            uncertain = error.uncertain or error.code not in provider.LOCAL_REFUSALS
         if request and not request.completed_at and (request.claim_token == job.claim_token or request.received_at):
             request.outcome = ('local' if not request.submitted_at else 'uncertain' if uncertain else
                 'rejected' if error and request.status_code and request.status_code != 200 else

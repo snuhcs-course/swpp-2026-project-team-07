@@ -136,23 +136,24 @@ class LimitsTests(SimpleTestCase):
         self.assertEqual(limits.unquote('“‘nested’”'), 'nested')
 
     def test_prompt_states_the_same_limits_and_the_version_changed(self):
-        self.assertEqual(prompts.PROMPT_VERSION, 'feedback-v3-prompt-3')
+        self.assertEqual(prompts.PROMPT_VERSION, 'feedback-v3-prompt-4')
         for system in (prompts.SLIDE_SYSTEM, prompts.WHOLE_SYSTEM):
             self.assertIn('at most 5 words and 24 characters (Korean: 11 characters)', system)
             self.assertIn('at most 16 words and 100 characters (Korean: 48 characters)', system)
         self.assertIn('1 to 3 bullet points', prompts.WHOLE_SYSTEM)
 
     def test_normalize_reads_prompt_2_answers(self):
+        spoken = {'s1.1': transcript.Sentence('s1.1', 0, 0, 0, 1000, 'The city grew.')}
         old = pipeline.normalize_slide({'improvements': [{'criterion': 'explanation_depth', 'problem': 'no reason',
-                                                          'action': 'say why', 'example': '"Because."', 'evidence': []}]},
-                                       {})
+                                                          'action': 'say why', 'example': '"Because."', 'evidence': ['s1.1']}]},
+                                       spoken)
         item, = old['improvements']
         self.assertEqual((item['headline'], item['explanation'], item['steps'], item['example']),
                          ('no reason', [], ['say why'], 'Because.'))
         self.assertEqual(item['problem'], 'no reason')
         korean = pipeline.normalize_slide({'improvements': [{'criterion': 'explanation_depth', 'headline': '외부 피드백을 받을 기회가 부족함',
                                                              'explanation': [], 'example': '', 'steps': ['이유를 말하세요'],
-                                                             'evidence': []}]}, {}, 'ko')
+                                                             'evidence': ['s1.1']}]}, spoken, 'ko')
         self.assertEqual(korean['improvements'][0]['over_limit'], ['headline'])
 
 
@@ -277,7 +278,10 @@ def fake_answer(kind, payload, level='competent'):
                                  {'criterion': 'not_a_criterion', 'headline': 'x', 'explanation': [], 'example': '',
                                   'steps': ['y'], 'evidence': []}]}
     else:
-        data = {'criteria': {c.id: {'level': level, 'reason': 'fits', 'evidence': ['s1.1', 'm:pace'], 'next_level': 'n'}
+        speech_ids = [s['id'] for s in payload['speech'][:1]]
+        pace_available = any(m['id'] == 'm:pace' and m['value'] is not None for m in payload['measurements'])
+        evidence = speech_ids + ['m:pace' if pace_available else 'm:time']
+        data = {'criteria': {c.id: {'level': level, 'reason': 'fits', 'evidence': evidence, 'next_level': 'n'}
                              for c in rubric.RUBRIC_V2.whole},
                 'top_priorities': [{'headline': 'Explain why', 'explanation': ['Reasons are missing on two slides'],
                                     'example': '', 'steps': ['Add one reason per slide'], 'slide_index': 1},
@@ -338,7 +342,7 @@ class PipelineTests(TestCase):
         evidence = slides[1]['criteria'][0]['evidence']
         self.assertEqual([e['id'] for e in evidence], ['s2.1'])  # Unknown id s999 dropped, not fatal.
         self.assertEqual((evidence[0]['start_ms'], evidence[0]['text']), (3000, 'Seoul grew fast.'))
-        self.assertEqual(slides[1]['must_cover'], [{'point': 'p', 'status': 'partial', 'evidence': evidence}])
+        self.assertEqual(slides[1]['must_cover'], [])  # This deck has no supplied coverage points.
         improvement, = slides[1]['improvements']
         self.assertEqual((improvement['gain_slide_points'], improvement['gain_overall_points']), (11.7, 4.1))
         self.assertEqual((improvement['headline'], improvement['steps'], improvement['over_limit']),
@@ -519,6 +523,48 @@ class PipelineTests(TestCase):
             self.post()
         evidence = self.get().json()['whole']['criteria'][3]['evidence']
         self.assertEqual([(e['kind'], e['id']) for e in evidence], [('speech', 's1.1'), ('measurement', 'm:pace')])
+
+    def test_scores_withheld_when_scoped_evidence_is_missing(self):
+        def unsupported(http, config, kind, payload, deadline=None):
+            answer = fake_answer(kind, payload)
+            if kind == 'slide' and payload['slide']['index'] == 1:
+                answer.data['criteria']['essential_coverage']['evidence'] = ['s3.1']
+            if kind == 'whole':
+                answer.data['criteria']['delivery']['evidence'] = ['s1.1']
+                answer.data['criteria']['coherence']['evidence'] = ['m:time']
+            return answer
+
+        with mock.patch.object(pipeline, 'call_llm', side_effect=unsupported):
+            self.post()
+        result = self.get().json()
+        slide = next(row for row in result['slides'] if row['slide_index'] == 1)
+        self.assertEqual((slide['status'], result['whole']['status']), ('insufficient_evidence', 'insufficient_evidence'))
+        self.assertIsNone(slide['criteria'][0]['points'])
+        for row in result['whole']['criteria']:
+            if row['id'] in ('coherence', 'delivery'):
+                self.assertIsNone(row['level'])
+        self.assertIsNone(result['scores']['overall'])
+
+    def test_slide_coverage_must_match_the_supplied_point_and_evidence(self):
+        inputs = pipeline.load_inputs(self.attempt, self.context, 'test')
+        own = {s.id: s for s in inputs.speech.slides[1].sentences}
+        claims = [{'point': 'source point', 'status': 'covered', 'evidence': ['s3.1']},
+                  {'point': 'invented point', 'status': 'missing', 'evidence': []},
+                  {'point': 'source point', 'status': 'partial', 'evidence': ['s2.1']},
+                  {'point': 'source point', 'status': 'missing', 'evidence': []}]
+        result = pipeline.normalize_slide({'must_cover': claims}, own, supplied_points=['source point'])
+        self.assertEqual([(p['point'], p['status'], p['evidence'][0]['id']) for p in result['must_cover']],
+                         [('source point', 'partial', 's2.1')])
+
+    def test_slide_strength_and_improvements_require_local_speech(self):
+        spoken = {'s1.1': transcript.Sentence('s1.1', 0, 0, 0, 1000, 'The city grew.')}
+        advice = {'criterion': 'explanation_depth', 'steps': ['Describe one cause.']}
+        for reference, accepted in [('s2.1', False), ('s1.1', True)]:
+            raw = {'strength': {'text': 'Named the change.', 'evidence': [reference]},
+                   'improvements': [{**advice, 'evidence': [reference]}]}
+            result = pipeline.normalize_slide(raw, spoken)
+            self.assertEqual(bool(result['strength']), accepted)
+            self.assertEqual(bool(result['improvements']), accepted)
 
     def test_unexpected_output_shapes_never_raise(self):
         sentences = {}

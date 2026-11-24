@@ -1,6 +1,7 @@
 import { useDisplayTranslation } from '../localization/useDisplayTranslation';
 import { translatedV3 } from '../localization/generatedProse';
 import { useUiText } from '../../design/language';
+import { stageBudgetNotice } from '../../services/storeBudget';
 import { useEffect, useSyncExternalStore } from 'react';
 import { Alert, BackHandler, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -41,6 +42,7 @@ export function LiveFeedbackPanel({ id, close, landscape = false }: { id: string
       [{ text: ui('Cancel'), style: 'cancel' }, { text: ui('Retry'), onPress: () => void work(true) }]);
     else void work(false);
   };
+  const notice = stageBudgetNotice(item?.remote) || item?.error || item?.refreshError;
   const content = (
     <View style={styles.shade}><View style={[styles.panel, { backgroundColor: c.bg }, landscape && {
       marginLeft: Math.max(0, portraitInsets.top - frame.top) / frame.s,
@@ -49,7 +51,7 @@ export function LiveFeedbackPanel({ id, close, landscape = false }: { id: string
       <Txt style={[styles.title, { color: c.text }]}>Feedback so far</Txt>
       <Txt style={{ color: c.text }}>{item?.manifest.stopped ? 'Recording saved.' : 'Recording continues while this panel is open.'}</Txt>
       <Txt style={{ color: c.muted }}>{item?.uploaded.length ?? 0} / {item?.manifest.segments.length ?? 0} segments uploaded · {item?.remote?.segments.filter(s => s.status === 'completed').length ?? 0} transcribed</Txt>
-      {!!(item?.error || item?.refreshError) && <Txt accessibilityRole="alert" style={{ color: c.text }}>{item.error || item.refreshError}</Txt>}
+      {!!notice && <Txt accessibilityRole="alert" style={{ color: c.text }}>{notice}</Txt>}
       <ScrollView style={styles.scroll}>
         {!(run?.slides.length) && <Txt style={{ color: c.muted }}>Feedback appears after you finish a slide and its audio is transcribed.</Txt>}
         {run?.slides.map(slide => <View key={slide.slide_index} style={styles.slide}>

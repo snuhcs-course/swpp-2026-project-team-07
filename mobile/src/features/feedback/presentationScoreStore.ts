@@ -1,3 +1,4 @@
+import { readCoachingJson } from '../../services/storeBudget';
 import { backendFetch } from '../../services/backendFetch';
 /** Validated, API/attempt/context/transcript/source-aware cache. Lifecycle reads use GET only. */
 import type { LocalCorrections } from '../../domain/corrections';
@@ -40,7 +41,7 @@ export function createPresentationScoreReader(apiUrl:string,transport:typeof glo
    const url=`${api}/attempts/${t.id}/presentation-score/${t.contextId?`?context_id=${encodeURIComponent(t.contextId)}`:''}`;
    const response=await transport(url,{method:'GET',signal:AbortSignal.timeout(15000)});
    if(!response.ok)throw new Error('Could not refresh score. Saved results are retained.');
-   return publishPresentationScore(api,parsePresentationScore(await response.json(),t),t);
+   return publishPresentationScore(api,parsePresentationScore(await readCoachingJson(response),t),t);
   }).finally(()=>{if(flights.get(key)===promise)flights.delete(key);});flights.set(key,promise);return promise;
  }};
 }

@@ -1,3 +1,4 @@
+import { readCoachingJson } from '../../services/storeBudget';
 import { backendFetch as fetch } from '../../services/backendFetch';
 // OpenAI Codex reliability fixes: docs/ai-collaboration/prompt-logs/unattributed/iteration-2.md#record-138
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
@@ -50,7 +51,7 @@ export function useSlideReview(id:string,scope:ReviewScope,review:ReviewAttempt|
   else {
    const response=await fetch(`${api}/attempts/${id}/slide-review/`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scope:JSON.parse(scopeKey),...body}),signal:AbortSignal.timeout(15000)});
    if(!response.ok){const e=new Error('Could not update feedback. Refresh before retrying.') as Error & {definite?:boolean};e.definite=response.status>=400&&response.status<500&&response.status!==408;throw e;}
-   parsed=parseSlideReview(await response.json(),id,JSON.parse(scopeKey),reviewRef.current);
+   parsed=parseSlideReview(await readCoachingJson(response),id,JSON.parse(scopeKey),reviewRef.current);
   }
   if(!body && readStored<string>(initialKey)==='starting'&&!initialClaims.has(initialKey)){
    writeStored(initialKey,parsed.feedback_revision?'started':'failed');

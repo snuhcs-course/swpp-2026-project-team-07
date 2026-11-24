@@ -2,16 +2,17 @@
 
 AI-assisted with Claude Code, prompted by Seoyeon (November 14, 2026); see docs/ai-collaboration-prompts.md.
 Transient failures (timeouts, connection errors, 429, 5xx, cut-off or invalid
-JSON output) are retried automatically. Nothing here touches the database or
-logs request/response content.
+JSON output) are retried automatically. Each public attempt reserves its own
+spend before sending. Request/response content is never logged here.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import json
 import logging
 import os
 import time
 
 import httpx
+from public_billing import budget as public_budget
 
 logger = logging.getLogger(__name__)
 RETRYABLE_STATUS = {408, 409, 425, 429, 500, 502, 503, 504}
@@ -25,7 +26,7 @@ class LLMError(Exception):
 
 @dataclass(frozen=True)
 class Config:
-    api_key: str
+    api_key: str = field(repr=False)
     model: str
     base_url: str = 'https://openrouter.ai/api/v1'
     reasoning_effort: str | None = 'low'
@@ -112,8 +113,15 @@ def _call(http, config, name, system, user, schema, max_output_tokens, timeout):
         payload['reasoning'] = {'effort': config.reasoning_effort}
     if config.temperature is not None:
         payload['temperature'] = config.temperature
+    url = f'{config.base_url}/responses'
+    charge = None
+    if public_budget.enabled():
+        try:
+            charge = public_budget.authorize_openrouter(url, payload, config.api_key)
+        except public_budget.BudgetError as failure:
+            raise LLMError(failure.code) from None
     try:
-        response = http.post(f'{config.base_url}/responses', json=payload, timeout=timeout,
+        response = http.post(url, json=payload, timeout=timeout, follow_redirects=False,
                              headers={'Authorization': f'Bearer {config.api_key}'})
     except httpx.TimeoutException as failure:
         error = LLMError('timeout', retryable=True)
@@ -127,6 +135,8 @@ def _call(http, config, name, system, user, schema, max_output_tokens, timeout):
         error = LLMError(_status_code(response.status_code), retryable=response.status_code in RETRYABLE_STATUS)
         error.retry_after = _retry_after(response.headers.get('retry-after'))
         raise error
+    if charge is not None:
+        public_budget.settle_openrouter(charge, response.content)
     try:
         body = response.json()
     except ValueError:

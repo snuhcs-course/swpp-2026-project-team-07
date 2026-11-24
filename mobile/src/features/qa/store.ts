@@ -3,6 +3,7 @@
 // OutLoud redesign: saved Audience Q&A per presentation (questions, answers, reviews).
 import { listStored, readStored, writeStored } from '../../services/storage';
 import { API_URL } from '../../services/api';
+import { STORE_API } from '../../services/storeEndpoint';
 import { normalizeApi } from '../transcription/analysisStorage';
 import type { QaQuestion, QaResult } from './client';
 import {parseQaState,qaUsable,sameScope,type QaScope,type QaState,type SavedQuestionBatch} from './state';
@@ -62,7 +63,10 @@ export function recoverLocalQuestions(api:string,presentation:string,runId:strin
 export function readQaHistory(api:string,presentation:string):QaSet[]{
  const index=`qa-index:v2:${normalizeApi(api)}:${encodeURIComponent(presentation)}`;
  const sets=(readStored<number[]>(index)??[]).sort((a,b)=>b-a).flatMap(job=>{const s=readQaV2(api,presentation,job);return s?[s]:[];});
- const legacy=readQa(presentation);if(legacy)sets.push(legacy);
+ // Old archives have no originating service and can contain reviewer recordings and assessments.
+ if(normalizeApi(api)!==STORE_API){
+  const legacy=readQa(presentation);if(legacy)sets.push(legacy);
+ }
  return sets;
 }
 export function savedForSelectedRun(history: QaSet[], runId: string, scope: QaScope, audience: string) {

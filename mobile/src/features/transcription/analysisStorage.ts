@@ -3,6 +3,8 @@ import type { AttemptResult } from '../../contracts';
 import { readStored, writeStored } from '../../services/storage';
 import { parseResult } from './resultValidation';
 import { preferResult } from './reviewValidation';
+import { STORE_MODE } from '../../services/apiConfig';
+import { onlineAllowed } from '../../services/storePrivacy';
 
 export const normalizeApi = (api: string) => api.replace(/\/+$/, '');
 const resultKey = (api: string, id: string) => `analysis:v1:${encodeURIComponent(normalizeApi(api))}:${id}`;
@@ -17,5 +19,5 @@ export function saveAnalysis(api: string, result: AttemptResult, source: 'detail
   writeStored(resultKey(api, result.attempt_id), accepted);
   return accepted;
 }
-export function hasAnalysisConsent() { return readStored<boolean>('analysis-consent:elevenlabs:scribe-v2:keyterms:v2') === true; }
-export function saveAnalysisConsent() { writeStored('analysis-consent:elevenlabs:scribe-v2:keyterms:v2', true); }
+export function hasAnalysisConsent() { return STORE_MODE ? onlineAllowed() : readStored<boolean>('analysis-consent:elevenlabs:scribe-v2:keyterms:v2') === true; }
+export function saveAnalysisConsent() { if (!STORE_MODE) writeStored('analysis-consent:elevenlabs:scribe-v2:keyterms:v2', true); }

@@ -15,7 +15,6 @@ import { UIIcon } from '../design/icons';
 import { PanView } from '../design/PanView';
 import { C, EASE_SCREEN, F } from '../design/tokens';
 import { createThemedStyles, useTheme } from '../design/theme';
-import { ThemeToggle } from '../design/ThemeToggle';
 import { Dialog, HintRow, Pop } from '../design/ui';
 import { BACK_FADE_Y, BACK_T } from '../domain/gestures';
 import { analyzePdf, discardImport, pickPdf, type Progress } from '../features/presentations/importer';
@@ -258,7 +257,6 @@ export function UploadScreen() {
             </View>
           </>}
       </PanView>
-      <ThemeToggle />
       </View>
       {readyDeck && phase === 'configure' && <Enter kind="fade"><PresentationRequirementsEditor deck={readyDeck} initialImport fixedHint onHintVisibilityChange={setSetupHintVisible} onSaved={finishSetup} onBackPan={pan} /></Enter>}
       {profileRetryAsk && <Dialog title="Retry AI slide analysis?" body="The previous provider request has an uncertain outcome. Retrying may incur another charge." confirm="Retry" onConfirm={() => { const expected=profileRetryAsk;setProfileRetryAsk(null);void profiles.recover(true,expected); }} onCancel={() => setProfileRetryAsk(null)} />}

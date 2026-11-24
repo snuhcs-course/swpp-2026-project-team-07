@@ -1,3 +1,4 @@
+import { readCoachingJson } from '../../services/storeBudget';
 import { backendFetch as fetch } from '../../services/backendFetch';
 import {useCallback,useEffect,useLayoutEffect,useRef,useSyncExternalStore} from 'react';
 import {AppState} from 'react-native';
@@ -47,7 +48,7 @@ export function useDurableQa(model:DeckModel,automatic=false,visible=true){
   const response=await fetch(`${api()}/attempts/${id}/audience-qa/${body?'':`?scope=${encodeURIComponent(scopeJson)}`}`,{
    method:body?'POST':'GET',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify({scope:JSON.parse(scopeJson),...body}):undefined,signal:AbortSignal.timeout(15000)});
   if(!response.ok)throw new QaRequestError(response.status);
-  let data:unknown;try{data=await response.json();}catch{throw new QaResponseError();}
+  let data:unknown;try{data=await readCoachingJson(response);}catch{throw new QaResponseError();}
   const next=parseQaState(data,id,JSON.parse(scopeJson));
   let hasAssessment=next.feedback_revision>0||!!next.saved_question_sets?.length;
   if(runId&&next.saved_question_sets?.length)saveHistoricalQuestions(api(),deckId,runId,next.saved_question_sets);

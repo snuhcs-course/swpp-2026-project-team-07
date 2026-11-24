@@ -41,6 +41,8 @@ class CoachingMigrationTests(TransactionTestCase):
         names = ['Deck', 'Slide', 'Attempt', 'ProviderRequest', 'DescriptionSet', 'DescriptionJob',
                  'FeedbackRequest', 'FeedbackQuotaBucket', 'FeedbackReservation']
         before = {name: list(model(name).objects.values()) for name in names}
+        for row in before['Deck']:
+            row['installation_id'] = None
         for row in before['ProviderRequest']:
             row['request_options'] = {}  # Historical requests have no invented hints.
         current = self.migrate(latest)

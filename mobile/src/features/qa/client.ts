@@ -6,6 +6,7 @@
 // Questions are written from the slide text and the merged transcript; answers are
 // transcribed with the existing hosted Scribe v2 adapter and judged by the configured
 // feedback provider. Provider keys stay on the server.
+import { readCoachingJson } from '../../services/storeBudget';
 import { File } from 'expo-file-system';
 import { backendExpoFetch as fetch } from '../../services/backendFetch';
 import type { Transcript } from '../../contracts';
@@ -36,7 +37,7 @@ async function deckIdFor(deck: Presentation, signal?: AbortSignal): Promise<stri
 async function failure(response: Response): Promise<QaError> {
   let code = '', message = `The server returned HTTP ${response.status}.`;
   try {
-    const body = await response.json() as { error?: { code?: unknown; message?: unknown } };
+    const body = await readCoachingJson(response) as { error?: { code?: unknown; message?: unknown } };
     if (typeof body?.error?.code === 'string') code = body.error.code;
     if (typeof body?.error?.message === 'string') message = body.error.message;
   } catch { /* not a JSON error body */ }
@@ -102,7 +103,7 @@ export async function judgeAnswer(deck: Presentation, input: { audioUri: string;
     throw new QaError('network_error', 'Could not reach the server. Your answer is kept on this phone.');
   }
   if (!response.ok) throw await failure(response);
-  const d = await response.json() as Record<string, unknown>;
+  const d = await readCoachingJson(response) as Record<string, unknown>;
   const t = d.transcript as Transcript | undefined;
   const verdict = d.verdict === 'answered' || d.verdict === 'partly' || d.verdict === 'too_short' ? d.verdict : null;
   if (!verdict || !t || typeof t.text !== 'string' || !Array.isArray(t.words)) throw new QaError('invalid_response', 'The answer review was invalid.');
@@ -121,7 +122,7 @@ export async function reviewDurableAnswer(input:DurableAnswerInput,confirmed=fal
  const read=async():Promise<AnswerState|null>=>{
   const response=await fetch(endpoint,{signal});if(response.status===404)return null;
   if(!response.ok)throw await failure(response);
-  const d=await response.json() as AnswerState;
+  const d=await readCoachingJson(response) as AnswerState;
   if(d.attempt_id!==input.id||d.question_job_id!==input.questionJobId||d.question_id!==input.questionId||d.part!==input.part||!d.processing||!d.feedback)throw new QaError('invalid_response','Answer identity changed. Your recording is preserved.');
   return d;
  };

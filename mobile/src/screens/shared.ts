@@ -8,6 +8,13 @@ import { createContext, useContext, useEffect, useRef, useSyncExternalStore } fr
 import { BackHandler } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import type { EnterKind } from '../design/frame';
+import { readStored } from '../services/storage';
+
+// OpenAI Codex, 2026-11-23: the access gate and Home use the same first-run flag.
+export const TUTORIAL_SEEN = 'tutorial.seen';
+export function hasSeenTutorial() {
+  try { return !!readStored<boolean>(TUTORIAL_SEEN); } catch { return true; }
+}
 
 export type ScreenName = 'home' | 'upload' | 'rehearse' | 'review' | 'wait' | 'full' | 'listen' | 'feedback' | 'compare' | 'qa';
 export type NavState = { screen: ScreenName; nav: EnterKind; deckId: string | null; slide: number; sel: number; from: ScreenName | null; visit: number; editRequirements?: boolean; swipeFrom?: number };

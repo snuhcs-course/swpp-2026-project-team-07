@@ -1,7 +1,12 @@
+def storeApi = "https://outloud-team07.koreacentral.cloudapp.azure.com/store/api"
+if (System.getenv("EXPO_PUBLIC_ACCESS_MODE") != "store" || System.getenv("EXPO_PUBLIC_API_URL") != storeApi ||
+        !(System.getenv("EXPO_PUBLIC_REQUIRE_DEMO_CODE") in [null, "", "0"])) {
+    throw new GradleException("ONE Store requires store access mode and its fixed HTTPS API.")
+}
 gradle.beforeProject { project ->
     project.pluginManager.withPlugin("com.android.application") {
         project.extensions.getByName("androidComponents").finalizeDsl { android ->
-            android.defaultConfig.versionCode = 40
+            android.defaultConfig.versionCode = 42
             android.defaultConfig.versionName = "0.1.0"
             android.buildTypes.getByName("release").signingConfig = null
         }

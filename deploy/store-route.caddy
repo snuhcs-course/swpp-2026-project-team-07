@@ -1,0 +1,8 @@
+handle_path /store/* {
+	reverse_proxy store-proxy:8080 {
+		header_up Host {http.request.host}
+		header_up X-Forwarded-Proto https
+		header_up X-OutLoud-Client-IP {http.request.remote.host}
+		header_up -Proxy-Authorization
+	}
+}

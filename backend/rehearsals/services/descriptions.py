@@ -16,6 +16,7 @@ import uuid
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
+from public_billing.budget import MESSAGES as PUBLIC_BUDGET_MESSAGES
 
 from rehearsals.limits import MAX_PDF_BYTES
 
@@ -64,6 +65,8 @@ class StaleClaim(Exception):
 
 
 def safe_error(code):
+    if code in PUBLIC_BUDGET_MESSAGES:
+        return {'code': code, 'message': PUBLIC_BUDGET_MESSAGES[code]}
     if code == 'quota_stopped':
         return {'code': code, 'message': QUOTA_STOPPED_MESSAGE}
     return {'code': code, 'message': f'Slide descriptions unavailable ({code}).'} if code else None
@@ -554,7 +557,7 @@ def finish(value, job, result=None, error=None):
         uncertain = bool(error and error.uncertain)
         if error and request.submitted_at and not request.received_at:
             # Only a classified local pre-transport failure has a known outcome.
-            uncertain = error.uncertain or error.code not in {'invalid_request', 'request_too_large', 'invalid_destination', 'missing_api_key', 'invalid_configuration'}
+            uncertain = error.uncertain or error.code not in provider.LOCAL_REFUSALS
         if not request.completed_at and (request.claim_token == job.claim_token or request.received_at):
             request.outcome = ('local' if not request.submitted_at else 'uncertain' if uncertain else
                                'rejected' if error and request.status_code and request.status_code != 200 else

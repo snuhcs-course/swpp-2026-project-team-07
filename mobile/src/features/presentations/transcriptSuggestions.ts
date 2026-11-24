@@ -1,3 +1,4 @@
+import { readCoachingJson } from '../../services/storeBudget';
 import { backendFetch as fetch } from '../../services/backendFetch';
 import { readStored, writeStored } from '../../services/storage';
 import { normalizeApi } from '../transcription/analysisStorage';
@@ -34,7 +35,7 @@ export function createSTTClient(apiUrl: string, fetcher: typeof fetch = fetch) {
       headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined,
       signal: AbortSignal.timeout(15000) });
     if (!response.ok) throw new Error('Transcription suggestions could not be updated. Refresh before retrying.');
-    const s = await response.json() as STTState;
+    const s = await readCoachingJson(response) as STTState;
     if (s.attempt_id !== id || !Number.isSafeInteger(s.feedback_revision) || s.feedback_revision < 0 || typeof s.stale !== 'boolean' ||
         !['absent', 'disabled', 'unavailable', 'completed', 'failed', 'stale', 'needs_confirmation', ...active].includes(s.state) ||
         (s.selection !== null && !/^[a-f0-9]{64}$/.test(s.selection?.token))) throw new Error('Invalid suggestion response.');

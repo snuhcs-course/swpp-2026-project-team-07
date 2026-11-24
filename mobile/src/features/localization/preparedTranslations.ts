@@ -1,4 +1,5 @@
 // Display-only work for the selected rehearsal. Background preparation and a visible card share one flight.
+import { readCoachingJson } from '../../services/storeBudget';
 import { isDisplayWording } from './displayWording';
 import { rubricWording } from './rubricWording';
 import { sourceLanguage, splitRequest, type createTranslationCache, type Fields, type Language,
@@ -86,7 +87,7 @@ export function createPreparedTranslations({ api, cache, fetch, language, now = 
         }
         throw Error('Preparation unavailable');
       }
-      const data: unknown = await response.json();
+      const data: unknown = await readCoachingJson(response);
       if (!alive()) return;
       if (!map(data) || data.kind !== r.kind || data.resource_id !== r.resource_id || data.revision !== base.revision ||
           !['absent','pending','failed','completed'].includes(String(data.state)) || !map(data.fields) ||

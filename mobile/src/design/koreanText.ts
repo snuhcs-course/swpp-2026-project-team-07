@@ -117,6 +117,7 @@ const patterns: [RegExp, (...parts: string[]) => string][] = [
   [/^Uncertain: (.+)$/s, text => '불확실한 이유: ' + text],
   [/^(Said as the slide changed · swipe [←→] to move to slide) (\d+)$/, (label, n) => koreanText(label) + ' ' + n],
   [/^AI suggestions from (.+)\?$/, provider => provider + '의 AI 조언을 받을까요?'],
+  [/^AI suggestions send slide images and text, slide descriptions, this take's transcript and audience context through your OutLoud server to (.+)\. No audio is sent\. OutLoud covers the cost\.$/s, provider => 'AI 조언을 위해 슬라이드 이미지와 텍스트, 슬라이드 설명, 발표 원문과 청중 정보를 OutLoud 서버를 통해 ' + provider + '에 보내요. 오디오는 보내지 않아요. 비용은 OutLoud가 부담해요.'],
   [/^AI suggestions send slide images and text, slide descriptions, this take's transcript and audience context through your OutLoud server to (.+)\. No audio is sent\. Requests may incur provider charges\.$/s, provider => 'AI 조언을 받으려면 슬라이드 이미지와 텍스트, 슬라이드 설명, 이 녹음의 발표 원문과 청중 정보를 OutLoud 서버를 통해 ' + provider + '에 보내요. 오디오는 보내지 않아요. 제공자의 요금이 발생할 수 있어요.'],
   [/^Server returned HTTP (\d+)\. Reconnecting…$/, code => '서버 응답 ' + code + '. 다시 연결하는 중…'],
   [/^(?:Backend|The server) returned HTTP (\d+)\.$/, code => '서버 응답 코드: ' + code],

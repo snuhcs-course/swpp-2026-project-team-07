@@ -90,3 +90,5 @@ export const EASE_SNAP = Easing.bezier(0.2, 0.8, 0.2, 1);
 export const DUR = { fade: 160, scrim: 220, snapBack: 260, panel: 300, page: 320, sheetUp: 340, countUp: 600, theme: 420, landscapeAutohide: 3000, toast: 4500, holdIcon: 450, holdRedoAll: 1500, rise: 260, zoom: 260 };
 export const FRAME_W = 390;
 export const FRAME_H = 844;
+// OpenAI Codex, 2026-11-23: align both header switches on Home and during onboarding.
+export const HOME_HEADER_CONTROL = { top: 53, width: 44, height: 44 } as const;

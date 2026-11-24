@@ -9,6 +9,8 @@ import { normalizeApi } from '../transcription/analysisStorage';
 import { canonicalUuid } from '../feedback/validation';
 import { createProfileClient, readProfiles, type ProfileState } from './slideProfiles';
 import { serverPdfUnconfirmed } from './serverDeck';
+import { STORE_MODE } from '../../services/apiConfig';
+import { StorePreflightError } from '../../services/storeAccess';
 
 const active = new Set(['queued', 'preparing', 'submitted', 'normalizing', 'waiting_quota']);
 type LocalSource = { id: string; title: string; uri: string; pageCount: number };
@@ -87,7 +89,8 @@ export function useSlideProfiles(localId: string, pages: number, visible = true,
           const codeNeeded = /demo code|server access expired|HTTP 401/i.test(detail);
           const httpStatus = detail.match(/HTTP (\d{3})/i)?.[1];
           const unconfirmed = /did not confirm the PDF request/i.test(detail);
-          const message = codeNeeded ? 'Enter the demo code to reconnect server cues.'
+          const message = STORE_MODE && cause instanceof StorePreflightError ? detail
+            : codeNeeded ? (STORE_MODE ? 'Online access expired. Choose online coaching on Home to start a new private workspace. Your local recordings are saved.' : 'Enter the demo code to reconnect server cues.')
             : unconfirmed ? 'Server did not confirm this PDF. Tap Refresh with server to try again.'
             : httpStatus ? `Server returned HTTP ${httpStatus}. Reconnecting…`
               : /server readiness timed out/i.test(detail) ? 'Server readiness check timed out. Reconnecting…'

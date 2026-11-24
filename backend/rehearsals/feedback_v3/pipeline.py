@@ -21,12 +21,13 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
+from public_billing.budget import MESSAGES as BUDGET_MESSAGES
 
 from ..models import Attempt, DescriptionSet, FeedbackRun, PresentationContext, QaAnswer, Slide
 from . import limits, llm, measurements, prompts, rubric, transcript
 
 logger = logging.getLogger(__name__)
-PIPELINE_VERSION = 'feedback-v3.0'
+PIPELINE_VERSION = 'feedback-v3.1'
 RUBRIC = rubric.CURRENT
 MIN_WORDS = 5
 SLIDE_OUTPUT_TOKENS = 4000
@@ -41,6 +42,7 @@ CODE_DECIDED = {'not_applicable', 'not_recorded', 'insufficient_speech'}
 FINISHED_PARTS = {'scored', 'insufficient_evidence'} | CODE_DECIDED
 RUN_BUDGET_SECONDS = 240      # Stop starting or retrying calls before the 300-second task limit.
 MESSAGES = {
+    **BUDGET_MESSAGES,
     'feedback_disabled': 'AI feedback is turned off on this server.',
     'missing_api_key': 'AI feedback is not configured on this server.',
     'transcript_not_ready': 'The recording has not finished transcribing yet.',
@@ -334,36 +336,54 @@ def _criteria(raw: dict, criteria, sentences: dict, measures: dict | None = None
     for criterion in criteria:
         item = raw.get(criterion.id) if isinstance(raw, dict) else None
         item = item if isinstance(item, dict) else {}
-        level = item.get('level') if item.get('level') in rubric.LEVELS else None
+        evidence = _evidence(item.get('evidence'), sentences, measures)
+        kinds = {reference['kind'] for reference in evidence}
+        supported = 'speech' in kinds and (criterion.id != 'delivery' or 'measurement' in kinds)
+        level = item.get('level') if supported and item.get('level') in rubric.LEVELS else None
         rows.append({'id': criterion.id, 'label': criterion.label, 'maximum_points': criterion.maximum,
                      'level': level, 'anchor': criterion.anchors[rubric.LEVELS.index(level)] if level else None,
                      'points': round(float(rubric.criterion_points(criterion, level)), 2) if level else None,
-                     'reason': _text(item.get('reason')),
-                     'next_level': '' if level == 'advanced' else _text(item.get('next_level')),
-                     'evidence': _evidence(item.get('evidence'), sentences, measures)})
+                     'reason': _text(item.get('reason')) if level else '',
+                     'next_level': _text(item.get('next_level')) if level and level != 'advanced' else '',
+                     'evidence': evidence})
     return rows
 
 
 # Supplied Claude patch, OpenAI Codex integration, Iteration 2 (2026-11-20): normalize bounded coaching fields.
-def normalize_slide(raw: dict, sentences: dict, language: str = 'en') -> dict:
+def normalize_slide(raw: dict, sentences: dict, language: str = 'en', *, supplied_points=()) -> dict:
     criteria = _criteria(raw.get('criteria'), RUBRIC.slide, sentences)
     ids = {c.id for c in RUBRIC.slide}
-    must_cover = [{'point': _text(m.get('point')), 'status': m['status'], 'evidence': _evidence(m.get('evidence'), sentences)}
-                  for m in _list(raw.get('must_cover')) if isinstance(m, dict) and m.get('status') in ('covered', 'partial', 'missing')]
-    strength = raw.get('strength') if isinstance(raw.get('strength'), dict) else None
+    allowed = {point.strip() for point in supplied_points if isinstance(point, str) and point.strip()}
+    must_cover = []
+    for item in _list(raw.get('must_cover')):
+        if not isinstance(item, dict) or not isinstance(item.get('point'), str):
+            continue
+        point, status = item['point'].strip(), item.get('status')
+        if point not in allowed or status not in ('covered', 'partial', 'missing'):
+            continue
+        evidence = _evidence(item.get('evidence'), sentences)
+        if status == 'missing' or evidence:
+            must_cover.append({'point': _text(point), 'status': status, 'evidence': evidence})
+            allowed.remove(point)
+    strength = None
+    if isinstance(raw.get('strength'), dict):
+        candidate = raw['strength']
+        evidence = _evidence(candidate.get('evidence'), sentences)
+        if evidence and _text(candidate.get('text')):
+            strength = {'text': _text(candidate['text']), 'evidence': evidence}
     improvements = []
     for item in _list(raw.get('improvements')):
         if not (isinstance(item, dict) and isinstance(item.get('criterion'), str) and item['criterion'] in ids):
             continue
         # Over-long text is kept and flagged (limits.coaching); the app truncates and opens the full text.
         coach = limits.coaching(item, language, explanation_items=limits.MAX_ITEMS['explanation'])
-        if coach['steps']:
+        evidence = _evidence(item.get('evidence'), sentences)
+        if coach['steps'] and evidence:
             improvements.append({'criterion': item['criterion'], **_capped(coach),
-                                 'evidence': _evidence(item.get('evidence'), sentences)})
+                                 'evidence': evidence})
     return {'status': 'scored' if all(c['level'] for c in criteria) else 'insufficient_evidence',
             'criteria': criteria, 'must_cover': must_cover[:5],
-            'strength': {'text': _text(strength.get('text')), 'evidence': _evidence(strength.get('evidence'), sentences)}
-            if strength and _text(strength.get('text')) else None,
+            'strength': strength,
             'improvements': improvements[:3]}
 
 
@@ -599,7 +619,7 @@ def _execute(job: FeedbackRun) -> None:
     _save(job, result=result, timings=timings, usage=usage)
 
     everything = inputs.speech.by_id()
-    measures = {m['id']: m['what'] for m in measurement_items(inputs)}
+    measures = {m['id']: m['what'] for m in measurement_items(inputs) if m['value'] is not None}
     slide_work = [(index, item) for (kind, index), item in work.items() if kind == 'slide']
     whole_work = work.get(('whole', None))
     if work:
@@ -623,7 +643,8 @@ def _execute(job: FeedbackRun) -> None:
                     else:
                         # A slide may cite only its own sentences.
                         own = {s.id: s for s in inputs.speech.slides[index].sentences}
-                        part = normalize_slide(answer.data, own, inputs.speech.language)
+                        part = normalize_slide(answer.data, own, inputs.speech.language,
+                                               supplied_points=inputs.slides[index]['must_cover'])
                     part['input_hash'] = digest
                     timings[name] = answer.seconds
                     usage['input_tokens'] += answer.input_tokens
@@ -647,10 +668,14 @@ def _execute(job: FeedbackRun) -> None:
     graded = [p for p in [result['whole'], *slides.values()] if p.get('status') not in CODE_DECIDED]
     failed = [p for p in graded if p.get('status') == 'failed']
     all_failed = bool(graded) and len(failed) == len(graded)
+    error = None
+    if all_failed:
+        errors = {part['error'] for part in failed}
+        code = failed[0]['error'] if len(errors) == 1 and failed[0]['error'] in BUDGET_MESSAGES else 'all_parts_failed'
+        error = {'code': code, 'message': MESSAGES[code], 'detail': failed[0]['error']}
     _save(job, result=result, timings=timings, usage=usage, finished_at=timezone.now(),
           status=FeedbackRun.Status.FAILED if all_failed else FeedbackRun.Status.COMPLETED,
-          error={'code': 'all_parts_failed', 'message': MESSAGES['all_parts_failed'], 'detail': failed[0]['error']}
-          if all_failed else None)
+          error=error)
 
 
 def recover() -> None:

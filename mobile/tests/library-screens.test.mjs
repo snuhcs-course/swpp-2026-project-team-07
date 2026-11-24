@@ -15,7 +15,7 @@ registerHooks({ resolve, load });
 
 const { HomeScreen } = await import('../src/screens/HomeScreen.tsx');
 const { UploadScreen } = await import('../src/screens/UploadScreen.tsx');
-const { HomeContext, ShellContext } = await import('../src/screens/shared.ts');
+const { HomeContext, ShellContext, TUTORIAL_SEEN } = await import('../src/screens/shared.ts');
 const { deckById, savePresentation, saveDeckState, getDeckState, forgetPresentation, visibleDecks } =
   await import('../src/features/presentations/store.ts');
 const { getImportedPdfs } = await import('../src/features/pdf/service.ts');
@@ -25,7 +25,7 @@ const { defaultRequirementsPending } = await import('../src/features/presentatio
 const { API_URL } = await import('../src/services/api.ts');
 const { readStored, writeStored, removeStored } = await import('../src/services/storage.ts');
 // Claude prototype guide integrated by OpenAI Codex, Iteration 4 (2026-11-21): skip first-run overlay in older Home tests.
-const { TUTORIAL_SEEN, TUTORIAL_PAGES } = await import('../src/screens/HomeTutorial.tsx');
+const { TUTORIAL_PAGES } = await import('../src/screens/HomeTutorial.tsx');
 writeStored(TUTORIAL_SEEN, true);
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -361,6 +361,7 @@ test('the guide opens once, walks eight pages and responds to native page swipes
   await mount(HomeScreen, { mode: 'home', uploadLook: null });
   assert.equal(TUTORIAL_PAGES.length, 8);
   assert.equal(textShown('1 of 8 · Gestures'), true);
+  assert.ok(byLabel('Light mode'));
   const tutorialPan = () => renderer.root.findAllByType('gesture').find(node =>
     node.findAllByProps({ accessibilityLabel: 'Close tutorial' }).length > 0).props.gesture;
   await act(async () => {
@@ -369,6 +370,14 @@ test('the guide opens once, walks eight pages and responds to native page swipes
     pan.onUpdate({ translationX: -65, translationY: 2 });
     pan.onDeactivate({ translationX: -65, translationY: 2, canceled: false });
   });
+  assert.equal(textShown('2 of 8 · Add'), true);
+  await click('App language: English');
+  assert.equal(readStored('settings.languagePreference'), 'ko');
+  const { koreanText } = await import('../src/design/koreanText.ts');
+  assert.equal(textShown(`8개 중 2 · ${koreanText('Add')}`), true);
+  assert.ok(byLabel(koreanText('Next page')));
+  assert.ok(byLabel(koreanText('Light mode')));
+  await click('앱 언어: 한국어');
   assert.equal(textShown('2 of 8 · Add'), true);
   await act(async () => {
     const pan = tutorialPan();
@@ -382,13 +391,25 @@ test('the guide opens once, walks eight pages and responds to native page swipes
     assert.equal(textShown(`${i + 1} of 8 · ${TUTORIAL_PAGES[i].topic}`), true);
   }
   assert.equal(textShown('Swipe for more'), false);
+  const description = renderer.root.findAllByType('text').find(node => node.children.join('') === TUTORIAL_PAGES.at(-1).body);
+  const doneStyle = () => flat(byLabel('Got it').props.style);
+  assert.equal(doneStyle().top, 655);
+  await act(async () => hostParent(description).props.onLayout({ nativeEvent: { layout: { y: 528, height: 130 } } }));
+  assert.equal(doneStyle().top, 666);
+  assert.equal(doneStyle().width, 140);
   await click('Got it');
   assert.equal(readStored(TUTORIAL_SEEN), true);
+  assert.ok(byLabel('App language: English'));
+  assert.ok(byLabel('Light mode'));
+  await click('How OutLoud works');
+  assert.equal(renderer.root.findAllByProps({ accessibilityRole: 'switch' }).length, 0);
+  await act(async () => assert.equal(pressBack(), true));
   await act(async () => renderer.unmount()); renderer = undefined;
   await mount(HomeScreen, { mode: 'home', uploadLook: null });
   assert.equal(renderer.root.findAllByProps({ accessibilityLabel: 'Close tutorial' }).length, 0);
   await click('How OutLoud works');
   assert.equal(textShown('1 of 8 · Gestures'), true);
+  assert.equal(renderer.root.findAllByProps({ accessibilityRole: 'switch' }).length, 0);
   await act(async () => assert.equal(pressBack(), true));
   assert.equal(renderer.root.findAllByProps({ accessibilityLabel: 'Close tutorial' }).length, 0);
 });

@@ -1,0 +1,258 @@
+"""Lifetime spend checks with synthetic keys, audio, prices and HTTP responses."""
+from concurrent.futures import ThreadPoolExecutor
+from datetime import timedelta
+from decimal import Decimal
+import hashlib
+from io import BytesIO
+import json
+import os
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from threading import Barrier
+from unittest.mock import patch
+import wave
+
+import httpx
+from django.db import connections, transaction
+from django.test import TransactionTestCase, override_settings, skipUnlessDBFeature
+from django.utils import timezone
+
+from rehearsals.feedback_v3 import llm
+from rehearsals.models import Attempt, CaptureSegment, CaptureSession, Deck
+from rehearsals.services import display_translator, feedback_provider, incremental, processing, qa, transcription
+from rehearsals.services.feedback import FeedbackError
+from rehearsals.test_storage import audio_file
+from . import budget
+from .models import LifetimeBudget, ProviderCharge
+
+
+MODEL = 'openai/example'
+PRICES = {
+    'OUTLOUD_PUBLIC_OPENROUTER_MODEL': MODEL, 'OUTLOUD_PUBLIC_OPENROUTER_CONTEXT_TOKENS': '30000',
+    'OUTLOUD_PUBLIC_OPENROUTER_INPUT_USD_PER_MTOK': '1.5', 'OUTLOUD_PUBLIC_OPENROUTER_OUTPUT_USD_PER_MTOK': '6',
+    'OUTLOUD_PUBLIC_SCRIBE_USD_PER_HOUR': '0.6', 'ELEVENLABS_API_KEY': 'synthetic-scribe',
+    'OPENROUTER_API_KEY': 'synthetic-router', 'FEEDBACK_ENABLED': 'true', 'FEEDBACK_PROVIDER': 'openrouter',
+    'FEEDBACK_OPENROUTER_MODEL': MODEL, 'FEEDBACK_OPENROUTER_PROJECT_ID': 'synthetic',
+    'FEEDBACK_OPENROUTER_RPM': '20', 'FEEDBACK_OPENROUTER_TPM': '1000000',
+}
+
+
+def response_body(usage=None):
+    return {'status': 'completed', 'usage': usage, 'output': [
+        {'type': 'message', 'content': [{'type': 'output_text', 'text': '{"ok":true}'}]}]}
+
+
+@override_settings(OUTLOUD_PUBLIC_SERVICE=True)
+class PublicBudgetTests(TransactionTestCase):
+    def setUp(self):
+        self.enterContext(patch.dict(os.environ, PRICES))
+        self.network = self.enterContext(patch.object(httpx.HTTPTransport, 'handle_request',
+                                                      side_effect=AssertionError('Real provider traffic forbidden')))
+        self.media = self.enterContext(TemporaryDirectory())
+        self.enterContext(override_settings(MEDIA_ROOT=self.media))
+        LifetimeBudget.objects.update_or_create(pk=1, defaults={'committed_microusd': 0, 'halted': False})
+        self.config = llm.Config('synthetic-router', MODEL, retries=1)
+
+    def call(self, handler, config=None):
+        with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+            return llm.complete_json(client, config or self.config, name='test', system='Synthetic', user={},
+                                     schema={'type': 'object'}, max_output_tokens=10, sleep=lambda _: None)
+
+    def committed(self):
+        return LifetimeBudget.objects.get(pk=1).committed_microusd
+
+    def test_retry_reserves_before_each_send_including_increased_reasoning_budget(self):
+        sent = []
+        def handle(request):
+            payload = json.loads(request.content)
+            sent.append((payload['max_output_tokens'], self.committed()))
+            self.assertEqual(payload['provider']['only'], ['openai'])
+            self.assertFalse(payload['provider']['allow_fallbacks'])
+            self.assertEqual(payload['provider']['max_price'], {'prompt': 1.5, 'completion': 6, 'image': 0, 'request': 0})
+            return httpx.Response(200, json={'status': 'incomplete'} if len(sent) == 1 else response_body())
+        self.assertEqual(self.call(handle).tries, 2)
+        self.assertEqual(sent, [(10, 45_060), (20, 90_180)])
+        self.assertEqual(self.committed(), 90_180)  # Missing receipt prices retain both full holds.
+        self.assertEqual(set(ProviderCharge.objects.values_list('credential_sha256', flat=True)),
+                         {hashlib.sha256(b'synthetic-router').hexdigest()})
+
+    def test_last_affordable_call_survives_timeout_and_retry_stops_at_the_cap(self):
+        LifetimeBudget.objects.update(committed_microusd=budget.LIMIT_MICROUSD - 45_060)
+        sent = []
+        def timeout(request):
+            sent.append(request.url)
+            raise httpx.ReadTimeout('synthetic failure')
+        with self.assertRaises(llm.LLMError) as error:
+            self.call(timeout)
+        self.assertEqual(error.exception.code, 'public_budget_exhausted')
+        self.assertFalse(error.exception.retryable)
+        self.assertEqual((len(sent), ProviderCharge.objects.count(), self.committed()), (1, 1, budget.LIMIT_MICROUSD))
+        with self.assertRaises(budget.BudgetError) as scribe:
+            budget.authorize_scribe('different-key', 10)
+        self.assertEqual(scribe.exception.code, 'public_budget_exhausted')
+
+    def test_completed_receipt_conservatively_settles_once_and_an_underpriced_route_halts(self):
+        payload = {'model': MODEL, 'max_output_tokens': 10}
+        reservation = budget.authorize_openrouter(budget.OPENROUTER_URL, dict(payload), 'synthetic')
+        for raw in (b'{"usage":{"cost":1e999999999999999999999}}',
+                    b'{"status":"completed","usage":{"cost":0.1,"cost":0.000001,"input_tokens":1,"output_tokens":1}}'):
+            budget.settle_openrouter(reservation, raw)
+        self.assertEqual(self.committed(), reservation.reserved_microusd)
+        raw = json.dumps(response_body({'cost': 0.00005, 'input_tokens': 10, 'output_tokens': 10})).encode()
+        budget.settle_openrouter(reservation, raw)
+        budget.settle_openrouter(reservation, raw)
+        self.assertEqual(self.committed(), 75)  # Token ceilings exceed the reported fifty microdollars.
+        charge = budget.authorize_openrouter(budget.OPENROUTER_URL, dict(payload), 'replacement-key')
+        budget.settle_openrouter(charge, json.dumps(response_body(
+            {'cost': 0.1, 'input_tokens': 20, 'output_tokens': 1})).encode())
+        self.assertTrue(LifetimeBudget.objects.get(pk=1).halted)
+        with self.assertRaises(budget.BudgetError):
+            budget.authorize_scribe('synthetic-scribe', 1)
+
+    def test_submissions_fail_closed_for_unverified_tariffs_routes_and_ledger(self):
+        def forbidden(request):
+            self.fail('A rejected request reached HTTP')
+        for changes in ({'OUTLOUD_PUBLIC_OPENROUTER_MODEL': 'openai/unknown'},
+                        {'OUTLOUD_PUBLIC_OPENROUTER_CONTEXT_TOKENS': '0'},
+                        {'OUTLOUD_PUBLIC_OPENROUTER_OUTPUT_USD_PER_MTOK': 'NaN'},
+                        {'OUTLOUD_PUBLIC_OPENROUTER_INPUT_USD_PER_MTOK': ''}):
+            with self.subTest(changes=changes), patch.dict(os.environ, changes), self.assertRaises(llm.LLMError) as error:
+                self.call(forbidden)
+            self.assertEqual(error.exception.code, 'public_budget_unavailable')
+        with self.assertRaises(llm.LLMError):
+            self.call(forbidden, llm.Config('synthetic', MODEL, base_url='https://example.invalid'))
+        legacy = feedback_provider.ProviderConfig('openai', 'example', 'synthetic')
+        prepared = qa._payload(legacy, 'qa_questions', 'test', {}, qa.Questions.model_json_schema())
+        with patch.dict(os.environ, {'FEEDBACK_PROVIDER': 'openai'}), self.assertRaises(FeedbackError) as non_router:
+            feedback_provider.request_raw(prepared)
+        self.assertEqual(non_router.exception.code, 'public_budget_unavailable')
+        with transaction.atomic(), self.assertRaises(llm.LLMError):
+            self.call(forbidden)
+        LifetimeBudget.objects.all().delete()
+        with self.assertRaises(llm.LLMError):
+            self.call(forbidden)
+        self.assertFalse(ProviderCharge.objects.exists())
+        self.network.assert_not_called()
+
+    def test_sdk_request_adds_price_caps_at_final_transport_and_settles_at_confirmed_usage(self):
+        config, _ = qa.configured()
+        prepared = qa._payload(config, 'qa_questions', 'test', {}, qa.Questions.model_json_schema())
+        def handle(request):
+            self.assertGreater(self.committed(), 0)
+            payload = json.loads(request.content)
+            self.assertEqual(payload['provider']['only'], ['openai'])
+            self.assertEqual(payload['service_tier'], 'default')
+            self.assertEqual(int(request.headers['Content-Length']), len(request.content))
+            return httpx.Response(200, json=response_body({'input_tokens': 5, 'output_tokens': 5, 'cost': 0.0001}))
+        feedback_provider.request_raw(prepared, _transport=httpx.MockTransport(handle))
+        self.assertEqual(self.committed(), 100)
+        self.assertEqual(ProviderCharge.objects.get().confirmed_microusd, 100)
+
+    def test_scribe_charges_the_actual_normalized_file_rounded_up_to_a_minute(self):
+        original = Path(self.media) / 'input.wav'
+        frames = 960_001
+        with wave.open(str(original), 'wb') as wav:
+            wav.setparams((1, 2, 16000, 0, 'NONE', 'not compressed'))
+            wav.writeframes(b'\0\0' * frames)
+        def scribe(request):
+            self.assertEqual(self.committed(), 20_000)
+            multipart = request.read()
+            with wave.open(BytesIO(multipart[multipart.index(b'RIFF'):]), 'rb') as normalized:
+                self.assertEqual((normalized.getnframes(), normalized.getframerate(), normalized.getnchannels()),
+                                 (frames, 16000, 1))
+            self.assertIn(b'keyterms', multipart)
+            return httpx.Response(200, json={'text': '', 'words': []})
+        self.network.side_effect = scribe
+        transcription.transcribe(original, keyterms=['synthetic'])
+        self.assertEqual(self.network.call_count, 1)
+        self.assertEqual(ProviderCharge.objects.get().provider, 'elevenlabs')
+        original.write_bytes(b'invalid')
+        with self.assertRaises(transcription.TranscriptionError):
+            transcription.transcribe(original)
+        self.assertEqual(self.network.call_count, 1)
+
+    def test_scribe_timeout_remains_charged_after_key_rotation_and_calendar_change(self):
+        original = Path(self.media) / 'input.wav'
+        original.write_bytes(audio_file().read())
+        with transcription.prepare_request(original) as prepared:
+            prepared.options['model_id'] = 'unknown'
+            with self.assertRaises(transcription.TranscriptionError) as unknown:
+                transcription.request_raw(prepared)
+            self.assertEqual(unknown.exception.code, 'public_budget_unavailable')
+        with patch.dict(os.environ, {'OUTLOUD_PUBLIC_SCRIBE_USD_PER_HOUR': ''}):
+            with self.assertRaises(transcription.TranscriptionError):
+                transcription.transcribe(original)
+        self.network.assert_not_called()
+        LifetimeBudget.objects.update(committed_microusd=budget.LIMIT_MICROUSD - 10_000)
+        self.network.side_effect = httpx.ReadTimeout('synthetic')
+        with self.assertRaises(transcription.TranscriptionError) as timeout:
+            transcription.transcribe(original)
+        self.assertTrue(timeout.exception.uncertain)
+        ProviderCharge.objects.update(created_at=timezone.now() - timedelta(days=400))
+        with patch.dict(os.environ, {'ELEVENLABS_API_KEY': 'synthetic-replacement'}):
+            with self.assertRaises(transcription.TranscriptionError) as exhausted:
+                transcription.transcribe(original)
+        self.assertEqual(exhausted.exception.code, 'public_budget_exhausted')
+        self.assertFalse(exhausted.exception.uncertain)
+        self.assertEqual((self.network.call_count, ProviderCharge.objects.count(), self.committed()),
+                         (1, 1, budget.LIMIT_MICROUSD))
+
+    def test_durable_full_segment_answer_and_both_translation_transports_stop_before_network(self):
+        LifetimeBudget.objects.update(committed_microusd=budget.LIMIT_MICROUSD)
+        deck = Deck.objects.create(title='Synthetic', pdf='synthetic.pdf', page_count=1)
+        attempt = Attempt.objects.create(deck=deck, audio=audio_file(), duration_ms=2000,
+            slide_events=[{'slide_index': 0, 'at_ms': 0}], status='processing', processing_state='queued',
+            processing_revision=1)
+        with patch.object(processing, 'has_speech', return_value=True):
+            processing.run_attempt(attempt.pk, 1)
+        attempt.refresh_from_db()
+        self.assertEqual((attempt.processing_state, attempt.error['code']), ('failed', 'public_budget_exhausted'))
+        self.assertEqual(attempt.provider_requests.get().outcome, 'rejected')
+        part = CaptureSegment.objects.create(capture=CaptureSession.objects.create(attempt=attempt),
+            sequence=0, slide_index=0, start_ms=0, end_ms=2000, audio=audio_file(), status='queued')
+        with patch.object(incremental, 'has_speech', return_value=True), patch.object(incremental, 'refresh'):
+            incremental.transcribe_segment(part.pk)
+        part.refresh_from_db()
+        self.assertEqual((part.status, part.receipts[-1]['outcome'], part.error['code']),
+                         ('failed', 'rejected', 'public_budget_exhausted'))
+        with self.assertRaises(transcription.TranscriptionError) as answer:
+            qa.review_answer(deck, {'question': 'Why?', 'main_question': 'Why?', 'part': 0, 'slide_index': 0,
+                                    'duration_ms': 1}, audio_file())
+        self.assertEqual(answer.exception.code, 'public_budget_exhausted')
+        config, selection = qa.configured()
+        with self.assertRaises(FeedbackError) as question:
+            qa.write_questions(deck, {'audience': 'Test', 'slides': [{'slide_index': 0, 'title': 'test', 'transcript': 'test'}]})
+        self.assertEqual(question.exception.code, 'public_budget_exhausted')
+        for config, selection in ((config, selection), (self.config, None)):
+            with self.subTest(selection=selection), self.assertRaises((FeedbackError, llm.LLMError)) as translated:
+                display_translator._provider_fields('test', {'note': 'test'}, config, selection)
+            self.assertEqual(translated.exception.code, 'public_budget_exhausted')
+        self.network.assert_not_called()
+
+    @override_settings(OUTLOUD_PUBLIC_SERVICE=False)
+    def test_demo_sends_without_public_pricing_or_ledger(self):
+        LifetimeBudget.objects.all().delete()
+        with patch.dict(os.environ, {'OUTLOUD_PUBLIC_OPENROUTER_INPUT_USD_PER_MTOK': ''}):
+            def demo(request):
+                self.assertNotIn('provider', json.loads(request.content))
+                return httpx.Response(200, json=response_body())
+            self.assertTrue(self.call(demo).data['ok'])
+        self.assertFalse(ProviderCharge.objects.exists())
+
+    @skipUnlessDBFeature('has_select_for_update')
+    def test_postgresql_workers_and_rotated_keys_compete_for_one_remaining_reservation(self):
+        LifetimeBudget.objects.update(committed_microusd=budget.LIMIT_MICROUSD - 100)
+        gate = Barrier(8)
+        def admit(index):
+            try:
+                gate.wait(timeout=10)
+                budget._reserve(('elevenlabs', 'openrouter')[index % 2], f'synthetic-{index}', Decimal('100'))
+                return 'sent'
+            except budget.BudgetError as error:
+                return error.code
+            finally:
+                connections.close_all()
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            results = list(pool.map(admit, range(8)))
+        self.assertCountEqual(results, ['sent'] + ['public_budget_exhausted'] * 7)
+        self.assertEqual((self.committed(), ProviderCharge.objects.count()), (budget.LIMIT_MICROUSD, 1))

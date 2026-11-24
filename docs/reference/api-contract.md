@@ -64,6 +64,18 @@ there is no per-user ownership. Local development keeps its existing loopback
 boundary. The HTTPS/authentication rollout and actual APK verification are recorded
 in the [hosting guide](../azure-hosting.md); this contract alone is not deployment proof.
 
+## ONE Store installation access
+
+The dedicated store backend runs with `OUTLOUD_PUBLIC_SERVICE=1`. After the user enables online coaching, the app sends an empty `POST /store/api/installations/`. A successful response is HTTP 201 with `{"token":"…"}`. The app keeps the token in Android secure storage and sends `Authorization: Bearer <token>` on subsequent API and media requests. The server stores a SHA-256 digest of the random 256-bit token. Enrollment allows 12 requests per source network per UTC hour and returns 429 with `Retry-After` when exhausted. The store health endpoint is public.
+
+Each installation owns its decks, recordings, requirements, feedback, Q&A and saved translations. Uploading identical PDF bytes twice within one installation reuses its deck. Two installations get separate deck IDs, wording and files. A recording or context creation that conflicts with another installation's existing client-generated UUID is rejected. A missing, invalid or expired token returns 401. Tokens expire after 30 days of inactivity.
+
+Each installation can make 240 authenticated API writes per UTC hour. POST, PUT, PATCH and DELETE share the allowance, including uploads and requests to start or retry work. The next write returns 429 and a `Retry-After` header in seconds until the next UTC hour. GET, HEAD and OPTIONS use no write allowance. If Redis cannot check the limit, the service returns 503 before dispatching the write and requests a retry after 60 seconds.
+
+Media URLs begin with `/store/media/`. GET, HEAD and byte ranges require the same bearer and ownership as the originating resource. Inaccessible files, decks, recordings and presentation contexts return 404. Prepared bilingual bundles use their existing `absent` state when the installation has no matching bundle.
+
+Online coaching accepts a maximum of 100 pages per PDF and 48 MiB of prepared slide images and text per deck. Oversized decks return HTTP 400. New public media writes return HTTP 507 when they would consume the last 5 GiB of the shared host disk. Local rehearsal keeps its existing file limits.
+
 ## OpenRouter LLM routing and cutover
 
 `FEEDBACK_PROVIDER` defaults to `openrouter`; `FEEDBACK_OPENROUTER_MODEL` defaults to

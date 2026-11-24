@@ -7,22 +7,30 @@
 """Hosted Scribe v2 only; normalized output preserves the existing transcript contract."""
 import os
 import json
-from contextlib import contextmanager
+import wave
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from email.utils import parsedate_to_datetime
 import hashlib
 from pathlib import Path
+from tempfile import TemporaryFile
 
+import av
 import httpx
+from public_billing import budget as public_budget
+from rehearsals.limits import AUDIO_DURATION_TOLERANCE_MS, MAX_DURATION_MS
 from .keyterms import MAX_KEYTERMS, valid_keyterm
 
 PROVIDER = "elevenlabs"
 MODEL = "scribe_v2"
+SCRIBE_OPTIONS = {"model_id": MODEL, "timestamps_granularity": "word", "no_verbatim": "false",
+                 "tag_audio_events": "false", "diarize": "false", "use_multi_channel": "false"}
 
 MAX_AUDIO_BYTES = 25_000_000
 SUPPORTED_SUFFIXES = {".mp3", ".mp4", ".mpeg", ".mpga", ".m4a", ".wav", ".webm"}
+CERTAIN_REJECTIONS = {'provider_auth', 'provider_rate_limit', 'provider_rejected', *public_budget.MESSAGES}
 
 
 class TranscriptionError(Exception):
@@ -81,6 +89,38 @@ class PreparedRequest:
     client: object
     input_hash: str
     options: dict
+    public_pcm_frames: int | None = None
+
+
+def _public_pcm(source, destination):
+    """Send precisely the duration reserved, even for a misleading media container."""
+    count = 0
+    maximum = (MAX_DURATION_MS + AUDIO_DURATION_TOLERANCE_MS) * 16
+    try:
+        with av.open(source, options={'format_whitelist': 'wav,mp3,mov,matroska,webm,mpeg'}) as container, \
+                wave.open(destination, 'wb') as wav:
+            wav.setparams((1, 2, 16000, 0, 'NONE', 'not compressed'))
+            resampler = av.AudioResampler(format='s16', layout='mono', rate=16000)
+
+            def write(frames):
+                nonlocal count
+                for frame in frames:
+                    count += frame.samples
+                    if count > maximum:
+                        raise ValueError()
+                    wav.writeframesraw(bytes(frame.planes[0])[:frame.samples * 2])
+
+            for frame in container.decode(audio=0):
+                if frame.is_corrupt:
+                    raise ValueError()
+                write(resampler.resample(frame))
+            write(resampler.resample(None))
+        if not count:
+            raise ValueError()
+    except (ValueError, OSError, IndexError, EOFError, av.FFmpegError, wave.Error):
+        raise TranscriptionError('unsupported_audio', 'This recording could not be prepared for transcription.') from None
+    destination.seek(0)
+    return count
 
 
 @contextmanager
@@ -90,8 +130,7 @@ def prepare_request(audio_path, *, keyterms=()):
     if (not isinstance(keyterms, (list, tuple)) or len(keyterms) > MAX_KEYTERMS or
             any(not valid_keyterm(term) for term in keyterms)):
         raise TranscriptionError('invalid_keyterms', 'Invalid transcription vocabulary hints.')
-    options = {"model_id": MODEL, "timestamps_granularity": "word", "no_verbatim": "false",
-               "tag_audio_events": "false", "diarize": "false", "use_multi_channel": "false"}
+    options = SCRIBE_OPTIONS.copy()
     if keyterms:
         options['keyterms'] = list(keyterms)
     if path.suffix.lower() not in SUPPORTED_SUFFIXES:
@@ -100,7 +139,7 @@ def prepare_request(audio_path, *, keyterms=()):
         audio = path.open("rb")
     except OSError:
         raise TranscriptionError("audio_unavailable", "Audio file could not be opened.") from None
-    with audio:
+    with audio, ExitStack() as resources:
         if not 0 < os.fstat(audio.fileno()).st_size <= MAX_AUDIO_BYTES:
             raise TranscriptionError("invalid_audio_size", "Audio must contain 1 to 25,000,000 bytes.")
         key = os.getenv("ELEVENLABS_API_KEY", "").strip()
@@ -108,8 +147,12 @@ def prepare_request(audio_path, *, keyterms=()):
             raise TranscriptionError("missing_api_key", "ELEVENLABS_API_KEY is not configured on the backend.")
         digest = hashlib.file_digest(audio, 'sha256').hexdigest()
         audio.seek(0)
+        upload, frames = audio, None
+        if public_budget.enabled():
+            upload = resources.enter_context(TemporaryFile())
+            frames = _public_pcm(audio, upload)
         with httpx.Client(headers={"xi-api-key": key}, timeout=120.0, follow_redirects=False) as client:
-            yield PreparedRequest(audio, client, digest, options)
+            yield PreparedRequest(upload, client, digest, options, frames)
 
 
 def retry_time(headers):
@@ -127,10 +170,23 @@ def retry_time(headers):
 
 def request_raw(prepared):
     """One outbound request, no SDK retries. Caller persists raw before normalizing."""
+    if public_budget.enabled():
+        try:
+            options = {field: value for field, value in prepared.options.items() if field != 'keyterms'}
+            terms = prepared.options.get('keyterms', [])
+            if (options.get('model_id') != 'scribe_v2' or options != SCRIBE_OPTIONS or
+                    not isinstance(terms, (list, tuple)) or len(terms) > MAX_KEYTERMS):
+                raise public_budget.BudgetError()
+            public_budget.authorize_scribe(prepared.client.headers.get('xi-api-key'), prepared.public_pcm_frames)
+        except public_budget.BudgetError as failure:
+            raise TranscriptionError(failure.code, str(failure)) from None
+        filename = 'recording.wav'
+    else:
+        filename = Path(prepared.audio.name).name
     try:
         response = prepared.client.post(
             "https://api.elevenlabs.io/v1/speech-to-text",
-            files={"file": (Path(prepared.audio.name).name, prepared.audio)},
+            files={"file": (filename, prepared.audio)},
             data=prepared.options,
         )
         response.raise_for_status()

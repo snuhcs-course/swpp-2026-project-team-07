@@ -3,6 +3,8 @@ import { AppState } from 'react-native';
 import { captures, refreshCapture, syncCapture } from './incremental';
 import { recoverCapture } from './captureRecovery';
 import { recoverPendingAttempts } from './storage';
+import { API_URL, STORE_MODE } from '../../services/apiConfig';
+import { onlineAllowed } from '../../services/storePrivacy';
 
 /** Durable outbox survives screen changes, interruptions and app restarts. */
 export function IncrementalCaptureHost() {
@@ -13,8 +15,8 @@ export function IncrementalCaptureHost() {
       catch { /* Recovery stored a visible per-recording error; continue the other outboxes. */ }
     }
     const tick = () => {
-      if (AppState.currentState !== 'active') return;
-      for (const item of captures()) if (!item.complete) {
+      if (AppState.currentState !== 'active' || !onlineAllowed()) return;
+      for (const item of captures()) if (!item.complete && (!STORE_MODE || item.api === API_URL)) {
         void syncCapture(item.id);
         if (item.declared) void refreshCapture(item.id);
       }

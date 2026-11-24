@@ -1,9 +1,11 @@
 """Incremental recording API; GET is display-only and never submits provider work."""
 from django.shortcuts import get_object_or_404
+from django.db import IntegrityError
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
-from .models import CaptureSession, CaptureSegment
+from .models import Attempt, CaptureSession, CaptureSegment
+from .ownership import foreign_pk_exists
 from .services import incremental
 
 
@@ -27,7 +29,14 @@ def capabilities(request):
 
 @api_view(['GET', 'POST'])
 def capture(request, attempt_id):
-    return respond(lambda: incremental.declare(attempt_id, request.data) if request.method == 'POST' else session_for(attempt_id))
+    if request.method != 'POST':
+        return respond(lambda: session_for(attempt_id))
+    try:
+        return respond(lambda: incremental.declare(attempt_id, request.data))
+    except IntegrityError:
+        if foreign_pk_exists(Attempt, attempt_id):
+            return Response({'error': {'code': 'capture_conflict'}}, status=409)
+        raise
 
 
 @api_view(['POST'])

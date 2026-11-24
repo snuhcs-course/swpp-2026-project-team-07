@@ -66,6 +66,18 @@ test('question generations and rerecorded answer attempts remain separated by AP
  assert.equal(readStored('qa-answer:v2:http://one/api:deck:first').audioUri,'file:///original');
 });
 
+test('an upgrade keeps unscoped reviewer Q&A on the phone and excludes it from store history',async()=>{
+ const {saveQa,readQa,saveQaV2,readQaHistory}=await import('../src/features/qa/store.ts');
+ const {STORE_API}=await import('../src/services/storeEndpoint.ts');
+ const presentation='upgrade-archive';
+ const archived={runId:'reviewer',questions:[{id:'q1'}],answers:{},createdAt:'',audience:'Class'};
+ saveQa(presentation,archived);
+ saveQaV2(STORE_API,presentation,4,{...archived,runId:'public'});
+ assert.deepEqual(readQaHistory(STORE_API+'/',presentation).map(set=>set.runId),['public']);
+ assert.deepEqual(readQaHistory('http://old/api',presentation),[archived]);
+ assert.deepEqual(readQa(presentation),archived);
+});
+
 test('durable answer consent blocks a new upload and preserves its identity for continuation',async()=>{
  const key='analysis-consent:elevenlabs:scribe-v2:keyterms:v2';
  writeStored(key,false);files.set(input.audioUri,{data:'Synthetic audio'});

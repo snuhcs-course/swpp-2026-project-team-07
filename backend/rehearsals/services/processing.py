@@ -121,7 +121,7 @@ def fail(claim, error):
         uncertain = error.uncertain or bool(request and not request.raw_received_at and request.outcome == 'submitted')
         if request and not request.raw_received_at:
             # Explicit provider rejections have a durable known outcome.
-            if not error.uncertain and error.code in {'provider_auth', 'provider_rate_limit', 'provider_rejected'}:
+            if not error.uncertain and error.code in transcription.CERTAIN_REJECTIONS:
                 uncertain = False
             request.outcome = 'uncertain' if uncertain else 'rejected'
             request.finished_at = timezone.now()

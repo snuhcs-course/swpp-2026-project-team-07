@@ -21,7 +21,7 @@
 // OpenAI Codex supplied stopwatch brand: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-126
 // The carousel stays mounted behind Upload, which blurs it and opens a gap for the new item.
 // Claude prototype guide integrated by OpenAI Codex, Iteration 4 (2026-11-21): eight tutorial pages with native swipes.
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { GestureDetector, useLongPressGesture, usePanGesture, useSimultaneousGestures, useTapGesture } from 'react-native-gesture-handler';
@@ -37,7 +37,7 @@ import { ThemeToggle } from '../design/ThemeToggle';
 import { LanguageToggle } from '../design/LanguageToggle';
 import { HintRow, UndoToast } from '../design/ui';
 import { useUiText } from '../design/language';
-import { readStored, writeStored } from '../services/storage';
+import { writeStored } from '../services/storage';
 import { BACK_FADE_Y, coverFlow, homeCarouselRelease, HOLD_MS, PULL_T, PX_PER_CARD, rubber } from '../domain/gestures';
 import { ICONS, type HueName, type IconId } from '../domain/hues';
 import { mod, nearestSlot, pad2 } from '../domain/format';
@@ -46,8 +46,12 @@ import { ANALYZE_ICON_SCALE, CAROUSEL_TOP, deckIconSize, ORIGIN_Y, SLOT_H, SLOT_
 import { getDeckState, nextHue, setHidden, setHue, setIcon, useStore, visibleDecks, type Presentation } from '../features/presentations/store';
 import { savedAttempts } from '../features/recording/storage';
 import { pdfService } from '../features/pdf/service';
-import { useBack, useHomeShell } from './shared';
-import { TUTORIAL_SEEN, TutorialOverlay } from './HomeTutorial';
+import { hasSeenTutorial, TUTORIAL_SEEN, useBack, useHomeShell } from './shared';
+import { TutorialOverlay } from './HomeTutorial';
+import { STORE_MODE } from '../services/apiConfig';
+import { allowsUploads } from '../services/storeAccess';
+import { storePrivacy, subscribePrivacy } from '../services/storePrivacy';
+import { showStorePrivacy } from './storePrivacyDialog';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDeckChange }: {
@@ -55,6 +59,11 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
   onFrontDeckChange?: (id: string | null) => void;
 }) {
   const ui = useUiText();
+  const privacy = useSyncExternalStore(subscribePrivacy, storePrivacy.read);
+  const openWithPrivacy = useCallback((next: () => void) => {
+    if (STORE_MODE && (!privacy || privacy === 'expired')) showStorePrivacy(ui, next);
+    else next();
+  }, [privacy, ui]);
   const { c } = useTheme();
   const { go, home } = useHomeShell();
   const frame = useFrame();
@@ -65,9 +74,8 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const [pickerClosing, setPickerClosing] = useState(false);
   const [creditsOpen, setCreditsOpen] = useState(false);
-  const [tutorialPage, setTutorialPage] = useState<number | null>(() => {
-    try { return mode === 'home' && !readStored<boolean>(TUTORIAL_SEEN) ? 0 : null; } catch { return null; }
-  });
+  const [tutorialSeen, setTutorialSeen] = useState(hasSeenTutorial);
+  const [tutorialPage, setTutorialPage] = useState<number | null>(mode === 'home' && !tutorialSeen ? 0 : null);
   const [tutorialClosing, setTutorialClosing] = useState(false);
   const tutorialCover = useSharedValue(0);
   const [undo, setUndo] = useState<{ deck: Presentation; at: number } | null>(null);
@@ -86,6 +94,7 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
   const closeTutorial = () => {
     setTutorialPage(null);
     setTutorialClosing(false);
+    setTutorialSeen(true);
     try { writeStored(TUTORIAL_SEEN, true); } catch { /* Reopen automatically next launch. */ }
   };
   const floatPhase = useSharedValue(0);
@@ -108,14 +117,15 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
 
   const openFront = useCallback(() => {
     const deck = decks[mod(Math.round(home.p.value), Math.max(1, n))];
-    if (deck) go('rehearse', { nav: 'fade', deckId: deck.id, slide: 0, from: 'home' });
-  }, [decks, go, home.p, n]);
+    if (deck) openWithPrivacy(() => go('rehearse', { nav: 'fade', deckId: deck.id, slide: 0, from: 'home' }));
+  }, [decks, go, home.p, n, openWithPrivacy]);
   const openAdd = useCallback(() => {
-    settle(Math.round(home.p.value));
-    home.gap.set(1);
-    // OpenAI Codex page fade: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-105
-    go('upload', { nav: 'fade' });
-  }, [go, home.gap, home.p, settle]);
+    openWithPrivacy(() => {
+      settle(Math.round(home.p.value));
+      home.gap.set(1);
+      go('upload', { nav: 'fade' });
+    });
+  }, [go, home.gap, home.p, openWithPrivacy, settle]);
 
   // ── Delete with undo ──
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -325,8 +335,13 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
       <Pressable accessibilityRole="button" accessibilityLabel={ui("How OutLoud works")} onPress={openTutorial} onLongPress={() => setCreditsOpen(true)}
         style={styles.logo}><Txt style={styles.logoText}>OutLoud</Txt></Pressable>
       <Animated.View pointerEvents={mode === 'home' ? 'box-none' : 'none'} style={[StyleSheet.absoluteFill, homeControls]}>
-        {mode === 'home' && !pickerFor && <LanguageToggle />}
-        {!pickerFor && <ThemeToggle />}
+        {mode === 'home' && !pickerFor && tutorialPage === null && <>
+          <LanguageToggle />
+          <ThemeToggle />
+          {STORE_MODE && <Pressable accessibilityRole="button" onPress={() => showStorePrivacy(ui)} style={styles.onlineChoice}>
+            <Txt style={[styles.onlineLabel, { color: c.secondary }]}>{allowsUploads(privacy) ? 'Online coaching on' : 'Online coaching off'}</Txt>
+          </Pressable>}
+        </>}
       </Animated.View>
       <GestureDetector gesture={carouselGesture}><Animated.View style={[styles.carousel, homeLayer, mode === 'upload' && styles.addBlur]}
         accessible accessibilityRole="adjustable" accessibilityLabel={ui(frontDeck ? `${frontDeck.title}, ${frontDeck.pageCount} slides` : 'No presentations yet')}
@@ -357,7 +372,7 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
       {mode === 'home' && !pickerFor && tutorialPage === null && !creditsOpen && <HomeHints empty={!n} />}
       {pickerFor && <IconPicker deckId={pickerFor} closing={pickerClosing} onClose={closePicker} />}
       {tutorialPage !== null && <TutorialOverlay page={tutorialPage} onPage={setTutorialPage} onClose={closeTutorial}
-        cover={tutorialCover} closing={tutorialClosing} />}
+        cover={tutorialCover} closing={tutorialClosing} showAppearanceControls={!tutorialSeen} />}
       <Animated.View pointerEvents={creditsOpen ? 'auto' : 'none'} accessibilityElementsHidden={!creditsOpen}
         importantForAccessibility={creditsOpen ? 'yes' : 'no-hide-descendants'} accessibilityViewIsModal={creditsOpen}
         style={[styles.creditsOverlay, creditsFade]}>
@@ -626,6 +641,8 @@ const styles = createThemedStyles({
   addBlur: { filter: [{ blur: 8 }] },
   logo: { position: 'absolute', left: 0, right: 0, top: 57, height: 36, alignItems: 'center', justifyContent: 'center' },
   logoText: { fontFamily: F.display, fontSize: 26, lineHeight: 27, letterSpacing: -0.5, color: C.text },
+  onlineChoice: { position: 'absolute', top: 96, alignSelf: 'center', minHeight: 44, justifyContent: 'center', paddingHorizontal: 16 },
+  onlineLabel: { fontFamily: F.semibold, fontSize: 14, textDecorationLine: 'underline' },
   // OpenAI Codex header alignment: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-106
   creditsOverlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 50, alignItems: 'center', justifyContent: 'center' },
   creditNames: { alignItems: 'center', gap: 16 },

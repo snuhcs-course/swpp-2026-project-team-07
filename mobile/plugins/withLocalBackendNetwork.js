@@ -22,6 +22,11 @@ const debugContents = `<?xml version="1.0" encoding="utf-8"?>
   <base-config cleartextTrafficPermitted="true" />
 </network-security-config>
 `;
+const storeContents = `<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+  <base-config cleartextTrafficPermitted="false" />
+</network-security-config>
+`;
 
 module.exports = function withLocalBackendNetwork(config) {
   config = withAndroidManifest(config, value => {
@@ -31,7 +36,8 @@ module.exports = function withLocalBackendNetwork(config) {
     return value;
   });
   return withDangerousMod(config, ['android', async value => {
-    for (const [variant, contents] of [['main', releaseContents], ['debug', debugContents]]) {
+    const main = process.env.EXPO_PUBLIC_ACCESS_MODE === 'store' ? storeContents : releaseContents;
+    for (const [variant, contents] of [['main', main], ['debug', debugContents]]) {
       const target = path.join(value.modRequest.platformProjectRoot, 'app', 'src', variant, 'res', 'xml', filename);
       await fs.promises.mkdir(path.dirname(target), { recursive: true });
       await fs.promises.writeFile(target, contents);

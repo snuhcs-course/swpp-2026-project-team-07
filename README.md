@@ -8,7 +8,9 @@ An Android presentation rehearsal app that connects PDF slides, recordings, slid
 
 ## ONE Store review build
 
-[Download OutLoud 0.1.0 (build 40)](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-onestore-v40-20261122). This is the signed APK submitted for ONE Store review. It updates build 39 signed with the same Team 07 release key. Online coaching requires the shared Azure demo code. The language icon appears on Home, and the tutorial and coaching support English and Korean.
+**Build 42 is the public candidate.** It opens directly on a fresh install. Users can keep rehearsals on their phone or enable free online coaching in a private installation workspace. The release operator needs the Team 07 signer and TA-authorized public AI funding to verify the store upload. [Build, deploy and verify the candidate](docs/one-store-release.md)
+
+The previous [signed build 41](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-onestore-v41-20261123) uses the shared Azure reviewer service and its demo code.
 
 On a fresh install, the library starts with **Seoul**, a seven-slide presentation that opens offline. Slides 2, 4, and 7 use the replacement photos listed in the [photo credits](mobile/assets/demo/Seoul-credits.md). You can import your own PDFs.
 
