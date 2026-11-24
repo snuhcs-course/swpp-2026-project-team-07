@@ -95,18 +95,20 @@ export function Txt({ verbatim, children, ...props }: TextProps & { verbatim?: b
 export type EnterKind = 'rise' | 'zoom' | 'fade' | null;
 // OpenAI Codex, 2026-11-19: make page openings readable while animating only opacity and scale.
 /** Fade and gently scale newly opened pages on the UI thread; keep layout and touch targets fixed. */
-export function Enter({ kind, children, style, pointerEvents }: { kind: EnterKind; children: ReactNode; style?: object; pointerEvents?: 'box-none' | 'auto' }) {
+export function Enter({ kind, children, style, pointerEvents, duration = 560 }: {
+  kind: EnterKind; children: ReactNode; style?: object; pointerEvents?: 'box-none' | 'auto'; duration?: number;
+}) {
   const reducedMotion = useReducedMotion();
   const opacity = useSharedValue(kind && !reducedMotion ? 0 : 1);
   const [entered, setEntered] = useState(!kind || reducedMotion);
   useEffect(() => {
     let cancelled = false;
     const complete = () => { if (!cancelled) setEntered(true); };
-    opacity.set(withTiming(1, { duration: kind && !reducedMotion ? 560 : 0, easing: Easing.out(Easing.cubic) }, finished => {
+    opacity.set(withTiming(1, { duration: kind && !reducedMotion ? duration : 0, easing: Easing.out(Easing.cubic) }, finished => {
       if (finished) runOnJS(complete)();
     }));
     return () => { cancelled = true; cancelAnimation(opacity); };
-  }, [kind, opacity, reducedMotion]);
+  }, [duration, kind, opacity, reducedMotion]);
   const fade = useAnimatedStyle(() => ({ opacity: opacity.value, transform: [{ scale: 0.975 + 0.025 * opacity.value }] }));
   // Fabric can reapply an animated style's initial opacity on a later React
   // commit. Once the entrance finishes, React must own the opaque final value.

@@ -96,7 +96,10 @@ test('a recovered question set from a different selected audience is available t
  let renderer;try{
   await act(async()=>{renderer=create(React.createElement(QAScreen));});
   assert.match(text(renderer),/New audience/);assert.doesNotMatch(text(renderer),/What explains these findings/);
-  await act(async()=>action(renderer,'View saved Q&A').props.onPress());
+  const history=action(renderer,'View saved Q&A');
+  assert.equal(history.findByType('icon').props.name,'i-replay');
+  assert.equal(history.findAllByType('text').length,0);
+  await act(async()=>history.props.onPress());
   assert.match(text(renderer),/What explains these findings/);assert.match(text(renderer),/Original audience/);
   assert.equal(renderer.root.findAllByType('record-button').length,0);
  }finally{if(renderer)await act(async()=>renderer.unmount());}

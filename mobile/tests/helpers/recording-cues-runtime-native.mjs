@@ -19,14 +19,14 @@ export const useSharedValue=value=>{const r=React.useRef({value,get(){return thi
  if(v?.openingPage){const timing=v.openingPage,finish=timing.complete;timing.complete=done=>{if(done)this.value=timing.value;finish?.(done);};return;}
  this.value=v;
 }});return r.current;};
-export const useAnimatedStyle=()=>({}),useReducedMotion=()=>runtime.reducedMotion;
+export const useAnimatedStyle=read=>runtime.inspectAnimatedStyles?{read}:{},useReducedMotion=()=>runtime.reducedMotion;
 const Animated=Object.assign(({children})=>React.createElement('svg',null,children),{View:'animated'});export default Animated;
 export const Rect='rect',Path='path',Circle='circle',Line='line',Defs='defs',LinearGradient='linear-gradient',Stop='stop',StatusBar='status-bar',selectionAsync=async()=>{},impactAsync=async()=>{},ImpactFeedbackStyle={Medium:'medium'};
 export const OrientationLock={PORTRAIT_UP:1},lockAsync=async()=>{};
 export const useSafeAreaInsets=()=>({top:0,bottom:0,left:0,right:0});
 const setFullscreenLandscape=()=>{};
-export const runtime={model:null,version:0,listeners:new Set(),shell:null,captures:[],played:[],stops:0,routes:[],recoveries:[],audio:new Map(),startWait:null,reducedMotion:true,timings:[],
- reset(model,slide=0){this.model=model;this.version++;this.captures=[];this.played=[];this.stops=0;this.routes=[];this.recoveries=[];this.audio=new Map();this.startWait=null;this.reducedMotion=true;this.timings=[];
+export const runtime={model:null,version:0,listeners:new Set(),shell:null,captures:[],played:[],stops:0,routes:[],recoveries:[],audio:new Map(),startWait:null,reducedMotion:true,inspectAnimatedStyles:false,timings:[],
+ reset(model,slide=0){this.model=model;this.version++;this.captures=[];this.played=[];this.stops=0;this.routes=[];this.recoveries=[];this.audio=new Map();this.startWait=null;this.reducedMotion=true;this.inspectAnimatedStyles=false;this.timings=[];
  this.shell={nav:{deckId:model.deck.id,slide,nav:null},go:(...a)=>this.routes.push(a),setFullscreenLandscape,home:{p:{get:()=>0,set(){}},titleReturn:{value:1,set(v){this.value=v;}}}};},
  emit(){this.version++;for(const l of this.listeners)l();}};
 const subscribe=l=>{runtime.listeners.add(l);return()=>runtime.listeners.delete(l);};
@@ -40,7 +40,7 @@ export function saveDeckState(_id,state){runtime.model.state=state;runtime.emit(
 export const savedAttempts=()=>runtime.recoveries,audioOf=id=>runtime.audio.get(id)??null;
 export function commitTake(_deck,take){const takes=(runtime.model.state.takes??0)+1,sel=take.events[0].slide_index;const run={id:'recovered-run',sel,takeNo:takes,parts:Array.from({length:runtime.model.n},(_,i)=>i===sel?{attemptId:take.attemptId,segments:[{startMs:0,endMs:take.durationMs}]}:null)};runtime.model.state={...runtime.model.state,run,takes};runtime.emit();return{run,compare:null};}
 export const CaptureEngine=React.forwardRef(function SyntheticCapture(props,ref){
- const[capture]=React.useState(()=>{const c={started:0,slides:[],props,async start(current){this.started++;this.slides.push(current());if(runtime.startWait)await runtime.startWait;},slideChanged(i){this.slides.push(i);},async stop(){return{attemptId:'synthetic-capture',durationMs:5000,events:[{slide_index:this.slides[0],at_ms:0}]};}};runtime.captures.push(c);return c;});
+ const[capture]=React.useState(()=>{const c={started:0,slides:[],props,async checkLiveFeedback(){return false;},async start(current){this.started++;this.slides.push(current());if(runtime.startWait)await runtime.startWait;},slideChanged(i){this.slides.push(i);},async stop(){return{attemptId:'synthetic-capture',durationMs:5000,events:[{slide_index:this.slides[0],at_ms:0}]};}};runtime.captures.push(c);return c;});
  capture.props=props;React.useImperativeHandle(ref,()=>capture,[capture]);return null;});
 export function useSegmentPlayer(){const[,render]=React.useState(0);const[p]=React.useState(()=>({playingKey:null,paused:false,error:null,
  stop(){runtime.stops++;this.playingKey=null;this.paused=false;render(n=>n+1);},async playSegments(key,segments){runtime.played.push({key,segments});if(this.playingKey===key)this.paused=!this.paused;else{this.playingKey=key;this.paused=false;}render(n=>n+1);}}));

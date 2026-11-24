@@ -101,6 +101,25 @@ const karaoke = r => r.root.findAll(node => node.type === 'text' && node.props.a
 const words = r => karaoke(r).findAll(node => node.type === 'text' && node !== karaoke(r));
 const word = (r, text) => words(r).find(node => node.props.children === text);
 
+test('an offline run has no transcript to display and still plays local audio', async () => {
+  setup();
+  runtime.model.lines = [];
+  runtime.model.pending = true;
+  try {
+    runtime.serverAccess = { state: 'locked' };
+    await render(async r => {
+      assert.match(JSON.stringify(r.toJSON()), /No transcript for this run/);
+      assert.doesNotMatch(JSON.stringify(r.toJSON()), /still processing/);
+      await act(async () => button(r, 'Play whole run').props.onPress());
+      assert.equal(runtime.plays[0].segments[0].uri, 'file:///run.m4a');
+    });
+    runtime.serverAccess = { state: 'ready' };
+    await render(r => assert.match(JSON.stringify(r.toJSON()), /Transcript is still processing/));
+  } finally {
+    delete runtime.serverAccess;
+  }
+});
+
 test('switching the flag keeps an English slide title, spoken word and seek time while translating its controls', async () => {
   setup();
   runtime.model.deck.slides[0].title = 'Open';

@@ -20,6 +20,8 @@ urlpatterns = [
     path('attempts/<uuid:attempt_id>/segments/<int:sequence>/', capture_views.segment),
     path('attempts/<uuid:attempt_id>/segments/<int:sequence>/retry/', capture_views.retry),
     path('attempts/<uuid:attempt_id>/feedback-run/', feedback_v3_views.feedback_run),
+    path('attempts/<uuid:attempt_id>/selected-feedback-run/', feedback_v3_views.start_selected_feedback),
+    path('attempts/<uuid:attempt_id>/selected-feedback-run/<uuid:run_id>/', feedback_v3_views.selected_feedback),
     path('attempts/<uuid:attempt_id>/presentation-score/', presentation_score_views.score),
     path('attempts/<uuid:attempt_id>/audience-qa/', durable_qa_views.questions),
     path('attempts/<uuid:attempt_id>/qa-answer/', durable_qa_views.answer),

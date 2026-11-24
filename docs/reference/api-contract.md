@@ -1257,6 +1257,14 @@ The [initial word-to-slide alignment note](https://github.com/snuhcs-course/swpp
 
 `GET|POST /api/attempts/{attempt_id}/feedback-run/` serves the rebuilt feedback pipeline: per-slide and whole-presentation Rubric V2 levels, scores calculated by the server, next-level advice and point gains. It is off unless `FEEDBACK_V3_ENABLED=true` and runs alongside the endpoints above. GET never starts work; POST starts or reuses the run for the current inputs, and `{"retry": true}` re-queues only failed parts. The response shape, statuses and settings are in [the reimplementation design](ai-feedback-reimplementation.md#api).
 
+### Overall feedback for selected retakes
+
+`POST /api/attempts/{attempt_id}/selected-feedback-run/` starts or reuses a feedback v3 run for the selected rehearsal. Send `{"scope":{"context_id":null,"slides":[{"slide_index":0,"attempt_id":"…","segments":[{"start_ms":0,"end_ms":12000}]}]},"retry":false}` with all selected slide parts. The route uses the lexicographically smallest selected attempt ID. All attempts must belong to the same deck, and each selected slide must include the exact original visit intervals for that attempt. Send a saved presentation context ID when one applies. The server canonicalizes slide order and returns the scope with the usual feedback run result.
+
+`GET /api/attempts/{attempt_id}/selected-feedback-run/{run_id}/` reads the saved run and whether current inputs have changed. Each selected source must finish transcription before admission. The assessment follows the selected playback order and retains the original source IDs and timestamps for evidence. The overall score uses the existing 70% slide and 30% whole-presentation weighting. A changed selection reuses matching selected slide assessments and receives its own whole-presentation assessment. Missing coverage or insufficient evidence can leave the score unavailable. The original per-attempt feedback route remains independent.
+
+Deploy the selected-scope migration and upgrade the API and feedback worker together before accepting selected-run jobs.
+
 ## Continuous capture and incremental feedback (November 15, 2026)
 
 The Android native recorder keeps one 16 kHz mono PCM stream open. Every sample

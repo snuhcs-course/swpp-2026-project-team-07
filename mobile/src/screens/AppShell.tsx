@@ -18,7 +18,7 @@ import { SelectedPreparationHost } from '../features/localization/SelectedPrepar
 // OpenAI Codex stable import hue: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-123
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
-import { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { Enter, Frame } from '../design/frame';
 import { useTheme } from '../design/theme';
@@ -34,7 +34,7 @@ import { InitialFeedbackHost } from '../features/feedback/InitialFeedbackHost';
 import { FeedbackV3Host } from '../features/feedback/FeedbackV3Host';
 import { InitialPresentationScoreHost } from '../features/feedback/InitialPresentationScoreHost';
 import { CoachHost, useCoaches } from '../features/rehearsal/coaching';
-import { deckById, getDeckState, loadPresentations, nextHue, useStore, visibleDecks } from '../features/presentations/store';
+import { getDeckState, loadPresentations, nextHue, useStore, visibleDecks } from '../features/presentations/store';
 import { HomeScreen } from './HomeScreen';
 import { UploadScreen } from './UploadScreen';
 import { RehearseScreen } from './RehearseScreen';
@@ -117,13 +117,14 @@ export function AppShell() {
     });
     return () => { cancelAnimationFrame(firstFrame); cancelAnimationFrame(nextFrame); };
   }, [s, retiredRehearse]);
-  // OpenAI Codex, Iteration 4 (2026-11-22): HomeScreen alone owns the language switch.
-  const homeMode = s === 'home' ? 'home' : s === 'upload' ? 'upload' : 'covered';
   // In explicit landscape fullscreen the Home carousel must not show through
   // the safe-area gutters around Frame's scaled landscape canvas.
   // OpenAI Codex, 2026-11-19: Wait and Full Review fade down to Home, not through a stale intermediate page.
   const fullOverRehearse = s === 'full' && nav.from === 'rehearse';
   const homeVisible = (layers.length <= 2 || s === 'wait' || (s === 'full' && !fullOverRehearse)) && !(s === 'rehearse' && fullscreenLandscape);
+  // OpenAI Codex, 2026-11-23: draw the full Home underlay before the rehearsal fade finishes.
+  const homeMode = s === 'home' || s === 'upload' || (s === 'rehearse' && homeVisible) ? s : 'covered';
+  const background = homeMode === 'covered' ? null : <Ambient screen={homeMode} home={home} uploadHue={uploadLook?.hue ?? null} />;
   const visibleLayers = layers.slice(1);
   const underlayVisit = s === 'wait' || (s === 'full' && !fullOverRehearse) ? null : layers.length > 1 ? layers[layers.length - 2].visit : null;
   const renderedLayers = retiredRehearse && !visibleLayers.some(layer => layer.visit === retiredRehearse.visit)
@@ -132,7 +133,7 @@ export function AppShell() {
     <ShellContext.Provider value={ctx}>
       <HomeContext.Provider value={homeCtx}>
       <SelectedPreparationHost deckId={s === 'home' ? frontDeck : s === 'upload' ? null : nav.deckId} />
-      <Frame background={(s === 'home' || s === 'upload') ? <Ambient screen={s} deckId={nav.deckId} home={home} uploadHue={uploadLook?.hue ?? null} /> : null} landscape={s === 'rehearse' && fullscreenLandscape}>
+      <Frame background={background} landscape={s === 'rehearse' && fullscreenLandscape}>
         <Enter kind={null} style={homeVisible ? undefined : styles.hiddenPage}>
           <HomeScreen mode={homeMode} uploadLook={uploadLook} onFrontDeckChange={setFrontDeck} />
         </Enter>
@@ -233,11 +234,12 @@ function Prompts() {
 }
 
 /** Ambient hue glow follows the Home carousel continuously. */
-function Ambient({ screen, deckId, home, uploadHue }: { screen: NavState['screen']; deckId: string | null; home: HomeShared; uploadHue: HueName | null }) {
+function Ambient({ screen, home, uploadHue }: { screen: 'home' | 'upload' | 'rehearse'; home: HomeShared; uploadHue: HueName | null }) {
   const decks = useStore(s => visibleDecks(s));
   const n = decks.length;
   const fresh = screen === 'upload' && uploadHue ? uploadHue : nextHue();
-  const current = deckById(deckId);
+  // The glow extends outside the scaled rehearsal canvas, so it needs its own matching fade.
+  const reveal = useAnimatedStyle(() => ({ opacity: screen === 'rehearse' ? home.titleReturn.value : 1 }));
   const hueSlots = new Map<HueName, number[]>();
   decks.forEach((deck, index) => {
     const slots = hueSlots.get(deck.hue) ?? [];
@@ -245,43 +247,39 @@ function Ambient({ screen, deckId, home, uploadHue }: { screen: NavState['screen
     hueSlots.set(deck.hue, slots);
   });
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      {[...hueSlots].map(([hue, indices]) => <DeckGlow key={hue} hue={hue} indices={indices} n={n} screen={screen} isCurrent={current?.hue === hue} home={home} />)}
-      {(screen === 'upload' || !decks.some(d => d.hue === fresh)) && <NewGlow hue={fresh} screen={screen} home={home} empty={!n} />}
-    </View>
+    <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, reveal]}>
+      {[...hueSlots].map(([hue, indices]) => <DeckGlow key={hue} hue={hue} indices={indices} n={n} uploading={screen === 'upload'} home={home} />)}
+      {(screen === 'upload' || !decks.some(d => d.hue === fresh)) && <NewGlow hue={fresh} uploading={screen === 'upload'} home={home} empty={!n} />}
+    </Animated.View>
   );
 }
-function DeckGlow({ hue, indices, n, screen, isCurrent, home }: { hue: HueName; indices: number[]; n: number; screen: NavState['screen']; isCurrent: boolean; home: HomeShared }) {
+function DeckGlow({ hue, indices, n, uploading, home }: { hue: HueName; indices: number[]; n: number; uploading: boolean; home: HomeShared }) {
   const style = useAnimatedStyle(() => {
-    if (screen === 'home' || screen === 'upload') {
-      if (screen === 'upload') {
-        const t = Math.min(1, ((1 - home.uploadBlur.value) * 260) / 220);
-        let front = false;
-        for (const i of indices) {
-          if (Math.abs(mod(i - home.p.value + n / 2, n) - n / 2) < 0.5) { front = true; break; }
-        }
-        return { opacity: front ? t : 0 };
-      }
-      const pull = home.vy.value < 0 ? Math.min(1, -home.vy.value / 90) : 0;
-      const hs = Math.max(pull, home.gap.value);
-      let weight = 0;
+    if (uploading) {
+      const t = Math.min(1, ((1 - home.uploadBlur.value) * 260) / 220);
+      let front = false;
       for (const i of indices) {
-        const a = Math.abs(mod(i - home.p.value + n / 2, n) - n / 2);
-        if (a < 1) {
-          const k = 1 - a;
-          weight += k * k * (3 - 2 * k);
-        }
+        if (Math.abs(mod(i - home.p.value + n / 2, n) - n / 2) < 0.5) { front = true; break; }
       }
-      return { opacity: Math.min(1, weight) * (1 - hs) };
+      return { opacity: front ? t : 0 };
     }
-    return { opacity: isCurrent ? 1 : 0 };
+    const pull = home.vy.value < 0 ? Math.min(1, -home.vy.value / 90) : 0;
+    const hs = Math.max(pull, home.gap.value);
+    let weight = 0;
+    for (const i of indices) {
+      const a = Math.abs(mod(i - home.p.value + n / 2, n) - n / 2);
+      if (a < 1) {
+        const k = 1 - a;
+        weight += k * k * (3 - 2 * k);
+      }
+    }
+    return { opacity: Math.min(1, weight) * (1 - hs) };
   });
   return <GlowLayer hue={hue} style={style} />;
 }
-function NewGlow({ hue, screen, home, empty }: { hue: HueName; screen: NavState['screen']; home: HomeShared; empty: boolean }) {
+function NewGlow({ hue, uploading, home, empty }: { hue: HueName; uploading: boolean; home: HomeShared; empty: boolean }) {
   const style = useAnimatedStyle(() => {
-    if (screen === 'upload') return { opacity: 1 - Math.min(1, ((1 - home.uploadBlur.value) * 260) / 220) };
-    if (screen !== 'home') return { opacity: 0 };
+    if (uploading) return { opacity: 1 - Math.min(1, ((1 - home.uploadBlur.value) * 260) / 220) };
     const pull = home.vy.value < 0 ? Math.min(1, -home.vy.value / 90) : 0;
     return { opacity: empty ? 1 : Math.max(pull, home.gap.value) };
   });

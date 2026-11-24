@@ -1,8 +1,8 @@
 // OpenAI Codex reliability fixes: docs/ai-collaboration/prompt-logs/unattributed/iteration-2.md#record-138
 import { useUiText } from '../../design/language';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
-import { Easing, runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
+import { Easing, cancelAnimation, runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { PanView } from '../../design/PanView';
 import { Txt, useFrame } from '../../design/frame';
 import { createThemedStyles, useTheme } from '../../design/theme';
@@ -25,9 +25,14 @@ export function CueGuidancePanel({ state, slide, error, busy, onRecover,
   const panelTop = frame.compact ? 320 : 372;
   const panelHeight = 134;
   const [sheet, setSheet] = useState<CueCategory | null>(null);
+  const closing = useRef(false);
   const sheetY = useSharedValue(0);
   const reducedMotion = useReducedMotion();
   const sheetMotion = useAnimatedStyle(() => ({opacity:reducedMotion?1:Math.max(0,1-sheetY.value/220),transform:[{translateY:reducedMotion?0:sheetY.value}]}));
+  useEffect(() => () => {
+    closing.current = false;
+    cancelAnimation(sheetY);
+  }, [sheetY]);
   const views = { must_cover: cueState(state, slide, 'must_cover'), go_deeper: cueState(state, slide, 'go_deeper') };
   const common = views.must_cover.message && views.must_cover.message === views.go_deeper.message ? views.must_cover : null;
   const message = busy ? 'Requesting AI cues…' : error || (!state ? connectionMessage : null) || common?.message;
@@ -37,11 +42,35 @@ export function CueGuidancePanel({ state, slide, error, busy, onRecover,
   const labels: Record<CueCategory, string> = { must_cover: 'Must cover', go_deeper: 'Further insight' };
   const names: CueCategory[] = ['must_cover', 'go_deeper'];
   const sheetItems = sheet ? views[sheet].cues : [];
-  const finishClose = () => {setSheet(null);onSheetOpenChange?.(false);sheetY.set(0);};
-  const closeSheet = () => sheetY.set(withTiming(220,{duration:reducedMotion?0:460,easing:Easing.out(Easing.cubic)},done=>{if(done)runOnJS(finishClose)();}));
-  const openSheet = (category:CueCategory) => {sheetY.set(reducedMotion?0:70);setSheet(category);onSheetOpenChange?.(true);sheetY.set(withTiming(0,{duration:reducedMotion?0:420,easing:Easing.out(Easing.cubic)}));};
+  // OpenAI Codex, 2026-11-24: leave the sheet hidden until React removes it.
+  const finishClose = () => {
+    if (!closing.current) return;
+    setSheet(null);
+    onSheetOpenChange?.(false);
+  };
+  const closeSheet = () => {
+    if (closing.current) return;
+    closing.current = true;
+    if (reducedMotion) {
+      finishClose();
+      return;
+    }
+    sheetY.set(withTiming(220, { duration: 460, easing: Easing.out(Easing.cubic) }, done => {
+      if (done) runOnJS(finishClose)();
+    }));
+  };
+  const settleSheet = () => {
+    if (!closing.current) sheetY.set(withTiming(0, { duration: 360, easing: Easing.out(Easing.cubic) }));
+  };
+  const openSheet = (category: CueCategory) => {
+    closing.current = false;
+    sheetY.set(reducedMotion ? 0 : 70);
+    setSheet(category);
+    onSheetOpenChange?.(true);
+    if (!reducedMotion) sheetY.set(withTiming(0, { duration: 420, easing: Easing.out(Easing.cubic) }));
+  };
   return <View style={[styles.panel, { top: panelTop }]}>
-    <View style={styles.heading}><Txt style={styles.sectionTitle}>CUES</Txt><View style={styles.rule} /></View>
+    <View pointerEvents="none" style={styles.heading}><Txt style={styles.sectionTitle}>CUES</Txt><View style={styles.rule} /></View>
     <View style={styles.cards}>
       {names.map(category => {
         const data = views[category], cue = data.cues[0], count = data.cues.length;
@@ -60,10 +89,10 @@ export function CueGuidancePanel({ state, slide, error, busy, onRecover,
     {sheet && <View style={[styles.sheetLayer, { top: -panelTop, bottom: -(frame.height - panelTop - panelHeight) }]}>
       <Pressable accessibilityLabel={ui("Close cue sheet")} onPress={closeSheet} style={[styles.scrim, { backgroundColor: c.scrim }]} />
       <PanView style={[styles.sheet, { backgroundColor: c.dialog, borderColor: c.line },sheetMotion]}
-        onMoveShould={(_e, g) => g.dy > 8 && g.dy > Math.abs(g.dx)}
-        onMove={(_e,g)=>sheetY.set(Math.max(0,Math.min(220,g.dy/frame.s)))}
-        onRelease={(_e, g) => { if (g.dy > 90) closeSheet(); else sheetY.set(withTiming(0,{duration:360,easing:Easing.out(Easing.cubic)})); }}
-        onTerminate={()=>sheetY.set(withTiming(0,{duration:360,easing:Easing.out(Easing.cubic)}))}>
+        onMoveShould={(_e, g) => !closing.current && g.dy > 8 && g.dy > Math.abs(g.dx)}
+        onMove={(_e, g) => { if (!closing.current) sheetY.set(Math.max(0, Math.min(220, g.dy / frame.s))); }}
+        onRelease={(_e, g) => { if (g.dy > 90) closeSheet(); else settleSheet(); }}
+        onTerminate={settleSheet}>
         <View style={[styles.handle, { backgroundColor: c.muted2 }]} />
         <View style={styles.sheetHeader}><Txt style={[styles.sheetTitle, { color: sheet === 'must_cover' ? c.accent : c.text }]}>{labels[sheet]}</Txt>
           <Txt numberOfLines={1} style={styles.context}>Slide {slide + 1}</Txt></View>
@@ -101,7 +130,8 @@ function shortCueLabel(text: string) {
 }
 const styles = createThemedStyles({
   panel: { position: 'absolute', left: 16, right: 16, top: 372 },
-  heading: { height: 20, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  // Raise only the heading to preserve the space below the cue cards while recording.
+  heading: { height: 20, flexDirection: 'row', alignItems: 'center', gap: 8, transform: [{ translateY: -5 }] },
   sectionTitle: { fontFamily: F.bold, fontSize: 13.5, color: C.secondary, letterSpacing: 0.6 },
   rule: { flex: 1, height: 1, backgroundColor: C.hair },
   cards: { flexDirection: 'row', gap: 10, marginTop: 0 },

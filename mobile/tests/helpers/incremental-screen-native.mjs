@@ -22,6 +22,7 @@ export function LiveFeedbackPanel({ close }) { return React.createElement('live-
 export const CaptureEngine = React.forwardRef(function Capture(props, ref) {
   const [capture] = React.useState(() => {
     const value = { started: 0, recording: false, released: false, slides: [], props,
+      async checkLiveFeedback() { return runtime.incremental; },
       async start(current) { this.started++; this.recording = true; this.slides.push(current()); this.props.onStarted?.('synthetic-capture'); },
       slideChanged(slide) { if (this.recording) this.slides.push(slide); },
       async stop() { if (!this.recording) throw new Error('Nothing is recording.'); this.recording = false; return { attemptId: 'synthetic-capture', durationMs: 5000, events: [{ slide_index: this.slides[0], at_ms: 0 }] }; },

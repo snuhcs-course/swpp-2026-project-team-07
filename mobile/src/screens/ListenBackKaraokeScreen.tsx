@@ -1,7 +1,7 @@
 // Supplied Claude-generated patch, integrated by OpenAI Codex for Iteration 2 (2026-11-21): S13 Listen back layout and the
 // word-by-word karaoke (spoken / current / upcoming words from each word's timestamps, tap a word to replay from it).
 // Timing rules live in domain/karaoke.ts; see LISTEN_BACK_SPEC.md in the implementation package.
-import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Pressable, StyleSheet, View, type TextStyle } from 'react-native';
 import { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
@@ -19,6 +19,7 @@ import { listenEntryAt, listenTimeline, type ListenVisit } from '../domain/liste
 import { audioOf } from '../features/rehearsal/analysis';
 import { useSegmentPlayer, type Segment } from '../features/rehearsal/useSegmentPlayer';
 import { useDeckModel } from '../features/presentations/useDeckModel';
+import { demoAccess } from '../services/backendFetch';
 import { useBack, useShell } from './shared';
 
 const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
@@ -33,6 +34,7 @@ export function ListenBackKaraokeScreen({ active = true }: { active?: boolean })
   const fadeY = useSharedValue(0);
   const swipeFade = useAnimatedStyle(() => ({ opacity: Math.max(0, 1 - fadeY.value / BACK_FADE_Y) }));
   const model = useDeckModel(nav.deckId);
+  const access = useSyncExternalStore(demoAccess.subscribe, demoAccess.getSnapshot, demoAccess.getSnapshot);
   const player = useSegmentPlayer();
   const [selectedSlide, setSelectedSlide] = useState(Math.max(0, nav.sel));
   const [selectedPosition, setSelectedPosition] = useState<number | null>(null);
@@ -236,7 +238,7 @@ export function ListenBackKaraokeScreen({ active = true }: { active?: boolean })
             <Txt style={[styles.currentText, { color: c.secondary }]}>{live ? '…' : 'Tap play to listen to your run.'}</Txt>}
         </View>
         <Txt verbatim numberOfLines={2} style={[styles.next, { color: c.tertiary }]}>{nextText}</Txt>
-      </> : <View style={styles.noTranscript}><Txt style={[styles.noTranscriptText, { color: c.secondary }]}>{model.pending ? 'Transcript is still processing.' : 'No transcript for this run'}</Txt></View>}
+      </> : <View style={styles.noTranscript}><Txt style={[styles.noTranscriptText, { color: c.secondary }]}>{model.pending && access.state === 'ready' ? 'Transcript is still processing.' : 'No transcript for this run'}</Txt></View>}
       {!!(notice || player.error) && <Txt accessibilityRole="alert" style={[styles.notice, { color: c.secondary }]}>{notice || player.error}</Txt>}
       <PanView style={styles.scrubberHit} accessibilityRole="adjustable" accessibilityLabel={ui("Run audio position")}
         accessibilityValue={{ min: 0, max: total, now: position, text: ui(`${fmt(position)} of ${fmt(total)}`) }}

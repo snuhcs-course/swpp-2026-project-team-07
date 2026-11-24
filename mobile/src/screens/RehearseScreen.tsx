@@ -47,7 +47,7 @@ import { Enter, Txt, useFrame } from '../design/frame';
 import { UIIcon } from '../design/icons';
 import { PanView, type PanHandlers } from '../design/PanView';
 import { CARD_H, CARD_W, SlideCard } from '../design/SlideCard';
-import { C, EASE_SCREEN, EASE_SNAP, F } from '../design/tokens';
+import { C, EASE_SCREEN, EASE_SNAP, F, HOME_HEADER_CONTROL } from '../design/tokens';
 import { createThemedStyles, useTheme } from '../design/theme';
 import { Chip, Confetti, Dialog, HintRow, IDLE_WAVE, PageSurface, RecordButton, RecordRing, RoundButton, Waveform, type Hint, type RecordGlyph } from '../design/ui';
 import { paceChip } from '../domain/analysis';
@@ -315,12 +315,12 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
   // ── Recording ─────────────────────────────────────────────────────────────
   const stopCount = () => { if (countTimer.current) { clearInterval(countTimer.current); countTimer.current = null; } };
   const hideRing = () => { cancelAnimation(ringP); ringV.set(withTiming(0, { duration: 200 })); };
-  const startRec = useCallback(async () => {
+  const startRec = useCallback(async (liveFeedback?: Promise<boolean>) => {
     setPhase('starting');
     setError('');
     try {
       setCaptureId(null);
-      await engine.current?.start(() => slideRef.current);
+      await engine.current?.start(() => slideRef.current, liveFeedback);
       const cur = slideRef.current;
       // A whole redo replaces every slide; otherwise the start slide always counts as spoken.
       const spoken: boolean[] = Array(n).fill(fullRedo.current);
@@ -341,6 +341,8 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
     player.stop();
     setRedoAsk(false);
     setError('');
+    // OpenAI Codex, 2026-11-23: check server capability during the countdown; start the microphone after it.
+    const liveFeedback = engine.current?.checkLiveFeedback();
     setPhase('count'); setCount(3);
     ringV.set(1); ringP.set(1);
     ringP.set(withTiming(0, { duration: 3000, easing: Easing.linear }));
@@ -348,7 +350,7 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
     stopCount();
     countTimer.current = setInterval(() => {
       const el = Date.now() - t0;
-      if (el >= 3000) { stopCount(); void startRec(); return; }
+      if (el >= 3000) { stopCount(); void startRec(liveFeedback); return; }
       setCount(c => { const next = 3 - Math.floor(el / 1000); if (next !== c) void Haptics.selectionAsync().catch(() => undefined); return next; });
     }, 50);
   }, [player, ringP, ringV, startRec]);
@@ -516,14 +518,15 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
   // ── View model ────────────────────────────────────────────────────────────
   const cur = slide;
   const take = !recording && hasTake(cur);
-  const glyph: RecordGlyph = phase === 'count' ? (count as 3 | 2 | 1) : recording ? 'stop' : take ? 'redo' : 'mic';
-  const btnLabel = phase === 'count' ? `Starting in ${count}. Tap to cancel` : recording ? 'Stop recording'
+  const starting = phase === 'starting';
+  const glyph: RecordGlyph = starting ? 1 : phase === 'count' ? (count as 3 | 2 | 1) : recording ? 'stop' : take ? 'redo' : 'mic';
+  const btnLabel = phase === 'count' ? `Starting in ${count}. Tap to cancel` : starting ? 'Starting recorder…' : recording ? 'Stop recording'
     : (take ? 'Redo slide ' + (cur + 1) : 'Record slide ' + (cur + 1)) + (anyTake ? '. Hold 1.5 seconds to redo the whole presentation' : '');
   const idleHint: Hint = take ? { icon: 'h-hold', text: 'Hold to redo all' } : { icon: 'h-tap', text: 'Tap to record' };
   const homeHint: Hint = { icon: 'h-dn', text: 'Home' };
-  const showIdleHints = phase !== 'count' && !recording && phase !== 'burst';
+  const showIdleHints = phase === 'idle';
   const hints: Hint[] = phase === 'count' ? [{ icon: 'h-tap', text: 'Tap to cancel' }]
-    : recording ? [{ icon: 'h-tap', text: 'Tap to stop' }, { icon: 'h-spin', text: 'Swipe slides' }]
+    : starting ? [] : recording ? [{ icon: 'h-tap', text: 'Tap to stop' }, { icon: 'h-spin', text: 'Swipe slides' }]
       : phase === 'burst' ? [{ icon: 'h-tap', text: burst?.compare ? 'Comparing takes' : 'Opening review' }]
         : [idleHint, homeHint];
   const partId = run?.parts[cur]?.attemptId;
@@ -595,7 +598,7 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
             label="Open full-screen landscape player" caption="Rotate" onPress={rotate} style={{ left: 49 }} />
           <View pointerEvents="box-none" style={[styles.rightControlLayer, frame.compact && { top: 621 }]}>
             <RoundButton glyph="h-review-bars" label={recording && liveCapture ? 'Feedback so far' : state.compare ? 'Compare takes' : 'Review overall feedback'} caption={recording && liveCapture ? 'Feedback' : state.compare ? 'Compare' : 'Review'}
-              disabled={recording ? !liveCapture : !run || phase === 'count'}
+              disabled={recording ? !liveCapture : !run || phase !== 'idle'}
               onPress={() => recording && liveCapture ? setShowLiveFeedback(true) : run && (state.compare ? openReview(state.takes,cur,true,'rise') : openOverallReview(cur))}
               style={{ left: 0, top: 0 }} />
           </View>
@@ -827,11 +830,11 @@ function Readout({ live, phase, cur, take, deck, burst, error, recoveryCount, re
       <View style={[styles.paceWrap, frame.compact && { top: 466 }]} pointerEvents="none"><Chip chip={pace} size={14} /></View>
       <Txt style={[styles.big, frame.compact && { top: 490 }, { color: c.text }]}>{fmt(L.E)}</Txt>
       <Txt style={[styles.line, frame.compact && { top: 546 }, { color: onSlide > target ? c.coralText : c.secondary }]}>{'Slide ' + (cur + 1) + ' · ' + fmt(onSlide) + ' of ' + fmt(target)}</Txt>
-      <Waveform bars={L.wave} live />
+      <Waveform bars={L.wave} live smooth />
     </>;
   }
   const recovery = recoveryCount > 0;
-  const line = recovery && phase === 'idle' ? 'Recording interrupted' + (recoveryCount > 1 ? ` ${recoveryNumber} of ${recoveryCount}` : '') + ' · tap to inspect' : error ? error : phase === 'count' ? 'Get ready…' : phase === 'burst' ? 'Run complete'
+  const line = recovery && phase === 'idle' ? 'Recording interrupted' + (recoveryCount > 1 ? ` ${recoveryNumber} of ${recoveryCount}` : '') + ' · tap to inspect' : error ? error : phase === 'count' ? 'Get ready…' : phase === 'starting' ? 'Starting recorder…' : phase === 'burst' ? 'Run complete'
     : take ? 'Redo slide ' + (cur + 1) : cur === 0 ? 'Full run · target ' + fmt(deck.target) : 'Record slide ' + (cur + 1);
   return <>
     <Txt style={[styles.big, frame.compact && { top: 490 }, { color: phase === 'burst' ? c.text : c.strong }]}>{phase === 'burst' && burst ? fmt(burst.total) : '0:00'}</Txt>
@@ -860,8 +863,8 @@ const styles = createThemedStyles({
   counterWrap: { position: 'absolute', left: 120, top: 75, width: 150, height: 18, alignItems: 'center', justifyContent: 'center' },
   counterCenter: { alignItems: 'center', justifyContent: 'center' },
   counter: { fontFamily: F.medium, fontSize: 13.5, color: C.secondary },
-  // OpenAI Codex, 2026-11-23: align both header controls on the same row.
-  headerControl: { position: 'absolute', top: 39, width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  // OpenAI Codex, 2026-11-24: match the Home header controls' vertical position.
+  headerControl: { position: 'absolute', ...HOME_HEADER_CONTROL, alignItems: 'center', justifyContent: 'center' },
   editRequirements: { left: 16, zIndex: 20 },
   refreshControl: { right: 16 },
   slideStage: { position: 'absolute', left: 0, top: 100, width: 390, height: 510, overflow: 'hidden' },

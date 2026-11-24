@@ -23,6 +23,7 @@ const { ensureSlideText, ensurePages } = await import('../src/features/presentat
 const { serverSlides, serverPdfUnconfirmed } = await import('../src/features/presentations/serverDeck.ts');
 const { defaultRequirementsPending } = await import('../src/features/presentations/defaultRequirements.ts');
 const { API_URL } = await import('../src/services/api.ts');
+const { DARK_PALETTE } = await import('../src/design/tokens.ts');
 const { readStored, writeStored, removeStored } = await import('../src/services/storage.ts');
 // Claude prototype guide integrated by OpenAI Codex, Iteration 4 (2026-11-21): skip first-run overlay in older Home tests.
 const { TUTORIAL_PAGES } = await import('../src/screens/HomeTutorial.tsx');
@@ -83,6 +84,17 @@ test('home carousel opens rehearsal or saved review and restores a deck after Un
   assert.equal(home.p.value, 1);
   await action('add');
   assert.deepEqual(routes.pop(), ['upload', { nav: 'fade' }]);
+});
+
+test('portrait rehearsal keeps Home controls ready beneath the page without enabling them', async () => {
+  savePresentation(deck('Current talk', 1));
+  await mount(HomeScreen, { mode: 'rehearse', uploadLook: null });
+  const underlay = renderer.root.find(node => node.type === 'view' && node.props.pointerEvents === 'none'
+    && node.props.accessibilityElementsHidden === true && node.props.importantForAccessibility === 'no-hide-descendants');
+  assert.equal(underlay.findAllByProps({ accessibilityRole: 'switch' }).length, 2);
+  assert.equal(textShown('Spin'), true);
+  assert.ok(underlay.findByType('gesture').props.gesture.every(gesture => gesture.enabled === false));
+  assert.equal(underlay.findByType('home-stats').props.active, false);
 });
 
 // OpenAI Codex integrated supplied Home blur regression: docs/ai-collaboration-prompts-iteration-2.md#widen-and-blur-home-carousel--november-20-2026
@@ -268,6 +280,9 @@ test('upload saves an offline deck and refresh explicitly recovers slide text wh
   network.respond = async () => { throw new Error('Offline fixture'); };
   await click('Choose a PDF to upload');
   await waitFor(() => renderer.root.findAllByType('requirements').length === 1);
+  const editor = renderer.root.findByType('requirements');
+  const backdrop = flat(hostParent(editor).props.style);
+  assert.equal(backdrop.backgroundColor, DARK_PALETTE.bg, 'the setup covers the Home and import layers');
   const saved = visibleDecks()[0];
   assert.equal(saved.text, 'pending');
   assert.equal(saved.pages.length, 7);

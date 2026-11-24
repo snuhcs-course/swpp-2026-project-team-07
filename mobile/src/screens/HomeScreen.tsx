@@ -51,7 +51,7 @@ import { TutorialOverlay } from './HomeTutorial';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDeckChange }: {
-  mode: 'home' | 'upload' | 'covered'; uploadLook: { hue: HueName; order: number } | null;
+  mode: 'home' | 'upload' | 'rehearse' | 'covered'; uploadLook: { hue: HueName; order: number } | null;
   onFrontDeckChange?: (id: string | null) => void;
 }) {
   const ui = useUiText();
@@ -74,6 +74,7 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
   const newHue = mode === 'upload' && uploadLook ? uploadLook.hue : nextHue();
   const newOrder = mode === 'upload' && uploadLook ? uploadLook.order : n + 1;
   const active = mode === 'home' && !pickerFor && !creditsOpen && tutorialPage === null;
+  const showHomeChrome = (mode === 'home' || mode === 'rehearse') && !pickerFor && tutorialPage === null;
   const reducedMotion = useReducedMotion();
   const creditsOpacity = useSharedValue(0);
   useEffect(() => {
@@ -325,7 +326,7 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
       <Pressable accessibilityRole="button" accessibilityLabel={ui("How OutLoud works")} onPress={openTutorial} onLongPress={() => setCreditsOpen(true)}
         style={styles.logo}><Txt style={styles.logoText}>OutLoud</Txt></Pressable>
       <Animated.View pointerEvents={mode === 'home' ? 'box-none' : 'none'} style={[StyleSheet.absoluteFill, homeControls]}>
-        {mode === 'home' && !pickerFor && tutorialPage === null && <>
+        {showHomeChrome && <>
           <LanguageToggle />
           <ThemeToggle />
         </>}
@@ -356,7 +357,7 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
         {undo && <UndoToast text={`Deleted “${undo.deck.title}”`} onUndo={undoDelete} />}
       </Animated.View>
       </Animated.View>
-      {mode === 'home' && !pickerFor && tutorialPage === null && !creditsOpen && <HomeHints empty={!n} />}
+      {showHomeChrome && !creditsOpen && <HomeHints empty={!n} />}
       {pickerFor && <IconPicker deckId={pickerFor} closing={pickerClosing} onClose={closePicker} />}
       {tutorialPage !== null && <TutorialOverlay page={tutorialPage} onPage={setTutorialPage} onClose={closeTutorial}
         cover={tutorialCover} closing={tutorialClosing} showAppearanceControls={!tutorialSeen} />}

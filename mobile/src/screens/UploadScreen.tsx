@@ -258,7 +258,9 @@ export function UploadScreen() {
           </>}
       </PanView>
       </View>
-      {readyDeck && phase === 'configure' && <Enter kind="fade"><PresentationRequirementsEditor deck={readyDeck} initialImport fixedHint onHintVisibilityChange={setSetupHintVisible} onSaved={finishSetup} onBackPan={pan} /></Enter>}
+      {readyDeck && phase === 'configure' && <Enter kind="fade" style={{ backgroundColor: c.bg }}>
+        <PresentationRequirementsEditor deck={readyDeck} initialImport fixedHint onHintVisibilityChange={setSetupHintVisible} onSaved={finishSetup} onBackPan={pan} />
+      </Enter>}
       {profileRetryAsk && <Dialog title="Retry AI slide analysis?" body="The previous provider request has an uncertain outcome. Retrying may incur another charge." confirm="Retry" onConfirm={() => { const expected=profileRetryAsk;setProfileRetryAsk(null);void profiles.recover(true,expected); }} onCancel={() => setProfileRetryAsk(null)} />}
       </Animated.View>
     </Enter>

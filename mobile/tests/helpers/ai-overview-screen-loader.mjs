@@ -2,6 +2,7 @@ import {resolve as domainResolve,load} from './domain-loader.mjs';
 export {load};
 const native=new URL('./ai-overview-screen-native.mjs',import.meta.url).href;
 export function resolve(specifier,context,next){
+ if(specifier.endsWith('/services/backendFetch')&&/\/(WaitScreen|ListenBackKaraokeScreen)\.tsx$/.test(context.parentURL??''))return {url:native,shortCircuit:true};
  if(['react-native','react-native-reanimated','react-native-svg'].includes(specifier)||
  /\/(frame|icons|PanView|SlideCard|ui|theme|ScoreRing)$/.test(specifier)||specifier==='./shared'||
  /\/(useDeckModel|useSegmentPlayer|useRunFeedbackStatus|useRunPresentationScores|useRunFeedbackV3|SlideReviewSummary|useSlideReview|requirementsStore|requirementsDraft)$/.test(specifier)||

@@ -90,7 +90,7 @@ Use versioned, API/attempt/context/source-aware validated cache and deduplicated
 
 Full Review ring: integer, proportion 0–100, `Overall score`, derived performance label. Slide ring: `Slide score`. Tiles display each selected source's score. Not graded/loading/stale/unavailable/insufficient/recovery states use no fake number. Keep existing timing/fillers/WPM/audio/transcript/thumbnail/graph/coverage/recovery/navigation. Replace visible findings with feedback/feedback items. Show summaries, strengths, weaknesses and actionable improvements directly with supporting evidence playback. Hide criterion cards, weights, anchor descriptions and the explanations toggle. Use the validated unrounded backend level for colors: Beginning red, Emerging amber, Competent green, Advanced blue; unavailable states stay neutral.
 
-A composed run may show per-slide scores from its original attempts but no overall total. Require one attempt with exact original visit selection and every applicable slide; `Run.full` alone is not proof. No old-attempt substitution. Home uses the same exact selected-run overall projection as Full Review, with no latest-old-attempt substitution. It displays total current verified findings once, selected-run duration and WPM. Home indicator reads do not grade.
+The v2 per-attempt endpoint requires exact original visit selection and every applicable slide to show an overall total. Home and Full Review share the selected-run projection. The [v3 selected retake assessment](api-contract.md#overall-feedback-for-selected-retakes) can grade the current rehearsal across multiple attempts. Home displays total current verified findings once, selected-run duration and WPM.
 
 ## Historical implementation boundaries — October 17, 2026
 
