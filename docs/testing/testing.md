@@ -4,6 +4,8 @@
 
 GitHub Actions measures line and branch coverage and enforces the [four group targets](../../tools/coverage-policy.json). The mobile and backend jobs upload their coverage reports after the checks run.
 
+The public AI budget and charge models count toward backend logic coverage. Its ledger initialization migration counts toward backend API and runtime coverage.
+
 From `mobile/` with Node 24 and Python 3 available:
 
 ```sh
