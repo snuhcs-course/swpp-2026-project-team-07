@@ -85,6 +85,26 @@ test('missing transcription and a mismatched saved server deck cannot authorize 
 
 test('silent completed sources stay ungraded and do not appear to be perpetually transcribing',()=>{
  const {api,model}=setup('projection-silent');model.stages.set(attemptId,'no_speech');
- writeStored(reviewKey(api,'attempt',attemptId),scoreReview({transcript:{text:'',words:[]}}));
+ model.n=1;model.state.run.parts=[{attemptId,segments:[{startMs:0,endMs:2000}]}];
+ writeStored(reviewKey(api,'attempt',attemptId),scoreReview({transcript_id:null,transcript:{text:'',words:[]},
+  slide_events:[{slide_index:0,at_ms:0}],analysis_outcome:'no_speech'}));
  const derived=project(model,api);assert.equal(derived.target,null);assert.equal(derived.items[0].status,'No speech detected');assert.equal(derived.items[0].score,null);
+ assert.equal(derived.overall.status,'No speech detected in this run');assert.equal(derived.overall.score,null);
+ assert.deepEqual(derived.targets,[]);
+});
+
+test('no-speech completion copy requires the exact complete take and never replaces mixed or pending status',()=>{
+ const {api,model}=setup('projection-silent-selection');
+ writeStored(reviewKey(api,'attempt',attemptId),scoreReview({transcript_id:null,transcript:{text:'',words:[]}}));
+ model.stages.set(attemptId,'processing');
+ assert.notEqual(project(model,api).overall.status,'No speech detected in this run');
+ model.stages.set(attemptId,'no_speech');
+ const lastPart=model.state.run.parts[1];
+ model.state.run.parts[1]=null;
+ assert.equal(project(model,api).overall.status,'Select a complete recording');
+ model.state.run.parts[1]={...lastPart,attemptId:other};
+ assert.equal(project(model,api).overall.status,'Combined recordings');
+ model.state.run.parts[1]=lastPart;
+ model.state.run.parts[0]={attemptId,segments:[{startMs:5,endMs:1000}]};
+ assert.equal(project(model,api).overall.status,'Select a complete recording');
 });

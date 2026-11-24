@@ -7,7 +7,7 @@ import { useEffect, useRef } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Circle, Path } from 'react-native-svg';
-import { EASE_SCREEN } from './tokens';
+import { EASE_SCREEN, HOME_HEADER_CONTROL } from './tokens';
 import { useTheme } from './theme';
 
 const SUN_DOTS = [[110, -410.5], [300.5, -300.5], [410.5, -110],
@@ -49,5 +49,5 @@ const styles = StyleSheet.create({
   // OpenAI Codex header alignment: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-106
   // Center on the Home wordmark: the 44 dp hit target has the same y-center
   // as the logo's 36 dp frame at top 57 dp (center y=75 dp).
-  hit: { position: 'absolute', top: 53, right: 18, width: 44, height: 44, zIndex: 40, alignItems: 'center', justifyContent: 'center' },
+  hit: { position: 'absolute', ...HOME_HEADER_CONTROL, right: 18, zIndex: 40, alignItems: 'center', justifyContent: 'center' },
 });

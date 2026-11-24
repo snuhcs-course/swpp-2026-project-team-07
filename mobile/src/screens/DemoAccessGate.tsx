@@ -1,25 +1,45 @@
 // AI-assisted demo access migration, OpenAI Codex, November 1, 2026.
 import { useUiText } from '../design/language';
-import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import { Txt } from '../design/frame';
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Frame, Txt, useFrameLayout } from '../design/frame';
+import { LanguageToggle } from '../design/LanguageToggle';
+import { ThemeToggle } from '../design/ThemeToggle';
 import { useTheme } from '../design/theme';
-import { F } from '../design/tokens';
+import { F, HOME_HEADER_CONTROL } from '../design/tokens';
 import { DEMO_CODE_REQUIRED } from '../services/apiConfig';
 import { demoAccess, enterDemoCode } from '../services/backendFetch';
+import { hasSeenTutorial } from './shared';
 
 /** Once opened, the app stays mounted when server access expires mid-recording. */
 export function DemoAccessGate({ children }: { children: ReactNode }) {
   const ui = useUiText();
   const { c } = useTheme();
+  const { info: frame } = useFrameLayout();
   const access = useSyncExternalStore(demoAccess.subscribe, demoAccess.getSnapshot, demoAccess.getSnapshot);
   const [opened, setOpened] = useState(false), [offline, setOffline] = useState(false);
   const [code, setCode] = useState(''), [error, setError] = useState(''), [busy, setBusy] = useState(false);
+  const [editingCode, setEditingCode] = useState(false);
+  const [tutorialSeen] = useState(hasSeenTutorial);
+  const codeInput = useRef<TextInput>(null);
   useEffect(() => { void demoAccess.initialize(); }, []);
+  useEffect(() => {
+    if (!editingCode) return;
+    const hiding = Keyboard.addListener('keyboardDidHide', () => {
+      // OpenAI Codex, 2026-11-23: Android can hide the keyboard while the field still has focus.
+      codeInput.current?.blur();
+      setEditingCode(false);
+    });
+    return () => hiding.remove();
+  }, [editingCode]);
   if (!DEMO_CODE_REQUIRED) return children;
   const mounted = access.unlockedOnce || offline;
   const visible = access.state !== 'ready' && (opened || !mounted);
-  const close = () => { setOpened(false); setOffline(true); setCode(''); setError(''); };
+  const firstRun = !mounted && !tutorialSeen;
+  const showAppearanceControls = firstRun && !editingCode;
+  // Keep the form below both header controls.
+  const formTop = frame.top + (HOME_HEADER_CONTROL.top + HOME_HEADER_CONTROL.height + 12) * frame.s;
+  const close = () => { setOpened(false); setOffline(true); setCode(''); setError(''); setEditingCode(false); };
   async function connect() {
     if (busy || !code.trim()) return;
     setBusy(true); setError('');
@@ -34,30 +54,39 @@ export function DemoAccessGate({ children }: { children: ReactNode }) {
         <Txt style={{ fontFamily: F.semibold, color: c.strong }}>Server access locked · Enter demo code</Txt>
       </Pressable>
     </View>}
-    <Modal transparent visible={visible} animationType="fade" onRequestClose={close}>
-      <KeyboardAvoidingView behavior="padding" style={[styles.overlay, { backgroundColor: c.bg }]}>
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scroll}>
-          <View style={styles.card} accessibilityViewIsModal>
-            <Txt style={[styles.title, { color: c.strong }]}>Open OutLoud</Txt>
-            <Txt style={[styles.body, { color: c.body }]}>Enter the demo code provided with this app. Reviewers share this workspace, including uploaded slides and recordings.</Txt>
-            {access.state === 'loading' ? <ActivityIndicator accessibilityLabel={ui("Opening saved access")} color={c.strong} /> : <>
-              <TextInput accessibilityLabel={ui("Demo code")} placeholder={ui("Demo code")} placeholderTextColor={c.secondary}
-                value={code} onChangeText={setCode} secureTextEntry autoCapitalize="none" autoCorrect={false}
-                autoComplete="off" maxLength={256} returnKeyType="go" onSubmitEditing={() => { void connect(); }}
-                editable={!busy} style={[styles.input, { color: c.strong, borderColor: c.track }]} />
-              {!!(error || access.notice) && <Txt accessibilityLiveRegion="polite" style={[styles.body, { color: c.body }]}>{error || access.notice}</Txt>}
-              <Pressable accessibilityRole="button" accessibilityLabel={ui("Connect to OutLoud")} disabled={busy || !code.trim()} onPress={() => { void connect(); }}
-                style={[styles.connect, { backgroundColor: c.strong, opacity: busy || !code.trim() ? 0.5 : 1 }]}>
-                {busy ? <ActivityIndicator color={c.bg} /> : <Txt style={{ fontFamily: F.bold, color: c.bg }}>Connect</Txt>}
+    <Modal transparent statusBarTranslucent={firstRun} navigationBarTranslucent={firstRun}
+      visible={visible} animationType="fade" onRequestClose={close}>
+      <View style={[styles.overlay, { backgroundColor: c.bg }]} accessibilityViewIsModal>
+        <KeyboardAvoidingView behavior="padding" style={[styles.overlay, showAppearanceControls && { paddingTop: formTop }]}>
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scroll}>
+            <View style={styles.card}>
+              <Txt style={[styles.title, { color: c.strong }]}>Open OutLoud</Txt>
+              <Txt style={[styles.body, { color: c.body }]}>Enter the demo code provided with this app. Reviewers share this workspace, including uploaded slides and recordings.</Txt>
+              {access.state === 'loading' ? <ActivityIndicator accessibilityLabel={ui("Opening saved access")} color={c.strong} /> : <>
+                <TextInput ref={codeInput} accessibilityLabel={ui("Demo code")} placeholder={ui("Demo code")} placeholderTextColor={c.secondary}
+                  onFocus={firstRun ? () => setEditingCode(true) : undefined} onBlur={() => setEditingCode(false)}
+                  value={code} onChangeText={setCode} secureTextEntry autoCapitalize="none" autoCorrect={false}
+                  autoComplete="off" maxLength={256} returnKeyType="go" onSubmitEditing={() => { void connect(); }}
+                  editable={!busy} style={[styles.input, { color: c.strong, borderColor: c.track }]} />
+                {!!(error || access.notice) && <Txt accessibilityLiveRegion="polite" style={[styles.body, { color: c.body }]}>{error || access.notice}</Txt>}
+                <Pressable accessibilityRole="button" accessibilityLabel={ui("Connect to OutLoud")} disabled={busy || !code.trim()} onPress={() => { void connect(); }}
+                  style={[styles.connect, { backgroundColor: c.strong, opacity: busy || !code.trim() ? 0.5 : 1 }]}>
+                  {busy ? <ActivityIndicator color={c.bg} /> : <Txt style={{ fontFamily: F.bold, color: c.bg }}>Connect</Txt>}
+                </Pressable>
+              </>}
+              <Pressable accessibilityRole="button" onPress={close} style={styles.offline}>
+                <Txt style={{ fontFamily: F.semibold, color: c.body }}>Continue offline</Txt>
               </Pressable>
-            </>}
-            <Pressable accessibilityRole="button" onPress={close} style={styles.offline}>
-              <Txt style={{ fontFamily: F.semibold, color: c.body }}>Continue offline</Txt>
-            </Pressable>
-            <Txt style={[styles.note, { color: c.secondary }]}>Local slides and recordings stay on this phone. Internet access is needed for server features.</Txt>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+              <Txt style={[styles.note, { color: c.secondary }]}>Local slides and recordings stay on this phone. Internet access is needed for server features.</Txt>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+        {/* OpenAI Codex, 2026-11-23: use Home's frame independently of translated copy and keyboard layout. */}
+        {showAppearanceControls && <Frame overlay>
+          <LanguageToggle showLabel />
+          <ThemeToggle />
+        </Frame>}
+      </View>
     </Modal>
   </>;
 }

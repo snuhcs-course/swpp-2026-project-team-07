@@ -125,6 +125,55 @@ test('a mounted screen loads an old recording when capability becomes known', as
   } finally { await act(async () => renderer?.unmount()); }
 });
 
+test('the selected overall assessment starts only after the comparison and input synchronization are done', async () => {
+  const h = setup({ selectedCalls: [], corrections: { new: { pending: true } } });
+  const model = { deck: { id: 'deck' }, n: 2,
+    state: { run: { parts: [part('old'), part('new')] }, compare: { attemptId: 'pending' } }, stages: new Map() };
+  function Screen() {
+    const v3 = useRunFeedbackV3(model);
+    return React.createElement('score', { overall: v3.overall });
+  }
+  let renderer;
+  try {
+    await act(async () => { renderer = create(React.createElement(Screen)); });
+    assert.deepEqual(h.selectedCalls, []);
+    model.state.compare = null;
+    await act(async () => renderer.update(React.createElement(Screen)));
+    assert.deepEqual(h.selectedCalls, []);
+    assert.equal(renderer.root.findByType('score').props.overall.status, 'Transcript changes pending');
+    h.corrections = {};
+    await act(async () => renderer.update(React.createElement(Screen)));
+    const [{ selection, action }] = h.selectedCalls;
+    assert.equal(selection.anchor, 'new');
+    assert.equal(action, 'check');
+    assert.deepEqual(selection.scope.slides.map(slide => slide.attempt_id), ['old', 'new']);
+    await act(async () => renderer.update(React.createElement(Screen)));
+    assert.equal(h.selectedCalls.length, 1);
+  } finally { await act(async () => renderer?.unmount()); }
+});
+
+test('selected overall Update and Retry are independent of an individual take request that fails', async () => {
+  for (const action of ['update', 'retry']) {
+    const status = action === 'update' ? 'stale' : 'failed';
+    const old = { status, enabled: true, runId: 'old-feedback', slides: [], whole: null };
+    const h = setup({ selectedCalls: [], selectedRun: { ...old, runId: 'selected-feedback' },
+      runs: { old }, post: async () => { throw new Error('Single take endpoint failed'); } });
+    const model = { deck: { id: 'deck' }, n: 2,
+      state: { run: { parts: [part('old'), part('new')] }, compare: null }, stages: new Map() };
+    function Screen() {
+      const v3 = useRunFeedbackV3(model);
+      return React.createElement('score', { actOnSelection: v3[action] });
+    }
+    let renderer;
+    try {
+      await act(async () => { renderer = create(React.createElement(Screen)); });
+      await act(async () => renderer.root.findByType('score').props.actOnSelection());
+      assert.deepEqual(h.selectedCalls.map(call => call.action), ['check', action]);
+      assert.ok(h.calls.some(([method, id]) => method === 'POST' && id === 'old'));
+    } finally { await act(async () => renderer?.unmount()); }
+  }
+});
+
 test('cached whole Feedback cards stay offline-ready when slide rubric and coverage translations are missing', async () => {
   const { displayTranslations } = await import('../src/features/localization/useDisplayTranslation.ts');
   const { setAppLanguage } = await import('../src/design/language.ts');

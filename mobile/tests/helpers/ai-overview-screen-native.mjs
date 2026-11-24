@@ -4,14 +4,16 @@ export const ScrollView=React.forwardRef(function ScrollView(props,ref){React.us
 export const StyleSheet={create:x=>x,absoluteFill:{}};
 export const Enter=({children})=>React.createElement('enter',null,children),PanView='pan',Glyph='glyph',UIIcon='icon',MiniSlide='mini-slide',ScoreRing='score-ring',PageSurface='page-surface',Pill='pill',IconRow='icon-row',Dialog='dialog';
 export const runtime={model:null,feedback:null,nav:null,routes:[],audio:new Map(),plays:[],stops:0,players:[],scrolls:[],frameHeight:844,frameCompact:false};
+const readyAccess={state:'ready'};
+export const demoAccess={subscribe:()=>()=>{},getSnapshot:()=>runtime.serverAccess??readyAccess};
 // OpenAI Codex #44: expose background cancellation and exact queued-seek intent.
 const appListeners=new Set();
 export const AppState={currentState:'active',addEventListener(_event,listener){appListeners.add(listener);return {remove(){appListeners.delete(listener);}};},emit(state){this.currentState=state;for(const listener of appListeners)listener(state);}};
 export function useDeckModel(){return runtime.model;}
-export function useRunFeedbackStatus(_model,active){return {...runtime.feedback,active};}
+export function useRunFeedbackStatus(_model,active){runtime.feedbackActive=active;return {...runtime.feedback,active};}
 // Claude Code, prompted by Seoyeon (2026-11-15): screens read scores through useRunScores; these
 // screen tests keep exercising the v2 path unless a test supplies runtime.v3.
-export function useRunScores(model,active,slide){const v2=useRunPresentationScores(model,active,slide);return runtime.v3?{kind:'v3',scores:{items:runtime.v3.items,overall:runtime.v3.overall},v3:runtime.v3,v2}:{kind:'v2',scores:v2,v3:null,v2};}
+export function useRunScores(model,active,slide){runtime.scoreActive=active;const v2=useRunPresentationScores(model,active,slide);return runtime.v3?{kind:'v3',scores:{items:runtime.v3.items,overall:runtime.v3.overall},v3:runtime.v3,v2}:{kind:'v2',scores:v2,v3:null,v2};}
 export function useRunPresentationScores(model,active,slide){runtime.scoreSelections??=[];runtime.scoreSelections.push(slide);if(runtime.scores)return runtime.scores;const empty={score:null,level:null,status:'Not graded',state:null,result:null,target:null};return {items:Array.from({length:model?.n??0},(_,slide)=>({...empty,slide})),overall:empty,target:null,controller:{state:null,busy:false,notice:'',ask:false,refresh:async()=>{},generate:async()=>{},confirm:()=>{},cancel:()=>{}},notice:'',refresh:async()=>{}};}
 export const SlideReviewSummary='slide-feedback',TakePlayback='take-playback',TranscriptCorrections='inline-transcript',ReviewRecordingTools='recording-tools';
 export const subscribePlaybackId=()=>()=>{};
@@ -33,6 +35,7 @@ export function useSegmentPlayer(){const[,render]=React.useState(0);const[p]=Rea
 export const Easing={bezier:()=>v=>v},withTiming=(v,_config,complete)=>{complete?.(true);return v;},runOnJS=f=>f,cancelAnimation=()=>{};
 export const useSharedValue=value=>{const r=React.useRef({value,get(){return this.value},set(v){this.value=v}});return r.current;};
 export const useAnimatedStyle=fn=>fn(),useAnimatedProps=()=>({}),useReducedMotion=()=>runtime.reducedMotion??true;
+export const FadeIn={duration:ms=>({duration:ms})};
 export const createThemedStyles=x=>x;
 export const useTheme=()=>({mode:runtime.theme??'dark',c:runtime.palettes?.[runtime.theme??'dark']??{text:'#fff',body:'#ddd',secondary:'#aaa',tertiary:'#888',good:'#0a0',warn:'#fa0',bad:'#f44',info:'#88f',strong:'#fff'}});
 export const Defs='defs',LinearGradient='gradient',Path='path',Rect='rect',Stop='stop',Circle='circle';

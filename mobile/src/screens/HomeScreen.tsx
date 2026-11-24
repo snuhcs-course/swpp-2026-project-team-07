@@ -37,7 +37,7 @@ import { ThemeToggle } from '../design/ThemeToggle';
 import { LanguageToggle } from '../design/LanguageToggle';
 import { HintRow, UndoToast } from '../design/ui';
 import { useUiText } from '../design/language';
-import { readStored, writeStored } from '../services/storage';
+import { writeStored } from '../services/storage';
 import { BACK_FADE_Y, coverFlow, homeCarouselRelease, HOLD_MS, PULL_T, PX_PER_CARD, rubber } from '../domain/gestures';
 import { ICONS, type HueName, type IconId } from '../domain/hues';
 import { mod, nearestSlot, pad2 } from '../domain/format';
@@ -46,12 +46,12 @@ import { ANALYZE_ICON_SCALE, CAROUSEL_TOP, deckIconSize, ORIGIN_Y, SLOT_H, SLOT_
 import { getDeckState, nextHue, setHidden, setHue, setIcon, useStore, visibleDecks, type Presentation } from '../features/presentations/store';
 import { savedAttempts } from '../features/recording/storage';
 import { pdfService } from '../features/pdf/service';
-import { useBack, useHomeShell } from './shared';
-import { TUTORIAL_SEEN, TutorialOverlay } from './HomeTutorial';
+import { hasSeenTutorial, TUTORIAL_SEEN, useBack, useHomeShell } from './shared';
+import { TutorialOverlay } from './HomeTutorial';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDeckChange }: {
-  mode: 'home' | 'upload' | 'covered'; uploadLook: { hue: HueName; order: number } | null;
+  mode: 'home' | 'upload' | 'rehearse' | 'covered'; uploadLook: { hue: HueName; order: number } | null;
   onFrontDeckChange?: (id: string | null) => void;
 }) {
   const ui = useUiText();
@@ -65,9 +65,8 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const [pickerClosing, setPickerClosing] = useState(false);
   const [creditsOpen, setCreditsOpen] = useState(false);
-  const [tutorialPage, setTutorialPage] = useState<number | null>(() => {
-    try { return mode === 'home' && !readStored<boolean>(TUTORIAL_SEEN) ? 0 : null; } catch { return null; }
-  });
+  const [tutorialSeen, setTutorialSeen] = useState(hasSeenTutorial);
+  const [tutorialPage, setTutorialPage] = useState<number | null>(mode === 'home' && !tutorialSeen ? 0 : null);
   const [tutorialClosing, setTutorialClosing] = useState(false);
   const tutorialCover = useSharedValue(0);
   const [undo, setUndo] = useState<{ deck: Presentation; at: number } | null>(null);
@@ -75,6 +74,7 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
   const newHue = mode === 'upload' && uploadLook ? uploadLook.hue : nextHue();
   const newOrder = mode === 'upload' && uploadLook ? uploadLook.order : n + 1;
   const active = mode === 'home' && !pickerFor && !creditsOpen && tutorialPage === null;
+  const showHomeChrome = (mode === 'home' || mode === 'rehearse') && !pickerFor && tutorialPage === null;
   const reducedMotion = useReducedMotion();
   const creditsOpacity = useSharedValue(0);
   useEffect(() => {
@@ -86,6 +86,7 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
   const closeTutorial = () => {
     setTutorialPage(null);
     setTutorialClosing(false);
+    setTutorialSeen(true);
     try { writeStored(TUTORIAL_SEEN, true); } catch { /* Reopen automatically next launch. */ }
   };
   const floatPhase = useSharedValue(0);
@@ -325,8 +326,10 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
       <Pressable accessibilityRole="button" accessibilityLabel={ui("How OutLoud works")} onPress={openTutorial} onLongPress={() => setCreditsOpen(true)}
         style={styles.logo}><Txt style={styles.logoText}>OutLoud</Txt></Pressable>
       <Animated.View pointerEvents={mode === 'home' ? 'box-none' : 'none'} style={[StyleSheet.absoluteFill, homeControls]}>
-        {mode === 'home' && !pickerFor && <LanguageToggle />}
-        {!pickerFor && <ThemeToggle />}
+        {showHomeChrome && <>
+          <LanguageToggle />
+          <ThemeToggle />
+        </>}
       </Animated.View>
       <GestureDetector gesture={carouselGesture}><Animated.View style={[styles.carousel, homeLayer, mode === 'upload' && styles.addBlur]}
         accessible accessibilityRole="adjustable" accessibilityLabel={ui(frontDeck ? `${frontDeck.title}, ${frontDeck.pageCount} slides` : 'No presentations yet')}
@@ -354,10 +357,10 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
         {undo && <UndoToast text={`Deleted “${undo.deck.title}”`} onUndo={undoDelete} />}
       </Animated.View>
       </Animated.View>
-      {mode === 'home' && !pickerFor && tutorialPage === null && !creditsOpen && <HomeHints empty={!n} />}
+      {showHomeChrome && !creditsOpen && <HomeHints empty={!n} />}
       {pickerFor && <IconPicker deckId={pickerFor} closing={pickerClosing} onClose={closePicker} />}
       {tutorialPage !== null && <TutorialOverlay page={tutorialPage} onPage={setTutorialPage} onClose={closeTutorial}
-        cover={tutorialCover} closing={tutorialClosing} />}
+        cover={tutorialCover} closing={tutorialClosing} showAppearanceControls={!tutorialSeen} />}
       <Animated.View pointerEvents={creditsOpen ? 'auto' : 'none'} accessibilityElementsHidden={!creditsOpen}
         importantForAccessibility={creditsOpen ? 'yes' : 'no-hide-descendants'} accessibilityViewIsModal={creditsOpen}
         style={[styles.creditsOverlay, creditsFade]}>

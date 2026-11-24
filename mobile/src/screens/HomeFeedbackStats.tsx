@@ -12,6 +12,7 @@ import { createThemedStyles, useTheme } from '../design/theme';
 import { C, F } from '../design/tokens';
 import { PULL_T } from '../domain/gestures';
 import { fmt } from '../domain/format';
+import { runAttemptIds } from '../domain/run';
 import { useDeckModel } from '../features/presentations/useDeckModel';
 import type { HomeShared } from './shared';
 
@@ -40,13 +41,17 @@ export function HomeFeedbackStats({ deckId, home, active, onOpenReview, index = 
     { icon: null, value: run ? fmt(model.total) : '—', label: target ? `of ${fmt(target)}` : 'duration', color: run && target && model.total > target ? c.gold : c.text },
     { icon: null, value: stats?.wpm == null ? '—' : String(stats.wpm), label: 'wpm', color: c.text },
   ];
-  const composed = !!run && scores.overall.status === 'Combined recordings';
+  const composed = runAttemptIds(run).length > 1;
+  const scoreStatus = scores.overall.status === 'Combined recordings' ? 'Overall score unavailable' : scores.overall.status;
   return <Animated.View pointerEvents={active ? 'box-none' : 'none'} style={[styles.root, style]}>
     {score !== null ? <Pressable accessibilityRole="button" accessibilityLabel={ui(`Open full review, presentation score ${score} percent`)}
       onPress={onOpenReview} style={styles.scoreTarget}><Txt style={[styles.score, compact && styles.compactScore, { color }]}>{score}<Txt style={[styles.unit, compact && styles.compactUnit, { color }]}>%</Txt></Txt></Pressable>
+      : composed ? <Pressable accessibilityRole="button" accessibilityLabel={ui('Open full review')} onPress={onOpenReview}>
+          <Txt style={[styles.score, compact && styles.compactScore, { color: c.muted, opacity: 0.45, textAlign: 'center' }]}>—</Txt>
+          <Txt numberOfLines={2} style={[styles.composed, { color: c.muted }]}>{scoreStatus}</Txt>
+        </Pressable>
       : run ? <Txt style={[styles.score, compact && styles.compactScore, { color: c.muted, opacity: 0.45 }]}>—</Txt>
         : <Txt style={[styles.noRun, { color: c.muted }]}>No run yet</Txt>}
-    {composed && <Txt style={[styles.composed, { color: c.muted }]}>Record a full run for an overall score</Txt>}
     {run && <View style={styles.columns}>
       {cols.map((item, index) => <View key={item.label} style={[styles.column, index > 0 && styles.withRule]}>
         <View style={styles.valueRow}>{item.icon && <UIIcon name={item.icon} size={22} color={item.color} />}
@@ -64,7 +69,7 @@ const styles = createThemedStyles({
   compactScore: { fontSize: 52, lineHeight: 56 },
   compactUnit: { fontSize: 22, lineHeight: 28 },
   noRun: { marginTop: 7, fontFamily: F.medium, fontSize: 15, lineHeight: 22 },
-  composed: { marginTop: 1, fontFamily: F.medium, fontSize: 14, lineHeight: 18 },
+  composed: { marginTop: 1, fontFamily: F.medium, fontSize: 14, lineHeight: 18, textAlign: 'center' },
   columns: { width: '100%', height: 58, marginTop: 14, flexDirection: 'row', alignItems: 'center' },
   column: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3 },
   withRule: { borderLeftWidth: 1, borderLeftColor: C.hair },

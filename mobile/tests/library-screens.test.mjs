@@ -15,7 +15,7 @@ registerHooks({ resolve, load });
 
 const { HomeScreen } = await import('../src/screens/HomeScreen.tsx');
 const { UploadScreen } = await import('../src/screens/UploadScreen.tsx');
-const { HomeContext, ShellContext } = await import('../src/screens/shared.ts');
+const { HomeContext, ShellContext, TUTORIAL_SEEN } = await import('../src/screens/shared.ts');
 const { deckById, savePresentation, saveDeckState, getDeckState, forgetPresentation, visibleDecks } =
   await import('../src/features/presentations/store.ts');
 const { getImportedPdfs } = await import('../src/features/pdf/service.ts');
@@ -23,9 +23,10 @@ const { ensureSlideText, ensurePages } = await import('../src/features/presentat
 const { serverSlides, serverPdfUnconfirmed } = await import('../src/features/presentations/serverDeck.ts');
 const { defaultRequirementsPending } = await import('../src/features/presentations/defaultRequirements.ts');
 const { API_URL } = await import('../src/services/api.ts');
+const { DARK_PALETTE } = await import('../src/design/tokens.ts');
 const { readStored, writeStored, removeStored } = await import('../src/services/storage.ts');
 // Claude prototype guide integrated by OpenAI Codex, Iteration 4 (2026-11-21): skip first-run overlay in older Home tests.
-const { TUTORIAL_SEEN, TUTORIAL_PAGES } = await import('../src/screens/HomeTutorial.tsx');
+const { TUTORIAL_PAGES } = await import('../src/screens/HomeTutorial.tsx');
 writeStored(TUTORIAL_SEEN, true);
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -83,6 +84,17 @@ test('home carousel opens rehearsal or saved review and restores a deck after Un
   assert.equal(home.p.value, 1);
   await action('add');
   assert.deepEqual(routes.pop(), ['upload', { nav: 'fade' }]);
+});
+
+test('portrait rehearsal keeps Home controls ready beneath the page without enabling them', async () => {
+  savePresentation(deck('Current talk', 1));
+  await mount(HomeScreen, { mode: 'rehearse', uploadLook: null });
+  const underlay = renderer.root.find(node => node.type === 'view' && node.props.pointerEvents === 'none'
+    && node.props.accessibilityElementsHidden === true && node.props.importantForAccessibility === 'no-hide-descendants');
+  assert.equal(underlay.findAllByProps({ accessibilityRole: 'switch' }).length, 2);
+  assert.equal(textShown('Spin'), true);
+  assert.ok(underlay.findByType('gesture').props.gesture.every(gesture => gesture.enabled === false));
+  assert.equal(underlay.findByType('home-stats').props.active, false);
 });
 
 // OpenAI Codex integrated supplied Home blur regression: docs/ai-collaboration-prompts-iteration-2.md#widen-and-blur-home-carousel--november-20-2026
@@ -268,6 +280,9 @@ test('upload saves an offline deck and refresh explicitly recovers slide text wh
   network.respond = async () => { throw new Error('Offline fixture'); };
   await click('Choose a PDF to upload');
   await waitFor(() => renderer.root.findAllByType('requirements').length === 1);
+  const editor = renderer.root.findByType('requirements');
+  const backdrop = flat(hostParent(editor).props.style);
+  assert.equal(backdrop.backgroundColor, DARK_PALETTE.bg, 'the setup covers the Home and import layers');
   const saved = visibleDecks()[0];
   assert.equal(saved.text, 'pending');
   assert.equal(saved.pages.length, 7);
@@ -361,6 +376,7 @@ test('the guide opens once, walks eight pages and responds to native page swipes
   await mount(HomeScreen, { mode: 'home', uploadLook: null });
   assert.equal(TUTORIAL_PAGES.length, 8);
   assert.equal(textShown('1 of 8 · Gestures'), true);
+  assert.ok(byLabel('Light mode'));
   const tutorialPan = () => renderer.root.findAllByType('gesture').find(node =>
     node.findAllByProps({ accessibilityLabel: 'Close tutorial' }).length > 0).props.gesture;
   await act(async () => {
@@ -369,6 +385,14 @@ test('the guide opens once, walks eight pages and responds to native page swipes
     pan.onUpdate({ translationX: -65, translationY: 2 });
     pan.onDeactivate({ translationX: -65, translationY: 2, canceled: false });
   });
+  assert.equal(textShown('2 of 8 · Add'), true);
+  await click('App language: English');
+  assert.equal(readStored('settings.languagePreference'), 'ko');
+  const { koreanText } = await import('../src/design/koreanText.ts');
+  assert.equal(textShown(`8개 중 2 · ${koreanText('Add')}`), true);
+  assert.ok(byLabel(koreanText('Next page')));
+  assert.ok(byLabel(koreanText('Light mode')));
+  await click('앱 언어: 한국어');
   assert.equal(textShown('2 of 8 · Add'), true);
   await act(async () => {
     const pan = tutorialPan();
@@ -382,13 +406,25 @@ test('the guide opens once, walks eight pages and responds to native page swipes
     assert.equal(textShown(`${i + 1} of 8 · ${TUTORIAL_PAGES[i].topic}`), true);
   }
   assert.equal(textShown('Swipe for more'), false);
+  const description = renderer.root.findAllByType('text').find(node => node.children.join('') === TUTORIAL_PAGES.at(-1).body);
+  const doneStyle = () => flat(byLabel('Got it').props.style);
+  assert.equal(doneStyle().top, 655);
+  await act(async () => hostParent(description).props.onLayout({ nativeEvent: { layout: { y: 528, height: 130 } } }));
+  assert.equal(doneStyle().top, 666);
+  assert.equal(doneStyle().width, 140);
   await click('Got it');
   assert.equal(readStored(TUTORIAL_SEEN), true);
+  assert.ok(byLabel('App language: English'));
+  assert.ok(byLabel('Light mode'));
+  await click('How OutLoud works');
+  assert.equal(renderer.root.findAllByProps({ accessibilityRole: 'switch' }).length, 0);
+  await act(async () => assert.equal(pressBack(), true));
   await act(async () => renderer.unmount()); renderer = undefined;
   await mount(HomeScreen, { mode: 'home', uploadLook: null });
   assert.equal(renderer.root.findAllByProps({ accessibilityLabel: 'Close tutorial' }).length, 0);
   await click('How OutLoud works');
   assert.equal(textShown('1 of 8 · Gestures'), true);
+  assert.equal(renderer.root.findAllByProps({ accessibilityRole: 'switch' }).length, 0);
   await act(async () => assert.equal(pressBack(), true));
   assert.equal(renderer.root.findAllByProps({ accessibilityLabel: 'Close tutorial' }).length, 0);
 });

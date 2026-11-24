@@ -33,8 +33,7 @@ function setup({state='failed',status='successful',retry=true,availability='avai
 }
 async function render(Component,run){let tree;try{await act(async()=>{tree=create(React.createElement(Component));});await run(tree);}finally{if(tree)await act(async()=>tree.unmount());}}
 // Claude, 2026-11-21: the details pop-up became the review's last page, reached from the page dots.
-async function open(tree){const entry=button(tree,'Show grades and actions');assert.ok(entry);await act(async()=>entry.props.onPress());
- await act(async()=>tree.root.findByProps({testID:'reviewFitContent'}).props.onLayout({nativeEvent:{layout:{height:400}}}));}
+async function open(tree){const entry=button(tree,'Show grades and actions');assert.ok(entry);await act(async()=>entry.props.onPress());}
 
 test('every affected legacy Listen Back slide links to existing selected-slide navigation without generating',async()=>{
  setup();await render(LegacyListenBackScreen,async tree=>{
@@ -50,7 +49,7 @@ test('a failed slide without findings shows its details on the page and its one 
  const part=setup();await render(ReviewScreen,async tree=>{
   await open(tree);
   assert.match(text(tree),/Analysis failed/);assert.match(text(tree),/Your recording is saved/);
-  assert.equal(tree.root.findAllByType('scroll').length,0);
+  assert.equal(tree.root.findByType('scroll').props.scrollEnabled,false);
   assert.deepEqual(runtime.slideReviewCalls[0],[part.attemptId,{context_id:'saved-context',slides:[{slide_index:0,segments:[{start_ms:0,end_ms:1000},{start_ms:1500,end_ms:2000}]}]},runtime.review,7,false,'synthetic-recovery']);
   assert.deepEqual(runtime.recoveryActions,[]);await act(async()=>button(tree,'Retry feedback').props.onPress());assert.deepEqual(runtime.recoveryActions,['retry']);
  });

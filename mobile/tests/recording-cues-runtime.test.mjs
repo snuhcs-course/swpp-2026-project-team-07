@@ -79,6 +79,34 @@ test('countdown/capture keep Cues visible, disable server refresh and update bot
  await navigate(r,'Next');assert.match(text(r),/Recap how the final result/);await navigate(r,'Previous');assertFirst(r);assert.deepEqual(runtime.captures[0].slides,[0,1,0]);assert.equal(requests.length,1);
 });
 
+test('countdown checks live feedback early and holds the starting state until capture starts', async t => {
+ t.mock.timers.enable({apis:['Date','setInterval'],now:0});
+ setup({saved:false});
+ const r=await mount();
+ const capture=runtime.captures[0];
+ const capability=Promise.resolve(false);
+ let probes=0;
+ capture.checkLiveFeedback=()=>{probes++;return capability;};
+ const start=capture.start.bind(capture);
+ capture.start=(slide,checked)=>{assert.equal(checked,capability);return start(slide);};
+ let ready;
+ runtime.startWait=new Promise(resolve=>{ready=resolve;});
+ const record=()=>r.root.findByType('record-button');
+ await tap(record());
+ assert.equal(probes,1);
+ assert.equal(capture.started,0);
+ await act(async()=>t.mock.timers.tick(3000));
+ assert.equal(record().props.glyph,1);
+ assert.equal(record().props.label,'Starting recorder…');
+ assert.equal(record().props.disabled,true);
+ assert.equal(r.root.findByType('waveform').props.live,false);
+ await act(async()=>ready());
+ assert.equal(probes,1);
+ assert.equal(capture.started,1);
+ assert.equal(record().props.label,'Stop recording');
+ assert.equal(r.root.findByType('waveform').props.live,true);
+});
+
 test('rotation removes portrait Cues and refresh from accessibility/interactions, retains PDF navigation and restores the selected slide',async()=>{
  setup();setupNative.frame={top:0,left:0,s:1,width:844,height:390};const r=await mount();await tap(round(r,'Open full-screen landscape player'));
  const hidden=r.root.findAllByType('animated').find(n=>n.props.accessibilityElementsHidden);assert.ok(hidden);assert.equal(hidden.props.pointerEvents,'none');assert.equal(hidden.props.importantForAccessibility,'no-hide-descendants');assert.equal(button(r,'Refresh with server'),undefined);assert.ok(r.root.findByType('record-button'));
@@ -154,6 +182,55 @@ test('theme changes and reopening retain selected-slide cues without generating;
  const cue=()=>r.root.findAllByType('text').find(n=>n.props.children==='Recap how the final result supports the main conclusion');const dark=JSON.stringify(cue().props.style);
  await tap(r.root.findByType('theme-toggle'));assert.notEqual(JSON.stringify(cue().props.style),dark);assert.match(text(r),/Recap how the final result/);assert.equal(requests.length,1);
  await act(async()=>r.unmount());renderer=null;const reopened=await mount();assert.match(text(reopened),/Recap how the final result/);assert.ok(button(reopened,'Refresh with server'));assert.equal(requests.length,2);assert.ok(requests.every(r=>r.method==='GET'));
+});
+
+test('closing the portrait cue sheet holds its hidden position through unmount and reopens normally',async()=>{
+ setup();runtime.reducedMotion=false;runtime.inspectAnimatedStyles=true;
+ const r=await mount();
+ const layer=()=>button(r,'Close cue sheet')?.parent;
+ const pan=()=>layer().findByType('pan');
+ await tap(button(r,'Open Must cover cues'));
+ const first=pan(),motion=first.props.style.at(-1).read;
+ await act(async()=>first.props.onMove({}, {dx:0,dy:55}));
+ assert.equal(motion().transform[0].translateY,55);
+ await act(async()=>first.props.onRelease({}, {dx:0,dy:55}));
+ assert.equal(motion().opacity,1);
+ await tap(button(r,'Close cue sheet'));
+ const closeTimings=()=>runtime.timings.filter(timing=>timing.value===220&&timing.complete);
+ const [close]=closeTimings();
+ assert.ok(close);
+ await tap(button(r,'Close cue sheet'));
+ await act(async()=>{
+   first.props.onMove({}, {dx:0,dy:40});
+   first.props.onTerminate();
+   first.props.onRelease({}, {dx:0,dy:100});
+ });
+ assert.equal(closeTimings().length,1);
+ assert.equal(motion().opacity,0);
+ await act(async()=>close.complete(true));
+ assert.equal(layer(),undefined);
+ assert.deepEqual(motion(),{opacity:0,transform:[{translateY:220}]});
+ await tap(button(r,'Open Further insight cues'));
+ assert.ok(pan().findAllByType('text').some(n=>n.props.children==='Further insight'));
+ assert.equal(pan().props.style.at(-1).read().opacity,1);
+});
+
+test('portrait cue heading gets an extra 5pt gap without lowering the cue cards or shifting the scrim',async()=>{
+ for(const compact of [false,true]){
+   setup();setupNative.frame={top:0,left:0,s:1,width:390,height:compact?760:844,compact};
+   const r=await mount();
+   const heading=r.root.findAllByType('text').find(n=>n.props.children==='CUES').parent;
+   const panelTop=heading.parent.props.style.at(-1).top;
+   const card=button(r,'Open Must cover cues');
+   assert.equal(heading.props.style.transform[0].translateY,-5);
+   const cardBottom=panelTop+heading.props.style.height+card.parent.props.style.marginTop+card.props.style[0].height;
+   assert.equal(cardBottom,compact?454:506);
+   await tap(card);
+   const scrimLayer=button(r,'Close cue sheet').parent.props.style.at(-1);
+   assert.equal(panelTop+scrimLayer.top,0);
+   assert.equal(cardBottom-scrimLayer.bottom,setupNative.frame.height);
+   await act(async()=>r.unmount());renderer=null;
+ }
 });
 
 test('interrupted recovery preserves the current slide cues through the existing recovery interface',async()=>{

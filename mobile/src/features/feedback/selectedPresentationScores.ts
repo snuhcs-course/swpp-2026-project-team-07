@@ -22,12 +22,16 @@ export function selectedPresentationScores(model:DeckModel|null,apiUrl:string,se
  let settings:ReturnType<typeof readRequirements>|null=null,settingsValid=true;
  try{settings=readRequirements(model.deck.id,api);}catch{settingsValid=false;}
  const dirty=!settingsValid||requirementsDirty(model.deck.id,api)||defaultRequirementsPending(model.deck.id,api);
- const sourceDeck=readStored<string>(`server-deck:${api}:${model.deck.id}`),run=model.state.run;
+ const sourceDeck=readStored<string>(`server-deck:${api}:${model.deck.id}`),run=model.state.run,ids=runAttemptIds(run);
  const sources=new Map<string,{target:ScoreTarget;state:PresentationScore|null}>();
- for(const id of run?runAttemptIds(run):[]){
+ let completeWithoutSpeech=false;
+ for(const id of ids){
   const review=readReview(api,id);
-  if(!settingsValid||!review?.transcript_id||!review.transcript?.words.length||!review.slide_events.length||
-   sourceDeck&&sourceDeck!==review.deck_id)continue;
+  if(!review||sourceDeck&&sourceDeck!==review.deck_id)continue;
+  if(ids.length===1&&model.stages.get(id)==='no_speech'){
+   completeWithoutSpeech=scoreRunAttempt(run,[review],model.n)===id;
+  }
+  if(!settingsValid||!review.transcript_id||!review.transcript?.words.length||!review.slide_events.length)continue;
   const contextId=settings?.deckId===review.deck_id?settings?.contextId??null:null;
   const target:ScoreTarget={id,contextId,review,pageCount:model.n};
   let correction:ReturnType<typeof readCorrections>=null,unreadable=false;
@@ -50,12 +54,14 @@ export function selectedPresentationScores(model:DeckModel|null,apiUrl:string,se
    result&&result.status!=='scored'?({not_applicable:'Not applicable',not_recorded:'Not recorded',insufficient_evidence:'Insufficient evidence',invalid_evidence:'Score evidence could not be verified'}[result.status]??sourceStatus(source!.target,state)):sourceStatus(source!.target,state);
   return {slide,score,level:score!==null?result!.level:null,status,state,result,target:matching?source!.target:null};
  });
- const ids=run?runAttemptIds(run):[],sole=ids.length===1?sources.get(ids[0]):undefined;
+ const sole=ids.length===1?sources.get(ids[0]):undefined;
  const exact=!!sole&&!!run&&scoreRunAttempt(run,[sole.target.review!],model.n,sole.state?.result)===sole.target.id;
  const wholeTarget=exact?sole!.target:null,state=sole?.state??null;
  const result=exact&&state?.state==='completed'&&!state.stale?state.result:null;
+ const overallStatus=ids.length>1?'Combined recordings':exact?sourceStatus(wholeTarget!,state):
+  completeWithoutSpeech?'No speech detected in this run':'Select a complete recording';
  const overall:PresentationOverallDisplay={score:result?.overall.status==='scored'?result.overall.score:null,
-  level:result?.overall.status==='scored'?result.overall.level:null,status:ids.length>1?'Combined recordings':!exact?'Select a complete recording':sourceStatus(wholeTarget!,state),
+  level:result?.overall.status==='scored'?result.overall.level:null,status:overallStatus,
   state,result,target:wholeTarget};
  const target=selectedSlide===undefined?wholeTarget:items[selectedSlide]?.target??null;
  return {items,overall,target,requirementsRevision:target?.contextId?settings!.revision:null,targets,activeTargets};

@@ -31,6 +31,7 @@ class Sentence:
     start_ms: int
     end_ms: int
     text: str
+    attempt_id: str | None = None
 
 
 @dataclass

@@ -477,7 +477,8 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
 
   return (
     <>
-    <Enter kind={nav.nav}>
+    {/* OpenAI Codex, 2026-11-24: keep the swipe into Audience Q&A responsive. */}
+    <Enter kind={nav.nav} duration={240}>
       <AnswerRecorder key={recKey} ref={recorder} onMeter={onMeter} onMustStop={() => { void stopRec(); }} />
       <PanView style={StyleSheet.absoluteFill} {...pan}>
         {(subpage === 'followup' || followupReveal) && <View testID="qa-followup-fade-backdrop" pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: c.bg }]} />}
@@ -488,9 +489,9 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
             <Txt style={styles.title}>{subpage === 'followup' ? 'Follow-up' : archived?"Saved Q&A":"Audience Q&A"}</Txt>
             <Txt verbatim numberOfLines={1} style={styles.label}>{subpage === 'followup' && Q ? presenterHeader : questionHeader}</Txt>
           </Animated.View>
-          {historyAvailable&&<Pressable accessibilityRole="button" accessibilityLabel={ui(archived?'Next saved Q&A or return to current questions':'View saved Q&A')} onPress={()=>{if(rec||count)return;stopSpeak();player.stop();onHistory();}}
-            style={{position:'absolute',top:4,right:16,zIndex:10,minHeight:44,justifyContent:'center',paddingHorizontal:10}}>
-            <Txt style={{fontSize:13.5,color:c.secondary}}>{archived?'Next saved / Current Q&A':'Saved Q&A'}</Txt>
+          {historyAvailable&&<Pressable accessibilityRole="button" accessibilityLabel={ui(archived?'Next saved Q&A or return to current questions':'View saved Q&A')}
+            disabled={rec||!!count} onPress={()=>{stopSpeak();player.stop();onHistory();}} style={styles.historyButton}>
+            <UIIcon name="i-replay" size={24} color={c.secondary} />
           </Pressable>}
           {Q && (
             <Animated.View style={[styles.stage, slideStyle]}>
@@ -669,6 +670,7 @@ function Row({ icon, k, t, verbatim = false }: { icon: IconKey; k: string; t: st
 
 const styles = createThemedStyles({
   // Claude, 2026-11-21: S15 question page.
+  historyButton: { position:'absolute', top:4, right:16, zIndex:10, width:44, height:44, alignItems:'center', justifyContent:'center' },
   panel: { position: 'absolute', left: 0, right: 0, top: 112, height: 52, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 18 },
   panelMember: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   panelNow: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },

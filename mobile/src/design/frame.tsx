@@ -23,17 +23,7 @@ const FooterMotionContext = createContext<SharedValue<number> | null>(null);
 export const useFrame = () => useContext(FrameContext);
 export const useFooterMotion = () => useContext(FooterMotionContext);
 
-export function Frame({ children, background, landscape = false }: { children: ReactNode; background?: ReactNode; landscape?: boolean }) {
-  const { c } = useTheme();
-  const reducedMotion = useReducedMotion();
-  const footerMotion = useSharedValue(0);
-  useEffect(() => {
-    cancelAnimation(footerMotion);
-    footerMotion.set(0);
-    if (reducedMotion) return;
-    footerMotion.set(withRepeat(withTiming(2 * Math.PI, { duration: 4800, easing: Easing.linear }), -1, false));
-    return () => cancelAnimation(footerMotion);
-  }, [footerMotion, reducedMotion]);
+export function useFrameLayout(landscape = false) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const designW = landscape ? FRAME_H : FRAME_W;
@@ -59,12 +49,30 @@ export function Frame({ children, background, landscape = false }: { children: R
     left: rotatedPortrait ? (width - designH * s) / 2 : insetLeft + (availW - designW * s) / 2,
     top: rotatedPortrait ? (height - designW * s) / 2 : insetTop + (availH - designH * s) / 2,
   }), [s, width, height, landscape, rotatedPortrait, compact, insetLeft, insetTop, availW, availH, designW, designH]);
+  return { info, width, height, designW, designH, rotatedPortrait };
+}
+
+export function Frame({ children, background, landscape = false, overlay = false }: {
+  children: ReactNode; background?: ReactNode; landscape?: boolean; overlay?: boolean;
+}) {
+  const { c } = useTheme();
+  const reducedMotion = useReducedMotion();
+  const footerMotion = useSharedValue(0);
+  useEffect(() => {
+    cancelAnimation(footerMotion);
+    footerMotion.set(0);
+    if (reducedMotion || overlay) return;
+    footerMotion.set(withRepeat(withTiming(2 * Math.PI, { duration: 4800, easing: Easing.linear }), -1, false));
+    return () => cancelAnimation(footerMotion);
+  }, [footerMotion, reducedMotion, overlay]);
+  const { info, width, height, designW, designH, rotatedPortrait } = useFrameLayout(landscape);
+  const { s } = info;
   return (
     <FrameContext.Provider value={info}>
       <FooterMotionContext.Provider value={footerMotion}>
-        <View style={[styles.root, { backgroundColor: c.bg }]}>
+        <View pointerEvents={overlay ? 'box-none' : undefined} style={[styles.root, overlay ? StyleSheet.absoluteFill : { backgroundColor: c.bg }]}>
           {landscape ? null : background}
-          <View style={[styles.canvas, { width: designW, height: designH,
+          <View pointerEvents={overlay ? 'box-none' : undefined} style={[styles.canvas, { width: designW, height: designH,
             left: rotatedPortrait ? (width - designW) / 2 : info.left - (designW - designW * s) / 2,
             top: rotatedPortrait ? (height - designH) / 2 : info.top - (designH - designH * s) / 2,
             transform: rotatedPortrait ? [{ scale: s }, { rotate: '90deg' }] : [{ scale: s }] }]}>
@@ -87,18 +95,20 @@ export function Txt({ verbatim, children, ...props }: TextProps & { verbatim?: b
 export type EnterKind = 'rise' | 'zoom' | 'fade' | null;
 // OpenAI Codex, 2026-11-19: make page openings readable while animating only opacity and scale.
 /** Fade and gently scale newly opened pages on the UI thread; keep layout and touch targets fixed. */
-export function Enter({ kind, children, style, pointerEvents }: { kind: EnterKind; children: ReactNode; style?: object; pointerEvents?: 'box-none' | 'auto' }) {
+export function Enter({ kind, children, style, pointerEvents, duration = 560 }: {
+  kind: EnterKind; children: ReactNode; style?: object; pointerEvents?: 'box-none' | 'auto'; duration?: number;
+}) {
   const reducedMotion = useReducedMotion();
   const opacity = useSharedValue(kind && !reducedMotion ? 0 : 1);
   const [entered, setEntered] = useState(!kind || reducedMotion);
   useEffect(() => {
     let cancelled = false;
     const complete = () => { if (!cancelled) setEntered(true); };
-    opacity.set(withTiming(1, { duration: kind && !reducedMotion ? 560 : 0, easing: Easing.out(Easing.cubic) }, finished => {
+    opacity.set(withTiming(1, { duration: kind && !reducedMotion ? duration : 0, easing: Easing.out(Easing.cubic) }, finished => {
       if (finished) runOnJS(complete)();
     }));
     return () => { cancelled = true; cancelAnimation(opacity); };
-  }, [kind, opacity, reducedMotion]);
+  }, [duration, kind, opacity, reducedMotion]);
   const fade = useAnimatedStyle(() => ({ opacity: opacity.value, transform: [{ scale: 0.975 + 0.025 * opacity.value }] }));
   // Fabric can reapply an animated style's initial opacity on a later React
   // commit. Once the entrance finishes, React must own the opaque final value.

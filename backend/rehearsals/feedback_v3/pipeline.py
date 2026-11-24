@@ -23,7 +23,8 @@ from django.db.models import F
 from django.utils import timezone
 
 from ..models import Attempt, DescriptionSet, FeedbackRun, PresentationContext, QaAnswer, Slide
-from . import limits, llm, measurements, prompts, rubric, transcript
+from ..services.feedback import FeedbackError
+from . import limits, llm, measurements, prompts, rubric, selected, transcript
 
 logger = logging.getLogger(__name__)
 PIPELINE_VERSION = 'feedback-v3.0'
@@ -44,6 +45,8 @@ MESSAGES = {
     'feedback_disabled': 'AI feedback is turned off on this server.',
     'missing_api_key': 'AI feedback is not configured on this server.',
     'transcript_not_ready': 'The recording has not finished transcribing yet.',
+    'invalid_transcript': 'A selected recording has no usable transcript.',
+    'transcript_source_changed': 'A selected recording’s transcript changed and its corrections no longer match.',
     'invalid_context': 'This presentation setting does not belong to the recording.',
     'invalid_request': 'The request could not be read.',
     'not_found': 'Recording not found.',
@@ -131,11 +134,33 @@ def resolve_context(attempt, context_id) -> PresentationContext | None:
     return contexts[0] if len(contexts) == 1 else None
 
 
-def load_inputs(attempt, context, model: str) -> Inputs:
-    if attempt.status != 'completed' or not isinstance(attempt.transcript, dict):
-        raise RunError('transcript_not_ready')
-    words = attempt.transcript.get('words') or []
-    edits, correction_revision = _accepted_edits(attempt)
+def _selection(attempt, scope, *, lock=False):
+    try:
+        return selected.scope_sources(attempt, scope, lock=lock)
+    except FeedbackError as error:
+        raise RunError(error.code, 400 if error.code == 'invalid_request' else 409) from None
+
+
+def load_inputs(attempt, context, model: str, *, scope=None, sources=None) -> Inputs:
+    if scope is None:
+        if attempt.status != 'completed' or not isinstance(attempt.transcript, dict):
+            raise RunError('transcript_not_ready')
+        words = attempt.transcript.get('words') or []
+        edits, correction_revision = _accepted_edits(attempt)
+        duration_ms = attempt.duration_ms
+        speech = transcript.build(words, attempt.slide_events, duration_ms, edits)
+        source_identity = {
+            'attempt': str(attempt.pk), 'words': _digest(words), 'events': attempt.slide_events,
+            'duration_ms': duration_ms, 'corrections': [correction_revision, edits],
+        }
+    else:
+        if sources is None:
+            scope, sources = _selection(attempt, scope)
+        try:
+            speech, duration_ms, identities = selected.compose(scope, sources)
+        except FeedbackError as error:
+            raise RunError(error.code) from None
+        source_identity = {'selected_scope': scope, 'sources': identities}
     texts = dict(Slide.objects.filter(deck_id=attempt.deck_id).values_list('slide_index', 'extracted_text'))
     profiles, profile_identity = _profile_slides(attempt.deck)
     slides = []
@@ -147,11 +172,9 @@ def load_inputs(attempt, context, model: str) -> Inputs:
             'must_cover': profile.get('must_cover', [])}})
     audience = (context.audience if context else '').strip()
     required = context.required_duration_seconds if context else None
-    speech = transcript.build(words, attempt.slide_events, attempt.duration_ms, edits)
-    measured = measurements.measure(speech, [s['text'] for s in slides], attempt.duration_ms, required)
+    measured = measurements.measure(speech, [s['text'] for s in slides], duration_ms, required)
     fingerprint = _digest({
-        'attempt': str(attempt.pk), 'words': _digest(words), 'events': attempt.slide_events,
-        'duration_ms': attempt.duration_ms, 'corrections': [correction_revision, edits],
+        **source_identity,
         'context': [str(context.pk), context.revision, audience, required] if context else None,
         'profile': profile_identity, 'model': model, 'pipeline': PIPELINE_VERSION,
         'prompt': prompts.PROMPT_VERSION, 'rubric': RUBRIC.version,
@@ -187,19 +210,29 @@ def presentation_complete(inputs: Inputs) -> bool:
     return all(plan_slide_reason(inputs, i)[0] != 'not_recorded' for i in range(len(inputs.slides)))
 
 
-def part_hash(kind: str, payload: dict, config: llm.Config) -> str:
+def part_hash(kind: str, payload: dict, config: llm.Config, *, original_evidence=None) -> str:
     """Everything that shapes one part's result; equal hashes need no new model call."""
-    return _digest({'kind': kind, 'payload': payload, 'model': config.model, 'effort': config.reasoning_effort,
-                    'temperature': config.temperature, 'prompt': prompts.PROMPT_VERSION,
-                    'rubric': RUBRIC.version, 'pipeline': PIPELINE_VERSION})
+    identity = {'kind': kind, 'payload': payload, 'model': config.model, 'effort': config.reasoning_effort,
+                'temperature': config.temperature, 'prompt': prompts.PROMPT_VERSION,
+                'rubric': RUBRIC.version, 'pipeline': PIPELINE_VERSION}
+    if original_evidence is not None:
+        identity['original_evidence'] = [(s.id, s.attempt_id, s.start_ms, s.end_ms) for s in original_evidence]
+    return _digest(identity)
 
 
 def _reusable_parts(job: FeedbackRun) -> dict:
-    """Finished model-graded parts from this recording's earlier runs, by input hash."""
+    """Reuse identical slide evidence on the same deck and whole work on the same selection."""
+    if job.selected_scope is None:
+        candidates = FeedbackRun.objects.filter(attempt_id=job.attempt_id, selected_scope_key='')
+    else:
+        candidates = FeedbackRun.objects.filter(attempt__deck_id=job.attempt.deck_id).exclude(selected_scope_key='')
     found = {}
-    for previous in FeedbackRun.objects.filter(attempt_id=job.attempt_id).exclude(pk=job.pk).order_by('created_at'):
+    for previous in candidates.exclude(pk=job.pk).order_by('created_at').only('result', 'selected_scope_key').iterator():
         result = previous.result or {}
-        for part in [*(result.get('slides') or {}).values(), result.get('whole') or {}]:
+        parts = list((result.get('slides') or {}).values())
+        if previous.selected_scope_key == job.selected_scope_key:
+            parts.append(result.get('whole') or {})
+        for part in parts:
             if isinstance(part, dict) and part.get('input_hash') and part.get('status') in ('scored', 'insufficient_evidence'):
                 found[part['input_hash']] = {k: v for k, v in part.items() if k not in ('measurements', 'reused')}
     return found
@@ -213,8 +246,10 @@ def outdated(attempt, context, job: FeedbackRun | None) -> bool:
         return True
     try:
         config = llm.Config.from_env()
-        return load_inputs(attempt, context, config.model).fingerprint != job.fingerprint
-    except (RunError, llm.LLMError):
+        return load_inputs(attempt, context, config.model, scope=job.selected_scope).fingerprint != job.fingerprint
+    except RunError:
+        return job.selected_scope is not None
+    except llm.LLMError:
         return False
     except Exception:
         # A read must never fail because of this check; the stored run is still shown.
@@ -321,6 +356,8 @@ def _evidence(ids, sentences: dict, measures: dict | None = None) -> list[dict]:
         if sentence:
             found.append({'kind': 'speech', 'id': sentence.id, 'slide_index': sentence.slide_index,
                           'start_ms': sentence.start_ms, 'end_ms': sentence.end_ms, 'text': sentence.text})
+            if sentence.attempt_id:
+                found[-1]['attempt_id'] = sentence.attempt_id
         elif measure:
             found.append({'kind': 'measurement', 'id': item_id, 'text': measure})
         else:
@@ -441,8 +478,12 @@ def publish(run_id) -> None:
         logger.warning('feedback_v3 publish unavailable; recovery will republish.')
 
 
-def latest_run(attempt, context) -> FeedbackRun | None:
-    return FeedbackRun.objects.filter(attempt=attempt, context=context).order_by('-created_at').first()
+def _scope_runs(attempt_id, context_id, scope_key):
+    return FeedbackRun.objects.filter(attempt_id=attempt_id, context_id=context_id, selected_scope_key=scope_key)
+
+
+def latest_run(attempt, context, scope_key='') -> FeedbackRun | None:
+    return _scope_runs(attempt.pk, context.pk if context else None, scope_key).order_by('-created_at').first()
 
 
 def _has_failed_parts(run: FeedbackRun) -> bool:
@@ -450,13 +491,23 @@ def _has_failed_parts(run: FeedbackRun) -> bool:
     return any(p.get('status') in ('failed', 'pending') for p in parts)
 
 
-def start(attempt_id, *, context_id=None, retry=False) -> FeedbackRun:
+def start(attempt_id, *, context_id=None, retry=False, selected_scope=None) -> FeedbackRun:
     config = llm.Config.from_env()
     with transaction.atomic():
-        attempt = Attempt.objects.select_for_update().select_related('deck').get(pk=attempt_id)
-        context = resolve_context(attempt, context_id)
-        inputs = load_inputs(attempt, context, config.model)
-        run = latest_run(attempt, context)
+        attempts = Attempt.objects.select_related('deck')
+        if selected_scope is None:
+            attempt = attempts.select_for_update().get(pk=attempt_id)
+            context = resolve_context(attempt, context_id)
+            scope_key = ''
+            inputs = load_inputs(attempt, context, config.model)
+        else:
+            attempt = attempts.get(pk=attempt_id)
+            selected_scope, sources = _selection(attempt, selected_scope, lock=True)
+            context_id = selected_scope['context_id']
+            context = resolve_context(attempt, context_id) if context_id is not None else None
+            scope_key = _digest(selected_scope)
+            inputs = load_inputs(attempt, context, config.model, scope=selected_scope, sources=sources)
+        run = latest_run(attempt, context, scope_key)
         now = timezone.now()
         if run and run.fingerprint == inputs.fingerprint and run.status != FeedbackRun.Status.STALE:
             busy = run.status in (FeedbackRun.Status.QUEUED, FeedbackRun.Status.RUNNING)
@@ -469,6 +520,7 @@ def start(attempt_id, *, context_id=None, retry=False) -> FeedbackRun:
             run.save(update_fields=['status', 'error', 'queued_at', 'started_at', 'finished_at', 'worker_attempts'])
         else:
             run = FeedbackRun.objects.create(attempt=attempt, context=context, fingerprint=inputs.fingerprint,
+                                             selected_scope=selected_scope, selected_scope_key=scope_key,
                                              pipeline_version=PIPELINE_VERSION, rubric_version=RUBRIC.version,
                                              model=config.model, queued_at=now)
         transaction.on_commit(lambda run_id=run.pk: publish(run_id))
@@ -521,12 +573,12 @@ def run(run_id) -> None:
 def _replace_stale(job: FeedbackRun) -> None:
     """Inputs changed after the run was queued: queue one for the current inputs."""
     replacements = (job.result or {}).get('stale_replacements', 0)
-    newer = FeedbackRun.objects.filter(attempt_id=job.attempt_id, context_id=job.context_id,
-                                       created_at__gt=job.created_at).exists()
+    newer = _scope_runs(job.attempt_id, job.context_id, job.selected_scope_key).filter(
+        created_at__gt=job.created_at).exists()
     if newer or replacements >= 3:
         return
     try:
-        fresh = start(job.attempt_id, context_id=job.context_id)
+        fresh = start(job.attempt_id, context_id=job.context_id, selected_scope=job.selected_scope)
         if fresh.pk != job.pk and fresh.status == FeedbackRun.Status.QUEUED and not fresh.result:
             FeedbackRun.objects.filter(pk=fresh.pk).update(result={'stale_replacements': replacements + 1})
     except Exception as error:
@@ -538,21 +590,22 @@ def _execute(job: FeedbackRun) -> None:
     deadline = began + RUN_BUDGET_SECONDS
     try:
         config = llm.Config.from_env()
-        inputs = load_inputs(job.attempt, job.context, config.model)
+        inputs = load_inputs(job.attempt, job.context, config.model, scope=job.selected_scope)
     except (RunError, llm.LLMError) as error:
         _save(job, status=FeedbackRun.Status.FAILED, finished_at=timezone.now(),
               error={'code': error.code, 'message': MESSAGES.get(error.code, error.code)})
         return
     if inputs.fingerprint != job.fingerprint:
-        newer = FeedbackRun.objects.filter(attempt_id=job.attempt_id, context_id=job.context_id,
-                                           created_at__gt=job.created_at).exists()
+        newer = _scope_runs(job.attempt_id, job.context_id, job.selected_scope_key).filter(
+            created_at__gt=job.created_at).exists()
         if not newer and not (job.result or {}).get('slides'):
             # Nothing graded yet: take the current inputs (e.g. a correction made while queued)
             # and keep this run's place in the queue instead of re-queueing at the back.
             _save(job, fingerprint=inputs.fingerprint)
         else:
             _save(job, status=FeedbackRun.Status.STALE, finished_at=timezone.now())
-            if not newer:
+            # The selected-run client polls this ID and explicitly updates stale results.
+            if not newer and job.selected_scope is None:
                 _replace_stale(job)
             return
 
@@ -573,7 +626,8 @@ def _execute(job: FeedbackRun) -> None:
                        **({'reason': reason} if reason else {})}
         if not status:
             payload = slide_payload(inputs, index)
-            digest = part_hash('slide', payload, config)
+            digest = part_hash('slide', payload, config, original_evidence=inputs.speech.slides[index].sentences
+                               if job.selected_scope is not None else None)
             if digest in reusable:
                 slides[key] = {**reusable[digest], 'measurements': inputs.measurements['slides'][index], 'reused': True}
                 reused += 1
@@ -585,7 +639,8 @@ def _execute(job: FeedbackRun) -> None:
             result['whole'] = {'status': 'not_recorded', 'reason': 'presentation_incomplete'}
         else:
             payload = whole_payload(inputs)
-            digest = part_hash('whole', payload, config)
+            digest = part_hash('whole', payload, config, original_evidence=inputs.speech.sentences
+                               if job.selected_scope is not None else None)
             if digest in reusable:
                 result['whole'] = {**reusable[digest], 'reused': True}
                 reused += 1
