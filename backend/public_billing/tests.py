@@ -27,7 +27,9 @@ from .models import LifetimeBudget, ProviderCharge
 
 
 MODEL = 'openai/example'
+FIRST_HOLD = 4 * (1_500_000 + 45_060)
 PRICES = {
+    'OUTLOUD_PUBLIC_AI_UNTIL': '2099-01-01T00:00:00Z',
     'OUTLOUD_PUBLIC_OPENROUTER_MODEL': MODEL, 'OUTLOUD_PUBLIC_OPENROUTER_CONTEXT_TOKENS': '30000',
     'OUTLOUD_PUBLIC_OPENROUTER_INPUT_USD_PER_MTOK': '1.5', 'OUTLOUD_PUBLIC_OPENROUTER_OUTPUT_USD_PER_MTOK': '6',
     'OUTLOUD_PUBLIC_SCRIBE_USD_PER_HOUR': '0.6', 'ELEVENLABS_API_KEY': 'synthetic-scribe',
@@ -38,6 +40,8 @@ PRICES = {
 
 
 def response_body(usage=None):
+    if usage is not None:
+        usage = {'is_byok': False, 'cost_details': {'upstream_inference_cost': 0}, **usage}
     return {'status': 'completed', 'usage': usage, 'output': [
         {'type': 'message', 'content': [{'type': 'output_text', 'text': '{"ok":true}'}]}]}
 
@@ -61,6 +65,20 @@ class PublicBudgetTests(TransactionTestCase):
     def committed(self):
         return LifetimeBudget.objects.get(pk=1).committed_microusd
 
+    def test_funding_deadline_stops_both_providers_before_spending(self):
+        payload = {'model': MODEL, 'max_output_tokens': 10}
+        for until in ('', '2000-01-01T00:00:00Z', '2099-01-01T00:00:00', 'invalid'):
+            with self.subTest(until=until), patch.dict(os.environ, {'OUTLOUD_PUBLIC_AI_UNTIL': until}):
+                with self.assertRaises(budget.BudgetError):
+                    budget.authorize_openrouter(budget.OPENROUTER_URL, dict(payload), 'synthetic')
+                with self.assertRaises(budget.BudgetError):
+                    budget.authorize_scribe('synthetic', 16000)
+        self.assertEqual(self.committed(), 0)
+        self.assertFalse(ProviderCharge.objects.exists())
+        with patch.dict(os.environ, {'OUTLOUD_PUBLIC_AI_UNTIL': '2099-01-01T00:00:00+09:00'}):
+            budget.authorize_scribe('synthetic', 16000)
+        self.assertGreater(self.committed(), 0)
+
     def test_retry_reserves_before_each_send_including_increased_reasoning_budget(self):
         sent = []
         def handle(request):
@@ -68,16 +86,19 @@ class PublicBudgetTests(TransactionTestCase):
             sent.append((payload['max_output_tokens'], self.committed()))
             self.assertEqual(payload['provider']['only'], ['openai'])
             self.assertFalse(payload['provider']['allow_fallbacks'])
+            self.assertEqual((payload['tools'], payload['tool_choice'], payload['max_tool_calls']), ([], 'none', 1))
+            self.assertIn({'id': 'web', 'enabled': False}, payload['plugins'])
             self.assertEqual(payload['provider']['max_price'], {'prompt': 1.5, 'completion': 6, 'image': 0, 'request': 0})
             return httpx.Response(200, json={'status': 'incomplete'} if len(sent) == 1 else response_body())
         self.assertEqual(self.call(handle).tries, 2)
-        self.assertEqual(sent, [(10, 45_060), (20, 90_180)])
-        self.assertEqual(self.committed(), 90_180)  # Missing receipt prices retain both full holds.
+        total = FIRST_HOLD + 4 * (1_500_000 + 45_120)
+        self.assertEqual(sent, [(10, FIRST_HOLD), (20, total)])
+        self.assertEqual(self.committed(), total)  # Missing receipt prices retain both full holds.
         self.assertEqual(set(ProviderCharge.objects.values_list('credential_sha256', flat=True)),
                          {hashlib.sha256(b'synthetic-router').hexdigest()})
 
     def test_last_affordable_call_survives_timeout_and_retry_stops_at_the_cap(self):
-        LifetimeBudget.objects.update(committed_microusd=budget.LIMIT_MICROUSD - 45_060)
+        LifetimeBudget.objects.update(committed_microusd=budget.LIMIT_MICROUSD - FIRST_HOLD)
         sent = []
         def timeout(request):
             sent.append(request.url)
@@ -104,10 +125,36 @@ class PublicBudgetTests(TransactionTestCase):
         self.assertEqual(self.committed(), 75)  # Token ceilings exceed the reported fifty microdollars.
         charge = budget.authorize_openrouter(budget.OPENROUTER_URL, dict(payload), 'replacement-key')
         budget.settle_openrouter(charge, json.dumps(response_body(
-            {'cost': 0.1, 'input_tokens': 20, 'output_tokens': 1})).encode())
+            {'cost': 10, 'input_tokens': 20, 'output_tokens': 1})).encode())
         self.assertTrue(LifetimeBudget.objects.get(pk=1).halted)
         with self.assertRaises(budget.BudgetError):
             budget.authorize_scribe('synthetic-scribe', 1)
+
+    def test_receipt_without_explicit_route_or_upstream_cost_keeps_the_reservation(self):
+        charge = budget.authorize_openrouter(budget.OPENROUTER_URL, {'model': MODEL, 'max_output_tokens': 10}, 'synthetic')
+        for missing in ('is_byok', 'cost_details'):
+            body = response_body({'cost': 0.00001, 'input_tokens': 5, 'output_tokens': 2})
+            del body['usage'][missing]
+            budget.settle_openrouter(charge, json.dumps(body).encode())
+            self.assertEqual(self.committed(), charge.reserved_microusd)
+            self.assertIsNone(ProviderCharge.objects.get(pk=charge.charge_id).confirmed_microusd)
+
+    def test_unexpected_route_or_search_keeps_hold_and_halts_future_work(self):
+        for mode in ('byok', 'search', 'alignment', 'incomplete_search'):
+            with self.subTest(mode=mode):
+                LifetimeBudget.objects.update(halted=False, committed_microusd=0)
+                charge = budget.authorize_openrouter(budget.OPENROUTER_URL, {'model': MODEL, 'max_output_tokens': 10}, 'synthetic')
+                body = response_body({'cost': 0.00001, 'input_tokens': 4, 'output_tokens': 1,
+                                      'is_byok': mode == 'byok', 'cost_details': {'upstream_inference_cost': 0.00002}})
+                if mode == 'search':
+                    body['output'][0]['content'][0]['annotations'] = [{'type': 'url_citation'}]
+                if mode == 'alignment':
+                    body['alignment'] = {'calls': [{'outcome': 'allowed'}]}
+                if mode == 'incomplete_search':
+                    body = {'status': 'incomplete', 'usage': {'server_tool_use': {'web_search_requests': 1}}}
+                budget.settle_openrouter(charge, json.dumps(body).encode())
+                self.assertEqual(self.committed(), charge.reserved_microusd)
+                self.assertTrue(LifetimeBudget.objects.get(pk=1).halted)
 
     def test_submissions_fail_closed_for_unverified_tariffs_routes_and_ledger(self):
         def forbidden(request):

@@ -6,6 +6,7 @@ import os
 import re
 from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from decimal import Decimal, DecimalException, ROUND_CEILING
 
 from django.conf import settings
@@ -15,6 +16,10 @@ from django.db.models import F
 
 LIMIT_MICROUSD = 50_000_000
 OPENROUTER_URL = 'https://openrouter.ai/api/v1/responses'
+# A workspace can enforce one hosted search and up to three alignment retries.
+# A successful plain-model receipt releases these conservative holds.
+MAX_UPSTREAM_ATTEMPTS = 4
+PLUGIN_HOLD_MICROUSD = 1_500_000
 MESSAGES = {
     'public_budget_exhausted': 'The remaining public AI budget cannot cover this request.',
     'public_budget_unavailable': 'Public AI is unavailable until the server can verify its spending limit.',
@@ -59,6 +64,13 @@ def _ledger_transaction():
 
 
 def _reserve(provider, key, amount):
+    until = os.environ.get('OUTLOUD_PUBLIC_AI_UNTIL', '')
+    try:
+        deadline = datetime.fromisoformat(until)
+    except ValueError:
+        raise BudgetError() from None
+    if deadline.tzinfo is None or datetime.now(timezone.utc) >= deadline:
+        raise BudgetError()
     amount = int(amount.to_integral_value(rounding=ROUND_CEILING))
     if not key or amount <= 0:
         raise BudgetError()
@@ -101,14 +113,17 @@ def authorize_openrouter(url, payload, key):
         raise BudgetError()
     prompt_rate = _price('OPENROUTER_INPUT_USD_PER_MTOK')
     completion_rate = _price('OPENROUTER_OUTPUT_USD_PER_MTOK')
-    payload.update(service_tier='default', modalities=['text'], tools=[], plugins=[], provider={
+    payload.update(service_tier='default', modalities=['text'], tools=[], tool_choice='none',
+                   max_tool_calls=1, plugins=[{'id': 'web', 'enabled': False}],
+                   prompt_cache_options={'mode': 'explicit'}, provider={
         'only': ['openai'], 'order': ['openai'], 'allow_fallbacks': False, 'require_parameters': True,
         'max_price': {'prompt': float(prompt_rate), 'completion': float(completion_rate),
                       'request': 0, 'image': 0},
     })
     # One USD per million tokens is one microdollar per token. Image input
     # consumes model context. Separate per-image/per-request fees are disallowed.
-    charge = _reserve('openrouter', key, int(context) * prompt_rate + output * completion_rate)
+    per_attempt = int(context) * prompt_rate + output * completion_rate + PLUGIN_HOLD_MICROUSD
+    charge = _reserve('openrouter', key, MAX_UPSTREAM_ATTEMPTS * per_attempt)
     return OpenRouterReservation(charge.pk, charge.reserved_microusd, prompt_rate, completion_rate)
 
 
@@ -119,16 +134,50 @@ def _unique_json_keys(pairs):
     return values
 
 
+def _unexpected_receipt(body, usage, details):
+    metadata = body.get('openrouter_metadata') or {}
+    if (usage.get('is_byok') or body.get('is_byok') or metadata.get('is_byok')
+            or (body.get('alignment') or {}).get('calls')
+            or usage.get('server_tool_cost') or details.get('server_tool_cost')
+            or (usage.get('server_tool_use') or {}).get('web_search_requests')):
+        return True
+    for part in body.get('output') or []:
+        if part.get('type') not in ('reasoning', 'message'):
+            return True
+        for content in part.get('content') or []:
+            if any(a.get('type') == 'url_citation' for a in content.get('annotations') or []):
+                return True
+    return False
+
+
 def settle_openrouter(reservation, raw):
     """Release excess only for a completed provider receipt with billed cost."""
     try:
         from .models import LifetimeBudget, ProviderCharge
         body = json.loads(raw, parse_float=Decimal, object_pairs_hook=_unique_json_keys)
-        if not isinstance(body, dict) or body.get('status') != 'completed' or body.get('error'):
+        if not isinstance(body, dict):
             return
-        usage = body.get('usage')
-        cost = usage.get('cost') if isinstance(usage, dict) else None
-        if type(cost) not in (int, Decimal) or not Decimal(cost).is_finite() or cost <= 0:
+        usage = body.get('usage') or {}
+        details = usage.get('cost_details') or {}
+        unexpected = _unexpected_receipt(body, usage, details)
+        if unexpected:
+            # Stop even when this receipt has no trustworthy bill. Its hold is already durable.
+            with _ledger_transaction():
+                LifetimeBudget.objects.filter(pk=1).update(halted=True)
+        if body.get('status') != 'completed' or body.get('error'):
+            return
+        cost = usage.get('cost')
+        upstream = details.get('upstream_inference_cost')
+        flags = (usage.get('is_byok'), body.get('is_byok'), (body.get('openrouter_metadata') or {}).get('is_byok'))
+        confirmed_route = any(flag is False for flag in flags) and upstream is not None
+        if upstream is None:
+            upstream = 0
+        if any(type(value) not in (int, Decimal) or not Decimal(value).is_finite() or value < 0
+               for value in (cost, upstream)):
+            return
+        # An unexpected route may bill an upstream account separately.
+        cost = cost + upstream if unexpected else max(cost, upstream)
+        if cost == 0:
             return
         if cost > 1_000_000:
             with _ledger_transaction():
@@ -142,6 +191,10 @@ def settle_openrouter(reservation, raw):
         elif billed <= reservation.reserved_microusd:
             return  # An incomplete receipt cannot release capacity.
         actual = max(1, int(billed.to_integral_value(rounding=ROUND_CEILING)))
+        if not confirmed_route and not unexpected and actual <= reservation.reserved_microusd:
+            return  # A summary price alone cannot rule out a separately billed upstream key.
+        if unexpected:
+            actual = max(actual, reservation.reserved_microusd)
         with _ledger_transaction():
             # Delivery of the same receipt twice must never release two reservations.
             changed = ProviderCharge.objects.filter(pk=reservation.charge_id, confirmed_microusd__isnull=True).update(
@@ -151,7 +204,7 @@ def settle_openrouter(reservation, raw):
                 if actual > reservation.reserved_microusd:
                     updates['halted'] = True  # Stop if the operator's verified tariff bound is violated.
                 LifetimeBudget.objects.filter(pk=1).update(**updates)
-    except (TypeError, ValueError, DecimalException, RecursionError):
+    except (AttributeError, TypeError, ValueError, DecimalException, RecursionError):
         return
     except (BudgetError, DatabaseError, RuntimeError):
         # The original reservation is committed. Never resend a successful request here.

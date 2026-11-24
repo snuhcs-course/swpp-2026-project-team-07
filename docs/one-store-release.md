@@ -4,13 +4,11 @@ Build 42 opens on Home. Users can use local rehearsal immediately or enable free
 
 ## Check provider coverage and set the spending limit
 
-OutLoud uses OpenRouter for scoring and Q&A and ElevenLabs for transcription. Each provider bills separately. For each provider, existing project funding that covers the intended users and dates is sufficient. If coverage is unclear, check the original allocation with its owner or use a team-funded account. For operation beyond the course beta, use funding that covers that period.
+OutLoud uses OpenRouter for scoring and Q&A and ElevenLabs for transcription. The public service enforces a combined **US$50 lifetime limit on its requests**. The course beta ends on December 11, 2026 in Seoul. Set `OUTLOUD_PUBLIC_AI_UNTIL=2026-12-12T00:00:00+09:00` to stop new paid requests at midnight. Azure hosting and requests made outside the public service have their own billing. Store provider credentials only in the private server environment.
 
-The team set a combined **US$50 limit for the lifetime of the release**. Give the public service restricted credentials with hard provider allowances that add up to at most that amount. Disable overages and automatic replenishment. Keep the keys on the server, outside Android, GitHub, chat and logs. Azure hosting has separate charges.
+The public PostgreSQL ledger reserves money before each provider call, including retries, translations and recording segments. OpenRouter requests pin the model and provider, disable tools and web search, and reserve for the full input context, requested output and possible routing charges. A completed receipt with a verified price releases the unused reservation. Unexpected tool or separately billed routing activity stops new work. Scribe uses the length of the normalized mono recording and rounds each call up to a whole minute at the configured hourly ceiling. A request that exceeds the remaining allowance stops before dispatch. Keep the ledger across releases and reconcile outstanding charges after any database restore.
 
-Verify the OpenRouter model's full context window, maximum input/output prices including applicable fees, and ElevenLabs' maximum effective hourly Scribe v2 price including vocabulary hints and minimum billing. Use the same supported OpenAI model for legacy and v3 feedback. On OpenRouter, use a dedicated workspace without BYOK credentials, private endpoints or default billable plugins. If the provider plan cannot enforce the agreed allowance or its pricing is unknown, leave AI disabled. [OpenRouter routing](https://openrouter.ai/docs/guides/routing/provider-selection) · [ElevenLabs speech-to-text](https://elevenlabs.io/docs/overview/capabilities/speech-to-text)
-
-The public database reserves an upper bound before each paid dispatch. Workers share one nonrenewing ledger across both providers, including retries, translations, Q&A and live recording segments. Unconfirmed requests retain their reservation. Preserve this database across releases. After restoring a backup, reconcile subsequent provider charges before enabling AI. Recreating or rolling back the ledger can restore already-spent allowance.
+Check the selected model's context and both providers' rates when changing the deployment. The store's rates must cover the model's most expensive input and output tiers and Scribe's vocabulary hints and minimum billing. A provider-side limit can provide additional protection for activity outside OutLoud. [OpenRouter routing](https://openrouter.ai/docs/guides/routing/provider-selection) · [ElevenLabs speech-to-text](https://elevenlabs.io/docs/overview/capabilities/speech-to-text)
 
 To suspend both providers, clear both keys in the private store environment and recreate the store API, worker and scheduler. The feedback flags control coaching features. Full-recording transcription also checks its own ElevenLabs credential.
 
@@ -38,7 +36,13 @@ store exec -T worker celery -A config inspect ping
 
 ## Build and sign for ONE Store
 
-Use Node 24, JDK 17 and the Android SDK specified in the repository. From a clean checkout:
+The signing kit in the build 42 GitHub release includes the verified unsigned APK and a script for the Team 07 key holder. Extract the ZIP, open a terminal in that folder and run the command below. On Windows, use `py -3` for Python. The script prompts for passwords locally, checks the original signing certificate and writes the APK and checksum under `signed/`.
+
+```sh
+python3 sign_release.py "/path/to/team07-release.jks"
+```
+
+To rebuild the signing input, use Node 24, JDK 17 and the Android SDK specified in the repository. Run these commands from a clean checkout.
 
 ```sh
 cd mobile
@@ -72,4 +76,4 @@ The published builds 40 and 41 use signer SHA-256 `6fa1ce0c3adf91895b0aafeb0a545
 - On a clean Android install, cold-launch the signed APK without a tester code. Decline uploads, open Seoul, record and play back locally. Open the privacy policy and explicitly enable coaching.
 - Against the funded store service, import a PDF, record a short rehearsal, wait for a real transcript and grounded score, then generate and answer a Q&A question. Check the provider receipts and lifetime ledger. Keep recordings and keys out of release evidence.
 - On a separate installation of the signed build 41, create a local rehearsal and install the same signed build 42 as an update. Verify that local audio remains playable, online consent starts unselected, and the store workspace contains only that installation's uploads.
-- Upload the tested signed APK and its checksum to the team's GitHub release. The ONE Store submitter uses that exact file and the public privacy-policy URL. A draft unsigned asset is an input for the signer and cannot be installed or submitted as delivered.
+- Upload the tested signed APK and its checksum to the team's GitHub release. The ONE Store submitter uploads the signed APK and supplies the public privacy-policy URL. The signing kit provides the unsigned input.
