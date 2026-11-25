@@ -64,6 +64,18 @@ there is no per-user ownership. Local development keeps its existing loopback
 boundary. The HTTPS/authentication rollout and actual APK verification are recorded
 in the [hosting guide](../azure-hosting.md); this contract alone is not deployment proof.
 
+## ONE Store installation access
+
+The dedicated store backend runs with `OUTLOUD_PUBLIC_SERVICE=1`. After the user enables online coaching, the app sends an empty `POST /store/api/installations/`. A successful response is HTTP 201 with `{"token":"…"}`. The app keeps the token in Android secure storage and sends `Authorization: Bearer <token>` on subsequent API and media requests. The server stores a SHA-256 digest of the random 256-bit token. Enrollment allows 12 requests per source network per UTC hour and returns 429 with `Retry-After` when exhausted. The store health endpoint is public.
+
+Each installation owns its decks, recordings, requirements, feedback, Q&A and saved translations. Uploading identical PDF bytes twice within one installation reuses its deck. Two installations get separate deck IDs, wording and files. A recording or context creation that conflicts with another installation's existing client-generated UUID is rejected. A missing, invalid or expired token returns 401. Tokens expire after 30 days of inactivity.
+
+Each installation can make 240 authenticated API writes per UTC hour. POST, PUT, PATCH and DELETE share the allowance, including uploads and requests to start or retry work. The next write returns 429 and a `Retry-After` header in seconds until the next UTC hour. GET, HEAD and OPTIONS use no write allowance. If Redis cannot check the limit, the service returns 503 before dispatching the write and requests a retry after 60 seconds.
+
+Media URLs begin with `/store/media/`. GET, HEAD and byte ranges require the same bearer and ownership as the originating resource. Inaccessible files, decks, recordings and presentation contexts return 404. Prepared bilingual bundles use their existing `absent` state when the installation has no matching bundle.
+
+Online coaching accepts a maximum of 100 pages per PDF and 48 MiB of prepared slide images and text per deck. Oversized decks return HTTP 400. New public media writes return HTTP 507 when they would consume the last 5 GiB of the shared host disk. Local rehearsal keeps its existing file limits.
+
 ## OpenRouter LLM routing and cutover
 
 `FEEDBACK_PROVIDER` defaults to `openrouter`; `FEEDBACK_OPENROUTER_MODEL` defaults to
@@ -261,6 +273,10 @@ precedence and repeated admissions reuse that scope.
 Profiles use
 the existing JSON persistence, with no migration. PATCH through the description
 endpoint rejects profile scopes with 409 `immutable_profile`.
+
+Build 42 receives one complete, ordered v5 profile for its own deck. On the public service, decks with more than ten slides are processed in groups of five. First the worker reads the original slide images and creates facts and Must Cover guidance. It then generates Further Insight for each group using the frozen fact table for the whole deck. References keep the original slide indexes and source identifiers. Every provider call has its own stored receipt and quota reservation. The app sees the completed deck after every group validates. A retry reuses validated work for matching inputs, and a timed-out submission requires confirmation under the existing retry contract.
+
+For a generated v5 receipt, the server can correct a single mistyped hex digit in a copied source identifier only when the stated slide and the frozen source uniquely establish the intended identifier. Public v5 generation requires valid facts and matching source identities for every target slide. It omits a complete suggestion when the evidence reference, quoted text or cue wording fails validation. Other supported suggestions can still appear. A wrong or ambiguous source identity on a slide invalidates the profile. The original provider receipt is retained.
 
 Each profile has the ordinary `deck_id`, `slide_index`, `source_id`, `summary`,
 `key_ideas` and `visual_facts`, plus `slide_kind` (`title`, `content`, `closing`,

@@ -6,10 +6,13 @@ from io import BytesIO
 from threading import Lock
 
 import pypdfium2 as pdfium
+from django.conf import settings
 from pypdf import PdfReader
 from rehearsals.limits import MAX_PDF_BYTES
 
 _render_lock = Lock()  # PDFium is not thread safe.
+PUBLIC_MAX_PAGES = 100
+PUBLIC_MAX_PREPARED_BYTES = 48 * 1024 * 1024
 
 
 def prepare_slides(pdf_path: Path) -> list[dict]:
@@ -19,10 +22,13 @@ def prepare_slides(pdf_path: Path) -> list[dict]:
         reader = PdfReader(pdf_path)
         if reader.is_encrypted:
             raise ValueError("Use an unencrypted PDF.")
-        if not reader.pages:
-            raise ValueError("PDFs must have at least one slide.")
         slides = []
         with _render_lock, pdfium.PdfDocument(str(pdf_path)) as doc:
+            if not len(doc):
+                raise ValueError("PDFs must have at least one slide.")
+            if settings.OUTLOUD_PUBLIC_SERVICE and len(doc) > PUBLIC_MAX_PAGES:
+                raise ValueError("Online coaching accepts up to 100 PDF pages. Split this deck for coaching.")
+            prepared_bytes = 0
             for index, page_text in enumerate(reader.pages):
                 page = doc[index]
                 try:
@@ -34,8 +40,13 @@ def prepare_slides(pdf_path: Path) -> list[dict]:
                         bitmap.close()
                 finally:
                     page.close()
-                slides.append({"slide_index": index, "image": output.getvalue(),
-                               "extracted_text": (page_text.extract_text() or "").replace("\x00", "")})
+                image = output.getvalue()
+                extracted = (page_text.extract_text() or "").replace("\x00", "")
+                if settings.OUTLOUD_PUBLIC_SERVICE:
+                    prepared_bytes += len(image) + len(extracted.encode('utf-8'))
+                    if prepared_bytes > PUBLIC_MAX_PREPARED_BYTES:
+                        raise ValueError("This deck's prepared slides are too large for online coaching. Split the PDF.")
+                slides.append({"slide_index": index, "image": image, "extracted_text": extracted})
         return slides
     except ValueError:
         raise

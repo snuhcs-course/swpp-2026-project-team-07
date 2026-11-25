@@ -2,6 +2,7 @@ import { MAX_RECORDING_MS } from "../recording/limits";
 import type { AttemptResult, DeckDetail, ReviewAttempt, SlideEvent, TimingMetrics, Visit, FeedbackAnalysis } from '../../contracts';
 import { parseResult } from './resultValidation';
 import { optionalFeedback, isDigest } from '../feedback/validation';
+import { STORE_API, storeRoute } from '../../services/storeEndpoint';
 
 export const isUuid = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 const object = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -11,6 +12,7 @@ export const validDuration = (v: unknown): v is number => integer(v) && v > 0 &&
 /** Media is explicit GET-only, same-origin, with no credentials or server-chosen local paths. */
 export function mediaUrl(value: unknown, api: string): string | null {
   if (typeof value !== 'string' || !/^https?:\/\//i.test(value) || /[\s\\]/.test(value)) return null;
+  if (api.replace(/\/+$/, '') === STORE_API) return storeRoute(value) === 'media' ? value : null;
   try {
     const url = new URL(value), base = new URL(api);
     if (!['http:', 'https:'].includes(base.protocol) || url.origin !== base.origin ||

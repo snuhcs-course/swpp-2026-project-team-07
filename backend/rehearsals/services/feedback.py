@@ -357,15 +357,23 @@ class Descriptions(PrivateModel):
     slides: Annotated[tuple[Description, ...], Field(min_length=1)]
 
 
+class SavedProfileFacts(Descriptions):
+    """Facts from a verified, already assembled public v5 profile. Never an input schema."""
+
+
 def description_facts(slide):
     return {"summary": slide.summary,
             **{f"key_ideas/{i}": fact for i, fact in enumerate(slide.key_ideas)},
             **{f"visual_facts/{i}": fact for i, fact in enumerate(slide.visual_facts)}}
 
 
-def validate_descriptions(value, analysis):
-    descriptions = validated(Descriptions, value, "invalid_descriptions", MAX_OUTPUT_BYTES)
-    if sorted(s.slide_index for s in descriptions.slides) != list(range(len(analysis.source.slides))):
+def validate_descriptions(value, analysis, *, max_bytes=MAX_OUTPUT_BYTES, slide_indexes=None):
+    descriptions = validated(Descriptions, value, "invalid_descriptions", max_bytes)
+    count = len(analysis.source.slides)
+    expected = list(range(count)) if slide_indexes is None else list(slide_indexes)
+    if (not expected or any(type(i) is not int or not 0 <= i < count for i in expected)
+            or sorted(set(expected)) != expected
+            or sorted(s.slide_index for s in descriptions.slides) != expected):
         raise FeedbackError("invalid_descriptions")
     for slide in descriptions.slides:
         if slide.deck_id != analysis.source.deck_id or slide.source_id != analysis.source_ids[slide.slide_index]:
@@ -377,6 +385,15 @@ def validate_descriptions(value, analysis):
                     or not fact.text.strip() or fact.uncertain != bool(fact.uncertainty.strip())):
                 raise FeedbackError("invalid_descriptions")
     return descriptions
+
+
+def revalidate_description_input(descriptions, analysis):
+    """Keep the existing single-response limit for every JSON/provider/edit input."""
+    value = descriptions.model_dump(mode='json')
+    if type(descriptions) is SavedProfileFacts:
+        validate_descriptions(value, analysis, max_bytes=MAX_CONTEXT_BYTES)
+        return descriptions
+    return validate_descriptions(value, analysis)
 
 
 class Suggestion(PrivateModel):

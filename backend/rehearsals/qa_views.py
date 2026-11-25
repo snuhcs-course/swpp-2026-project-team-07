@@ -8,6 +8,7 @@ from rest_framework.decorators import api_view, parser_classes
 from rest_framework.exceptions import APIException
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
+from public_billing.budget import MESSAGES as PUBLIC_BUDGET_MESSAGES
 
 from .models import Deck
 from .services import qa
@@ -37,6 +38,8 @@ def _error(code, status, message=None, retry_at=None):
 
 
 def _failure(error):
+    if isinstance(error, (TranscriptionError, FeedbackError)) and error.code in PUBLIC_BUDGET_MESSAGES:
+        return _error(error.code, 503, PUBLIC_BUDGET_MESSAGES[error.code])
     if isinstance(error, Deck.DoesNotExist):
         return _error('deck_not_found', 404)
     if isinstance(error, APIException) and 400 <= error.status_code < 500:

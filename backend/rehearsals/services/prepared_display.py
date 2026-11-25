@@ -10,6 +10,7 @@ from django.utils import timezone
 from ..feedback_v3.rubric import CURRENT
 from ..models import (Attempt, CaptureAssessment, CaptureSession, DescriptionJob, DescriptionSet, DisplayTranslation,
                       FeedbackJob, FeedbackRun, PreparedDisplayField, PreparedDisplayResource, QaAnswer)
+from ..ownership import current_installation_id, installation_scope
 from . import display_translator as translator, localization
 
 logger = logging.getLogger(__name__)
@@ -276,7 +277,8 @@ def enroll(payload):
     if kind in ('profiles','score','slide_review','coaching') and revision and (not revision.isascii() or not revision.isdecimal() or str(int(revision)) != revision or len(revision)>10):
         raise ValueError('invalid_revision')
     with transaction.atomic():
-        bundle,_ = PreparedDisplayResource.objects.select_for_update().get_or_create(kind=kind,resource_id=resource,revision=revision)
+        bundle,_ = PreparedDisplayResource.objects.select_for_update().get_or_create(
+            installation_id=current_installation_id(), kind=kind, resource_id=resource, revision=revision)
         if kind == 'legacy_qa' and not fields and not bundle.wording.exists():
             raise ValueError('archive_requires_fields')
         bundle.last_requested = timezone.now()
@@ -323,7 +325,8 @@ def changed(kind, resource):
 def refresh(pk):
     with transaction.atomic():
         bundle = PreparedDisplayResource.objects.select_for_update().get(pk=pk)
-        _sync(bundle)
+        with installation_scope(bundle.installation_id):
+            _sync(bundle)
 
 
 def _retry(jobs):
@@ -341,7 +344,8 @@ def _retry(jobs):
                 job.prepared_retries += 1
             job.prepared_retry_kind, job.prepared_retry_at = '', None
             job.save(update_fields=['prepared_retries','prepared_retry_kind','prepared_retry_at'])
-            localization.admit_fields(job.kind,job.resource_id,job.language,job.revision,job.fields,True,check_source=False)
+            with installation_scope(job.installation_id):
+                localization.admit_fields(job.kind,job.resource_id,job.language,job.revision,job.fields,True,check_source=False)
 
 
 def recover():

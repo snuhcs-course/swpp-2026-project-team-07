@@ -1,0 +1,12 @@
+# Overlay for the EXISTING tester Caddy only, after the store stack is healthy.
+services:
+  caddy:
+    networks:
+      - public_edge
+      - store_ingress
+    volumes:
+      - ./deploy/store-route.caddy:/etc/caddy/store-route/public.caddy:ro
+networks:
+  store_ingress:
+    external: true
+    name: outloud-store-ingress

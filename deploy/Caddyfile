@@ -22,15 +22,17 @@ https://{$OUTLOUD_PUBLIC_HOST} {
 	request_body {
 		max_size 64MiB
 	}
-	# No matcher: API, health, files, HEAD and range requests all require the code.
-	basic_auth bcrypt {
-		reviewer {$OUTLOUD_DEMO_PASSWORD_HASH}
-	}
-	reverse_proxy proxy:8080 {
-		header_up Host {http.request.host}
-		header_up X-Forwarded-Proto https
-		# The demo credential is consumed here, never sent to the application.
-		header_up -Authorization
-		header_up -Proxy-Authorization
+	# The store deployment mounts its own route; demo-only installs have no snippets.
+	import /etc/caddy/store-route/*.caddy
+	handle {
+		basic_auth bcrypt {
+			reviewer {$OUTLOUD_DEMO_PASSWORD_HASH}
+		}
+		reverse_proxy proxy:8080 {
+			header_up Host {http.request.host}
+			header_up X-Forwarded-Proto https
+			header_up -Authorization
+			header_up -Proxy-Authorization
+		}
 	}
 }

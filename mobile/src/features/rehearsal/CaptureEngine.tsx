@@ -14,6 +14,7 @@ import { Alert, AppState } from 'react-native';
 import { AudioModule, RecordingPresets, useAudioRecorder } from 'expo-audio';
 import type { SlideEvent } from '../../contracts';
 import { API_URL } from '../../services/api';
+import { onlineAllowed } from '../../services/storePrivacy';
 import { createRecordingService } from '../recording/service';
 import { stopCapture } from '../recording/stopCapture';
 import { STOP_RECORDING_MS, VOICE_RECORDING_OPTIONS } from '../recording/limits';
@@ -132,7 +133,7 @@ export const CaptureEngine = forwardRef<CaptureHandle, Props>(function CaptureEn
       phase.current = 'starting';
       try {
         recoverPendingAttempts();
-        let useIncremental = preferIncremental && continuousRecorder.available() && await incrementalAvailable(API_URL);
+        let useIncremental = onlineAllowed() && preferIncremental && continuousRecorder.available() && await incrementalAvailable(API_URL);
         if (useIncremental && !hasAnalysisConsent()) {
           useIncremental = await new Promise<boolean>(resolve => Alert.alert(ui('Feedback while you present'),
             ui('Completed slide audio will upload to the configured server during recording. ElevenLabs Scribe transcribes it; transcription may include vocabulary hints from your slides. The configured AI provider receives slide text and transcript for feedback. Audio stays on this phone for retry and playback.'),
@@ -194,7 +195,7 @@ export const CaptureEngine = forwardRef<CaptureHandle, Props>(function CaptureEn
         const { uri, durationMillis } = await stopCapture(recorder);
         const events = service.getSlideEvents(durationMillis);
         if (!attemptId.current) throw new Error('The recording metadata could not be found.');
-        checkpointAttempt(attemptId.current, uri, durationMillis, events, true, API_URL);
+        checkpointAttempt(attemptId.current, uri, durationMillis, events, true, onlineAllowed() ? API_URL : undefined);
         phase.current = 'done';
         return { attemptId: attemptId.current, durationMs: durationMillis, events };
       } catch (error) {

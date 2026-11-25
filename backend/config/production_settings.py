@@ -21,7 +21,7 @@ ALLOWED_HOSTS = hosts
 if not os.environ.get("POSTGRES_PASSWORD") or os.environ["POSTGRES_PASSWORD"] == "outloud-local-only":
     raise RuntimeError("Set a private POSTGRES_PASSWORD before deploying.")
 
-MEDIA_URL = "/media/"
+MEDIA_URL = "/store/media/" if OUTLOUD_PUBLIC_SERVICE else "/media/"  # noqa: F405
 # Only nginx can reach Gunicorn. The authenticated public edge or private Serve
 # supplies its trusted TLS scheme to nginx, which overwrites this header.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

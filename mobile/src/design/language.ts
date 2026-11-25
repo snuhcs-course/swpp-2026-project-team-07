@@ -2,6 +2,8 @@
 import { useSyncExternalStore } from 'react';
 import { readStored, writeStored } from '../services/storage';
 import { koreanText } from './koreanText';
+import { STORE_MODE } from '../services/apiConfig';
+import { storeWording } from './storeWording';
 
 export type AppLanguage = 'en' | 'ko';
 const preferenceKey = 'settings.languagePreference';
@@ -37,6 +39,14 @@ export function setAppLanguage(language: AppLanguage): boolean {
 }
 
 const original: typeof koreanText = <T>(text: T) => text;
+function storeLanguage(translate: typeof koreanText): typeof koreanText {
+  function display(text: string): string;
+  function display(text: string | undefined): string | undefined;
+  function display(text: string | undefined) { return typeof text === 'string' ? translate(storeWording(text)) : undefined; }
+  return display;
+}
+const publicEnglish = storeLanguage(original), publicKorean = storeLanguage(koreanText);
 export function useUiText(): typeof koreanText {
-  return useAppLanguage() === 'ko' ? koreanText : original;
+  const ko = useAppLanguage() === 'ko';
+  return STORE_MODE ? (ko ? publicKorean : publicEnglish) : (ko ? koreanText : original);
 }

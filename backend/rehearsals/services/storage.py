@@ -4,25 +4,43 @@ import logging
 import uuid
 from io import BytesIO
 from pathlib import Path
+from shutil import disk_usage
 from tempfile import NamedTemporaryFile
 
 import av
+from django.conf import settings
 from django.core.files.base import ContentFile
 from django.db import IntegrityError, transaction
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import APIException, ValidationError
 
 from rehearsals.limits import (MAX_AUDIO_BYTES, MAX_PDF_BYTES, MAX_DURATION_MS,
                                AUDIO_DURATION_TOLERANCE_MS, PREPARATION_VERSION)
 from rehearsals.models import Attempt, Deck, Slide
+from rehearsals.ownership import current_installation_id, foreign_pk_exists
 from .pdf import prepare_slides
 
 logger = logging.getLogger(__name__)
 
 
+class StoreStorageFull(APIException):
+    status_code = 507
+    default_detail = "Online storage is full. Your local files are saved."
+
+
 def save_media(field, basename, data, files):
     # A submission owns a unique directory, including when two requests use the
     # same attempt UUID. Track its path before writing, to clean partial writes.
-    name = field.field.generate_filename(field.instance, f"{uuid.uuid4().hex}/{basename}")
+    if settings.OUTLOUD_PUBLIC_SERVICE:
+        owner = current_installation_id()
+        if owner is None:
+            raise RuntimeError("Public media requires a verified installation.")
+        # The public volume shares the VM disk with the reviewer and study services.
+        if disk_usage(settings.MEDIA_ROOT).free < 5 * 1024**3 + len(data):
+            raise StoreStorageFull()
+        generated = field.field.generate_filename(field.instance, f"{uuid.uuid4().hex}{Path(basename).suffix}")
+        name = f"i/{owner}/{generated}"
+    else:
+        name = field.field.generate_filename(field.instance, f"{uuid.uuid4().hex}/{basename}")
     files.append((field.storage, name))
     saved_name = field.storage.save(name, ContentFile(data), max_length=field.field.max_length)
     if saved_name != name:
@@ -53,7 +71,8 @@ def read_upload(upload, limit):
 def store_deck(upload, title):
     data = read_upload(upload, MAX_PDF_BYTES)
     digest = hashlib.sha256(data).hexdigest()
-    lookup = {"content_hash": digest, "preparation_version": PREPARATION_VERSION}
+    lookup = {"installation_id": current_installation_id(), "content_hash": digest,
+              "preparation_version": PREPARATION_VERSION}
     existing = Deck.objects.filter(**lookup).first()
     if existing:
         return existing
@@ -94,6 +113,8 @@ def store_attempt(upload, metadata):
     deck = Deck.objects.filter(id=metadata["deck_id"]).first()
     if not deck:
         raise ValidationError("Upload the deck before its recording.")
+    if foreign_pk_exists(Attempt, metadata["id"]):
+        return None
     if any(event["slide_index"] >= deck.page_count for event in metadata["slide_events"]):
         raise ValidationError("A slide event refers to a slide outside this deck.")
     data = read_upload(upload, MAX_AUDIO_BYTES)
@@ -138,5 +159,7 @@ def store_attempt(upload, metadata):
             cleanup_media(files, {existing.audio.name} if existing else set())
             if isinstance(exc, IntegrityError) and existing:
                 return existing if existing.upload_hash == digest else None
+            if isinstance(exc, IntegrityError) and foreign_pk_exists(Attempt, metadata["id"]):
+                return None
         raise
     return attempt

@@ -16,11 +16,13 @@ import { SelectedPreparationHost } from '../features/localization/SelectedPrepar
 // OpenAI Codex stationary forward page fades: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-120
 // OpenAI Codex Full review routing: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-122
 // OpenAI Codex stable import hue: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-123
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { AppState, Pressable, StyleSheet, View } from 'react-native';
 import { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import * as ScreenOrientation from 'expo-screen-orientation';
-import { Enter, Frame } from '../design/frame';
+import { Enter, Frame, Txt } from '../design/frame';
+import { STORE_MODE } from '../services/apiConfig';
+import { dismissBudgetNotice, getBudgetNotice, subscribeBudget } from '../services/storeBudget';
 import { useTheme } from '../design/theme';
 import { Dialog, GlowLayer } from '../design/ui';
 import { mod } from '../domain/format';
@@ -148,6 +150,7 @@ export function AppShell() {
           </View>;
         })}
         <Prompts />
+        {STORE_MODE && <BudgetNotice />}
       </Frame>
       <Workers />
       <IncrementalCaptureHost />
@@ -166,7 +169,19 @@ const styles = StyleSheet.create({
   page: { ...StyleSheet.absoluteFill },
   clippedUnderlay: { overflow: 'hidden' },
   hiddenPage: { ...StyleSheet.absoluteFill, display: 'none' },
+  budgetNotice: { position: 'absolute', bottom: 60, left: 20, right: 20, zIndex: 120, padding: 16, borderWidth: 1, borderRadius: 14 },
+  dismissNotice: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-end', paddingHorizontal: 12 },
 });
+
+function BudgetNotice() {
+  const notice = useSyncExternalStore(subscribeBudget, getBudgetNotice);
+  const { c } = useTheme();
+  if (!notice) return null;
+  return <View style={[styles.budgetNotice, { backgroundColor: c.bg, borderColor: c.track }]}>
+    <Txt accessibilityRole="alert" style={{ color: c.text }}>{notice}</Txt>
+    <Pressable accessibilityRole="button" onPress={dismissBudgetNotice} style={styles.dismissNotice}><Txt style={{ color: c.strong }}>OK</Txt></Pressable>
+  </View>;
+}
 
 function LayerScreen({ screen, active }: { screen: NavState['screen']; active: boolean }) {
   if (screen === 'upload') return <UploadScreen />;

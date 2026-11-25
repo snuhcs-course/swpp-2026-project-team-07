@@ -17,7 +17,8 @@ def group_for(area, relative):
     if area == "mobile":
         return "mobile_ui" if relative.endswith(".tsx") else "mobile_logic"
     if relative.startswith("rehearsals/services/") or relative in {
-        "rehearsals/models.py", "rehearsals/limits.py", "rehearsals/tasks.py"
+        "rehearsals/models.py", "rehearsals/limits.py", "rehearsals/tasks.py",
+        "public_billing/models.py", "public_billing/budget.py",
     }:
         return "backend_logic"
     return "backend_api"
@@ -30,7 +31,12 @@ def scope(area):
     if area == "backend":
         config.read(base / ".coveragerc")
     patterns = config.get("run", "omit").split() if area == "backend" else json.loads((base / ".c8rc.json").read_text())["exclude"]
-    files = (base / "src").rglob("*") if area == "mobile" else [base / "manage.py", *(base / "config").rglob("*.py"), *(base / "rehearsals").rglob("*.py")]
+    if area == "mobile":
+        files = (base / "src").rglob("*")
+    else:
+        files = [base / "manage.py"]
+        for package in ("config", "rehearsals", "public_billing"):
+            files.extend((base / package).rglob("*.py"))
     for path in sorted(files):
         if not path.is_file() or (area == "mobile" and path.suffix not in {".ts", ".tsx"}):
             continue

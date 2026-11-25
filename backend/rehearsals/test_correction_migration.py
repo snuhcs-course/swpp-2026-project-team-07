@@ -14,6 +14,7 @@ class CorrectionMigrationTests(TransactionTestCase):
         return executor.loader.project_state(target).apps
 
     def test_legacy_roundtrip_and_guarded_new_data_rollback(self):
+        latest = MigrationExecutor(connection).loader.graph.leaf_nodes()
         apps = self.migrate(self.old)
         try:
             deck = apps.get_model('rehearsals', 'Deck').objects.create(title='Synthetic migration', page_count=1, pdf='synthetic.pdf')
@@ -35,4 +36,4 @@ class CorrectionMigrationTests(TransactionTestCase):
             self.assertEqual(apps.get_model('rehearsals', 'TranscriptCorrection').objects.get(attempt_id=attempt.pk).revision, 1)
             self.assertEqual(apps.get_model('rehearsals', 'Attempt').objects.values().get(pk=attempt.pk), before)
         finally:
-            self.migrate(self.new)
+            self.migrate(latest)

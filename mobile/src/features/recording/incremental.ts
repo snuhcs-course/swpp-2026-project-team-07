@@ -1,4 +1,5 @@
 // Durable segment upload outbox. Recording writes files/checkpoints; network work never owns the microphone.
+import { readCoachingJson } from '../../services/storeBudget';
 import { File } from 'expo-file-system';
 import type { CaptureManifest } from '../../../modules/outloud-recorder';
 import { backendExpoFetch } from '../../services/backendFetch';
@@ -35,7 +36,7 @@ export function parseCaptureStatus(value: unknown, id: string): CaptureStatus {
 }
 async function responseJson(response: Response) {
   let body;
-  try { body = await response.json(); } catch { throw new Error('Server response could not be read. Audio is retained for retry.'); }
+  try { body = await readCoachingJson(response); } catch { throw new Error('Server response could not be read. Audio is retained for retry.'); }
   if (!response.ok) throw new Error(body?.error?.message || `Upload failed (HTTP ${response.status}). Audio is kept on this phone.`);
   return body;
 }

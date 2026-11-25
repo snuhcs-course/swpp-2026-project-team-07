@@ -3,7 +3,9 @@
 // OutLoud redesign: Home → Upload → Rehearse → Review / Compare / Audience Q&A.
 import { AppShell } from '../screens/AppShell';
 import { DemoAccessGate } from '../screens/DemoAccessGate';
+import { STORE_MODE } from '../services/apiConfig';
 
 export default function Index() {
+  if (STORE_MODE) return <AppShell />;
   return <DemoAccessGate><AppShell /></DemoAccessGate>;
 }

@@ -2,7 +2,7 @@
 // "How OutLoud works": the eight-page guide from the design prototype (project/App.dc.html), drawn 1:1 in the
 // 390 × 844 frame. Fixed header; the pages slide as one strip; dots and hints stay put. Swipe sideways between
 // pages, swipe down (or Back, or "Got it" on the last page) to close. It opens by itself once, on first launch.
-import { memo, useEffect, useMemo, useRef, type ReactNode } from 'react';
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 import Animated, { cancelAnimation, Easing, runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue,
@@ -11,11 +11,11 @@ import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop, Text as SvgText } 
 import { Txt, useFrame } from '../design/frame';
 import { Glyph, PresentationIcon, UIIcon, type GlyphName } from '../design/icons';
 import { useAppLanguage, useUiText } from '../design/language';
+import { LanguageToggle } from '../design/LanguageToggle';
+import { ThemeToggle } from '../design/ThemeToggle';
 import { EASE_SCREEN, F } from '../design/tokens';
 import { useTheme } from '../design/theme';
 
-/** Set once the guide has been closed or finished, so it only opens by itself on first launch. */
-export const TUTORIAL_SEEN = 'tutorial.seen';
 /** Header topic, page title and the words under the card, in prototype order. */
 export const TUTORIAL_PAGES: readonly { topic: string; title: string; body: string }[] = [
   { topic: 'Gestures', title: 'Spin, tap, pull', body: 'Your presentations sit in one row on Home. Most things work by gesture, and the hints along the bottom of each screen show which ones work there.' },
@@ -25,10 +25,14 @@ export const TUTORIAL_PAGES: readonly { topic: string; title: string; body: stri
   { topic: 'Review', title: 'Every slide, colour coded', body: 'Review scores each slide out of 100 and colours it. Work on the red and orange slides first.' },
   { topic: 'Slide review', title: 'One slide up close', body: 'Tap a slide to see its review. The ring scores that slide. Four tiles check time, fillers, key points and delivery; tap one for detail.' },
   { topic: 'Listen back', title: 'Hear yourself back', body: 'Play back your run and the transcript follows along, line by line, so you can hear where you rushed or drifted.' },
-  { topic: 'Q&A', title: 'Practise the Q&A', body: 'On Review, swipe up for Audience Q&A. A simulated panel asks questions drawn from your slides. Answer out loud and get a verdict.' },
+  { topic: 'Q&A', title: 'Practise the Q&A', body: 'Swipe up in Review for Audience Q&A. A virtual panel asks about your slides. Answer aloud for a verdict.' },
 ];
 const N = TUTORIAL_PAGES.length;
 const W = 390;
+// OpenAI Codex, 2026-11-23: give the tutorial content more space below the fixed language switch.
+const CONTENT_OFFSET = 12;
+const DONE_HEIGHT = 48;
+const AGAIN_TOP = 722;
 
 // The prototype's own colours for this screen (its --t1 … --bad variables), so both themes match it exactly.
 const GUIDE = {
@@ -197,10 +201,10 @@ function AddCard({ k, p }: { k: Clocks; p: P }) {
     <View style={[s.centre, { top: 146 }]}>
       <Txt style={[s.small, { color: p.tm }]}>How long is it?</Txt>
       <Txt style={[s.bigTime, { color: p.t1 }]}>10:00</Txt>
-    </View>
-    <View style={s.ruler}>
-      {TICKS.map(i => <View key={i} style={[s.tick, i % 5 === 0 ? { top: 10, height: 16, backgroundColor: p.b50 } : { top: 17, height: 9, backgroundColor: p.b30 }, { left: 19 + i * 10 }]} />)}
-      <View style={[s.tick, { left: 169, top: -2, height: 30, backgroundColor: p.t1 }]} />
+      <View style={s.ruler}>
+        {TICKS.map(i => <View key={i} style={[s.tick, i % 5 === 0 ? { top: 10, height: 16, backgroundColor: p.b50 } : { top: 17, height: 9, backgroundColor: p.b30 }, { left: 19 + i * 10 }]} />)}
+        <View style={[s.tick, { left: 169, top: -2, height: 30, backgroundColor: p.t1 }]} />
+      </View>
     </View>
     <View style={[s.centre, { top: 246 }]}>
       <Txt style={[s.small, { color: p.tm }]}>Who’s listening?</Txt>
@@ -390,6 +394,10 @@ const GuidePage = memo(function GuidePage({ index, current, x, k, p, onDone }: {
   const page = TUTORIAL_PAGES[index];
   const language = useAppLanguage();
   const ui = useUiText();
+  const last = index === N - 1;
+  const [wordsBottom, setWordsBottom] = useState(0);
+  // OpenAI Codex, 2026-11-23: center the button in the available gap as the translated paragraph wraps.
+  const doneTop = Math.max(655, Math.round((wordsBottom + AGAIN_TOP - DONE_HEIGHT) / 2));
   // Neighbours stay at 20% while you drag; the page being reached comes up to full as it arrives.
   const fade = useAnimatedStyle(() => ({ opacity: Math.max(0.2, 1 - Math.abs(index + x.value / W) * 0.8) }));
   return <Animated.View accessibilityLabel={language === 'ko' ? `${N}개 중 ${index + 1}: ${ui(page.title)}` : `${index + 1} of ${N}: ${page.title}`} accessibilityElementsHidden={!current}
@@ -398,12 +406,14 @@ const GuidePage = memo(function GuidePage({ index, current, x, k, p, onDone }: {
     <View pointerEvents="none" style={[s.card, { borderColor: p.hair, backgroundColor: p.s06 }]}>
       <View style={s.cardBody}><Card k={k} p={p} /></View>
     </View>
-    <View pointerEvents="none" style={s.words}>
+    <View pointerEvents="none" style={s.words}
+      onLayout={last ? ({ nativeEvent: { layout } }) => setWordsBottom(layout.y + layout.height) : undefined}>
       <Txt style={[s.title, { color: p.t1 }]}>{page.title}</Txt>
       <Txt style={[s.body, { color: p.t4 }]}>{page.body}</Txt>
     </View>
-    {index === N - 1 && <>
-      <Pressable accessibilityRole="button" accessibilityLabel="Got it" onPress={onDone} style={[s.done, { backgroundColor: p.t1 }]}>
+    {last && <>
+      <Pressable accessibilityRole="button" accessibilityLabel={ui('Got it')} onPress={onDone}
+        style={[s.done, { top: doneTop, backgroundColor: p.t1 }]}>
         <Txt style={[s.doneText, { color: p.bg }]}>Got it</Txt>
       </Pressable>
       <Txt style={[s.again, { color: p.tm }]}>Tap OutLoud on Home to see this again</Txt>
@@ -422,8 +432,8 @@ function Dot({ on, p, still }: { on: boolean; p: P; still: boolean }) {
  * `cover` is how much the guide covers Home (0–1): it rises in over 460 ms and Home fades out under it; on close
  * it slides down and Home fades back in. `closing` lets Back run the same exit.
  */
-export function TutorialOverlay({ page, onPage, onClose, cover, closing }: { page: number; onPage: (page: number) => void;
-  onClose: () => void; cover: SharedValue<number>; closing: boolean }) {
+export function TutorialOverlay({ page, onPage, onClose, cover, closing, showAppearanceControls }: { page: number; onPage: (page: number) => void;
+  onClose: () => void; cover: SharedValue<number>; closing: boolean; showAppearanceControls: boolean }) {
   const { mode } = useTheme();
   const language = useAppLanguage();
   const ui = useUiText();
@@ -506,16 +516,20 @@ export function TutorialOverlay({ page, onPage, onClose, cover, closing }: { pag
           <Txt numberOfLines={1} style={[s.heading, { color: p.t1 }]}>How OutLoud works</Txt>
           <Txt numberOfLines={1} style={[s.topic, { color: p.tm }]}>{language === 'ko' ? `${N}개 중 ${page + 1} · ${ui(TUTORIAL_PAGES[page].topic)}` : `${page + 1} of ${N} · ${TUTORIAL_PAGES[page].topic}`}</Txt>
         </View>
-        <Animated.View accessibilityLabel="How OutLoud works" style={[s.strip, strip]} pointerEvents="box-none">
+        <Animated.View accessibilityLabel={ui('How OutLoud works')} style={[s.strip, strip]} pointerEvents="box-none">
           {TUTORIAL_PAGES.map((_, i) => <GuidePage key={i} index={i} current={i === page} x={x} k={k} p={p} onDone={leave} />)}
         </Animated.View>
         <View pointerEvents="none" style={s.dots}>{TUTORIAL_PAGES.map((_, i) => <Dot key={i} on={i === page} p={p} still={still} />)}</View>
       </View>
+      {showAppearanceControls && <>
+        <LanguageToggle />
+        <ThemeToggle />
+      </>}
       <View style={[s.hints, frame.compact && { bottom: 12 }]} pointerEvents="box-none">
-        {!last && <Pressable accessibilityRole="button" accessibilityLabel="Next page" onPress={() => go(page + 1)} hitSlop={13} style={s.hint}>
+        {!last && <Pressable accessibilityRole="button" accessibilityLabel={ui('Next page')} onPress={() => go(page + 1)} hitSlop={13} style={s.hint}>
           <Glyph name="h-spin" size={18} color={p.tm} /><Txt style={[s.hintText, { color: p.tm }]}>Swipe for more</Txt>
         </Pressable>}
-        <Pressable accessibilityRole="button" accessibilityLabel="Close tutorial" onPress={leave} hitSlop={13} style={s.hint}>
+        <Pressable accessibilityRole="button" accessibilityLabel={ui('Close tutorial')} onPress={leave} hitSlop={13} style={s.hint}>
           <Nudge k={k} up={false}><Glyph name="h-dn" size={18} color={p.tm} /></Nudge><Txt style={[s.hintText, { color: p.tm }]}>Swipe down to close</Txt>
         </Pressable>
       </View>
@@ -527,19 +541,19 @@ const tab = ['tabular-nums'] as ['tabular-nums'];
 const s = StyleSheet.create({
   overlay: { zIndex: 55, backgroundColor: 'transparent' },
   frame: { position: 'absolute', left: 0, top: 0, width: W, height: 844 },
-  header: { position: 'absolute', left: 40, right: 40, top: 50, alignItems: 'center' },
+  header: { position: 'absolute', left: 40, right: 40, top: 50 + CONTENT_OFFSET, alignItems: 'center' },
   heading: { fontFamily: F.display, fontSize: 18, lineHeight: 21.6, letterSpacing: -0.3 },
   topic: { marginTop: 3, fontFamily: F.medium, fontSize: 13 },
-  strip: { position: 'absolute', left: 0, top: 0, width: W * N, height: 760 },
+  strip: { position: 'absolute', left: 0, top: CONTENT_OFFSET, width: W * N, height: 760 },
   page: { position: 'absolute', top: 0, width: W, height: 760 },
   card: { position: 'absolute', left: 24, right: 24, top: 116, height: 384, borderWidth: 1, borderRadius: 26, overflow: 'hidden' },
   cardBody: { position: 'absolute', left: 0, right: 0, top: 30, bottom: 0 },
   words: { position: 'absolute', left: 30, right: 30, top: 528, alignItems: 'center' },
   title: { fontFamily: F.display, fontSize: 24, lineHeight: 27.6, letterSpacing: -0.5, textAlign: 'center' },
   body: { marginTop: 10, fontFamily: F.medium, fontSize: 15, lineHeight: 22.05, textAlign: 'center' },
-  done: { position: 'absolute', left: 125, top: 660, width: 140, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  done: { position: 'absolute', left: 125, width: 140, height: DONE_HEIGHT, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   doneText: { fontFamily: F.display, fontSize: 16 },
-  again: { position: 'absolute', left: 30, right: 30, top: 722, fontFamily: F.medium, fontSize: 14.5, textAlign: 'center' },
+  again: { position: 'absolute', left: 30, right: 30, top: AGAIN_TOP, fontFamily: F.medium, fontSize: 14.5, textAlign: 'center' },
   dots: { position: 'absolute', left: 0, right: 0, bottom: 74, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 },
   dot: { height: 6, borderRadius: 3 },
   hints: { position: 'absolute', left: 0, right: 0, bottom: 30, height: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 18 },
@@ -578,7 +592,8 @@ const s = StyleSheet.create({
   fileName: { fontFamily: F.bold, fontSize: 15 },
   fileMeta: { marginTop: 2, fontFamily: F.medium, fontSize: 12 },
   bigTime: { marginTop: 4, fontFamily: F.display, fontSize: 34, lineHeight: 34, letterSpacing: -1, fontVariant: tab },
-  ruler: { position: 'absolute', left: 0, right: 0, top: 200, height: 30 },
+  // OpenAI Codex, 2026-11-23: keep breathing room below the time as text scales.
+  ruler: { alignSelf: 'stretch', marginTop: 8, height: 30 },
   tick: { position: 'absolute', width: 2, borderRadius: 1 },
   audience: { paddingVertical: 6, paddingHorizontal: 11, borderWidth: 1, borderRadius: 999 },
   audienceText: { fontFamily: F.semibold, fontSize: 12.5 },

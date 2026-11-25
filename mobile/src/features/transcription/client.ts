@@ -1,3 +1,4 @@
+import { readCoachingJson } from '../../services/storeBudget';
 import { backendFetch as fetch } from '../../services/backendFetch';
 // AI-generated/modified with OpenAI Codex, Iteration 1 (2026-09-26 to 2026-10-09).
 // Attribution/review scope: https://github.com/snuhcs-course/swpp-2026-project-team-07/blob/42c2154a54e209f4c9e931fd4db5777d6816c3d6/docs/history/ai-collaboration-validation-iteration-1-retired-2026-10-09.md#ai-code-markers
@@ -60,7 +61,7 @@ export function createTranscriptionClient(deps: Dependencies) {
       const response = await fetcher(`${base}${route}`, { ...init, signal: controller.signal });
       if (!(Array.isArray(expected) ? expected : [expected]).includes(response.status)) {
         let detail: unknown;
-        try { detail = await response.json(); } catch { /* Use the safe HTTP fallback. */ }
+        try { detail = await readCoachingJson(response); } catch { /* Use the safe HTTP fallback. */ }
         if (object(detail) && object(detail.error) && typeof detail.error.code === "string" && typeof detail.error.message === "string") {
           throw error(detail.error.code, id, detail.error.message, response.status);
         }
@@ -69,7 +70,7 @@ export function createTranscriptionClient(deps: Dependencies) {
             `The server returned HTTP ${response.status}.`, response.status);
       }
       let data: unknown;
-      try { data = await response.json(); }
+      try { data = await readCoachingJson(response); }
       catch {
         if (controller.signal.aborted) throw cancelled(id);
         throw error("invalid_response", id, "The server returned invalid JSON.");

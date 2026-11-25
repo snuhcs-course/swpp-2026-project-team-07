@@ -1,5 +1,6 @@
 // Feedback v3 network client and saved copy per recording (offline display).
 // AI-assisted with Claude Code, prompted by Seoyeon (November 15, 2026); see docs/ai-collaboration-prompts.md.
+import { readCoachingJson } from '../../services/storeBudget';
 import { backendFetch } from '../../services/backendFetch';
 import { readStored, writeStored } from '../../services/storage';
 import { bump } from '../presentations/store';
@@ -82,7 +83,7 @@ export function receiveFeedbackRun(api: string, attemptId: string, contextId: st
   return save(api, attemptId, contextId, body, nextOrder(api, attemptId, contextId));
 }
 async function json(response: Response): Promise<unknown> {
-  try { return await response.json(); } catch { return null; }
+  try { return await readCoachingJson(response); } catch { return null; }
 }
 function once(key: string, work: () => Promise<FeedbackRun | null>) {
   const running = inflight.get(key);

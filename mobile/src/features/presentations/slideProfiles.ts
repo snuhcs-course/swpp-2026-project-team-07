@@ -1,3 +1,4 @@
+import { readCoachingJson } from '../../services/storeBudget';
 import { backendFetch as fetch } from '../../services/backendFetch';
 import {verifiedExcerpt} from '../feedback/evidence';
 // Iteration 2 Phase 2: cached profiles; GET/playback never admits provider work.
@@ -116,7 +117,7 @@ export function createProfileClient(apiUrl: string, fetcher: typeof fetch = fetc
         ...(payload ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) } : {}),
       });
       if (!response.ok) throw new Error(`AI cues request failed (HTTP ${response.status}).`);
-      const next = parseProfileState(await response.json(), deck, pages);
+      const next = parseProfileState(await readCoachingJson(response), deck, pages);
       if (controller.signal.aborted) throw new Error('AI cues request cancelled.');
       const previous = readProfiles(api, deck, pages);
       if (latest.get(cacheKey) !== ticket) return previous ?? next;

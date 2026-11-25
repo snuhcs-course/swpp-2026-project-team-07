@@ -1,4 +1,4 @@
-"""One selected provider, two independent stages. No DB, audio, tools or retries."""
+"""One selected provider, two independent stages, no tools or retries."""
 import base64
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -13,13 +13,14 @@ import time
 
 import httpx
 from openai import APIConnectionError, APIError, APIStatusError, APITimeoutError, OpenAI
+from public_billing import budget as public_budget
 
 from .feedback import (
-    Descriptions, Suggestions, FeedbackError, MAX_OUTPUT_BYTES, PreparedAnalysis, PreparedDeck,
-    json_bytes, strict_json, validate_descriptions, validate_suggestions,
+    Descriptions, Suggestions, FeedbackError, MAX_OUTPUT_BYTES, PreparedAnalysis, PreparedDeck, SavedProfileFacts,
+    json_bytes, strict_json, validate_descriptions, validate_suggestions, revalidate_description_input,
 )
 from .slide_profile_schema import (SlideProfiles, GuidanceProfiles, PROFILE_SCHEMAS, STRICT_PROFILE_SCHEMAS,
-    HISTORICAL_PROFILE_SCHEMAS, CATEGORY_PROFILE_SCHEMAS, REFINED_PROFILE_SCHEMAS, is_profile_schema, validate_profiles)
+    HISTORICAL_PROFILE_SCHEMAS, CATEGORY_PROFILE_SCHEMAS, REFINED_PROFILE_SCHEMAS, is_profile_schema, validate_generated_profiles)
 
 MAX_REQUEST_BYTES = 12 * 1024 * 1024
 MAX_RESPONSE_BYTES = 256 * 1024
@@ -30,6 +31,8 @@ OUTPUT_TOKENS = {"descriptions": 6000, "coaching": 2500}
 RESPONSES_PROVIDERS = {"openai", "openrouter"}
 DEFAULT_MODELS = {"gemini": "gemini-3.1-flash-lite", "openai": "gpt-6-luna", "openrouter": "openai/gpt-6-luna"}
 API_KEYS = {"gemini": "GEMINI_API_KEY", "openai": "OPENAI_API_KEY", "openrouter": "OPENROUTER_API_KEY"}
+LOCAL_REFUSALS = {'invalid_request', 'request_too_large', 'invalid_destination', 'missing_api_key',
+                  'invalid_configuration', *public_budget.MESSAGES}
 
 
 def valid_model(name, model):
@@ -374,6 +377,12 @@ def output_token_limit(prepared):
     return limit
 
 
+def coaching_request_json(prepared, *, compact=False):
+    """Decode the internally built base request within its saved protocol's limit."""
+    bound = MAX_REQUEST_BYTES if compact or type(prepared.descriptions) is SavedProfileFacts else MAX_OUTPUT_BYTES
+    return strict_json(prepared.payload, bound)
+
+
 @dataclass(frozen=True)
 class RawReceipt:
     """Private persistable evidence. Never return this from a public endpoint."""
@@ -435,7 +444,7 @@ class FeedbackAdapter:
                                   for slide, source_id in zip(analysis.source.slides, analysis.source_ids)]}
             images = list(analysis.images)
         else:
-            descriptions = validate_descriptions(descriptions.model_dump(mode="json"), analysis)
+            descriptions = revalidate_description_input(descriptions, analysis)
             context = {"slides": descriptions.model_dump(mode="json")["slides"],
                        "speaker_language": analysis.source.speaker_language, "audience": analysis.source.audience,
                        "transcript_id": analysis.transcript_id, "duration_ms": analysis.source.duration_ms,
@@ -497,16 +506,25 @@ class _BoundedTransport(httpx.BaseTransport):
         config = self.prepared.config
         if request.method != "POST" or str(request.url) != config.url:
             raise FeedbackError("invalid_destination")
-        if len(request.content) > MAX_REQUEST_BYTES:
+        content = request.content
+        if len(content) > MAX_REQUEST_BYTES:
             raise FeedbackError("request_too_large")
+        charge = None
+        if public_budget.enabled():
+            payload = strict_json(content, MAX_REQUEST_BYTES)
+            try:
+                charge = public_budget.authorize_openrouter(str(request.url), payload, config.key)
+            except public_budget.BudgetError as failure:
+                raise FeedbackError(failure.code) from None
+            content = json_bytes(payload)
         # Rebuild the header allowlist at the final boundary. SDK env headers,
         # alternate Host/auth/project values and cookies cannot cross it.
         headers = {"Host": request.url.host, "Content-Type": "application/json",
-            "Accept": "application/json", "Accept-Encoding": "identity", "Content-Length": str(len(request.content)),
+            "Accept": "application/json", "Accept-Encoding": "identity", "Content-Length": str(len(content)),
             **({"Authorization": f"Bearer {config.key}"} if config.provider in RESPONSES_PROVIDERS else {"x-goog-api-key": config.key})}
         # Keep SDK-only response-control headers on its original request, without
         # transmitting them or arbitrary environment headers to the provider.
-        wire_request = httpx.Request(request.method, request.url, headers=headers, content=request.content,
+        wire_request = httpx.Request(request.method, request.url, headers=headers, content=content,
                                      extensions={"timeout": request.extensions["timeout"]})
         started = time.monotonic()
         self.outbound_started = True
@@ -539,6 +557,8 @@ class _BoundedTransport(httpx.BaseTransport):
         finally:
             response.close()
         data = bytes(body)
+        if charge is not None and response.status_code == 200 and not issue:
+            public_budget.settle_openrouter(charge, data)
         self.receipt = RawReceipt(config.provider, config.model, self.prepared.stage, self.prepared.input_hash,
                                   response.status_code, data, issue is None, issue,
                                   _retry_time(response.headers.get("retry-after")), _usage(data, config.provider) if not issue else ())
@@ -692,9 +712,12 @@ def normalize(prepared: PreparedRequest, receipt: RawReceipt):
         raise FeedbackError("receipt_mismatch")
     value = _output(receipt)
     if prepared.stage == "descriptions":
-        validator = (lambda v, a: validate_profiles(v, a, prepared.description_schema_version)) if is_profile_schema(prepared.description_schema_version) else validate_descriptions
-        return DescriptionResult(receipt.provider, receipt.model, prepared.analysis.input_id,
-                                 validator(value, prepared.analysis))
+        if is_profile_schema(prepared.description_schema_version):
+            descriptions = validate_generated_profiles(value, prepared.analysis, prepared.description_schema_version,
+                                                       public_service=public_budget.enabled())
+        else:
+            descriptions = validate_descriptions(value, prepared.analysis)
+        return DescriptionResult(receipt.provider, receipt.model, prepared.analysis.input_id, descriptions)
     return validate_suggestions(value, prepared.analysis, prepared.descriptions)
 
 

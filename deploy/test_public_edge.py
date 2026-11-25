@@ -61,6 +61,17 @@ def check_compose():
         for required in ("OUTLOUD_PUBLIC_HOST", "OUTLOUD_PUBLIC_BIND_IP", "OUTLOUD_DEMO_PASSWORD_HASH"):
             missing = {**environment, required: ""}
             assert subprocess.run(command, env=missing, capture_output=True).returncode != 0, required + " must fail closed"
+        store_command = [*command[:command.index(str(ROOT / "compose.public.yaml"))],
+                         str(ROOT / "compose.store.yaml"), *command[command.index("config"):]]
+        store = json.loads(subprocess.run(store_command, env=environment, capture_output=True,
+                                          text=True, check=True).stdout)
+        assert store["name"] == "outloud-store"
+        assert not any(service.get("ports") for service in store["services"].values())
+        for name in ("api", "worker", "scheduler"):
+            backend = store["services"][name]
+            assert backend["environment"]["OUTLOUD_PUBLIC_SERVICE"] == "1"
+            assert [Path(f["path"]).name for f in backend["env_file"]] == [".env.store"]
+        assert set(store["services"]["proxy"]["networks"]) == {"default", "store_ingress"}
         print("Compose checks passed: required public config, isolated edge, and no DB/API host ports.")
 
 
@@ -91,9 +102,13 @@ def main():
         server = '''import http.server,json
 class H(http.server.BaseHTTPRequestHandler):
  def do_GET(self):
+  if self.path == "/media/recordings/fixture.m4a":
+   if self.headers.get("Authorization") != "Bearer synthetic-owner":
+    self.send_error(401); return
+   self.send_response(200); self.send_header("X-Accel-Redirect", "/__store_media/recordings/fixture.m4a"); self.end_headers(); return
   body=json.dumps({k.lower():v for k,v in self.headers.items()}).encode(); self.send_response(200); self.send_header("Content-Length",str(len(body))); self.end_headers(); self.wfile.write(body)
  def do_HEAD(self):
-  self.send_response(200); self.end_headers()
+  self.do_GET()
  def log_message(self,*args): pass
 http.server.HTTPServer(("0.0.0.0",8000),H).serve_forever()'''
         try:
@@ -109,6 +124,13 @@ http.server.HTTPServer(("0.0.0.0",8000),H).serve_forever()'''
                    "-v", str(media) + ":/srv/media:ro", "nginx:stable-alpine")
             containers.append(proxy)
             docker("network", "connect", "--alias", "proxy", networks[1], proxy)
+            store_proxy = name + "-store-proxy"
+            docker("run", "-d", "--name", store_proxy, "--network", networks[0],
+                   "-v", str(ROOT / "deploy/store-nginx.conf") + ":/etc/nginx/conf.d/default.conf:ro",
+                   "-v", str(ROOT / "deploy/store-privacy.html") + ":/srv/store-privacy.html:ro",
+                   "-v", str(media) + ":/srv/media:ro", "nginx:stable-alpine")
+            containers.append(store_proxy)
+            docker("network", "connect", "--alias", "store-proxy", networks[1], store_proxy)
             volume = name + "-data"
             docker("volume", "create", volume)
             volumes.append(volume)
@@ -116,6 +138,7 @@ http.server.HTTPServer(("0.0.0.0",8000),H).serve_forever()'''
                    "-p", "127.0.0.1::443", "-p", "127.0.0.1::80",
                    "-e", "OUTLOUD_PUBLIC_HOST=localhost", "-e", "OUTLOUD_DEMO_PASSWORD_HASH=" + password_hash,
                    "-v", str(ROOT / "deploy/Caddyfile") + ":/etc/caddy/Caddyfile:ro",
+                   "-v", str(ROOT / "deploy/store-route.caddy") + ":/etc/caddy/store-route/public.caddy:ro",
                    "-v", volume + ":/data", CADDY_IMAGE)
             containers.append(caddy)
             # Only the public test root is copied; no trust-store modification.
@@ -167,6 +190,19 @@ http.server.HTTPServer(("0.0.0.0",8000),H).serve_forever()'''
             assert status == 206 and body == payload[5:20] and headers["Content-Range"] == f"bytes 5-19/{len(payload)}"
             assert headers["Content-Type"] == "audio/mp4" and headers["X-Content-Type-Options"] == "nosniff"
             assert request("/media/decks/fixture.pdf")[1]["Content-Type"] == "application/pdf"
+            status, headers, policy = request("/store/privacy/", auth=None)
+            assert status == 200 and b"ElevenLabs" in policy, (status, headers.get("Content-Type"))
+            assert request("/store/media/recordings/fixture.m4a", auth=None)[0] == 401
+            assert request("/store/__store_media/recordings/fixture.m4a", auth="Bearer synthetic-owner")[0] == 404
+            store_media = "/store/media/recordings/fixture.m4a"
+            status, headers, data = request(store_media, auth="Bearer synthetic-owner", extra={"Range": "bytes=5-19"})
+            assert (status, data, headers.get("Content-Range")) == (206, payload[5:20], f"bytes 5-19/{len(payload)}")
+            assert request(store_media, auth="Bearer synthetic-owner", method="HEAD")[0] == 200
+            status, _, data = request("/store/api/echo/", auth="Bearer synthetic-owner",
+                                      extra={"X-OutLoud-Client-IP": "synthetic-supplied-value"})
+            echo = json.loads(data)
+            assert status == 200 and echo["authorization"] == "Bearer synthetic-owner"
+            assert echo["x-real-ip"] and echo["x-real-ip"] != "synthetic-supplied-value"
             assert request("/media/recordings/fixture.m4a", method="HEAD")[2] == b""
             assert request("/api/upload/", extra={"Content-Length": "67108865"}, method="POST")[0] == 413
             assert request("/")[0] == 404 and request("/.env")[0] == 404

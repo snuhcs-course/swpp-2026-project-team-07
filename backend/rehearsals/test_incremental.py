@@ -35,8 +35,11 @@ def wav(duration, sample=b'\0\0'):
 
 def answer(kind, payload):
     criteria = rubric.CURRENT.whole if kind == 'whole' else rubric.CURRENT.slide
-    data = {'criteria': {c.id: {'level': 'competent', 'reason': 'Clear enough', 'next_level': 'Add detail', 'evidence': []} for c in criteria},
-            'improvements': [{'criterion': rubric.CURRENT.slide[0].id, 'problem': 'More detail', 'action': 'Explain the example', 'example': 'For example...', 'evidence': []}],
+    sentences = payload['speech'] if kind == 'whole' else payload['speech']['sentences']
+    evidence = [sentence['id'] for sentence in sentences[:1]]
+    data = {'criteria': {c.id: {'level': 'competent', 'reason': 'Clear enough', 'next_level': 'Add detail',
+                                'evidence': evidence + (['m:time'] if c.id == 'delivery' else [])} for c in criteria},
+            'improvements': [{'criterion': rubric.CURRENT.slide[0].id, 'problem': 'More detail', 'action': 'Explain the example', 'example': 'For example...', 'evidence': evidence}],
             'must_cover': [], 'top_priorities': [], 'summary': 'Complete talk'}
     return llm.Result(data, 10, 20, 0.1, 1)
 
@@ -329,7 +332,7 @@ class IncrementalTests(CaptureFixtures, TestCase):
         def model(http, config, kind, payload, deadline=None):
             result = answer(kind, payload)
             card = {'headline': headline, 'explanation': ['두 집단의 차이가 불분명해요.'], 'steps': ['차이를 말해 보세요.']}
-            result.data['improvements'] = [{**card, 'criterion': rubric.CURRENT.slide[0].id}]
+            result.data['improvements'][0].update(card)
             result.data['top_priorities'] = [card]
             return result
         with mock.patch.object(pipeline, 'call_llm', side_effect=model):

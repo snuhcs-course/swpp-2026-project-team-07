@@ -4,6 +4,8 @@ export { AppState, StyleSheet, View, Pressable, Txt, Circle, Defs, Path, Rect, S
   useSharedValue, withTiming, runOnJS } from './ai-overview-screen-native.mjs';
 
 export const Text = 'text', Image = 'image', G = 'group', Ellipse = 'ellipse', ClipPath = 'clip-path';
+export const Alert = { alert: (...args) => globalThis.storeAlert?.(...args) };
+export const Linking = { openURL: async url => globalThis.openPolicy?.(url) };
 export const RadialGradient = 'radial-gradient', PanView = 'pan', GestureDetector = 'gesture';
 export const HomeFeedbackStats = 'home-stats', PresentationRequirementsEditor = 'requirements', PresentationSetupHint = 'setup-hint';
 export const useWindowDimensions = () => ({ width: 390, height: 844 });

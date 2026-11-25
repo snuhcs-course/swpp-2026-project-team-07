@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import Svg, { Circle, ClipPath, Defs, G, Path, Rect } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { EASE_SCREEN, F } from './tokens';
+import { EASE_SCREEN, F, HOME_HEADER_CONTROL } from './tokens';
 import { Txt, useFrame } from './frame';
 import { getAppLanguage, setAppLanguage, useAppLanguage } from './language';
 import { useTheme } from './theme';
@@ -61,7 +61,9 @@ function Arrows({ color }: { color: string }) {
   );
 }
 
-export function LanguageToggle({ featureScreen = false, landscape = false }: { featureScreen?: boolean; landscape?: boolean }) {
+export function LanguageToggle({ featureScreen = false, landscape = false, showLabel = false }: {
+  featureScreen?: boolean; landscape?: boolean; showLabel?: boolean;
+}) {
   const lang = useAppLanguage();
   const [saveFailed, setSaveFailed] = useState(false);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -100,15 +102,18 @@ export function LanguageToggle({ featureScreen = false, landscape = false }: { f
   return (
     <><Pressable accessibilityRole="switch" accessibilityLabel={lang === 'ko' ? '앱 언어: 한국어' : 'App language: English'}
       accessibilityHint={lang === 'ko' ? '영어로 전환합니다.' : 'Switch to Korean.'}
-      accessibilityState={{ checked: lang === 'ko' }} onPress={toggle} hitSlop={4} style={[styles.hit, featureScreen && featurePosition]}>
+      accessibilityState={{ checked: lang === 'ko' }} onPress={toggle} hitSlop={4}
+      style={[styles.hit, featureScreen && featurePosition, showLabel && styles.labeledHit]}>
       <View style={styles.box} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         <Animated.View style={[StyleSheet.absoluteFill, enStyle]}><UnionDisc /></Animated.View>
         <Animated.View style={[StyleSheet.absoluteFill, koStyle]}><TaegeukDisc /></Animated.View>
         <View style={StyleSheet.absoluteFill}><Ring color={c.ink20} /></View>
         <Animated.View style={[StyleSheet.absoluteFill, spin]}><Arrows color={c.text} /></Animated.View>
       </View>
+      {showLabel && <Txt verbatim style={[styles.label, { color: c.text }]}>English / 한국어</Txt>}
     </Pressable>
-    {saveFailed && <View pointerEvents="none" accessibilityRole="alert" style={[styles.notice, { backgroundColor: c.surface, borderColor: c.hair }]}>
+    {saveFailed && <View pointerEvents="none" accessibilityRole="alert"
+      style={[styles.notice, { backgroundColor: c.surface, borderColor: c.hair }]}>
       <Txt style={[styles.noticeText, { color: c.text }]}>Language changed for this session. Your preference could not be saved.</Txt>
     </View>}</>
   );
@@ -116,7 +121,9 @@ export function LanguageToggle({ featureScreen = false, landscape = false }: { f
 
 const styles = StyleSheet.create({
   // Mirrors ThemeToggle (right 18): same y-centre as the Home wordmark (top 57, 36 high → centre 75).
-  hit: { position: 'absolute', top: 53, left: 18, width: 44, height: 44, zIndex: 40, alignItems: 'center', justifyContent: 'center' },
+  hit: { position: 'absolute', ...HOME_HEADER_CONTROL, left: 18, zIndex: 40, alignItems: 'center', justifyContent: 'center' },
+  labeledHit: { width: 'auto', flexDirection: 'row', paddingLeft: 1, paddingRight: 8, gap: 4 },
+  label: { fontFamily: F.semibold, fontSize: 15 },
   featureHit: { top: 3, left: 16 },
   notice: { position: 'absolute', left: 18, right: 18, top: 109, zIndex: 60, borderWidth: 1, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12 },
   noticeText: { fontFamily: F.medium, fontSize: 13.5, lineHeight: 19, textAlign: 'center' },

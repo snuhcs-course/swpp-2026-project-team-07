@@ -6,6 +6,7 @@
 // example / steps / over_limit for the two-region Feedback page; older runs map from problem / action.
 import type { SlidePart } from '../../domain/run';
 import type { ScoreLevel } from './presentationScore';
+import { budgetStatus } from '../../services/storeBudget';
 
 export type V3Evidence =
   | { kind: 'speech'; id: string; slide_index: number; start_ms: number; end_ms: number; text: string }
@@ -146,6 +147,8 @@ const CODE_LABELS: Partial<Record<V3SlideStatus, string>> = {
   insufficient_evidence: 'Insufficient evidence', failed: 'Feedback failed',
 };
 function runStatus(run: FeedbackRun | null, ready: boolean, stage: string | undefined, expected: boolean, waiting = false): string | null {
+  const budget = budgetStatus(run?.error?.code);
+  if (budget) return budget;
   if (!ready) return stage === 'no_speech' ? 'No speech detected' : stage === 'done' ? 'No usable word timing' : 'Transcript pending';
   // Screens never start generation: a missing run is "Scoring…" only when one is on its way.
   if (!run || run.status === 'absent') return expected ? 'Scoring…' : waiting ? 'Settings sync pending' : 'Not graded';
@@ -171,6 +174,8 @@ export function selectRunFeedbackV3(input: V3Input) {
     const usable = !!v3 && v3.status !== 'pending';
     // Settled = nothing more is coming without a user action; a transcript still in progress is not settled.
     const stage = input.stages.get(part.attemptId), terminal = !ready && (stage === 'no_speech' || stage === 'done');
+    const blocked = budgetStatus(v3?.error) ?? budgetStatus(run?.error?.code);
+    if (blocked && (!v3 || v3.status !== 'scored')) return { ...base, run, v3, status: blocked, settled: true };
     if (v3?.provisional) return { ...base, run, v3, status: v3.reason === 'recording' ? 'Recording this slide' : 'Waiting for slide segments', settled: false, outdated: true };
     if (pending && !usable) return { ...base, run, v3, status: pending,
       settled: terminal || pending === 'Feedback failed' || pending === 'Not graded' };
@@ -186,7 +191,7 @@ export function selectRunFeedbackV3(input: V3Input) {
   else if (ids.length > 1) overall = { ...base, status: 'Combined recordings', attemptId: null, run: null };
   else {
     const run = input.runs.get(ids[0]) ?? null;
-    const pending = runStatus(run, input.ready.has(ids[0]), input.stages.get(ids[0]), input.expected.has(ids[0]),
+    const pending = budgetStatus(run?.whole?.error) ?? runStatus(run, input.ready.has(ids[0]), input.stages.get(ids[0]), input.expected.has(ids[0]),
       !!input.waitingForSettings?.has(ids[0]));
     const scores = run?.scores, outdated = feedbackRunOutdated(run);
     if (pending) overall = { ...base, status: pending, attemptId: ids[0], run };

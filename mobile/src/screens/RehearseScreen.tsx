@@ -66,6 +66,7 @@ import { CueGuidancePanel } from '../features/presentations/CueGuidancePanel';
 import { useSlideProfiles } from '../features/presentations/useSlideProfiles';
 import type { ProfileState } from '../features/presentations/slideProfiles';
 import { API_URL } from '../services/api';
+import { onlineAllowed } from '../services/storePrivacy';
 import { defaultRequirementsPending } from '../features/presentations/defaultRequirements';
 import { requirementsPending, readRequirementsDraft } from '../features/presentations/requirementsDraft';
 import { getRequirementsVersion, subscribeRequirements } from '../features/presentations/requirementsStore';
@@ -237,7 +238,7 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
   // OpenAI Codex, 2026-11-19: reserve Wait for the first after-Stop handoff; reopening a saved take goes to its review.
   const openReview = useCallback((takes: number, selected: number, comparing: boolean, transition: 'fade' | 'rise', incremental = false, afterStop = false) => {
     stopPlayback();
-    const destination = comparing ? 'compare' : incremental ? 'full' : afterStop && takes === 1 ? 'wait' : reviewDestination(takes);
+    const destination = comparing ? 'compare' : incremental || !onlineAllowed() ? 'full' : afterStop && takes === 1 ? 'wait' : reviewDestination(takes);
     go(destination, { nav: transition, deckId: deck.id, sel: selected, slide: selected,
       from: destination === 'full' || destination === 'wait' || destination === 'review' ? 'rehearse' : null });
   }, [deck.id, go, stopPlayback]);
@@ -567,7 +568,7 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
           <Pressable accessibilityRole="button" accessibilityLabel={ui("Edit presentation time and audience")}
             accessibilityHint={ui("Open presentation time and audience settings")}
             accessibilityState={{ disabled: !active || phase !== 'idle' }} disabled={!active || phase !== 'idle'}
-            onPress={openSetup} style={styles.editRequirements} hitSlop={8}>
+            onPress={openSetup} style={[styles.headerControl, styles.editRequirements]} hitSlop={8}>
             <UIIcon name="i-sliders" size={24} color={c.text} />
           </Pressable>
           {/* OpenAI Codex, 2026-11-21: refresh links an unmapped PDF and checks cues; initial analysis may start, while failed provider retries stay in Cues. */}
@@ -576,7 +577,7 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
             accessibilityState={{ disabled: !active || phase !== 'idle' || profiles.syncing || profiles.busy }}
             disabled={!active || phase !== 'idle' || profiles.syncing || profiles.busy}
             onPress={() => { void Haptics.selectionAsync().catch(() => undefined); setRefreshAsk(true); }}
-            style={({ pressed }) => [styles.headerBalance, { opacity: pressed ? 0.5 : 1 }]} hitSlop={8}>
+            style={({ pressed }) => [styles.headerControl, styles.refreshControl, { opacity: pressed ? 0.5 : 1 }]} hitSlop={8}>
             <UIIcon name="i-loop" size={23} color={profiles.syncing || profiles.busy ? c.muted2 : c.text} />
           </Pressable>
           <Animated.View pointerEvents="box-none" style={[styles.counterWrap, { left: 65, width: 260, height: 32 }, counterMotion]}>
@@ -599,9 +600,9 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
               onPress={() => recording && liveCapture ? setShowLiveFeedback(true) : run && (state.compare ? openReview(state.takes,cur,true,'rise') : openOverallReview(cur))}
               style={{ left: 0, top: 0 }} />
           </View>
-          <RecordRing progress={ringP} visible={ringV} />
+          <RecordRing progress={ringP} visible={ringV} style={styles.recordSpacing} />
           <RecordButton glyph={glyph} label={btnLabel} onPress={toggleRec} onPressIn={recDown} onPressOut={recUp}
-            style={frame.compact ? { top: 607 } : undefined}
+            style={styles.recordSpacing}
             accessibilityActions={anyTake ? [{ name: 'redoAllSlides', label: ui('Redo all slides') }] : undefined}
             onAccessibilityAction={event => {
               if (event.nativeEvent.actionName !== 'redoAllSlides' || !anyTake || phaseRef.current !== 'idle' || redoAsk) return;
@@ -860,15 +861,18 @@ const styles = createThemedStyles({
   counterWrap: { position: 'absolute', left: 120, top: 75, width: 150, height: 18, alignItems: 'center', justifyContent: 'center' },
   counterCenter: { alignItems: 'center', justifyContent: 'center' },
   counter: { fontFamily: F.medium, fontSize: 13.5, color: C.secondary },
-  editRequirements: { position: 'absolute', left: 16, top: 60, width: 44, height: 44,
-    alignItems: 'center', justifyContent: 'center', zIndex: 20 },
-  headerBalance: { position: 'absolute', right: 16, top: 39, width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
+  // OpenAI Codex, 2026-11-23: align both header controls on the same row.
+  headerControl: { position: 'absolute', top: 39, width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  editRequirements: { left: 16, zIndex: 20 },
+  refreshControl: { right: 16 },
   slideStage: { position: 'absolute', left: 0, top: 100, width: 390, height: 510, overflow: 'hidden' },
   slidePosition: { position: 'absolute', left: 16, top: 16, width: CARD_W, height: CARD_H },
   slideZoom: { width: CARD_W, height: CARD_H, overflow: 'hidden' },
   rotatedStatus: { position: 'absolute', left: 20, right: 20, top: 622, textAlign: 'center',
     fontFamily: F.semibold, fontSize: 13.5 },
   rightControlLayer: { position: 'absolute', top: 690, left: 289, width: 52, height: 90 },
+  // OpenAI Codex, 2026-11-23: give the waveform room while keeping the ring centered on the button.
+  recordSpacing: { transform: [{ translateY: 8 }] },
   rotatedTimerWrap: { position: 'absolute', top: 0, left: 0, width: 52, alignItems: 'center', gap: 6 },
   rotatedTimerFace: { width: 52, height: 52, borderRadius: 26, borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.12)', backgroundColor: 'rgba(255, 255, 255, 0.08)',

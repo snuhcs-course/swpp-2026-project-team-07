@@ -37,6 +37,9 @@ class CoverageReportTests(unittest.TestCase):
         self.assertIn("rehearsals/migrations/0008_transcriptcorrection_feedbackanalysis_analysis_type_and_more.py", included)
         self.assertTrue(any(f["path"] == "rehearsals/migrations/0001_initial.py" for f in excluded))
         self.assertNotIn("rehearsals/test_feedback.py", included)
+        self.assertEqual(included["public_billing/budget.py"], "backend_logic")
+        self.assertEqual(included["public_billing/migrations/0001_initial.py"], "backend_api")
+        self.assertNotIn("public_billing/tests.py", included)
 
     def test_python_collection_includes_missed_paths_and_unimported_files(self):
         with tempfile.TemporaryDirectory(prefix="outloud-python-coverage-") as directory:

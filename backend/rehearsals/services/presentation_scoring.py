@@ -263,7 +263,7 @@ def _bundle(value, job, measurements):
     analysis = restore_analysis(source['source'], deck)
     if (analysis.input_id, analysis.transcript_id) != (source['analysis_id'], source['transcript_id']):
         raise FeedbackError('snapshot_unavailable')
-    description_result = Selection.saved(value).adapter().edited_descriptions(analysis, job.descriptions_snapshot)
+    description_result = coaching.saved_description_result(value, job, analysis, Selection.saved(value).adapter())
     correction = {'revision': source['transcript_revision'], 'edits': source['corrections'],
                   'effective_text': source['effective_text'], 'source_changed': False}
     revisions = {'audio_hash': measurements['audio_hash'], 'transcript_revision': source['transcript_revision'],

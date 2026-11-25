@@ -18,6 +18,7 @@ import httpx
 from django.core.exceptions import ValidationError as ModelValidationError
 from django.db import transaction
 from django.utils import timezone
+from public_billing.budget import MESSAGES as PUBLIC_BUDGET_MESSAGES
 from rest_framework.exceptions import ValidationError
 
 from ..models import Attempt, CaptureSession, CaptureSegment, CaptureAssessment, Deck, PresentationContext
@@ -275,7 +276,7 @@ def transcribe_segment(pk):
         safe = error if isinstance(error, transcription.TranscriptionError) else transcription.TranscriptionError('processing_failed', 'Segment processing stopped. Audio and any receipt are retained.')
         part.refresh_from_db()
         submitted = bool(part.receipts and part.receipts[-1].get('outcome') == 'submitted')
-        rejected = safe.code in ('provider_auth', 'provider_rate_limit', 'provider_rejected') and not safe.uncertain
+        rejected = safe.code in transcription.CERTAIN_REJECTIONS and not safe.uncertain
         uncertain = safe.uncertain or submitted and not rejected
         if submitted:
             part.receipts[-1]['outcome'] = 'uncertain' if uncertain else 'rejected'
@@ -398,7 +399,8 @@ def _assessment(session, index, payload, inputs, config, retry):
     digest = pipeline.part_hash(kind, payload, config)
     sentences = inputs.speech.sentences if index == -1 else inputs.speech.slides[index].sentences
     evidence = {'sentences': {s.id: asdict(s) for s in sentences},
-                'measurements': {m['id']: m['what'] for m in pipeline.measurement_items(inputs)} if index == -1 else {}}
+                'measurements': {m['id']: m['what'] for m in pipeline.measurement_items(inputs)
+                                 if m['value'] is not None} if index == -1 else {}}
     job, created = CaptureAssessment.objects.get_or_create(capture=session, slide_index=index, input_hash=digest,
         defaults={'payload': payload, 'evidence': evidence, 'queued_at': timezone.now()})
     if job.status == 'superseded' or retry and job.status == 'failed':
@@ -431,7 +433,8 @@ def assess_part(pk):
         sentences = {k: speech.Sentence(**v) for k, v in job.evidence['sentences'].items()}
         language = (job.payload.get('presentation') or {}).get('language', 'en')
         part = (pipeline.normalize_whole(result.data, sentences, job.capture.attempt.deck.page_count, job.evidence['measurements'], language)
-                if job.slide_index == -1 else pipeline.normalize_slide(result.data, sentences, language))
+                if job.slide_index == -1 else pipeline.normalize_slide(
+                    result.data, sentences, language, supplied_points=job.payload['slide']['must_cover']))
         if job.slide_index != -1:
             part['measurements'] = job.payload['measurements']
         saved = CaptureAssessment.objects.filter(pk=pk, claim_token=token, status='running').update(
@@ -441,7 +444,8 @@ def assess_part(pk):
             changed('feedback', job.capture_id)
     except Exception as error:
         code = error.code if isinstance(error, llm.LLMError) else 'processing_failed'
-        CaptureAssessment.objects.filter(pk=pk, claim_token=token, status='running').update(status='failed', error={'code': code, 'message': 'Slide feedback stopped. Retry retains the transcript.'})
+        message = PUBLIC_BUDGET_MESSAGES.get(code, 'Slide feedback stopped. Retry retains the transcript.')
+        CaptureAssessment.objects.filter(pk=pk, claim_token=token, status='running').update(status='failed', error={'code': code, 'message': message})
     CaptureSession.objects.filter(pk=job.capture_id).update(updated_at=timezone.now())
 
 

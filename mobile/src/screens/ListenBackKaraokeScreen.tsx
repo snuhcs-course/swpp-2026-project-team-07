@@ -1,7 +1,7 @@
 // Supplied Claude-generated patch, integrated by OpenAI Codex for Iteration 2 (2026-11-21): S13 Listen back layout and the
 // word-by-word karaoke (spoken / current / upcoming words from each word's timestamps, tap a word to replay from it).
 // Timing rules live in domain/karaoke.ts; see LISTEN_BACK_SPEC.md in the implementation package.
-import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Pressable, StyleSheet, View, type TextStyle } from 'react-native';
 import { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
@@ -18,7 +18,9 @@ import { karaokePages, pageAt, runSecondsAt, sourceAt, wordSeekMs, wordState, ty
 import { listenEntryAt, listenTimeline, type ListenVisit } from '../domain/listenTimeline';
 import { audioOf } from '../features/rehearsal/analysis';
 import { useSegmentPlayer, type Segment } from '../features/rehearsal/useSegmentPlayer';
-import { useDeckModel } from '../features/presentations/useDeckModel';
+import { useDeckModel, type DeckModel } from '../features/presentations/useDeckModel';
+import { STORE_MODE } from '../services/apiConfig';
+import { onlineAllowed, subscribePrivacy } from '../services/storePrivacy';
 import { useBack, useShell } from './shared';
 
 const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
@@ -52,6 +54,7 @@ export function ListenBackKaraokeScreen({ active = true }: { active?: boolean })
   const timeline = useMemo(() => listenTimeline(run, times, model?.lines ?? []), [run, times, model?.lines]);
   const { chapters, lines, total, chronological, visits } = timeline;
   const pages = useMemo(() => karaokePages(lines), [lines]);
+  const hideTranscriptHints = STORE_MODE && !pages.length;
   const key = `listen:${model?.deck.id ?? ''}`;
   const audio = useMemo(() => {
     const segments: Segment[] = [], plan:AudioPlan[]=[];
@@ -236,7 +239,7 @@ export function ListenBackKaraokeScreen({ active = true }: { active?: boolean })
             <Txt style={[styles.currentText, { color: c.secondary }]}>{live ? '…' : 'Tap play to listen to your run.'}</Txt>}
         </View>
         <Txt verbatim numberOfLines={2} style={[styles.next, { color: c.tertiary }]}>{nextText}</Txt>
-      </> : <View style={styles.noTranscript}><Txt style={[styles.noTranscriptText, { color: c.secondary }]}>{model.pending ? 'Transcript is still processing.' : 'No transcript for this run'}</Txt></View>}
+      </> : <EmptyTranscript pending={model.pending} stages={model.stages} />}
       {!!(notice || player.error) && <Txt accessibilityRole="alert" style={[styles.notice, { color: c.secondary }]}>{notice || player.error}</Txt>}
       <PanView style={styles.scrubberHit} accessibilityRole="adjustable" accessibilityLabel={ui("Run audio position")}
         accessibilityValue={{ min: 0, max: total, now: position, text: ui(`${fmt(position)} of ${fmt(total)}`) }}
@@ -269,9 +272,17 @@ export function ListenBackKaraokeScreen({ active = true }: { active?: boolean })
     </View>
   </PanView></Enter>
   {/* OpenAI Codex, 2026-11-20: playback gestures do not animate the footer. */}
-  <HintRow hints={[{ icon: 'h-vert', text: 'Browse text' }, { icon: 'h-tap', text: 'Tap a word' }, { icon: 'h-dn', text: 'Back to review', nudge: 'down' }]} />
+  <HintRow hints={[{ icon: 'h-vert', text: 'Browse text', hidden: hideTranscriptHints }, { icon: 'h-tap', text: 'Tap a word', hidden: hideTranscriptHints }, { icon: 'h-dn', text: 'Back to review', nudge: 'down' }]} />
   </>;
 }
+
+const EmptyTranscript = memo(function EmptyTranscript({ pending, stages }: Pick<DeckModel, 'pending' | 'stages'>) {
+  const { c } = useTheme();
+  const allowed = useSyncExternalStore(subscribePrivacy, onlineAllowed);
+  const processing = pending && allowed && (!STORE_MODE || [...stages.values()].includes('processing'));
+  const message = processing ? 'Transcript is still processing.' : 'No transcript for this run';
+  return <View style={styles.noTranscript}><Txt style={[styles.noTranscriptText, { color: c.secondary }]}>{message}</Txt></View>;
+});
 
 /** The current page: one Text with a nested span per word, so wrapping, centring and font fitting stay native.
  * Colour is the only thing that changes per word (no weight or size change), so the text never reflows while it plays.

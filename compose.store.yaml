@@ -1,0 +1,49 @@
+# Overlay for a fresh public database, broker, media volume and budget ledger.
+name: outloud-store
+x-store-backend: &store-backend
+  image: outloud-store-backend:${OUTLOUD_STORE_IMAGE_TAG:-v42}
+  env_file: !override [deploy/.env.store]
+  environment:
+    OUTLOUD_PUBLIC_SERVICE: "1"
+    FEEDBACK_V3_MAX_PARALLEL: "1"
+    OMP_NUM_THREADS: "1"
+    MKL_NUM_THREADS: "1"
+
+services:
+  db:
+    mem_limit: 176m
+  redis:
+    mem_limit: 64m
+    volumes:
+      - redis_data:/data
+  api:
+    <<: *store-backend
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 1 --threads 2 --timeout 180 --error-logfile -
+    mem_limit: 480m
+    cpus: 0.65
+  worker:
+    <<: *store-backend
+    command: celery -A config worker --loglevel=info --pool=solo --concurrency=1
+    mem_limit: 768m
+    cpus: 0.65
+  scheduler:
+    <<: *store-backend
+    mem_limit: 176m
+  proxy:
+    mem_limit: 48m
+    ports: !reset []
+    volumes: !override
+      - ./deploy/store-nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./deploy/store-privacy.html:/srv/store-privacy.html:ro
+      - media_data:/srv/media:ro
+    networks:
+      default: {}
+      store_ingress:
+        aliases: [store-proxy]
+
+networks:
+  store_ingress:
+    name: outloud-store-ingress
+
+volumes:
+  redis_data:

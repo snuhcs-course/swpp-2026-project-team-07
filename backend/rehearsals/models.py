@@ -4,9 +4,17 @@
 import uuid
 from django.db import models
 from django.utils import timezone
+from .ownership import InstallationOwned
 
 
-class Deck(models.Model):
+class Installation(models.Model):
+    token_hash = models.CharField(max_length=64, unique=True)
+    last_seen = models.DateTimeField(default=timezone.now, db_index=True)
+
+
+class Deck(InstallationOwned):
+    installation_lookup = "installation_id"
+    installation = models.ForeignKey(Installation, null=True, on_delete=models.PROTECT)
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=255)
     pdf = models.FileField(upload_to="decks/%Y/%m/")
@@ -16,11 +24,17 @@ class Deck(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["content_hash", "preparation_version"], name="unique_prepared_pdf")]
+        constraints = [
+            models.UniqueConstraint(fields=["content_hash", "preparation_version"],
+                                    condition=models.Q(installation__isnull=True), name="unique_prepared_pdf"),
+            models.UniqueConstraint(fields=["installation", "content_hash", "preparation_version"],
+                                    name="unique_install_prepared_pdf"),
+        ]
 
 
-class PresentationContext(models.Model):
+class PresentationContext(InstallationOwned):
     """User requirements are independent of the deduplicated PDF and attempts."""
+    installation_lookup = "deck__installation_id"
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     deck = models.ForeignKey(Deck, on_delete=models.PROTECT, related_name='presentation_contexts')
     required_duration_seconds = models.PositiveIntegerField(null=True, blank=True)
@@ -35,7 +49,8 @@ class PresentationContext(models.Model):
             models.CheckConstraint(condition=models.Q(revision__lte=2**31 - 1), name='presentation_revision_range')]
 
 
-class Slide(models.Model):
+class Slide(InstallationOwned):
+    installation_lookup = "deck__installation_id"
     deck = models.ForeignKey(Deck, on_delete=models.CASCADE, related_name="slides")
     slide_index = models.PositiveIntegerField()
     image = models.FileField(upload_to="slides/%Y/%m/")
@@ -50,7 +65,8 @@ class Slide(models.Model):
         ]
 
 
-class Attempt(models.Model):
+class Attempt(InstallationOwned):
+    installation_lookup = "deck__installation_id"
     class Status(models.TextChoices):
         PENDING = "pending"
         PROCESSING = "processing"
@@ -86,8 +102,9 @@ class Attempt(models.Model):
     feedback_state = models.CharField(max_length=20, default='disabled')
 
 
-class ProviderRequest(models.Model):
+class ProviderRequest(InstallationOwned):
     """Private database evidence. Never serialize this model or serve it as media."""
+    installation_lookup = "attempt__deck__installation_id"
     attempt = models.ForeignKey(Attempt, on_delete=models.CASCADE, related_name='provider_requests')
     generation = models.PositiveIntegerField()
     claim_token = models.UUIDField()
@@ -107,8 +124,9 @@ class ProviderRequest(models.Model):
         constraints = [models.UniqueConstraint(fields=['attempt', 'generation'], name='one_provider_request_per_generation')]
 
 
-class DescriptionSet(models.Model):
+class DescriptionSet(InstallationOwned):
     """One provider/configuration/source scope; successful edits survive job failure."""
+    installation_lookup = "deck__installation_id"
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     deck = models.ForeignKey(Deck, on_delete=models.PROTECT, related_name='description_sets')
     source_fingerprint = models.CharField(max_length=64)
@@ -133,7 +151,8 @@ class DescriptionSet(models.Model):
             'model', 'prompt_version', 'schema_version'], name='unique_description_scope')]
 
 
-class DescriptionJob(models.Model):
+class DescriptionJob(InstallationOwned):
+    installation_lookup = "description_set__deck__installation_id"
     description_set = models.ForeignKey(DescriptionSet, on_delete=models.PROTECT, related_name='jobs')
     generation = models.PositiveIntegerField()
     description_revision = models.PositiveIntegerField()
@@ -149,8 +168,9 @@ class DescriptionJob(models.Model):
         constraints = [models.UniqueConstraint(fields=['description_set', 'generation'], name='unique_description_generation')]
 
 
-class TranscriptCorrection(models.Model):
+class TranscriptCorrection(InstallationOwned):
     """Confirmed overlays; immutable Whisper source and audio stay on Attempt."""
+    installation_lookup = "attempt__deck__installation_id"
     attempt = models.OneToOneField(Attempt, on_delete=models.PROTECT, related_name='correction')
     base_transcript_id = models.CharField(max_length=64)
     revision = models.PositiveIntegerField(default=0)
@@ -158,8 +178,9 @@ class TranscriptCorrection(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
 
-class FeedbackAnalysis(models.Model):
+class FeedbackAnalysis(InstallationOwned):
     """One current coaching analysis per recording; Whisper remains independent."""
+    installation_lookup = "attempt__deck__installation_id"
     attempt = models.ForeignKey(Attempt, on_delete=models.PROTECT, related_name='analyses')
     analysis_type = models.CharField(max_length=32, default='coaching')
     feedback_revision = models.PositiveIntegerField(default=0)
@@ -170,7 +191,8 @@ class FeedbackAnalysis(models.Model):
         constraints = [models.UniqueConstraint(fields=['attempt', 'analysis_type'], name='unique_attempt_analysis_type')]
 
 
-class FeedbackJob(models.Model):
+class FeedbackJob(InstallationOwned):
+    installation_lookup = "analysis__attempt__deck__installation_id"
     analysis = models.ForeignKey(FeedbackAnalysis, on_delete=models.PROTECT, related_name='jobs')
     generation = models.PositiveIntegerField()
     description_set = models.ForeignKey(DescriptionSet, on_delete=models.PROTECT, related_name='feedback_jobs')
@@ -198,8 +220,9 @@ class FeedbackJob(models.Model):
 
 
 # Historical schema compatibility, AI-assisted by OpenAI Codex; October 16, 2026.
-class SlideReviewMembership(models.Model):
+class SlideReviewMembership(InstallationOwned):
     """Historical Step 2 data retained for schema compatibility; no runtime writes."""
+    installation_lookup = "attempt__deck__installation_id"
     attempt = models.ForeignKey(Attempt, on_delete=models.PROTECT, related_name='review_memberships')
     context_key = models.CharField(max_length=36, blank=True, default='')
     slide_index = models.PositiveIntegerField()
@@ -220,8 +243,24 @@ class FeedbackQuotaBucket(models.Model):
         constraints = [models.UniqueConstraint(fields=['provider', 'project_id', 'model'], name='unique_feedback_quota_bucket')]
 
 
-class FeedbackRequest(models.Model):
+class ProfilePart(InstallationOwned):
+    """One bounded provider result in a larger deck's existing cue revision."""
+    installation_lookup = 'job__description_set__deck__installation_id'
+    job = models.ForeignKey(DescriptionJob, on_delete=models.CASCADE, related_name='profile_parts')
+    phase = models.CharField(max_length=12)
+    offset = models.PositiveSmallIntegerField()
+    result = models.JSONField(null=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['job', 'phase', 'offset'], name='unique_profile_part')]
+
+
+class FeedbackRequest(InstallationOwned):
     """Private durable evidence, entirely separate from Whisper ProviderRequest."""
+    installation_lookup = "job__description_set__deck__installation_id"
+    alternate_installation_lookups = ("coaching_job__analysis__attempt__deck__installation_id",
+                                     "profile_part__job__description_set__deck__installation_id")
+    profile_part = models.OneToOneField(ProfilePart, on_delete=models.PROTECT, related_name='request', null=True)
     job = models.OneToOneField(DescriptionJob, on_delete=models.PROTECT, related_name='request', null=True)
     coaching_job = models.OneToOneField(FeedbackJob, on_delete=models.PROTECT, related_name='request', null=True)
     generation = models.PositiveIntegerField()
@@ -248,12 +287,14 @@ class FeedbackRequest(models.Model):
 
     class Meta:
         constraints = [models.CheckConstraint(
-            condition=(models.Q(job__isnull=False, coaching_job__isnull=True, stage='descriptions') |
-                       models.Q(job__isnull=True, coaching_job__isnull=False, stage='coaching')),
+            condition=(models.Q(job__isnull=False, coaching_job__isnull=True, profile_part__isnull=True, stage='descriptions') |
+                       models.Q(job__isnull=True, coaching_job__isnull=False, profile_part__isnull=True, stage='coaching') |
+                       models.Q(job__isnull=True, coaching_job__isnull=True, profile_part__isnull=False, stage='descriptions')),
             name='feedback_request_exact_stage_owner')]
 
 
 class FeedbackReservation(models.Model):
+    # Provider quota accounting must count reservations from every installation.
     request = models.OneToOneField(FeedbackRequest, on_delete=models.PROTECT, related_name='reservation')
     bucket = models.ForeignKey(FeedbackQuotaBucket, on_delete=models.PROTECT, related_name='reservations')
     units = models.PositiveBigIntegerField()
@@ -262,8 +303,9 @@ class FeedbackReservation(models.Model):
     released_at = models.DateTimeField(null=True)
 
 
-class QaAnswer(models.Model):
+class QaAnswer(InstallationOwned):
     """An immutable question/part binding; audio/STT lives on the original Attempt."""
+    installation_lookup = "attempt__deck__installation_id"
     attempt = models.OneToOneField(Attempt, on_delete=models.PROTECT, primary_key=True, related_name='qa_answer')
     question_job = models.ForeignKey(FeedbackJob, on_delete=models.PROTECT, related_name='qa_answers')
     question_id = models.CharField(max_length=32)
@@ -274,7 +316,7 @@ class QaAnswer(models.Model):
         constraints = [models.CheckConstraint(condition=models.Q(part__in=[0, 1]), name='qa_answer_part_range')]
 
 
-class FeedbackRun(models.Model):
+class FeedbackRun(InstallationOwned):
     """One v3 feedback run: measurements, per-slide and whole results, scores.
 
     AI-assisted with Claude Code, prompted by Seoyeon (November 14, 2026); see
@@ -282,6 +324,7 @@ class FeedbackRun(models.Model):
     (transcript, corrections, presentation context, slide profiles, prompt,
     rubric or model) change. Retry re-queues the same run and keeps finished parts.
     """
+    installation_lookup = "attempt__deck__installation_id"
     class Status(models.TextChoices):
         QUEUED = 'queued'
         RUNNING = 'running'
@@ -313,8 +356,9 @@ class FeedbackRun(models.Model):
         indexes = [models.Index(fields=['attempt', '-created_at'], name='feedback_run_latest')]
 
 
-class CaptureSession(models.Model):
+class CaptureSession(InstallationOwned):
     """Append-only sample-clock manifest for an uninterrupted recording."""
+    installation_lookup = "attempt__deck__installation_id"
     attempt = models.OneToOneField(Attempt, primary_key=True, on_delete=models.CASCADE, related_name='capture')
     context = models.ForeignKey(PresentationContext, null=True, on_delete=models.PROTECT)
     manifest = models.JSONField(default=dict)
@@ -327,7 +371,8 @@ class CaptureSession(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
 
-class CaptureSegment(models.Model):
+class CaptureSegment(InstallationOwned):
+    installation_lookup = "capture__attempt__deck__installation_id"
     capture = models.ForeignKey(CaptureSession, on_delete=models.CASCADE, related_name='segments')
     sequence = models.PositiveIntegerField()
     slide_index = models.PositiveIntegerField()
@@ -348,8 +393,9 @@ class CaptureSegment(models.Model):
         constraints = [models.UniqueConstraint(fields=['capture', 'sequence'], name='unique_capture_segment')]
 
 
-class CaptureAssessment(models.Model):
+class CaptureAssessment(InstallationOwned):
     """A durable per-input model result. -1 is the whole-presentation assessment."""
+    installation_lookup = "capture__attempt__deck__installation_id"
     capture = models.ForeignKey(CaptureSession, on_delete=models.CASCADE, related_name='assessments')
     slide_index = models.IntegerField()
     input_hash = models.CharField(max_length=64)
@@ -367,8 +413,10 @@ class CaptureAssessment(models.Model):
         constraints = [models.UniqueConstraint(fields=['capture', 'slide_index', 'input_hash'], name='unique_capture_assessment')]
 
 
-class DisplayTranslation(models.Model):
+class DisplayTranslation(InstallationOwned):
     """One immutable source/locale pair. Claim tokens fence late worker deliveries."""
+    installation_lookup = "installation_id"
+    installation = models.ForeignKey(Installation, null=True, on_delete=models.PROTECT)
     id = models.CharField(primary_key=True, max_length=64)
     kind = models.CharField(max_length=16)
     resource_id = models.CharField(max_length=240)
@@ -390,8 +438,10 @@ class DisplayTranslation(models.Model):
         indexes = [models.Index(fields=['kind','resource_id','revision','language'], name='display_resource_locale')]
 
 
-class PreparedDisplayResource(models.Model):
+class PreparedDisplayResource(InstallationOwned):
     """One explicit bilingual opt-in. Old clients and unrelated results create no row."""
+    installation_lookup = "installation_id"
+    installation = models.ForeignKey(Installation, null=True, on_delete=models.PROTECT)
     kind = models.CharField(max_length=16)
     resource_id = models.CharField(max_length=240)
     revision = models.CharField(max_length=128, blank=True)
@@ -401,10 +451,16 @@ class PreparedDisplayResource(models.Model):
     last_checked = models.DateTimeField(auto_now=True)
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=['kind', 'resource_id', 'revision'], name='unique_prepared_display')]
+        constraints = [
+            models.UniqueConstraint(fields=['kind', 'resource_id', 'revision'],
+                                    condition=models.Q(installation__isnull=True), name='unique_prepared_display'),
+            models.UniqueConstraint(fields=['installation', 'kind', 'resource_id', 'revision'],
+                                    name='unique_install_prepared_display'),
+        ]
 
 
-class PreparedDisplayField(models.Model):
+class PreparedDisplayField(InstallationOwned):
+    installation_lookup = "bundle__installation_id"
     bundle = models.ForeignKey(PreparedDisplayResource, on_delete=models.CASCADE, related_name='wording')
     path = models.CharField(max_length=160)
     source = models.TextField()

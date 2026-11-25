@@ -13,6 +13,7 @@
 
 - The [quick start](../README.md#quick-start) and [local development guide](local-development.md) explain how to run OutLoud.
 - [Azure hosting](azure-hosting.md) explains how to operate the hosted demo.
+- [ONE Store release](one-store-release.md) covers the public service, build 42 signing and the checks before submission.
 
 ## Schedule and submissions
 

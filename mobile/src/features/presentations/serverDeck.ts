@@ -8,6 +8,8 @@ import { backendExpoFetch as fetch } from '../../services/backendFetch';
 import { API_URL } from '../../services/api';
 import { readStored, removeStored, writeStored } from '../../services/storage';
 import { normalizeApi } from '../transcription/analysisStorage';
+import { StorePreflightError } from '../../services/storeAccess';
+import { STORE_API } from '../../services/storeEndpoint';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export type ServerSlides = { deckId: string; texts: string[] };
@@ -69,8 +71,18 @@ async function request(api: string, key: string, local: { id: string; title: str
   body.append('title', local.title.slice(0, 255) || 'Presentation');
   // OpenAI Codex, 2026-11-21: mark before transport starts so a simultaneous preview cannot POST the same uncertain PDF.
   writeStored(uncertain, true);
-  const response = await fetch(`${api}/decks/`, { method: 'POST', body, signal: combined });
-  if (!response.ok) { removeStored(uncertain); throw new Error(`The server could not read this PDF (HTTP ${response.status}). Check the 50 MiB file limit.`); }
+  const response = await fetch(`${api}/decks/`, { method: 'POST', body, signal: combined }).catch(error => {
+    if (error instanceof StorePreflightError) removeStored(uncertain);
+    throw error;
+  });
+  if (!response.ok) {
+    removeStored(uncertain);
+    if (api === STORE_API && response.status === 400)
+      throw new Error('Online coaching accepts unencrypted PDFs up to 100 pages and 50 MiB. Split decks with large images.');
+    if (api === STORE_API && response.status === 507)
+      throw new Error('Online storage is full. Your local files are saved.');
+    throw new Error(`The server could not read this PDF (HTTP ${response.status}). Check the 50 MiB file limit.`);
+  }
   try {
     const data = (await response.json()) as { deck?: { id?: unknown; page_count?: unknown }; slides?: unknown };
     const parsed = parse({ ...data.deck, slides: data.slides }, local.pageCount);

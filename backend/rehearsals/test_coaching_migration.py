@@ -41,6 +41,8 @@ class CoachingMigrationTests(TransactionTestCase):
         names = ['Deck', 'Slide', 'Attempt', 'ProviderRequest', 'DescriptionSet', 'DescriptionJob',
                  'FeedbackRequest', 'FeedbackQuotaBucket', 'FeedbackReservation']
         before = {name: list(model(name).objects.values()) for name in names}
+        for row in before['Deck']:
+            row['installation_id'] = None
         for row in before['ProviderRequest']:
             row['request_options'] = {}  # Historical requests have no invented hints.
         current = self.migrate(latest)
@@ -48,6 +50,7 @@ class CoachingMigrationTests(TransactionTestCase):
             actual = list(current.get_model('rehearsals', name).objects.values())
             if name == 'FeedbackRequest':
                 self.assertIsNone(actual[0].pop('coaching_job_id'))
+                self.assertIsNone(actual[0].pop('profile_part_id'))
             self.assertEqual(actual, before[name])
         self.assertFalse(current.get_model('rehearsals', 'FeedbackAnalysis').objects.exists())
         self.assertFalse(current.get_model('rehearsals', 'FeedbackJob').objects.exists())

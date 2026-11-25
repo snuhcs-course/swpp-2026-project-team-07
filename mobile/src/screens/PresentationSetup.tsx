@@ -26,6 +26,7 @@ const MIN = 60;
 const MAX = 1800;
 const DIAL_SIZE = 240;
 const LEFT = (390 - DIAL_SIZE) / 2;
+const DIAL_TOP = 170;
 const DIAL_CENTER = DIAL_SIZE / 2;
 const DIAL_RADIUS = 112;
 const KNOB_RADIUS = 15;
@@ -86,7 +87,7 @@ export function PresentationSetup({ deck, error, initialValues = { requiredDurat
   const knobY = DIAL_CENTER + Math.sin(knobAngle) * DIAL_RADIUS;
   const selectAt = (pageX: number, pageY: number) => {
     const x = (pageX - frame.left) / frame.s - (LEFT + DIAL_CENTER);
-    const y = (pageY - frame.top) / frame.s - 170 - DIAL_CENTER;
+    const y = (pageY - frame.top) / frame.s - DIAL_TOP - DIAL_CENTER;
     const angle = (Math.atan2(y, x) + Math.PI / 2 + Math.PI * 2) % (Math.PI * 2);
     const next = Math.max(1, Math.min(30, Math.round(angle / (Math.PI * 2) * 30) + 1));
     change(); setRequired(true);
@@ -194,10 +195,11 @@ const styles = createThemedStyles({
   heading: { position: 'absolute', left: 40, right: 40, top: 46, alignItems: 'center' },
   deckTitle: { fontFamily: F.display, fontSize: 18, lineHeight: 22, color: C.text, textAlign: 'center' },
   slideCount: { fontFamily: F.medium, fontSize: 14.5, color: C.secondary, marginTop: 3 },
-  timeArea: { position: 'absolute', left: 20, right: 20, top: 262, alignItems: 'center' },
-  time: { fontFamily: F.display, fontSize: 64, lineHeight: 66, color: C.text, fontVariant: ['tabular-nums'] },
-  minutes: { fontFamily: F.medium, fontSize: 14.5, lineHeight: 19, color: C.secondary },
-  sliderTouch: { position: 'absolute', left: LEFT, top: 170, width: DIAL_SIZE, height: DIAL_SIZE, alignItems: 'center', justifyContent: 'center' },
+  // OpenAI Codex, 2026-11-23: center the readout in the same bounds as the dial.
+  timeArea: { position: 'absolute', left: LEFT, top: DIAL_TOP, width: DIAL_SIZE, height: DIAL_SIZE, alignItems: 'center', justifyContent: 'center' },
+  time: { fontFamily: F.display, fontSize: 64, lineHeight: 66, color: C.text, fontVariant: ['tabular-nums'], includeFontPadding: false },
+  minutes: { fontFamily: F.medium, fontSize: 14.5, lineHeight: 19, color: C.secondary, includeFontPadding: false },
+  sliderTouch: { position: 'absolute', left: LEFT, top: DIAL_TOP, width: DIAL_SIZE, height: DIAL_SIZE, alignItems: 'center', justifyContent: 'center' },
   audienceArea: { position: 'absolute', top: 478, left: 24, right: 24, alignItems: 'center' },
   audienceTitle: { alignSelf: 'flex-start', fontFamily: F.bold, fontSize: 17, lineHeight: 23, color: C.text },
   chips: { flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap', gap: 8, marginTop: 10 },

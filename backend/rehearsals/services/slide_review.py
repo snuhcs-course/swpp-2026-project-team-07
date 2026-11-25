@@ -270,8 +270,7 @@ def augment(prepared, snapshot):
     review = snapshot['slide_review']
     check_snapshot(review)
     compact = 'request_context_version' in review
-    payload = (provider.strict_json(prepared.payload, provider.MAX_REQUEST_BYTES)
-               if compact else provider.strict_json(prepared.payload))
+    payload = provider.coaching_request_json(prepared, compact=compact)
     context = {'review_scope': snapshot['slide_review'], 'slide_profiles': snapshot.get('review_profile'), 'effective_corrected_text': snapshot['effective_text'],
                'confirmed_corrections': snapshot['corrections'], 'transcript_revision': snapshot['transcript_revision']}
     if compact:

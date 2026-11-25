@@ -7,10 +7,12 @@ import os
 import re
 import uuid
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
 from ..models import CaptureAssessment, DescriptionSet, DisplayTranslation, FeedbackJob, FeedbackRun, PreparedDisplayResource
+from ..ownership import current_installation_id
 from ..feedback_v3.llm import LLMError
 from .feedback import FeedbackError
 
@@ -173,7 +175,13 @@ def _allow_exact_retry(row, confirmed_retry_id):
 
 def admit_fields(kind, resource, language, revision, fields, retry, *, check_source, confirmed_retry_id=None):
     # Prepared callers derive fields from the saved result or validate an explicitly supplied snapshot.
-    snapshot = json.dumps(['display-v1', kind, resource, revision, language, fields], ensure_ascii=False,
+    owner = current_installation_id()
+    identity = ['display-v1', kind, resource, revision, language, fields]
+    if settings.OUTLOUD_PUBLIC_SERVICE:
+        if owner is None:
+            raise SourceUnavailable()
+        identity.extend(['installation', owner])
+    snapshot = json.dumps(identity, ensure_ascii=False,
                           separators=(',', ':'), sort_keys=True).encode('utf-8')
     key = sha256(snapshot).hexdigest()
     if confirmed_retry_id is not None and confirmed_retry_id != key:
@@ -187,7 +195,8 @@ def admit_fields(kind, resource, language, revision, fields, retry, *, check_sou
         _validate_source(kind, resource, fields)
     with transaction.atomic():
         row, created = DisplayTranslation.objects.select_for_update().get_or_create(pk=key, defaults={
-            'kind': kind, 'resource_id': resource, 'revision': revision, 'language': language, 'fields': fields})
+            'installation_id': owner, 'kind': kind, 'resource_id': resource, 'revision': revision,
+            'language': language, 'fields': fields})
         if confirmed_retry_id is not None and row.state != 'failed':
             if created:
                 raise ValueError('invalid_retry_confirmation')

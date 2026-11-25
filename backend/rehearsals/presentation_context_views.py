@@ -2,11 +2,12 @@
 import uuid
 
 from django.core.exceptions import RequestDataTooBig
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from rest_framework.decorators import api_view, parser_classes
 from rest_framework.response import Response
 
 from .models import Deck, PresentationContext
+from .ownership import foreign_pk_exists
 from .services.feedback import FeedbackError, strict_json
 
 BODY_LIMIT = 8192
@@ -59,7 +60,12 @@ def contexts(request):
         payload = _body(request, {'id', 'deck_id'})
         context_id, deck_id = _uuid(payload['id']), _uuid(payload['deck_id'])
         deck = Deck.objects.get(pk=deck_id)
-        value, created = PresentationContext.objects.get_or_create(pk=context_id, defaults={'deck': deck})
+        try:
+            value, created = PresentationContext.objects.get_or_create(pk=context_id, defaults={'deck': deck})
+        except IntegrityError:
+            if foreign_pk_exists(PresentationContext, context_id):
+                return _error('context_conflict', 409)
+            raise
         if str(value.deck_id) != deck_id:
             return _error('context_conflict', 409)
         return Response(_public(value), status=201 if created else 200)
