@@ -5,11 +5,27 @@ import {load,resolve} from './helpers/domain-loader.mjs';
 registerHooks({resolve,load});
 const {createTranslationCache,sourceLanguage,splitRequest}=await import('../src/features/localization/translationCache.ts');
 const {isDisplayWording}=await import('../src/features/localization/displayWording.ts');
-const {translatedV3,translatedQuestion,translatedAnswer,translatedProfile}=await import('../src/features/localization/generatedProse.ts');
+const {translatedV3,translatedQuestion,translatedAnswer,translatedProfile,displayProfileCues}=await import('../src/features/localization/generatedProse.ts');
 const request={kind:'legacy_qa',resource_id:'archived-run',language:'ko',fields:{'questions.0.question':'Why are there two groups?'}};
 const reply=(r,id='b',state='completed')=>Response.json({id:id.repeat(64),language:r.language,state,translations:state==='completed'?Object.fromEntries(Object.keys(r.fields).map(k=>[k,'번역문'])):{}});
 const disk=new Map();
 const storage={api:'https://test.invalid/api',read:key=>disk.get(key),write:(key,v)=>disk.set(key,structuredClone(v)),wait:async()=>{}};
+test('cue display separates pending and unavailable wording from actual cues by category', () => {
+  const cue = text => ({ text, evidence_refs: [] });
+  const profile = {
+    slide_index: 4,
+    must_cover: [cue('A ready cue'), cue('Waiting for English cues')],
+    go_deeper: [cue('This cue is unavailable in English.')],
+  };
+  const pending = 'slides.4.must_cover.1.text';
+  const unavailable = 'slides.4.go_deeper.0.text';
+  const result = displayProfileCues(profile, new Set([pending, unavailable]), new Set([unavailable]));
+  assert.deepEqual(result.must_cover, [cue('A ready cue')]);
+  assert.deepEqual(result.go_deeper, []);
+  assert.deepEqual(result.wording, { must_cover: 'pending', go_deeper: 'unavailable' });
+  assert.equal(profile.must_cover.length, 2);
+});
+
 test('a cache miss makes a translation-only POST then read-only GET; overlapping readers and offline restarts reuse the result',async()=>{
  const calls=[];let release;
  const cache=createTranslationCache({...storage,fetch:(url,init)=>{calls.push([url,init.method]);return init.method==='POST'?new Promise(done=>{release=()=>done(reply(request,'b','pending'));}):Promise.resolve(reply(request));}});

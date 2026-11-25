@@ -1,11 +1,10 @@
-import { readCoachingJson } from '../../services/storeBudget';
+import { budgetNotice, readCoachingJson } from '../../services/storeBudget';
 import { backendFetch as fetch } from '../../services/backendFetch';
 import {verifiedExcerpt} from '../feedback/evidence';
 // Iteration 2 Phase 2: cached profiles; GET/playback never admits provider work.
 import type { DescriptionState, SlideDescription, DescriptionGenerateRequest } from '../../contracts';
 import { parseDescriptionState, canonicalUuid } from '../feedback/validation';
 import { preferDescriptions } from '../feedback/storage';
-import { markNewWording } from '../localization/firstWording';
 import { normalizeApi } from '../transcription/analysisStorage';
 import { readStored, writeStored } from '../../services/storage';
 
@@ -14,7 +13,8 @@ export type Enrichment = { text: string; kind: 'connection' | 'question'; inform
   evidence_refs: { slide_index: number; source_id: string; fact_ref: string; quote: string }[] };
 export type CueCategory = 'must_cover' | 'go_deeper';
 export type SlideProfile = SlideDescription & { slide_kind: 'title' | 'content' | 'closing' | 'unknown';
-  cues: SlideCue[]; must_cover: SlideCue[]; go_deeper: Enrichment[] };
+  cues: SlideCue[]; must_cover: SlideCue[]; go_deeper: Enrichment[];
+  wording?: Partial<Record<CueCategory, 'pending' | 'unavailable'>> };
 export type ProfileState = Omit<DescriptionState, 'descriptions'> & { descriptions: { slides: SlideProfile[] } | null };
 const schemas = { openai: 'slide-profile', openrouter: 'slide-profile', gemini: 'slide-profile-gemini' };
 // Same explicit Unicode-whitespace union as backend cue_word_count.
@@ -77,21 +77,41 @@ export function parseProfileState(value: unknown, deckId: string, pages: number)
   return { ...state, descriptions: { slides } };
 }
 
+export function slideProfileAt(state: ProfileState | null, index: number): SlideProfile | undefined {
+  const slides = state?.descriptions?.slides;
+  const indexed = slides?.[index];
+  return indexed?.slide_index === index ? indexed : slides?.find(slide => slide.slide_index === index);
+}
+
 export function cueState(state: ProfileState | null, slide: number, category: CueCategory = 'must_cover'): { cues: (SlideCue | Enrichment)[]; message: string | null; action: 'generate' | 'retry' | 'confirm' | null } {
   if (!state) return { cues: [], message: 'AI cues are unavailable offline', action: null };
   if (state.stale) return { cues: [], message: 'AI cues are out of date', action: state.requires_confirmation
     ? state.retry_available ? 'confirm' : null : state.retry_available ? 'retry' : 'generate' };
-  const ready = state.state === 'completed' && state.descriptions?.slides.find(s => s.slide_index === slide);
+  const ready = state.state === 'completed' && slideProfileAt(state, slide);
   if (ready && state.provenance?.prompt_version === 'slide-profile-v1') return {cues:[],message:'Saved cues use the previous format · Generate updated guidance',action:'generate'};
   if (ready && !['slide-profile-v4','slide-profile-v5'].includes(state.provenance?.prompt_version??'')) return {cues:[],message:'AI cues are out of date',action:'generate'};
-  if (ready) return { cues: ready[category], message: ready[category].length ? null :
-    ready.summary.uncertain ? 'Not enough readable evidence for cues' : category === 'must_cover' ? 'No essential points needed on this slide' : 'No additional suggestions for this slide', action: null };
+  if (ready) {
+    const cues = ready[category], wording = ready.wording?.[category];
+    const message = wording === 'pending' ? 'Translating cues…'
+      : wording === 'unavailable' ? 'Cue translation is unavailable'
+        : cues.length ? null
+          : ready.summary.uncertain ? 'Not enough readable evidence for cues'
+            : category === 'must_cover' ? 'No essential points needed on this slide' : 'No additional suggestions for this slide';
+    return { cues, message, action: null };
+  }
   const messages: Partial<Record<ProfileState['state'], string>> = {
     absent: 'AI cues have not been generated', disabled: 'AI cues are disabled on the server',
     configuration_unavailable: 'AI cues are unavailable on the server', source_unavailable: 'Slide evidence is unavailable',
     failed: 'AI cues failed', needs_confirmation: 'AI cue retry needs confirmation',
   };
-  return { cues: [], message: messages[state.state] ?? 'Preparing AI cues…', action: state.state === 'absent' ? 'generate' :
+  const code = state.error?.code;
+  const requestLimited = code === 'request_exceeds_quota' || code === 'request_too_large';
+  const responseIncomplete = code === 'response_too_large' || code === 'provider_incomplete';
+  const failureMessage = state.state !== 'failed' ? null
+    : requestLimited ? 'AI cues hit a service limit. Try again later.'
+    : responseIncomplete ? 'AI cues could not finish. Try again later.'
+    : budgetNotice(code);
+  return { cues: [], message: failureMessage ?? messages[state.state] ?? 'Preparing AI cues…', action: state.state === 'absent' ? 'generate' :
     state.retry_available ? state.requires_confirmation ? 'confirm' : 'retry' : null };
 }
 
@@ -132,12 +152,6 @@ export function createProfileClient(apiUrl: string, fetcher: typeof fetch = fetc
         return next;
       }
       const chosen = preferDescriptions(previous, next) === previous ? previous! : next;
-      const newlyGenerated = payload && (previous?.description_set_id !== chosen.description_set_id ||
-        previous?.description_revision !== chosen.description_revision);
-      if (chosen.description_set_id && (newlyGenerated || ['preparing','submitted','queued','normalizing','waiting_quota'].includes(chosen.state))) {
-        const revision = chosen.description_revision + (chosen.descriptions ? 0 : 1);
-        markNewWording(api, 'profiles', chosen.description_set_id, String(revision));
-      }
       writeStored(cacheKey, chosen);
       return chosen;
     } finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); }

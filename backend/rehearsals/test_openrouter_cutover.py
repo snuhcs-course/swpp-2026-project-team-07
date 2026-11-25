@@ -53,7 +53,6 @@ class OpenRouterCutoverTests(SyntheticCoaching, TestCase):
             prepared, snapshot = descriptions.prepare_saved(self.deck.pk)
             with self.assertRaises(FeedbackError):
                 descriptions.admit_prepared(Selection.profiles(), prepared, snapshot, dependency=True)
-            slide_profiles.after_upload(self.deck.pk)
             self.assertFalse(DescriptionSet.objects.filter(provider='openrouter').exists())
             payload = {'description_set_id': str(old.pk), 'processing_revision': old.processing_revision,
                        'expected_selection': state['selection']['token'], 'acknowledge_uncertain': True}

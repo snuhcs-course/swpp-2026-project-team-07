@@ -10,7 +10,7 @@ const { listenTimeline } = await import('../src/domain/listenTimeline.ts');
 const { ListenBackKaraokeScreen } = await import('../src/screens/ListenBackKaraokeScreen.tsx');
 const { getAppLanguage, setAppLanguage } = await import('../src/design/language.ts');
 const { DARK_PALETTE, LIGHT_PALETTE } = await import('../src/design/tokens.ts');
-const { runtime } = await import('./helpers/ai-overview-screen-native.mjs');
+const { HintRow, runtime } = await import('./helpers/ai-overview-screen-native.mjs');
 const React = await import('react');
 const { act, create } = await import('react-test-renderer');
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -100,6 +100,45 @@ const button = (r, label) => r.root.findAllByType('pressable').find(node => node
 const karaoke = r => r.root.findAll(node => node.type === 'text' && node.props.accessibilityHint === 'Tap a word to play from it')[0];
 const words = r => karaoke(r).findAll(node => node.type === 'text' && node !== karaoke(r));
 const word = (r, text) => words(r).find(node => node.props.children === text);
+
+test('Back to review stays centered independently of transcript hints on either frame size', async () => {
+  setup();
+  try {
+    for (const [compact, bottom] of [[false, 58], [true, 42]]) {
+      runtime.frameCompact = compact;
+      await render(r => {
+        const rows = r.root.findAllByType(HintRow).map(node => node.props);
+        const review = rows.find(row => row.hints.some(hint => hint.text === 'Back to review'));
+        assert.deepEqual(review.hints.map(hint => hint.text), ['Back to review']);
+        assert.equal(review.style, undefined, 'the review hint uses the standard centered footer position');
+        const transcript = rows.find(row => row.hints.some(hint => hint.text === 'Browse text'));
+        assert.deepEqual(transcript.hints.map(hint => hint.text), ['Browse text', 'Tap a word']);
+        assert.equal(transcript.style.bottom, bottom);
+      });
+    }
+  } finally {
+    runtime.frameCompact = false;
+  }
+});
+
+test('an offline run has no transcript to display and still plays local audio', async () => {
+  setup();
+  runtime.model.lines = [];
+  runtime.model.pending = true;
+  try {
+    runtime.serverAccess = { state: 'locked' };
+    await render(async r => {
+      assert.match(JSON.stringify(r.toJSON()), /No transcript for this run/);
+      assert.doesNotMatch(JSON.stringify(r.toJSON()), /still processing/);
+      await act(async () => button(r, 'Play whole run').props.onPress());
+      assert.equal(runtime.plays[0].segments[0].uri, 'file:///run.m4a');
+    });
+    runtime.serverAccess = { state: 'ready' };
+    await render(r => assert.match(JSON.stringify(r.toJSON()), /Transcript is still processing/));
+  } finally {
+    delete runtime.serverAccess;
+  }
+});
 
 test('switching the flag keeps an English slide title, spoken word and seek time while translating its controls', async () => {
   setup();

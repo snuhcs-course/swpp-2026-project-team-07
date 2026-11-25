@@ -5,6 +5,9 @@ export { load };
 const fixture = new URL('./library-screen-native.mjs', import.meta.url).href;
 
 export function resolve(specifier, context, next) {
+  if (specifier.endsWith('/modules/outloud-recorder') || specifier.endsWith('/recording/incremental')) {
+    return { url: new URL('./recording-screen-incremental.mjs', import.meta.url).href, shortCircuit: true };
+  }
   if (specifier === 'expo-file-system' || specifier === 'expo/fetch') {
     return { url: new URL('./upload-native.mjs', import.meta.url).href, shortCircuit: true };
   }

@@ -84,28 +84,47 @@ export function sentences(transcript: Transcript): Sentence[] {
 
 function capitalize(s: string) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
+function firstOverlappingSentence(list: readonly Sentence[], words: readonly TranscriptWord[], startMs: number) {
+  let low = 0, high = list.length;
+  while (low < high) {
+    const mid = Math.floor((low + high) / 2);
+    if (words[list[mid].last].start_ms < startMs) low = mid + 1;
+    else high = mid;
+  }
+  return low;
+}
+
 /** Build the lines of the merged run from each attempt's transcript and the saved corrections. */
 export function buildLines(run: Run | null, n: number, transcripts: ReadonlyMap<string, Transcript>,
   edits: Readonly<Record<string, LineEdit>>, _vocab: Vocabulary): Line[] {
   if (!run) return [];
   const times = Array.from({ length: n }, (_, i) => partSeconds(run.parts[i]));
   const starts = runStarts(times);
-  const cache = new Map<string, Sentence[]>();
+  const cache = new Map<string, { list: Sentence[]; chronological: boolean }>();
   const lines: Line[] = [];
   for (let slide = 0; slide < n; slide++) {
     const part = run.parts[slide];
     if (!part) continue;
     const transcript = transcripts.get(part.attemptId);
     if (!transcript) continue;
-    let list = cache.get(part.attemptId);
-    if (!list) { list = sentences(transcript); cache.set(part.attemptId, list); }
     const words = transcript.words;
+    let cached = cache.get(part.attemptId);
+    if (!cached) {
+      cached = { list: sentences(transcript), chronological: words.every((word, i) => i === 0 || words[i - 1].start_ms <= word.start_ms) };
+      cache.set(part.attemptId, cached);
+    }
+    const { list, chronological } = cached;
     let before = 0;
     for (const [visitIndex, seg] of part.segments.entries()) {
-      list.forEach(s => {
+      // Older saved transcripts can contain out-of-order timings. Keep their
+      // existing scan behavior and seek directly only through ordered data.
+      const firstSentence = chronological ? firstOverlappingSentence(list, words, seg.startMs) : 0;
+      for (let sentence = firstSentence; sentence < list.length; sentence++) {
+        const s = list[sentence];
+        if (chronological && words[s.first].start_ms >= seg.endMs) break;
         let first = s.first;
         while (first <= s.last && words[first].start_ms < seg.startMs) first++;
-        if (first > s.last || words[first].start_ms >= seg.endMs) return;
+        if (first > s.last || words[first].start_ms >= seg.endMs) continue;
         let last = first;
         while (last < s.last && words[last + 1].start_ms < seg.endMs) last++;
         const start = words[first].start_ms;
@@ -137,7 +156,7 @@ export function buildLines(run: Run | null, n: number, transcripts: ReadonlyMap<
           source: { first, last, text: capitalize(segmentText) },
           audio: { attemptId: part.attemptId, startMs: start, endMs: Math.max(endMs, start + 300) },
         });
-      });
+      }
       before += seg.endMs - seg.startMs;
     }
   }

@@ -18,14 +18,15 @@ import { SelectedPreparationHost } from '../features/localization/SelectedPrepar
 // OpenAI Codex stable import hue: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-123
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { AppState, Pressable, StyleSheet, View } from 'react-native';
-import { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import * as ScreenOrientation from 'expo-screen-orientation';
-import { Enter, Frame, Txt } from '../design/frame';
+import { Frame, Txt } from '../design/frame';
 import { STORE_MODE } from '../services/apiConfig';
 import { dismissBudgetNotice, getBudgetNotice, subscribeBudget } from '../services/storeBudget';
 import { useTheme } from '../design/theme';
 import { Dialog, GlowLayer } from '../design/ui';
-import { mod } from '../domain/format';
+import { carouselGlowWeight } from '../domain/gestures';
+import { uploadGlowReturn } from './homeGeometry';
 import type { HueName } from '../domain/hues';
 import { runAttemptIds } from '../domain/run';
 import { AnalysisHost, stageOf, usePlaybackIds, useWorkers } from '../features/rehearsal/analysis';
@@ -36,7 +37,7 @@ import { InitialFeedbackHost } from '../features/feedback/InitialFeedbackHost';
 import { FeedbackV3Host } from '../features/feedback/FeedbackV3Host';
 import { InitialPresentationScoreHost } from '../features/feedback/InitialPresentationScoreHost';
 import { CoachHost, useCoaches } from '../features/rehearsal/coaching';
-import { deckById, getDeckState, loadPresentations, nextHue, useStore, visibleDecks } from '../features/presentations/store';
+import { getDeckState, loadPresentations, nextHue, useStore, visibleDecks } from '../features/presentations/store';
 import { HomeScreen } from './HomeScreen';
 import { UploadScreen } from './UploadScreen';
 import { RehearseScreen } from './RehearseScreen';
@@ -52,26 +53,34 @@ import { HomeContext, ShellContext, type Go, type HomeShared, type NavState } fr
 export function AppShell() {
   useTheme();
   const [frontDeck, setFrontDeck] = useState<string | null>(null);
-  const [layers, setLayers] = useState<NavState[]>([{ screen: 'home', nav: null, deckId: null, slide: 0, sel: 0, from: null, visit: 0 }]);
-  const layersRef = useRef(layers);
+  const [stack, setStack] = useState<{ layers: NavState[]; epoch: number }>({
+    layers: [{ screen: 'home', nav: null, deckId: null, slide: 0, sel: 0, from: null, visit: 0 }],
+    epoch: 0,
+  });
+  const { layers, epoch } = stack;
+  const stackRef = useRef(stack);
   const visitRef = useRef(0);
   const [retiredRehearse, setRetiredRehearse] = useState<NavState | null>(null);
   const [fullscreenLandscape, setFullscreenLandscape] = useState(false);
   const [uploadLook, setUploadLook] = useState<{ hue: HueName; order: number } | null>(null);
+  const [readingPdf, setReadingPdf] = useState(false);
   const p = useSharedValue(0), vy = useSharedValue(0), gap = useSharedValue(0), hold = useSharedValue(0);
   const uploadBlur = useSharedValue(0), analyzing = useSharedValue(0), setup = useSharedValue(0);
+  const uploadReturn = useSharedValue(0);
   const press = useSharedValue(1), picker = useSharedValue(0);
   const titleReturn = useSharedValue(1);
+  const footerExit = useSharedValue({ epoch: -1, progress: 0 });
   const home = useMemo<HomeShared>(() => ({
-    p, vy, gap, hold, uploadBlur, analyzing, setup, press, picker, titleReturn,
-  }), [p, vy, gap, hold, uploadBlur, analyzing, setup, press, picker, titleReturn]);
+    p, vy, gap, hold, uploadBlur, uploadReturn, analyzing, setup, press, picker, titleReturn,
+  }), [p, vy, gap, hold, uploadBlur, uploadReturn, analyzing, setup, press, picker, titleReturn]);
   const go: Go = useCallback((screen, patch) => {
-    const previous = layersRef.current;
+    const { layers: previous, epoch: previousEpoch } = stackRef.current;
     const top = previous[previous.length - 1];
     if (screen === 'home') titleReturn.set(1);
-    else if (top.screen === 'rehearse') titleReturn.set(0);
+    else if (screen === 'rehearse' || top.screen === 'rehearse') titleReturn.set(0);
     if (screen === 'upload' && top.screen !== 'upload') {
       setUploadLook({ hue: nextHue(), order: visibleDecks().length + 1 });
+      setReadingPdf(false);
     }
     if (top.screen === 'rehearse' && screen === 'home') setRetiredRehearse(top);
     else setRetiredRehearse(null);
@@ -93,8 +102,10 @@ export function AppShell() {
     if (screen === 'review' && patch?.sel !== undefined) {
       next = next.map(layer => layer.screen === 'rehearse' ? { ...layer, slide: patch.sel! } : layer);
     }
-    layersRef.current = next;
-    setLayers(next);
+    // Keep the visible footer's progress until React commits this navigation.
+    const updated = { layers: next, epoch: previousEpoch + 1 };
+    stackRef.current = updated;
+    setStack(updated);
   }, [titleReturn]);
   useEffect(() => {
     void loadPresentations();
@@ -105,6 +116,9 @@ export function AppShell() {
   const ctx = useMemo(() => ({ go, nav, home, setFullscreenLandscape }), [go, nav, home]);
   const homeCtx = useMemo(() => ({ go, home }), [go, home]);
   const s = nav.screen;
+  useEffect(() => {
+    if (s !== 'upload') uploadReturn.set(0);
+  }, [s, uploadReturn]);
   useEffect(()=>{
     // Rehearsal chooses portrait or explicit landscape fullscreen itself. Keep
     // the shell from silently unlocking sensor-driven rotation underneath it.
@@ -119,35 +133,51 @@ export function AppShell() {
     });
     return () => { cancelAnimationFrame(firstFrame); cancelAnimationFrame(nextFrame); };
   }, [s, retiredRehearse]);
-  // OpenAI Codex, Iteration 4 (2026-11-22): HomeScreen alone owns the language switch.
-  const homeMode = s === 'home' ? 'home' : s === 'upload' ? 'upload' : 'covered';
   // In explicit landscape fullscreen the Home carousel must not show through
   // the safe-area gutters around Frame's scaled landscape canvas.
   // OpenAI Codex, 2026-11-19: Wait and Full Review fade down to Home, not through a stale intermediate page.
   const fullOverRehearse = s === 'full' && nav.from === 'rehearse';
-  const homeVisible = (layers.length <= 2 || s === 'wait' || (s === 'full' && !fullOverRehearse)) && !(s === 'rehearse' && fullscreenLandscape);
+  const fullOverHome = s === 'full' && !fullOverRehearse;
+  const homeVisible = (layers.length <= 2 || s === 'wait' || fullOverHome) && !(s === 'rehearse' && fullscreenLandscape);
+  const homeMode = s === 'home' || s === 'upload' || (s === 'rehearse' && homeVisible) ? s : 'covered';
+  // Keep the carousel ready for the back swipe without drawing through the resting presentation.
+  const homeReveal = useAnimatedStyle(() => ({ opacity: homeMode === 'rehearse' && titleReturn.value <= 0 ? 0 : 1 }));
+  const ambientMode = fullOverHome ? 'home' : homeMode;
+  const background = ambientMode === 'covered' ? null : <Ambient screen={ambientMode} home={home} uploadHue={uploadLook?.hue ?? null} />;
   const visibleLayers = layers.slice(1);
-  const underlayVisit = s === 'wait' || (s === 'full' && !fullOverRehearse) ? null : layers.length > 1 ? layers[layers.length - 2].visit : null;
+  const entryUnderlay = s === 'wait' || fullOverHome ? null : layers.at(-2) ?? null;
+  // Slide Review and Overall Review can return directly to the selected presentation.
+  const underlay = s === 'review' || fullOverRehearse
+    ? visibleLayers.findLast(layer => layer.screen === 'rehearse' && layer.deckId === nav.deckId) ?? null
+    : entryUnderlay;
+  // Keep the opening page in the crossfade, then expose the actual return destination on drag.
+  const entryArtwork = useAnimatedStyle(() => {
+    const exit = footerExit.value;
+    return { opacity: exit.epoch === epoch && exit.progress > 0 ? 0 : 1 };
+  });
+  const footerHandoff = { exit: footerExit, epoch, underlay };
   const renderedLayers = retiredRehearse && !visibleLayers.some(layer => layer.visit === retiredRehearse.visit)
     ? [...visibleLayers, retiredRehearse] : visibleLayers;
   return (
     <ShellContext.Provider value={ctx}>
       <HomeContext.Provider value={homeCtx}>
       <SelectedPreparationHost deckId={s === 'home' ? frontDeck : s === 'upload' ? null : nav.deckId} />
-      <Frame background={(s === 'home' || s === 'upload') ? <Ambient screen={s} deckId={nav.deckId} home={home} uploadHue={uploadLook?.hue ?? null} /> : null} landscape={s === 'rehearse' && fullscreenLandscape}>
-        <Enter kind={null} style={homeVisible ? undefined : styles.hiddenPage}>
-          <HomeScreen mode={homeMode} uploadLook={uploadLook} onFrontDeckChange={setFrontDeck} />
-        </Enter>
+      <Frame background={background} landscape={s === 'rehearse' && fullscreenLandscape}>
+        <Animated.View style={[homeVisible ? styles.page : styles.hiddenPage, homeReveal]}>
+          <HomeScreen mode={homeMode} showCoveredChrome={fullOverHome} uploadLook={uploadLook}
+            readingPdf={s === 'upload' && readingPdf} onFrontDeckChange={setFrontDeck} />
+        </Animated.View>
         {renderedLayers.map(layer => {
           const active = layer.visit === nav.visit;
           const retired = s === 'home' && layer.visit === retiredRehearse?.visit;
-          const visible = active || layer.visit === underlayVisit;
-          return <View key={layer.visit} style={visible && !retired ? [styles.page, !active && layer.screen === 'rehearse' && styles.clippedUnderlay] : styles.hiddenPage} pointerEvents={active ? 'auto' : 'none'}
+          const entryOnly = layer.visit === entryUnderlay?.visit && layer.visit !== underlay?.visit;
+          const visible = active || entryOnly || layer.visit === underlay?.visit;
+          return <Animated.View key={layer.visit} style={visible && !retired ? [styles.page, !active && layer.screen === 'rehearse' && styles.clippedUnderlay, entryOnly && entryArtwork] : styles.hiddenPage} pointerEvents={active ? 'auto' : 'none'}
             accessibilityElementsHidden={!active} importantForAccessibility={active ? 'auto' : 'no-hide-descendants'}>
-            <ShellContext.Provider value={{ go, nav: layer, home, setFullscreenLandscape }}>
-              <LayerScreen screen={layer.screen} active={active} />
+            <ShellContext.Provider value={{ go, nav: layer, home, footerHandoff, setFullscreenLandscape }}>
+              <LayerScreen screen={layer.screen} active={active} uploadLook={uploadLook} onReadingPdf={setReadingPdf} />
             </ShellContext.Provider>
-          </View>;
+          </Animated.View>;
         })}
         <Prompts />
         {STORE_MODE && <BudgetNotice />}
@@ -183,8 +213,10 @@ function BudgetNotice() {
   </View>;
 }
 
-function LayerScreen({ screen, active }: { screen: NavState['screen']; active: boolean }) {
-  if (screen === 'upload') return <UploadScreen />;
+function LayerScreen({ screen, active, uploadLook, onReadingPdf }: {
+  screen: NavState['screen']; active: boolean; uploadLook: { hue: HueName; order: number } | null; onReadingPdf: (value: boolean) => void;
+}) {
+  if (screen === 'upload') return <UploadScreen hue={uploadLook?.hue} empty={uploadLook?.order === 1} onReadingPdf={onReadingPdf} />;
   if (screen === 'rehearse') return <RehearseScreen active={active} />;
   if (screen === 'review') return <ReviewScreen active={active} />;
   if (screen === 'wait') return <WaitScreen active={active} />;
@@ -248,57 +280,40 @@ function Prompts() {
 }
 
 /** Ambient hue glow follows the Home carousel continuously. */
-function Ambient({ screen, deckId, home, uploadHue }: { screen: NavState['screen']; deckId: string | null; home: HomeShared; uploadHue: HueName | null }) {
-  const decks = useStore(s => visibleDecks(s));
-  const n = decks.length;
+function Ambient({ screen, home, uploadHue }: { screen: 'home' | 'upload' | 'rehearse'; home: HomeShared; uploadHue: HueName | null }) {
+  const snapshot = useStore(s => s);
+  const hues = useMemo(() => visibleDecks(snapshot).map(deck => deck.hue), [snapshot]);
+  const distinctHues = useMemo(() => [...new Set(hues)], [hues]);
   const fresh = screen === 'upload' && uploadHue ? uploadHue : nextHue();
-  const current = deckById(deckId);
-  const hueSlots = new Map<HueName, number[]>();
-  decks.forEach((deck, index) => {
-    const slots = hueSlots.get(deck.hue) ?? [];
-    slots.push(index);
-    hueSlots.set(deck.hue, slots);
-  });
+  // The glow extends outside the scaled rehearsal canvas, so it needs its own matching fade.
+  const reveal = useAnimatedStyle(() => ({ opacity: screen === 'rehearse' ? home.titleReturn.value : 1 }));
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      {[...hueSlots].map(([hue, indices]) => <DeckGlow key={hue} hue={hue} indices={indices} n={n} screen={screen} isCurrent={current?.hue === hue} home={home} />)}
-      {(screen === 'upload' || !decks.some(d => d.hue === fresh)) && <NewGlow hue={fresh} screen={screen} home={home} empty={!n} />}
-    </View>
+    <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, reveal]}>
+      {distinctHues.map(hue => <DeckGlow key={hue} hue={hue} hues={hues} uploading={screen === 'upload'} home={home} />)}
+      <NewGlow hue={fresh} uploading={screen === 'upload'} home={home} empty={!hues.length} />
+    </Animated.View>
   );
 }
-function DeckGlow({ hue, indices, n, screen, isCurrent, home }: { hue: HueName; indices: number[]; n: number; screen: NavState['screen']; isCurrent: boolean; home: HomeShared }) {
+function DeckGlow({ hue, hues, uploading, home }: { hue: HueName; hues: readonly HueName[]; uploading: boolean; home: HomeShared }) {
   const style = useAnimatedStyle(() => {
-    if (screen === 'home' || screen === 'upload') {
-      if (screen === 'upload') {
-        const t = Math.min(1, ((1 - home.uploadBlur.value) * 260) / 220);
-        let front = false;
-        for (const i of indices) {
-          if (Math.abs(mod(i - home.p.value + n / 2, n) - n / 2) < 0.5) { front = true; break; }
-        }
-        return { opacity: front ? t : 0 };
-      }
-      const pull = home.vy.value < 0 ? Math.min(1, -home.vy.value / 90) : 0;
-      const hs = Math.max(pull, home.gap.value);
-      let weight = 0;
-      for (const i of indices) {
-        const a = Math.abs(mod(i - home.p.value + n / 2, n) - n / 2);
-        if (a < 1) {
-          const k = 1 - a;
-          weight += k * k * (3 - 2 * k);
-        }
-      }
-      return { opacity: Math.min(1, weight) * (1 - hs) };
+    const weight = carouselGlowWeight(hues, hue, home.p.value, uploading);
+    if (uploading) {
+      // The pull already revealed the Add glow. Blend back only when leaving Upload.
+      const t = uploadGlowReturn(home.uploadReturn.value);
+      return { opacity: weight * t };
     }
-    return { opacity: isCurrent ? 1 : 0 };
+    const pull = home.vy.value < 0 ? Math.min(1, -home.vy.value / 90) : 0;
+    const hs = Math.max(pull, home.gap.value);
+    return { opacity: weight * (1 - hs) };
   });
   return <GlowLayer hue={hue} style={style} />;
 }
-function NewGlow({ hue, screen, home, empty }: { hue: HueName; screen: NavState['screen']; home: HomeShared; empty: boolean }) {
+function NewGlow({ hue, uploading, home, empty }: { hue: HueName; uploading: boolean; home: HomeShared; empty: boolean }) {
   const style = useAnimatedStyle(() => {
-    if (screen === 'upload') return { opacity: 1 - Math.min(1, ((1 - home.uploadBlur.value) * 260) / 220) };
-    if (screen !== 'home') return { opacity: 0 };
+    if (empty) return { opacity: 1 };
+    if (uploading) return { opacity: 1 - uploadGlowReturn(home.uploadReturn.value) };
     const pull = home.vy.value < 0 ? Math.min(1, -home.vy.value / 90) : 0;
-    return { opacity: empty ? 1 : Math.max(pull, home.gap.value) };
+    return { opacity: Math.max(pull, home.gap.value) };
   });
   return <GlowLayer hue={hue} style={style} />;
 }

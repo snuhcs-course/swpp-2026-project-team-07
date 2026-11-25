@@ -10,6 +10,25 @@ export const SLOT_W = 260, SLOT_H = 223, SLOT_TOP = 61;
 /** Point inside a slot (from its top) that stays fixed while the slot scales. */
 export const ORIGIN_Y = 111;
 export const deckIconSize = (compact: boolean) => (compact ? 120 : 146);
+
+// The moving title lands before blending into the Home card's text layout.
+export const HOME_TITLE_LANDING = 0.74;
+export const HOME_TITLE_BLENDED = 0.90;
+
+export function homeTitleReveal(progress: number) {
+  'worklet';
+  return Math.max(0, Math.min(1, (progress - HOME_TITLE_LANDING) / (HOME_TITLE_BLENDED - HOME_TITLE_LANDING)));
+}
+
+export function homeSlideCountReveal(progress: number) {
+  'worklet';
+  return Math.max(0, Math.min(1, (progress - 0.68) / 0.28));
+}
+
+export function uploadGlowReturn(progress: number) {
+  'worklet';
+  return Math.min(1, progress * 260 / 220);
+}
 /** Size of the "New presentation" icon while a PDF is analysed, relative to Home. */
 export const ANALYZE_ICON_SCALE = 0.58;
 

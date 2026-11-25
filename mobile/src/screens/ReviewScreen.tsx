@@ -3,20 +3,20 @@
 // OpenAI Codex compact slide review and scrubber label.
 // OpenAI Codex Review exit underlay and duration colours.
 // Supplied Claude-generated patch, integrated by OpenAI Codex for Iteration 2 (2026-11-21): every review in full on the
-// page (canvas L3); text shrinks to fit; grades and recovery actions on the last page instead of a pop-up.
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Pressable, StyleSheet, View, type GestureResponderEvent, type PanResponderGestureState } from 'react-native';
-import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+// page (canvas L3); grades and recovery actions on the last page instead of a pop-up.
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { Pressable, ScrollView, StyleSheet, View, type GestureResponderEvent, type LayoutChangeEvent, type PanResponderGestureState, type TextProps } from 'react-native';
+import Animated, { runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Enter, Txt, useFrame } from '../design/frame';
 import { Glyph } from '../design/icons';
 import { PanView } from '../design/PanView';
-import { EASE_SCREEN, F } from '../design/tokens';
+import { EASE_SCREEN, F, FRAME_W } from '../design/tokens';
 import { useTheme } from '../design/theme';
 import { useUiText } from '../design/language';
 import { HintRow, PageSurface } from '../design/ui';
 import { MiniSlide } from '../design/SlideCard';
 import { fmt, relativeDay } from '../domain/format';
-import { BACK_FADE_Y, BACK_T } from '../domain/gestures';
+import { BACK_FADE_Y, REVIEW_PAGE_SWIPE } from '../domain/gestures';
 import { runLabel } from '../domain/run';
 import { compactFeedbackRows } from '../features/feedback/compactFeedbackRows';
 import { slideText } from '../domain/lines';
@@ -33,8 +33,11 @@ import { scoreLevelColor } from '../features/feedback/presentationScoreDisplay';
 import { useRunFeedbackStatus } from '../features/feedback/useRunFeedbackStatus';
 import { SlideReviewDetails } from '../features/feedback/SlideReviewDetails';
 import { useBack, useNow, useShell } from './shared';
+import { usePageFooter } from './pageFooter';
 import { SWIPE_ENTRY_X, useHorizontalSwipeMotion } from './swipeMotion';
 
+const CONTENT_TOP=46;
+const CONTENT_INSET=24;
 const EMPTY_SCORE:ScoreDisplay={score:null,level:null,status:'Not graded',state:null,result:null,target:null};
 
 export function ReviewScreen({active=true}:{active?:boolean}) {
@@ -44,10 +47,12 @@ export function ReviewScreen({active=true}:{active?:boolean}) {
  return <ReviewContent key={JSON.stringify([nav.deckId,nav.sel,model?.state.run?.parts[nav.sel]])} model={model} active={active} initialX={initialX}/>;
 }
 function ReviewContent({model,active,initialX}:{model:DeckModel|null;active:boolean;initialX:number}) {
- const {c}=useTheme(),{go,nav}=useShell(),frame=useFrame(),ui=useUiText();
+ const {c}=useTheme(),{go,nav,footerHandoff}=useShell(),frame=useFrame(),ui=useUiText();
+ const reducedMotion=useReducedMotion();
  const n=model?.n??0;
  const s=Math.max(0,Math.min(Math.max(0,n-1),nav.sel));
  const runScores=useRunScores(model,active,s,true),v3=runScores.v3,v3Item=v3?.items[s]??null,v3Slide=v3Item?.v3??null;
+ const canRequest=v3?.canRequest!==false&&!v3?.budgetRetry;
  const feedback=useRunFeedbackStatus(model,active&&!v3,v3?undefined:s),item=feedback.items[s];
  const duration=model?.times[s]??0,allocation=model?.deck.targets[s]??0;
  const spokenText=slideText(model?.lines??[],s);
@@ -57,25 +62,45 @@ function ReviewContent({model,active,initialX}:{model:DeckModel|null;active:bool
  const slideReviewRows=compactFeedbackRows(s,item,{durationSeconds:duration,allocationSeconds:allocation,fillerCount});
  const [issueIndex,setIssueIndex]=useState(0);
  const pendingPageEnter=useRef<number|null>(null);
+ const scroll=useRef({top:0,viewport:0,content:0,y:0});
+ const [canScroll,setCanScroll]=useState(false);
  const findingRows=slideReviewRows.flatMap(row=>row.findings);
  const recorded=!!model?.state.run?.parts[s]?.segments.some(segment=>segment.endMs>segment.startMs);
  const scores=runScores.scores,scoreItem=scores.items[s]??EMPTY_SCORE;
  const player=useSegmentPlayer(),stopPlayback=player.stop;
  const dy=useSharedValue(0),backExiting=useRef(false);
+ const hasPreviewUnderlay=footerHandoff?.underlay?.screen==='rehearse';
+ const footer=usePageFooter(active,dy,'rehearse');
  const swipe=useHorizontalSwipeMotion({slideOnly:true,initialX,active});
  const now=useNow();
- useEffect(()=>{if(!active){pendingPageEnter.current=null;backExiting.current=false;dy.set(0);stopPlayback();}},[active,dy,stopPlayback]);
+ useLayoutEffect(()=>{
+  const offset=pendingPageEnter.current;
+  if(offset===null)return;
+  pendingPageEnter.current=null;
+  swipe.enterFrom(offset);
+ },[issueIndex,swipe]);
+ useEffect(()=>{if(!active){pendingPageEnter.current=null;backExiting.current=false;if(dy.get()>0)dy.set(0);stopPlayback();}},[active,dy,stopPlayback]);
  useEffect(()=>()=>stopPlayback(),[stopPlayback]);
  const toBack=useCallback(()=>{pendingPageEnter.current=null;swipe.cancel();stopPlayback();go('rehearse',{deckId:nav.deckId,slide:s,sel:s});},[go,nav.deckId,s,stopPlayback,swipe]);
  const toQA=useCallback(()=>{pendingPageEnter.current=null;swipe.cancel();stopPlayback();go('qa',{nav:'fade',deckId:nav.deckId,sel:s,from:'review'});},[go,nav.deckId,s,stopPlayback,swipe]);
  const toFull=useCallback(()=>{pendingPageEnter.current=null;swipe.cancel();stopPlayback();go('full',nav.from==='full'?{deckId:nav.deckId,sel:s}:{deckId:nav.deckId,sel:s,from:'rehearse'});},[go,nav.deckId,nav.from,s,stopPlayback,swipe]);
- useBack(active,()=>{toBack();return true;});
+ useBack(active,()=>{if(!backExiting.current)toBack();return true;});
+ const resetSwipe=()=>dy.set(withTiming(0,{duration:REVIEW_PAGE_SWIPE.resetMs,easing:EASE_SCREEN}));
+ const shouldNavigate=(e:GestureResponderEvent,g:PanResponderGestureState)=>{
+  if(!active||backExiting.current)return false;
+  if(Math.abs(g.dx)>16&&Math.abs(g.dx)>Math.abs(g.dy))return true;
+  if(Math.abs(g.dy)<=8||Math.abs(g.dy)<=Math.abs(g.dx))return false;
+  const {top,viewport,content,y}=scroll.current;
+  const gestureStartX=(e.nativeEvent.pageX-g.dx-frame.left)/frame.s;
+  const gestureStartY=(e.nativeEvent.pageY-g.dy-frame.top)/frame.s;
+  if(gestureStartX<CONTENT_INSET||gestureStartX>=FRAME_W-CONTENT_INSET||
+   gestureStartY<top||gestureStartY>=top+viewport||content<=viewport+1)return true;
+  // An outward swipe at either edge still navigates. Inside the scroll range the review can be read.
+  return g.dy>0?y<=1:y+viewport>=content-1;
+ };
  const pan={
-  onMoveShould:(e:GestureResponderEvent,g:PanResponderGestureState)=>{
-   const y=(e.nativeEvent.pageY-frame.top)/frame.s;
-   return !backExiting.current&&Math.abs(g.dy)>8&&Math.abs(g.dy)>Math.abs(g.dx)&&
-    !(y>264&&y<360&&Math.abs(g.dx)>4) || !backExiting.current&&Math.abs(g.dx)>16&&Math.abs(g.dx)>Math.abs(g.dy);
-  },
+  onMoveShouldCapture:shouldNavigate,
+  onMoveShould:shouldNavigate,
   onMove:(_e:GestureResponderEvent,g:PanResponderGestureState)=>{if(Math.abs(g.dx)>Math.abs(g.dy)){swipe.move(g.dx/frame.s);dy.set(0);}else{swipe.cancel();dy.set(Math.max(-BACK_FADE_Y,Math.min(BACK_FADE_Y,g.dy/frame.s)));}},
   onRelease:(_e:GestureResponderEvent,g:PanResponderGestureState)=>{
    if(Math.abs(g.dx/frame.s)>48&&Math.abs(g.dx)>Math.abs(g.dy)){
@@ -85,14 +110,24 @@ function ReviewContent({model,active,initialX}:{model:DeckModel|null;active:bool
     else {const next=s+direction;if(next>=0&&next<n){swipe.exitTo(direction>0?-390:390,()=>{stopPlayback();go('review',{deckId:nav.deckId,sel:next,swipeFrom:s});});}else if(next>=n)toFull();else swipe.settle();}
     return;
    }
-   if(dy.get()>BACK_T){backExiting.current=true;dy.set(withTiming(BACK_FADE_Y,{duration:460,easing:EASE_SCREEN},done=>{if(done)runOnJS(toBack)();}));}
-   else if(dy.get() < -BACK_T){backExiting.current=true;dy.set(0);toQA();}
-   else dy.set(withTiming(0,{duration:360,easing:EASE_SCREEN}));
+   if(dy.get()>REVIEW_PAGE_SWIPE.distance){
+    backExiting.current=true;
+    dy.set(withTiming(BACK_FADE_Y,{duration:REVIEW_PAGE_SWIPE.exitMs,easing:EASE_SCREEN},done=>{if(done)runOnJS(toBack)();}));
+   }else if(dy.get() < -REVIEW_PAGE_SWIPE.distance){
+    backExiting.current=true;
+    resetSwipe();
+    toQA();
+   }else resetSwipe();
    swipe.settle();
   },
-  onTerminate:()=>{swipe.settle();if(!backExiting.current)dy.set(withTiming(0,{duration:360,easing:EASE_SCREEN}));},
+  onTerminate:()=>{swipe.settle();if(!backExiting.current)resetSwipe();},
  };
- const screen=useAnimatedStyle(()=>({opacity:Math.max(0,1-Math.max(0,dy.value)/BACK_FADE_Y)}));
+ const pageFade=useAnimatedStyle(()=>({opacity:hasPreviewUnderlay?1-Math.max(0,dy.value)/BACK_FADE_Y:1}));
+ const contentMotion=useAnimatedStyle(()=>({
+  // An upward pull gives feedback while keeping the surface opaque under Q&A.
+  transform:[{translateY:reducedMotion?0:Math.min(0,dy.value)*0.18}],
+  opacity:hasPreviewUnderlay?1:1-Math.max(0,dy.value)/BACK_FADE_Y,
+ }));
  if(!model||!model.state.run)return null;
  const {deck,times,state}=model,run=state.run!;
  const t=times[s]??0,target=deck.targets[s]??0,timingLabel=slideTimingLabel(t,target);
@@ -119,20 +154,21 @@ function ReviewContent({model,active,initialX}:{model:DeckModel|null;active:bool
  const v3Empty:[string,string]|null=!v3||!v3Item?null:v3Slide?.status==='not_applicable'?['Reviewed with the whole presentation',CODE_REASON_TEXT[v3Slide.reason??'']??'']
   :v3Slide?.status==='insufficient_evidence'?['Too little to judge',`The AI could not grade slide ${s+1} from what was said. Record it again with a fuller explanation.`]
   :v3Slide?.status==='not_recorded'?['Not recorded in this take',CODE_REASON_TEXT.slide_not_visited]
-  :!v3Item.settled?['Feedback in progress…','Slide feedback appears here as soon as it is ready.']
-  :v3Item.status==='Feedback failed'?['Feedback failed','Use Retry feedback below to try again.']
-  :v3Item.status==='Not graded'?['No AI feedback yet','Use Get AI feedback below to request it for this recording.']:null;
+  :!v3Item.settled?canRequest?['Feedback in progress…','Slide feedback appears here as soon as it is ready.']:['Online feedback unavailable','']
+  :v3Item.status==='Feedback failed'?['Feedback failed',canRequest?'Use Retry feedback below to try again.':'']
+  :v3Item.status==='Not graded'?['No AI feedback yet',canRequest?'Use Get AI feedback below to request it for this recording.':'']:null;
  const page=Math.min(issueIndex,pageCount-1),issue=issueItems[page]??null;
  const changePage=(target:number)=>{
   if(target<0||target>=pageCount||target===issueIndex||pendingPageEnter.current!==null)return;
   const forward=target>issueIndex;
   swipe.exitTo(forward?-390:390,()=>{
-   // OpenAI Codex, 2026-11-21: keep the outgoing review offscreen until the next fitted page is ready.
    pendingPageEnter.current=forward?SWIPE_ENTRY_X:-SWIPE_ENTRY_X;
+   scroll.current.content=0;
+   scroll.current.y=0;
+   setCanScroll(false);
    setIssueIndex(target);
   });
  };
- const revealPage=()=>{const offset=pendingPageEnter.current;if(offset===null)return;pendingPageEnter.current=null;swipe.enterFrom(offset);};
  const part=run.parts[s],slidePlayKey=`slide:${deck.id}:${s}`;
  const slideAudioUri=part?audioOf(part.attemptId):null;
  const isSlideSelected=player.playingKey===slidePlayKey,slidePlaying=isSlideSelected&&!player.paused;
@@ -144,22 +180,29 @@ function ReviewContent({model,active,initialX}:{model:DeckModel|null;active:bool
    .map(segment=>({uri:slideAudioUri,...segment})));
  };
 
- // Fixed boxes (design frame): the page box runs from below the slide row to just above the page dots.
- const boxTop=182,boxBottom=frame.compact?694:756,boxHeight=boxBottom-boxTop;
+ const boxBottom=frame.compact?694:756;
+ const updateScrollAvailability=()=>{setCanScroll(scroll.current.viewport>0&&scroll.current.content>scroll.current.viewport+1);};
+ const onPageLayout=(e:LayoutChangeEvent)=>{
+  const {y,height}=e.nativeEvent.layout;
+  scroll.current.top=CONTENT_TOP+y;
+  scroll.current.viewport=height;
+  updateScrollAvailability();
+ };
  const status=v3&&v3Item?(v3Item.score!==null?`Slide score ${v3Item.score} · ${levelLabel(v3Item.level)}`:v3Item.status):item?.label??'Not analyzed';
  const emptyTitle=insufficient?'Too little speech to review':v3Empty?v3Empty[0]:legacyStatus??'Nothing to fix on this slide';
  const emptyBody=insufficient?`Record slide ${s+1} again to get feedback based on your delivery.`:v3Empty?v3Empty[1]:legacyStatus?'The status and recovery options are below.':'';
- const needsRetry=!!v3&&!!v3Item&&(v3Slide?.status==='failed'||v3Item.status==='Feedback failed');
- const needsUpdate=!!v3&&!!v3Item?.outdated;
- const needsRequest=!!v3&&v3Item?.status==='Not graded'&&recorded;
+ const needsRetry=canRequest&&!!v3Item&&(v3Slide?.status==='failed'||v3Item.status==='Feedback failed');
+ const needsUpdate=canRequest&&!!v3Item?.outdated;
+ const needsRequest=canRequest&&v3Item?.status==='Not graded'&&recorded;
  const legacyRecovery=!v3&&recorded&&!!part&&(!item?.assessed||!scoreStrength);
  const timeColor=timingLabel==='Over time'?c.warn:c.secondary;
- return <><Enter kind={active?nav.nav:null}><PanView style={StyleSheet.absoluteFill} {...pan}>
+ return <><Enter kind={active?nav.nav:null} duration={REVIEW_PAGE_SWIPE.enterMs}><PanView style={[StyleSheet.absoluteFill,pageFade]} {...pan}>
   <PageSurface hue={deck.hue}/>
-  <Animated.View style={[StyleSheet.absoluteFill,screen]}>
-   {/* OpenAI Codex, 2026-11-21: keep slide identity and audio fixed while review pages move. */}
+  <Animated.View style={[StyleSheet.absoluteFill,contentMotion]}>
+   <View style={[styles.content,{height:boxBottom-CONTENT_TOP}]}>
+   {/* Keep slide identity and audio fixed while review pages move. */}
    <View style={styles.header}>
-    <Txt numberOfLines={1} style={[styles.title,{color:c.text}]}>{`Slide ${s+1} of ${n}`}</Txt><Txt verbatim numberOfLines={1} style={[styles.label,{color:c.secondary}]}>{deck.slides[s]?.title ?? ui(runLabel(run,now,relativeDay))}</Txt>
+    <Txt style={[styles.title,{color:c.text}]}>{`Slide ${s+1} of ${n}`}</Txt><Txt verbatim style={[styles.label,{color:c.secondary}]}>{deck.slides[s]?.title ?? ui(runLabel(run,now,relativeDay))}</Txt>
    </View>
    {/* Slide row: thumbnail with the score, the three numbers, and the slide's play button (the only playback here). */}
    <View style={styles.slideRow}>
@@ -168,14 +211,16 @@ function ReviewContent({model,active,initialX}:{model:DeckModel|null;active:bool
      <View style={[styles.scoreBadge,{backgroundColor:scoreItem.score===null?c.surface:scoreLevelColor(scoreItem.level,c)}]}><Txt style={[styles.scoreBadgeText,{color:scoreItem.score===null?c.secondary:c.onAccent}]}>{scoreItem.score===null?'—':scoreItem.score}</Txt></View>
     </View>
     <View style={styles.facts}>
-     <Txt numberOfLines={1} style={[styles.fact,{color:timeColor}]}>{`${fmt(t)} of ${fmt(target)} planned`}</Txt>
-     <Txt numberOfLines={1} style={[styles.fact,{color:c.secondary}]}>{`${fillerValue} filler${fillerValue==='1'?'':'s'}`}</Txt>
-     <Txt numberOfLines={1} style={[styles.fact,{color:pointsSaid!==null&&pointsSaid<pointList.length?c.warn:c.secondary}]}>{pointList.length?`${pointsSaid===null?'—':pointsSaid} of ${pointList.length} points said`:'No slide points'}</Txt>
+     <Txt style={[styles.fact,{color:timeColor}]}>{`${fmt(t)} of ${fmt(target)} planned`}</Txt>
+     <Txt style={[styles.fact,{color:c.secondary}]}>{`${fillerValue} filler${fillerValue==='1'?'':'s'}`}</Txt>
+     <Txt style={[styles.fact,{color:pointsSaid!==null&&pointsSaid<pointList.length?c.warn:c.secondary}]}>{pointList.length?`${pointsSaid===null?'—':pointsSaid} of ${pointList.length} points said`:'No slide points'}</Txt>
     </View>
     <Pressable accessibilityRole="button" accessibilityLabel={ui(slidePlaying?'Pause slide audio':`Play slide ${s+1} audio`)} disabled={!slideAudioUri||!part} onPress={playSlide} style={[styles.play,{backgroundColor:c.surface,borderColor:c.hair}]}><Glyph name={slidePlaying?'p-pause':'p-play'} size={18} color={c.text}/></Pressable>
    </View>
-   <Animated.View style={[styles.box,{top:boxTop,height:boxHeight},swipe.style]}>
-    <FitPage key={JSON.stringify([s,page,ui('Review'),issue?[issue.headline,issue.explanation,issue.steps]:[scoreStrength,mustCover.map(m=>m.point),v3Slide?.criteria.map(cr=>[cr.label,cr.reason])]])} height={boxHeight} onReady={revealPage}>
+   <Animated.View onLayout={onPageLayout} style={[styles.box,swipe.style]}>
+    <ScrollView key={page} style={styles.reviewScroll} scrollEnabled={canScroll}
+     onContentSizeChange={(_width,height)=>{scroll.current.content=height;updateScrollAvailability();}}
+     onScroll={e=>{scroll.current.y=e.nativeEvent.contentOffset.y;}} scrollEventThrottle={16} overScrollMode="never">
      {issue?<ReviewCard issue={issue} meta={`${v3Item?.outdated?ui('OUTDATED')+' · ':''}${ui(issue.category).toUpperCase()}`} count={ui(`${page+1} of ${issueItems.length}`)}/>
       :<SlideSummary status={status} empty={issueItems.length?null:[emptyTitle,emptyBody]} notices={[v3?.notice??'',v3Slide?.reason?CODE_REASON_TEXT[v3Slide.reason]??v3Slide.reason:'',v3Item?.outdated?'These results are from before your latest transcript or settings changes.':''].filter(Boolean)}
         strength={scoreStrength} mustCover={mustCover} criteria={v3Slide?.criteria??[]}
@@ -188,56 +233,43 @@ function ReviewContent({model,active,initialX}:{model:DeckModel|null;active:bool
         {findingRows.filter(f=>f.category==='timing').map((f,i)=><SummaryFinding key={i} observation={f.observation} suggestion={f.suggestion}/>)}
        </SlideReviewDetails>:null}
       </SlideSummary>}
-    </FitPage>
+    </ScrollView>
    </Animated.View>
+   </View>
    <View style={[styles.dots,{top:boxBottom+8}]}>{Array.from({length:pageCount},(_,i)=><Pressable key={i} accessibilityRole="button" accessibilityLabel={ui(i<issueItems.length?`Show issue ${i+1}`:'Show grades and actions')} onPress={()=>changePage(i)} style={styles.dotHit}><View style={[styles.dot,{backgroundColor:i===page?c.strong:c.dotOff}]}/></Pressable>)}</View>
-  </Animated.View></PanView>
-</Enter>
+  </Animated.View>
+ </PanView></Enter>
  {/* OpenAI Codex, 2026-11-20: issue navigation moves content while the footer stays in place. */}
- {active&&<HintRow hints={[{icon:'h-spin',text:'Next review'},{icon:'h-up',text:'Q&A',nudge:'up'},{icon:'h-dn',text:'Slide preview',nudge:'down'}]}/>}
+ {footer.visible&&<Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill,footer.style]}>
+  <HintRow hints={[{icon:'h-spin',text:'Next review'},{icon:'h-up',text:'Q&A',nudge:'up'},{icon:'h-dn',text:'Slide preview',nudge:'down'}]}/>
+ </Animated.View>}
  </>;
 }
 
-// ── Fit to the box: measure and shrink the page so vertical drags remain navigation gestures. ──
-const Fit=createContext(1);
-/** Children size with useFit(); an overlong page stays hidden until it fits without scrolling. */
-function FitPage({height,children,onReady}:{height:number;children:ReactNode;onReady?:()=>void}){
- const [fit,setFit]=useState<{scale:number;ready:boolean}>({scale:1,ready:false});
- // OpenAI Codex, 2026-11-21: no nested ScrollView may take the downward gesture from Review.
- return <View style={{height,overflow:'hidden'}}>
-  <View testID="reviewFitContent" style={{opacity:fit.ready?1:0}} onLayout={e=>{
-   const h=e.nativeEvent.layout.height;
-   if(h<=0)return;
-   if(h<=height+1){if(!fit.ready){setFit({...fit,ready:true});onReady?.();}return;}
-   const scale=Math.max(0.05,fit.scale*height/h*0.98);
-   if(scale<fit.scale-0.001)setFit({scale,ready:false});
-   else if(!fit.ready){setFit({...fit,ready:true});onReady?.();}
-  }}><Fit.Provider value={fit.scale}>{children}</Fit.Provider></View>
- </View>;
+function ReviewText(props:TextProps&{verbatim?:boolean}) {
+ return <Txt maxFontSizeMultiplier={0} {...props}/>;
 }
-const useFit=()=>{const z=useContext(Fit);return (n:number)=>Math.round(n*z*10)/10;};
 
 type ReviewIssue={headline:string;explanation:string[];example:string;steps:string[];gain:number|null;quote:{text:string}|null};
 function Bullets({items,color,dot,size,line}:{items:string[];color:string;dot:string;size:number;line:number}){
- const z=useFit();
- return <View style={{gap:z(7)}}>{items.map((text,i)=><View key={i} style={[styles.bullet,{gap:z(10)}]}>
-  <View style={[styles.bulletDot,{width:z(5),height:z(5),borderRadius:z(3),backgroundColor:dot,marginTop:z(line/2-2.5)}]}/><Txt verbatim style={[styles.bulletText,{color,fontSize:z(size),lineHeight:z(line)}]}>{text}</Txt></View>)}</View>;
+ return <View style={{gap:7}}>{items.map((text,i)=><View key={i} style={[styles.bullet,{gap:10}]}>
+  <View style={[styles.bulletDot,{width:5,height:5,borderRadius:3,backgroundColor:dot,marginTop:line/2-2.5}]}/><ReviewText verbatim style={[styles.bulletText,{color,fontSize:size,lineHeight:line}]}>{text}</ReviewText></View>)}</View>;
 }
 /** One review, every word shown: what is wrong, why, what you said, what to say and do instead. */
 function ReviewCard({issue,meta,count}:{issue:ReviewIssue;meta:string;count:string}){
- const {c}=useTheme(),z=useFit();
- const kicker=(text:string,color:string)=><Txt style={[styles.kicker,{color,fontSize:z(12.5),lineHeight:z(16)}]}>{text}</Txt>;
- return <View style={[styles.card,{padding:z(18),borderRadius:z(22),borderColor:c.hair,backgroundColor:c.surface06}]}>
-  <View style={[styles.cardTop,{gap:z(8)}]}>{kicker(`${meta} · ${count.toUpperCase()}`,c.secondary)}
-   {!!issue.gain&&<Txt style={[styles.gain,{color:c.accent,backgroundColor:c.accentSoft,fontSize:z(13),lineHeight:z(18),paddingHorizontal:z(9),paddingVertical:z(2)}]}>{`+${issue.gain} pts`}</Txt>}</View>
-  <Txt verbatim style={[styles.headline,{color:c.text,marginTop:z(8),fontSize:z(22),lineHeight:z(28)}]}>{issue.headline}</Txt>
-  {!!issue.explanation.length&&<View style={{marginTop:z(8)}}><Bullets items={issue.explanation} color={c.secondary} dot={c.tertiary} size={15} line={21}/></View>}
-  {!!issue.quote&&<View style={[styles.said,{borderRadius:z(16),marginTop:z(14),padding:z(12),paddingHorizontal:z(14),backgroundColor:c.surface08}]}>{kicker('YOU SAID',c.tertiary)}
-   <Txt verbatim style={[styles.quote,{color:c.body,marginTop:z(5),fontSize:z(15.5),lineHeight:z(21)}]}>{`“${issue.quote.text}”`}</Txt></View>}
-  {!!(issue.example||issue.steps.length)&&<View style={[styles.try,{borderRadius:z(16),marginTop:z(10),padding:z(14),backgroundColor:c.accentSoft,borderColor:c.accent}]}>
-   {!!issue.example&&<>{kicker('TRY SAYING',c.accent)}<Txt verbatim style={[styles.example,{color:c.text,marginTop:z(5),fontSize:z(16.5),lineHeight:z(22)}]}>{`“${issue.example}”`}</Txt>
-    {!!issue.steps.length&&<View style={[styles.split,{backgroundColor:c.accent,marginVertical:z(12)}]}/>}</>}
-   {!!issue.steps.length&&<>{kicker('DO THIS',c.accent)}<View style={{marginTop:z(6)}}><Bullets items={issue.steps} color={c.text} dot={c.accent} size={15} line={20}/></View></>}
+ const {c}=useTheme();
+ const kicker=(text:string,color:string)=><ReviewText style={[styles.kicker,{color,fontSize:12.5,lineHeight:16}]}>{text}</ReviewText>;
+ return <View style={[styles.card,{padding:18,borderRadius:22,borderColor:c.hair,backgroundColor:c.surface06}]}>
+  <View style={[styles.cardTop,{gap:8}]}>{kicker(`${meta} · ${count.toUpperCase()}`,c.secondary)}
+   {!!issue.gain&&<ReviewText style={[styles.gain,{color:c.accent,backgroundColor:c.accentSoft,fontSize:13,lineHeight:18,paddingHorizontal:9,paddingVertical:2}]}>{`+${issue.gain} pts`}</ReviewText>}</View>
+  <ReviewText verbatim style={[styles.headline,{color:c.text,marginTop:8,fontSize:22,lineHeight:28}]}>{issue.headline}</ReviewText>
+  {!!issue.explanation.length&&<View style={{marginTop:8}}><Bullets items={issue.explanation} color={c.secondary} dot={c.tertiary} size={15} line={21}/></View>}
+  {!!issue.quote&&<View style={[styles.said,{borderRadius:16,marginTop:14,padding:12,paddingHorizontal:14,backgroundColor:c.surface08}]}>{kicker('YOU SAID',c.tertiary)}
+   <ReviewText verbatim style={[styles.quote,{color:c.body,marginTop:5,fontSize:15.5,lineHeight:21}]}>{`“${issue.quote.text}”`}</ReviewText></View>}
+  {!!(issue.example||issue.steps.length)&&<View style={[styles.try,{borderRadius:16,marginTop:10,padding:14,backgroundColor:c.accentSoft,borderColor:c.accent}]}>
+   {!!issue.example&&<>{kicker('TRY SAYING',c.accent)}<ReviewText verbatim style={[styles.example,{color:c.text,marginTop:5,fontSize:16.5,lineHeight:22}]}>{`“${issue.example}”`}</ReviewText>
+    {!!issue.steps.length&&<View style={[styles.split,{backgroundColor:c.accent,marginVertical:12}]}/>}</>}
+   {!!issue.steps.length&&<>{kicker('DO THIS',c.accent)}<View style={{marginTop:6}}><Bullets items={issue.steps} color={c.text} dot={c.accent} size={15} line={20}/></View></>}
   </View>}
  </View>;
 }
@@ -245,65 +277,63 @@ type Criterion={id:string;label:string;level:Parameters<typeof levelLabel>[0];po
 /** The last page leads with the three feedback sections; exceptional and legacy recovery follows them. */
 function SlideSummary({status,empty,notices,strength,mustCover,criteria,actions,children}:{status:string;empty:[string,string]|null;notices:string[];strength:string|null;
  mustCover:{point:string;status:'covered'|'partial'|'missing'}[];criteria:Criterion[];actions:ReactNode;children:ReactNode}){
- const {c}=useTheme(),z=useFit(),ui=useUiText();
- const kicker=(text:string,color:string)=><Txt style={[styles.kicker,{color,fontSize:z(12.5),lineHeight:z(16)}]}>{text}</Txt>;
- const body=(text:string,color:string)=><Txt verbatim style={[styles.bodyText,{color,fontSize:z(15),lineHeight:z(21)}]}>{text}</Txt>;
- const block={padding:z(20),borderRadius:z(22),borderWidth:1,borderColor:c.hair,backgroundColor:c.surface04,gap:z(10)};
+ const {c}=useTheme(),ui=useUiText();
+ const kicker=(text:string,color:string)=><ReviewText style={[styles.kicker,{color,fontSize:12.5,lineHeight:16}]}>{text}</ReviewText>;
+ const body=(text:string,color:string)=><ReviewText verbatim style={[styles.bodyText,{color,fontSize:15,lineHeight:21}]}>{text}</ReviewText>;
+ const block={padding:20,borderRadius:22,borderWidth:1,borderColor:c.hair,backgroundColor:c.surface04,gap:10};
  const hasFeedback=!!strength||mustCover.length>0||criteria.length>0;
  const hasRecovery=!!children||notices.length>0||!!actions;
- return <View style={{gap:z(16)}}>
+ return <View style={{gap:16}}>
   {/* OpenAI Codex, 2026-11-21: replace the former status/action card with a concise summary title. */}
-  <Txt style={[styles.summaryTitle,{color:c.text,fontSize:z(22),lineHeight:z(28)}]}>Overall per-slide feedback</Txt>
+  <ReviewText style={[styles.summaryTitle,{color:c.text,fontSize:22,lineHeight:28}]}>Overall per-slide feedback</ReviewText>
   {!!strength&&<View style={[block,{borderColor:c.good}]}>{kicker('WHAT WORKED',c.good)}{body(strength,c.body)}</View>}
   {!!mustCover.length&&<View style={block}>{kicker('MUST COVER',c.secondary)}
-   {mustCover.map((m,i)=><View key={i} style={[styles.must,{gap:z(8)}]}><Txt style={[styles.mustIcon,{width:z(18),color:m.status==='covered'?c.good:m.status==='partial'?c.gold:c.bad,fontSize:z(15),lineHeight:z(21)}]}>{m.status==='covered'?'✓':m.status==='partial'?'◐':'✗'}</Txt>
+   {mustCover.map((m,i)=><View key={i} style={[styles.must,{gap:8}]}><ReviewText style={[styles.mustIcon,{width:18,color:m.status==='covered'?c.good:m.status==='partial'?c.gold:c.bad,fontSize:15,lineHeight:21}]}>{m.status==='covered'?'✓':m.status==='partial'?'◐':'✗'}</ReviewText>
     <View style={styles.flex}>{body(m.point,c.text)}</View></View>)}</View>}
   {!!criteria.length&&<View style={block}>{kicker('HOW IT WAS GRADED',c.secondary)}
-   {criteria.map(cr=><View key={cr.id} style={{gap:z(3)}}><View style={[styles.criterionTop,{gap:z(8)}]}><Txt verbatim style={[styles.criterion,{color:c.text,fontSize:z(15.5),lineHeight:z(21)}]}>{cr.label}</Txt>
-    <Txt style={[styles.level,{color:scoreLevelColor(cr.level,c),fontSize:z(13.5),lineHeight:z(21)}]}>{cr.level?`${ui(levelLabel(cr.level))} · ${Math.round((cr.points??0)*10)/10}/${cr.maximum_points}`:'Not assessed'}</Txt></View>
+   {criteria.map(cr=><View key={cr.id} style={{gap:3}}><View style={[styles.criterionTop,{gap:8}]}><ReviewText verbatim style={[styles.criterion,{color:c.text,fontSize:15.5,lineHeight:21}]}>{cr.label}</ReviewText>
+    <ReviewText style={[styles.level,{color:scoreLevelColor(cr.level,c),fontSize:13.5,lineHeight:21}]}>{cr.level?`${ui(levelLabel(cr.level))} · ${Math.round((cr.points??0)*10)/10}/${cr.maximum_points}`:'Not assessed'}</ReviewText></View>
     {!!cr.reason&&body(cr.reason,c.secondary)}</View>)}</View>}
   {(!hasFeedback||hasRecovery)&&<View style={block}>{kicker('FEEDBACK STATUS',c.secondary)}
-   {!hasFeedback&&empty?<><Txt style={[styles.headline,{color:c.text,fontSize:z(22),lineHeight:z(28)}]}>{empty[0]}</Txt>{!!empty[1]&&body(ui(empty[1]),c.secondary)}</>:null}
-   <Txt accessibilityLiveRegion="polite" style={[styles.status,{color:c.text,fontSize:z(15),lineHeight:z(21)}]}>{status}</Txt>
-   {notices.map((text,i)=><Txt key={i} style={[styles.bodyText,{color:c.secondary,fontSize:z(14),lineHeight:z(20)}]}>{text}</Txt>)}
-   {actions&&<View style={[styles.actions,{gap:z(10),marginTop:z(4)}]}>{actions}</View>}
+   {!hasFeedback&&empty?<><ReviewText style={[styles.headline,{color:c.text,fontSize:22,lineHeight:28}]}>{empty[0]}</ReviewText>{!!empty[1]&&body(ui(empty[1]),c.secondary)}</>:null}
+   <ReviewText accessibilityLiveRegion="polite" style={[styles.status,{color:c.text,fontSize:15,lineHeight:21}]}>{status}</ReviewText>
+   {notices.map((text,i)=><ReviewText key={i} style={[styles.bodyText,{color:c.secondary,fontSize:14,lineHeight:20}]}>{text}</ReviewText>)}
+   {actions&&<View style={[styles.actions,{gap:10,marginTop:4}]}>{actions}</View>}
    {children}
   </View>}
  </View>;
 }
 /** A legacy timing finding: it has no page of its own, so it is shown in full on the last page. */
 function SummaryFinding({observation,suggestion}:{observation:string;suggestion:string}){
- const {c}=useTheme(),z=useFit();
- return <View style={{gap:z(4)}}><Txt verbatim style={[styles.status,{color:c.text,fontSize:z(15),lineHeight:z(21)}]}>{observation}</Txt>
-  {!!suggestion&&<Txt verbatim style={[styles.bodyText,{color:c.secondary,fontSize:z(15),lineHeight:z(21)}]}>{suggestion}</Txt>}</View>;
+ const {c}=useTheme();
+ return <View style={{gap:4}}><ReviewText verbatim style={[styles.status,{color:c.text,fontSize:15,lineHeight:21}]}>{observation}</ReviewText>
+  {!!suggestion&&<ReviewText verbatim style={[styles.bodyText,{color:c.secondary,fontSize:15,lineHeight:21}]}>{suggestion}</ReviewText>}</View>;
 }
 function Action({label,onPress,disabled=false,primary=false}:{label:string;onPress:()=>void;disabled?:boolean;primary?:boolean}){
- // OpenAI Codex, 2026-11-21: actions shrink with the rest of a fitted last page.
- const {c}=useTheme(),z=useFit(),ui=useUiText();
+ const {c}=useTheme(),ui=useUiText();
  return <Pressable accessibilityRole="button" accessibilityLabel={ui(label)} accessibilityState={{disabled}} disabled={disabled} onPress={onPress}
-  style={[styles.action,{minHeight:z(44),paddingHorizontal:z(16),borderRadius:z(16)},primary?{backgroundColor:c.accent}:{borderWidth:1,borderColor:c.hair},{opacity:disabled?0.45:1}]}>
-  <Txt style={[styles.actionText,{fontSize:z(15),color:primary?c.onAccent:c.text}]}>{label}</Txt></Pressable>;
+  style={[styles.action,{minHeight:44,paddingHorizontal:16,borderRadius:16},primary?{backgroundColor:c.accent}:{borderWidth:1,borderColor:c.hair},{opacity:disabled?0.45:1}]}>
+  <ReviewText style={[styles.actionText,{fontSize:15,color:primary?c.onAccent:c.text}]}>{label}</ReviewText></Pressable>;
 }
 const styles=StyleSheet.create({
- // Claude, 2026-11-21: slide row, fitted review pages and the last page (canvas L3).
- slideRow:{position:'absolute',left:24,right:24,top:92,height:76,flexDirection:'row',alignItems:'center',gap:12},
+ content:{position:'absolute',left:CONTENT_INSET,right:CONTENT_INSET,top:CONTENT_TOP},
+ slideRow:{marginTop:5,minHeight:76,flexDirection:'row',alignItems:'center',gap:12},
  thumb:{width:128,height:72,borderRadius:12,overflow:'hidden'},facts:{flex:1,minWidth:0},fact:{fontFamily:F.semibold,fontSize:14,lineHeight:20,fontVariant:['tabular-nums']},
  play:{width:44,height:44,borderRadius:22,borderWidth:1,alignItems:'center',justifyContent:'center'},
- box:{position:'absolute',left:24,right:24},
+ box:{flex:1,minHeight:0,marginTop:14},reviewScroll:{flex:1},
  card:{borderRadius:22,borderWidth:1},cardTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},
- kicker:{flexShrink:1,fontFamily:F.bold,letterSpacing:1.1},gain:{fontFamily:F.bold,borderRadius:999,paddingHorizontal:9,paddingVertical:2,overflow:'hidden'},
+ kicker:{flexShrink:1,fontFamily:F.bold,letterSpacing:1.1},gain:{flexShrink:1,fontFamily:F.bold,borderRadius:999,paddingHorizontal:9,paddingVertical:2,overflow:'hidden'},
  headline:{fontFamily:F.display,letterSpacing:-0.2},bullet:{flexDirection:'row',alignItems:'flex-start',gap:10},bulletDot:{width:5,height:5,borderRadius:3},
  bulletText:{flex:1,minWidth:0,fontFamily:F.medium},said:{borderRadius:16},quote:{fontFamily:F.medium},try:{borderRadius:16,borderWidth:1.5},
  example:{fontFamily:F.semibold},split:{height:1,opacity:0.35},status:{fontFamily:F.semibold},bodyText:{fontFamily:F.medium},
  actions:{flexDirection:'row',flexWrap:'wrap'},action:{minHeight:44,paddingHorizontal:16,borderRadius:16,justifyContent:'center'},actionText:{fontFamily:F.bold,fontSize:15},
  must:{flexDirection:'row',alignItems:'flex-start',gap:8},mustIcon:{width:18,fontFamily:F.bold},flex:{flex:1,minWidth:0},
- criterionTop:{flexDirection:'row',justifyContent:'space-between',gap:8},criterion:{flex:1,minWidth:0,fontFamily:F.bold},level:{fontFamily:F.bold},
+ criterionTop:{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between',gap:8},criterion:{flexGrow:1,flexShrink:1,fontFamily:F.bold},level:{flexShrink:1,fontFamily:F.bold},
  summaryTitle:{fontFamily:F.display,letterSpacing:-0.2},
- header:{position:'absolute',left:30,right:30,top:46,alignItems:'center'},title:{fontFamily:F.display,fontSize:18,lineHeight:23},label:{fontFamily:F.medium,fontSize:14,lineHeight:18},
+ header:{paddingHorizontal:6,alignItems:'center'},title:{fontFamily:F.display,fontSize:18,lineHeight:23},label:{fontFamily:F.medium,fontSize:14,lineHeight:18,textAlign:'center'},
  slideHero:{position:'absolute',left:24,right:24,top:100,height:160,borderRadius:18,overflow:'hidden'},heroScrim:{position:'absolute',left:0,right:0,top:0,bottom:0,justifyContent:'flex-end',padding:18,backgroundColor:'rgba(0,0,0,0.24)'},heroLabel:{fontFamily:F.bold,fontSize:13.5,letterSpacing:1.1,color:'#FFFFFF'},heroTitle:{maxWidth:245,fontFamily:F.display,fontSize:23,lineHeight:27,color:'#FFFFFF'},scoreBadge:{position:'absolute',top:5,right:5,minWidth:46,height:26,borderRadius:13,paddingHorizontal:8,alignItems:'center',justifyContent:'center'},scoreBadgeText:{fontFamily:F.bold,fontSize:14},heroPlay:{position:'absolute',right:14,bottom:14,width:40,height:40,borderRadius:20,alignItems:'center',justifyContent:'center'},
  issueCard:{position:'absolute',left:24,right:24,top:284,height:310,borderRadius:24,borderWidth:1,padding:20,gap:10},issueTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},issueMeta:{fontFamily:F.bold,fontSize:13.5,letterSpacing:.4},issueMetaFlex:{flexShrink:1},issueTitle:{fontFamily:F.display,fontSize:22,lineHeight:28},issueBody:{fontFamily:F.medium,fontSize:15,lineHeight:22},evidence:{marginTop:2,paddingTop:12,borderTopWidth:1,gap:4},evidenceHead:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},evidenceLabel:{fontFamily:F.bold,fontSize:13.5,letterSpacing:.5},evidenceListen:{minHeight:36,paddingHorizontal:10,borderRadius:18,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:5},evidenceListenText:{fontFamily:F.semibold,fontSize:13.5},evidenceQuote:{fontFamily:F.medium,fontSize:15,lineHeight:20},detailsLink:{marginTop:'auto',minHeight:44,justifyContent:'center'},detailsLinkText:{fontFamily:F.semibold,fontSize:14},
  dots:{position:'absolute',top:604,left:24,right:24,height:24,flexDirection:'row',justifyContent:'center',alignItems:'center',gap:5},dotHit:{width:22,height:24,alignItems:'center',justifyContent:'center'},dot:{width:6,height:6,borderRadius:3},chips:{position:'absolute',top:634,left:24,right:24,height:36,flexDirection:'row',alignItems:'center',gap:6},chip:{flex:1,minWidth:0,height:34,paddingHorizontal:6,borderRadius:17,borderWidth:1,alignItems:'center',justifyContent:'center'},chipText:{fontFamily:F.semibold,fontSize:13.5},
- content:{position:'absolute',left:16,right:16,top:140,gap:4},
  ringRow:{flexDirection:'row',alignItems:'center',gap:18,paddingHorizontal:8},ringRight:{flex:1,minWidth:0,gap:10},slideLabel:{fontFamily:F.semibold,fontSize:13.5},
  stat:{flexDirection:'row',alignItems:'center',gap:7},statValue:{fontFamily:F.display,fontSize:18,fontVariant:['tabular-nums']},statUnit:{flexShrink:1,fontFamily:F.medium,fontSize:13.5,lineHeight:18},
  timesBlock:{height:88},row:{flexDirection:'row',justifyContent:'space-between',alignItems:'baseline'},section:{fontFamily:F.bold,fontSize:14},bars:{height:44,marginTop:4},barRow:{height:44,flexDirection:'row',alignItems:'flex-end',gap:1},barHit:{position:'relative',flex:1,minWidth:0,height:44,alignItems:'center',justifyContent:'flex-end'},

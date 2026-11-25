@@ -11,12 +11,12 @@ import { translatedAnswer } from '../features/localization/generatedProse';
 // OutLoud redesign: Audience Q&A (SPEC §4.7, §5.7).
 // AI-generated/modified with Claude (Anthropic), Iteration 2 (2026-11-21): question page as canvas S15 (panel on top, the
 // question as a chat message, its slide under it, a fixed space for your answer above the record button); audience names.
-import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, type GestureResponderEvent, type PanResponderGestureState } from 'react-native';
 import { getAppLanguage, useAppLanguage, useUiText } from '../design/language';
 import * as Speech from 'expo-speech';
 import * as Haptics from 'expo-haptics';
-import Animated, { Easing, cancelAnimation, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, cancelAnimation, runOnJS, useAnimatedStyle, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 import { Enter, Txt, useFrame } from '../design/frame';
 import { Glyph, UIIcon } from '../design/icons';
 import { PanView } from '../design/PanView';
@@ -27,7 +27,7 @@ import { Dialog, HintRow, IDLE_WAVE, PageSurface, RecordButton, RecordRing, Wave
 import type { IconKey } from '../domain/analysis';
 import { AUDIENCES } from '../domain/presentationRequirements';
 import { fmt, quote } from '../domain/format';
-import { BACK_FADE_Y, BACK_T } from '../domain/gestures';
+import { BACK_FADE_Y, BACK_T, REVIEW_PAGE_SWIPE } from '../domain/gestures';
 import { randomUUID } from 'expo-crypto';
 import { API_URL } from '../services/api';
 import { readReview } from '../features/transcription/reviewStorage';
@@ -63,11 +63,16 @@ export function QAScreen({ active = true }: { active?: boolean }) {
   const { nav } = useShell();
   const model = useDeckModel(nav.deckId);
   if (!model?.state.run) return null;
-  return <QABound key={model.state.run.id} model={model} active={active} />;
+  // OpenAI Codex, 2026-11-25: animate the route once, even as the question batch changes.
+  return <Enter kind={active?nav.nav:null} duration={REVIEW_PAGE_SWIPE.enterMs}>
+    <QABound key={model.state.run.id} model={model} active={active} />
+  </Enter>;
 }
 
 function QABound({model,active}:{model:DeckModel;active:boolean}){
   const source=useDurableQa(model,false,active), language=useAppLanguage();
+  const pageDy=useSharedValue(0);
+  const pageClosingRef=useRef(false);
   useSyncExternalStore(displayTranslations.subscribe, displayTranslations.version);
   const batch=source.state?.result, first=batch?.questions[0];
   const waiting=active&&batch&&first&&qaUsable(source.state)&&firstWordingPending(API_URL,
@@ -88,9 +93,13 @@ function QABound({model,active}:{model:DeckModel;active:boolean}){
     setSelection(next?archiveKey(next):null);
   };
   return <QA key={archived?`saved-${archived.jobId??'legacy'}`:qaScreenKey(qa.state)} model={model} qa={qa}
-    archived={archived} historyAvailable={!!history.length} onHistory={nextHistory} active={active}/>;
+    archived={archived} historyAvailable={!!history.length} onHistory={nextHistory}
+    active={active} pageDy={pageDy} pageClosingRef={pageClosingRef}/>;
 }
-function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: DeckModel;qa:ReturnType<typeof useDurableQa>;archived:QaSet|null;historyAvailable:boolean;onHistory:()=>void;active:boolean }) {
+function QA({ model,qa,archived,historyAvailable,onHistory,active,pageDy,pageClosingRef }: {
+  model: DeckModel;qa:ReturnType<typeof useDurableQa>;archived:QaSet|null;historyAvailable:boolean;onHistory:()=>void;
+  active:boolean;pageDy:SharedValue<number>;pageClosingRef:RefObject<boolean>;
+}) {
   const ui = useUiText();
   const { c } = useTheme();
   const { go, nav } = useShell();
@@ -136,6 +145,10 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
   const transcriptScrollY = useRef(0);
   const backExiting = useRef(false);
   const player = useSegmentPlayer();
+  useLayoutEffect(() => () => {
+    // A batch change can replace the responder before the finger is lifted.
+    if (!pageClosingRef.current) pageDy.set(0);
+  }, [pageDy, pageClosingRef]);
 
   const regenerate=()=>{setLoad({kind:'idle'});void qa.generate();};
   const qs = archived?.questions??(questions.length?set?.questions??questions:[]);
@@ -341,7 +354,7 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
     backExiting.current = true;
     stopSpeak(); player.stop();
     resultDy.set(0);
-    dy.set(withTiming(BACK_FADE_Y, { duration: 380, easing: EASE_SCREEN }, finished => {
+    dy.set(withTiming(BACK_FADE_Y, { duration: 150, easing: EASE_SCREEN }, finished => {
       if (finished) runOnJS(prepareFollowupReveal)();
     }));
   };
@@ -354,7 +367,7 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
   };
   const finishFollowupReveal = () => { setFollowupReveal(false); backExiting.current = false; };
   useEffect(() => {
-    if (followupReveal) dy.set(withTiming(0, { duration: 420, easing: EASE_SCREEN }, finished => {
+    if (followupReveal) dy.set(withTiming(0, { duration: 180, easing: EASE_SCREEN }, finished => {
       if (finished) runOnJS(finishFollowupReveal)();
     }));
   }, [followupReveal, dy]);
@@ -366,13 +379,13 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
     setSubpage('transcript');
   };
   useEffect(() => {
-    if (subpage === 'transcript') transcriptDy.set(withTiming(0, { duration: 420, easing: EASE_SCREEN }));
+    if (subpage === 'transcript') transcriptDy.set(withTiming(0, { duration: 200, easing: EASE_SCREEN }));
   }, [subpage, transcriptDy]);
   const finishTranscript = () => { setSubpage(null); backExiting.current = false; };
   const closeTranscript = () => {
     if (backExiting.current) return;
     backExiting.current = true;
-    transcriptDy.set(withTiming(BACK_FADE_Y, { duration: 420, easing: EASE_SCREEN }, finished => {
+    transcriptDy.set(withTiming(BACK_FADE_Y, { duration: REVIEW_PAGE_SWIPE.exitMs, easing: EASE_SCREEN }, finished => {
       if (finished) runOnJS(finishTranscript)();
     }));
   };
@@ -386,7 +399,7 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
   const returnToQuestion = () => {
     if (backExiting.current) return;
     backExiting.current = true;
-    resultDy.set(withTiming(BACK_FADE_Y, { duration: 460, easing: EASE_SCREEN }, finished => {
+    resultDy.set(withTiming(BACK_FADE_Y, { duration: REVIEW_PAGE_SWIPE.exitMs, easing: EASE_SCREEN }, finished => {
       if (finished) runOnJS(showQuestion)();
     }));
   };
@@ -396,7 +409,7 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
   const g = useRef<'x' | 'y' | null>(null);
   const busy = rec || !!count;
   const shouldCaptureDown = (e: GestureResponderEvent, gs: PanResponderGestureState) => {
-    if (busy || backExiting.current || gs.dy <= 8 || gs.dy <= Math.abs(gs.dx)) return false;
+    if (busy || backExiting.current || pageClosingRef.current || gs.dy <= 8 || gs.dy <= Math.abs(gs.dx)) return false;
     const y = (e.nativeEvent.pageY - frame.top) / frame.s;
     if (subpage === 'transcript') {
       if (y > 132 && transcriptScrollY.current > 0) return false;
@@ -412,49 +425,63 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
     // OpenAI Codex, Iteration 2 (2026-11-21): capture a downward pull before the nested question/result scroll view does.
     onMoveShouldCapture: shouldCaptureDown,
     onMoveShould: (e: GestureResponderEvent, gs: PanResponderGestureState) => {
-      if (busy || backExiting.current) return false;
+      if (busy || backExiting.current || pageClosingRef.current) return false;
       if (subpage === 'transcript') return shouldCaptureDown(e, gs);
       if (Math.abs(gs.dx) > 8 && Math.abs(gs.dx) > Math.abs(gs.dy)) { g.current = 'x'; return true; }
       return shouldCaptureDown(e, gs);
     },
+    onGrant: () => { if (g.current === 'y') questionSwipe.cancel(); },
     onMove: (_e: GestureResponderEvent, gs: PanResponderGestureState) => {
       if (g.current === 'x') {
         const x = gs.dx / frame.s;
-        dy.set(0); resultDy.set(0);
+        pageDy.set(0); dy.set(0); resultDy.set(0);
         questionSwipe.move((x > 0 && i === 0) || (x < 0 && i === qs.length - 1) ? x * 0.3 : x);
       } else {
-        questionSwipe.cancel();
-        (subpage === 'transcript' ? transcriptDy : phase === 'review' ? resultDy : dy).set(Math.min(BACK_FADE_Y, Math.max(0, gs.dy / frame.s)));
+        (subpage === 'transcript' ? transcriptDy : phase === 'review' ? resultDy : subpage === 'followup' ? dy : pageDy)
+          .set(Math.min(BACK_FADE_Y, Math.max(0, gs.dy / frame.s)));
       }
     },
     onRelease: (_e: GestureResponderEvent,gs: PanResponderGestureState) => {
+      if (pageClosingRef.current) return;
       if (g.current === 'x') { if (Math.abs(gs.dx / frame.s) > 60) goQ(gs.dx < 0 ? 1 : -1); else questionSwipe.settle(); }
       else if (subpage === 'transcript' && transcriptDy.get() > BACK_T) closeTranscript();
-      else if (subpage === 'transcript') transcriptDy.set(withTiming(0, { duration: 360, easing: EASE_SCREEN }));
+      else if (subpage === 'transcript') transcriptDy.set(withTiming(0, { duration: REVIEW_PAGE_SWIPE.resetMs, easing: EASE_SCREEN }));
       else if (phase === 'review' && resultDy.get() > BACK_T) returnToQuestion();
-      else if (phase === 'review') resultDy.set(withTiming(0, { duration: 360, easing: EASE_SCREEN }));
+      else if (phase === 'review') resultDy.set(withTiming(0, { duration: REVIEW_PAGE_SWIPE.resetMs, easing: EASE_SCREEN }));
       else if (subpage === 'followup') {
         if (dy.get() > BACK_T) returnFromFollowup();
-        else dy.set(withTiming(0, { duration: 360, easing: EASE_SCREEN }));
+        else dy.set(withTiming(0, { duration: REVIEW_PAGE_SWIPE.resetMs, easing: EASE_SCREEN }));
       }
-      else if (dy.get() > BACK_T) {
-        backExiting.current = true;
-        dy.set(withTiming(BACK_FADE_Y, { duration: 460, easing: EASE_SCREEN }, finished => {
+      else if (pageDy.get() > REVIEW_PAGE_SWIPE.distance) {
+        pageClosingRef.current = true;
+        pageDy.set(withTiming(BACK_FADE_Y, { duration: REVIEW_PAGE_SWIPE.exitMs, easing: EASE_SCREEN }, finished => {
           if (finished) runOnJS(back)();
         }));
-      } else dy.set(withTiming(0, { duration: 360, easing: EASE_SCREEN }));
+      } else pageDy.set(withTiming(0, { duration: REVIEW_PAGE_SWIPE.resetMs, easing: EASE_SCREEN }));
       g.current = null;
     },
-    onTerminate: () => { questionSwipe.settle(); if (!backExiting.current) { dy.set(withTiming(0)); resultDy.set(withTiming(0)); transcriptDy.set(withTiming(0)); } g.current = null; },
+    onTerminate: () => {
+      questionSwipe.settle();
+      if (!pageClosingRef.current) pageDy.set(withTiming(0, { duration: REVIEW_PAGE_SWIPE.resetMs, easing: EASE_SCREEN }));
+      if (!backExiting.current) {
+        const reset = { duration: REVIEW_PAGE_SWIPE.resetMs, easing: EASE_SCREEN };
+        dy.set(withTiming(0, reset));
+        resultDy.set(withTiming(0, reset));
+        transcriptDy.set(withTiming(0, reset));
+      }
+      g.current = null;
+    },
   };
-  useBack(true, () => {
+  useBack(active, () => {
+    if (busy || pageClosingRef.current || backExiting.current) return true;
     if (subpage === 'transcript') closeTranscript();
+    else if (phase === 'review') returnToQuestion();
     else if (subpage === 'followup') returnFromFollowup();
     else back();
     return true;
   });
   const screen = useAnimatedStyle(() => ({
-    opacity: Math.max(0, 1 - dy.value / BACK_FADE_Y),
+    opacity: Math.max(0, 1 - Math.max(dy.value, pageDy.value) / BACK_FADE_Y),
   }));
   const resultFade = useAnimatedStyle(() => ({ opacity: Math.max(0, 1 - resultDy.value / BACK_FADE_Y) }));
   const transcriptFade = useAnimatedStyle(() => ({ opacity: Math.max(0, 1 - transcriptDy.value / BACK_FADE_Y) }));
@@ -468,7 +495,7 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
   const btnLabel = archived?'Saved Q&A · playback only':count ? `Starting in ${count}. Tap to cancel` : rec ? 'Stop answering' : ans ? (part ? 'Answer the follow-up again' : 'Answer the question again') : (part ? 'Answer the follow-up' : 'Answer the question');
   const hints: Hint[] = subpage === 'transcript' ? [{ icon: 'h-dn', text: 'Answer review', nudge: 'down', onPress: closeTranscript }]
     : count ? [{ icon: 'h-tap', text: 'Tap to cancel' }] : rec ? [{ icon: 'h-tap', text: 'Tap when done' }]
-    : [...(!Q||last ? [] : [{ icon: 'h-spin' as const, text: 'Next', onPress: () => goQ(1) }]), { icon: 'h-dn', text: phase === 'review' ? 'Question' : subpage === 'followup' ? 'Answer review' : 'Back', nudge: 'down', onPress: phase === 'review' ? returnToQuestion : subpage === 'followup' ? returnFromFollowup : back }];
+    : [...(!Q||last ? [] : [{ icon: 'h-spin' as const, text: 'Next', onPress: () => goQ(1) }]), { icon: 'h-dn', text: phase === 'review' ? 'Question' : subpage === 'followup' ? 'Answer review' : 'Back', nudge: 'down', onPress: phase === 'review' ? returnToQuestion : subpage === 'followup' ? returnFromFollowup : () => { if (!pageClosingRef.current) back(); } }];
   const result = answerWaiting ? undefined : displayedAnswer.value;
   const transcriptPreview = savedAnswer?.result?.transcript.text.trim();
   const short = result?.verdict === 'too_short';
@@ -477,7 +504,6 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
 
   return (
     <>
-    <Enter kind={nav.nav}>
       <AnswerRecorder key={recKey} ref={recorder} onMeter={onMeter} onMustStop={() => { void stopRec(); }} />
       <PanView style={StyleSheet.absoluteFill} {...pan}>
         {(subpage === 'followup' || followupReveal) && <View testID="qa-followup-fade-backdrop" pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: c.bg }]} />}
@@ -488,9 +514,9 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
             <Txt style={styles.title}>{subpage === 'followup' ? 'Follow-up' : archived?"Saved Q&A":"Audience Q&A"}</Txt>
             <Txt verbatim numberOfLines={1} style={styles.label}>{subpage === 'followup' && Q ? presenterHeader : questionHeader}</Txt>
           </Animated.View>
-          {historyAvailable&&<Pressable accessibilityRole="button" accessibilityLabel={ui(archived?'Next saved Q&A or return to current questions':'View saved Q&A')} onPress={()=>{if(rec||count)return;stopSpeak();player.stop();onHistory();}}
-            style={{position:'absolute',top:4,right:16,zIndex:10,minHeight:44,justifyContent:'center',paddingHorizontal:10}}>
-            <Txt style={{fontSize:13.5,color:c.secondary}}>{archived?'Next saved / Current Q&A':'Saved Q&A'}</Txt>
+          {historyAvailable&&<Pressable accessibilityRole="button" accessibilityLabel={ui(archived?'Next saved Q&A or return to current questions':'View saved Q&A')}
+            disabled={rec||!!count} onPress={()=>{stopSpeak();player.stop();onHistory();}} style={styles.historyButton}>
+            <UIIcon name="i-replay" size={24} color={c.secondary} />
           </Pressable>}
           {Q && (
             <Animated.View style={[styles.stage, slideStyle]}>
@@ -597,7 +623,6 @@ function QA({ model,qa,archived,historyAvailable,onHistory,active }: { model: De
       {(qa.ask||answerAsk)&&<Dialog title="Confirm retry" body="The previous request may have reached the provider and incurred a charge. Retry the same saved input?"
         confirm="Retry" onConfirm={()=>{if(answerAsk){const a=answerAsk;setAnswerAsk(null);void judge(a.k,a.qi,a.p,a.a,true);}else void qa.confirm();}}
         onCancel={()=>{setAnswerAsk(null);qa.cancel();}}/>}
-    </Enter>
     {/* OpenAI Codex, 2026-11-20: Q&A cards move independently of their gesture cues. */}
     {active&&!answerConsent&&!qa.ask&&!answerAsk&&<HintRow hints={hints} />}
     </>
@@ -669,6 +694,7 @@ function Row({ icon, k, t, verbatim = false }: { icon: IconKey; k: string; t: st
 
 const styles = createThemedStyles({
   // Claude, 2026-11-21: S15 question page.
+  historyButton: { position:'absolute', top:4, right:16, zIndex:10, width:44, height:44, alignItems:'center', justifyContent:'center' },
   panel: { position: 'absolute', left: 0, right: 0, top: 112, height: 52, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 18 },
   panelMember: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   panelNow: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },

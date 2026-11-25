@@ -7,7 +7,7 @@ const {writeStored}=await import('../src/services/storage');
 const {DARK_PALETTE,LIGHT_PALETTE}=await import('../src/design/tokens');
 const {API_URL}=await import('../src/services/api');
 const {reserveContext,saveRequirements,readRequirements}=await import('../src/features/presentations/requirementsStore');
-const {confirmRequirements,readRequirementsDraft}=await import('../src/features/presentations/requirementsDraft');
+const {confirmRequirements,readRequirementsDraft,synchronizeRequirements}=await import('../src/features/presentations/requirementsDraft');
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;
 const deck={id:'setup-fixture',title:'Synthetic setup',pageCount:2,target:120};
 const button=(r,label)=>r.root.findAllByType('pressable').find(p=>p.props.accessibilityLabel===label);
@@ -85,6 +85,33 @@ test('custom audience accepts 500 emoji through the native length cap and reject
 });
 
 const flattened=style=>Object.assign({},...[style].flat(Infinity).filter(Boolean));
+test('queued presentation choices use a neutral status and a failed sync offers a retry', async () => {
+ const local = { ...deck, id: 'setup-sync-feedback' };
+ const values = { requiredDurationSeconds: 420, audience: 'Researchers' };
+ const offline = async () => { throw new Error('Synthetic network failure'); };
+ writeStored('settings.theme', 'dark');
+ confirmRequirements(local.id, API_URL, values);
+ const previousFetch = globalThis.fetch;
+ globalThis.fetch = offline;
+ let r;
+ try {
+  r = await mountEditor(local, false);
+  const status = r.root.findByProps({ accessibilityLiveRegion: 'polite' });
+  assert.equal(status.children.join(''), 'Saved on phone · sync pending');
+  assert.equal(flattened(status.props.style).color, DARK_PALETTE.secondary);
+  assert.equal(r.root.findAllByProps({ accessibilityRole: 'alert' }).length, 0);
+
+  await act(async () => synchronizeRequirements(local.id, serverDeck, API_URL, offline));
+  const alert = r.root.findByProps({ accessibilityRole: 'alert' });
+  assert.equal(alert.children.join(''), 'Saved on this phone. Tap Save to retry syncing.');
+  assert.equal(flattened(alert.props.style).color, DARK_PALETTE.bad);
+  assert.equal(r.root.findByType('record-button').props.disabled, false);
+  assert.deepEqual(readRequirementsDraft(local.id, API_URL).desired, values);
+ } finally {
+  if (r) await act(async () => r.unmount());
+  globalThis.fetch = previousFetch;
+ }
+});
 test('keyboard viewport uses physical frame scale, reveals custom input and resets on hide',async()=>{
  setupNative.frame={top:24,left:0,s:0.8,width:312,height:760};setupNative.keyboard=null;setupNative.scrolls=[];
  const r=await mount({requiredDurationSeconds:300,audience:'Synthetic custom audience'});
@@ -108,6 +135,7 @@ test('Other audience and conflict recovery use explicit colors in dark and light
   writeStored('settings.theme',mode);const local={...deck,id:'conflict-colors-'+mode};saveRequirements(local.id,API_URL,{contextId,deckId,revision:1,audience:'Students',requiredDurationSeconds:300});confirmRequirements(local.id,API_URL,{requiredDurationSeconds:600,audience:'Clients'});
   const wire={id:contextId,deck_id:deckId,revision:2,audience:'Teachers',required_duration_seconds:900};globalThis.fetch=async()=>Response.json(wire);await synchronizeRequirements(local.id,deckId,API_URL);
   let r;try{await act(async()=>{r=create(React.createElement(ThemeProvider,null,React.createElement(PresentationRequirementsEditor,{deck:local,onSaved:()=>{},onBackPan:{}})));});
+   assert.equal(flattened(r.root.findByProps({accessibilityRole:'alert'}).props.style).color,palette.bad);
    for(const label of [customLabel,'Use server presentation choices','Keep my presentation choices']){const action=button(r,label);assert.ok(action);const color=flattened(action.findByType('text').props.style).color;assert.equal(color,palette.text);}
   }finally{if(r)await act(async()=>r.unmount());}
  }

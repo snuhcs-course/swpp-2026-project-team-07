@@ -56,6 +56,8 @@ const patterns: [RegExp, (...parts: string[]) => string][] = [
   [/^([\d:]+) with transcript$/, t => '발표 원문 ' + t],
   [/^([\d:]+) (over|under)(?: target)?$/, (t, how) => '목표보다 ' + t + (how === 'over' ? ' 초과' : ' 짧음')],
   [/^([\d:]+) (faster|slower|ahead|behind)$/, (t, how) => t + (how === 'faster' || how === 'ahead' ? ' 빠름' : ' 느림')],
+  [/^([\d:]+) (shorter|longer) than the (old|new) take$/, (time, relation, take) =>
+    koreanText(take + ' take') + '보다 ' + time + (relation === 'shorter' ? ' 짧아요' : ' 길어요')],
   [/^(\d+) (fewer|more)$/, (n, how) => n + (how === 'fewer' ? '개 감소' : '개 증가')],
   [/^(\d+(?:\.\d+)?) wpm$/i, n => '분당 ' + n + '단어'],
   [/^(\d+|—) fillers?$/, n => '습관어 ' + n + '회'],

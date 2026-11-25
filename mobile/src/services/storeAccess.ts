@@ -8,7 +8,7 @@ type Transport = typeof globalThis.fetch;
 type Input = Parameters<Transport>[0] | URL;
 const key = 'outloud.installation.' + Array.from(STORE_API, c => c.charCodeAt(0).toString(16)).join('');
 const enrollment = STORE_API + '/installations/';
-const expired = 'Online access expired. Choose online coaching on Home to start a new private workspace. Your local recordings are saved.';
+const expired = 'Online access expired. To reconnect, touch and hold OutLoud on Home, then choose Online coaching settings. Your local recordings are saved.';
 const offline = 'Online coaching is off. Your slides and recordings stay on this phone.';
 const validToken = (value: unknown): value is string => typeof value === 'string' && /^[A-Za-z0-9._~+/-]{1,512}={0,2}$/.test(value);
 

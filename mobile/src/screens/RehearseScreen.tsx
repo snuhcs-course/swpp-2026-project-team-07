@@ -1,7 +1,6 @@
-import { displayTranslations, useDisplayTranslation } from '../features/localization/useDisplayTranslation';
-import { firstWordingPending } from '../features/localization/firstWording';
-import { translatedProfile } from '../features/localization/generatedProse';
-import { getAppLanguage, useUiText } from '../design/language';
+import { useDisplayTranslation } from '../features/localization/useDisplayTranslation';
+import { displayProfileCues, translatedProfile } from '../features/localization/generatedProse';
+import { useUiText } from '../design/language';
 import { LiveFeedbackPanel } from '../features/recording/LiveFeedbackPanel';
 import { captureVersion, readCapture, subscribeCaptures } from '../features/recording/incremental';
 // OpenAI Codex review routing: docs/ai-collaboration/prompt-logs/seoyeon/iteration-2.md#record-137
@@ -38,16 +37,16 @@ import { captureVersion, readCapture, subscribeCaptures } from '../features/reco
 // OpenAI Codex immediate recording completion: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-114
 // OpenAI Codex forward-only live recording: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-125
 import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { Pressable, StyleSheet, View, type GestureResponderEvent } from 'react-native';
+import { Image, Pressable, StyleSheet, View, type GestureResponderEvent, type ViewStyle } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import * as Haptics from 'expo-haptics';
-import Animated, { Easing, cancelAnimation, runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
-import { Enter, Txt, useFrame } from '../design/frame';
-import { UIIcon } from '../design/icons';
+import Animated, { Easing, cancelAnimation, runOnJS, useAnimatedStyle, useDerivedValue, useReducedMotion, useSharedValue, withRepeat, withTiming, type SharedValue } from 'react-native-reanimated';
+import { Enter, FrameContext, Txt, useFrame, useFrameLayout, type FrameInfo } from '../design/frame';
+import { PresentationIcon, UIIcon } from '../design/icons';
 import { PanView, type PanHandlers } from '../design/PanView';
-import { CARD_H, CARD_W, SlideCard } from '../design/SlideCard';
-import { C, EASE_SCREEN, EASE_SNAP, F } from '../design/tokens';
+import { CARD_H, CARD_W, MiniSlide, SlideCard } from '../design/SlideCard';
+import { C, EASE_SCREEN, EASE_SNAP, F, FRAME_W, HOME_HEADER_CONTROL } from '../design/tokens';
 import { createThemedStyles, useTheme } from '../design/theme';
 import { Chip, Confetti, Dialog, HintRow, IDLE_WAVE, PageSurface, RecordButton, RecordRing, RoundButton, Waveform, type Hint, type RecordGlyph } from '../design/ui';
 import { paceChip } from '../domain/analysis';
@@ -55,7 +54,6 @@ import { fmt } from '../domain/format';
 import { BACK_FADE_Y, BACK_T, CARD_STEP, decideRelease } from '../domain/gestures';
 import { reviewDestination, runAttemptIds, takeVisits } from '../domain/run';
 import { CaptureEngine, type CaptureHandle } from '../features/rehearsal/CaptureEngine';
-import { audioOf } from '../features/rehearsal/analysis';
 import { commitTake } from '../features/rehearsal/takes';
 import { useSegmentPlayer } from '../features/rehearsal/useSegmentPlayer';
 import { ensurePages, ensureSlideText } from '../features/presentations/importer';
@@ -64,16 +62,16 @@ import { useDeckModel, type DeckModel } from '../features/presentations/useDeckM
 import { savedAttempts, type SavedAttempt } from '../features/recording/storage';
 import { CueGuidancePanel } from '../features/presentations/CueGuidancePanel';
 import { useSlideProfiles } from '../features/presentations/useSlideProfiles';
-import type { ProfileState } from '../features/presentations/slideProfiles';
-import { API_URL } from '../services/api';
+import { slideProfileAt, type ProfileState } from '../features/presentations/slideProfiles';
 import { onlineAllowed } from '../services/storePrivacy';
-import { defaultRequirementsPending } from '../features/presentations/defaultRequirements';
-import { requirementsPending, readRequirementsDraft } from '../features/presentations/requirementsDraft';
 import { getRequirementsVersion, subscribeRequirements } from '../features/presentations/requirementsStore';
 import { PresentationRequirementsEditor, PresentationSetupHint } from './PresentationSetup';
 import { LandscapeRehearse } from './LandscapeRehearse';
 import { TakePlayback } from './TakePlayback';
 import { useBack, useShell } from './shared';
+import { usePageFooter } from './pageFooter';
+import { CAROUSEL_TOP, HOME_TITLE_LANDING, SLOT_H, SLOT_TOP, deckIconSize, homeTitleReveal } from './homeGeometry';
+import { landscapeSlideRect, slideRotationPose, type SlideRect } from './slideRotation';
 
 type Phase = 'idle' | 'count' | 'starting' | 'recording' | 'stopping' | 'burst';
 const locksPreviousSlide = (phase: Phase) => phase === 'starting' || phase === 'stopping';
@@ -81,14 +79,24 @@ const freezesSlideNavigation = (phase: Phase) => phase === 'starting' || phase =
 const SPEECH_DB = -38;
 // OpenAI Codex follow-up (2026-10-15): whole-presentation redo hold; see the Iteration 2 prompt log.
 const REDO_HOLD_MS = 1500;
-// Home's carousel starts at 150, its front slot at 61; the rehearsal header starts at 50.
-const TITLE_TO_HOME_Y = 150 + 61 - 50;
-const TITLE_TO_HOME_SCALE = 22 / 18;
-const OPEN_MS = 600;
-// The Home icon sits at the center of the front carousel slot.
-const HOME_ICON_BOTTOM_Y = 150 + 61 + 223;
-const SLIDE_STAGE_CENTER_Y = 100 + 510 / 2;
-const SLIDE_DOT_SCALE = 0.025;
+const OPEN_MS = 160;
+const OPEN_FROM_HOME_MS = 260;
+const RETURN_MS = 300;
+const RETURN_RESET_MS = 180;
+const CHROME_RETURN_FRACTION = 0.4;
+const ROTATE_MS = 240;
+const ROTATION_IMAGE_GRACE_MS = 200;
+const HEADER_TOP = 50;
+const SLIDE_STAGE_TOP = 100;
+const SLIDE_STAGE_HEIGHT = 510;
+const SLIDE_TOP = 16;
+const HOME_SLOT_TOP = CAROUSEL_TOP + SLOT_TOP;
+const HOME_ICON_BOTTOM = HOME_SLOT_TOP + SLOT_H;
+type Rotation = {
+  landscape: boolean; slide: number; pose: ReturnType<typeof slideRotationPose>; imageUri?: string;
+  portraitLanding?: { frame: FrameInfo; position: ViewStyle };
+};
+type RotationLanding = { uri?: string; ready: boolean; finish?: () => void };
 
 /** Live take metrics. Updated by the meter (~14×/s); only the readout subscribes to every change. */
 type Live = { E: number; slideStart: number; recStart: number; spoken: boolean[]; speech: number[]; wave: number[]; lastMeter: number };
@@ -116,7 +124,10 @@ export const RehearseScreen = memo(function RehearseScreen({ active = true }: { 
     }
     void ensurePages(nav.deckId).catch(() => undefined);
   }, [go, nav.deckId]);
-  if (!model || !model.n) return <Enter kind={nav.nav}><Txt style={styles.loading}>{model ? 'Preparing slides…' : ''}</Txt></Enter>;
+  if (!model || !model.n) return <>
+    <PageSurface fullBleed />
+    {model && <Enter kind={nav.nav} duration={OPEN_MS}><Txt style={styles.loading}>Preparing slides…</Txt></Enter>}
+  </>;
   return <Rehearse model={model} active={active} />;
 });
 
@@ -126,8 +137,62 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
   const { go, nav, home, setFullscreenLandscape } = useShell();
   const frame = useFrame();
   const reducedMotion = useReducedMotion();
-  const openingFromIcon = nav.from === 'home' && nav.nav === 'fade' && !reducedMotion;
+  const openingPage = active && !!nav.nav && !reducedMotion;
+  const openingFromHome = openingPage && nav.from === 'home';
   const [pdfRotated, setPdfRotated] = useState(false);
+  const [fullscreenCues, setFullscreenCues] = useState(false);
+  const [rotation, setRotation] = useState<Rotation | null>(null);
+  const rotationLanding = useRef<RotationLanding | null>(null);
+  const rotationProgress = useSharedValue(0);
+  const portraitLayout = useFrameLayout();
+  const landscapeLayout = useFrameLayout(true);
+  const lastPortraitLayout = useRef<typeof portraitLayout | null>(null);
+  const rotating = active && !!rotation;
+  const showLandscape = pdfRotated && active;
+  const preparingLandscape = rotating && rotation?.landscape && !!rotation.imageUri;
+  const portraitLanding = rotating ? rotation?.portraitLanding : undefined;
+  const portraitFrame = portraitLanding?.frame ?? frame;
+  const portraitReveal = useAnimatedStyle(() => ({ opacity: Math.max(0, Math.min(1, (rotationProgress.value - 0.62) / 0.32)) }));
+  const rotationBackdrop = useAnimatedStyle(() => ({ opacity: Math.min(1, rotationProgress.value / 0.8) }));
+  const finishRotation = useCallback((landscape: boolean) => {
+    setFullscreenCues(false);
+    setPdfRotated(landscape);
+    setFullscreenLandscape(landscape);
+    setRotation(null);
+    rotationLanding.current = null;
+  }, [setFullscreenLandscape]);
+  const onLandscapePreviewSettled = useCallback((uri: string) => {
+    const landing = rotationLanding.current;
+    if (!landing || landing.uri !== uri) return;
+    landing.ready = true;
+    landing.finish?.();
+  }, []);
+  useEffect(() => {
+    const landing = rotationLanding.current;
+    if (!rotation || !landing) return;
+    let cancelled = false;
+    let wait: ReturnType<typeof setTimeout> | undefined;
+    const finish = () => {
+      if (!cancelled && rotationLanding.current === landing) finishRotation(rotation.landscape);
+    };
+    const motionEnded = () => {
+      if (cancelled) return;
+      if (!landing.uri || landing.ready) finish();
+      else {
+        // The animated frame remains visible until the same native image can take over.
+        landing.finish = finish;
+        wait = setTimeout(finish, ROTATION_IMAGE_GRACE_MS);
+      }
+    };
+    rotationProgress.set(withTiming(1, { duration: ROTATE_MS, easing: EASE_SCREEN }, finished => {
+      if (finished) runOnJS(motionEnded)();
+    }));
+    return () => {
+      cancelled = true;
+      clearTimeout(wait);
+      cancelAnimation(rotationProgress);
+    };
+  }, [finishRotation, rotation, rotationProgress]);
   useEffect(()=>{ if(active) void ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(()=>undefined); },[active]);
   useEffect(()=>()=>setFullscreenLandscape(false),[setFullscreenLandscape]);
   useSyncExternalStore(subscribeRequirements, getRequirementsVersion);
@@ -135,7 +200,6 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
   const [setupHintVisible, setSetupHintVisible] = useState(true);
   const [cueSheetOpen, setCueSheetOpen] = useState(false);
   const [cueCloseRequest, setCueCloseRequest] = useState(0);
-  const [fullscreenCues, setFullscreenCues] = useState(false);
   const pdfRotation = useSharedValue(0);
   const cardStep = CARD_STEP;
   const { deck, n, state } = model;
@@ -167,33 +231,36 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
   useEffect(() => () => { if (holdTimer.current) clearTimeout(holdTimer.current); }, []);
   const [live] = useState(createLive);
   const profiles = useSlideProfiles(deck.id, n, active, deck);
-  const {value: displayProfiles} = useDisplayTranslation(active, scope => {
+  const serverRefreshing = profiles.refreshing;
+  const refreshDisabled = serverRefreshing || profiles.busy || (!profiles.available && profiles.syncing);
+  const refreshRotation = useSharedValue(0);
+  useEffect(() => {
+    refreshRotation.set(0);
+    if (!active || pdfRotated || reducedMotion || !serverRefreshing) return;
+    refreshRotation.set(withRepeat(withTiming(360, { duration: 850, easing: Easing.linear }), -1, false));
+    return () => cancelAnimation(refreshRotation);
+  }, [active, pdfRotated, reducedMotion, refreshRotation, serverRefreshing]);
+  const refreshIconMotion = useAnimatedStyle(() => ({ transform: [{ rotate: `${refreshRotation.value}deg` }] }));
+  const { value: translatedSlide, missing, unavailableFields } = useDisplayTranslation(active, scope => {
     const saved = profiles.value;
-    if (!saved?.descriptions || !saved.description_set_id || saved.state !== 'completed' || saved.stale) return saved;
-    const field = scope('profiles', saved.description_set_id, String(saved.description_revision));
-    const slides = saved.descriptions.slides.map(s => s.slide_index === slide ? translatedProfile(s, field) : s);
-    const current = saved.descriptions.slides.find(s => s.slide_index === slide);
-    if (active && current && firstWordingPending(API_URL, { kind: 'profiles', resource_id: saved.description_set_id,
-      revision: String(saved.description_revision) }, 'slides.' + slide, getAppLanguage(), displayTranslations, text => translatedProfile(current, text))) {
-      return { ...saved, state: 'preparing' as const, descriptions: null, retry_available: false };
-    }
-    return {...saved, descriptions: {slides}};
+    if (!saved?.descriptions || !saved.description_set_id || saved.state !== 'completed' || saved.stale) return null;
+    const current = slideProfileAt(saved, slide);
+    return current ? translatedProfile(current, scope('profiles', saved.description_set_id, String(saved.description_revision))) : null;
   });
+  const savedProfiles = profiles.value;
+  // The cue panels render one slide. Keep the complete profiles in the cache.
+  const displayProfiles = translatedSlide && savedProfiles?.descriptions
+    ? { ...savedProfiles, descriptions: { slides: [displayProfileCues(translatedSlide, missing, unavailableFields)] } }
+    : savedProfiles;
   const profilesAvailable = profiles.available;
-  const profileState = profiles.value?.state;
-  const recoverProfiles = profiles.recover;
+  const cueConnectionMessage = profilesAvailable ? 'Checking AI cues…' : 'Connecting for cues…';
+  const completedCues = displayProfiles?.state === 'completed' && !displayProfiles.stale;
+  const landscapeCueStatus = (completedCues ? '' : profiles.error) || (!displayProfiles ? cueConnectionMessage : undefined);
   useEffect(() => {
     // The cue hook links a local PDF first. Once its mapping is saved, text
     // recovery can reuse that server deck without a competing upload.
     if (active && profilesAvailable && deck.text === 'pending') void ensureSlideText(deck.id);
   }, [active, deck.id, deck.text, profilesAvailable]);
-  const profileStartFor = useRef('');
-  useEffect(() => {
-    if (!active || !profilesAvailable || profileState !== 'absent' || profileStartFor.current === deck.id) return;
-    // Match import: request initial cues once after a previously local-only PDF is linked.
-    profileStartFor.current = deck.id;
-    void recoverProfiles();
-  }, [active, deck.id, profilesAvailable, profileState, recoverProfiles]);
   const [cueRetryAsk, setCueRetryAsk] = useState<ProfileState | null>(null);
   const [refreshAsk, setRefreshAsk] = useState(false);
   const ringP = useSharedValue(0), ringV = useSharedValue(0);
@@ -202,37 +269,29 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
     cancelAnimation(trackX);
     trackX.set(-slideRef.current * cardStep);
   }, [cardStep, trackX]);
-  const backDy = useSharedValue(openingFromIcon ? BACK_FADE_Y : 0);
-  const pageOpen = useSharedValue(openingFromIcon ? 0 : 1);
+  const pageOpen = useSharedValue(openingPage ? 0 : 1);
   const closingToHome = useSharedValue(false);
-  const [openingControls, setOpeningControls] = useState(openingFromIcon);
+  const [openingControls, setOpeningControls] = useState(openingPage);
+  const [returning, setReturning] = useState(false);
+  const controlsBlocked = openingControls || returning || rotating;
   useEffect(() => {
-    if (!active) { cancelAnimation(backDy); backDy.set(0); cancelAnimation(pageOpen); pageOpen.set(1); closingToHome.set(false); return; }
+    if (!active) { closingToHome.set(false); return; }
     const decks=visibleDecks(),index=decks.findIndex(value=>value.id===deck.id);
     if(index>=0&&decks.length)home.p.set(Math.round((home.p.get()-index)/decks.length)*decks.length+index);
-    if (openingFromIcon && openingControls) {
-      // Grow the PDF and move the title while the page fades in alongside them.
-      // The slide counter has its own overlap guard below.
-      backDy.set(BACK_FADE_Y);
-      pageOpen.set(0);
-      closingToHome.set(false);
-      home.titleReturn?.set(1);
-      backDy.set(withTiming(0, { duration: OPEN_MS, easing: EASE_SCREEN }));
-      pageOpen.set(withTiming(1, { duration: OPEN_MS, easing: EASE_SCREEN }, finished => {
-        if (finished) runOnJS(setOpeningControls)(false);
-      }));
-      home.titleReturn?.set(withTiming(0, { duration: OPEN_MS, easing: EASE_SCREEN }));
-    } else {
-      backDy.set(0);
-      pageOpen.set(1);
-      closingToHome.set(false);
-      home.titleReturn?.set(0);
-    }
-  }, [active, backDy, closingToHome, deck.id, home.p, home.titleReturn, openingControls, openingFromIcon, pageOpen]);
+    home.titleReturn?.set(0);
+  }, [active, closingToHome, deck.id, home.p, home.titleReturn]);
+  useEffect(() => {
+    if (!openingControls) return;
+    const duration = openingFromHome ? OPEN_FROM_HOME_MS : openingPage ? OPEN_MS : 0;
+    pageOpen.set(withTiming(1, { duration, easing: EASE_SCREEN }, finished => {
+      if (finished) runOnJS(setOpeningControls)(false);
+    }));
+    return () => cancelAnimation(pageOpen);
+  }, [openingControls, openingFromHome, openingPage, pageOpen]);
   const setupDy = useSharedValue(0);
   const setupMotion = useAnimatedStyle(() => ({opacity:Math.max(0,1-setupDy.value/BACK_FADE_Y),transform:[{translateY:setupDy.value*0.15}]}));
   const backExiting = useRef(false);
-  const openingGestureId = useRef<number | null>(null);
+  const touchStartedDuringOpening = useRef(false);
   const player = useSegmentPlayer();
   const stopPlayback = player.stop;
   // OpenAI Codex, 2026-11-19: reserve Wait for the first after-Stop handoff; reopening a saved take goes to its review.
@@ -267,8 +326,7 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
     return () => cancelAnimationFrame(frameId);
   }, [active]);
   const storeVersion = useStore(s => s.version);
-  // Only an interrupted capture is surfaced here; selected and rejected takes
-  // do not become a second history row above the clock.
+  // Settings offers recovery for interrupted captures that are not already in a take.
   const recoveryAttempts = useMemo(() => {
     void storeVersion;
     const selected = new Set(runAttemptIds(run));
@@ -310,18 +368,17 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
     const previous = routeSlideRef.current;
     routeSlideRef.current = { active, slide: nav.slide };
     if (previous.slide !== nav.slide || (active && !previous.active)) goSlide(nav.slide, 'jump');
-    else if (!active) backDy.set(0);
-  }, [active, backDy, goSlide, nav.slide]);
+  }, [active, goSlide, nav.slide]);
 
   // ── Recording ─────────────────────────────────────────────────────────────
   const stopCount = () => { if (countTimer.current) { clearInterval(countTimer.current); countTimer.current = null; } };
   const hideRing = () => { cancelAnimation(ringP); ringV.set(withTiming(0, { duration: 200 })); };
-  const startRec = useCallback(async () => {
+  const startRec = useCallback(async (liveFeedback?: Promise<boolean>) => {
     setPhase('starting');
     setError('');
     try {
       setCaptureId(null);
-      await engine.current?.start(() => slideRef.current);
+      await engine.current?.start(() => slideRef.current, liveFeedback);
       const cur = slideRef.current;
       // A whole redo replaces every slide; otherwise the start slide always counts as spoken.
       const spoken: boolean[] = Array(n).fill(fullRedo.current);
@@ -342,6 +399,8 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
     player.stop();
     setRedoAsk(false);
     setError('');
+    // OpenAI Codex, 2026-11-23: check server capability during the countdown; start the microphone after it.
+    const liveFeedback = engine.current?.checkLiveFeedback();
     setPhase('count'); setCount(3);
     ringV.set(1); ringP.set(1);
     ringP.set(withTiming(0, { duration: 3000, easing: Easing.linear }));
@@ -349,7 +408,7 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
     stopCount();
     countTimer.current = setInterval(() => {
       const el = Date.now() - t0;
-      if (el >= 3000) { stopCount(); void startRec(); return; }
+      if (el >= 3000) { stopCount(); void startRec(liveFeedback); return; }
       setCount(c => { const next = 3 - Math.floor(el / 1000); if (next !== c) void Haptics.selectionAsync().catch(() => undefined); return next; });
     }, 50);
   }, [player, ringP, ringV, startRec]);
@@ -430,15 +489,41 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
   const cancelRedo = () => { fullRedo.current = false; setRedoAsk(false); };
 
   // ── Back (swipe down / system Back) ───────────────────────────────────────
-  const canGoBack = !pdfRotated && phase === 'idle' && !redoAsk && !recoveryId;
-  const rotate = useCallback(() => {
+  const canGoBack = active && !pdfRotated && phase === 'idle' && !redoAsk && !recoveryId;
+  const rotate = (landscapePreview?: SlideRect) => {
+    if (!active || rotationLanding.current || controlsBlocked) return;
     cancelAnimation(trackX);
-    trackX.set(-slideRef.current * CARD_STEP);
-    setFullscreenCues(false);
-    const next = !pdfRotated;
-    setPdfRotated(next);
-    setFullscreenLandscape(next);
-  }, [pdfRotated,setFullscreenLandscape,trackX]);
+    const slide = slideRef.current;
+    trackX.set(-slide * CARD_STEP);
+    recUp();
+    if (reducedMotion) { finishRotation(!pdfRotated); return; }
+
+    // Keep the portrait insets captured before full screen hid the status bar.
+    if (!pdfRotated) lastPortraitLayout.current = portraitLayout;
+    const cached = lastPortraitLayout.current;
+    const portrait = cached && cached.width === portraitLayout.width && cached.height === portraitLayout.height ? cached : portraitLayout;
+    const portraitPreview = { left: 16, top: SLIDE_STAGE_TOP + SLIDE_TOP, width: CARD_W, height: portrait.info.compact ? 170 : CARD_H };
+    const fullPreview = landscapePreview ?? landscapeSlideRect(landscapeLayout.info.width, landscapeLayout.info.height);
+    const pose = pdfRotated
+      ? slideRotationPose(landscapeLayout, portrait, fullPreview, portraitPreview, deck.pages[slide])
+      : slideRotationPose(portrait, landscapeLayout, portraitPreview, fullPreview, deck.pages[slide]);
+    let portraitLanding: Rotation['portraitLanding'];
+    if (pdfRotated) {
+      // Stage the actual portrait UI upright in the current landscape canvas.
+      const canvas = { left: 0, top: 0, width: portrait.designW, height: portrait.designH };
+      const landing = slideRotationPose(landscapeLayout, portrait, canvas, canvas);
+      portraitLanding = {
+        frame: portrait.info,
+        position: { position: 'absolute', ...canvas, transform: [
+          { translateX: landing.dx }, { translateY: landing.dy }, { rotate: `${landing.angle}deg` }, { scale: landing.scaleX },
+        ] },
+      };
+    }
+    const imageUri = !pdfRotated ? deck.pages[slide]?.uri : undefined;
+    rotationLanding.current = { uri: imageUri, ready: false };
+    rotationProgress.set(0);
+    setRotation({ landscape: !pdfRotated, slide, pose, imageUri, portraitLanding });
+  };
   const leave = useCallback(() => {
     player.stop();
     home.titleReturn?.set(1);
@@ -448,86 +533,108 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
     if (index >= 0 && count) home.p.set(Math.round((home.p.get() - index) / count) * count + index);
     go('home', { nav: null });
   }, [deck.id, go, home.p, home.titleReturn, player]);
+  const beginReturn = () => {
+    closingToHome.set(true);
+    setReturning(true);
+  };
+  const resetReturn = () => {
+    home.titleReturn.set(withTiming(0, { duration: reducedMotion ? 0 : RETURN_RESET_MS, easing: EASE_SCREEN }, finished => {
+      if (!finished) return;
+      closingToHome.value = false;
+      runOnJS(setReturning)(false);
+    }));
+  };
   const finishBack = () => {
     if (backExiting.current) return;
     backExiting.current = true;
-    closingToHome.set(true);
-    backDy.set(withTiming(BACK_FADE_Y, { duration: 460, easing: EASE_SCREEN }, finished => {
+    if (reducedMotion) { leave(); return; }
+    beginReturn();
+    home.titleReturn.set(withTiming(1, { duration: RETURN_MS, easing: EASE_SCREEN }, finished => {
       if (finished) runOnJS(leave)();
     }));
-    pageOpen.set(withTiming(0, { duration: 460, easing: EASE_SCREEN }));
-    home.titleReturn?.set(withTiming(1, { duration: 460, easing: EASE_SCREEN }));
-  };
-  const inExcluded = (e: GestureResponderEvent) => {
-    const y = (e.nativeEvent.pageY - frame.top) / frame.s;
-    return (y > 326 && y < 512) || y > 652;
   };
   const back: PanHandlers = {
     // OpenAI Codex, 2026-11-19: finish the finger-tracked close at a readable pace.
-    onStartShould: (_e, g) => { openingGestureId.current = openingFromIcon && (backDy.get() > 1 || pageOpen.get() < 0.99) ? g.stateID : null; return false; },
-    onMoveShould: (e, g) => {
-      // A touch begun during pop-out must not become a close swipe after pop-out ends.
-      if (openingFromIcon && (backDy.get() > 1 || pageOpen.get() < 0.99)) openingGestureId.current = g.stateID;
-      return openingGestureId.current !== g.stateID && !cueSheetOpen && !backExiting.current && canGoBack &&
-        g.dy > 8 && g.dy > Math.abs(g.dx) && !inExcluded(e);
+    onStartShouldCapture: (_e, g) => {
+      // A child can claim the touch before it bubbles. Record when it began in capture.
+      if (g.numberActiveTouches === 1) touchStartedDuringOpening.current = openingControls;
+      return false;
     },
-    onMove: (_e, g) => { const distance=Math.min(BACK_FADE_Y, Math.max(0, g.dy / frame.s));backDy.set(distance);home.titleReturn?.set(distance/BACK_FADE_Y); },
+    onMoveShouldCapture: (_e, g) =>
+      !controlsBlocked && !touchStartedDuringOpening.current && !cueSheetOpen &&
+      !backExiting.current && canGoBack && g.dy > 8 && g.dy > Math.abs(g.dx),
+    // An idle vertical swipe can start on a cue card or footer. If it
+    // started on Record, release its hold before navigating away.
+    onGrant: () => { recUp(); beginReturn(); },
+    onMove: (_e, g) => {
+      if (!backExiting.current) home.titleReturn.set(Math.max(0, Math.min(1, g.dy / frame.s / BACK_FADE_Y)));
+    },
     onRelease: () => {
-      openingGestureId.current = null;
-      if (backDy.get() > BACK_T) {
-        finishBack();
-      } else {backDy.set(withTiming(0, { duration: 360, easing: EASE_SCREEN }));home.titleReturn?.set(withTiming(0,{duration:360,easing:EASE_SCREEN}));}
+      if (backExiting.current) return;
+      if (home.titleReturn.get() * BACK_FADE_Y > BACK_T) finishBack();
+      else resetReturn();
     },
-    onTerminate: () => { openingGestureId.current = null; if (!backExiting.current) {backDy.set(withTiming(0, { duration: 360, easing: EASE_SCREEN }));home.titleReturn?.set(withTiming(0,{duration:360,easing:EASE_SCREEN}));} },
+    onTerminate: () => { if (!backExiting.current) resetReturn(); },
   };
   const closeSetup = () => setupDy.set(withTiming(BACK_FADE_Y,{duration:460,easing:EASE_SCREEN},done=>{if(done)runOnJS(setSetupOpen)(false);}));
   useBack(active, () => {
     if (setupOpen) { closeSetup(); return true; }
     if (cueSheetOpen) { setCueSheetOpen(false); setCueCloseRequest(value => value + 1); return true; }
     // Fullscreen is an explicit player mode. Only its upper-left control exits.
-    if (pdfRotated) return true;
+    if (pdfRotated || rotationLanding.current) return true;
     if (recoveryId) { closeRecovery(); return true; }
     if (redoAsk) { cancelRedo(); return true; }
     if (refreshAsk) { setRefreshAsk(false); return true; }
-    if (phaseRef.current !== 'idle') return true;
+    if (openingControls || phaseRef.current !== 'idle') return true;
     finishBack(); return true;
   });
-  const screen = useAnimatedStyle(() => ({
-    // Keep the page still while its already-mounted Home underlay comes into view.
-    opacity: Math.min(pageOpen.value, Math.max(0, 1 - backDy.value / BACK_FADE_Y)),
+  // At entrance the shared value may still hold Home's completed return.
+  const progressToHome = useDerivedValue(() => active && !reducedMotion && closingToHome.value ? home.titleReturn.value : 0);
+  const cardProgress = useDerivedValue(() => (openingFromHome ? pageOpen.value : 1) * (1 - progressToHome.value));
+  const surfaceMotion = useAnimatedStyle(() => ({ opacity: 1 - progressToHome.value }));
+  const screen = useAnimatedStyle(() => ({ opacity: openingFromHome ? 1 : 0.55 + 0.45 * pageOpen.value }));
+  // Copy just the picked card's identity onto the opaque page. The rest of Home stays underneath.
+  const iconSize = deckIconSize(frame.compact);
+  const titleMotion = useAnimatedStyle(() => {
+    const toHome = progressToHome.value;
+    const remaining = Math.max(1 - cardProgress.value, Math.min(1, toHome / HOME_TITLE_LANDING));
+    return {
+      opacity: 1 - homeTitleReveal(toHome),
+      transform: [{ translateY: (HOME_SLOT_TOP - HEADER_TOP + 2.4) * remaining }, { scale: 1 + (22 / 18 - 1) * remaining }],
+    };
+  });
+  const iconEntrance = useAnimatedStyle(() => ({
+    opacity: Math.max(0, 1 - pageOpen.value / 0.48),
   }));
-  const backgroundMotion = useAnimatedStyle(() => ({
-    // Cover Home's logo, icon and captions early while the preview content
-    // continues its shared fade. Downward closing still reveals Home by drag.
-    opacity: openingControls && !closingToHome.value ? Math.min(1, pageOpen.value * 2.5)
-      : Math.max(0, 1 - backDy.value / BACK_FADE_Y),
+  const chromeMotion = useAnimatedStyle(() => ({
+    opacity: Math.max(0, 1 - progressToHome.value / CHROME_RETURN_FRACTION) *
+      (openingFromHome ? Math.max(0, (pageOpen.value - 0.64) / 0.36) : 1),
   }));
   const counterMotion = useAnimatedStyle(() => ({
-    // The title passes this row during the shared entrance; reveal the row
-    // only after the title has moved above it. Other controls fade immediately.
-    opacity: openingFromIcon ? Math.max(0, Math.min(1, (1 - backDy.value / BACK_FADE_Y - 0.98) / 0.02)) : 1,
+    // Keep the counter clear of the path the moving title crosses.
+    opacity: Math.max(0, 1 - progressToHome.value / 0.06) *
+      (openingFromHome ? Math.max(0, (pageOpen.value - 0.9) / 0.1) : 1),
   }));
-  const titleMotion = useAnimatedStyle(() => {
-    const progress=Math.max(0,Math.min(1,backDy.value/BACK_FADE_Y));
-    const homeTitle=Math.max(0,Math.min(1,((home.titleReturn?.value??0)-0.55)/0.45));
-    const entering = openingControls && !closingToHome.value ? pageOpen.value : 1;
-    return {opacity:(1-homeTitle)*entering,transform:[{translateY:TITLE_TO_HOME_Y*progress},{scale:1+(TITLE_TO_HOME_SCALE-1)*progress}]};
-  });
+  // Home's stats and hints fade in after the rehearsal footer and readout fade out.
+  const bottomMotion = useAnimatedStyle(() => ({
+    opacity: Math.max(0, 1 - 2 * progressToHome.value) *
+      (openingFromHome ? Math.max(0, (pageOpen.value - 0.64) / 0.36) : 1),
+  }));
+  const footer = usePageFooter(active);
 
   // ── View model ────────────────────────────────────────────────────────────
   const cur = slide;
   const take = !recording && hasTake(cur);
-  const glyph: RecordGlyph = phase === 'count' ? (count as 3 | 2 | 1) : recording ? 'stop' : take ? 'redo' : 'mic';
-  const btnLabel = phase === 'count' ? `Starting in ${count}. Tap to cancel` : recording ? 'Stop recording'
+  const starting = phase === 'starting';
+  const glyph: RecordGlyph = starting ? 1 : phase === 'count' ? (count as 3 | 2 | 1) : recording ? 'stop' : take ? 'redo' : 'mic';
+  const btnLabel = phase === 'count' ? `Starting in ${count}. Tap to cancel` : starting ? 'Starting recorder…' : recording ? 'Stop recording'
     : (take ? 'Redo slide ' + (cur + 1) : 'Record slide ' + (cur + 1)) + (anyTake ? '. Hold 1.5 seconds to redo the whole presentation' : '');
   const idleHint: Hint = take ? { icon: 'h-hold', text: 'Hold to redo all' } : { icon: 'h-tap', text: 'Tap to record' };
   const homeHint: Hint = { icon: 'h-dn', text: 'Home' };
-  const showIdleHints = phase !== 'count' && !recording && phase !== 'burst';
   const hints: Hint[] = phase === 'count' ? [{ icon: 'h-tap', text: 'Tap to cancel' }]
-    : recording ? [{ icon: 'h-tap', text: 'Tap to stop' }, { icon: 'h-spin', text: 'Swipe slides' }]
+    : starting ? [] : recording ? [{ icon: 'h-tap', text: 'Tap to stop' }, { icon: 'h-spin', text: 'Swipe slides' }]
       : phase === 'burst' ? [{ icon: 'h-tap', text: burst?.compare ? 'Comparing takes' : 'Opening review' }]
         : [idleHint, homeHint];
-  const partId = run?.parts[cur]?.attemptId;
   const recovered = (attempt: SavedAttempt) => {
     const visits = takeVisits(attempt.recording.slide_events, attempt.recording.duration_ms);
     // Checkpoints know which slides were visited, but cannot prove speech on them.
@@ -542,29 +649,37 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
   };
 
   const captureEngine = <CaptureEngine preferIncremental={preferIncremental} onStarted={setCaptureId} key={engineKey} ref={engine} deck={deck} audience={deck.audience ?? ''} onMeter={onMeter}
-    onInterrupted={m => { setError(m); bump(); }} onMustStop={() => { void stopRec(); }} />;
+    onInterrupted={bump} onMustStop={() => { void stopRec(); }} />;
 
   // The capture owner stays at the same React position when the visual layout changes.
   return <>
     {captureEngine}
     {showLiveFeedback && captureId && <LiveFeedbackPanel id={captureId} landscape={pdfRotated} close={() => setShowLiveFeedback(false)} />}
-    {pdfRotated && active ? <LandscapeRehearse model={model} live={live} slide={cur} phase={phase} glyph={glyph} btnLabel={btnLabel}
+    <View pointerEvents={rotating ? 'none' : 'box-none'} accessibilityElementsHidden={rotating}
+      importantForAccessibility={rotating ? 'no-hide-descendants' : 'auto'} style={StyleSheet.absoluteFill}>
+    {(showLandscape || preparingLandscape) && <LandscapeRehearse model={model} live={live} slide={cur} phase={phase} glyph={glyph} btnLabel={btnLabel}
         recording={recording} take={take} disabled={phase==='starting'||phase==='stopping'} onRecord={toggleRec} onRecordDown={recDown} onRecordUp={recUp}
         ringProgress={ringP} ringVisible={ringV}
         onExit={rotate} onPrevious={()=>goSlide(cur-1,'animate')} onNext={()=>goSlide(cur+1,'animate')}
-        cueState={displayProfiles} cueBusy={profiles.busy || profiles.syncing} onCueRecovery={()=>profiles.refresh()}
+        cueState={displayProfiles} cueBusy={profiles.busy} cueStatus={landscapeCueStatus} onCueRecovery={()=>profiles.refresh()}
         onReview={()=>recording && liveCapture ? setShowLiveFeedback(true) : run && (state.compare ? openReview(state.takes,cur,true,'rise') : openOverallReview(cur))}
         comparePending={!!state.compare}
         reviewEnabled={recording ? !!liveCapture : !!run && phase === 'idle'} liveFeedback={recording && !!liveCapture}
         redoAsk={redoAsk} onConfirmRedo={confirmRedo} onCancelRedo={cancelRedo}
-        cues={fullscreenCues} onCuesChange={setFullscreenCues} />
-    : <Enter kind={active && openingFromIcon ? null : active ? nav.nav : null}>
+        cues={fullscreenCues} onCuesChange={setFullscreenCues} rotationFade={rotating && !preparingLandscape ? rotationProgress : undefined}
+        preparingFrame={preparingLandscape ? landscapeLayout.info : undefined} onPreviewSettled={onLandscapePreviewSettled} />}
+    {rotating && rotation && <Animated.View pointerEvents="none" testID="rotation-backdrop"
+      style={[{ position: 'absolute', ...rotation.pose.viewport, backgroundColor: rotation.landscape ? '#000000' : c.bg }, rotationBackdrop]} />}
+    {(!showLandscape || portraitLanding) && <Animated.View
+      style={portraitLanding ? [portraitLanding.position, portraitReveal] : styles.settledPortrait} testID="presentation-page">
+      <FrameContext.Provider value={portraitFrame}>
+      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, surfaceMotion]} testID="presentation-surface">
+        <PageSurface hue={deck.hue} fullBleed />
+      </Animated.View>
+      <Animated.View style={[StyleSheet.absoluteFill, screen]}>
       <PanView style={StyleSheet.absoluteFill} {...back} pointerEvents={setupOpen ? 'none' : 'auto'}
-        accessibilityElementsHidden={setupOpen || openingControls} importantForAccessibility={setupOpen || openingControls ? 'no-hide-descendants' : 'auto'}>
-        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, backgroundMotion]}>
-          <PageSurface hue={deck.hue} />
-        </Animated.View>
-        <Animated.View pointerEvents={openingControls ? 'none' : 'auto'} style={[StyleSheet.absoluteFill, screen]}>
+        accessibilityElementsHidden={setupOpen || controlsBlocked} importantForAccessibility={setupOpen || controlsBlocked ? 'no-hide-descendants' : 'auto'}>
+        <Animated.View pointerEvents={controlsBlocked ? 'none' : 'auto'} style={[StyleSheet.absoluteFill, chromeMotion]}>
           <Pressable accessibilityRole="button" accessibilityLabel={ui("Edit presentation time and audience")}
             accessibilityHint={ui("Open presentation time and audience settings")}
             accessibilityState={{ disabled: !active || phase !== 'idle' }} disabled={!active || phase !== 'idle'}
@@ -574,11 +689,13 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
           {/* OpenAI Codex, 2026-11-21: refresh links an unmapped PDF and checks cues; initial analysis may start, while failed provider retries stay in Cues. */}
           <Pressable accessibilityRole="button" accessibilityLabel={ui("Refresh with server")}
             accessibilityHint={ui("Reconnect this PDF and check its AI cues. First-time analysis may start; retry failed analysis from Cues.")}
-            accessibilityState={{ disabled: !active || phase !== 'idle' || profiles.syncing || profiles.busy }}
-            disabled={!active || phase !== 'idle' || profiles.syncing || profiles.busy}
+            accessibilityState={{ disabled: !active || phase !== 'idle' || refreshDisabled, busy: serverRefreshing }}
+            disabled={!active || phase !== 'idle' || refreshDisabled}
             onPress={() => { void Haptics.selectionAsync().catch(() => undefined); setRefreshAsk(true); }}
             style={({ pressed }) => [styles.headerControl, styles.refreshControl, { opacity: pressed ? 0.5 : 1 }]} hitSlop={8}>
-            <UIIcon name="i-loop" size={23} color={profiles.syncing || profiles.busy ? c.muted2 : c.text} />
+            <Animated.View style={refreshIconMotion}>
+              <UIIcon name="i-loop" size={23} color={serverRefreshing ? c.muted2 : c.text} />
+            </Animated.View>
           </Pressable>
           <Animated.View pointerEvents="box-none" style={[styles.counterWrap, { left: 65, width: 260, height: 32 }, counterMotion]}>
             <Pressable accessibilityRole="button" accessibilityLabel={ui("Toggle feedback during presentation")}
@@ -589,14 +706,14 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
             </Pressable>
           </Animated.View>
           <TickStrip n={n} cur={cur} disabled={freezesSlideNavigation(phase)} onPick={i => goSlide(i, 'jump')} />
-          <Readout live={live} phase={phase} cur={cur} take={take} deck={deck} burst={burst} error={error}
-            recoveryCount={recoveryAttempts.length} recoveryNumber={recoveryAttempts.length ? recoveryCursor % recoveryAttempts.length + 1 : 0}
-            onRecovery={() => recoveryAttempt && setRecoveryId(recoveryAttempt.id)} />
+          <Animated.View pointerEvents="box-none" style={[StyleSheet.absoluteFill, bottomMotion]}>
+            <Readout live={live} phase={phase} cur={cur} take={take} deck={deck} burst={burst} error={error} />
+          </Animated.View>
           <RoundButton glyph="h-landscape" active={pdfRotated}
-            label="Open full-screen landscape player" caption="Rotate" onPress={rotate} style={{ left: 49 }} />
-          <View pointerEvents="box-none" style={[styles.rightControlLayer, frame.compact && { top: 621 }]}>
+            label="Open full-screen landscape player" caption="Rotate" onPress={() => rotate()} style={{ left: 49 }} />
+          <View pointerEvents="box-none" style={[styles.rightControlLayer, portraitFrame.compact && { top: 621 }]}>
             <RoundButton glyph="h-review-bars" label={recording && liveCapture ? 'Feedback so far' : state.compare ? 'Compare takes' : 'Review overall feedback'} caption={recording && liveCapture ? 'Feedback' : state.compare ? 'Compare' : 'Review'}
-              disabled={recording ? !liveCapture : !run || phase === 'count'}
+              disabled={recording ? !liveCapture : !run || phase !== 'idle'}
               onPress={() => recording && liveCapture ? setShowLiveFeedback(true) : run && (state.compare ? openReview(state.takes,cur,true,'rise') : openOverallReview(cur))}
               style={{ left: 0, top: 0 }} />
           </View>
@@ -614,17 +731,20 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
         <SlideTrack model={model} slide={cur} trackX={trackX} onSlide={goSlide}
           previousLocked={locksPreviousSlide(phase)} isPreviousLocked={isPreviousLocked}
           navigationFrozen={freezesSlideNavigation(phase)} isNavigationFrozen={isNavigationFrozen}
-          rotated={false} rotating={false} rotation={pdfRotation} closeY={backDy} openPage={pageOpen}
-          opening={openingControls} closingToHome={closingToHome} />
-        <Animated.View pointerEvents="none" style={[styles.header,titleMotion]}>
+          rotated={false} rotating={false} rotation={pdfRotation}
+          opening={controlsBlocked} closingToHome={closingToHome} cardProgress={cardProgress} progressToHome={progressToHome}
+          rotationFade={rotating && !portraitLanding ? rotationProgress : undefined} hidePreview={!!portraitLanding} />
+        {openingFromHome && openingControls && <Animated.View pointerEvents="none" accessible={false}
+          testID="presentation-launch-icon" style={[styles.launchIcon, { left: (FRAME_W - iconSize) / 2, top: HOME_ICON_BOTTOM - iconSize }, iconEntrance]}>
+          <PresentationIcon icon={deck.icon} hue={deck.hue} size={iconSize} />
+        </Animated.View>}
+        <Animated.View pointerEvents="none" testID="presentation-title" style={[styles.header, titleMotion]}>
           <Txt verbatim numberOfLines={1} style={styles.deckTitle}>{deck.title}</Txt>
         </Animated.View>
-        <Animated.View pointerEvents={openingControls ? 'none' : 'box-none'} style={[StyleSheet.absoluteFill,screen]}>
-          <CueGuidancePanel key={cueCloseRequest} state={displayProfiles} slide={cur} error={profiles.error} busy={profiles.busy || profiles.syncing}
+        <Animated.View pointerEvents={controlsBlocked ? 'none' : 'box-none'} style={[StyleSheet.absoluteFill, chromeMotion]}>
+          <CueGuidancePanel key={cueCloseRequest} state={displayProfiles} slide={cur} error={profiles.error} busy={profiles.busy || profiles.syncing} requesting={profiles.busy}
             onSheetOpenChange={setCueSheetOpen}
-            connectionMessage={profiles.available ? undefined : profiles.error || 'Connecting this presentation to server cues…'}
-            requirementsNotice={requirementsPending(deck.id, API_URL) ? (readRequirementsDraft(deck.id, API_URL)?.conflict ? 'Presentation choices conflict · tap the title to resolve' : 'Presentation choices saved on phone · sync pending. Targets use last synchronized time.') : defaultRequirementsPending(deck.id, API_URL) ? 'Presentation requirements · sync pending' : null}
-            playbackNotice={player.error || (partId && !audioOf(partId) ? 'Audio for this slide isn’t on this phone' : null)}
+            connectionMessage={cueConnectionMessage}
             onRecover={action => {
               if (action === 'refresh') profiles.refresh();
               else if (action === 'confirm') setCueRetryAsk(profiles.value);
@@ -634,6 +754,7 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
       </PanView>
       {setupOpen && <Animated.View style={[StyleSheet.absoluteFill,setupMotion]}><PageSurface hue={deck.hue} /><PresentationRequirementsEditor deck={deck} active={active}
         fixedHint onHintVisibilityChange={setSetupHintVisible}
+        onReviewSavedRecording={recoveryAttempt ? () => { setSetupOpen(false); setRecoveryId(recoveryAttempt.id); } : undefined}
         onSaved={() => setSetupOpen(false)} onBackPan={{ onMoveShould: (_e, g) => g.dy > 12 && g.dy > Math.abs(g.dx), onMove:(_e,g)=>setupDy.set(Math.max(0,Math.min(BACK_FADE_Y,g.dy/frame.s))),onRelease: (_e, g) => { if (g.dy > BACK_T) closeSetup();else setupDy.set(withTiming(0,{duration:360,easing:EASE_SCREEN})); },onTerminate:()=>setupDy.set(withTiming(0,{duration:360,easing:EASE_SCREEN})) }} /></Animated.View>}
       {redoAsk && <Dialog title={redoAsk==='all'?'Redo all slides?':`Redo slide ${cur+1}?`}
         body={redoAsk==='all'?'Your current take stays, so you can compare and keep either one.':'Your old take stays, so you can compare.'}
@@ -641,28 +762,56 @@ function Rehearse({ model, active }: { model: DeckModel; active: boolean }) {
       {cueRetryAsk && <Dialog title="Retry AI cues?" body="The previous provider request has an uncertain outcome. Retrying may incur another charge."
         confirm="Retry" onConfirm={() => { const captured = cueRetryAsk; setCueRetryAsk(null); void profiles.recover(true, captured); }} onCancel={() => setCueRetryAsk(null)} />}
       {refreshAsk && <Dialog title="Refresh with server?" body="Reconnect this presentation and check its latest AI cues. If this PDF is not linked yet, it may be uploaded for analysis."
-        confirm="Refresh" icon="i-loop" tone="neutral" onConfirm={() => { setRefreshAsk(false); if (phaseRef.current === 'idle' && !profiles.syncing && !profiles.busy) profiles.refresh(); }} onCancel={() => setRefreshAsk(false)} />}
+        confirm="Refresh" icon="i-loop" tone="neutral" onConfirm={() => { setRefreshAsk(false); if (phaseRef.current === 'idle' && !refreshDisabled) profiles.refresh(); }} onCancel={() => setRefreshAsk(false)} />}
       {phase === 'burst' && <Confetti />}
       {recoveryId && <TakePlayback id={recoveryId} deck={deck} initialSlide={cur}
         onClose={closeRecovery} onRecovered={recovered} />}
-    </Enter>}
-    {/* OpenAI Codex, 2026-11-20: pin preview cues outside the page and slide motion. */}
-    {active&&setupOpen&&setupHintVisible&&<PresentationSetupHint />}
-    {active&&!pdfRotated&&!setupOpen&&!redoAsk&&!cueRetryAsk&&!refreshAsk&&!recoveryId&&!showLiveFeedback&&!cueSheetOpen&&<>
-      <HintRow hints={showIdleHints ? [idleHint] : hints} />
-      {showIdleHints && <HintRow hints={[homeHint]} style={styles.homeHintRight} />}
-    </>}
+      {active&&setupOpen&&setupHintVisible&&<PresentationSetupHint />}
+      {footer.visible&&(!pdfRotated||portraitLanding)&&!setupOpen&&!redoAsk&&!cueRetryAsk&&!refreshAsk&&!recoveryId&&!showLiveFeedback&&!cueSheetOpen&&
+        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, active ? bottomMotion : footer.style]}>
+          <HintRow hints={hints} />
+        </Animated.View>}
+      </Animated.View>
+      </FrameContext.Provider>
+    </Animated.View>}
+    {rotating && rotation && <RotatingSlide rotation={rotation} model={model} progress={rotationProgress} />}
+    </View>
   </>;
+}
+
+function RotatingSlide({ rotation, model, progress }: { rotation: Rotation; model: DeckModel; progress: SharedValue<number> }) {
+  const { pose, slide } = rotation;
+  const { from, dx, dy, angle, scaleX, scaleY } = pose;
+  const page = model.deck.pages[slide];
+  const preview = useAnimatedStyle(() => ({
+    opacity: Math.min(1, progress.value / 0.1),
+    transform: [
+      { translateX: dx * progress.value },
+      { translateY: dy * progress.value },
+      { rotate: `${angle * progress.value}deg` },
+      { scaleX: 1 + (scaleX - 1) * progress.value },
+      { scaleY: 1 + (scaleY - 1) * progress.value },
+    ],
+  }));
+  return <Animated.View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants"
+    testID="rotation-preview" style={[{ position: 'absolute', ...from }, preview]}>
+      {page ? <Image source={{ uri: page.uri }} resizeMode="contain" fadeDuration={0} style={StyleSheet.absoluteFill} />
+        : <MiniSlide hue={model.deck.hue} title={model.deck.slides[slide]?.title ?? ''} width={from.width} height={from.height} radius={6} />}
+  </Animated.View>;
 }
 
 // Updated PDF and slide limits by OpenAI Codex, Iteration 2 (2026-10-14).
 // ── Slide carousel (render nearby slides on the track) ────────────────────
-const SlideTrack = memo(function SlideTrack({ model, slide, trackX, onSlide, previousLocked, isPreviousLocked, navigationFrozen, isNavigationFrozen, rotated, rotating, rotation, closeY, openPage, opening, closingToHome }: {
+const SlideTrack = memo(function SlideTrack({ model, slide, trackX, onSlide, previousLocked, isPreviousLocked, navigationFrozen, isNavigationFrozen, rotated, rotating, rotation, opening, closingToHome, cardProgress, progressToHome, rotationFade, hidePreview }: {
   model: DeckModel; slide: number; trackX: SharedValue<number>; onSlide: (i: number, mode: 'jump' | 'animate' | 'keep') => void;
   previousLocked: boolean; isPreviousLocked: () => boolean;
   navigationFrozen: boolean; isNavigationFrozen: () => boolean;
-  rotated: boolean; rotating: boolean; rotation: SharedValue<number>; closeY: SharedValue<number>; openPage: SharedValue<number>;
+  rotated: boolean; rotating: boolean; rotation: SharedValue<number>;
   opening: boolean; closingToHome: SharedValue<boolean>;
+  cardProgress: Readonly<Pick<SharedValue<number>, 'value'>>;
+  progressToHome: Readonly<Pick<SharedValue<number>, 'value'>>;
+  rotationFade?: SharedValue<number>;
+  hidePreview: boolean;
 }) {
   const ui = useUiText();
   const { deck, n } = model;
@@ -670,34 +819,42 @@ const SlideTrack = memo(function SlideTrack({ model, slide, trackX, onSlide, pre
   const step = CARD_STEP;
   const frame = useFrame();
   const cardHeight = frame.compact ? 170 : CARD_H;
-  // OpenAI Codex, 2026-11-19: keep the same PDF layer visible while the page fades,
-  // then shrink its center into the Home presentation icon on the UI thread.
-  const cardCenterY = 100 + 16 + cardHeight / 2;
-  const homeIconCenterY = HOME_ICON_BOTTOM_Y - (frame.compact ? 120 : 146) / 2;
-  const dotOffsetY = homeIconCenterY - (SLIDE_STAGE_CENTER_Y + (cardCenterY - SLIDE_STAGE_CENTER_Y) * SLIDE_DOT_SCALE);
-  const closeMotion = useAnimatedStyle(() => {
-    const progress = Math.max(0, Math.min(1, closeY.value / BACK_FADE_Y));
+  const stageCenter = SLIDE_STAGE_TOP + SLIDE_STAGE_HEIGHT / 2;
+  const cardCenter = SLIDE_STAGE_TOP + SLIDE_TOP + cardHeight / 2;
+  const homeIconCenter = HOME_ICON_BOTTOM - deckIconSize(frame.compact) / 2;
+  const initialScale = 0.25;
+  const homeOffset = homeIconCenter - (stageCenter + (cardCenter - stageCenter) * initialScale);
+  const cardMotion = useAnimatedStyle(() => {
+    const progress = cardProgress.value;
     return {
-      opacity: Math.max(0, Math.min(1, (1 - progress) / 0.08)) * (opening && !closingToHome.value ? openPage.value : 1),
-      transform: [{ translateY: dotOffsetY * progress }, { scale: 1 - (1 - SLIDE_DOT_SCALE) * progress }],
+      opacity: hidePreview ? 0 : Math.max(0, Math.min(1, progress / 0.62, (0.88 - progressToHome.value) / 0.22, 1 - (rotationFade?.value ?? 0) / 0.1)),
+      transform: [{ translateY: homeOffset * (1 - progress) }, { scale: initialScale + (1 - initialScale) * progress }],
     };
-  }, [closingToHome, dotOffsetY, opening, openPage]);
+  });
+  const arrowMotion = useAnimatedStyle(() => {
+    const toHome = progressToHome.value;
+    const progress = toHome > 0 ? 1 : cardProgress.value;
+    return {
+      opacity: Math.max(0, Math.min(1, progress / 0.62, 1 - toHome / CHROME_RETURN_FRACTION, 1 - (rotationFade?.value ?? 0) / 0.1)),
+      transform: [{ translateY: homeOffset * (1 - progress) }, { scale: initialScale + (1 - initialScale) * progress }],
+    };
+  });
   const g = useRef<{ base: number; x: number; lastT: number; vel: number; caught: boolean } | null>(null);
-  const openingGestureId = useRef<number | null>(null);
+  const touchStartedDuringOpening = useRef(false);
   useEffect(() => { g.current = null; }, [rotated]);
   const responder: PanHandlers = {
     // In the enlarged view the slide itself turns; the phone and controls stay upright.
     disabled: rotating || navigationFrozen,
-    onStartShould: (_e, gs) => {
-      openingGestureId.current = closeY.get() > 1 || openPage.get() < 0.99 ? gs.stateID : null;
-      return openingGestureId.current !== gs.stateID && Math.abs(trackX.get() + slide * step) > 1;
+    onStartShouldCapture: (_e, gs) => {
+      if (gs.numberActiveTouches === 1) touchStartedDuringOpening.current = opening || closingToHome.get();
+      return false;
     },
-    onMoveShould: (_e, gs) => {
-      if (closeY.get() > 1 || openPage.get() < 0.99) openingGestureId.current = gs.stateID;
-      return openingGestureId.current !== gs.stateID && (rotated
+    onStartShould: () =>
+      !opening && !touchStartedDuringOpening.current && Math.abs(trackX.get() + slide * step) > 1,
+    onMoveShould: (_e, gs) =>
+      !opening && !touchStartedDuringOpening.current && (rotated
         ? Math.abs(gs.dy) > 5 && Math.abs(gs.dy) >= Math.abs(gs.dx)
-        : Math.abs(gs.dx) > 5 && Math.abs(gs.dx) >= Math.abs(gs.dy));
-    },
+        : Math.abs(gs.dx) > 5 && Math.abs(gs.dx) >= Math.abs(gs.dy)),
     onGrant: () => {
       cancelAnimation(trackX);
       const base = trackX.get() + slide * step;
@@ -741,7 +898,8 @@ const SlideTrack = memo(function SlideTrack({ model, slide, trackX, onSlide, pre
   }));
   const prev = () => onSlide(slide - 1, 'animate'), next = () => onSlide(slide + 1, 'animate');
   return (
-    <Animated.View style={[styles.slideStage, closeMotion]} pointerEvents="box-none">
+    <View style={styles.slideStage} pointerEvents="box-none">
+    <Animated.View testID="presentation-slide-track" style={[StyleSheet.absoluteFill, cardMotion]} pointerEvents={opening ? 'none' : 'box-none'}>
       <Animated.View style={[styles.slidePosition, frame.compact && { height: cardHeight }, slidePosition]} pointerEvents="box-none">
         <PanView style={[styles.slideZoom, frame.compact && { height: cardHeight }, slideRotation]} {...responder}
           accessible accessibilityRole="adjustable" accessibilityLabel={ui(`Slide ${slide + 1} of ${n}: ${deck.slides[slide]?.title ?? ''}`)}
@@ -757,6 +915,8 @@ const SlideTrack = memo(function SlideTrack({ model, slide, trackX, onSlide, pre
           </Animated.View>
         </PanView>
       </Animated.View>
+    </Animated.View>
+    <Animated.View testID="presentation-slide-arrows" style={[StyleSheet.absoluteFill, arrowMotion]} pointerEvents={opening ? 'none' : 'box-none'}>
       {!rotating && !navigationFrozen && !previousLocked && rotated && slide > 0 && <Pressable accessibilityRole="button" accessibilityLabel={ui(`Previous slide, ${slide}: ${deck.slides[slide - 1]?.title ?? ''}`)}
         onPress={prev} style={[styles.rotatedCorner, { top: 0 }]} />}
       {!rotating && !navigationFrozen && rotated && slide < n - 1 && <Pressable accessibilityRole="button" accessibilityLabel={ui(`Next slide, ${slide + 2}: ${deck.slides[slide + 1]?.title ?? ''}`)}
@@ -775,6 +935,7 @@ const SlideTrack = memo(function SlideTrack({ model, slide, trackX, onSlide, pre
         </Pressable>
       </>}
     </Animated.View>
+    </View>
   );
 });
 
@@ -794,9 +955,19 @@ function TickStrip({ n, cur, disabled, onPick }: { n: number; cur: number; disab
     const x = (e.nativeEvent.pageX - frame.left) / frame.s - 16;
     onPick(Math.max(0, Math.min(n - 1, Math.floor((x / 358) * n))));
   };
+  const gesture = useRef<'tap' | 'scrub' | 'vertical'>('tap');
   const responder: PanHandlers = {
-    onStartShould: () => true, onMoveShould: () => true,
-    onGrant: pickAt, onMove: pickAt, onTerminationRequest: () => false,
+    onStartShould: () => true,
+    onGrant: () => { gesture.current = 'tap'; },
+    onMove: (e, g) => {
+      const dx = Math.abs(g.dx), dy = Math.abs(g.dy);
+      if (gesture.current === 'tap' && Math.max(dx, dy) > 5) {
+        gesture.current = dx >= dy ? 'scrub' : 'vertical';
+      }
+      if (gesture.current === 'scrub') pickAt(e);
+    },
+    onRelease: e => { if (gesture.current === 'tap') pickAt(e); },
+    onTerminationRequest: () => gesture.current !== 'scrub',
   };
   const ticks = Math.min(n, 48);
   const active = Math.floor((cur * ticks) / n);
@@ -811,11 +982,9 @@ function TickStrip({ n, cur, disabled, onPick }: { n: number; cur: number; disab
 }
 
 // ── Timer, slide time, pace chip and waveform (re-render ~10×/s while recording) ──
-function Readout({ live, phase, cur, take, deck, burst, error, recoveryCount, recoveryNumber, onRecovery }: {
+function Readout({ live, phase, cur, take, deck, burst, error }: {
   live: LiveStore; phase: Phase; cur: number; take: boolean; deck: DeckModel['deck']; burst: { total: number } | null; error: string;
-  recoveryCount: number; recoveryNumber: number; onRecovery: () => void;
 }) {
-  const ui = useUiText();
   const { c } = useTheme();
   const frame = useFrame();
   const L = useSyncExternalStore(live.subscribe, live.get);
@@ -828,23 +997,20 @@ function Readout({ live, phase, cur, take, deck, burst, error, recoveryCount, re
       <View style={[styles.paceWrap, frame.compact && { top: 466 }]} pointerEvents="none"><Chip chip={pace} size={14} /></View>
       <Txt style={[styles.big, frame.compact && { top: 490 }, { color: c.text }]}>{fmt(L.E)}</Txt>
       <Txt style={[styles.line, frame.compact && { top: 546 }, { color: onSlide > target ? c.coralText : c.secondary }]}>{'Slide ' + (cur + 1) + ' · ' + fmt(onSlide) + ' of ' + fmt(target)}</Txt>
-      <Waveform bars={L.wave} live />
+      <Waveform bars={L.wave} live smooth />
     </>;
   }
-  const recovery = recoveryCount > 0;
-  const line = recovery && phase === 'idle' ? 'Recording interrupted' + (recoveryCount > 1 ? ` ${recoveryNumber} of ${recoveryCount}` : '') + ' · tap to inspect' : error ? error : phase === 'count' ? 'Get ready…' : phase === 'burst' ? 'Run complete'
+  const line = error ? error : phase === 'count' ? 'Get ready…' : phase === 'starting' ? 'Starting recorder…' : phase === 'burst' ? 'Run complete'
     : take ? 'Redo slide ' + (cur + 1) : cur === 0 ? 'Full run · target ' + fmt(deck.target) : 'Record slide ' + (cur + 1);
   return <>
     <Txt style={[styles.big, frame.compact && { top: 490 }, { color: phase === 'burst' ? c.text : c.strong }]}>{phase === 'burst' && burst ? fmt(burst.total) : '0:00'}</Txt>
-    <Txt numberOfLines={2} accessibilityRole={recovery && phase === 'idle' ? 'button' : 'text'}
-      accessibilityLabel={ui(recovery && phase === 'idle' ? 'Open interrupted recording for recovery' : undefined)}
-      onPress={recovery && phase === 'idle' ? onRecovery : undefined}
-      style={[styles.line, frame.compact && { top: 546 }, { color: error || recovery ? c.bad : c.secondary }]}>{line}</Txt>
+    <Txt numberOfLines={2} style={[styles.line, frame.compact && { top: 546 }, { color: error ? c.bad : c.secondary }]}>{line}</Txt>
     <Waveform bars={IDLE_WAVE} live={false} />
   </>;
 }
 
 const styles = createThemedStyles({
+  settledPortrait: { ...StyleSheet.absoluteFill, opacity: 1 },
   redoScrim: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 },
   redoSheet: { position: 'absolute', left: 0, right: 0, bottom: 0, minHeight: 328, paddingTop: 12, paddingHorizontal: 24, paddingBottom: 28, borderTopLeftRadius: 28, borderTopRightRadius: 28, borderWidth: 1, alignItems: 'stretch' },
   sheetHandle: { alignSelf: 'center', width: 38, height: 4, borderRadius: 2, backgroundColor: C.muted2, marginBottom: 22 },
@@ -854,19 +1020,19 @@ const styles = createThemedStyles({
   redoCancel: { minHeight: 48, marginTop: 8, borderRadius: 24, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   redoButtonText: { fontFamily: F.semibold, fontSize: 14 },
   redoHint: { marginTop: 7, fontFamily: F.medium, fontSize: 13.5, textAlign: 'center' },
-  homeHintRight: { left: 244, right: 0 },
   loading: { position: 'absolute', top: 400, left: 0, right: 0, textAlign: 'center', fontFamily: F.medium, fontSize: 14, color: C.secondary },
-  header: { position: 'absolute', left: 64, right: 64, top: 50, alignItems: 'center' },
+  header: { position: 'absolute', left: 64, right: 64, top: HEADER_TOP, alignItems: 'center' },
   deckTitle: { fontFamily: F.display, fontSize: 18, lineHeight: 21.6, letterSpacing: -0.3, color: C.text },
+  launchIcon: { position: 'absolute' },
   counterWrap: { position: 'absolute', left: 120, top: 75, width: 150, height: 18, alignItems: 'center', justifyContent: 'center' },
   counterCenter: { alignItems: 'center', justifyContent: 'center' },
   counter: { fontFamily: F.medium, fontSize: 13.5, color: C.secondary },
-  // OpenAI Codex, 2026-11-23: align both header controls on the same row.
-  headerControl: { position: 'absolute', top: 39, width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  // OpenAI Codex, 2026-11-24: match the Home header controls' vertical position.
+  headerControl: { position: 'absolute', ...HOME_HEADER_CONTROL, alignItems: 'center', justifyContent: 'center' },
   editRequirements: { left: 16, zIndex: 20 },
   refreshControl: { right: 16 },
-  slideStage: { position: 'absolute', left: 0, top: 100, width: 390, height: 510, overflow: 'hidden' },
-  slidePosition: { position: 'absolute', left: 16, top: 16, width: CARD_W, height: CARD_H },
+  slideStage: { position: 'absolute', left: 0, top: SLIDE_STAGE_TOP, width: FRAME_W, height: SLIDE_STAGE_HEIGHT, overflow: 'hidden' },
+  slidePosition: { position: 'absolute', left: 16, top: SLIDE_TOP, width: CARD_W, height: CARD_H },
   slideZoom: { width: CARD_W, height: CARD_H, overflow: 'hidden' },
   rotatedStatus: { position: 'absolute', left: 20, right: 20, top: 622, textAlign: 'center',
     fontFamily: F.semibold, fontSize: 13.5 },

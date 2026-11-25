@@ -2,11 +2,12 @@
 // AI-assisted with Claude Code, prompted by Seoyeon (November 15, 2026); see docs/ai-collaboration-prompts.md.
 import { readCoachingJson } from '../../services/storeBudget';
 import { backendFetch } from '../../services/backendFetch';
-import { readStored, writeStored } from '../../services/storage';
+import { readStored, removeStored, writeStored } from '../../services/storage';
 import { bump } from '../presentations/store';
 import { normalizeApi } from '../transcription/analysisStorage';
-import { parseFeedbackRun, type FeedbackRun } from './feedbackRun';
+import { parseFeedbackRun, type FeedbackRun, type V3Evidence } from './feedbackRun';
 import { markNewWording } from '../localization/firstWording';
+import { sameScope, type QaScope } from '../qa/state';
 
 type Transport = typeof globalThis.fetch;
 const enc = (api: string) => encodeURIComponent(normalizeApi(api));
@@ -125,4 +126,105 @@ export function startFeedbackRun(api: string, attemptId: string, contextId: stri
     }
     return save(api, attemptId, contextId, body, order, true);
   });
+}
+
+// OpenAI Codex, 2026-11-23: a selected run has its own identity and may use several attempts.
+export type SelectedFeedback = { anchor: string; scope: QaScope; revision: string };
+export type SelectedFeedbackCheck = 'available' | 'waiting' | 'unavailable' | 'offline'
+  | 'public_budget_exhausted' | 'public_budget_unavailable';
+type SelectedAction = 'check' | 'update' | 'retry';
+const selectedKey = (api: string, selection: SelectedFeedback) =>
+  `selected-feedback:v1:${JSON.stringify([normalizeApi(api), selection.scope, selection.revision])}`;
+const selectedRequests = new Map<string, { action: SelectedAction; request: Promise<SelectedFeedbackCheck> }>();
+
+function parseSelectedRun(raw: unknown, selection: SelectedFeedback): FeedbackRun | null {
+  const run = parseFeedbackRun(raw);
+  const scope = (raw as { scope?: QaScope } | null)?.scope;
+  if (!run?.runId || run.attemptId !== selection.anchor || run.contextId !== selection.scope.context_id ||
+      !sameScope(scope, selection.scope)) return null;
+  const sources = new Map(selection.scope.slides.map(slide => [slide.slide_index, slide]));
+  const indexes = new Set(run.slides.map(slide => slide.slide_index));
+  if (indexes.size !== run.slides.length || run.slides.some(slide => slide.status === 'scored' && !sources.has(slide.slide_index))) return null;
+  // Composed time is used for measurements only. Play citations from their original selected visits.
+  const evidence = (items: V3Evidence[], slideIndex?: number) => items.filter(item => {
+    if (item.kind === 'measurement') return true;
+    if (slideIndex !== undefined && item.slide_index !== slideIndex) return false;
+    const source = sources.get(item.slide_index);
+    return !!source && item.attempt_id === source.attempt_id &&
+      source.segments.some(segment => item.start_ms >= segment.start_ms && item.end_ms <= segment.end_ms);
+  });
+  return { ...run,
+    slides: run.slides.map(slide => ({ ...slide,
+      criteria: slide.criteria.map(c => ({ ...c, evidence: evidence(c.evidence, slide.slide_index) })),
+      must_cover: slide.must_cover.map(p => ({ ...p, evidence: evidence(p.evidence, slide.slide_index) })),
+      strength: slide.strength ? { ...slide.strength, evidence: evidence(slide.strength.evidence, slide.slide_index) } : null,
+      improvements: slide.improvements.map(i => ({ ...i, evidence: evidence(i.evidence, slide.slide_index) })),
+    })),
+    whole: run.whole ? { ...run.whole, criteria: run.whole.criteria.map(c => ({ ...c, evidence: evidence(c.evidence) })) } : null,
+  };
+}
+
+export function readSelectedFeedback(api: string, selection: SelectedFeedback): FeedbackRun | null {
+  try {
+    return parseSelectedRun(readStored(selectedKey(api, selection)), selection);
+  } catch {
+    return null;
+  }
+}
+
+/** Dedupe Home/Review requests. Poll an existing job with GET; admit new work only with POST. */
+export function checkSelectedFeedback(api: string, selection: SelectedFeedback, action: SelectedAction = 'check',
+  transport: Transport = backendFetch): Promise<SelectedFeedbackCheck> {
+  const key = selectedKey(api, selection);
+  const inflight = selectedRequests.get(key);
+  if (inflight && (action === 'check' || action === inflight.action)) return inflight.request;
+  if (inflight) return inflight.request.then(() => checkSelectedFeedback(api, selection, action, transport));
+  const previous = readSelectedFeedback(api, selection);
+  const path = `${normalizeApi(api)}/attempts/${encodeURIComponent(selection.anchor)}/selected-feedback-run/`;
+  const submit = () => transport(path, { method: 'POST', signal: AbortSignal.timeout(20000),
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scope: selection.scope, retry: action === 'retry' }) });
+  const request = (async (): Promise<SelectedFeedbackCheck> => {
+    let jobMissing = false;
+    const invalidateMissingJob = () => {
+      if (jobMissing) {
+        try { removeStored(key); bump(); } catch { /* The waiting/unavailable state hides the old score even if storage is unavailable. */ }
+      }
+    };
+    try {
+      let response = action === 'check' && previous?.runId
+        ? await transport(path + encodeURIComponent(previous.runId) + '/', { method: 'GET', signal: AbortSignal.timeout(15000) })
+        : await submit();
+      let body = await json(response);
+      const errorCode = () => (body as { error?: { code?: string } } | null)?.error?.code;
+      // A restored client may have a job ID for a server that no longer has that job.
+      if (action === 'check' && previous?.runId && response.status === 404 && errorCode() === 'not_found') {
+        jobMissing = true;
+        response = await submit();
+        body = await json(response);
+      }
+      if (!response.ok) {
+        invalidateMissingJob();
+        const code = errorCode();
+        if (code === 'transcript_not_ready') return 'waiting';
+        if (code === 'public_budget_exhausted' || code === 'public_budget_unavailable') return code;
+        return response.status === 401 || response.status === 403 || response.status === 429 || response.status >= 500
+          ? 'offline' : 'unavailable';
+      }
+      const run = parseSelectedRun(body, selection);
+      if (!run || run.status === 'absent') {
+        invalidateMissingJob();
+        return 'unavailable';
+      }
+      if (JSON.stringify(readStored(key)) !== JSON.stringify(body)) {
+        writeStored(key, body);
+        bump();
+      }
+      return 'available';
+    } catch {
+      invalidateMissingJob();
+      return 'offline';
+    }
+  })().finally(() => selectedRequests.delete(key));
+  selectedRequests.set(key, { action, request });
+  return request;
 }

@@ -10,11 +10,34 @@ registerHooks({ resolve, load });
 const { fmt, nearestSlot, quote } = await import('../src/domain/format.ts');
 const { pickHue } = await import('../src/domain/hues.ts');
 const { fillerCounts, fillerTotal, covers, keyWords, wordCount } = await import('../src/domain/words.ts');
-const { parseSlideText, slideTargets, defaultTarget } = await import('../src/domain/slides.ts');
+const { parseSlideText, slideTargets, defaultTarget, presentationTiming } = await import('../src/domain/slides.ts');
 const { mergeTake, takeVisits, runTimes, runLabel } = await import('../src/domain/run.ts');
 const { sentences, buildLines, buildVocabulary, splitFlags } = await import('../src/domain/lines.ts');
 const { reviewInsights, findingsFor, paceChip, heroStats, compareRows, summarizeTake } = await import('../src/domain/analysis.ts');
-const { decideRelease, coverFlow, homeCarouselRelease } = await import('../src/domain/gestures.ts');
+const { decideRelease, coverFlow, homeCarouselRelease, carouselGlowWeight } = await import('../src/domain/gestures.ts');
+
+test('opening and refreshing a long deck reuse timing without rescanning its text', () => {
+  let textReads = 0;
+  const slides = Array.from({ length: 91 }, (_, i) => ({
+    get text() { textReads++; return `Slide ${i + 1} discusses the application and rehearsal guidance`; },
+  }));
+  const deck = { slides, pageCount: 91, target: 182, targets: Array(91).fill(2) };
+  assert.deepEqual(presentationTiming(deck, { requiredDurationSeconds: null, revision: 1 }).targets, deck.targets);
+  assert.equal(textReads, 0);
+
+  const initial = presentationTiming(deck, { requiredDurationSeconds: 600, revision: 2 });
+  assert.equal(textReads, 91);
+  assert.equal(initial.targets.reduce((sum, value) => sum + value, 0), 600);
+  initial.targets[0] = -1;
+  const refreshed = presentationTiming({ ...deck }, { requiredDurationSeconds: 600, revision: 3 });
+  assert.equal(textReads, 91);
+  assert.equal(refreshed.requirementsRevision, 3);
+  assert.ok(refreshed.targets[0] >= 0);
+
+  const retargeted = presentationTiming(deck, { requiredDurationSeconds: 900, revision: 4 });
+  assert.equal(textReads, 182);
+  assert.equal(retargeted.targets.reduce((sum, value) => sum + value, 0), 900);
+});
 
 test('Home carousel fling slows long spins while a short turn stays responsive', () => {
   assert.deepEqual(homeCarouselRelease(0, 4), { target: 1, duration: 405 });
@@ -23,6 +46,36 @@ test('Home carousel fling slows long spins while a short turn stays responsive',
   assert.equal(fast.duration, 840);
   assert.deepEqual(homeCarouselRelease(0, -100), { target: -4, duration: 840 });
   assert.equal(homeCarouselRelease(0.1, 0).duration, 300);
+});
+
+test('Home glow keeps the same wrap and upload weights while reading at most two hues', () => {
+  for (const count of [0, 1, 2, 5, 100]) {
+    const palette = ['rose', 'orchid', 'lilac', 'lilac'];
+    const hues = Array.from({ length: count }, (_, i) => palette[i % palette.length]);
+    let reads = 0;
+    const observed = new Proxy(hues, {
+      get(target, key, receiver) {
+        if (typeof key === 'string' && /^\d+$/.test(key)) reads++;
+        return Reflect.get(target, key, receiver);
+      },
+    });
+    for (const position of [-count - 0.5, -1, -0.25, 0, 0.25, 0.5, 1.5, count - 0.5, count + 0.75]) {
+      for (const hue of new Set(palette)) {
+        const distances = hues.flatMap((item, i) => item === hue
+          ? [Math.abs(((i - position + count / 2) % count + count) % count - count / 2)] : []);
+        const weight = distances.reduce((sum, distance) => {
+          const k = Math.max(0, 1 - distance);
+          return sum + k * k * (3 - 2 * k);
+        }, 0);
+        reads = 0;
+        assert.ok(Math.abs(carouselGlowWeight(observed, hue, position, false) - Math.min(1, weight)) < 1e-12);
+        assert.ok(reads <= 2);
+        reads = 0;
+        assert.equal(carouselGlowWeight(observed, hue, position, true), Number(distances.some(distance => distance < 0.5)));
+        assert.ok(reads <= 1);
+      }
+    }
+  }
 });
 
 test('formatting and hues follow the design', () => {

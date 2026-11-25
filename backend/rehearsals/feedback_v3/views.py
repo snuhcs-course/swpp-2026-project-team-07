@@ -8,7 +8,7 @@ GET never starts work. POST starts or reuses the run for the current inputs;
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from ..models import Attempt, CaptureSession
+from ..models import Attempt, CaptureSession, FeedbackRun
 from . import llm, pipeline
 
 
@@ -58,3 +58,42 @@ def feedback_run(request, attempt_id):
         return _error(error.code, error.status)
     except llm.LLMError as error:
         return _error(error.code, 409)
+
+
+def _selected_body(run, *, enabled, outdated):
+    return {**pipeline.public(run), 'scope': run.selected_scope, 'context_id': run.selected_scope['context_id'],
+            'enabled': enabled, 'outdated': outdated}
+
+
+# OpenAI Codex, 2026-11-23: use a separate scope for the currently selected rehearsal.
+@api_view(['POST'])
+def start_selected_feedback(request, attempt_id):
+    payload = request.data
+    if (request.query_params or not isinstance(payload, dict) or set(payload) - {'scope', 'retry'}
+            or not isinstance(payload.get('scope'), dict) or type(payload.get('retry', False)) is not bool):
+        return _error('invalid_request', 400)
+    try:
+        run = pipeline.start(attempt_id, selected_scope=payload['scope'], retry=payload.get('retry', False))
+    except Attempt.DoesNotExist:
+        return _error('not_found', 404)
+    except pipeline.RunError as error:
+        return _error(error.code, error.status)
+    except llm.LLMError as error:
+        return _error(error.code, 409)
+    run.refresh_from_db()
+    return Response(_selected_body(run, enabled=True, outdated=False),
+                    status=202 if run.status in ('queued', 'running') else 200)
+
+
+@api_view(['GET'])
+def selected_feedback(request, attempt_id, run_id):
+    if request.query_params:
+        return _error('invalid_request', 400)
+    try:
+        run = FeedbackRun.objects.filter(selected_scope__isnull=False).select_related('attempt__deck', 'context').get(
+            pk=run_id, attempt_id=attempt_id,
+        )
+    except FeedbackRun.DoesNotExist:
+        return _error('not_found', 404)
+    enabled = pipeline.enabled()
+    return Response(_selected_body(run, enabled=enabled, outdated=enabled and pipeline.outdated(run.attempt, run.context, run)))

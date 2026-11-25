@@ -15,7 +15,12 @@ import { serverSlides } from './serverDeck';
 import { defaultTarget, parseSlideText, slideTargets } from '../../domain/slides';
 import { deckById, forgetPresentation, nextHue, nextOrder, savePresentation, type PageImage, type Presentation } from './store';
 
-export type Progress = { progress: number; status: string; pages: number | null; textOffline?: boolean; imageOnlySlides?: boolean };
+export type Progress = {
+  stage: 'finding' | 'reading' | 'planning' | 'ready';
+  pages: number | null;
+  textOffline?: boolean;
+  imageOnlySlides?: boolean;
+};
 
 export function pickPdf(): Promise<LocalPdf | null> { return pdfService.importPdf(); }
 // OpenAI Codex, 2026-11-02: shared renderer extraction; see docs/ai-collaboration/README.md#prompt-logs.
@@ -26,7 +31,7 @@ function pagesDir(id: string) {
   return `${FileSystem.documentDirectory}outloud-slides/${id}/`;
 }
 
-const STATUS = ['Rendering slides', 'Reading slide text', 'Setting slide timing', 'Ready'];
+export const SLIDE_TEXT_WAIT_MS = 20_000;
 
 /**
  * Analyse a picked PDF and save it as a presentation. Progress is reported in the
@@ -34,7 +39,7 @@ const STATUS = ['Rendering slides', 'Reading slide text', 'Setting slide timing'
  */
 export async function analyzePdf(pdf: LocalPdf, onProgress: (p: Progress) => void, signal: AbortSignal): Promise<Presentation> {
   const check = () => { if (signal.aborted) throw new Error('cancelled'); };
-  onProgress({ progress: 0.02, status: STATUS[0], pages: null });
+  onProgress({ stage: 'finding', pages: null });
   let pages: PageImage[];
   try { pages = await renderPages(pdf); }
   catch (error) {
@@ -44,16 +49,15 @@ export async function analyzePdf(pdf: LocalPdf, onProgress: (p: Progress) => voi
   }
   check();
   if (!pages.length) throw new Error('This PDF has no pages.');
-  onProgress({ progress: 0.34, status: STATUS[1], pages: pages.length });
+  onProgress({ stage: 'reading', pages: pages.length });
 
-  let texts: string[] | null = null;
-  // Local rendering is enough to finish importing. Keep the optional server
-  // text extraction bounded so an unreachable/slow backend cannot strand the
-  // user on the analysis screen; rehearsal can retry it in the background.
-  try { texts = (await serverSlides({ id: pdf.id, title: pdf.title, uri: pdf.uri, pageCount: pages.length }, undefined, signal, 20_000)).texts; }
-  catch { check(); /* Offline or server error: slide text is fetched later. */ }
+  // Bound the wait on the setup screen while the upload continues for slow decks.
+  const extraction = serverSlides({ ...pdf, pageCount: pages.length }, undefined, signal).then(value => value.texts, () => null);
+  let waitTimer: ReturnType<typeof setTimeout> | undefined;
+  const localSetupDeadline = new Promise<null>(resolve => { waitTimer = setTimeout(() => resolve(null), SLIDE_TEXT_WAIT_MS); });
+  const texts = await Promise.race([extraction, localSetupDeadline]).finally(() => clearTimeout(waitTimer));
   check();
-  onProgress({ progress: 0.67, status: STATUS[2], pages: pages.length, textOffline: !texts });
+  onProgress({ stage: 'planning', pages: pages.length, textOffline: !texts });
 
   const slides = Array.from({ length: pages.length }, (_, i) => parseSlideText(texts?.[i] ?? '', i));
   const target = defaultTarget(pages.length);
@@ -65,7 +69,10 @@ export async function analyzePdf(pdf: LocalPdf, onProgress: (p: Progress) => voi
   check();
   if(!deckById(deck.id))requestPresentationDefaults(deck.id,API_URL);
   savePresentation(deck);
-  onProgress({ progress: 1, status: STATUS[3], pages: pages.length, textOffline: !texts,
+  if (!texts) {
+    void extraction.then(result => { if (result && !signal.aborted) saveSlideText(deck.id, result); }).catch(() => {});
+  }
+  onProgress({ stage: 'ready', pages: pages.length, textOffline: !texts,
     imageOnlySlides: !!texts && slides.some(slide => !slide.text.trim()) });
   return deck;
 }
@@ -97,9 +104,13 @@ export async function ensureSlideText(id: string) {
   if (!deck || deck.text !== 'pending' || !deck.pageCount) return;
   try {
     const { texts } = await serverSlides({ id: deck.id, title: deck.title, uri: deck.uri, pageCount: deck.pageCount });
-    const latest = deckById(id);
-    if (!latest) return;
-    const slides = texts.map((t, i) => parseSlideText(t, i));
-    savePresentation({ ...latest, slides, text: texts.some(t => t.trim()) ? 'ready' : 'none', targets: slideTargets(slides.map(s => s.text), latest.target) });
+    saveSlideText(id, texts);
   } catch { /* Still offline. */ }
+}
+
+function saveSlideText(id: string, texts: string[]) {
+  const latest = deckById(id);
+  if (!latest || latest.text !== 'pending' || latest.pageCount !== texts.length) return;
+  const slides = texts.map((t, i) => parseSlideText(t, i));
+  savePresentation({ ...latest, slides, text: texts.some(t => t.trim()) ? 'ready' : 'none', targets: slideTargets(slides.map(s => s.text), latest.target) });
 }

@@ -6,7 +6,7 @@ if (System.getenv("EXPO_PUBLIC_ACCESS_MODE") != "store" || System.getenv("EXPO_P
 gradle.beforeProject { project ->
     project.pluginManager.withPlugin("com.android.application") {
         project.extensions.getByName("androidComponents").finalizeDsl { android ->
-            android.defaultConfig.versionCode = 42
+            android.defaultConfig.versionCode = 88
             android.defaultConfig.versionName = "0.1.0"
             android.buildTypes.getByName("release").signingConfig = null
         }

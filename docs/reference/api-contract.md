@@ -250,11 +250,11 @@ require the saved set ID and processing revision; uncertain work also requires
 `acknowledge_uncertain: true`. Stale retry revisions conflict. Quotas, receipts,
 lease fencing and broker/Beat recovery are shared with descriptions.
 
-Successful PDF upload automatically admits the current profile scope when provider
-configuration and source preparation are valid. AI admission failure does not fail
-PDF import. Repeated uploads reuse exact source/provider/project/model/prompt/schema
-scopes, including failed and uncertain jobs; no blind resubmission. Existing decks
-without profiles can use explicit generation. Requirements, recordings, selected
+PDF upload prepares slide images and extracts the text without starting AI cue
+generation. With online coaching enabled, the mobile client reads the saved cue
+state when rehearsal opens after setup and requests generation for an absent
+profile. Matching active and completed work is reused. Failed and uncertain provider
+jobs retain the explicit recovery rules above. Requirements, recordings, selected
 takes, playback and reads neither invalidate profiles nor create jobs.
 
 Current profile prompt version is `slide-profile-v5`; schema versions are
@@ -270,11 +270,11 @@ including for review and audience Q&A; running or uncertain v4 jobs also retain
 their scope to avoid duplicate provider work. Reads do not admit replacement jobs. Failed
 or absent v4 profiles use v5 for new admission. An already admitted v5 scope takes
 precedence and repeated admissions reuse that scope.
-Profiles use
-the existing JSON persistence, with no migration. PATCH through the description
-endpoint rejects profile scopes with 409 `immutable_profile`.
+Profiles use the existing JSON representation. The `0018_durable_profile_parts`
+migration adds durable work records for the public worker. PATCH through the
+description endpoint rejects profile scopes with 409 `immutable_profile`.
 
-Build 42 receives one complete, ordered v5 profile for its own deck. On the public service, decks with more than ten slides are processed in groups of five. First the worker reads the original slide images and creates facts and Must Cover guidance. It then generates Further Insight for each group using the frozen fact table for the whole deck. References keep the original slide indexes and source identifiers. Every provider call has its own stored receipt and quota reservation. The app sees the completed deck after every group validates. A retry reuses validated work for matching inputs, and a timed-out submission requires confirmation under the existing retry contract.
+The store app receives one complete, ordered v5 profile for its own deck. On the public service, decks with more than ten slides are processed in groups of five. First the worker reads the original slide images and creates facts and Must Cover guidance. It then generates Further Insight for each group using the frozen fact table for the whole deck. References keep the original slide indexes and source identifiers. Every provider call has its own stored receipt and quota reservation. The app sees the completed deck after every group validates. A retry reuses validated work for matching inputs, and a timed-out submission requires confirmation under the existing retry contract.
 
 For a generated v5 receipt, the server can correct a single mistyped hex digit in a copied source identifier only when the stated slide and the frozen source uniquely establish the intended identifier. Public v5 generation requires valid facts and matching source identities for every target slide. It omits a complete suggestion when the evidence reference, quoted text or cue wording fails validation. Other supported suggestions can still appear. A wrong or ambiguous source identity on a slide invalidates the profile. The original provider receipt is retained.
 
@@ -1272,6 +1272,14 @@ The [initial word-to-slide alignment note](https://github.com/snuhcs-course/swpp
 ## Feedback v3 runs (November 14, 2026, branch `ai-feedback-reimplementation`)
 
 `GET|POST /api/attempts/{attempt_id}/feedback-run/` serves the rebuilt feedback pipeline: per-slide and whole-presentation Rubric V2 levels, scores calculated by the server, next-level advice and point gains. It is off unless `FEEDBACK_V3_ENABLED=true` and runs alongside the endpoints above. GET never starts work; POST starts or reuses the run for the current inputs, and `{"retry": true}` re-queues only failed parts. The response shape, statuses and settings are in [the reimplementation design](ai-feedback-reimplementation.md#api).
+
+### Overall feedback for selected retakes
+
+`POST /api/attempts/{attempt_id}/selected-feedback-run/` starts or reuses a feedback v3 run for the selected rehearsal. Send `{"scope":{"context_id":null,"slides":[{"slide_index":0,"attempt_id":"…","segments":[{"start_ms":0,"end_ms":12000}]}]},"retry":false}` with all selected slide parts. The route uses the lexicographically smallest selected attempt ID. All attempts must belong to the same deck, and each selected slide must include the exact original visit intervals for that attempt. Send a saved presentation context ID when one applies. The server canonicalizes slide order and returns the scope with the usual feedback run result.
+
+`GET /api/attempts/{attempt_id}/selected-feedback-run/{run_id}/` reads the saved run and whether current inputs have changed. Each selected source must finish transcription before admission. The assessment follows the selected playback order and retains the original source IDs and timestamps for evidence. The overall score uses the existing 70% slide and 30% whole-presentation weighting. A changed selection reuses matching selected slide assessments and receives its own whole-presentation assessment. Missing coverage or insufficient evidence can leave the score unavailable. The original per-attempt feedback route remains independent.
+
+Apply `0019_feedback_run_selected_scope` after `0018_durable_profile_parts`, matching the November 25 ONE Store rollout. Keep the selected-score routes behind installation authentication. Quiesce the old API and worker before enabling selected work, and bring both back on the same revision. Preserve the database and public billing ledger. Once selected jobs exist, a rollback image must exclude selected rows from ordinary attempt reads and prevent its worker from processing selected jobs as ordinary attempts.
 
 ## Continuous capture and incremental feedback (November 15, 2026)
 

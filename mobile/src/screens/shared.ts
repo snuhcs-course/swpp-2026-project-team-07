@@ -23,19 +23,27 @@ export type Go = (screen: ScreenName, patch?: Partial<Omit<NavState, 'screen' | 
 /** Shared values the Home carousel and the Upload screen both drive (the carousel stays mounted behind Upload). */
 export type HomeShared = {
   p: SharedValue<number>; vy: SharedValue<number>; gap: SharedValue<number>; hold: SharedValue<number>;
-  /** Upload: 1 = fully blurred carousel with a gap; follows the swipe-down. */
+  /** Shared Add transition progress from Home (0) to the open picker (1). */
   uploadBlur: SharedValue<number>;
+  /** Upload dismissal progress from the resting screen (0) to Home (1). */
+  uploadReturn: SharedValue<number>;
   /** Upload analysing: the new icon shrinks into the progress ring. */
   analyzing: SharedValue<number>;
   /** PDF setup dims Home artwork beneath the blurred upload layer. */
   setup: SharedValue<number>;
   press: SharedValue<number>;
   picker: SharedValue<number>;
-  /** 0 while the rehearsal title owns the handoff; 1 when Home's title is visible. */
+  /** Return progress from resting rehearsal (0) to the Home card (1). */
   titleReturn: SharedValue<number>;
 };
 
-export const ShellContext = createContext<{ go: Go; nav: NavState; home: HomeShared; setFullscreenLandscape: (value: boolean) => void } | null>(null);
+type PageFooterHandoff = {
+  exit: SharedValue<{ epoch: number; progress: number }>;
+  epoch: number;
+  underlay: NavState | null;
+};
+
+export const ShellContext = createContext<{ go: Go; nav: NavState; home: HomeShared; footerHandoff?: PageFooterHandoff; setFullscreenLandscape: (value: boolean) => void } | null>(null);
 export const HomeContext = createContext<{ go: Go; home: HomeShared } | null>(null);
 export function useShell() {
   const value = useContext(ShellContext);

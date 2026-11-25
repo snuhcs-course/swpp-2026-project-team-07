@@ -16,12 +16,17 @@ class Scope(PrivateModel):
     context_id: str | None
     slides: Annotated[tuple[SelectedSlide, ...], Field(min_length=1, max_length=600)]
 
-def scope_for(anchor, raw):
+def scope_for(anchor, raw, sources=None):
     scope = validated(Scope, raw, 'invalid_request').model_dump(mode='json')
     seen=set()
     for item in scope['slides']:
-        try: source=Attempt.objects.get(pk=item['attempt_id'], deck_id=anchor.deck_id)
-        except (Attempt.DoesNotExist, ValueError, ValidationError): raise FeedbackError('invalid_request') from None
+        try:
+            source = (Attempt.objects.get(pk=item['attempt_id'], deck_id=anchor.deck_id)
+                      if sources is None else sources[item['attempt_id']])
+            if source.deck_id != anchor.deck_id:
+                raise FeedbackError('invalid_request')
+        except (Attempt.DoesNotExist, KeyError, ValueError, ValidationError):
+            raise FeedbackError('invalid_request') from None
         if item['slide_index'] in seen: raise FeedbackError('invalid_request')
         seen.add(item['slide_index'])
         checked=slide_review.scope_for(source, {'context_id':scope['context_id'], 'slides':[{k:v for k,v in item.items() if k!='attempt_id'}]})

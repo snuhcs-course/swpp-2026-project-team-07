@@ -19,10 +19,10 @@
 // OpenAI Codex Review and Full review: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-122
 // OpenAI Codex stable import hue: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-123
 // OpenAI Codex supplied stopwatch brand: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-126
-// The carousel stays mounted behind Upload, which blurs it and opens a gap for the new item.
+// The carousel stays mounted for the Add handoff and is hidden during PDF import.
 // Claude prototype guide integrated by OpenAI Codex, Iteration 4 (2026-11-21): eight tutorial pages with native swipes.
-import { memo, useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { AppState, Pressable, StyleSheet, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { GestureDetector, useLongPressGesture, usePanGesture, useSimultaneousGestures, useTapGesture } from 'react-native-gesture-handler';
 import Animated, { Easing, runOnJS, useAnimatedReaction, useAnimatedStyle, useSharedValue,
@@ -39,38 +39,43 @@ import { HintRow, UndoToast } from '../design/ui';
 import { useUiText } from '../design/language';
 import { writeStored } from '../services/storage';
 import { BACK_FADE_Y, coverFlow, homeCarouselRelease, HOLD_MS, PULL_T, PX_PER_CARD, rubber } from '../domain/gestures';
-import { ICONS, type HueName, type IconId } from '../domain/hues';
+import { ICONS, pickHue, type HueName, type IconId } from '../domain/hues';
 import { mod, nearestSlot, pad2 } from '../domain/format';
 import { HomeFeedbackStats } from './HomeFeedbackStats';
-import { ANALYZE_ICON_SCALE, CAROUSEL_TOP, deckIconSize, ORIGIN_Y, SLOT_H, SLOT_TOP, SLOT_W } from './homeGeometry';
-import { getDeckState, nextHue, setHidden, setHue, setIcon, useStore, visibleDecks, type Presentation } from '../features/presentations/store';
+import { ANALYZE_ICON_SCALE, CAROUSEL_TOP, deckIconSize, HOME_TITLE_BLENDED, homeSlideCountReveal, homeTitleReveal, ORIGIN_Y, SLOT_H, SLOT_TOP, SLOT_W } from './homeGeometry';
+import { getDeckState, setHidden, setHue, setIcon, useStore, visibleDecks, type Presentation } from '../features/presentations/store';
 import { savedAttempts } from '../features/recording/storage';
 import { pdfService } from '../features/pdf/service';
 import { hasSeenTutorial, TUTORIAL_SEEN, useBack, useHomeShell } from './shared';
 import { TutorialOverlay } from './HomeTutorial';
 import { STORE_MODE } from '../services/apiConfig';
-import { allowsUploads } from '../services/storeAccess';
 import { storePrivacy, subscribePrivacy } from '../services/storePrivacy';
-import { showStorePrivacy } from './storePrivacyDialog';
+import { useStorePrivacyPrompt } from './storePrivacyDialog';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
-export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDeckChange }: {
-  mode: 'home' | 'upload' | 'covered'; uploadLook: { hue: HueName; order: number } | null;
+const FAST_SPIN_CARDS_PER_SECOND = 6;
+type CarouselFocus = { front: number; motion: 'idle' | 'slow' | 'fast' };
+export const HomeScreen = memo(function HomeScreen({ mode, showCoveredChrome = false, uploadLook, readingPdf = false, onFrontDeckChange }: {
+  mode: 'home' | 'upload' | 'rehearse' | 'covered'; showCoveredChrome?: boolean; uploadLook: { hue: HueName; order: number } | null;
+  readingPdf?: boolean;
   onFrontDeckChange?: (id: string | null) => void;
 }) {
   const ui = useUiText();
   const privacy = useSyncExternalStore(subscribePrivacy, storePrivacy.read);
+  const { show: showStorePrivacy, dialog: storePrivacyDialog } = useStorePrivacyPrompt();
   const openWithPrivacy = useCallback((next: () => void) => {
-    if (STORE_MODE && (!privacy || privacy === 'expired')) showStorePrivacy(ui, next);
+    if (STORE_MODE && (!privacy || privacy === 'expired')) showStorePrivacy(next);
     else next();
-  }, [privacy, ui]);
+  }, [privacy, showStorePrivacy]);
   const { c } = useTheme();
   const { go, home } = useHomeShell();
   const frame = useFrame();
-  const decks = useStore(s => visibleDecks(s));
-  const storeVersion = useStore(s => s.version);
+  const snapshot = useStore(s => s);
+  const decks = useMemo(() => visibleDecks(snapshot), [snapshot]);
   const n = decks.length;
-  const [front, setFront] = useState(() => (n ? mod(Math.round(home.p.value), n) : 0));
+  const [{ front, motion }, setFocus] = useState<CarouselFocus>(() => ({ front: Math.round(home.p.value), motion: 'idle' }));
+  const spinning = useSharedValue(false);
+  const fastSpinning = useSharedValue(false);
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const [pickerClosing, setPickerClosing] = useState(false);
   const [creditsOpen, setCreditsOpen] = useState(false);
@@ -80,16 +85,30 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
   const tutorialCover = useSharedValue(0);
   const [undo, setUndo] = useState<{ deck: Presentation; at: number } | null>(null);
   const [pullLabel, setPullLabel] = useState<'' | 'add' | 'addPast' | 'del' | 'delPast' | 'keep'>('');
-  const newHue = mode === 'upload' && uploadLook ? uploadLook.hue : nextHue();
+  const newHue = useMemo(() => mode === 'upload' && uploadLook
+    ? uploadLook.hue : pickHue(decks.map(deck => deck.hue)), [mode, uploadLook, decks]);
   const newOrder = mode === 'upload' && uploadLook ? uploadLook.order : n + 1;
-  const active = mode === 'home' && !pickerFor && !creditsOpen && tutorialPage === null;
+  const tutorialOpen = tutorialPage !== null;
+  const uncoveredHome = mode === 'home' && !pickerFor && !creditsOpen;
+  const active = uncoveredHome && !tutorialOpen;
+  useEffect(() => {
+    if (!STORE_MODE || !active || !tutorialSeen || privacy !== null) return;
+    const offer = () => { if (storePrivacy.read() === null) showStorePrivacy(); };
+    const state = AppState.addEventListener('change', next => { if (next === 'active') offer(); });
+    if (AppState.currentState === 'active') offer();
+    return () => state.remove();
+  }, [active, privacy, showStorePrivacy, tutorialSeen]);
+  const showHomeChrome = (mode !== 'covered' || showCoveredChrome) && !pickerFor && !readingPdf;
+  const tutorialAppearance = tutorialOpen && !tutorialSeen;
+  const appearanceEnabled = active || (uncoveredHome && tutorialAppearance);
   const reducedMotion = useReducedMotion();
   const creditsOpacity = useSharedValue(0);
   useEffect(() => {
     creditsOpacity.set(reducedMotion ? Number(creditsOpen) : withTiming(Number(creditsOpen), { duration: 220 }));
   }, [creditsOpen, creditsOpacity, reducedMotion]);
   const creditsFade = useAnimatedStyle(() => ({ opacity: creditsOpacity.value }));
-  const floatEnabled = active && !reducedMotion;
+  const floatEnabled = !reducedMotion && (uncoveredHome || mode === 'rehearse' || mode === 'upload');
+  const floatPaused = tutorialOpen || mode === 'rehearse' || mode === 'upload';
   const openTutorial = () => { setTutorialClosing(false); setTutorialPage(0); };
   const closeTutorial = () => {
     setTutorialPage(null);
@@ -100,20 +119,39 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
   const floatPhase = useSharedValue(0);
   useEffect(() => {
     cancelAnimation(floatPhase);
-    floatPhase.set(0);
-    if (!floatEnabled) return;
-    floatPhase.set(withRepeat(withTiming(2 * Math.PI, { duration: 4200, easing: Easing.linear }), -1, false));
+    if (!floatEnabled) {
+      floatPhase.set(0);
+      return;
+    }
+    // Keep background icons at their paused height while an overlay covers Home.
+    if (floatPaused) return;
+    const phase = floatPhase.get();
+    floatPhase.set(withRepeat(withTiming(phase + 2 * Math.PI, { duration: 4200, easing: Easing.linear }), -1, false));
     return () => cancelAnimation(floatPhase);
-  }, [floatEnabled, floatPhase]);
+  }, [floatEnabled, floatPaused, floatPhase]);
 
-  useAnimatedReaction(() => (n ? mod(Math.round(home.p.value), n) : 0), (f, prev) => { if (f !== prev) runOnJS(setFront)(f); }, [n]);
-  // The reaction re-syncs when n changes; until then keep the index in range.
-  const shown = n ? Math.min(front, n - 1) : 0;
+  useAnimatedReaction((): CarouselFocus => {
+    const motion = spinning.value ? fastSpinning.value ? 'fast' : 'slow' : 'idle';
+    const position = home.p.value;
+    // Five slots already cover both visible neighbours for a two-card window.
+    const front = motion === 'fast' ? Math.round(position / 2) * 2 : Math.round(position);
+    return { front: n > 5 ? front : n ? mod(front, n) : 0, motion };
+  }, (value, previous) => {
+    if (value.front !== previous?.front || value.motion !== previous?.motion) runOnJS(setFocus)(value);
+  }, [n]);
+  useEffect(() => {
+    if (mode !== 'home') spinning.set(false);
+  }, [mode, spinning]);
+  const shown = n ? mod(front, n) : 0;
 
   const settle = useCallback((target: number) => {
     const dist = Math.abs(target - home.p.value);
-    home.p.set(withTiming(target, { duration: Math.min(820, 340 + dist * 150), easing: Easing.out(Easing.cubic) }));
-  }, [home.p]);
+    fastSpinning.set(false);
+    spinning.set(true);
+    home.p.set(withTiming(target, { duration: Math.min(820, 340 + dist * 150), easing: Easing.out(Easing.cubic) }, finished => {
+      if (finished) spinning.value = false;
+    }));
+  }, [fastSpinning, home.p, spinning]);
 
   const openFront = useCallback(() => {
     const deck = decks[mod(Math.round(home.p.value), Math.max(1, n))];
@@ -121,11 +159,14 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
   }, [decks, go, home.p, n, openWithPrivacy]);
   const openAdd = useCallback(() => {
     openWithPrivacy(() => {
-      settle(Math.round(home.p.value));
+      const position = home.p.get();
+      const target = Math.round(position);
+      if (position !== target) settle(target);
       home.gap.set(1);
+      home.uploadReturn.set(0);
       go('upload', { nav: 'fade' });
     });
-  }, [go, home.gap, home.p, openWithPrivacy, settle]);
+  }, [go, home.gap, home.p, home.uploadReturn, openWithPrivacy, settle]);
 
   // ── Delete with undo ──
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -140,22 +181,23 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => undefined);
     setHidden(deck.id, true);
     const nf = f % (n - 1);
+    spinning.set(false);
     home.p.set(nf); home.vy.set(withTiming(0, { duration: 220 }));
     if (undoTimer.current) { clearTimeout(undoTimer.current); if (undo) finalize(undo.deck); }
     setUndo({ deck, at: Date.now() });
     undoTimer.current = setTimeout(() => { setUndo(null); finalize(deck); }, 4500);
-  }, [decks, finalize, home.p, home.vy, n, undo]);
+  }, [decks, finalize, home.p, home.vy, n, spinning, undo]);
   const undoDelete = useCallback(() => {
     if (!undo) return;
     if (undoTimer.current) clearTimeout(undoTimer.current);
     setHidden(undo.deck.id, false);
+    spinning.set(false);
     home.p.set(indexOfDeck(undo.deck.id));
     setUndo(null);
-  }, [home.p, undo]);
+  }, [home.p, spinning, undo]);
   useEffect(() => () => { if (undoTimer.current) clearTimeout(undoTimer.current); }, []);
 
-  // The drag path stays on the UI thread; JS runs only for a tap, icon picker,
-  // add/delete action, or a change in the pull hint's wording.
+  // Motion stays on the UI thread; React updates content when the card window moves.
   const dragStart = useSharedValue(0);
   const dragAxis = useSharedValue(0); // 1 = horizontal, 2 = vertical
   const holdArmed = useSharedValue(false);
@@ -165,7 +207,9 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
   /** Which item a tap at (x, y) in carousel coordinates hit, front first. */
   const hitSlot = (x: number, y: number) => {
     if (!n) return x > 65 && x < 325 && y > SLOT_TOP && y < SLOT_TOP + SLOT_H ? -1 : null;
-    const order = decks.map((_, j) => ({ j, f: coverFlow(j, home.p.value, n, 0) })).filter(o => o.f.live).sort((a, b) => b.f.z - a.f.z);
+    const p = home.p.value;
+    const order = adjacentDecks(Math.round(p), n).map(j => ({ j, f: coverFlow(j, p, n, 0) }))
+      .filter(o => o.f.live).sort((a, b) => b.f.z - a.f.z);
     for (const { j, f } of order) {
       // The side icon reaches inside the front slot's empty edge; keep that edge tappable.
       const half = (j === mod(Math.round(home.p.value), n) && y > SLOT_TOP + 80 ? 110 : SLOT_W / 2) * f.scale * Math.cos((f.rotateY * Math.PI) / 180);
@@ -205,7 +249,6 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
     },
     onActivate: () => {
       cancelAnimation(floatPhase);
-      floatPhase.value = 0;
       home.press.value = withTiming(1, { duration: 100 });
     },
     onUpdate: e => {
@@ -215,12 +258,15 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
         if (Math.abs(e.translationX) < 2 && Math.abs(e.translationY) < 2) return;
         dragAxis.value = Math.abs(e.translationX) >= Math.abs(e.translationY) ? 1 : 2;
         cancelAnimation(home.p);
+        fastSpinning.value = false;
+        spinning.value = dragAxis.value === 1 && n > 0;
         if (dragAxis.value === 1) {
           // The initial gesture movement is already included in translationX.
           dragStart.value = home.p.value + e.translationX / frame.s / PX_PER_CARD;
         }
       }
       if (dragAxis.value === 1) {
+        if (n > 5 && Math.abs(e.velocityX) > FAST_SPIN_CARDS_PER_SECOND * frame.s * PX_PER_CARD) fastSpinning.value = true;
         if (n) home.p.value = dragStart.value - e.translationX / frame.s / PX_PER_CARD;
         return;
       }
@@ -252,6 +298,7 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
     onDeactivate: e => {
       const pulled = home.vy.value;
       const wasDeleted = holdDone.value;
+      const adding = dragAxis.value === 2 && !e.canceled && !wasDeleted && pulled <= -PULL_T * 0.98;
       holdArmed.value = false;
       cancelAnimation(home.hold);
       home.hold.value = 0;
@@ -261,13 +308,16 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
       labelStage.value = 0;
       if (dragAxis.value === 1 && n) {
         const velocity = e.canceled ? 0 : -e.velocityX / frame.s / PX_PER_CARD;
+        if (n > 5 && Math.abs(velocity) > FAST_SPIN_CARDS_PER_SECOND) fastSpinning.value = true;
         const { target, duration } = homeCarouselRelease(home.p.value, velocity);
-        home.p.value = withTiming(target, { duration, easing: Easing.out(Easing.cubic) });
-      } else if (dragAxis.value === 2 && !e.canceled && !wasDeleted && pulled <= -PULL_T * 0.98) {
+        home.p.value = withTiming(target, { duration, easing: Easing.out(Easing.cubic) }, finished => {
+          if (finished) spinning.value = false;
+        });
+      } else if (adding) {
         runOnJS(openAdd)();
       }
       dragAxis.value = 0;
-      if (floatEnabled) floatPhase.value = withRepeat(withTiming(2 * Math.PI, { duration: 4200, easing: Easing.linear }), -1, false);
+      if (floatEnabled && !floatPaused) floatPhase.value = withRepeat(withTiming(floatPhase.value + 2 * Math.PI, { duration: 4200, easing: Easing.linear }), -1, false);
     },
   });
   const longPress = useLongPressGesture({
@@ -302,8 +352,10 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
 
   const frontDeck = n ? decks[shown] : null;
   const frontId = frontDeck?.id ?? null;
-  useEffect(() => { if (mode === 'home') onFrontDeckChange?.(frontId); }, [mode, onFrontDeckChange, frontId]);
-  void storeVersion;
+  // Prepare scores and cues for the deck the user stops on.
+  useEffect(() => {
+    if (mode === 'home' && motion === 'idle') onFrontDeckChange?.(frontId);
+  }, [mode, motion, onFrontDeckChange, frontId]);
   const openFullReview = () => {
     if (mode !== 'home' || pickerFor || creditsOpen || Math.abs(home.p.value - Math.round(home.p.value)) >= 0.2 || home.vy.value !== 0) return;
     const deck = decks[mod(Math.round(home.p.value), Math.max(1, n))];
@@ -314,16 +366,29 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
   const pickerBackdrop = useAnimatedStyle(() => ({
     filter: home.picker.value > 1 / 36 ? [{ blur: 18 * home.picker.value }] : [],
   }));
-  const homeLayer = useAnimatedStyle(() => {
-    // A live blur forces Android to upload the entire moving carousel as a bitmap.
-    // Dim only the existing cards; the new icon remains crisp above them.
-    return { opacity: 1 - 0.58 * home.uploadBlur.value };
-  });
-  // Keep controls mounted so they appear gradually when Upload fades back to Home.
+  // Keep the cards' depth blur and dim them continuously instead of applying a second blur at rest.
+  const homeLayer = useAnimatedStyle(() => ({ opacity: 1 - 0.69 * home.uploadBlur.value }));
   const homeControls = useAnimatedStyle(() => ({ opacity: 1 - home.uploadBlur.value }));
-  // Compact phones draw the neighbours too; the front card and two either side are mounted.
-  const visibleSlots = decks.map((deck, j) => ({ deck, j })).filter(({ j }) => Math.min(mod(j - shown, n || 1), mod(shown - j, n || 1)) <= 2);
-  const visibleStats = n ? [...new Set([shown, mod(shown - 1, n), mod(shown + 1, n)])] : [];
+  const homeHeaderMotion = useAnimatedStyle(() => ({
+    opacity: mode === 'rehearse' ? Math.max(0, ((home.titleReturn?.value ?? 0) - 0.35) / 0.65) : 1,
+  }));
+  const homeAppearanceMotion = useAnimatedStyle(() => {
+    if (mode === 'rehearse') return { opacity: Math.max(0, ((home.titleReturn?.value ?? 0) - 0.35) / 0.65) };
+    const cover = tutorialOpen && !tutorialAppearance ? tutorialCover.value : 0;
+    return { opacity: Math.max(0, 1 - Math.max(cover, home.uploadBlur.value) / 0.75) };
+  });
+  const homeBottomMotion = useAnimatedStyle(() => {
+    const cover = tutorialOpen ? tutorialCover.value : mode === 'rehearse' ? 1 - (home.titleReturn?.value ?? 0) : home.uploadBlur.value;
+    return { opacity: Math.max(0, 1 - 2 * cover) };
+  });
+  const underUpload = mode === 'upload';
+  // Reuse the outer card after it leaves the screen. Use logical positions for keys
+  // so crossing the wrap point never forces the other physical views to remount.
+  const slotCount = Math.min(n, 5);
+  const windowStart = front - Math.floor(slotCount / 2);
+  const visibleSlots = Array.from({ length: slotCount }, (_, key) =>
+    mod(windowStart + mod(key - windowStart, slotCount), n));
+  const visibleStats = n && motion !== 'fast' ? [...new Set([shown, mod(shown - 1, n), mod(shown + 1, n)])] : [];
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents={mode === 'home' ? 'box-none' : 'none'}
@@ -332,19 +397,13 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
         accessibilityElementsHidden={creditsOpen || tutorialPage !== null}
         importantForAccessibility={creditsOpen || tutorialPage !== null ? 'no-hide-descendants' : 'auto'}
         style={[StyleSheet.absoluteFill, pickerFor ? pickerBackdrop : creditsOpen ? styles.overlayBlur : null, setupDim]}>
-      <Pressable accessibilityRole="button" accessibilityLabel={ui("How OutLoud works")} onPress={openTutorial} onLongPress={() => setCreditsOpen(true)}
-        style={styles.logo}><Txt style={styles.logoText}>OutLoud</Txt></Pressable>
-      <Animated.View pointerEvents={mode === 'home' ? 'box-none' : 'none'} style={[StyleSheet.absoluteFill, homeControls]}>
-        {mode === 'home' && !pickerFor && tutorialPage === null && <>
-          <LanguageToggle />
-          <ThemeToggle />
-          {STORE_MODE && <Pressable accessibilityRole="button" onPress={() => showStorePrivacy(ui)} style={styles.onlineChoice}>
-            <Txt style={[styles.onlineLabel, { color: c.secondary }]}>{allowsUploads(privacy) ? 'Online coaching on' : 'Online coaching off'}</Txt>
-          </Pressable>}
-        </>}
-      </Animated.View>
-      <GestureDetector gesture={carouselGesture}><Animated.View style={[styles.carousel, homeLayer, mode === 'upload' && styles.addBlur]}
-        accessible accessibilityRole="adjustable" accessibilityLabel={ui(frontDeck ? `${frontDeck.title}, ${frontDeck.pageCount} slides` : 'No presentations yet')}
+      {!underUpload && <Animated.View pointerEvents="box-none" style={[StyleSheet.absoluteFill, homeHeaderMotion]}>
+        <Pressable accessibilityRole="button" accessibilityLabel={ui("How OutLoud works")} onPress={openTutorial} onLongPress={() => setCreditsOpen(true)}
+          style={styles.logo}><Txt style={styles.logoText}>OutLoud</Txt></Pressable>
+      </Animated.View>}
+      <GestureDetector gesture={carouselGesture}><Animated.View style={[styles.carousel, homeLayer, readingPdf && styles.hiddenCarousel]}
+        accessible accessibilityRole="adjustable" accessibilityLabel={ui(motion === 'fast' ? 'Spin'
+          : frontDeck ? `${frontDeck.title}, ${frontDeck.pageCount} slides` : 'No presentations yet')}
         accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }, { name: 'activate', label: ui('Open') }, { name: 'longpress', label: ui('Choose icon') },
           { name: 'add', label: ui('Add presentation') }, { name: 'delete', label: ui('Delete presentation') }]}
         onAccessibilityAction={e => {
@@ -352,27 +411,47 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
           if (a === 'increment') settle(Math.round(home.p.value) + 1);
           else if (a === 'decrement') settle(Math.round(home.p.value) - 1);
           else if (a === 'activate') openFront();
-          else if (a === 'longpress' && frontDeck) { setPickerClosing(false); setPickerFor(frontDeck.id); home.picker.set(withTiming(1, { duration: 420 })); }
+          else if (a === 'longpress' && n) {
+            setPickerClosing(false);
+            setPickerFor(decks[mod(Math.round(home.p.get()), n)].id);
+            home.picker.set(withTiming(1, { duration: 420 }));
+          }
           else if (a === 'add') openAdd();
           else if (a === 'delete') deleteFront();
         }}>
-        {visibleSlots.map(({ deck, j }) => <Slot key={deck.id} deck={deck} j={j} n={n} home={home}
-          floatPhase={floatPhase} floatEnabled={floatEnabled} isFront={j === shown} compact={frame.compact} showText={mode !== 'upload'} />)}
+        {visibleSlots.map((j, slot) => <Slot key={slot} deck={decks[j]} j={j} n={n} home={home}
+          spinning={spinning} floatPhase={floatPhase} floatEnabled={floatEnabled} compact={frame.compact}
+          showCaption={!readingPdf} rehearsalUnderlay={mode === 'rehearse'} />)}
       </Animated.View></GestureDetector>
-      <View pointerEvents="none" style={styles.ghostLayer}>
-        <Ghost home={home} hue={newHue} order={newOrder} empty={!n} showText={mode !== 'upload'} />
-      </View>
-      <Animated.View pointerEvents={mode === 'home' ? 'box-none' : 'none'} style={[StyleSheet.absoluteFill, homeControls]}>
+      {!underUpload && <View pointerEvents="none" style={styles.ghostLayer}>
+        <Ghost home={home} hue={newHue} order={newOrder} alwaysVisible={!n} />
+      </View>}
+      {mode !== 'upload' && <Animated.View pointerEvents={mode === 'home' ? 'box-none' : 'none'} style={[StyleSheet.absoluteFill, homeControls]}>
         <PullIndicator home={home} label={pullLabel} />
-        {visibleStats.map(index => <HomeFeedbackStats key={decks[index].id} deckId={decks[index].id} index={index} count={n}
-          home={home} active={mode === 'home' && index === shown} onOpenReview={openFullReview} />)}
+        <Animated.View pointerEvents="box-none" style={[StyleSheet.absoluteFill, homeBottomMotion]}>
+          {visibleStats.map(index => <HomeFeedbackStats key={decks[index].id} deckId={decks[index].id} index={index} count={n}
+            home={home} active={mode === 'home' && motion === 'idle' && index === shown} onOpenReview={openFullReview} />)}
+        </Animated.View>
         {undo && <UndoToast text={`Deleted “${undo.deck.title}”`} onUndo={undoDelete} />}
+      </Animated.View>}
       </Animated.View>
-      </Animated.View>
-      {mode === 'home' && !pickerFor && tutorialPage === null && !creditsOpen && <HomeHints empty={!n} />}
+      {showHomeChrome && !creditsOpen && <Animated.View
+        testID="home-hints" pointerEvents="none" accessibilityElementsHidden={!active}
+        importantForAccessibility={active ? 'auto' : 'no-hide-descendants'}
+        style={[StyleSheet.absoluteFill, homeBottomMotion]}>
+        <HomeHints empty={!n} />
+      </Animated.View>}
       {pickerFor && <IconPicker deckId={pickerFor} closing={pickerClosing} onClose={closePicker} />}
       {tutorialPage !== null && <TutorialOverlay page={tutorialPage} onPage={setTutorialPage} onClose={closeTutorial}
-        cover={tutorialCover} closing={tutorialClosing} showAppearanceControls={!tutorialSeen} />}
+        cover={tutorialCover} closing={tutorialClosing} />}
+      {showHomeChrome && <Animated.View
+        testID="home-appearance" pointerEvents={appearanceEnabled ? 'box-none' : 'none'}
+        accessibilityElementsHidden={!appearanceEnabled} importantForAccessibility={appearanceEnabled ? 'auto' : 'no-hide-descendants'}
+        style={[StyleSheet.absoluteFill, creditsOpen && styles.overlayBlur, tutorialAppearance && styles.tutorialAppearance,
+          homeAppearanceMotion]}>
+        <LanguageToggle />
+        <ThemeToggle />
+      </Animated.View>}
       <Animated.View pointerEvents={creditsOpen ? 'auto' : 'none'} accessibilityElementsHidden={!creditsOpen}
         importantForAccessibility={creditsOpen ? 'yes' : 'no-hide-descendants'} accessibilityViewIsModal={creditsOpen}
         style={[styles.creditsOverlay, creditsFade]}>
@@ -380,30 +459,40 @@ export const HomeScreen = memo(function HomeScreen({ mode, uploadLook, onFrontDe
         <View pointerEvents="none" style={styles.creditNames}>
           {['박서연', '전인준', '최재원', '현주영'].map(name => <Txt verbatim key={name} style={[styles.creditName, { color: c.strong }]}>{name}</Txt>)}
         </View>
+        {creditsOpen && STORE_MODE && <Pressable accessibilityRole="button"
+          onPress={() => showStorePrivacy()} style={styles.creditPrivacy}>
+          <Txt style={[styles.creditPrivacyText, { color: c.text }]}>Online coaching settings</Txt>
+        </Pressable>}
       </Animated.View>
+      {storePrivacyDialog}
     </View>
   );
 });
+function adjacentDecks(center: number, count: number) {
+  return count ? [...new Set([-2, -1, 0, 1, 2].map(offset => mod(center + offset, count)))].sort((a, b) => a - b) : [];
+}
 function indexOfDeck(id: string) { return Math.max(0, visibleDecks().findIndex(d => d.id === id)); }
 
 // ── One carousel item: title, meta, icon, ground shadow ──────────────────────
-const Slot = memo(function Slot({ deck, j, n, home, floatPhase, floatEnabled, isFront, compact, showText }: {
+const Slot = memo(function Slot({ deck, j, n, home, spinning, floatPhase, floatEnabled, compact, showCaption, rehearsalUnderlay }: {
   deck: Presentation; j: number; n: number; home: import('./shared').HomeShared;
-  floatPhase: SharedValue<number>; floatEnabled: boolean; isFront: boolean; compact: boolean; showText: boolean;
+  spinning: SharedValue<boolean>; floatPhase: SharedValue<number>; floatEnabled: boolean; compact: boolean; showCaption: boolean; rehearsalUnderlay: boolean;
 }) {
   // A memoized slot must subscribe to theme changes to refresh its text styles.
   const { mode, c } = useTheme();
   const flow = useDerivedValue(() => coverFlow(j, home.p.value, n, spreadOf(home)));
+  const selected = useDerivedValue(() => mod(Math.round(home.p.value), n) === j);
   const outer = useAnimatedStyle(() => {
     const f = flow.value;
     const front = Math.abs(f.dd) < 0.5 && n > 1;
-    const pull = home.vy.value > 0 ? Math.min(1, home.vy.value / PULL_T) : 0;
+    const deletePull = Math.max(0, home.vy.value);
+    const pull = Math.min(1, deletePull / PULL_T);
     const del = front ? (home.hold.value > 0 ? 0.3 + 0.7 * home.hold.value : pull * 0.3) : 0;
     const sc = f.scale * (1 - del * 0.12);
     const jit = front && home.hold.value > 0.5 ? Math.sin(home.hold.value * 94) * (home.hold.value - 0.5) * 3.2 : 0;
     return {
       zIndex: f.z,
-      transform: [{ translateY: home.vy.value * 0.35 - (ORIGIN_Y - SLOT_FULL_H / 2) * (1 - sc) * -1 }, { translateX: f.x }, { scale: sc }, { rotate: jit + 'deg' }],
+      transform: [{ translateY: deletePull * 0.35 + (ORIGIN_Y - SLOT_FULL_H / 2) * (1 - sc) }, { translateX: f.x }, { scale: sc }, { rotate: jit + 'deg' }],
     };
   });
   const body = useAnimatedStyle(() => {
@@ -415,28 +504,50 @@ const Slot = memo(function Slot({ deck, j, n, home, floatPhase, floatEnabled, is
       opacity: f.opacity * (mode === 'light' ? 1 : f.brightness) * (1 - del * 0.45),
       // OpenAI Codex integrated supplied card blur: docs/ai-collaboration-prompts-iteration-2.md#widen-and-blur-home-carousel--november-20-2026
       // Side cards (title and icon) blur with their distance from the front; sharp at the front.
-      // React Native draws a blur of 0.5 or less as no blur, so skip the filter there.
-      filter: f.blur > 0.5 ? [{ blur: f.blur }] : [],
+      // Skip the native filter while cards move so Android can composite their transforms.
+      filter: !spinning.value && f.blur > 0.5 ? [{ blur: f.blur }] : [],
       transform: [{ perspective: 700 }, { rotateY: f.rotateY + 'deg' }],
     };
   });
-  const icon = useAnimatedStyle(() => ({ transform: [
-    { translateY: floatEnabled ? -floatLift(home, floatPhase.value, j) : 0 },
-    { scale: isFront ? home.press.value : 1 },
-  ] }));
+  const icon = useAnimatedStyle(() => {
+    return {
+      opacity: rehearsalUnderlay && selected.value ? Math.max(0, ((home.titleReturn?.value ?? 0) - 0.82) / 0.18) : 1,
+      transform: [
+        { translateY: floatEnabled ? -floatLift(home, floatPhase.value, j) : 0 },
+        { scale: selected.value ? home.press.value : 1 },
+      ],
+    };
+  });
   const shadow = useAnimatedStyle(() => {
     const f = flow.value;
     return { opacity: f.shadowOpacity, transform: [{ scaleX: f.shadowScale }] };
   });
-  const titleHandoff = useAnimatedStyle(() => ({
-    opacity: Math.max(0, Math.min(1, ((home.titleReturn?.value ?? 1) - 0.55) / 0.45)),
+  const labelReveal = useDerivedValue(() => {
+    // The fresh rehearsal can reset its return value while Home is still onscreen.
+    if (!rehearsalUnderlay) return { title: 1, slideCount: 1 };
+    const progress = home.titleReturn?.value ?? 1;
+    if (selected.value) {
+      return { title: homeTitleReveal(progress), slideCount: homeSlideCountReveal(progress) };
+    }
+    // Adjacent labels can overlap the wider moving title until it has faded.
+    const opacity = Math.max(0, Math.min(1, (progress - HOME_TITLE_BLENDED) / (1 - HOME_TITLE_BLENDED)));
+    return { title: opacity, slideCount: opacity };
+  });
+  const titleHandoff = useAnimatedStyle(() => ({ opacity: labelReveal.value.title }));
+  const slideCountHandoff = useAnimatedStyle(() => ({ opacity: labelReveal.value.slideCount }));
+  const addCaption = useAnimatedStyle(() => ({
+    opacity: Math.max(0, 1 - 2 * Math.max(home.uploadBlur.value, home.analyzing.value, home.setup.value)),
   }));
   return (
     <Animated.View pointerEvents="none" style={[styles.slot, outer]}>
       <Animated.View style={[styles.item, body]}>
-        {showText && <Animated.View style={[styles.slotCopy,titleHandoff]}>
-          <Txt verbatim numberOfLines={2} style={[styles.title, mode === 'light' && { color: c.text }]}>{deck.title}</Txt>
-          <Txt style={styles.meta}>{(deck.pageCount || '—') + ' slides · ' + pad2(j + 1)}</Txt>
+        {showCaption && <Animated.View testID="home-card-caption" style={[styles.slotCopy, addCaption]}>
+          <Animated.View style={titleHandoff}>
+            <Txt verbatim numberOfLines={2} style={[styles.title, mode === 'light' && { color: c.text }]}>{deck.title}</Txt>
+          </Animated.View>
+          <Animated.View style={slideCountHandoff}>
+            <Txt style={styles.meta}>{(deck.pageCount || '—') + ' slides · ' + pad2(j + 1)}</Txt>
+          </Animated.View>
         </Animated.View>}
         <Animated.View renderToHardwareTextureAndroid style={[styles.icon, icon]}>
           <PresentationIcon icon={deck.icon} hue={deck.hue} size={deckIconSize(compact)} />
@@ -457,7 +568,7 @@ const SHADOW_SIZE: Record<IconId, readonly [number, number]> = {
 function floatLift(home: import('./shared').HomeShared, phase: number, index: number) {
   'worklet';
   const dragging = Math.max(
-    Math.min(1, Math.abs(home.vy.value) / 12),
+    Math.min(1, Math.max(0, home.vy.value) / 12),
     Math.min(1, Math.abs(home.p.value - Math.round(home.p.value)) / 0.08),
     Math.min(1, (1 - home.press.value) / 0.05),
     home.hold.value,
@@ -488,24 +599,37 @@ function GroundShadow({ icon }: { icon: IconId }) {
   );
 }
 
+/** The Upload draws its own fixed wordmark and icon while Home dims underneath. */
+export function UploadArtwork({ home, hue, followCarousel }: { home: import('./shared').HomeShared; hue: HueName; followCarousel: boolean }) {
+  return <View testID="upload-artwork" pointerEvents="none" style={StyleSheet.absoluteFill}>
+    <View style={styles.logo}><Txt style={styles.logoText}>OutLoud</Txt></View>
+    <View style={styles.ghostLayer}>
+      <Ghost home={home} hue={hue} alwaysVisible={!followCarousel} />
+    </View>
+  </View>;
+}
+
 /** The "New presentation" item that grows into the gap while pulling up, and on Upload. */
-function Ghost({ home, hue, order, empty, showText }: { home: import('./shared').HomeShared; hue: HueName; order: number; empty: boolean; showText: boolean }) {
+function Ghost({ home, hue, order, alwaysVisible }: { home: import('./shared').HomeShared; hue: HueName; order?: number; alwaysVisible: boolean }) {
   const { mode, c } = useTheme();
   const compact = useFrame().compact;
   const style = useAnimatedStyle(() => {
-    const spread = empty ? Math.max(1, spreadOf(home)) : spreadOf(home);
+    const spread = alwaysVisible ? 1 : spreadOf(home);
     const gsc = (0.6 + 0.4 * Math.min(1, spread)) * (home.analyzing.value ? 1 - (1 - ANALYZE_ICON_SCALE) * home.analyzing.value : 1);
-    return { opacity: spread > 0.01 ? Math.min(1, spread * 2.5) : 0, transform: [{ translateY: home.vy.value * 0.35 - (ORIGIN_Y - SLOT_FULL_H / 2) * (1 - gsc) * -1 }, { scale: gsc }] };
+    // Add keeps this icon on screen while Home's drag offset settles.
+    return { opacity: spread * spread,
+      transform: [{ translateY: (ORIGIN_Y - SLOT_FULL_H / 2) * (1 - gsc) }, { scale: gsc }] };
   });
   // OpenAI Codex import-ring fix: docs/ai-collaboration-prompts-iteration-2.md#centre-pdf-import-ring
   const groundFade = useAnimatedStyle(() => ({ opacity: 1 - home.analyzing.value }));
+  const previewCopy = useAnimatedStyle(() => ({ opacity: Math.min(1, (1 - spreadOf(home)) / 0.24) }));
   return (
     <Animated.View pointerEvents="none" style={[styles.slot, { zIndex: 300 }, style]}>
       <View style={styles.item}>
-        {showText && <Txt numberOfLines={2} style={[styles.title, mode === 'light' && { color: c.text }]}>
-          New presentation
-        </Txt>}
-        {showText && <Txt style={styles.meta}>{'New · ' + pad2(order)}</Txt>}
+        {order !== undefined && <Animated.View style={[styles.slotCopy, previewCopy]}>
+          <Txt numberOfLines={2} style={[styles.title, mode === 'light' && { color: c.text }]}>New presentation</Txt>
+          <Txt style={styles.meta}>{'New · ' + pad2(order)}</Txt>
+        </Animated.View>}
         <View style={styles.icon}><PresentationIcon icon="present" hue={hue} size={deckIconSize(compact)} /></View>
       </View>
       <Animated.View style={[styles.ground, groundFade]}><GroundShadow icon="present" /></Animated.View>
@@ -551,10 +675,8 @@ function PullIndicator({ home, label }: { home: import('./shared').HomeShared; l
 
 function HomeHints({ empty }: { empty: boolean }) {
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      <HintRow gap={16} hints={empty ? [{ icon: 'h-tap', text: 'Tap to add' }, { icon: 'h-up', text: 'Add' }]
-        : [{ icon: 'h-spin', text: 'Spin' }, { icon: 'h-tap', text: 'Open' }, { icon: 'h-hold', text: 'Icon' }, { icon: 'h-up', text: 'Add' }, { icon: 'h-dn', text: 'Delete' }]} />
-    </View>
+    <HintRow gap={16} hints={empty ? [{ icon: 'h-tap', text: 'Tap to add' }, { icon: 'h-up', text: 'Add' }]
+      : [{ icon: 'h-spin', text: 'Spin' }, { icon: 'h-tap', text: 'Open' }, { icon: 'h-hold', text: 'Icon' }, { icon: 'h-up', text: 'Add' }, { icon: 'h-dn', text: 'Delete' }]} />
   );
 }
 
@@ -638,16 +760,17 @@ function IconPicker({ deckId, closing, onClose }: { deckId: string; closing: boo
 
 const styles = createThemedStyles({
   overlayBlur: { filter: [{ blur: 18 }] },
-  addBlur: { filter: [{ blur: 8 }] },
   logo: { position: 'absolute', left: 0, right: 0, top: 57, height: 36, alignItems: 'center', justifyContent: 'center' },
   logoText: { fontFamily: F.display, fontSize: 26, lineHeight: 27, letterSpacing: -0.5, color: C.text },
-  onlineChoice: { position: 'absolute', top: 96, alignSelf: 'center', minHeight: 44, justifyContent: 'center', paddingHorizontal: 16 },
-  onlineLabel: { fontFamily: F.semibold, fontSize: 14, textDecorationLine: 'underline' },
   // OpenAI Codex header alignment: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-106
+  tutorialAppearance: { zIndex: 56 },
   creditsOverlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 50, alignItems: 'center', justifyContent: 'center' },
   creditNames: { alignItems: 'center', gap: 16 },
+  creditPrivacy: { minHeight: 44, marginTop: 24, justifyContent: 'center', paddingHorizontal: 16 },
+  creditPrivacyText: { fontFamily: F.semibold, fontSize: 16, textAlign: 'center' },
   creditName: { fontSize: 27, lineHeight: 40, fontWeight: '700', color: '#FFFFFF', textAlign: 'center' },
   carousel: { position: 'absolute', left: 0, top: CAROUSEL_TOP, width: 390, height: 400, zIndex: 1 },
+  hiddenCarousel: { display: 'none' },
   ghostLayer: { position: 'absolute', left: 0, top: CAROUSEL_TOP, width: 390, height: 400, zIndex: 2 },
   slot: { position: 'absolute', left: 65, top: SLOT_TOP, width: SLOT_W, height: SLOT_FULL_H },
   item: { width: SLOT_W, height: SLOT_H, alignItems: 'center' },

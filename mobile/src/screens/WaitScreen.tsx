@@ -1,5 +1,5 @@
 import { useUiText } from '../design/language';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Enter, Txt } from '../design/frame';
@@ -13,8 +13,13 @@ import { useRunFeedbackStatus } from '../features/feedback/useRunFeedbackStatus'
 import { useRunScores } from '../features/feedback/useRunFeedbackV3';
 import { scoreLevelColor } from '../features/feedback/presentationScoreDisplay';
 import { runLabel } from '../domain/run';
+import { demoAccess } from '../services/backendFetch';
+import { onlineAllowed, subscribePrivacy } from '../services/storePrivacy';
 import { useNow, useShell } from './shared';
 import { PanView } from '../design/PanView';
+
+// OpenAI Codex, 2026-11-25: show a brief ready state before opening Overall Review.
+const REVIEW_READY_DELAY_MS = 250;
 
 export function WaitScreen({ active = true }: { active?: boolean }) {
   const ui = useUiText();
@@ -24,22 +29,26 @@ export function WaitScreen({ active = true }: { active?: boolean }) {
   const fadeY = useSharedValue(0);
   const swipeFade = useAnimatedStyle(() => ({ opacity: Math.max(0, 1 - fadeY.value / BACK_FADE_Y) }));
   const model = useDeckModel(nav.deckId);
-  const runScores = useRunScores(model, active), v3 = runScores.v3, scores = runScores.scores, v2 = runScores.v2;
-  const feedback = useRunFeedbackStatus(model, active && !v3);
+  const access = useSyncExternalStore(demoAccess.subscribe, demoAccess.getSnapshot, demoAccess.getSnapshot);
+  const allowed = useSyncExternalStore(subscribePrivacy, onlineAllowed, onlineAllowed);
+  const canWait = allowed && access.state === 'ready';
+  const runScores = useRunScores(model, active && canWait), v3 = runScores.v3, scores = runScores.scores, v2 = runScores.v2;
+  const feedback = useRunFeedbackStatus(model, active && canWait && !v3);
   const now = useNow();
   const moved = useRef(false);
   const [timedOut, setTimedOut] = useState(false);
   const scorePending = v3 ? /scoring|pending|outdated/i.test(scores.overall.status) : /grading|scoring|updating|pending/i.test(scores.overall.status);
-  const scoreResolved = v3 ? !scorePending : scores.overall.score !== null || /graded|unavailable|incomplete|insufficient|invalid|not applicable|select a complete|combined recordings/i.test(scores.overall.status);
+  const scoreResolved = v3 ? !scorePending : scores.overall.score !== null || /graded|unavailable|incomplete|insufficient|invalid|not applicable|no speech detected|select a complete|combined recordings/i.test(scores.overall.status);
   const slidesPending = v3 ? v3.aggregate.pending : feedback.aggregate.pending;
   const allReady = !!model?.state.run && slidesPending === 0 && !scorePending && scoreResolved;
   const revealTiles = allReady || timedOut;
-  const canAutoOpen = allReady || (timedOut && !v3?.preparingDisplay);
+  const canAutoOpen = canWait && (allReady || (timedOut && !v3?.preparingDisplay));
   useEffect(() => {
+    if (!canWait) return;
     const remaining = 180_000;
     const timer = setTimeout(() => setTimedOut(true), remaining);
     return () => clearTimeout(timer);
-  }, []);
+  }, [canWait]);
   useEffect(() => {
     if (!active || !canAutoOpen || moved.current) return;
     const timer = setTimeout(() => {
@@ -47,7 +56,7 @@ export function WaitScreen({ active = true }: { active?: boolean }) {
         moved.current = true;
         go('full', { deckId: nav.deckId, sel: Math.max(0, nav.sel), from: 'wait', nav: null });
       }
-    }, 800);
+    }, REVIEW_READY_DELAY_MS);
     return () => clearTimeout(timer);
   }, [active, canAutoOpen, go, nav.deckId, nav.sel]);
   if (!model) return null;
@@ -63,14 +72,21 @@ export function WaitScreen({ active = true }: { active?: boolean }) {
   };
   const terminalCount = v3 ? v3.aggregate.settled : feedback.items.filter(item => ['reviewed','partial','insufficient','unavailable','recovery_needed','outdated','not_analyzed'].includes(item.status)).length;
   return <><Enter kind={nav.nav}><PanView style={[StyleSheet.absoluteFill,{backgroundColor:c.bg},swipeFade]}
-    onMoveShould={(_e,g)=>g.dy>12&&g.dy>Math.abs(g.dx)}
+    onMoveShould={(_e,g)=>!moved.current&&g.dy>12&&g.dy>Math.abs(g.dx)}
     onMove={(_e,g)=>fadeY.set(Math.max(0,Math.min(BACK_FADE_Y,g.dy)))}
-    onRelease={(_e,g)=>{if(g.dy>60)fadeY.set(withTiming(BACK_FADE_Y,{duration:460,easing:EASE_SCREEN},done=>{if(done)runOnJS(hintHome)();}));else fadeY.set(withTiming(0,{duration:360,easing:EASE_SCREEN}));}}
-    onTerminate={()=>fadeY.set(withTiming(0,{duration:280,easing:EASE_SCREEN}))}>
+    onRelease={(_e,g)=>{
+      if(moved.current)return;
+      if(g.dy>60){
+        // A confirmed swipe wins over the ready timer while the exit animates.
+        moved.current=true;
+        fadeY.set(withTiming(BACK_FADE_Y,{duration:460,easing:EASE_SCREEN},done=>{if(done)runOnJS(hintHome)();}));
+      }else fadeY.set(withTiming(0,{duration:360,easing:EASE_SCREEN}));
+    }}
+    onTerminate={()=>{if(!moved.current)fadeY.set(withTiming(0,{duration:280,easing:EASE_SCREEN}));}}>
     <PageSurface hue={deck.hue} />
     <View style={styles.header}><Txt verbatim numberOfLines={1} style={[styles.title,{color:c.text}]}>{deck.title}</Txt>
       <Txt style={[styles.sub,{color:c.secondary}]}>{`Review · ${runLabel(run,now,()=> 'Just now')}`}</Txt></View>
-    <View style={styles.score}><Txt style={[styles.ghostScore,{color:c.tertiary}]}>—%</Txt>
+    {canWait&&<View style={styles.score}><Txt style={[styles.ghostScore,{color:c.tertiary}]}>—%</Txt>
       {v3 ? v3.failures && <>
         <Txt style={[styles.scoreError,{color:c.secondary}]}>Some AI feedback failed</Txt>
         <Pressable accessibilityRole="button" accessibilityLabel={ui("Retry failed AI feedback")} disabled={v3.busy} onPress={() => void v3.retry()}
@@ -82,13 +98,16 @@ export function WaitScreen({ active = true }: { active?: boolean }) {
           <Txt style={[styles.retryText,{color:c.text}]}>{v2.controller.busy?'Retrying…':v2.controller.ask?'Retry anyway':'Try again'}</Txt>
         </Pressable>
         {v2.controller.ask&&<Pressable accessibilityRole="button" onPress={()=>void v2.controller.cancel()} style={styles.cancelRetry}><Txt style={[styles.retryText,{color:c.secondary}]}>Cancel retry</Txt></Pressable>}
-      </>}</View>
+      </>}</View>}
     <View style={styles.steps}>
       <Step label="Recording saved" detail="Audio is safe on this phone" done icon="✓" />
-      <Step label="Each slide checked" detail={`${terminalCount} of ${times.length} · ${slidesPending ? 'in progress' : 'ready'}`} done={terminalCount >= times.length} icon={terminalCount >= times.length ? '✓' : '···'} />
-      <Step label="Full review against the rubric" detail={scorePending ? 'Checking the full presentation' : scores.overall.status} done={!scorePending && scores.overall.status !== 'Not graded'} icon={!scorePending ? '✓' : '···'} />
+      {canWait&&<>
+        <Step label="Each slide checked" detail={`${terminalCount} of ${times.length} · ${slidesPending ? 'in progress' : 'ready'}`} done={terminalCount >= times.length} icon={terminalCount >= times.length ? '✓' : '···'} />
+        <Step label="Full review against the rubric" detail={scorePending ? 'Checking the full presentation' : scores.overall.status} done={!scorePending && scores.overall.status !== 'Not graded'} icon={!scorePending ? '✓' : '···'} />
+      </>}
+      {(!allowed || access.state === 'locked') && <Txt style={[styles.detail,styles.unavailable,{color:c.secondary}]}>Online feedback unavailable</Txt>}
     </View>
-    <View style={styles.tiles}>
+    {canWait&&<><View style={styles.tiles}>
       {Array.from({length:Math.ceil(times.length/6)},(_,row)=><View key={row} style={styles.tileRow}>{times.slice(row*6,row*6+6).map((_,col)=>{
         const i=row*6+col;
         const score=scores.items[i]; const fill=score?.score!=null?scoreLevelColor(score.level,c):c.track;
@@ -97,9 +116,9 @@ export function WaitScreen({ active = true }: { active?: boolean }) {
         return <View key={i} style={[styles.tile,{backgroundColor:available?fill:settled?c.surface:c.track,borderColor:settled&&!available?c.hair:'transparent',borderWidth:settled&&!available?1:0}]}><Txt style={[styles.tileText,{color:available?c.gradeOnFill:settled?c.good:c.secondary}]}>{available?score.score:settled?'✓':i+1}</Txt></View>;
       })}</View>)}
     </View>
-    <Txt style={[styles.note,{color:c.secondary}]}>{timedOut && !allReady ? 'Showing the results available so far. You can refresh the review later.' : 'Slide scores and the full review are checked together. You can listen while this finishes.'}</Txt>
+    <Txt style={[styles.note,{color:c.secondary}]}>{timedOut && !allReady ? 'Showing the results available so far. You can refresh the review later.' : 'Slide scores and the full review are checked together. You can listen while this finishes.'}</Txt></>}
     <View style={styles.actions}>
-      <Pressable accessibilityRole="button" onPress={openListen} style={[styles.primary,{backgroundColor:c.strong}]}><Txt style={[styles.buttonText,{color:c.onAccent}]}>Listen back while you wait</Txt></Pressable>
+      <Pressable accessibilityRole="button" onPress={openListen} style={[styles.primary,{backgroundColor:c.strong}]}><Txt style={[styles.buttonText,{color:c.onAccent}]}>{canWait ? 'Listen back while you wait' : 'Listen back'}</Txt></Pressable>
       <Pressable accessibilityRole="button" onPress={hintHome} style={[styles.secondary,{borderColor:c.hair}]}><Txt style={[styles.buttonText,{color:c.text}]}>Go Home</Txt></Pressable>
     </View>
   </PanView></Enter>
@@ -116,6 +135,7 @@ function Step({label,detail,done,icon}:{label:string;detail:string;done:boolean;
 }
 
 const styles=StyleSheet.create({
+  unavailable:{marginLeft:46},
   header:{position:'absolute',top:46,left:40,right:40,alignItems:'center'},title:{fontFamily:F.display,fontSize:18,lineHeight:23},sub:{fontFamily:F.medium,fontSize:14,lineHeight:18},
   score:{position:'absolute',left:24,right:24,top:104,alignItems:'center'},ghostScore:{fontFamily:F.display,fontSize:58,lineHeight:66,letterSpacing:-2,fontVariant:['tabular-nums']},scoreError:{marginTop:2,fontFamily:F.medium,fontSize:13.5},retry:{minHeight:34,minWidth:100,marginTop:4,paddingHorizontal:14,borderRadius:17,borderWidth:1,alignItems:'center',justifyContent:'center'},retryText:{fontFamily:F.semibold,fontSize:13.5},cancelRetry:{minHeight:30,justifyContent:'center'},steps:{position:'absolute',left:40,right:24,top:200,gap:14},step:{minHeight:48,flexDirection:'row',alignItems:'center',gap:14},check:{width:32,height:32,borderRadius:16,borderWidth:1,alignItems:'center',justifyContent:'center'},checkText:{fontFamily:F.bold,fontSize:15},copy:{flex:1,gap:3},label:{fontFamily:F.semibold,fontSize:15},detail:{fontFamily:F.medium,fontSize:13.5,lineHeight:18},
   tiles:{position:'absolute',top:388,left:24,right:24,gap:8},tileRow:{height:50,flexDirection:'row',justifyContent:'space-between',gap:8},tile:{width:50,height:50,borderRadius:14,alignItems:'center',justifyContent:'center'},tileText:{fontFamily:F.bold,fontSize:14},note:{position:'absolute',left:24,right:24,top:552,fontFamily:F.medium,fontSize:14,lineHeight:20},actions:{position:'absolute',left:24,right:24,top:618,height:52,flexDirection:'row',gap:10},primary:{flex:1,minWidth:0,height:52,borderRadius:26,alignItems:'center',justifyContent:'center',paddingHorizontal:8},secondary:{flex:1,minWidth:0,height:52,borderWidth:1,borderRadius:26,alignItems:'center',justifyContent:'center',paddingHorizontal:8},buttonText:{fontFamily:F.semibold,fontSize:14,textAlign:'center'}

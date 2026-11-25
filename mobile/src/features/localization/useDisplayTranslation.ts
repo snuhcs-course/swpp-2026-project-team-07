@@ -17,6 +17,7 @@ export function useDisplayTranslation<T>(active: boolean, project: (scope: Displ
   useSyncExternalStore(displayTranslations.subscribe, displayTranslations.version);
   const groups = new Map<string, { resource: Resource; fields: Fields }>();
   const missing = new Set<string>();
+  const unavailableFields = new Set<string>();
   const value = project((kind, id, revision, originalLanguage) => {
     const resource: Resource = { kind, resource_id: id, language, ...(revision ? { revision } : {}) };
     const key = JSON.stringify(resource);
@@ -36,6 +37,7 @@ export function useDisplayTranslation<T>(active: boolean, project: (scope: Displ
       // Older results may first be opened offline. Keep their measurements and
       // evidence usable while the missing coaching is synchronized independently.
       const unavailable = displayTranslations.unavailable(resource, path, source);
+      if (unavailable) unavailableFields.add(path);
       if (kind === 'profiles' && path.endsWith('.text')) {
         if (unavailable) return language === 'ko' ? '이 도움말의 한국어 버전을 불러올 수 없어요.' : 'This cue is unavailable in English.';
         return language === 'ko' ? '한국어 도움말 동기화 대기 중' : 'Waiting for English cues';
@@ -57,5 +59,5 @@ export function useDisplayTranslation<T>(active: boolean, project: (scope: Displ
     const submitted = JSON.parse(signature) as Request[];
     if (submitted.length) return displayTranslations.retain(submitted);
   }, [signature]);
-  return { value, missing, language };
+  return { value, missing, unavailableFields, language };
 }

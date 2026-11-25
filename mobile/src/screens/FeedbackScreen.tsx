@@ -1,11 +1,11 @@
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, type StyleProp, type TextStyle } from 'react-native';
-import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 import { Enter, Txt, useFrame } from '../design/frame';
 import { Glyph, UIIcon } from '../design/icons';
-import { PanView } from '../design/PanView';
+import { PanView, type PanHandlers } from '../design/PanView';
 import { EASE_SCREEN, F } from '../design/tokens';
-import { BACK_FADE_Y } from '../domain/gestures';
+import { BACK_FADE_Y, REVIEW_PAGE_SWIPE } from '../domain/gestures';
 import { useTheme } from '../design/theme';
 import { useUiText } from '../design/language';
 import { HintRow, PageSurface } from '../design/ui';
@@ -21,6 +21,7 @@ import { scoreAudioEvidence } from '../features/feedback/presentationScoreDispla
 import type { ScoreAdvice, ScoreEvidence } from '../features/feedback/presentationScore';
 import type { Finding } from '../features/feedback/slideReview';
 import { useBack, useShell } from './shared';
+import { usePageFooter } from './pageFooter';
 import { SWIPE_ENTRY_X, useHorizontalSwipeMotion } from './swipeMotion';
 
 // Supplied Claude-generated patch, integrated by OpenAI Codex for Iteration 2 (2026-11-20): two fixed regions (what is wrong + you said ·
@@ -30,6 +31,7 @@ export function FeedbackScreen({active=true}:{active?:boolean}) {
   // OpenAI Codex, 2026-11-19: preserve horizontal point swipes and fade on downward return.
   // OpenAI Codex Q&A-matched feedback swipes: docs/ai-collaboration-prompts-iteration-2.md#match-feedback-swipes-to-qa
   const fadeY=useSharedValue(0);
+  const footer=usePageFooter(active,fadeY,'full');
   const swipe=useHorizontalSwipeMotion({slideOnly:true,active});
   const swipeFade=useAnimatedStyle(()=>({opacity:Math.max(0,1-fadeY.value/BACK_FADE_Y)}));
   const model=useDeckModel(nav.deckId),runScores=useRunScores(model,active,undefined,true),v3=runScores.v3;
@@ -44,6 +46,11 @@ export function FeedbackScreen({active=true}:{active?:boolean}) {
   const currentIndex=Math.min(index,Math.max(0,points.length-1));
   const point=points[currentIndex];
   const [detail,setDetail]=useState(false);
+  const detailY=useSharedValue(BACK_FADE_Y);
+  const detailClosing=useRef(false);
+  useEffect(()=>{
+    if(detail&&!detailClosing.current)detailY.set(withTiming(0,{duration:190,easing:EASE_SCREEN}));
+  },[detail,detailY]);
   // Which clamped texts on this page did not fit (keyed by field); reset when the point changes.
   const [cut,setCut]=useState<{index:number;keys:string[]}>({index:-1,keys:[]});
   const [quoteMeasure,setQuoteMeasure]=useState<{index:number;lines:number}>({index:-1,lines:0});
@@ -52,8 +59,16 @@ export function FeedbackScreen({active=true}:{active?:boolean}) {
     if(over===keys.includes(key))return prev.index===currentIndex?prev:{index:currentIndex,keys};
     return {index:currentIndex,keys:over?[...keys,key]:keys.filter(k=>k!==key)};
   });
+  const finishDetail=()=>{setDetail(false);detailClosing.current=false;};
+  const closeDetail=()=>{
+    if(detailClosing.current)return;
+    detailClosing.current=true;
+    detailY.set(withTiming(BACK_FADE_Y,{duration:REVIEW_PAGE_SWIPE.exitMs,easing:EASE_SCREEN},done=>{
+      if(done)runOnJS(finishDetail)();
+    }));
+  };
   const back=()=>{swipe.cancel();player.stop();go('full',{deckId:nav.deckId,sel:nav.sel});};
-  useBack(active,()=>{if(detail)setDetail(false);else back();return true;});
+  useBack(active,()=>{if(detail)closeDetail();else back();return true;});
   const turn=(direction:-1|1)=>{
     if(points.length<2){swipe.settle();return;}
     const target=(currentIndex+direction+points.length)%points.length;
@@ -118,12 +133,14 @@ export function FeedbackScreen({active=true}:{active?:boolean}) {
     view.said?(quoteMeasure.index===currentIndex?Math.min(quoteLines,quoteMeasure.lines):quoteLines):0,
     Math.min(maxWhy,view.explanation.length),cardLineHeight,frame.compact):2;
   const playing=(key:string)=>player.playingKey===key&&!player.paused;
-  const open=truncated?()=>{setDetail(true);}:undefined;
-  return <><Enter kind={nav.nav}><PanView style={[StyleSheet.absoluteFill,swipeFade]}
-    onMoveShould={(_e,g)=>!detail&&((Math.abs(g.dx)>18&&Math.abs(g.dx)>Math.abs(g.dy))||(g.dy>12&&g.dy>Math.abs(g.dx)))}
+  const open=truncated?()=>{detailY.set(BACK_FADE_Y);setDetail(true);}:undefined;
+  const showDetail=detail&&!!view;
+  return <><Enter kind={nav.nav} duration={REVIEW_PAGE_SWIPE.enterMs}><PanView style={[StyleSheet.absoluteFill,swipeFade]}
+    disabled={showDetail} pointerEvents={showDetail?'none':'auto'} importantForAccessibility={showDetail?'no-hide-descendants':'auto'}
+    onMoveShould={(_e,g)=>(Math.abs(g.dx)>18&&Math.abs(g.dx)>Math.abs(g.dy))||(g.dy>12&&g.dy>Math.abs(g.dx))}
     onMove={(_e,g)=>{if(Math.abs(g.dx)>Math.abs(g.dy)){swipe.move(g.dx/frame.s);fadeY.set(0);}else{swipe.settle();fadeY.set(Math.max(0,Math.min(BACK_FADE_Y,g.dy)));}}}
-    onRelease={(_e,g)=>{if(Math.abs(g.dx)>Math.abs(g.dy)&&g.dx/frame.s < -60)turn(1);else if(Math.abs(g.dx)>Math.abs(g.dy)&&g.dx/frame.s > 60)turn(-1);else if(g.dy>90)fadeY.set(withTiming(BACK_FADE_Y,{duration:460,easing:EASE_SCREEN},done=>{if(done)runOnJS(back)();}));else {swipe.settle();fadeY.set(withTiming(0,{duration:360,easing:EASE_SCREEN}));}}}
-    onTerminate={()=>{swipe.settle();fadeY.set(withTiming(0,{duration:360,easing:EASE_SCREEN}));}}>
+    onRelease={(_e,g)=>{if(Math.abs(g.dx)>Math.abs(g.dy)&&g.dx/frame.s < -60)turn(1);else if(Math.abs(g.dx)>Math.abs(g.dy)&&g.dx/frame.s > 60)turn(-1);else if(g.dy>90)fadeY.set(withTiming(BACK_FADE_Y,{duration:REVIEW_PAGE_SWIPE.exitMs,easing:EASE_SCREEN},done=>{if(done)runOnJS(back)();}));else {swipe.settle();fadeY.set(withTiming(0,{duration:REVIEW_PAGE_SWIPE.resetMs,easing:EASE_SCREEN}));}}}
+    onTerminate={()=>{swipe.settle();fadeY.set(withTiming(0,{duration:REVIEW_PAGE_SWIPE.resetMs,easing:EASE_SCREEN}));}}>
     <PageSurface hue={model.deck.hue}/>
     <Animated.View style={[StyleSheet.absoluteFill,swipe.style]}>
     {view?<>
@@ -166,13 +183,16 @@ export function FeedbackScreen({active=true}:{active?:boolean}) {
         </View>
       </Pressable>
     </>:<View style={[styles.empty,{top:r.r1[0],backgroundColor:c.surface06,borderColor:c.hair}]}><Txt style={[styles.count,{color:c.tertiary}]}>{count}</Txt><Txt style={[styles.quote,{color:c.secondary}]}>{v3?'Ways to raise your score appear here when the AI review is ready.':'Verified feedback points will appear here when a slide review is available.'}</Txt></View>}
-    <View style={styles.dots}>{points.map((_,i)=><View key={i} style={[styles.dot,i===currentIndex?styles.activeDot:{backgroundColor:c.dotOff},i===currentIndex&&{backgroundColor:c.text}]}/>)}</View>
     </Animated.View>
-    {detail&&view&&<FeedbackDetail view={view} count={count} playing={playing} onClose={()=>setDetail(false)}/>}
+    <View style={styles.dots} pointerEvents="none">{points.map((_,i)=><View key={i} style={[styles.dot,i===currentIndex?styles.activeDot:{backgroundColor:c.dotOff},i===currentIndex&&{backgroundColor:c.text}]}/>)}</View>
   </PanView></Enter>
   {/* OpenAI Codex, 2026-11-20: pin gesture cues while feedback cards swipe or fade. */}
   {/* Supplied Claude patch, Codex integration 2026-11-20: Read all joins pinned cues when text is cut. */}
-  {active&&!detail&&<HintRow hints={[...(truncated?[{icon:'h-tap' as const,text:'Read all',onPress:open}]:[]),{icon:'h-spin',text:'Next point'},{icon:'h-dn',text:'Back to review',nudge:'down'}]}/>}
+  {footer.visible&&<Animated.View pointerEvents={active&&!showDetail?'box-none':'none'}
+    importantForAccessibility={showDetail?'no-hide-descendants':'auto'} style={[StyleSheet.absoluteFill,footer.style]}>
+    <HintRow hints={[...(truncated?[{icon:'h-tap' as const,text:'Read all',onPress:open}]:[]),{icon:'h-spin',text:'Next point'},{icon:'h-dn',text:'Back to review',nudge:'down'}]}/>
+  </Animated.View>}
+  {showDetail&&<FeedbackDetail view={view} count={count} playing={playing} offset={detailY} closing={detailClosing} onClose={closeDetail}/>}
   </>;
 }
 
@@ -216,12 +236,21 @@ function Bullet({dot,children}:{dot:string;children:ReactNode}){
 }
 
 /** The whole point, nothing cut: opened by tapping a region whose text ends in "…". */
-function FeedbackDetail({view,count,playing,onClose}:{view:PointView;count:string;playing:(key:string)=>boolean;onClose:()=>void}){
-  const {c}=useTheme(),ui=useUiText();
+function FeedbackDetail({view,count,playing,offset,closing,onClose}:{view:PointView;count:string;playing:(key:string)=>boolean;
+  offset:SharedValue<number>;closing:{current:boolean};onClose:()=>void}){
+  const {c}=useTheme(),ui=useUiText(),{s}=useFrame();
   const scrollY=useRef(0);
-  return <View style={[StyleSheet.absoluteFill,styles.detail,{backgroundColor:c.bg}]} accessibilityViewIsModal>
-    <PanView style={StyleSheet.absoluteFill} onMoveShould={(_e,g)=>scrollY.current<=0&&g.dy>12&&g.dy>Math.abs(g.dx)}
-      onRelease={(_e,g)=>{if(g.dy>90)onClose();}}>
+  const motion=useAnimatedStyle(()=>({
+    opacity:1-offset.value/BACK_FADE_Y,
+    transform:[{translateY:offset.value*.36}],
+  }));
+  const shouldPull:NonNullable<PanHandlers['onMoveShould']>=(_e,g)=>
+    !closing.current&&scrollY.current<=0&&g.dy>12&&g.dy>Math.abs(g.dx);
+  const settle=()=>{if(!closing.current)offset.set(withTiming(0,{duration:REVIEW_PAGE_SWIPE.resetMs,easing:EASE_SCREEN}));};
+  return <PanView style={[StyleSheet.absoluteFill,styles.detail,{backgroundColor:c.bg},motion]} accessibilityViewIsModal
+      onMoveShouldCapture={shouldPull} onMoveShould={shouldPull}
+      onMove={(_e,g)=>{if(!closing.current)offset.set(Math.min(BACK_FADE_Y,Math.max(0,g.dy/s)));}}
+      onRelease={(_e,g)=>{if(g.dy/s>90)onClose();else settle();}} onTerminate={settle}>
       <ScrollView style={StyleSheet.absoluteFill} contentContainerStyle={styles.detailBody} onScroll={e=>{scrollY.current=e.nativeEvent.contentOffset.y;}} scrollEventThrottle={32}>
         <View style={styles.chipRow}>
           <View style={[styles.chip,{backgroundColor:c.surface08}]}><UIIcon name="i-slides" size={16}/><Txt verbatim style={[styles.chipText,{color:c.text}]}>{view.chip}</Txt></View>
@@ -245,8 +274,7 @@ function FeedbackDetail({view,count,playing,onClose}:{view:PointView;count:strin
         </View>
       </ScrollView>
       <HintRow hints={[{icon:'h-dn',text:'Close',nudge:'down',onPress:onClose}]}/>
-    </PanView>
-  </View>;
+  </PanView>;
 }
 
 function scoreQuote(advice:ScoreAdvice){

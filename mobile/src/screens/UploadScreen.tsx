@@ -3,88 +3,86 @@
 // OpenAI Codex import-ring layout: docs/ai-collaboration-prompts-iteration-2.md#centre-pdf-import-ring
 // OpenAI Codex light-mode upload: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-081
 // Attribution: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-043
-// OutLoud redesign: Upload and analysis (SPEC §4.3). The Home carousel stays
-// behind, blurred, with the new presentation's icon sharp in the gap.
+// OutLoud redesign: Upload and analysis (SPEC §4.3). The new presentation's
+// icon carries from the Home carousel gap into the PDF progress ring.
 import { useUiText } from '../design/language';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View, type GestureResponderEvent, type PanResponderGestureState } from 'react-native';
-import Animated, { Easing, runOnJS, useAnimatedProps, useAnimatedReaction, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, {
+  cancelAnimation, Easing, runOnJS, useAnimatedProps, useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withTiming,
+} from 'react-native-reanimated';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { Enter, Txt, useFrame } from '../design/frame';
 import { UIIcon } from '../design/icons';
 import { PanView } from '../design/PanView';
 import { C, EASE_SCREEN, F } from '../design/tokens';
 import { createThemedStyles, useTheme } from '../design/theme';
-import { Dialog, HintRow, Pop } from '../design/ui';
+import { HintRow, Pop } from '../design/ui';
 import { BACK_FADE_Y, BACK_T } from '../domain/gestures';
-import { analyzePdf, discardImport, pickPdf, type Progress } from '../features/presentations/importer';
-import { useSlideProfiles } from '../features/presentations/useSlideProfiles';
-import type { ProfileState } from '../features/presentations/slideProfiles';
+import type { HueName } from '../domain/hues';
+import { analyzePdf, discardImport, pickPdf, SLIDE_TEXT_WAIT_MS, type Progress } from '../features/presentations/importer';
 import { visibleDecks, type Presentation } from '../features/presentations/store';
 import type { LocalPdf } from '../features/pdf/service';
+import { UploadArtwork } from './HomeScreen';
 import { PresentationRequirementsEditor, PresentationSetupHint } from './PresentationSetup';
 import { ANALYZE_RING_STROKE, analyzeRing } from './homeGeometry';
 import { useBack, useShell } from './shared';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const FILE_BOX = 40, FILE_GAP = 22;
+const ADD_HANDOFF_MS = 280;
+const STAGE_MS = { finding: 90, reading: 180, planning: 230, ready: 155 };
+const STILL_FILL = { finding: 0.14, reading: 0.45, planning: 0.82, ready: 1 };
+const READING_ADVANCE_MS = 150;
 
-export function UploadScreen() {
+function waitForStage(ms: number, signal: AbortSignal) {
+  if (ms <= 0 || signal.aborted) return Promise.resolve();
+  return new Promise<void>(resolve => {
+    const done = () => {
+      clearTimeout(timer);
+      signal.removeEventListener('abort', done);
+      resolve();
+    };
+    const timer = setTimeout(done, ms);
+    signal.addEventListener('abort', done, { once: true });
+  });
+}
+
+export function UploadScreen({ hue = 'violet', empty = false, onReadingPdf }: { hue?: HueName; empty?: boolean; onReadingPdf?: (value: boolean) => void }) {
   const ui = useUiText();
   const { c } = useTheme();
-  const { go, home, nav } = useShell();
+  const { go, home } = useShell();
   const frame = useFrame();
   const [phase, setPhase] = useState<'pick' | 'picking' | 'analyze' | 'configure'>('pick');
   const [setupHintVisible, setSetupHintVisible] = useState(true);
   const [readyDeck, setReadyDeck] = useState<Presentation | null>(null);
-  const [profileRetryAsk,setProfileRetryAsk]=useState<ProfileState|null>(null);
+  const picking = phase === 'pick' || phase === 'picking';
   const [error, setError] = useState('');
-  const [info, setInfo] = useState<Progress & { file: string }>({ progress: 0, status: 'Rendering slides', pages: null, file: '' });
-  const [pct, setPct] = useState(0);
-  const [profileWaitExpired, setProfileWaitExpired] = useState(false);
+  const [info, setInfo] = useState<Progress & { file: string }>({ stage: 'finding', pages: null, file: '' });
+  const reducedMotion = useReducedMotion();
   const prog = useSharedValue(0);
+  // Seed the screen's first native style as opaque, independent of the carousel's gap.
   const dy = useSharedValue(0);
   const leaving = useRef(false);
   const backExiting = useRef(false);
   const job = useRef<{ pdf: LocalPdf; controller: AbortController } | null>(null);
   const errorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const profileStartFor = useRef('');
-  const profiles = useSlideProfiles(readyDeck?.id ?? '', readyDeck?.pageCount ?? 0, phase === 'analyze');
-  const recoverProfiles=profiles.recover;
-  const profileState = profiles.value;
-  const profileTerminal = profileState?.state === 'completed' || ['disabled','configuration_unavailable','source_unavailable'].includes(profileState?.state ?? '') || (!!profiles.error && !profileState) || !profiles.available || profileWaitExpired;
   const showToast=useCallback((message:string)=>{setError(message);if(errorTimer.current)clearTimeout(errorTimer.current);errorTimer.current=setTimeout(()=>setError(''),4500);},[]);
 
-  useEffect(() => { home.uploadBlur.set(withTiming(1, { duration: 420 })); home.analyzing.set(0); home.setup.set(0); }, [home.analyzing, home.setup, home.uploadBlur]);
-  useAnimatedReaction(() => Math.round(prog.value * 100), (v, prev) => { if (v !== prev) runOnJS(setPct)(v); });
-
   useEffect(() => {
-    if (phase !== 'analyze' || !readyDeck || profileStartFor.current === readyDeck.id) return;
-    profileStartFor.current = readyDeck.id;
-    // The profile endpoint deduplicates the same source/schema scope; its existing
-    // retry API retains uncertainty and revision safeguards.
-    void recoverProfiles();
-  }, [phase, readyDeck, recoverProfiles]);
-
-  useEffect(() => {
-    if (phase !== 'analyze' || !readyDeck || !profileTerminal) return;
-    const timer = setTimeout(() => {
-      if (leaving.current) return;
-      setPhase('configure');
-      home.setup.set(withTiming(1, { duration: 260 }));
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [phase, readyDeck, profileTerminal, home.setup]);
-
-  useEffect(() => {
-    if (phase !== 'analyze' || !readyDeck || profileTerminal) return;
-    const timer = setTimeout(() => setProfileWaitExpired(true), 25_000);
-    return () => clearTimeout(timer);
-  }, [phase, readyDeck, profileTerminal]);
+    home.gap.set(1);
+    home.uploadBlur.set(withTiming(1, {
+      duration: reducedMotion ? 0 : ADD_HANDOFF_MS,
+      easing: EASE_SCREEN,
+    }));
+    home.analyzing.set(0);
+    home.setup.set(0);
+  }, [home.analyzing, home.gap, home.setup, home.uploadBlur, reducedMotion]);
 
   const leave = useCallback(() => {
     if (leaving.current) return;
     leaving.current = true;
+    cancelAnimation(prog);
     const current = job.current;
     if (current) { current.controller.abort(); job.current = null; void discardImport(current.pdf); }
     home.gap.set(0);
@@ -92,51 +90,88 @@ export function UploadScreen() {
     home.analyzing.set(0);
     home.setup.set(0);
     go('home', { nav: null });
-  }, [go, home.analyzing, home.gap, home.setup, home.uploadBlur]);
+  }, [go, home.analyzing, home.gap, home.setup, home.uploadBlur, prog]);
 
   const pick = useCallback(async () => {
-    if (phase !== 'pick' || leaving.current) return;
+    if (phase !== 'pick' || leaving.current || backExiting.current) return;
+    dy.set(0);
+    home.uploadReturn.set(0);
     if(errorTimer.current)clearTimeout(errorTimer.current);
     setError(''); setPhase('picking');
-    setProfileWaitExpired(false);
     let pdf: LocalPdf | null = null;
     try { pdf = await pickPdf(); }
     catch (e) { showToast(e instanceof Error ? e.message : 'PDF import failed.'); setPhase('pick'); return; }
-    if (!pdf || leaving.current) { setPhase('pick'); return; }
+    if (leaving.current || backExiting.current) { if (pdf) void discardImport(pdf); return; }
+    dy.set(0);
+    home.uploadReturn.set(0);
+    if (!pdf) { setPhase('pick'); return; }
+    home.uploadBlur.set(1);
     const controller = new AbortController();
+    const { signal } = controller;
     job.current = { pdf, controller };
+    const file = pdf.title + '.pdf';
+    onReadingPdf?.(true);
     setPhase('analyze');
-    setInfo({ progress: 0, status: 'Rendering slides', pages: null, file: pdf.title + '.pdf' });
+    setInfo({ stage: 'finding', pages: null, file });
     home.analyzing.set(withTiming(1, { duration: 520, easing: EASE_SCREEN }));
     prog.set(0);
-    prog.set(withTiming(0.3, { duration: 2400, easing: Easing.out(Easing.quad) }));
+    prog.set(reducedMotion ? STILL_FILL.finding : withTiming(0.3, { duration: 2400, easing: Easing.out(Easing.quad) }));
+    let shownStage: Progress['stage'] = 'finding';
+    let shownAt = Date.now();
+    let stagesShown = Promise.resolve();
+    const canceled = () => signal.aborted || leaving.current || backExiting.current;
     try {
       const deck = await analyzePdf(pdf, p => {
-        setInfo(i => ({ ...i, ...p }));
-        if (p.progress >= 1) prog.set(withTiming(1, { duration: 450 }));
-        else if (p.progress >= 0.67) prog.set(withTiming(0.95, { duration: 900, easing: Easing.out(Easing.quad) }));
-        else if (p.progress >= 0.34) prog.set(withTiming(0.62, { duration: 5000, easing: Easing.out(Easing.quad) }));
-      }, controller.signal);
-      if (leaving.current) return;
-      if (leaving.current || controller.signal.aborted) return;
+        if (p.stage === 'finding') return;
+        // Instant extraction and time planning can finish in one React batch.
+        // Present the stages in order without holding up PDF or server work.
+        stagesShown = stagesShown.then(async () => {
+          await waitForStage(STAGE_MS[shownStage] - (Date.now() - shownAt), signal);
+          if (canceled()) return;
+          shownStage = p.stage;
+          shownAt = Date.now();
+          setInfo({ ...p, file });
+          if (reducedMotion) prog.set(STILL_FILL[p.stage]);
+          else if (p.stage === 'reading') prog.set(withSequence(
+            withTiming(0.45, { duration: READING_ADVANCE_MS, easing: EASE_SCREEN }),
+            withTiming(0.66, { duration: SLIDE_TEXT_WAIT_MS - READING_ADVANCE_MS, easing: Easing.out(Easing.quad) }),
+          ));
+          else if (p.stage === 'planning') prog.set(withTiming(0.94, { duration: 210, easing: EASE_SCREEN }));
+          else prog.set(withTiming(1, { duration: 135, easing: EASE_SCREEN }));
+        });
+      }, signal);
+      await stagesShown;
+      if (!reducedMotion) await waitForStage(STAGE_MS.ready - (Date.now() - shownAt), signal);
+      if (canceled()) return;
       // OpenAI Codex import setup: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-107
       setReadyDeck(deck);
-      setInfo(i => ({ ...i, progress: 1, status: 'Ready' }));
-      prog.set(withTiming(1, { duration: 450 }));
+      setPhase('configure');
+      home.setup.set(withTiming(1, { duration: 260 }));
     } catch (e) {
-      if (leaving.current) return;
+      if (signal.aborted) { void discardImport(pdf); return; }
+      if (canceled()) return;
+      controller.abort();
       job.current = null;
       void discardImport(pdf);
       home.analyzing.set(withTiming(0, { duration: 300 }));
       prog.set(withTiming(0, { duration: 300 }));
       showToast(e instanceof Error && e.message !== 'cancelled' ? e.message : 'The PDF could not be analysed.');
+      onReadingPdf?.(false);
       setPhase('pick');
     }
-  }, [home.analyzing, phase, prog, showToast]);
-  useEffect(()=>()=>{if(errorTimer.current)clearTimeout(errorTimer.current);},[]);
+  }, [dy, home.analyzing, home.setup, home.uploadBlur, home.uploadReturn, onReadingPdf, phase, prog, reducedMotion, showToast]);
+  useEffect(() => () => {
+    if (errorTimer.current) clearTimeout(errorTimer.current);
+    const current = job.current;
+    if (current) {
+      current.controller.abort();
+      job.current = null;
+      void discardImport(current.pdf);
+    }
+  }, []);
 
   const finishSetup = useCallback(() => {
-    if (!readyDeck || leaving.current) return;
+    if (!readyDeck || leaving.current || backExiting.current) return;
     const deck = readyDeck;
     leaving.current = true;
     job.current = null;
@@ -146,50 +181,58 @@ export function UploadScreen() {
     go('rehearse', { nav: 'fade', deckId: deck.id, slide: 0 });
   }, [go, home.analyzing, home.gap, home.p, home.setup, home.uploadBlur, readyDeck]);
 
+  const returnHome = () => {
+    if (backExiting.current) return;
+    backExiting.current = true;
+    const timing = { duration: reducedMotion ? 0 : picking ? ADD_HANDOFF_MS : 460, easing: EASE_SCREEN };
+    home.uploadBlur.set(withTiming(0, timing));
+    if (phase === 'analyze' || phase === 'configure') home.analyzing.set(withTiming(0, timing));
+    if (phase === 'configure') home.setup.set(withTiming(0, timing));
+    home.gap.set(withTiming(0, timing));
+    home.uploadReturn.set(withTiming(1, timing));
+    dy.set(withTiming(BACK_FADE_Y, timing, finished => {
+      if (finished) runOnJS(leave)();
+    }));
+  };
+  const settleUpload = () => {
+    if (backExiting.current) return;
+    const timing = { duration: reducedMotion ? 0 : picking ? ADD_HANDOFF_MS : 360, easing: EASE_SCREEN };
+    dy.set(withTiming(0, timing));
+    home.uploadReturn.set(withTiming(0, timing));
+    home.gap.set(withTiming(1, timing));
+    home.uploadBlur.set(withTiming(1, timing));
+    if (phase === 'analyze' || phase === 'configure') home.analyzing.set(withTiming(1, timing));
+    if (phase === 'configure') home.setup.set(withTiming(1, timing));
+  };
   const pan = {
     onMoveShould: (_e: GestureResponderEvent, g: PanResponderGestureState) => !backExiting.current && g.dy > 8 && g.dy > Math.abs(g.dx),
     onMove: (_e: GestureResponderEvent, g: PanResponderGestureState) => {
+      if (backExiting.current) return;
       const v = Math.min(BACK_FADE_Y, Math.max(0, g.dy / frame.s));
-      const visible = 1 - v / BACK_FADE_Y;
+      const progress = v / BACK_FADE_Y;
+      const visible = 1 - progress;
       dy.set(v);
+      home.uploadReturn.set(progress);
       home.uploadBlur.set(visible);
       home.gap.set(visible);
       if (phase === 'analyze' || phase === 'configure') home.analyzing.set(visible);
       if (phase === 'configure') home.setup.set(visible);
     },
     onRelease: () => {
-      if (dy.get() > BACK_T) {
-        backExiting.current = true;
-        dy.set(withTiming(BACK_FADE_Y, { duration: 460, easing: EASE_SCREEN }, finished => {
-          if (finished) runOnJS(leave)();
-        }));
-        home.uploadBlur.set(withTiming(0, { duration: 460, easing: EASE_SCREEN }));
-        home.gap.set(withTiming(0, { duration: 460, easing: EASE_SCREEN }));
-        if (phase === 'analyze' || phase === 'configure') home.analyzing.set(withTiming(0, { duration: 460, easing: EASE_SCREEN }));
-        if (phase === 'configure') home.setup.set(withTiming(0, { duration: 460, easing: EASE_SCREEN }));
-      } else {
-        dy.set(withTiming(0, { duration: 360, easing: EASE_SCREEN }));
-        home.uploadBlur.set(withTiming(1, { duration: 360, easing: EASE_SCREEN }));
-        home.gap.set(withTiming(1, { duration: 360, easing: EASE_SCREEN }));
-        if (phase === 'analyze' || phase === 'configure') home.analyzing.set(withTiming(1, { duration: 360, easing: EASE_SCREEN }));
-        if (phase === 'configure') home.setup.set(withTiming(1, { duration: 360, easing: EASE_SCREEN }));
-      }
+      if (dy.get() > BACK_T) returnHome();
+      else settleUpload();
     },
-    onTerminate: () => {
-      if (backExiting.current) return;
-      dy.set(withTiming(0, { duration: 360, easing: EASE_SCREEN }));
-      home.uploadBlur.set(withTiming(1, { duration: 360, easing: EASE_SCREEN }));
-      home.gap.set(withTiming(1, { duration: 360, easing: EASE_SCREEN }));
-      if (phase === 'analyze' || phase === 'configure') home.analyzing.set(withTiming(1, { duration: 360, easing: EASE_SCREEN }));
-      if (phase === 'configure') home.setup.set(withTiming(1, { duration: 360, easing: EASE_SCREEN }));
-    },
+    onTerminate: settleUpload,
   };
-  useBack(true, () => { leave(); return true; });
+  useBack(true, () => { returnHome(); return true; });
 
-  const content = useAnimatedStyle(() => ({
-    // Home's controls and carousel emerge in place during the downward gesture.
-    opacity: Math.max(0, 1 - dy.value / BACK_FADE_Y),
+  const content = useAnimatedStyle(() => ({ opacity: picking ? 1 : 1 - dy.value / BACK_FADE_Y }));
+  const pickerCopy = useAnimatedStyle(() => ({
+    opacity: Math.max(0, 2 * home.uploadBlur.value - 1),
+    transform: [{ translateY: 8 * (1 - home.uploadBlur.value) }],
   }));
+  const footer = useAnimatedStyle(() => ({ opacity: Math.max(0, 2 * home.uploadBlur.value - 1) }));
+  const importFooter = useAnimatedStyle(() => ({ opacity: Math.max(0, 1 - 2 * dy.value / BACK_FADE_Y) }));
   // OpenAI Codex import-ring fix: docs/ai-collaboration-prompts-iteration-2.md#centre-pdf-import-ring
   const ringAt = analyzeRing(frame.compact);
   const ringLength = 2 * Math.PI * ringAt.r;
@@ -197,33 +240,40 @@ export function UploadScreen() {
   const ringMid = ringBox / 2;
   const ring = useAnimatedProps(() => ({ strokeDashoffset: ringLength * (1 - prog.value) }));
   const ringFade = useAnimatedStyle(() => ({ opacity: home.analyzing.value }));
-  const analyzing = phase === 'analyze' || phase === 'configure';
-  const pr = pct / 100;
-  const profileFailed = profileState?.state === 'failed' || profileState?.state === 'needs_confirmation' || profiles.error !== '';
-  const crowded = frame.compact && (profileFailed || !!(info.imageOnlySlides && pr >= 1) || !!(info.textOffline && pr >= 0.66));
+  const analyzing = phase === 'analyze';
+  const crowded = frame.compact && (!!info.imageOnlySlides || !!info.textOffline);
   const stages = [
-    { icon: 'i-slides' as const, label: info.pages ? `Found ${info.pages} slides` : 'Finding slides', done: pr >= 0.33, active: pr < 0.33 },
-    { icon: 'i-text' as const, label: 'Reading the text', done: profileState?.state === 'completed', active: !!readyDeck && !profileTerminal },
-    { icon: 'i-timer' as const, label: 'Planning time per slide', done: pr >= 1, active: pr >= 0.66 && pr < 1 },
+    { icon: 'i-slides' as const, label: info.pages ? `Found ${info.pages} slides` : 'Finding slides', done: !!info.pages, active: info.stage === 'finding' },
+    { icon: 'i-text' as const, label: 'Reading the text', done: (info.stage === 'planning' || info.stage === 'ready') && !info.textOffline, active: info.stage === 'reading' },
+    { icon: 'i-timer' as const, label: 'Planning time per slide', done: info.stage === 'ready', active: info.stage === 'planning' },
   ];
 
   return (
-    <><Enter kind={nav.nav}>
-      <Animated.View style={[StyleSheet.absoluteFill, content]}>
-      <View pointerEvents={readyDeck && phase === 'configure' ? 'none' : 'box-none'}
-        style={[StyleSheet.absoluteFill, readyDeck && phase === 'configure' && styles.setupBlur]}>
+    <>
+      <Animated.View testID="upload-content" style={[StyleSheet.absoluteFill, content]}>
+      {readyDeck && phase === 'configure' ? (
+        // Only the editor content enters. The opaque surface already covers Home.
+        <View testID="upload-timing-surface" style={[StyleSheet.absoluteFill, { backgroundColor: c.bg }]}>
+          <Enter kind="fade">
+            <PresentationRequirementsEditor deck={readyDeck} initialImport fixedHint onHintVisibilityChange={setSetupHintVisible} onSaved={finishSetup} onBackPan={pan} />
+          </Enter>
+        </View>
+      ) : <>
+      <UploadArtwork home={home} hue={hue} followCarousel={picking && !empty} />
       <PanView style={StyleSheet.absoluteFill} {...pan}>
           {!analyzing && <>
             <View style={styles.pickArea}>
               <Pressable accessibilityRole="button" accessibilityLabel={ui("Choose a PDF to upload")} onPress={() => void pick()} style={styles.pickButton} />
             </View>
-            <View style={styles.newHeader} pointerEvents="none"><Txt style={styles.newTitle}>New presentation</Txt><Txt style={styles.newLabel}>New</Txt></View>
-            <View style={styles.text} pointerEvents="none">
-              <Txt style={styles.title}>Add your presentation</Txt>
-              <Txt style={styles.sub}>{phase === 'picking' ? 'Opening your files…' : 'Tap the icon to upload · PDF · up to 50 MB'}</Txt>
-              <Txt style={styles.limit}>Any slide count</Txt>
-            </View>
-            {!!error&&<View accessibilityRole="alert" style={[styles.errorToast,{backgroundColor:c.toast,borderColor:c.toastBorder}]}><Txt style={[styles.errorToastText,{color:c.text}]}>{error}</Txt></View>}
+            <Animated.View testID="add-copy" pointerEvents="none" style={[StyleSheet.absoluteFill, pickerCopy]}>
+              <View style={styles.newHeader}><Txt style={styles.newLabel}>New</Txt></View>
+              <View style={styles.text}>
+                <Txt style={styles.title}>Add your presentation</Txt>
+                <Txt style={styles.sub}>{phase === 'picking' ? 'Opening your files…' : 'Tap the icon to upload · PDF · up to 50 MB'}</Txt>
+                <Txt style={styles.limit}>Any slide count</Txt>
+              </View>
+              {!!error&&<View accessibilityRole="alert" style={[styles.errorToast,{backgroundColor:c.toast,borderColor:c.toastBorder}]}><Txt style={[styles.errorToastText,{color:c.text}]}>{error}</Txt></View>}
+            </Animated.View>
           </>}
           {analyzing && <>
             <Animated.View style={[styles.ringWrap, { top: ringAt.cy - ringMid }, ringFade]} pointerEvents="none">
@@ -239,40 +289,32 @@ export function UploadScreen() {
             </View>
             <View style={[styles.progress, { top: ringAt.bottom, bottom: crowded ? 40 : 0 }]} pointerEvents="box-none" accessibilityLiveRegion="polite">
               <View style={[styles.stages, crowded && styles.stagesCrowded]} pointerEvents="none">
-                {stages.map((g, index) => (
+                {stages.map(g => (
                   <View key={g.label} style={styles.stage}>
-                    <View style={[styles.stageIcon, g.done && styles.stageDone, index === 1 && profileFailed && styles.stageFailed]}>
-                      {index === 1 && profileFailed ? <Txt style={styles.warning}>!</Txt> : g.done ? <Pop duration={380}><UIIcon name="i-check" size={20} color={c.good} /></Pop> : <UIIcon name={g.icon} size={21} color={g.active ? c.text : c.muted2} />}
+                    <View style={[styles.stageIcon, g.done && styles.stageDone]}>
+                      {g.done ? <Pop duration={380}><UIIcon name="i-check" size={20} color={c.good} /></Pop> : <UIIcon name={g.icon} size={21} color={g.active ? c.text : c.muted2} />}
                     </View>
-                    <Txt style={[styles.stageLabel, { color: index === 1 && profileFailed ? c.bad : g.done || g.active ? c.text : c.muted2 }]}>{g.label}</Txt>
+                    <Txt style={[styles.stageLabel, { color: g.done || g.active ? c.text : c.muted2 }]}>{g.label}</Txt>
                   </View>
                 ))}
               </View>
-              {profileFailed && <View style={styles.retryRow}>
-                <Pressable accessibilityRole="button" accessibilityLabel={ui("Try slide profile analysis again")} disabled={profiles.busy || !profileState?.retry_available} onPress={() => { if(profileState?.requires_confirmation)setProfileRetryAsk(profileState);else void profiles.recover(); }}><Txt style={[styles.retry,{color:c.accent,opacity:profiles.busy||!profileState?.retry_available?0.45:1}]}>{profiles.busy?'Retrying…':'Try again'}</Txt></Pressable>
-                <Pressable accessibilityRole="button" accessibilityLabel={ui("Continue without slide cues")} onPress={() => { setPhase('configure'); home.setup.set(withTiming(1,{duration:260})); }}><Txt style={[styles.retry,{color:c.secondary}]}>Continue</Txt></Pressable>
-              </View>}
-              {info.imageOnlySlides && pr >= 1 && <Txt style={[styles.offline, crowded && styles.offlineCrowded]}>Some slides have no text — cues will be thinner.</Txt>}
-              {info.textOffline && pr >= 0.66 && <Txt style={[styles.offline, crowded && styles.offlineCrowded]}>Slide text will be read when the server is reachable.</Txt>}
+              {info.imageOnlySlides && <Txt style={[styles.offline, crowded && styles.offlineCrowded]}>Some slides have no embedded text.</Txt>}
+              {info.textOffline && <Txt style={[styles.offline, crowded && styles.offlineCrowded]}>Slide text will be read when the server is reachable.</Txt>}
             </View>
           </>}
       </PanView>
-      </View>
-      {readyDeck && phase === 'configure' && <Enter kind="fade"><PresentationRequirementsEditor deck={readyDeck} initialImport fixedHint onHintVisibilityChange={setSetupHintVisible} onSaved={finishSetup} onBackPan={pan} /></Enter>}
-      {profileRetryAsk && <Dialog title="Retry AI slide analysis?" body="The previous provider request has an uncertain outcome. Retrying may incur another charge." confirm="Retry" onConfirm={() => { const expected=profileRetryAsk;setProfileRetryAsk(null);void profiles.recover(true,expected); }} onCancel={() => setProfileRetryAsk(null)} />}
+      </>}
       </Animated.View>
-    </Enter>
-    {/* OpenAI Codex, 2026-11-20: import gestures do not move or fade the footer cue. */}
-    {phase !== 'configure' && !profileRetryAsk && <HintRow gap={6} hints={[{ icon: 'h-dn', text: analyzing ? 'Swipe down to cancel' : 'Swipe down to go back', nudge: 'down' }]} />}
-    {phase === 'configure' && setupHintVisible && <PresentationSetupHint />}
+    <Animated.View testID="upload-hints" pointerEvents="none" style={[StyleSheet.absoluteFill, picking ? footer : importFooter]}>
+      {phase !== 'configure' && <HintRow gap={6} hints={[{ icon: 'h-dn', text: analyzing ? 'Swipe down to cancel' : 'Swipe down to go back', nudge: 'down' }]} />}
+      {phase === 'configure' && setupHintVisible && <PresentationSetupHint />}
+    </Animated.View>
     </>
   );
 }
 
 const styles = createThemedStyles({
-  setupBlur: { filter: [{ blur: 18 }] },
-  newHeader: { position: 'absolute', top: 205, left: 28, right: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  newTitle: { fontFamily: F.display, fontSize: 22, lineHeight: 28, letterSpacing: -0.4, color: C.text },
+  newHeader: { position: 'absolute', top: 205, left: 0, right: 0, alignItems: 'center' },
   newLabel: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99, overflow: 'hidden', fontFamily: F.semibold, fontSize: 13.5, color: C.secondary, backgroundColor: C.surface06 },
   pickArea: { position: 'absolute', left: 0, right: 0, top: 211, alignItems: 'center' },
   pickButton: { width: 260, height: 223 },
@@ -284,16 +326,13 @@ const styles = createThemedStyles({
   errorToastText:{fontFamily:F.semibold,fontSize:14,lineHeight:19,textAlign:'center'},
   ringWrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   fileWrap: { position: 'absolute', left: 28, right: 28, height: FILE_BOX, justifyContent: 'flex-end', alignItems: 'center' },
-  progress: { position: 'absolute', left: 28, right: 28, bottom: 0, justifyContent: 'center', alignItems: 'center' },
+  progress: { position: 'absolute', left: 28, right: 28, bottom: 0, paddingTop: 40, justifyContent: 'flex-start', alignItems: 'center' },
   file: { fontFamily: F.display, fontSize: 20, lineHeight: 26, color: C.text, maxWidth: 320, textAlign: 'center' },
-  stages: { alignItems: 'flex-start', gap: 26 },
-  stagesCrowded: { gap: 12 },
+  stages: { alignItems: 'flex-start', gap: 12 },
+  stagesCrowded: { gap: 8 },
   stage: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 14 },
-  retryRow: { flexDirection: 'row', justifyContent: 'center', gap: 4, marginTop: 10 },
   stageIcon: { width: 34, height: 34, borderRadius: 17, borderWidth: 1, borderColor: C.hair, alignItems: 'center', justifyContent: 'center' },
   stageDone: { borderColor: C.good },
-  stageFailed:{borderColor:C.bad}, warning:{fontFamily:F.bold,fontSize:20,color:C.bad},
-  retry:{fontFamily:F.semibold,fontSize:14,minHeight:44,textAlignVertical:'center',paddingHorizontal:8},
   check: { position: 'absolute', right: -8, bottom: -6 },
   stageLabel: { fontFamily: F.semibold, fontSize: 15, color: C.secondary },
   offline: { marginTop: 10, fontFamily: F.medium, fontSize: 13.5, color: C.tertiary, textAlign: 'center' },

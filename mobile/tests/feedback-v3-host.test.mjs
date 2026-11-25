@@ -125,6 +125,162 @@ test('a mounted screen loads an old recording when capability becomes known', as
   } finally { await act(async () => renderer?.unmount()); }
 });
 
+test('the selected overall assessment starts only after the comparison and input synchronization are done', async () => {
+  const h = setup({ selectedCalls: [], corrections: { new: { pending: true } } });
+  const model = { deck: { id: 'deck' }, n: 2,
+    state: { run: { parts: [part('old'), part('new')] }, compare: { attemptId: 'pending' } }, stages: new Map() };
+  function Screen() {
+    const v3 = useRunFeedbackV3(model);
+    return React.createElement('score', { overall: v3.overall });
+  }
+  let renderer;
+  try {
+    await act(async () => { renderer = create(React.createElement(Screen)); });
+    assert.deepEqual(h.selectedCalls, []);
+    model.state.compare = null;
+    await act(async () => renderer.update(React.createElement(Screen)));
+    assert.deepEqual(h.selectedCalls, []);
+    assert.equal(renderer.root.findByType('score').props.overall.status, 'Transcript changes pending');
+    h.corrections = {};
+    await act(async () => renderer.update(React.createElement(Screen)));
+    const [{ selection, action }] = h.selectedCalls;
+    assert.equal(selection.anchor, 'new');
+    assert.equal(action, 'check');
+    assert.deepEqual(selection.scope.slides.map(slide => slide.attempt_id), ['old', 'new']);
+    await act(async () => renderer.update(React.createElement(Screen)));
+    assert.equal(h.selectedCalls.length, 1);
+  } finally { await act(async () => renderer?.unmount()); }
+});
+
+test('selected overall Update and Retry are independent of an individual take request that fails', async () => {
+  for (const action of ['update', 'retry']) {
+    const status = action === 'update' ? 'stale' : 'failed';
+    const old = { status, enabled: true, runId: 'old-feedback', slides: [], whole: null };
+    const h = setup({ selectedCalls: [], selectedRun: { ...old, runId: 'selected-feedback' },
+      runs: { old }, post: async () => { throw new Error('Single take endpoint failed'); } });
+    const model = { deck: { id: 'deck' }, n: 2,
+      state: { run: { parts: [part('old'), part('new')] }, compare: null }, stages: new Map() };
+    function Screen() {
+      const v3 = useRunFeedbackV3(model);
+      return React.createElement('score', { actOnSelection: v3[action] });
+    }
+    let renderer;
+    try {
+      await act(async () => { renderer = create(React.createElement(Screen)); });
+      await act(async () => renderer.root.findByType('score').props.actOnSelection());
+      assert.deepEqual(h.selectedCalls.map(call => call.action), ['check', action]);
+      assert.ok(h.calls.some(([method, id]) => method === 'POST' && id === 'old'));
+    } finally { await act(async () => renderer?.unmount()); }
+  }
+});
+
+test('selected score polling stops after store consent expires and keeps completed cached scores visible', async () => {
+  const h = setup({ online: false, selectedCalls: [], eligible: [] });
+  const model = { deck: { id: 'deck' }, n: 2, state: { run: { parts: [part('old'), part('new')] } }, stages: new Map() };
+  function Screen() { return React.createElement('score', { value: useRunFeedbackV3(model) }); }
+  let renderer;
+  try {
+    await act(async () => { renderer = create(React.createElement(Screen)); });
+    const score = () => renderer.root.findByType('score').props.value;
+    assert.equal(score().overall.status, 'Online feedback unavailable');
+    assert.deepEqual(h.calls, []);
+    assert.deepEqual(h.selectedCalls, []);
+    await act(async () => {
+      h.online = true;
+      h.privacyListeners.forEach(listener => listener());
+    });
+    assert.equal(h.selectedCalls.length, 1);
+    h.selectedRun = { enabled: true, status: 'completed', scores: { overall: 67, overall_level: 'competent', withheld: [] },
+      runId: 'selected', slides: [], whole: null };
+    await act(async () => {
+      h.online = false;
+      h.privacyListeners.forEach(listener => listener());
+    });
+    await act(async () => { await score().update(); await score().retry(); });
+    assert.equal(score().overall.score, 67);
+    assert.equal(h.selectedCalls.length, 1);
+  } finally { await act(async () => renderer?.unmount()); }
+});
+
+test('a selected public budget denial does not start repeated polling', async t => {
+  t.mock.timers.enable({ apis: ['setInterval'] });
+  const h = setup({ selectedCalls: [], selectedResponse: 'public_budget_exhausted' });
+  const model = { deck: { id: 'deck' }, n: 2, state: { run: { parts: [part('old'), part('new')] } }, stages: new Map() };
+  function Screen() { return React.createElement('score', { value: useRunFeedbackV3(model) }); }
+  let renderer;
+  try {
+    await act(async () => { renderer = create(React.createElement(Screen)); });
+    await act(async () => { t.mock.timers.tick(10000); });
+    const result = renderer.root.findByType('score').props.value;
+    assert.equal(result.overall.status, 'Free coaching budget too low');
+    assert.equal(result.failures, false);
+    assert.equal(result.missing, false);
+    assert.equal(result.canRequest, false);
+    await act(async () => result.retry());
+    assert.equal(h.selectedCalls.length, 1);
+  } finally {
+    await act(async () => renderer?.unmount());
+    t.mock.timers.reset();
+  }
+});
+
+test('a recoverable public budget denial waits for explicit selected retry', async t => {
+  t.mock.timers.enable({ apis: ['setInterval'] });
+  const h = setup({ selectedCalls: [], selectedResponse: 'public_budget_unavailable' });
+  const model = { deck: { id: 'deck' }, n: 2, state: { run: { parts: [part('old'), part('new')] } }, stages: new Map() };
+  function Screen() { return React.createElement('score', { value: useRunFeedbackV3(model) }); }
+  let renderer;
+  try {
+    await act(async () => { renderer = create(React.createElement(Screen)); });
+    const score = () => renderer.root.findByType('score').props.value;
+    assert.equal(score().overall.status, 'Free coaching unavailable');
+    assert.equal(score().budgetRetry, true);
+    assert.equal(score().canRequest, true);
+    assert.equal(score().failures, true);
+    await act(async () => { t.mock.timers.tick(10000); });
+    assert.deepEqual(h.selectedCalls.map(call => call.action), ['check']);
+    h.selectedResponse = 'available';
+    await act(async () => score().retry());
+    assert.deepEqual(h.selectedCalls.map(call => call.action), ['check', 'retry']);
+    assert.equal(h.calls.some(([method]) => method === 'POST'), false);
+  } finally {
+    await act(async () => renderer?.unmount());
+    t.mock.timers.reset();
+  }
+});
+
+test('a newly saved score still displays if consent expires before coaching translation', async () => {
+  const { getAppLanguage, setAppLanguage } = await import('../src/design/language.ts');
+  const { markNewWording } = await import('../src/features/localization/firstWording.ts');
+  const { parseFeedbackRun } = await import('../src/features/feedback/feedbackRun.ts');
+  const runId = '761b5fc4-6c86-4c2b-a7b4-f2058b85575e';
+  const saved = parseFeedbackRun({
+    enabled: true, status: 'completed', run_id: runId, language: 'en',
+    scores: { overall: 67, overall_level: 'competent', withheld: [] },
+    slides: [{ slide_index: 0, status: 'scored', score: 67, level: 'competent' }],
+    whole: { status: 'scored', summary: 'An untranslated summary.', top_priorities: [{
+      title: 'Compare the outcomes', action: 'Add a concrete reason.', why: 'Engage the audience.',
+    }] },
+  });
+  const h = setup({ online: false, runs: { old: saved } });
+  const model = { deck: { id: 'deck' }, n: 1, state: { run: { parts: [part('old')] } }, stages: new Map() };
+  const previousLanguage = getAppLanguage();
+  markNewWording('http://host.invalid/api', 'feedback', runId);
+  function Screen() { return React.createElement('score', { value: useRunFeedbackV3(model) }); }
+  let renderer;
+  try {
+    await act(async () => { setAppLanguage('ko'); renderer = create(React.createElement(Screen)); });
+    const result = renderer.root.findByType('score').props.value;
+    assert.equal(result.overall.score, 67);
+    assert.equal(result.preparingDisplay, false);
+    assert.equal(result.canRequest, false);
+    assert.deepEqual(h.calls, []);
+  } finally {
+    await act(async () => renderer?.unmount());
+    setAppLanguage(previousLanguage);
+  }
+});
+
 test('cached whole Feedback cards stay offline-ready when slide rubric and coverage translations are missing', async () => {
   const { displayTranslations } = await import('../src/features/localization/useDisplayTranslation.ts');
   const { setAppLanguage } = await import('../src/design/language.ts');

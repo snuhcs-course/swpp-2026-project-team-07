@@ -108,6 +108,40 @@ test('Q&A completes the outgoing swipe before changing the question',async()=>{
  }finally{runtime.deferTimings=false;runtime.finishTimings();if(r)await act(async()=>r.unmount());}
 });
 
+test('Q&A returns to Overall Review promptly even as its question batch refreshes',async()=>{
+ setup();const previousNav=runtime.nav;
+ const model=globalThis.qaScreenModel,deckId='swipe-refresh-deck';
+ globalThis.qaScreenModel={...model,deck:{...model.deck,id:deckId}};
+ runtime.nav={...previousNav,deckId,from:'full'};runtime.deferTimings=true;let r;
+ try{
+  await act(async()=>{r=create(React.createElement(QAScreen));});
+  await act(async()=>runtime.finishTimings());
+  const event={nativeEvent:{pageY:280}},pull={dx:0,dy:75};
+  const move=()=>{
+   const pan=r.root.findByType(PanView);
+   assert.equal(pan.props.onMoveShouldCapture(event,pull),true);pan.props.onGrant();pan.props.onMove(event,pull);
+   return pan;
+  };
+  const refresh=jobId=>{
+   const source=globalThis.qaScreenValue;
+   globalThis.qaScreenValue={...source,state:{...source.state,result:{...source.state.result,job_id:jobId}}};
+   r.update(React.createElement(QAScreen));
+  };
+  await act(async()=>{move();});
+  assert.ok(flattenStyle(r.root.findByType(Surface).parent.props.style).opacity<1);
+  await act(async()=>refresh(73002));
+  assert.equal(flattenStyle(r.root.findByType(Surface).parent.props.style).opacity,1,'a lost gesture must restore full opacity');
+  await act(async()=>move().props.onRelease(event,pull));
+  const [exit]=runtime.timings;
+  assert.equal(exit?.options.duration,180);
+  assert.deepEqual(runtime.routes,[]);
+  await act(async()=>refresh(73003));
+  assert.deepEqual([...runtime.timings],[exit],'refresh must keep the same exit and never replay the entrance');
+  await act(async()=>runtime.finishTimings());
+  assert.deepEqual(runtime.routes,[['full',{nav:null,deckId,sel:previousNav.sel}]]);
+ }finally{runtime.nav=previousNav;runtime.deferTimings=false;runtime.finishTimings();if(r)await act(async()=>r.unmount());}
+});
+
 test('Q&A horizontal gesture still changes questions with Reduce Motion',async()=>{
  setup();runtime.reducedMotion=true;let r;
  try{
@@ -333,10 +367,10 @@ test('a Korean source question and English follow-up both speak in selected Engl
    assert.equal(r.root.findAllByProps({testID:'qa-followup-fade-backdrop'}).length,1,'Q&A covers Review throughout the fade');
    pan.props.onRelease({}, {dx:0,dy:140});
   });
-  assert.equal(runtime.timings.size,1,'the follow-up finishes fading out before the answer result replaces it');
+  assert.deepEqual([...runtime.timings].map(t=>t.options.duration),[150],'the follow-up fades out before the answer result replaces it');
   await act(async()=>runtime.finishTimings());
   assert.equal(r.root.findAllByProps({testID:'qa-followup-fade-backdrop'}).length,1,'the backdrop remains for the answer-result fade in');
-  assert.equal(runtime.timings.size,1,'the answer result fades in after its React commit');
+  assert.deepEqual([...runtime.timings].map(t=>t.options.duration),[180],'the answer result fades in after its React commit');
   await act(async()=>runtime.finishTimings());
   assert.equal(r.root.findAllByProps({testID:'qa-followup-fade-backdrop'}).length,0);
   assert.equal(flattenStyle(r.root.findByType(Surface).parent.props.style).opacity,1);
@@ -486,7 +520,7 @@ test('a long question remeasures after shrinking and scrolls only at the 72% min
 });
 
 // OpenAI Codex, Iteration 2 (2026-11-21): the result returns to its question without leaving Q&A.
-test('swiping down from an answer result reveals its question and a truncated transcript preview',async()=>{
+test('swiping down from an answer result quickly reveals its question and truncated transcript preview',async()=>{
  const cached=setup([{...question(1),panelist:'Same speaker'}]);
  const transcript='A detailed answer with many points. '.repeat(12);
  const answer={audioUri:'file:///synthetic-answer.m4a',durationMs:20000,status:'done',at:'2026-01-01T00:00:00Z',
@@ -500,10 +534,15 @@ test('swiping down from an answer result reveals its question and a truncated tr
   await act(async()=>resultScroll.props.onScroll({nativeEvent:{contentOffset:{y:90}}}));
   assert.equal(pan.props.onMoveShould({nativeEvent:{pageY:200}},{dx:0,dy:120}),false,'downward movement first scrolls a displaced result');
   await act(async()=>resultScroll.props.onScroll({nativeEvent:{contentOffset:{y:0}}}));
+  runtime.deferTimings=true;
   await act(async()=>{
    assert.equal(pan.props.onMoveShould({nativeEvent:{pageY:200}},{dx:0,dy:180}),true);
    pan.props.onMove({}, {dx:0,dy:180});pan.props.onRelease({}, {dx:0,dy:180});
   });
+  assert.deepEqual([...runtime.timings].map(t=>t.options.duration),[180]);
+  assert.ok(button(r,'Play your recorded answer'),'the result remains mounted until its exit completes');
+  await act(async()=>runtime.finishTimings());
+  runtime.deferTimings=false;
   assert.deepEqual(runtime.routes,[],'the swipe stays inside Q&A');
   assert.equal(button(r,'Play your recorded answer'),undefined);
   assert.ok(button(r,'View answer review'));
@@ -522,12 +561,22 @@ test('swiping down from an answer result reveals its question and a truncated tr
   await act(async()=>transcriptScroll.props.onScroll({nativeEvent:{contentOffset:{y:90}}}));
   assert.equal(pan.props.onMoveShouldCapture({nativeEvent:{pageY:200}},{dx:0,dy:150}),false);
   await act(async()=>transcriptScroll.props.onScroll({nativeEvent:{contentOffset:{y:0}}}));
+  runtime.deferTimings=true;
   await act(async()=>{
    assert.equal(pan.props.onMoveShouldCapture({nativeEvent:{pageY:200}},{dx:0,dy:150}),true);
    pan.props.onMove({}, {dx:0,dy:150});pan.props.onRelease({}, {dx:0,dy:150});
   });
+  assert.deepEqual([...runtime.timings].map(t=>t.options.duration),[180]);
+  await act(async()=>runtime.finishTimings());
+  runtime.deferTimings=false;
   assert.equal(button(r,'Answer review'),undefined);
   assert.ok(button(r,'Open answer transcript'));
   assert.deepEqual(runtime.routes,[],'transcript closes back to the same answer result');
- }finally{if(r)await act(async()=>r.unmount());}
+  await act(async()=>button(r,'Open answer transcript').props.onPress());
+  await act(async()=>{assert.equal(runtime.back(),true);});
+  assert.ok(button(r,'Open answer transcript'),'Android Back from the transcript returns to its result');
+  await act(async()=>{assert.equal(runtime.back(),true);});
+  assert.ok(button(r,'View answer review'),'Android Back from the result returns to its question');
+  assert.deepEqual(runtime.routes,[]);
+ }finally{runtime.deferTimings=false;runtime.finishTimings();if(r)await act(async()=>r.unmount());}
 });

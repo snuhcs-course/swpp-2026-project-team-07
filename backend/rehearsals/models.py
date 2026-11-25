@@ -336,6 +336,8 @@ class FeedbackRun(InstallationOwned):
     attempt = models.ForeignKey(Attempt, on_delete=models.CASCADE, related_name='feedback_runs')
     context = models.ForeignKey(PresentationContext, on_delete=models.SET_NULL, null=True, blank=True,
                                 related_name='feedback_runs')
+    selected_scope = models.JSONField(null=True, blank=True)
+    selected_scope_key = models.CharField(max_length=64, blank=True, default='', db_default='')
     fingerprint = models.CharField(max_length=64)
     pipeline_version = models.CharField(max_length=40)
     rubric_version = models.CharField(max_length=40)

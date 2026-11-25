@@ -27,8 +27,9 @@ import { enableInitialQa } from '../qa/automatic';
 
 export type FinishedTake = { attemptId: string; durationMs: number; events: SlideEvent[] };
 export type CaptureHandle = {
+  checkLiveFeedback(): Promise<boolean>;
   /** Ask for the microphone, prepare and start. Resolves once audio is being captured. */
-  start(slide: () => number): Promise<void>;
+  start(slide: () => number, liveFeedback?: Promise<boolean>): Promise<void>;
   /** Timestamp a slide change on the recorder's own clock. */
   slideChanged(slide: number): void;
   stop(): Promise<FinishedTake>;
@@ -127,20 +128,27 @@ export const CaptureEngine = forwardRef<CaptureHandle, Props>(function CaptureEn
     }
   }, []);
 
+  const checkLiveFeedback = useCallback(
+    () => onlineAllowed() && preferIncremental && continuousRecorder.available()
+      ? incrementalAvailable(API_URL) : Promise.resolve(false),
+    [preferIncremental],
+  );
+
   useImperativeHandle(ref, () => ({
-    async start(slide) {
+    checkLiveFeedback,
+    async start(slide, liveFeedback) {
       if (phase.current !== 'ready') throw new Error('This take has already started.');
       phase.current = 'starting';
       try {
         recoverPendingAttempts();
-        let useIncremental = onlineAllowed() && preferIncremental && continuousRecorder.available() && await incrementalAvailable(API_URL);
-        if (useIncremental && !hasAnalysisConsent()) {
+        let useIncremental = onlineAllowed() && await (liveFeedback ?? checkLiveFeedback());
+        if (useIncremental && onlineAllowed() && !hasAnalysisConsent()) {
           useIncremental = await new Promise<boolean>(resolve => Alert.alert(ui('Feedback while you present'),
             ui('Completed slide audio will upload to the configured server during recording. ElevenLabs Scribe transcribes it; transcription may include vocabulary hints from your slides. The configured AI provider receives slide text and transcript for feedback. Audio stays on this phone for retry and playback.'),
             [{ text: ui('After Stop instead'), onPress: () => resolve(false) },
              { text: ui('Use live feedback'), onPress: () => { saveAnalysisConsent(); resolve(true); } }], { cancelable: false }));
         }
-        if (useIncremental) {
+        if (useIncremental && onlineAllowed()) {
           const permission = await AudioModule.requestRecordingPermissionsAsync();
           if (!permission.granted) throw new Error('Microphone permission was denied.');
           if (!mounted.current || AppState.currentState !== 'active') throw new Error('Recording could not start. Please try again.');
@@ -206,7 +214,7 @@ export const CaptureEngine = forwardRef<CaptureHandle, Props>(function CaptureEn
       }
     },
     isRecording: () => phase.current === 'recording',
-  }), [audience, preferIncremental, onStarted, checkpoint, deck.id, deck.pageCount, deck.title, deck.uri, fail, recorder, service, ui]);
+  }), [audience, checkLiveFeedback, onStarted, checkpoint, deck.id, deck.pageCount, deck.title, deck.uri, fail, recorder, service, ui]);
 
   return null;
 });

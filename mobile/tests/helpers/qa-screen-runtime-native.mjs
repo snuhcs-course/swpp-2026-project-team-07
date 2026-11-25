@@ -22,7 +22,8 @@ export const Glyph='glyph',UIIcon='icon';
 export const createThemedStyles=x=>x;
 export const useTheme=()=>({mode:'light',c:{bg:'#F7F7FA',text:'#14161D',body:'#303442',secondary:'#596173',tertiary:'#737B8D',track:'#D8DBE4'}});
 export const runtime={reducedMotion:false,deferTimings:false,deferJs:false,timings:new Set(),js:[],finishTimings(){for(const timing of [...this.timings])timing.finish(true);},flushJs(){for(const call of this.js.splice(0))call();},routes:[],mounts:0,unmounts:0,speeches:[],speechStops:0,onSpeechStop:null,captureStarts:0,playerStops:0,plays:[],nav:{deckId:'runtime-deck',nav:'fade',sel:3,visit:4}};
-export const useShell=()=>({nav:runtime.nav,go:(...args)=>runtime.routes.push(args)}),useBack=()=>{};
+export const useShell=()=>({nav:runtime.nav,go:(...args)=>runtime.routes.push(args)});
+export const useBack=(active,handler)=>{runtime.back=active?handler:null;};
 export const useDeckModel=()=>globalThis.qaScreenModel;
 export const useDurableQa=()=>globalThis.qaScreenValue;
 export const AnswerRecorder=React.forwardRef(function AnswerRecorder(_props,ref){

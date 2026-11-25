@@ -1,10 +1,10 @@
 # OutLoud public ONE Store release
 
-Build 42 opens on Home. Users can use local rehearsal immediately or enable free online coaching after reading the English or Korean upload disclosure. The public API is `https://outloud-team07.koreacentral.cloudapp.azure.com/store/api`. Each installation receives its own credential through the app. Upgrading preserves recordings on the phone. Uploaded reviewer history belongs to the original reviewer service.
+Build 88 opens the tutorial on first launch, then shows the English or Korean upload disclosure. Users can rehearse locally or enable online coaching without a login or access code. The public API is `https://outloud-team07.koreacentral.cloudapp.azure.com/store/api`. Each installation receives its own credential through the app. Upgrading preserves recordings on the phone. Uploaded reviewer history belongs to the original reviewer service.
 
 ## Check provider coverage and set the spending limit
 
-OutLoud uses OpenRouter for scoring and Q&A and ElevenLabs for transcription. The public service enforces a combined **US$50 lifetime limit on its requests**. The course beta ends on December 11, 2026 in Seoul. Set `OUTLOUD_PUBLIC_AI_UNTIL=2026-12-12T00:00:00+09:00` to stop new paid requests at midnight. Azure hosting and requests made outside the public service have their own billing. Store provider credentials only in the private server environment.
+OutLoud uses OpenRouter for scoring and Q&A and ElevenLabs for transcription. The public service enforces a combined **US$50 lifetime limit on its requests**. The course beta ends on December 11, 2026 in Seoul. Public AI can accept new paid requests under the existing cap through December 31, 2026 KST. The production API, worker, and scheduler use `OUTLOUD_PUBLIC_AI_UNTIL=2027-01-01T00:00:00+09:00`. Azure hosting and requests made outside the public service have their own billing. Store provider credentials only in the private server environment.
 
 The public PostgreSQL ledger reserves money before each provider call, including retries, translations and recording segments. OpenRouter requests pin the model and provider, disable tools and web search, and reserve for the full input context, requested output and possible routing charges. A verified final bill releases the unused reservation, including when the provider reports it stopped at its output-token limit. Unexpected tool or separately billed routing activity stops new work. Scribe uses the length of the normalized mono recording and rounds each call up to a whole minute at the configured hourly ceiling. A request that exceeds the remaining allowance stops before dispatch. Keep the ledger across releases and reconcile outstanding charges after any database restore.
 
@@ -36,13 +36,7 @@ store exec -T worker celery -A config inspect ping
 
 ## Build and sign for ONE Store
 
-The signing kit in the build 42 GitHub release includes the verified unsigned APK and a script for the Team 07 key holder. Extract the ZIP, open a terminal in that folder and run the command below. On Windows, use `py -3` for Python. The script prompts for passwords locally, checks the original signing certificate and writes the APK and checksum under `signed/`.
-
-```sh
-python3 sign_release.py "/path/to/team07-release.jks"
-```
-
-To rebuild the signing input, use Node 24, JDK 17 and the Android SDK specified in the repository. Run these commands from a clean checkout.
+GitHub releases carry the signed APK and checksum. The Build 42 signing kit is historical. To rebuild the Build 88 signing input, use Node 24, JDK 17 and the Android SDK specified in the repository. Run these commands from a clean checkout.
 
 ```sh
 cd mobile
@@ -63,17 +57,17 @@ The build produces `app/build/outputs/apk/release/app-release-unsigned.apk`. The
 ```sh
 "$ANDROID_BUILD_TOOLS/zipalign" -P 16 -f 4 app/build/outputs/apk/release/app-release-unsigned.apk OutLoud-aligned.apk
 "$ANDROID_BUILD_TOOLS/apksigner" sign --ks "$TEAM07_KEYSTORE" --ks-key-alias "$TEAM07_ALIAS" \
-  --out OutLoud-0.1.0-42.apk OutLoud-aligned.apk
-"$ANDROID_BUILD_TOOLS/apksigner" verify --verbose --print-certs OutLoud-0.1.0-42.apk
-"$ANDROID_BUILD_TOOLS/aapt" dump badging OutLoud-0.1.0-42.apk
-shasum -a 256 OutLoud-0.1.0-42.apk > OutLoud-0.1.0-42.apk.sha256
+  --out OutLoud-0.1.0-88.apk OutLoud-aligned.apk
+"$ANDROID_BUILD_TOOLS/apksigner" verify --verbose --print-certs OutLoud-0.1.0-88.apk
+"$ANDROID_BUILD_TOOLS/aapt" dump badging OutLoud-0.1.0-88.apk
+shasum -a 256 OutLoud-0.1.0-88.apk > OutLoud-0.1.0-88.apk.sha256
 ```
 
-The published builds 40 and 41 use signer SHA-256 `6fa1ce0c3adf91895b0aafeb0a545cc2c6a5d245631ef428ff9e19f1b30011b3`. Confirm the same certificate, package `com.team07.outloud`, version `0.1.0`, code `42`, and all four ABIs before updating an existing installation. A different signer prevents an in-place Android update.
+The published builds 40 and 41 use signer SHA-256 `6fa1ce0c3adf91895b0aafeb0a545cc2c6a5d245631ef428ff9e19f1b30011b3`. Confirm the same certificate, package `com.team07.outloud`, version `0.1.0`, code `88`, and all four ABIs before updating an existing installation. A different signer prevents an in-place Android update.
 
 ## Verify the signed file and submit
 
 - On a clean Android install, cold-launch the signed APK without a tester code. Decline uploads, open Seoul, record and play back locally. Open the privacy policy and explicitly enable coaching.
 - In a fresh workspace, open the bundled seven-slide Seoul deck and check the title, middle and last slides. Confirm that content slides show grounded cues. A title-only slide can have none. Import a different multi-slide PDF, record a short rehearsal, wait for a real transcript and grounded score, then generate and answer a Q&A question. Check the provider receipts and lifetime ledger. Keep recordings and keys out of release evidence.
-- On a separate installation of the signed build 41, create a local rehearsal and install the same signed build 42 as an update. Verify that local audio remains playable, online consent starts unselected, and the store workspace contains only that installation's uploads.
-- Upload the tested signed APK and its checksum to the team's GitHub release. The ONE Store submitter uploads the signed APK and supplies the public privacy-policy URL. The signing kit provides the unsigned input.
+- Install the signed Build 88 over a previous public build. Verify that local audio remains playable, the saved public upload choice is respected, and the store workspace contains only that installation's uploads.
+- Upload the tested signed APK and its checksum to the team's GitHub release. Use the same signed APK and the public privacy-policy URL in ONE Store.

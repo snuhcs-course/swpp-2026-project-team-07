@@ -2,6 +2,7 @@ import { File } from "expo-file-system";
 import { backendExpoFetch as fetch } from '../../services/backendFetch';
 import { API_URL } from "../../services/api";
 import { readStored, writeStored } from "../../services/storage";
+import { pendingServerSlides } from '../presentations/serverDeck';
 import { transcriptionClientFor } from "../transcription/service";
 import { normalizeApi } from "../transcription/analysisStorage";
 import { getSavedAttempt, saveAttempt, type SavedAttempt } from "./storage";
@@ -47,6 +48,11 @@ async function resolveDeck(attempt: SavedAttempt, api: string): Promise<string> 
   let pending = decksInFlight.get(key);
   if (!pending) {
     pending = (async () => {
+      const importing = pendingServerSlides(attempt.local_deck_id, api);
+      if (importing) {
+        const { deckId, texts } = await importing;
+        return validateDeck({ id: deckId, page_count: texts.length }, attempt.page_count);
+      }
       const cached = readStored<string>(key);
       if (typeof cached === "string" && uuid.test(cached)) {
         const response = await fetch(`${api}/decks/${cached}/`, { signal: AbortSignal.timeout(120_000) });

@@ -4,7 +4,7 @@
 // the design's stand-in layout (title, rule,
 // bullets) is used only when no page image exists.
 // OpenAI Codex portrait-only correction: docs/ai-collaboration/prompt-logs/jaewon/iteration-2.md#record-080
-import { memo } from 'react';
+import { memo, useLayoutEffect, useRef, useState } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 import Svg, { ClipPath, Defs, G, Image as SvgImage, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 import type { HueName } from '../domain/hues';
@@ -112,8 +112,50 @@ export const SlideCard = memo(function SlideCard({ hue, page, deckTitle, title, 
   );
 });
 
+type PreviewBitmap = { uri: string; id: number };
+
+function LandscapePdfPreview({ uri, title, width, height, radius, onImageSettled }: {
+  uri: string; title: string; width: number; height: number; radius: number; onImageSettled?: () => void;
+}) {
+  const [preview, setPreview] = useState<{ request: PreviewBitmap; displayed: PreviewBitmap | null; failed: boolean }>(
+    () => ({ request: { uri, id: 0 }, displayed: null, failed: false }),
+  );
+  const { request, displayed, failed } = preview;
+  if (request.uri !== uri) {
+    setPreview({ request: { uri, id: request.id + 1 }, displayed, failed: false });
+  }
+  const waiting = !failed && displayed?.uri !== request.uri;
+  const expected = useRef<PreviewBitmap | null>(null);
+  useLayoutEffect(() => {
+    expected.current = waiting ? request : null;
+    return () => { expected.current = null; };
+  }, [request, waiting]);
+  const settle = (bitmap: PreviewBitmap, loaded: boolean) => {
+    if (expected.current !== bitmap) return;
+    expected.current = null;
+    setPreview(current => current.request === bitmap
+      ? { request: bitmap, displayed: loaded ? bitmap : null, failed: !loaded }
+      : current);
+    onImageSettled?.();
+  };
+  // Keep the loaded native view mounted as its successor decodes, then promote the successor in place.
+  return <View style={{ width, height, borderRadius: radius, overflow: 'hidden', backgroundColor: '#000000' }}>
+    {[displayed, waiting ? request : null].map(bitmap => bitmap && <Image key={bitmap.id}
+      source={{ uri: bitmap.uri }} resizeMode="contain" fadeDuration={0}
+      style={[StyleSheet.absoluteFill, bitmap === request && waiting && styles.pendingBitmap]}
+      onLoad={() => settle(bitmap, true)} onError={() => settle(bitmap, false)} />)}
+    {failed && <Txt verbatim numberOfLines={2} style={styles.unavailableBitmap}>{title}</Txt>}
+  </View>;
+}
+
 /** Small slide preview (Review 104×58, Q&A 220×124). */
-export function MiniSlide({ hue, page, title, width, height, radius, num }: { hue: HueName; page?: PageImage; title: string; width: number; height: number; radius: number; num?: number }) {
+export function MiniSlide({ hue, page, title, width, height, radius, num, onImageSettled, keepPdfWhileLoading }: {
+  hue: HueName; page?: PageImage; title: string; width: number; height: number; radius: number; num?: number;
+  onImageSettled?: () => void; keepPdfWhileLoading?: boolean;
+}) {
+  if (page && keepPdfWhileLoading) {
+    return <LandscapePdfPreview uri={page.uri} title={title} width={width} height={height} radius={radius} onImageSettled={onImageSettled} />;
+  }
   const h = HUES[hue];
   const big = width > 150;
   return (
@@ -138,6 +180,8 @@ export function MiniSlide({ hue, page, title, width, height, radius, num }: { hu
 
 const styles = StyleSheet.create({
   card: { width: CARD_W, height: CARD_H, borderRadius: 18 },
+  pendingBitmap: { opacity: 0 },
+  unavailableBitmap: { margin: 16, fontFamily: F.display, fontSize: 16, color: '#FFFFFF' },
   standIn: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, paddingVertical: 12, paddingHorizontal: 18, gap: 5 },
   over: { paddingRight: 24, fontFamily: F.bold, fontSize: 13.5, letterSpacing: 1, textTransform: 'uppercase', color: 'rgba(255, 255, 255, 0.75)' },
   title: { fontFamily: F.display, fontSize: 21, lineHeight: 23, letterSpacing: -0.4, color: '#FFFFFF', textShadowColor: 'rgba(0, 0, 0, 0.18)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
