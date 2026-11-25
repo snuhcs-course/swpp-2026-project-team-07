@@ -72,13 +72,22 @@ export type PresentationTiming = {
   source: 'required' | 'legacy_default'; total: number; targets: number[]; requirementsRevision: number | null;
 };
 
+type TimingSlides = readonly { readonly text: string }[];
+const requiredTargets = new WeakMap<TimingSlides, { pages: number; total: number; targets: number[] }>();
+
 /** Derived on read, without overwriting presentation, selected-run or Compare snapshots. */
-export function presentationTiming(deck: { pageCount: number; slides: readonly { text: string }[]; target: number; targets: number[] },
+export function presentationTiming(deck: { pageCount: number; slides: TimingSlides; target: number; targets: number[] },
   requirements: PresentationRequirements): PresentationTiming {
-  const targets = requiredSlideTargets(Array.from({ length: deck.pageCount }, (_, i) => deck.slides[i]?.text ?? ''), requirements.requiredDurationSeconds);
-  return targets === null
-    ? { source: 'legacy_default', total: deck.target, targets: [...deck.targets], requirementsRevision: null }
-    : { source: 'required', total: requirements.requiredDurationSeconds!, targets, requirementsRevision: requirements.revision };
+  const total = requirements.requiredDurationSeconds;
+  if (total === null) return { source: 'legacy_default', total: deck.target, targets: [...deck.targets], requirementsRevision: null };
+  validateRequirementValues(total, '');
+  let cached = requiredTargets.get(deck.slides);
+  if (!cached || cached.pages !== deck.pageCount || cached.total !== total) {
+    const texts = Array.from({ length: deck.pageCount }, (_, i) => deck.slides[i]?.text ?? '');
+    cached = { pages: deck.pageCount, total, targets: slideTargets(texts, total) };
+    requiredTargets.set(deck.slides, cached);
+  }
+  return { source: 'required', total, targets: [...cached.targets], requirementsRevision: requirements.revision };
 }
 
 /** Cue chips for one slide: its points, with points missed in the last run marked "Don't skip". */

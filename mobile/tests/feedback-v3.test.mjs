@@ -7,6 +7,8 @@ import { resolve, load } from './helpers/feedback-run-loader.mjs';
 registerHooks({ resolve, load });
 const run = await import('../src/features/feedback/feedbackRun.ts');
 const client = await import('../src/features/feedback/feedbackRunClient.ts');
+const { createStoreAccess } = await import('../src/services/storeAccess.ts');
+const { STORE_API } = await import('../src/services/storeEndpoint.ts');
 
 const speech = (id, slide, start) => ({ kind: 'speech', id, slide_index: slide, start_ms: start, end_ms: start + 900, text: `said ${id}` });
 const criterion = (id, level, extra = {}) => ({ id, label: id.replace('_', ' '), maximum_points: 35, level, anchor: 'anchor', points: 23.33,
@@ -28,9 +30,9 @@ const body = (extra = {}) => ({
     top_priorities: [{ title: 'Explain why', action: 'Add one reason per slide', why: 'clarity', slide_index: 1 }], summary: 'Solid.' },
   error: null, ...extra });
 const part = (attemptId, ms = 1000) => ({ attemptId, segments: [{ startMs: 0, endMs: ms }] });
-const select = (runs, { parts = [part('a1'), part('a1'), part('a1')], ready = ['a1'], stages = {}, expected = ['a1'] } = {}) =>
+const select = (runs, { parts = [part('a1'), part('a1'), part('a1')], ready = ['a1'], stages = {}, expected = ['a1'], selected } = {}) =>
   run.selectRunFeedbackV3({ n: parts.length, parts, stages: new Map(Object.entries(stages)), ready: new Set(ready),
-    expected: new Set(expected), runs: new Map(Object.entries(runs).map(([k, v]) => [k, v && run.parseFeedbackRun(v)])) });
+    expected: new Set(expected), selected, runs: new Map(Object.entries(runs).map(([k, v]) => [k, v && run.parseFeedbackRun(v)])) });
 
 test('parse keeps valid parts and drops malformed ones without guessing', () => {
   const parsed = run.parseFeedbackRun(body({ slides: [scoredSlide(1), { slide_index: -1 }, 'x', { slide_index: 2, status: 'weird' }] }));
@@ -81,7 +83,7 @@ test('progress, outdated inputs, transcripts and failures have honest statuses',
 
 test('combined recordings, unrecorded slides and withheld overall scores', () => {
   const combined = select({ a1: body(), a2: body({ attempt_id: 'a2' }) }, { parts: [part('a1'), part('a2'), null], ready: ['a1', 'a2'] });
-  assert.equal(combined.overall.status, 'Combined recordings');
+  assert.equal(combined.overall.status, 'Overall score unavailable');
   assert.equal(combined.items[2].status, 'Not recorded');
   const withheld = select({ a1: body({ scores: { overall: null, overall_level: null, slide_average: 67, whole: 67,
     withheld: [{ reason: 'slides_not_scored', slides: [2] }] } }) });
@@ -89,6 +91,139 @@ test('combined recordings, unrecorded slides and withheld overall scores', () =>
   assert.equal(run.withheldLabel([{ reason: 'whole_not_scored', slides: [] }]), 'Overall score unavailable');
   assert.equal(run.withheldLabel([{ reason: 'slides_not_scored', slides: [3] }, { reason: 'presentation_incomplete', slides: [] }]),
     'Record the whole presentation for an overall score');
+});
+
+test('selected overall and slide scores use the current assessment while retaining original recording identities', () => {
+  const runs = { a1: body(), a2: body({ attempt_id: 'a2', slides: [scoredSlide(1, { score: 42 })] }) };
+  const inputs = { parts: [part('a1'), part('a2'), part('a1')], ready: ['a1', 'a2'] };
+  const overall = values => ({ status: 'Scoring selected takes…', run: run.parseFeedbackRun(body(values)) });
+  const score = { ...body().scores, overall: 54 };
+  const finished = select(runs, { ...inputs, selected: overall({ scores: score }) });
+  assert.deepEqual([finished.overall.score, finished.overall.level, finished.overall.attemptId], [54, 'competent', null]);
+  assert.deepEqual(finished.items.map(i => [i.attemptId, i.score]), [['a1', null], ['a2', 67], ['a1', 80]]);
+  const old = select(runs, { ...inputs, selected: overall({ scores: score, outdated: true }) });
+  assert.deepEqual([old.overall.score, old.overall.status], [null, 'Score outdated']);
+  assert.deepEqual(old.items.map(i => [i.attemptId, i.score]), [['a1', null], ['a2', 42], ['a1', 80]]);
+  const waiting = select(runs, { ...inputs, selected: overall({ scores: score, status: 'running' }) });
+  assert.deepEqual([waiting.overall.score, waiting.overall.status], [null, 'Scoring selected takes…']);
+  const incomplete = select(runs, { ...inputs, selected: overall({
+    scores: { ...score, overall: null, withheld: [{ reason: 'presentation_incomplete' }] },
+  }) });
+  assert.equal(incomplete.overall.status, 'Record missing slides for an overall score');
+});
+
+test('selected feedback dedupes admission, uses GET for saved jobs and fences response scope and revisions', async () => {
+  const api = 'http://selected.invalid/api';
+  const scope = { context_id: 'c1', slides: [
+    { slide_index: 0, attempt_id: 'a2', segments: [{ start_ms: 0, end_ms: 1000 }] },
+    { slide_index: 1, attempt_id: 'a1', segments: [{ start_ms: 1000, end_ms: 2500 }] },
+    { slide_index: 2, attempt_id: 'a2', segments: [{ start_ms: 1000, end_ms: 2500 }] },
+  ] };
+  const selection = { anchor: 'a1', scope, revision: 'v1' };
+  const calls = [];
+  const transport = async (url, init) => {
+    calls.push([url, init.method, init.body && JSON.parse(init.body)]);
+    return Response.json(body({ scope, status: init.method === 'POST' ? 'queued' : 'completed' }));
+  };
+  const post = client.checkSelectedFeedback(api, selection, 'check', transport);
+  assert.equal(client.checkSelectedFeedback(api, selection, 'check', transport), post);
+  assert.equal(await post, 'available');
+  assert.deepEqual(calls[0], [api + '/attempts/a1/selected-feedback-run/', 'POST', { scope, retry: false }]);
+  await client.checkSelectedFeedback(api, selection, 'check', transport);
+  assert.deepEqual(calls[1], [api + '/attempts/a1/selected-feedback-run/r1/', 'GET', undefined]);
+  assert.equal(client.readSelectedFeedback(api, selection).scores.overall, 67);
+  const changed = { ...selection, revision: 'v2' };
+  assert.equal(client.readSelectedFeedback(api, changed), null);
+  const wrong = async () => Response.json(body({ scope: { ...scope, slides: scope.slides.slice(1) } }));
+  assert.equal(await client.checkSelectedFeedback(api, changed, 'check', wrong), 'unavailable');
+  assert.equal(client.readSelectedFeedback(api, changed), null);
+  assert.equal(await client.checkSelectedFeedback(api, selection, 'check', async () => { throw Error('offline'); }), 'offline');
+  assert.equal(client.readSelectedFeedback(api, selection).scores.overall, 67);
+  assert.equal(await client.checkSelectedFeedback(api, changed, 'check', async () => new Response(null, { status: 404 })), 'unavailable');
+  for (const status of ['waiting', 'unavailable']) {
+    await client.checkSelectedFeedback(api, selection, 'update', async () => Response.json(body({ scope })));
+    assert.equal(client.readSelectedFeedback(api, selection).scores.overall, 67);
+    const missing = async (_url, init) => init.method === 'GET'
+      ? Response.json({ error: { code: 'not_found' } }, { status: 404 })
+      : Response.json({ error: { code: status === 'waiting' ? 'transcript_not_ready' : 'invalid_request' } },
+        { status: status === 'waiting' ? 409 : 400 });
+    assert.equal(await client.checkSelectedFeedback(api, selection, 'check', missing), status);
+    assert.equal(client.readSelectedFeedback(api, selection), null);
+  }
+});
+
+test('selected feedback keeps only cited audio within the original selected visit', async () => {
+  const scope = { context_id: 'c1', slides: [
+    { slide_index: 0, attempt_id: 'a2', segments: [{ start_ms: 1000, end_ms: 2700 }] },
+    { slide_index: 1, attempt_id: 'a1', segments: [{ start_ms: 1000, end_ms: 2700 }] },
+  ] };
+  const good = { ...speech('selected', 1, 1400), attempt_id: 'a1' };
+  const wrong = [
+    { ...speech('removed-source', 1, 1400), attempt_id: 'a2' },
+    { ...speech('cross-slide', 0, 1400), attempt_id: 'a2' },
+    { ...speech('beyond-visit', 1, 2200), attempt_id: 'a1' },
+  ];
+  const selectedBody = body({ scope, slides: [scoredSlide(1, {
+    criteria: [criterion('essential_coverage', 'competent', { evidence: [...wrong, good] })],
+  })] });
+  const api = 'https://selected-evidence.invalid/api';
+  const selection = { anchor: 'a1', scope, revision: 'v1' };
+  assert.equal(await client.checkSelectedFeedback(api, selection, 'check', async () => Response.json(selectedBody)), 'available');
+  assert.deepEqual(client.readSelectedFeedback(api, selection).slides[0].criteria[0].evidence, [good]);
+});
+
+test('selected scores use the store installation for admission and read-only polling', async () => {
+  const scope = { context_id: 'c1', slides: [
+    { slide_index: 0, attempt_id: 'a2', segments: [{ start_ms: 0, end_ms: 1000 }] },
+    { slide_index: 1, attempt_id: 'a1', segments: [{ start_ms: 0, end_ms: 1000 }] },
+  ] };
+  const selection = { anchor: 'a1', scope, revision: 'store-installation' };
+  let choice = 'offline', token = null, reject = false;
+  const calls = [];
+  const store = createStoreAccess({
+    read: async () => token, write: async (_key, value) => { token = value; },
+    remove: async () => { token = null; },
+  }, { read: () => choice, write: value => { choice = value; } });
+  const transport = (url, init) => store(url, init, async (target, options) => {
+    calls.push([target, options.method, options.headers?.get('Authorization') ?? null]);
+    if (target.endsWith('/installations/')) return Response.json({ token: 'synthetic-installation' }, { status: 201 });
+    if (reject) return new Response(null, { status: 401 });
+    return Response.json(body({ scope, slides: [scoredSlide(1)], status: options.method === 'POST' ? 'queued' : 'completed' }));
+  });
+  const selectedPath = STORE_API + '/attempts/a1/selected-feedback-run/';
+  assert.equal(await client.checkSelectedFeedback(STORE_API, selection, 'check', transport), 'offline');
+  assert.deepEqual(calls, []);
+  choice = 'enabled';
+  assert.equal(await client.checkSelectedFeedback(STORE_API, selection, 'check', transport), 'available');
+  assert.equal(await client.checkSelectedFeedback(STORE_API, selection, 'check', transport), 'available');
+  assert.deepEqual(calls, [
+    [STORE_API + '/installations/', 'POST', null],
+    [selectedPath, 'POST', 'Bearer synthetic-installation'],
+    [selectedPath + 'r1/', 'GET', 'Bearer synthetic-installation'],
+  ]);
+  reject = true;
+  assert.equal(await client.checkSelectedFeedback(STORE_API, selection, 'check', transport), 'offline');
+  assert.equal(choice, 'expired');
+  assert.equal(await client.checkSelectedFeedback(STORE_API, selection, 'retry', transport), 'offline');
+  assert.equal(calls.length, 4, 'expiry neither reenrolls nor replays a request');
+  assert.equal(client.readSelectedFeedback(STORE_API, selection).scores.overall, 67);
+});
+
+test('selected store score distinguishes a budget denial from a network outage', async () => {
+  const api = 'https://selected-budget.invalid/api';
+  const selection = { anchor: 'a1', revision: 'test-budget', scope: { context_id: 'c1', slides: [
+    { slide_index: 0, attempt_id: 'a1', segments: [{ start_ms: 0, end_ms: 1000 }] },
+    { slide_index: 1, attempt_id: 'a2', segments: [{ start_ms: 0, end_ms: 1000 }] },
+  ] } };
+  for (const code of ['public_budget_exhausted', 'public_budget_unavailable']) {
+    const response = async () => Response.json({ error: { code } }, { status: 503 });
+    assert.equal(await client.checkSelectedFeedback(api, selection, 'check', response), code);
+  }
+  const result = body({ status: 'completed', scores: null, whole: { status: 'failed', error: 'public_budget_exhausted' } });
+  const view = select({}, { parts: [part('a1'), part('a2')], selected: { run: run.parseFeedbackRun(result) } });
+  assert.equal(view.overall.status, 'Free coaching budget too low');
+  const partial = run.parseFeedbackRun({ ...result, status: 'running' });
+  assert.equal(run.selectedRunBudgetStatus(partial), null);
 });
 
 test('a start is needed only when no run exists; outdated runs wait for an explicit update', () => {

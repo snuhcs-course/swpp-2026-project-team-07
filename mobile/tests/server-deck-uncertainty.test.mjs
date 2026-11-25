@@ -29,11 +29,15 @@ test('an unconfirmed upload remains blocked across calls until explicit refresh 
   };
   try {
     const first = serverSlides(local, api, undefined, 5);
-    assert.equal(serverPdfUnconfirmed(local.id, api), true);
+    assert.equal(serverPdfUnconfirmed(local.id, api), false);
     assert.equal(readStored(key), null);
-    await assert.rejects(serverSlides(local, api), /Tap Refresh with server/);
+    const preview = new AbortController();
+    const following = serverSlides(local, api, preview.signal);
+    preview.abort();
+    await assert.rejects(following, /cancelled/);
     assert.equal(posts, 1, 'a simultaneous preview must not duplicate the in-flight upload');
     await assert.rejects(first, /did not confirm/);
+    assert.equal(serverPdfUnconfirmed(local.id, api), true);
     await assert.rejects(serverSlides(local, api), /Tap Refresh with server/);
     assert.equal(posts, 1, 'focus recovery must not duplicate the timed-out upload');
 
@@ -49,5 +53,24 @@ test('an unconfirmed upload remains blocked across calls until explicit refresh 
   } finally {
     delete globalThis.__serverDeckFetch;
     removeStored(key);removeStored(`server-deck-unconfirmed:${api}:${local.id}`);
+  }
+});
+
+test('a gateway timeout does not trigger a second PDF upload until refresh', async () => {
+  const local = { id: 'pdf-gateway-timeout', title: 'Uncertain upload', uri: 'file:///local.pdf', pageCount: 1 };
+  let posts = 0;
+  globalThis.__serverDeckFetch = async (_url, init) => {
+    assert.equal(init.method, 'POST');
+    posts++;
+    return new Response(null, { status: 504 });
+  };
+  try {
+    await assert.rejects(serverSlides(local, api), /HTTP 504/);
+    assert.ok(serverPdfUnconfirmed(local.id, api));
+    await assert.rejects(serverSlides(local, api), /Tap Refresh with server/);
+    assert.equal(posts, 1);
+  } finally {
+    delete globalThis.__serverDeckFetch;
+    removeStored(`server-deck-unconfirmed:${api}:${local.id}`);
   }
 });

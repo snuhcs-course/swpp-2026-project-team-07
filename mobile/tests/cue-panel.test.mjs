@@ -29,6 +29,43 @@ test('cue cards open complete category details without generating or replacing s
   });
 });
 
+test('cue details show the full coaching prompt without provider notes', async () => {
+  const [first, ...remaining] = state.descriptions.slides;
+  const [cue] = first.go_deeper;
+  const slide = { ...first, go_deeper: [{ ...cue, supporting_detail: 'Internal model note' }] };
+  const withNotes = { ...state, descriptions: { slides: [slide, ...remaining] } };
+  await mounted({ state: withNotes }, async r => {
+    await act(async () => button(r, 'Open Further insight cues').props.onPress());
+    const text = r.root.findByType('scroll').findAllByType('text').map(node => node.props.children)
+      .filter(child => typeof child === 'string');
+    assert.deepEqual(text, ['Connect the result to a practical example']);
+  });
+});
+
+test('cue statuses use secondary type and never render a coaching bullet',async()=>{
+  const font=node=>Object.assign({},...[node.props.style].flat(Infinity).filter(Boolean)).fontFamily;
+  const cardLabel=(r,label)=>button(r,'Open Must cover cues').findAllByType('text').find(n=>n.props.children===label);
+  let cardCueFont,sheetCueFont;
+  await mounted({},async r=>{
+    const cue='Explain the change in measured growth';
+    cardCueFont=font(cardLabel(r,cue));
+    await act(async()=>button(r,'Open Must cover cues').props.onPress());
+    const scroll=r.root.findByType('scroll');
+    sheetCueFont=font(scroll.findAllByType('text').find(n=>n.props.children===cue));
+    assert.ok(scroll.findAllByType('view').some(n=>n.props.style?.[0]?.borderRadius===4));
+  });
+  const status='Waiting for English cues';
+  await mounted({state:null,connectionMessage:status},async r=>{
+    assert.notEqual(font(cardLabel(r,status)),cardCueFont);
+    await act(async()=>button(r,'Open Must cover cues').props.onPress());
+    const scroll=r.root.findByType('scroll');
+    const messages=scroll.findAllByType('text');
+    assert.deepEqual(messages.map(n=>n.props.children),[status]);
+    assert.notEqual(font(messages[0]),sheetCueFont);
+    assert.equal(scroll.findAllByType('view').length,0);
+  });
+});
+
 test('cue sheet follows a downward drag before closing',async()=>{
   await mounted({},async r=>{
     await act(async()=>button(r,'Open Must cover cues').props.onPress());
@@ -74,7 +111,7 @@ test('missing, outdated and failed cues show explicit status with user initiated
     assert.match(json(r),/unavailable offline/);assert.deepEqual(calls,[]);
     await act(async()=>r.update(React.createElement(CueGuidancePanel,{...defaults,state:{...state,stale:true},onRecover:a=>calls.push(a)})));
     assert.doesNotMatch(json(r),/Explain the change|Connect the result/);assert.match(json(r),/out of date/);
-    assert.equal(button(r,'Generate AI cues'),undefined);assert.match(json(r),/Status · Tap for detail/);
+    assert.equal(button(r,'Generate AI cues'),undefined);assert.doesNotMatch(json(r),/Tap for detail/);
     await act(async()=>button(r,'Open Must cover cues').props.onPress());assert.deepEqual(calls,[]);
     const generate=button(r,'Generate AI cues');
     assert.ok(r.root.findByType('scroll').findAllByType('pressable').includes(generate));
@@ -87,20 +124,24 @@ test('missing, outdated and failed cues show explicit status with user initiated
     await act(async()=>r.update(React.createElement(CueGuidancePanel,{...defaults,state:{...state,state:'failed',retry_available:true,descriptions:null},busy:true,onRecover:a=>calls.push(a)})));
     assert.equal(button(r,'Retry AI cues').props.disabled,true);assert.match(json(r),/Requesting AI cues/);
     await act(async()=>r.update(React.createElement(CueGuidancePanel,{...defaults,error:'Saved cues are retained offline',onRecover:a=>calls.push(a)})));
-    assert.match(json(r),/Explain the change/);assert.match(json(r),/Saved cues are retained offline/);
+    assert.match(json(r),/Explain the change/);assert.doesNotMatch(json(r),/Saved cues are retained offline/);
+    assert.equal(button(r,'Refresh AI cues'),undefined);
+    await act(async()=>r.update(React.createElement(CueGuidancePanel,{...defaults,state:null,error:'Could not connect for cues',onRecover:a=>calls.push(a)})));
+    assert.match(json(r),/Could not connect for cues/);
     await act(async()=>button(r,'Refresh AI cues').props.onPress());assert.deepEqual(calls,['generate','confirm','refresh']);
   });
 });
 
-test('cue cards expose status and the sheet retains complete playback and synchronization notices',async()=>{
-  await mounted({slide:2,playbackNotice:'Audio failed · tap Play to retry',requirementsNotice:'Requirements sync pending'},async r=>{
-    assert.match(json(r),/Not enough readable evidence/);assert.match(json(r),/Status · Tap for detail/);
-    assert.equal(button(r,'Open Further insight cues').props.accessibilityHint,'Includes cue and recording status.');
+test('an empty cue sheet presents a single relevant status',async()=>{
+  await mounted({state:null,connectionMessage:'Connecting for cues…'},async r=>{
+    assert.match(json(r),/Connecting for cues…/);assert.doesNotMatch(json(r),/Tap for detail/);
     await act(async()=>button(r,'Open Further insight cues').props.onPress());
-    const notice=r.root.findByType('scroll').findAllByType('text').find(n=>typeof n.props.children==='string'&&n.props.children.includes('Requirements sync pending'));
-    assert.ok(notice);assert.match(notice.props.children,/Audio failed/);assert.equal(notice.props.numberOfLines,undefined);
+    const statuses=()=>r.root.findByType('scroll').findAllByType('text').map(n=>n.props.children);
+    assert.deepEqual(statuses(),['Connecting for cues…']);
+    await act(async()=>r.update(React.createElement(CueGuidancePanel,{...defaults,slide:2})));
+    assert.deepEqual(statuses(),['Not enough readable evidence for cues']);
     await act(async()=>r.update(React.createElement(CueGuidancePanel,{...defaults,state:{...state,state:'queued',descriptions:null}})));
-    assert.match(json(r),/Preparing AI cues/);assert.doesNotMatch(json(r),/Explain the change/);
+    assert.deepEqual(statuses(),['Preparing AI cues…']);assert.doesNotMatch(json(r),/Explain the change/);
   });
 });
 

@@ -136,6 +136,26 @@ test('pending, stale, failed, disabled and missing profiles cannot appear as suc
   }
   const v = state(); v.stale = true; assert.equal(cueState(v, 0).message, 'AI cues are out of date');
 });
+test('cue failures give actionable guidance without exposing provider details', () => {
+  const failed = { ...state(), state: 'failed', descriptions: null, available_data: false };
+  const result = (code, pages, retry_available = true) => cueState({ ...failed, retry_available,
+    provenance: { ...failed.provenance, sources: Array(pages).fill(failed.provenance.sources[0]) },
+    error: { code, message: 'Internal diagnostic' } }, 0);
+  for (const pages of [7, 91]) {
+    for (const code of ['request_exceeds_quota', 'request_too_large']) {
+      const status = result(code, pages);
+      assert.equal(status.message, 'AI cues hit a service limit. Try again later.');
+      assert.equal(status.action, 'retry');
+    }
+    for (const code of ['response_too_large', 'provider_incomplete'])
+      assert.equal(result(code, pages).message, 'AI cues could not finish. Try again later.');
+  }
+  assert.equal(result('request_exceeds_quota', 7, false).action, null);
+  assert.match(result('public_budget_exhausted', 7).message, /remaining free coaching budget/);
+  assert.match(result('public_budget_unavailable', 7).message, /online coaching is currently unavailable/);
+  assert.equal(result('unexpected_code', 7).message, 'AI cues failed');
+});
+
 test('client only reads on refresh, retains offline cache, and retries with captured revision', async () => {
   const calls = [], responses = [state(), new Error('offline'), state()];
   const client = createProfileClient(api, async (url, init) => {

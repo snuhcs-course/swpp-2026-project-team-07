@@ -1,7 +1,7 @@
 import type { DisplayField } from './useDisplayTranslation';
 import type { V3Improvement, V3Priority, V3Slide, V3Whole } from '../feedback/feedbackRun';
 import type { ScoreResult, SlideScore } from '../feedback/presentationScore';
-import type { SlideProfile } from '../presentations/slideProfiles';
+import type { CueCategory, SlideProfile } from '../presentations/slideProfiles';
 import type { QaQuestion, QaResult } from '../qa/client';
 import type { Finding } from '../feedback/slideReview';
 import type { CoachingSuggestion } from '../../contracts';
@@ -55,6 +55,21 @@ export function translatedProfile(slide: SlideProfile, text: DisplayField): Slid
   const path = 'slides.' + slide.slide_index;
   return {...slide, must_cover: displayTree(slide.must_cover, cueKeys, text, path + '.must_cover'),
     go_deeper: displayTree(slide.go_deeper, cueKeys, text, path + '.go_deeper')};
+}
+export function displayProfileCues(slide: SlideProfile, missing: ReadonlySet<string>, unavailable: ReadonlySet<string>): SlideProfile {
+  const wording: NonNullable<SlideProfile['wording']> = {};
+  function visible<T extends { text: string; information_needed?: string }>(category: CueCategory, cues: T[]) {
+    return cues.flatMap((cue, index) => {
+      const path = 'slides.' + slide.slide_index + '.' + category + '.' + index;
+      const textPath = path + '.text';
+      if (missing.has(textPath)) {
+        if (wording[category] !== 'pending') wording[category] = unavailable.has(textPath) ? 'unavailable' : 'pending';
+        return [];
+      }
+      return missing.has(path + '.information_needed') ? [{ ...cue, information_needed: '' }] : [cue];
+    });
+  }
+  return { ...slide, must_cover: visible('must_cover', slide.must_cover), go_deeper: visible('go_deeper', slide.go_deeper), wording };
 }
 export function translatedFinding<T extends Finding | CoachingSuggestion>(item: T, text: DisplayField, path: string): T {
   return {...item, observation: text(path + '.observation', item.observation), suggestion: text(path + '.suggestion', item.suggestion)};

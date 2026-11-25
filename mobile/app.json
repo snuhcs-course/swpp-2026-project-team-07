@@ -22,10 +22,11 @@
       "blockedPermissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.DOWNLOAD_WITHOUT_NOTIFICATION"
+        "android.permission.DOWNLOAD_WITHOUT_NOTIFICATION",
+        "android.permission.SYSTEM_ALERT_WINDOW"
       ],
       "predictiveBackGestureEnabled": false,
-      "versionCode": 38
+      "versionCode": 88
     },
     "plugins": [
       "expo-router",

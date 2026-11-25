@@ -220,14 +220,40 @@ export function OrbitalCaption({ text, rotation }: { text: string; rotation: Sha
 
 // ── Waveform ─────────────────────────────────────────────────────────────────
 export const IDLE_WAVE: number[] = Array.from({ length: 28 }, () => 4);
-export const Waveform = memo(function Waveform({ bars, live }: { bars: readonly number[]; live: boolean }) {
+const WAVE_BAR_HEIGHT = 30;
+const WAVE_TRANSITION_MS = 136;
+
+const SmoothWaveBar = memo(function SmoothWaveBar({ heights, index, color }: {
+  heights: SharedValue<readonly number[]>; index: number; color: string;
+}) {
+  const motion = useAnimatedStyle(() => ({
+    transform: [{ scaleY: (heights.value[index] ?? 0) / WAVE_BAR_HEIGHT }],
+  }));
+  return <Animated.View style={[s.waveBar, { height: WAVE_BAR_HEIGHT, backgroundColor: color }, motion]} />;
+});
+
+// OpenAI Codex, 2026-11-24: interpolate measured heights on the UI thread between meter updates.
+function SmoothWaveBars({ bars, color }: { bars: readonly number[]; color: string }) {
+  const heights = useSharedValue<readonly number[]>(bars);
+  useEffect(() => {
+    heights.set(withTiming([...bars], { duration: WAVE_TRANSITION_MS, easing: Easing.linear }));
+  }, [bars, heights]);
+  return bars.map((_, index) => (
+    <SmoothWaveBar key={index} heights={heights} index={index} color={index >= bars.length - 5 ? '#FF5A4E' : color} />
+  ));
+}
+
+export const Waveform = memo(function Waveform({ bars, live, smooth = false }: {
+  bars: readonly number[]; live: boolean; smooth?: boolean;
+}) {
   const { c } = useTheme();
   const frame = useFrame();
+  const reducedMotion = useReducedMotion();
   return (
     <View pointerEvents="none" style={[s.wave, frame.compact && { top: 570 }]}>
-      {bars.map((h, i) => (
-        <View key={i} style={{ width: 4, height: Math.round(h), borderRadius: 2,
-          backgroundColor: !live ? c.ink18 : i >= bars.length - 5 ? '#FF5A4E' : c.ink45 }} />
+      {live && smooth && !reducedMotion ? <SmoothWaveBars bars={bars} color={c.ink45} /> : bars.map((h, i) => (
+        <View key={i} style={[s.waveBar, { height: Math.round(h),
+          backgroundColor: !live ? c.ink18 : i >= bars.length - 5 ? '#FF5A4E' : c.ink45 }]} />
       ))}
     </View>
   );
@@ -344,11 +370,15 @@ export const GlowLayer = memo(function GlowLayer({ hue, style }: { hue: HueName;
 });
 
 /** Opaque page artwork that travels with a back swipe, exposing the mounted page below. */
-export const PageSurface = memo(function PageSurface(_props: { hue: HueName }) {
+export const PageSurface = memo(function PageSurface({ fullBleed = false }: { hue?: HueName; fullBleed?: boolean }) {
   const { c } = useTheme();
+  const { left, top, width, height, s } = useFrame();
+  const bounds = fullBleed ? {
+    position: 'absolute' as const, left: -left / s, top: -top / s, width: width / s, height: height / s,
+  } : StyleSheet.absoluteFill;
   // Page backgrounds stay neutral. Deck hue belongs on the local deck glow and
   // slide face, never as a tint across the full screen.
-  return <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: c.bg }]} />;
+  return <View pointerEvents="none" style={[bounds, { backgroundColor: c.bg }]} />;
 });
 
 /** Linear 135° slide-face gradient, as an absolute fill. */
@@ -379,6 +409,7 @@ const s = createThemedStyles({
   roundCaption: { fontFamily: F.semibold, fontSize: 13.5, color: C.secondary, width: 90, textAlign: 'center' },
   orbitCaption: { position: 'absolute', left: -19, top: 58, width: 90, height: 16 },
   wave: { position: 'absolute', left: 0, right: 0, top: 618, height: 32, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
+  waveBar: { width: 4, borderRadius: 2 },
   dialog: { position: 'absolute', left: 32, right: 32, top: 286, paddingTop: 24, paddingHorizontal: 20, paddingBottom: 18, borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 26, backgroundColor: C.dialog, boxShadow: '0px 30px 60px rgba(0, 0, 0, 0.55)' },
   dialogIcon: { width: 52, height: 52, borderRadius: 26, alignSelf: 'center', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },

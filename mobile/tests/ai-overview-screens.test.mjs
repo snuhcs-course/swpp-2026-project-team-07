@@ -2,7 +2,7 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import {registerHooks} from 'node:module';
 import {resolve,load} from './helpers/ai-overview-screen-loader.mjs';registerHooks({resolve,load});
 const React=await import('react');const {act,create}=await import('react-test-renderer');
-const {runtime,AppState}=await import('./helpers/ai-overview-screen-native.mjs');
+const {runtime,AppState,HintRow,TestShell}=await import('./helpers/ai-overview-screen-native.mjs');
 const {DARK_PALETTE,LIGHT_PALETTE}=await import('../src/design/tokens.ts');runtime.palettes={dark:DARK_PALETTE,light:LIGHT_PALETTE};
 const {ReviewScreen}=await import('../src/screens/ReviewScreen.tsx');
 const {ListenBackScreen:LegacyListenBackScreen}=await import('../src/screens/FullReviewScreen.tsx');
@@ -27,15 +27,70 @@ const byText=(r,label)=>r.root.findAllByType('pressable').find(n=>n.findAllByTyp
 const badge=r=>r.root.findAllByType('view').find(n=>n.props.style?.[0]?.minWidth===46);
 const button=(r,label)=>r.root.findAllByType('pressable').find(x=>x.props.accessibilityLabel===label);
 async function render(Component,props,f){let r;try{await act(async()=>{r=create(React.createElement(Component,props));});await f(r);}finally{if(r)await act(async()=>r.unmount());}}
-// OpenAI Codex, 2026-11-21: Review fits full text without a nested scroll view so vertical drags can leave the page.
 test('Review renders its score badge, three slide facts and selected-slide playback without page scrolling',async()=>{setup();await render(ReviewScreen,{},async r=>{
  assert.equal(badge(r).findByType('text').props.children,'—');assert.match(text(r),/Slide 1 of 3/);
  assert.equal(r.root.findAllByType('mini-slide').length,1);
  assert.match(text(r),/0:02 of 1:00 planned/);assert.match(text(r),/— fillers/);
- assert.equal(r.root.findAllByType('scroll').length,0);
+ assert.equal(r.root.findByType('scroll').props.scrollEnabled,false);
  assert.ok(button(r,'Play slide 1 audio'));
  await act(async()=>runtime.back());assert.deepEqual(runtime.routes.at(-1),['rehearse',{deckId:'deck',slide:0,sel:0}]);
 });});
+
+test('Review hides feedback actions when the public installation cannot request AI',async()=>{
+ setup();
+ runtime.v3={canRequest:false,items:[{slide:0,status:'Feedback failed',settled:true,score:null}]};
+ try {
+  await render(ReviewScreen,{},async r=>{
+   assert.match(text(r),/Feedback failed/);
+   assert.doesNotMatch(text(r),/Retry feedback/);
+  });
+ } finally {runtime.v3=null;}
+});
+
+test('compact Review wraps slide text, scrolls long feedback, and preserves navigation',async()=>{
+ setup();runtime.frameCompact=true;
+ const title='서울을 둘러싼 산과 한강이 도시의 발전에 미친 영향';
+ const quote='The rivers and mountains shape the city and the way people cross it.'.repeat(5);
+ const step='강과 산의 관계를 청중이 이해할 수 있도록 순서대로 연결해서 설명해 주세요.'.repeat(8);
+ const improvement={criterion:'explanation_depth',headline:'Link the landscape to its history',action:'Explain the connections.',example:'',explanation:[],steps:[step],over_limit:[],
+  evidence:[{kind:'speech',text:quote}],gain_slide_points:4};
+ runtime.model.deck.slides[0].title=title;
+ runtime.v3={items:[{slide:0,status:'Graded',settled:true,score:70,v3:{improvements:[improvement],criteria:[]}}]};
+ try{await render(ReviewScreen,{},async r=>{
+  const scroll=()=>r.root.findByType('scroll');
+  const box=r.root.findAllByType('animated').find(n=>n.props.onLayout);
+  await act(async()=>box.props.onLayout({nativeEvent:{layout:{y:165,height:483}}}));
+  await act(async()=>scroll().props.onContentSizeChange(342,481));
+  assert.equal(scroll().props.scrollEnabled,false);
+  await act(async()=>scroll().props.onContentSizeChange(342,990));
+  assert.equal(scroll().props.scrollEnabled,true);
+  for(const complete of [title,`“${quote}”`,step]){
+   const node=r.root.findAllByType('text').find(n=>n.children.join('')===complete);
+   assert.ok(node);
+   assert.equal(node.props.numberOfLines,undefined);
+   if(complete!==title)assert.equal(node.props.maxFontSizeMultiplier,0);
+  }
+  const capture=(pageX,pageY,dx,dy)=>r.root.findByType('pan').props.onMoveShouldCapture({nativeEvent:{pageX,pageY}},{dx,dy});
+  const offset=y=>act(async()=>scroll().props.onScroll({nativeEvent:{contentOffset:{y}}}));
+  assert.equal(capture(200,380,0,22),true,'down at the top goes back');
+  assert.equal(capture(200,380,0,-22),false,'up at the top reads more');
+  await offset(130);
+  assert.equal(capture(200,380,0,22),false,'down inside a scrolled page reads earlier text');
+  assert.equal(capture(15,380,0,22),true,'the outer margin still goes back mid-scroll');
+  assert.equal(capture(200,80,0,22),true,'the fixed header still goes back mid-scroll');
+  assert.equal(capture(200,380,-40,4),true,'horizontal swipes still change the review page');
+  await offset(507);
+  assert.equal(capture(200,380,0,-22),true,'up at the end can open Q&A');
+  await act(async()=>button(r,'Play slide 1 audio').props.onPress());
+  const pan=r.root.findByType('pan').props;
+  await act(async()=>{pan.onMove({}, {dx:-90,dy:0});pan.onRelease({}, {dx:-90,dy:0});});
+  assert.match(text(r),/Overall per-slide feedback/);
+  assert.equal(scroll().props.scrollEnabled,false);
+  assert.equal(runtime.routes.length,0);
+  assert.equal(runtime.players[0].paused,false);
+  assert.equal(runtime.plays.length,1);
+ });}finally{runtime.v3=null;}
+});
 
 test('Legacy Listen Back keeps ungraded score/status tiles and discloses partial audio before playing',async()=>{setup();await render(LegacyListenBackScreen,{},async r=>{
  const ring=r.root.findByType('score-ring');assert.equal(ring.props.value,'—');assert.match(ring.props.label,/Overall score/i);assert.doesNotMatch(text(r),/Strong|Weak|points said/);
@@ -47,13 +102,30 @@ test('Legacy Listen Back keeps ungraded score/status tiles and discloses partial
  await act(async()=>r.root.findAllByType('pressable').find(x=>x.props.accessibilityLabel?.startsWith('Slide 2,')).props.onPress());assert.equal(runtime.routes.at(-1)[1].sel,1);
  });});
 test('Home keeps ungraded metrics neutral and separates measured pace in both themes',async()=>{for(const theme of ['light','dark']){setup();runtime.theme=theme;
+ runtime.model.state.run.parts[1].attemptId='a';
  await render(HomeFeedbackStats,{deckId:'deck',active:true,home:{p:{value:0},vy:{value:0}},onOpenReview:()=>{}},async r=>{
  assert.match(text(r),/—/);assert.match(text(r),/0:04/);assert.match(text(r),/of 3:00/);assert.match(text(r),/critical/);assert.match(text(r),/130/);assert.match(text(r),/wpm/);
  assert.equal(r.root.findAllByType('pressable').length,0);assert.doesNotMatch(r.root.findAllByType('text').map(n=>n.children.join('')).join(' '),/100%|On point|slide points said/);
  });
 }});
 
-test('Review stays opaque beneath Q&A during an upward swipe',async()=>{setup();await render(ReviewScreen,{active:true},async r=>{const pan=r.root.findByType('pan');assert.equal(pan.props.onMoveShould({nativeEvent:{pageY:800}},{dx:0,dy:-150}),true);await act(async()=>{pan.props.onMove({}, {dx:0,dy:-150});r.update(React.createElement(ReviewScreen,{active:true}));});assert.ok(r.root.findAllByType('animated').some(n=>n.props.style?.[1]?.opacity===1));await act(async()=>r.root.findByType('pan').props.onRelease({}, {dx:0,dy:-150}));assert.equal(runtime.routes.at(-1)[0],'qa');await act(async()=>r.update(React.createElement(ReviewScreen,{active:false})));assert.ok(r.root.findAllByType('animated').some(n=>n.props.style?.[1]?.opacity===1));assert.ok(r.root.findByType('mini-slide'));});});
+test('Review content follows an upward swipe over an opaque surface until Q&A opens',async()=>{
+ setup();runtime.reducedMotion=false;
+ await render(ReviewScreen,{active:true},async r=>{
+  const pan=()=>r.root.findByType('pan');
+  assert.equal(r.root.findByType('enter').props.duration,220);
+  assert.ok(r.root.findByType('enter').findByType('page-surface'));
+  assert.equal(pan().props.onMoveShould({nativeEvent:{pageY:800}},{dx:0,dy:-90}),true);
+  await act(async()=>{pan().props.onMove({}, {dx:0,dy:-90});r.update(React.createElement(ReviewScreen,{active:true}));});
+  assert.equal(pan().props.style[1].opacity,1);
+  assert.ok(r.root.findAllByType('animated').some(n=>n.props.style?.[1]?.transform?.[0]?.translateY<0));
+  await act(async()=>pan().props.onRelease({}, {dx:0,dy:-90}));
+  assert.equal(runtime.routes.at(-1)[0],'qa');
+  await act(async()=>r.update(React.createElement(ReviewScreen,{active:false})));
+  assert.equal(pan().props.style[1].opacity,1);
+  assert.ok(r.root.findByType('mini-slide'));
+ });
+});
 
 test('Review swipes down to its opening page and keeps the selected slide',async()=>{
  for(const from of ['rehearse','full']){
@@ -67,9 +139,88 @@ test('Review swipes down to its opening page and keeps the selected slide',async
  }
 });
 
-test('Full Review opened from the icon returns to its selected slide preview',async()=>{
- setup();runtime.nav={...runtime.nav,from:'rehearse',sel:1};
+test('pinned labels hand off to the actual review underlay before swipe completion', async () => {
+ for (const [Source, screen, from, Underlay, underlayScreen, underlayLabel, expected] of [
+  [FeedbackScreen, 'feedback', 'full', OverviewScreen, 'full', 'Audience Q&A', true],
+  [ListenBackKaraokeScreen, 'listen', 'review', ReviewScreen, 'review', 'Next review', true],
+  [ReviewScreen, 'review', 'full', OverviewScreen, 'full', 'Audience Q&A', false],
+ ]) {
+  setup();
+  runtime.feedback.items = runtime.feedback.items.map(item => ({ ...item, findings: [] }));
+  const underlying = { ...runtime.nav, screen: underlayScreen, visit: 1, from: 'rehearse' };
+  const top = { ...runtime.nav, screen, visit: 2, from };
+  const footerHandoff = { underlay: underlying, epoch: 7,
+   exit: { value: { epoch: -1, progress: 0 }, set(value) { this.value = value; } } };
+  const tree = () => React.createElement(React.Fragment, null,
+   React.createElement(TestShell.Provider, { value: { nav: top, footerHandoff } }, React.createElement(Source)),
+   React.createElement(TestShell.Provider, { value: { nav: underlying, footerHandoff } }, React.createElement(Underlay, { active: false })));
+  let r;
+  try {
+   await act(async () => { r = create(tree()); });
+   const source = () => r.root.findByType(Source);
+   const incoming = () => r.root.findByType(Underlay).findAllByType(HintRow)
+    .find(row => row.props.hints.some(hint => hint.text === underlayLabel));
+   const opacity = row => row.parent.props.style.at(-1).opacity;
+   const outgoing = () => source().findAllByType(HintRow).at(-1);
+   assert.equal(opacity(outgoing()), 1);
+   assert.equal(opacity(incoming()), 0);
+   assert.equal(incoming().parent.props.pointerEvents, 'none');
+
+   const drag = dy => act(async () => {
+    source().findAllByType('pan')[0].props.onMove({}, { dx: 0, dy });
+    r.update(tree());
+   });
+   await drag(135);
+   assert.equal(opacity(outgoing()), 0);
+   assert.equal(opacity(incoming()), expected ? 0.5 : 0);
+   assert.equal(runtime.routes.length, 0, 'route activation still waits for the page fade');
+   await drag(0);
+   assert.equal(opacity(outgoing()), 1);
+   assert.equal(opacity(incoming()), 0);
+  } finally {
+   if (r) await act(async () => r.unmount());
+  }
+ }
+});
+
+test('the revealed footer stays visible through route commit and never replays an older activation of the same visit', async () => {
+ setup();
+ runtime.feedback.items = runtime.feedback.items.map(item => ({ ...item, findings: [] }));
+ const underlay = { ...runtime.nav, screen: 'full', visit: 1, from: 'rehearse' };
+ const top = { ...runtime.nav, screen: 'feedback', visit: 2, from: 'full' };
+ const exit = { value: { epoch: -1, progress: 0 }, set(value) { this.value = value; } };
+ const incoming = (epoch, active = false) => React.createElement(TestShell.Provider,
+  { key: 'overview', value: { nav: underlay, footerHandoff: { underlay, epoch, exit } } },
+  React.createElement(OverviewScreen, { active }));
+ const tree = () => React.createElement(React.Fragment, null,
+  React.createElement(TestShell.Provider,
+   { key: 'feedback', value: { nav: top, footerHandoff: { underlay, epoch: 7, exit } } },
+   React.createElement(FeedbackScreen)),
+  incoming(7));
+ let r;
+ try {
+  await act(async () => { r = create(tree()); });
+  const opacity = () => r.root.findByType(OverviewScreen).findByType(HintRow).parent.props.style.at(-1).opacity;
+  const pan = () => r.root.findByType(FeedbackScreen).findByType('pan').props;
+  await act(async () => { pan().onMove({}, { dx: 0, dy: 180 }); r.update(tree()); });
+  assert.equal(opacity(), 1);
+  await act(async () => pan().onRelease({}, { dx: 0, dy: 180 }));
+  assert.equal(runtime.routes.at(-1)[0], 'full');
+  assert.equal(opacity(), 1, 'the incoming hint remains fully visible while the route change is pending');
+  await act(async () => r.update(React.createElement(React.Fragment, null, incoming(8, true))));
+  assert.equal(opacity(), 1, 'committing navigation keeps that hint visible');
+  await act(async () => r.update(React.createElement(React.Fragment, null, incoming(9))));
+  assert.equal(opacity(), 0, 'a later activation must not reuse the old swipe progress');
+ } finally {
+  if (r) await act(async () => r.unmount());
+ }
+});
+
+test('Full Review opens faster from rehearsal and returns to its selected slide preview',async()=>{
+ setup();runtime.nav={...runtime.nav,from:'rehearse',nav:'fade',sel:1};
  await render(OverviewScreen,{},async r=>{
+  assert.equal(r.root.findByType('enter').props.duration,150);
+  assert.ok(r.root.findByType('enter').findByType('page-surface'));
   assert.equal(r.root.findByType('hints').children.at(-1),'Slide preview');
   const pan=r.root.findByType('pan');
   await act(async()=>{pan.props.onMove({}, {dy:90,dx:0});r.update(React.createElement(OverviewScreen));});
@@ -77,7 +228,8 @@ test('Full Review opened from the icon returns to its selected slide preview',as
   await act(async()=>r.root.findByType('pan').props.onRelease({}, {dy:100,dx:0}));
   assert.deepEqual(runtime.routes.at(-1),['rehearse',{deckId:'deck',slide:1,sel:1}]);
  });
- setup();runtime.nav.from='home';await render(OverviewScreen,{},async r=>{
+ setup();runtime.nav={...runtime.nav,from:'home',nav:'fade'};await render(OverviewScreen,{},async r=>{
+  assert.equal(r.root.findByType('enter').props.duration,220);
   assert.equal(r.root.findByType('hints').children.at(-1),'Home');
   await act(async()=>runtime.back());assert.deepEqual(runtime.routes.at(-1),['home']);
  });
@@ -89,10 +241,24 @@ test('Review keeps its vertical fade while horizontal issue swipes move the cont
   await act(async()=>{r.root.findByType('pan').props.onMove({}, {dx:0,dy:90});r.update(React.createElement(ReviewScreen));});
   assert.ok(r.root.findAllByType('animated').some(n=>n.props.style?.[1]?.opacity===0.5));
   await act(async()=>{r.root.findByType('pan').props.onMove({}, {dx:-95,dy:2});r.update(React.createElement(ReviewScreen));});
-  const moving=r.root.findAllByType('animated').find(n=>n.props.style?.[2]?.transform?.[0]?.translateX<0&&n.props.style[2].opacity===1);
+  const moving=r.root.findAllByType('animated').find(n=>n.props.style?.some?.(s=>s?.transform?.[0]?.translateX<0&&s.opacity===1));
   assert.ok(moving,'the issue follows the finger without fading the page to its underlay');
   assert.equal(moving.findAllByType('mini-slide').length,0,'the slide thumbnail stays fixed above the moving review');
  });
+});
+
+test('Slide Review reveals the presentation only when the real preview is mounted',async()=>{
+ setup();
+ for (const underlay of [null,{screen:'rehearse',deckId:'deck',visit:1}]) {
+  const tree=()=>React.createElement(TestShell.Provider,{value:{footerHandoff:{underlay}}},React.createElement(ReviewScreen));
+  let r;
+  try {
+   await act(async()=>{r=create(tree());});
+   const pan=()=>r.root.findByType('pan');
+   await act(async()=>{pan().props.onMove({}, {dx:0,dy:90});r.update(tree());});
+   assert.equal(pan().props.style[1].opacity,underlay?0.5:1);
+  } finally {if(r)await act(async()=>r.unmount());}
+ }
 });
 
 test('covered Review stops playback and can be reopened',async()=>{setup();await render(ReviewScreen,{active:true},async r=>{await act(async()=>button(r,'Play slide 1 audio').props.onPress());assert.equal(runtime.plays.length,1);await act(async()=>r.update(React.createElement(ReviewScreen,{active:false})));assert.ok(runtime.stops>0);await act(async()=>r.update(React.createElement(ReviewScreen,{active:true})));assert.ok(button(r,'Play slide 1 audio'));});});
@@ -108,7 +274,7 @@ test('Review playback uses selected slide segments and navigation changes the se
 test('unrecorded Review retains its slide preview and disables audio playback',async()=>{setup();runtime.nav.sel=2;await render(ReviewScreen,{},async r=>{assert.equal(r.root.findByType('mini-slide').props.title,'Third');assert.equal(button(r,'Play slide 3 audio').props.disabled,true);assert.equal(runtime.plays.length,0);});});
 
 test('current Overview opens fixed Feedback and Listen Back controls and selected slide review',async()=>{
- setup();await render(OverviewScreen,{},async r=>{
+ setup();runtime.model.lines=[{text:'A recorded sentence.'}];await render(OverviewScreen,{},async r=>{
   assert.match(text(r),/0:04 with transcript/);
   for(const [label,route]of [['Feedback','feedback'],['Listen back','listen']]){
    const action=byText(r,label);assert.ok(action);let parent=action.parent;while(parent){assert.notEqual(parent.type,'scroll');parent=parent.parent;}
@@ -117,7 +283,8 @@ test('current Overview opens fixed Feedback and Listen Back controls and selecte
   await act(async()=>button(r,'Slide 2, not graded').props.onPress());assert.deepEqual(runtime.routes.at(-1),['review',{deckId:'deck',sel:1,from:'full'}]);
   await act(async()=>button(r,'Slide 3, not graded').props.onPress());assert.deepEqual(runtime.routes.at(-1),['review',{deckId:'deck',sel:2,from:'full'}]);
  });
- runtime.model.pending=true;runtime.nav={...runtime.nav,from:'full',sel:1};await render(ListenBackKaraokeScreen,{},async r=>{assert.match(text(r),/Transcript is still processing/);await act(async()=>runtime.back());assert.deepEqual(runtime.routes.at(-1),['full',{deckId:'deck',sel:1}]);});
+ runtime.model.lines=[];runtime.model.pending=true;
+ runtime.nav={...runtime.nav,from:'full',sel:1};await render(ListenBackKaraokeScreen,{},async r=>{assert.match(text(r),/Transcript is still processing/);await act(async()=>runtime.back());assert.deepEqual(runtime.routes.at(-1),['full',{deckId:'deck',sel:1}]);});
 });
 
 // OpenAI Codex, 2026-11-21: scored Review tiles expose both the slide number and score in seven-column rows.
@@ -133,18 +300,85 @@ test('Overall Review keeps slide numbers visible above scores across a nineteen-
   assert.deepEqual(tiles[18].findAllByType('text').map(n=>n.props.children),[19,98]);
   assert.deepEqual(tiles[0].findAllByType('text').map(n=>n.props.children),[1]);
   assert.equal(r.root.findAllByType('view').filter(n=>n.props.style?.height===46&&n.props.style?.flexDirection==='row').length,3);
-  assert.equal(r.root.findByType('scroll').props.scrollEnabled,false);
+  const grid=()=>r.root.findByProps({testID:'overall-review-slides'});
+  assert.equal(grid().props.scrollEnabled,false);
+  await act(async()=>grid().props.onLayout({nativeEvent:{layout:{height:100}}}));
+  assert.equal(grid().props.scrollEnabled,true,'the same slides scroll when longer text leaves less space');
+  await act(async()=>grid().props.onLayout({nativeEvent:{layout:{height:208}}}));
+  assert.equal(grid().props.scrollEnabled,false);
  });
 });
 
 test('long Overall Review grids scroll within the space above Feedback',async()=>{
- setup();runtime.model.n=30;runtime.model.deck.slides=Array.from({length:30},(_,i)=>({title:`Slide ${i+1}`}));
- runtime.model.times=Array(30).fill(1);
+ setup();runtime.model.n=41;runtime.model.deck.slides=Array.from({length:41},(_,i)=>({title:`Slide ${i+1}`}));
+ runtime.model.times=Array(41).fill(1);
  await render(OverviewScreen,{},async r=>{
-  const grid=r.root.findByType('scroll');
-  assert.equal(grid.props.scrollEnabled,true);
-  assert.equal(grid.props.style.height,208);
-  assert.equal(r.root.findAllByType('pressable').filter(n=>n.props.accessibilityLabel?.startsWith('Slide ')).length,30);
+  const grid=()=>r.root.findByProps({testID:'overall-review-slides'});
+  const canNavigate=dy=>r.root.findByType('pan').props.onMoveShouldCapture(
+   {nativeEvent:{pageX:180,pageY:400+dy}},{dx:0,dy});
+  assert.equal(grid().props.scrollEnabled,true);
+  assert.equal(grid().props.style.maxHeight,208);
+  assert.equal(r.root.findAllByType('pressable').filter(n=>n.props.accessibilityLabel?.startsWith('Slide ')).length,41);
+  await act(async()=>grid().props.onLayout({nativeEvent:{layout:{y:260,height:208}}}));
+  assert.equal(canNavigate(24),true);
+  assert.equal(canNavigate(-24),false);
+  grid().props.onScroll({nativeEvent:{contentOffset:{y:50}}});
+  assert.equal(canNavigate(24),false);
+  assert.equal(canNavigate(-24),false);
+  grid().props.onScroll({nativeEvent:{contentOffset:{y:108}}});
+  assert.equal(canNavigate(24),false);
+  assert.equal(canNavigate(-24),true);
+ });
+});
+
+test('Overall Review lets long timing and update text wrap without losing the update action',async()=>{
+ setup();runtime.model.total=1800;runtime.model.targetSum=1800;
+ let updates=0;
+ runtime.v3={items:[],aggregate:{improvements:0},overall:{score:null,level:null,status:'Not graded',state:null},outdated:true,update:async()=>{updates++;}};
+ try{await render(OverviewScreen,{},async r=>{
+  for(const label of ['30:00 / 30:00','recorded / planned','words per minute','From before your latest changes · Tap to update']){
+   const node=r.root.findAllByType('text').find(n=>n.children.join('')===label);
+   assert.ok(node,label);
+   assert.equal(node.props.numberOfLines,undefined,label);
+  }
+  const update=button(r,'Update AI feedback for the latest changes');
+  await act(async()=>update.props.onPress());
+  assert.equal(updates,1);
+ });}finally{runtime.v3=null;}
+});
+
+test('Overall Review preserves scrolling in the summary and hands off outward swipes at its edges',async()=>{
+ setup();
+ const title='청중에게 보여 줄 프레젠테이션 제목입니다. '.repeat(16);
+ const status='This assessment is waiting for the selected slides to finish processing. '.repeat(12);
+ runtime.model.deck.title=title;
+ runtime.scores={overall:{score:null,level:null,status},items:[]};
+ await render(OverviewScreen,{},async r=>{
+  const summary=()=>r.root.findByProps({testID:'overall-review-summary'});
+  for(const label of [title,status]){
+   const node=summary().findAllByType('text').find(n=>n.children.join('')===label);
+   assert.ok(node);
+   assert.equal(node.props.numberOfLines,undefined);
+   assert.equal(node.props.maxFontSizeMultiplier,0);
+  }
+  const canNavigate=(pageX,pageY,dy)=>r.root.findByType('pan').props.onMoveShould({nativeEvent:{pageX,pageY}},{dx:0,dy});
+  assert.equal(summary().props.scrollEnabled,false);
+  assert.equal(canNavigate(180,120,24),true);
+  await act(async()=>{
+   summary().props.onLayout({nativeEvent:{layout:{height:270}}});
+   summary().props.onContentSizeChange(342,700);
+  });
+  assert.equal(summary().props.scrollEnabled,true);
+  assert.equal(canNavigate(180,120,24),true);
+  assert.equal(canNavigate(180,120,-24),false);
+  summary().props.onScroll({nativeEvent:{contentOffset:{y:200}}});
+  assert.equal(canNavigate(180,120,24),false);
+  assert.equal(canNavigate(180,120,-24),false);
+  summary().props.onScroll({nativeEvent:{contentOffset:{y:430}}});
+  assert.equal(canNavigate(180,120,24),false);
+  assert.equal(canNavigate(180,120,-24),true);
+  assert.equal(canNavigate(15,120,24),true);
+  assert.equal(canNavigate(180,620,-24),true);
  });
 });
 
@@ -183,11 +417,12 @@ test('Full Review and Listen Back fade halfway with a downward swipe before navi
  });
 });
 
-test('Full Review stays opaque underneath the Q&A entrance',async()=>{
- setup();
+test('Full Review content follows an upward swipe over an opaque surface until Q&A opens',async()=>{
+ setup();runtime.reducedMotion=false;
  await render(OverviewScreen,{active:true},async r=>{
   await act(async()=>{r.root.findByType('pan').props.onMove({}, {dx:0,dy:-90});r.update(React.createElement(OverviewScreen,{active:true}));});
   assert.equal(r.root.findByType('pan').props.style[1].opacity,1);
+  assert.ok(r.root.findAllByType('animated').some(n=>n.props.style?.[1]?.transform?.[0]?.translateY<0));
   await act(async()=>r.root.findByType('pan').props.onRelease({}, {dx:0,dy:-100}));
   assert.equal(runtime.routes.at(-1)[0],'qa');
   await act(async()=>r.update(React.createElement(OverviewScreen,{active:false})));
@@ -211,17 +446,26 @@ test('Listen Back ignores horizontal swipes and changes slides with arrows',asyn
 });
 
 // OpenAI Codex matched Feedback's horizontal motion to the existing Q&A slide-only transition.
-test('Feedback points slide without a horizontal fade while downward swipes return to review',async()=>{
+test('Feedback cards slide past a stationary page indicator while downward swipes return to review',async()=>{
  setup();runtime.reducedMotion=false;
  runtime.feedback.items[0].findings=[{category:'timing',suggestion:'Shorten the opening',speech_quote:'',start_ms:0,end_ms:0}];
  runtime.feedback.items[1].findings=[{category:'delivery',suggestion:'Pause before the result',speech_quote:'',start_ms:0,end_ms:0}];
  runtime.feedback.items[2].findings=[];
  await render(FeedbackScreen,{},async r=>{
+  const pager=()=>r.root.findAllByType('view').find(n=>n.props.style?.bottom===86&&n.props.style?.flexDirection==='row');
+  const indicator=pager();
+  assert.ok(indicator);
   await act(async()=>{r.root.findByType('pan').props.onMove({}, {dx:-90,dy:2});r.update(React.createElement(FeedbackScreen));});
   const moving=r.root.findAllByType('animated').find(n=>n.props.style?.[1]?.transform?.[0]?.translateX<0);
   assert.ok(moving);assert.equal(moving.props.style[1].opacity,1);
+  assert.ok(!moving.findAllByType('view').includes(indicator),'the page indicator stays outside the horizontal transform');
   await act(async()=>r.root.findByType('pan').props.onRelease({}, {dx:-90,dy:2}));
   assert.match(text(r),/2 of 2/);
+  assert.equal(pager(),indicator);
+  assert.equal(indicator.findAllByType('view').at(-1).props.style[1].width,18);
+  await act(async()=>r.root.findByType('pan').props.onRelease({}, {dx:90,dy:2}));
+  assert.match(text(r),/1 of 2/);
+  assert.equal(pager(),indicator);
   await act(async()=>r.root.findByType('pan').props.onMove({}, {dx:-65,dy:110}));
   await act(async()=>r.root.findByType('pan').props.onRelease({}, {dx:-65,dy:110}));
   assert.equal(runtime.routes.at(-1)[0],'full');
@@ -238,6 +482,61 @@ test('Wait opens Listen Back above Full Review so a downward fade has the right 
  });
 });
 
+test('Wait opens Overall Review when a full recording finishes with no speech',async t=>{
+ setup();
+ runtime.scores={items:[],overall:{score:null,level:null,status:'No speech detected in this run',state:null}};
+ t.mock.timers.enable({apis:['setTimeout']});
+ await render(WaitScreen,{},async r=>{
+  assert.match(text(r),/No speech detected in this run/);
+  await act(async()=>t.mock.timers.tick(249));
+  assert.equal(runtime.routes.length,0);
+  await act(async()=>t.mock.timers.tick(1));
+  assert.deepEqual(runtime.routes.at(-1),['full',{deckId:'deck',sel:0,from:'wait',nav:null}]);
+ });
+ await render(OverviewScreen,{},async r=>{
+  assert.match(text(r),/No speech detected in this run/);
+  assert.doesNotMatch(text(r),/with transcript/);
+  await act(async()=>byText(r,'Listen back').props.onPress());
+  assert.equal(runtime.routes.at(-1)[0],'listen');
+ });
+});
+
+test('Wait finishes an accepted Home swipe ahead of the ready timer',async t=>{
+ setup();
+ runtime.scores={items:[],overall:{score:null,level:null,status:'No speech detected in this run',state:null}};
+ runtime.timingCallbacks=[];
+ t.mock.timers.enable({apis:['setTimeout']});
+ try {await render(WaitScreen,{},async r=>{
+  await act(async()=>r.root.findByType('pan').props.onRelease({}, {dx:0,dy:100}));
+  await act(async()=>t.mock.timers.tick(250));
+  assert.deepEqual(runtime.routes,[]);
+  await act(async()=>runtime.timingCallbacks.shift()(true));
+  assert.deepEqual(runtime.routes,[['home']]);
+ });} finally {delete runtime.timingCallbacks;}
+});
+
+for (const condition of ['demo code required','public coaching off']) test(`Wait shows the saved recording without polling with ${condition}`,async t=>{
+ setup();
+ if(condition==='demo code required')runtime.serverAccess={state:'locked'};
+ else runtime.onlineAllowed=false;
+ t.mock.timers.enable({apis:['setTimeout']});
+ const timeouts=t.mock.method(globalThis,'setTimeout');
+ try{await render(WaitScreen,{},async r=>{
+  assert.match(text(r),/Recording saved/);
+  assert.match(text(r),/Online feedback unavailable/);
+  assert.doesNotMatch(text(r),/in progress|while you wait|Full review against the rubric/);
+  assert.equal(runtime.scoreActive,false);
+  assert.equal(runtime.feedbackActive,false);
+  assert.equal(timeouts.mock.calls.some(call=>call.arguments[1]===180_000),false);
+  await act(async()=>t.mock.timers.tick(181_000));
+  assert.deepEqual(runtime.routes,[]);
+  await act(async()=>byText(r,'Listen back').props.onPress());
+  assert.equal(runtime.routes.at(-1)[0],'listen');
+  await act(async()=>byText(r,'Go Home').props.onPress());
+  assert.deepEqual(runtime.routes.at(-1),['home']);
+ });}finally{delete runtime.serverAccess;delete runtime.onlineAllowed;}
+});
+
 test('Legacy Listen Back entered from rehearsal returns to the selected rehearsal slide',async()=>{
  setup();runtime.nav={...runtime.nav,from:'rehearse',slide:0,sel:1};await render(LegacyListenBackScreen,{},async r=>{
   await act(async()=>button(r,'Back to slides').props.onPress());assert.deepEqual(runtime.routes.at(-1),['rehearse',{nav:null,deckId:'deck',slide:1}]);
@@ -245,19 +544,98 @@ test('Legacy Listen Back entered from rehearsal returns to the selected rehearsa
 });
 
 
-test('comparison keeps the selected take and returns to rehearsal; Back preserves the pending choice',async()=>{
+test('comparison keeps the selected take and returns to rehearsal',async()=>{
  const {CompareScreen}=await import('../src/screens/CompareScreen.tsx');
- for(const choice of ['old','new','back']){
+ for(const choice of ['old','new']){
   setup();runtime.choices=[];runtime.nav.sel=1;runtime.model.state.takes=2;
   const prev=runtime.model.state.run,next={...prev,id:'new',takeNo:2};runtime.model.state.compare={slides:[1],whole:false,prev,next};
   await render(CompareScreen,{},async r=>{
-   if(choice==='back')await act(async()=>runtime.back());else{
-    if(choice==='new')await act(async()=>r.root.findAllByType('pressable').find(n=>n.findAllByType('text').some(t=>t.children.join('')==='New take')).props.onPress());
-    await act(async()=>r.root.findByType('record-button').props.onPress());
-   }
-   assert.deepEqual(runtime.choices,choice==='back'?[]:[choice==='new'?'new':'old']);assert.equal(runtime.routes.at(-1)[0],'rehearse');assert.equal(runtime.routes.at(-1)[1][choice==='back'?'slide':'sel'],1);if(choice==='back')assert.ok(runtime.model.state.compare);
+   if(choice==='new')await act(async()=>byText(r,'New take').props.onPress());
+   const keep=r.root.findByType('record-button');
+   assert.equal(keep.props.label,choice==='new'?'Keep new take':'Keep old take');
+   assert.ok(r.root.findAllByType('text').some(node=>node.props.children===keep.props.label));
+   await act(async()=>keep.props.onPress());
+   assert.deepEqual(runtime.choices,[choice]);
+   assert.equal(runtime.routes.at(-1)[0],'rehearse');
+   assert.equal(runtime.routes.at(-1)[1].sel,1);
+   assert.equal(runtime.model.state.compare,null);
   });
  }
+});
+
+test('comparison swipes change the active take while action buttons stay outside the animated details',async()=>{
+ const {CompareScreen}=await import('../src/screens/CompareScreen.tsx');
+ setup();runtime.reducedMotion=false;
+ const prev=runtime.model.state.run;
+ runtime.model.state.compare={slides:[1],whole:false,prev,next:{...prev,id:'new',takeNo:2}};
+ await render(CompareScreen,{},async r=>{
+  const details=r.root.findAllByType('animated').find(node=>node.props.pointerEvents==='none');
+  assert.ok(details);
+  assert.ok(details.findAllByType('text').some(node=>node.props.children==='Fillers'));
+  assert.equal(details.findAllByType('pressable').length,0);
+  assert.equal(details.findAllByType('record-button').length,0);
+  for(const [dx,vx,label,playLabel] of [[-90,0,'Keep new take','Play new take'],[-90,0.8,'Keep new take','Play new take'],[90,0,'Keep old take','Play old take']]){
+   await act(async()=>r.root.findByType('pan').props.onRelease({}, {dx,dy:0,vx,vy:0}));
+   assert.equal(r.root.findByType('record-button').props.label,label);
+   assert.ok(button(r,playLabel));
+  }
+ });
+});
+
+test('comparison describes the selected duration against the other take at displayed precision',async()=>{
+ const {CompareScreen}=await import('../src/screens/CompareScreen.tsx');
+ const {koreanText}=await import('../src/design/koreanText.ts');
+ for(const [newMs,oldLabel,newLabel] of [
+  [1200,'0:01 longer than the new take','0:01 shorter than the old take'],
+  [2400,'Same time','Same time'],
+  [2500,'0:01 shorter than the new take','0:01 longer than the old take'],
+ ]){
+  setup();
+  const prev=runtime.model.state.run;
+  const next={...prev,parts:[prev.parts[0],{attemptId:'retake',segments:[{startMs:0,endMs:newMs}]},null]};
+  runtime.model.state.compare={slides:[1],whole:false,prev,next};
+  await render(CompareScreen,{},async r=>{
+   assert.ok(r.root.findAllByType('text').some(node=>node.props.children===oldLabel));
+   await act(async()=>byText(r,'New take').props.onPress());
+   assert.ok(r.root.findAllByType('text').some(node=>node.props.children===newLabel));
+  });
+ }
+ assert.equal(koreanText('0:01 longer than the new take'),'새 녹음보다 0:01 길어요');
+ assert.equal(koreanText('0:01 shorter than the old take'),'이전 녹음보다 0:01 짧아요');
+});
+
+test('comparison prompts before leaving and discards only the new take on confirmation',async()=>{
+ const {CompareScreen}=await import('../src/screens/CompareScreen.tsx');
+ setup();runtime.choices=[];runtime.nav.sel=1;
+ const prev=runtime.model.state.run,next={...prev,id:'new',takeNo:2};
+ const compare={slides:[1],whole:false,prev,next};
+ runtime.model.state.compare=compare;
+ await render(CompareScreen,{},async r=>{
+  await act(async()=>byText(r,'New take').props.onPress());
+  const swipeDown=()=>r.root.findByType('pan').props.onRelease({}, {dx:0,dy:90,vx:0,vy:0.8});
+  await act(async()=>swipeDown());
+  assert.equal(r.root.findByType('dialog').props.title,'Discard new take?');
+  assert.equal(r.root.findByType('pan').props.disabled,true);
+  assert.deepEqual(runtime.routes,[]);
+  assert.equal(runtime.model.state.compare,compare);
+  await act(async()=>r.root.findByType('dialog').props.onCancel());
+  assert.equal(r.root.findAllByType('dialog').length,0);
+  assert.equal(r.root.findByType('record-button').props.label,'Keep new take');
+  await act(async()=>runtime.back());
+  assert.equal(r.root.findByType('dialog').props.title,'Discard new take?');
+  await act(async()=>runtime.back());
+  assert.equal(r.root.findAllByType('dialog').length,0);
+  assert.deepEqual(runtime.choices,[]);
+  assert.deepEqual(runtime.routes,[]);
+  assert.equal(runtime.model.state.compare,compare);
+  await act(async()=>swipeDown());
+  await act(async()=>r.root.findByType('dialog').props.onConfirm());
+  assert.deepEqual(runtime.choices,['old']);
+  assert.equal(runtime.model.state.run,prev);
+  assert.equal(runtime.model.state.compare,null);
+  assert.equal(runtime.routes.at(-1)[0],'rehearse');
+  assert.equal(runtime.routes.at(-1)[1].sel,1);
+ });
 });
 
 test('comparison keep action stays centred between Play and footer hints across window sizes',async()=>{
@@ -268,7 +646,7 @@ test('comparison keep action stays centred between Play and footer hints across 
   await render(CompareScreen,{},async r=>{
    const button=r.root.findByType('record-button');
    const top=button.props.style.at(-1).top;
-   const label=r.root.findAllByType('text').find(node=>node.props.children==='Keep this take');
+   const label=r.root.findAllByType('text').find(node=>node.props.children==='Keep old take');
    const hintTop=(compact?760:844)-24-22;
    assert.equal(top-526,hintTop-(top+116));
    assert.equal(label.props.style.at(-1).top,top+94);
@@ -336,11 +714,24 @@ test('Home restores the verified score color and current critical/duration/pace 
  });
 }});
 
-test('Home does not invent an overall score for combined recordings',async()=>{setup();
+test('Home opens the selected run when an older server cannot score a combined rehearsal',async()=>{setup();
  runtime.scores={items:[{score:67,level:'competent'},{score:null,level:null}],overall:{score:null,level:null,status:'Combined recordings',state:null,result:null,target:null}};
- await render(HomeFeedbackStats,{deckId:'deck',active:true,home:{p:{value:0},vy:{value:0}},onOpenReview:()=>{}},async r=>{
-  assert.match(text(r),/—/);assert.match(text(r),/Record a full run for an overall score/);assert.equal(r.root.findAllByType('pressable').length,0);
+ let opened=0;
+ await render(HomeFeedbackStats,{deckId:'deck',active:true,home:{p:{value:0},vy:{value:0}},onOpenReview:()=>opened++},async r=>{
+  assert.match(text(r),/—/);assert.match(text(r),/Overall score unavailable/);assert.doesNotMatch(text(r),/Record a full run/);
+  await act(async()=>button(r,'Open full review').props.onPress());assert.equal(opened,1);
  });
+});
+
+test('Full Review shows the selected score progress while older source feedback is still missing',async()=>{
+ setup();
+ runtime.v3={items:[],aggregate:{improvements:0},overall:{score:null,level:null,status:'Scoring selected takes…',state:null},missing:true};
+ try {
+  await render(OverviewScreen,{},async r=>{
+   assert.match(text(r),/Scoring selected takes/);
+   assert.equal(button(r,'Get AI feedback for this recording'),undefined);
+  });
+ } finally {runtime.v3=null;}
 });
 
 test('Home stats fade continuously at a halfway carousel position',async()=>{
@@ -498,6 +889,31 @@ test('Feedback shows two regions and opens the whole point when the server flags
    await act(async()=>byText(r,'Read all').props.onPress());
    assert.equal(r.root.findAllByType('scroll').length,1,'the whole point opens full screen');
    assert.ok(text(r).includes(fullLegacyTitle),'Read all preserves the complete original title');
+   const detailPan=()=>r.root.findAllByType('pan').find(n=>n.props.accessibilityViewIsModal);
+   const detailScroll=r.root.findByType('scroll');
+   await act(async()=>detailScroll.props.onScroll({nativeEvent:{contentOffset:{y:60}}}));
+   assert.equal(detailPan().props.onMoveShouldCapture({}, {dy:120,dx:0}),false,'the detail scrolls before dismissing');
+   await act(async()=>detailScroll.props.onScroll({nativeEvent:{contentOffset:{y:0}}}));
+   assert.equal(detailPan().props.onMoveShouldCapture({}, {dy:45,dx:0}),true);
+   await act(async()=>{
+    detailPan().props.onMove({}, {dy:45,dx:0});
+    r.update(React.createElement(FeedbackScreen));
+   });
+   assert.equal(detailPan().props.style.at(-1).opacity,.75);
+   assert.ok(detailPan().props.style.at(-1).transform[0].translateY>0);
+   await act(async()=>{
+    detailPan().props.onRelease({}, {dy:45,dx:0});
+    r.update(React.createElement(FeedbackScreen));
+   });
+   assert.equal(detailPan().props.style.at(-1).opacity,1,'a short pull restores the detail');
+   runtime.timingCallbacks=[];
+   try {
+    await act(async()=>detailPan().props.onRelease({}, {dy:120,dx:0}));
+    assert.ok(detailPan(),'the detail stays mounted during exit');
+    await act(async()=>runtime.timingCallbacks.shift()(true));
+    assert.equal(detailPan(),undefined);
+   } finally {delete runtime.timingCallbacks;}
+   await act(async()=>byText(r,'Read all').props.onPress());
    await act(async()=>runtime.back());
    assert.equal(r.root.findAllByType('scroll').length,0);
    assert.equal(runtime.routes.length,0,'Back closes the full text before leaving the page');

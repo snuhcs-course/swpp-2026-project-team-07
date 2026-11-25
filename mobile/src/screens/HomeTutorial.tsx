@@ -11,10 +11,9 @@ import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop, Text as SvgText } 
 import { Txt, useFrame } from '../design/frame';
 import { Glyph, PresentationIcon, UIIcon, type GlyphName } from '../design/icons';
 import { useAppLanguage, useUiText } from '../design/language';
-import { LanguageToggle } from '../design/LanguageToggle';
-import { ThemeToggle } from '../design/ThemeToggle';
 import { EASE_SCREEN, F } from '../design/tokens';
 import { useTheme } from '../design/theme';
+import { BACK_FADE_Y } from '../domain/gestures';
 
 /** Header topic, page title and the words under the card, in prototype order. */
 export const TUTORIAL_PAGES: readonly { topic: string; title: string; body: string }[] = [
@@ -432,8 +431,8 @@ function Dot({ on, p, still }: { on: boolean; p: P; still: boolean }) {
  * `cover` is how much the guide covers Home (0–1): it rises in over 460 ms and Home fades out under it; on close
  * it slides down and Home fades back in. `closing` lets Back run the same exit.
  */
-export function TutorialOverlay({ page, onPage, onClose, cover, closing, showAppearanceControls }: { page: number; onPage: (page: number) => void;
-  onClose: () => void; cover: SharedValue<number>; closing: boolean; showAppearanceControls: boolean }) {
+export function TutorialOverlay({ page, onPage, onClose, cover, closing }: { page: number; onPage: (page: number) => void;
+  onClose: () => void; cover: SharedValue<number>; closing: boolean }) {
   const { mode } = useTheme();
   const language = useAppLanguage();
   const ui = useUiText();
@@ -469,9 +468,10 @@ export function TutorialOverlay({ page, onPage, onClose, cover, closing, showApp
   };
 
   const stage = useAnimatedStyle(() => ({
-    opacity: cover.value * (leaving.value ? 1 : Math.max(0.15, 1 - dy.value / 260)),
-    transform: [{ translateY: (leaving.value ? 0 : (1 - cover.value) * 80) + dy.value * 0.55 }],
+    opacity: cover.value,
+    transform: [{ translateY: dy.value > 0 || leaving.value ? dy.value * 0.55 : (1 - cover.value) * 80 }],
   }));
+  const hints = useAnimatedStyle(() => ({ opacity: Math.max(0, 2 * cover.value - 1) }));
   const strip = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
   // Compact phones (760 tall): the 844 layout is drawn at 90%; the hints keep their size at the usual compact inset.
   const fit = frame.compact ? { top: (760 - 844) / 2, transform: [{ scale: 760 / 844 }] } : null;
@@ -481,16 +481,19 @@ export function TutorialOverlay({ page, onPage, onClose, cover, closing, showApp
   const pan = usePanGesture({
     enabled: !closing,
     minDistance: 8,
-    onActivate: () => { cancelAnimation(x); cancelAnimation(dy); },
+    onActivate: () => { cancelAnimation(x); cancelAnimation(dy); cancelAnimation(cover); },
     onUpdate: e => {
       const tx = e.translationX / gestureScale, ty = e.translationY / gestureScale;
       if (Math.abs(tx) > Math.abs(ty)) {
         const edge = (tx > 0 && page === 0) || (tx < 0 && page === N - 1);
         x.set(-page * W + (edge ? tx * 0.3 : tx));
         dy.set(0);
-      } else if (ty > 0) {
+        cover.set(1);
+      } else {
         x.set(-page * W);
-        dy.set(ty > 160 ? 160 + (ty - 160) * 0.5 : ty);
+        const travel = Math.max(0, ty > 160 ? 160 + (ty - 160) * 0.5 : ty);
+        dy.set(travel);
+        cover.set(1 - Math.min(1, travel / BACK_FADE_Y));
       }
     },
     onDeactivate: e => {
@@ -498,12 +501,15 @@ export function TutorialOverlay({ page, onPage, onClose, cover, closing, showApp
       if (!e.canceled && Math.abs(tx) > Math.abs(ty) && Math.abs(tx) > 60) {
         const to = Math.max(0, Math.min(N - 1, page + (tx < 0 ? 1 : -1)));
         x.set(withTiming(-to * W, { duration: still ? 0 : 380, easing: SNAP }));
+        dy.set(0);
+        cover.set(1);
         if (to !== page) runOnJS(onPage)(to);
       } else if (!e.canceled && ty > 110 && ty > Math.abs(tx)) {
         runOnJS(leave)();
       } else {
         x.set(withTiming(-page * W, { duration: still ? 0 : 380, easing: SNAP }));
         dy.set(withTiming(0, { duration: still ? 0 : 320, easing: EASE_SCREEN }));
+        cover.set(withTiming(1, { duration: still ? 0 : 320, easing: EASE_SCREEN }));
       }
     },
   });
@@ -521,19 +527,15 @@ export function TutorialOverlay({ page, onPage, onClose, cover, closing, showApp
         </Animated.View>
         <View pointerEvents="none" style={s.dots}>{TUTORIAL_PAGES.map((_, i) => <Dot key={i} on={i === page} p={p} still={still} />)}</View>
       </View>
-      {showAppearanceControls && <>
-        <LanguageToggle />
-        <ThemeToggle />
-      </>}
-      <View style={[s.hints, frame.compact && { bottom: 12 }]} pointerEvents="box-none">
+    </Animated.View>
+      <Animated.View testID="tutorial-hints" style={[s.hints, frame.compact && { bottom: 12 }, hints]} pointerEvents="box-none">
         {!last && <Pressable accessibilityRole="button" accessibilityLabel={ui('Next page')} onPress={() => go(page + 1)} hitSlop={13} style={s.hint}>
           <Glyph name="h-spin" size={18} color={p.tm} /><Txt style={[s.hintText, { color: p.tm }]}>Swipe for more</Txt>
         </Pressable>}
         <Pressable accessibilityRole="button" accessibilityLabel={ui('Close tutorial')} onPress={leave} hitSlop={13} style={s.hint}>
           <Nudge k={k} up={false}><Glyph name="h-dn" size={18} color={p.tm} /></Nudge><Txt style={[s.hintText, { color: p.tm }]}>Swipe down to close</Txt>
         </Pressable>
-      </View>
-    </Animated.View>
+      </Animated.View>
   </Animated.View></GestureDetector>;
 }
 

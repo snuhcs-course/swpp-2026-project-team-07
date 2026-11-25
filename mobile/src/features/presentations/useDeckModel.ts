@@ -10,7 +10,7 @@ import { stageOf, transcriptOf, type Stage } from '../rehearsal/analysis';
 import { readFeedback } from '../feedback/storage';
 import { normalizeApi } from '../transcription/analysisStorage';
 import { API_URL } from '../../services/api';
-import { deckById, getDeckState, useStore, type DeckState, type Presentation } from './store';
+import { getSnapshot, getDeckState, useStore, type DeckState, type Presentation } from './store';
 import { timedPresentation, selectedRunTarget } from './timing';
 import { getRequirementsVersion, subscribeRequirements } from './requirementsStore';
 import { readCorrections } from './correctionStore';
@@ -24,6 +24,16 @@ export type DeckModel = {
   stats: HeroStats | null; points: string[][]; ai: Suggestion[];
   targetSum: number;
 };
+
+const vocabularies = new WeakMap<Presentation['slides'], Vocabulary>();
+
+function vocabularyFor(slides: Presentation['slides']) {
+  const cached = vocabularies.get(slides);
+  if (cached) return cached;
+  const vocabulary = buildVocabulary(slides.map(slide => slide.text));
+  vocabularies.set(slides, vocabulary);
+  return vocabulary;
+}
 
 export function transcriptsFor(ids: readonly string[]) {
   const transcripts = new Map<string, Transcript>();
@@ -58,30 +68,61 @@ export function deckModel(deck: Presentation, state: DeckState, run: Run | null 
   const n = deck.pageCount;
   const ids = runAttemptIds(run);
   const { transcripts, stages } = transcriptsFor(ids);
-  const vocab = buildVocabulary(deck.slides.map(s => s.text));
-  const lines = correctionLines(buildLines(run, n, transcripts, state.edits, vocab), transcripts, vocab,
-    id => {
-      const saved = readCorrections(API_URL, id);
-      return saved?.server.base_transcript_id === readReview(API_URL, id)?.transcript_id ? saved : null;
-    }, id => readSTTSuggestions(API_URL, id), state.edits);
+  let lines: Line[] = [];
+  if (transcripts.size) {
+    const vocab = vocabularyFor(deck.slides);
+    const correctionCache = new Map<string, ReturnType<typeof readCorrections>>();
+    const suggestionCache = new Map<string, ReturnType<typeof readSTTSuggestions>>();
+    lines = correctionLines(buildLines(run, n, transcripts, state.edits, vocab), transcripts, vocab,
+      id => {
+        if (!correctionCache.has(id)) {
+          const saved = readCorrections(API_URL, id);
+          const current = saved && saved.server.base_transcript_id === readReview(API_URL, id)?.transcript_id;
+          correctionCache.set(id, current ? saved : null);
+        }
+        return correctionCache.get(id) ?? null;
+      }, id => {
+        if (!suggestionCache.has(id)) suggestionCache.set(id, readSTTSuggestions(API_URL, id));
+        return suggestionCache.get(id) ?? null;
+      }, state.edits);
+  }
   const times = runTimes(run, n);
   const transcribed = ids.length > 0 && ids.every(id => transcripts.has(id) || stages.get(id) === 'no_speech');
   const points = deck.slides.map(s => s.points);
   return {
-    deck: timed, targetSum: selectedRunTarget(run, timed.timing), state, n, times, total: times.reduce((a, b) => a + b, 0), lines, vocab, transcripts, stages, transcribed,
+    deck: timed, targetSum: selectedRunTarget(run, timed.timing), state, n, times, total: times.reduce((a, b) => a + b, 0), lines,
+    get vocab() { return vocabularyFor(deck.slides); },
+    transcripts, stages, transcribed,
     pending: ids.some(id => !transcripts.has(id) && stages.get(id) !== 'no_speech'),
     stats: heroStats(run, n, lines, points, transcribed), points, ai: suggestionsFor(run),
   };
 }
 
+// The same presentation is mounted beneath review and appears in the Home carousel.
+// Keep one derivation per recent deck and discard it when any source can change.
+type ModelCache = Map<string, { requirementsVersion: number; model: DeckModel }>;
+const modelsBySnapshot = new WeakMap<ReturnType<typeof getSnapshot>, ModelCache>();
+
 export function useDeckModel(deckId: string | null): DeckModel | null {
-  const version = useStore(s => s.version);
+  const snapshot = useStore(s => s);
   const requirementsVersion = useSyncExternalStore(subscribeRequirements, getRequirementsVersion);
   return useMemo(() => {
-    const deck = deckById(deckId);
+    if (!deckId) return null;
+    let models = modelsBySnapshot.get(snapshot);
+    if (!models) {
+      models = new Map();
+      modelsBySnapshot.set(snapshot, models);
+    }
+    const existing = models.get(deckId);
+    if (existing?.requirementsVersion === requirementsVersion) return existing.model;
+    const deck = snapshot.decks.find(item => item.id === deckId);
     if (!deck) return null;
-    return deckModel(deck, getDeckState(deck.id));
-    // version: re-derive whenever the store or an analysis result changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deckId, version, requirementsVersion]);
+    const model = deckModel(deck, getDeckState(deck.id));
+    models.set(deckId, { requirementsVersion, model });
+    if (models.size > 5) {
+      const oldest = models.keys().next().value;
+      if (oldest !== undefined) models.delete(oldest);
+    }
+    return model;
+  }, [deckId, snapshot, requirementsVersion]);
 }

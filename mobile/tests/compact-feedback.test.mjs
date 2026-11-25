@@ -48,15 +48,12 @@ async function render(run) {
 const text = renderer => JSON.stringify(renderer.toJSON());
 // Claude, 2026-11-21: the chips became three facts beside the slide thumbnail; the pop-up became the last page.
 const rowTexts = renderer => renderer.root.findAllByType('text').map(node => node.props.children).filter(value => / planned$| fillers?$|points said$|^No slide points$/.test(String(value)));
-// OpenAI Codex, 2026-11-21: native layout signals that the incoming review is fitted before its entrance starts.
-const settlePage = async renderer => act(async()=>renderer.root.findByProps({testID:'reviewFitContent'}).props.onLayout({nativeEvent:{layout:{height:400}}}));
-const showIssue = async (renderer,index) => {await act(async()=>button(renderer,`Show issue ${index}`).props.onPress());await settlePage(renderer);};
+const showIssue = async (renderer,index) => act(async()=>button(renderer,`Show issue ${index}`).props.onPress());
 const button = (renderer,label) => renderer.root.findAllByType('pressable').find(node => node.props.accessibilityLabel === label);
 const openFinding = async renderer => {
   const last = button(renderer, 'Show grades and actions');
   assert.ok(last, 'the last page (grades and actions) is reachable from the page dots');
   await act(async () => last.props.onPress());
-  await settlePage(renderer);
 };
 
 test('measured metrics and verified advice reach the slide facts and the review pages', async () => {
@@ -85,17 +82,13 @@ test('verified issues preserve priority across content, audience and repetition'
   await render(renderer => assert.match(text(renderer),/Verified audience observation/));
 });
 
-test('the outgoing review stays hidden until the next page has finished fitting', async () => {
+test('switching review pages replaces the previous feedback without a layout event', async () => {
   setup({ findings: [finding('content', 1, 'First complete review'), finding('delivery', 2, 'Second complete review')] });
   await render(async renderer => {
-    await settlePage(renderer);
     assert.match(text(renderer), /First complete review/);
-    await act(async () => button(renderer, 'Show issue 2').props.onPress());
+    await showIssue(renderer, 2);
     assert.doesNotMatch(text(renderer), /First complete review/);
     assert.match(text(renderer), /Second complete review/);
-    assert.equal(renderer.root.findByProps({ testID: 'reviewFitContent' }).props.style.opacity, 0);
-    await settlePage(renderer);
-    assert.equal(renderer.root.findByProps({ testID: 'reviewFitContent' }).props.style.opacity, 1);
   });
 });
 
@@ -150,15 +143,17 @@ test('long feedback is shown complete on its own page, never cut, with no pop-up
   await render(async renderer => {
     const detail = renderer.root.findAllByType('text').find(node => node.props.children === observation);
     assert.ok(detail); assert.equal(detail.props.numberOfLines, undefined);
+    const viewport = renderer.root.findAllByType('animated').find(node => node.props.onLayout);
+    const scroll = () => renderer.root.findByType('scroll');
+    await act(async () => viewport.props.onLayout({ nativeEvent: { layout: { y: 120, height: 400 } } }));
+    await act(async () => scroll().props.onContentSizeChange(320, 1200));
+    assert.equal(scroll().props.scrollEnabled, true);
+    assert.equal(detail.props.style[1].fontSize, 22);
     await showIssue(renderer, 2);
     assert.ok(renderer.root.findAllByType('text').some(node => node.props.children === otherObservation));
     assert.equal(renderer.root.findAllByType('view').filter(node => node.props.accessibilityViewIsModal).length, 0);
-    const fit = () => renderer.root.findByProps({ testID: 'reviewFitContent' });
-    await act(async () => fit().props.onLayout({ nativeEvent: { layout: { height: 2000 } } }));
-    await act(async () => fit().props.onLayout({ nativeEvent: { layout: { height: 1500 } } }));
-    assert.equal(renderer.root.findAllByType('scroll').length, 0, 'the review page never captures vertical drags');
-    assert.ok(renderer.root.findAllByType('text').find(node => node.props.children === otherObservation).props.style[1].fontSize < 22,
-      'the long page shrinks to show its complete text');
+    await act(async () => scroll().props.onContentSizeChange(320, 200));
+    assert.equal(scroll().props.scrollEnabled, false, 'short feedback leaves vertical swipes available');
     await act(async () => assert.equal(runtime.back(), true));
     assert.equal(runtime.routes[0][0], 'rehearse');
   });

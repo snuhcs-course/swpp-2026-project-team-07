@@ -27,12 +27,31 @@ export const BACK_T = 110;
 // OpenAI Codex, 2026-11-19: a shorter fade travel makes slow downward swipes visibly dissolve the page.
 export const BACK_FADE_Y = 180;
 
+// OpenAI Codex, 2026-11-25: keep the Review and Audience Q&A page transitions in step.
+export const REVIEW_PAGE_SWIPE = { distance: 60, enterMs: 220, exitMs: 180, resetMs: 160 };
+
 // OpenAI Codex, 2026-11-19: keep a Home carousel fling readable without making a single turn sluggish.
 export function homeCarouselRelease(position: number, velocity: number): { target: number; duration: number } {
   'worklet';
   const target = Math.round(position + Math.max(-4, Math.min(4, velocity * 0.25)));
   const distance = Math.abs(target - position);
   return { target, duration: Math.min(860, Math.max(300, 260 + distance * 145)) };
+}
+
+export function carouselGlowWeight(hues: readonly string[], hue: string, position: number, uploading: boolean): number {
+  'worklet';
+  const count = hues.length;
+  if (!count) return 0;
+  const floor = Math.floor(position);
+  const fraction = position - floor;
+  const left = ((floor % count) + count) % count;
+  const right = (left + 1) % count;
+  if (uploading) return Number(fraction !== 0.5 && hues[fraction < 0.5 ? left : right] === hue);
+  // Only cards within one slot of the centre contribute to the glow.
+  const leftWeight = (1 - fraction) ** 2 * (1 + 2 * fraction);
+  const rightWeight = fraction ** 2 * (3 - 2 * fraction);
+  if (left === right) return hues[left] === hue ? Math.max(leftWeight, rightWeight) : 0;
+  return Math.min(1, (hues[left] === hue ? leftWeight : 0) + (hues[right] === hue ? rightWeight : 0));
 }
 
 export type FlowSlot = {

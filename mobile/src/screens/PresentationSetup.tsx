@@ -36,6 +36,7 @@ const DIAL_PAD = 8;
 const DIAL_CANVAS = DIAL_SIZE + 2 * DIAL_PAD;
 // Match the middle stop of the green confirm button on this shared setup screen.
 const DIAL_GREEN = '#22C98F';
+const SYNC_PENDING = 'Saved on phone · sync pending';
 
 /** How far round the dial (0–1, clockwise from 12 o'clock) the knob sits for a whole-minute value.
  * 1 minute is at the top and each minute is 1/30 of a turn. The filled arc uses the same value,
@@ -44,9 +45,9 @@ export function dialTurn(minutes: number) {
   return (Math.max(1, Math.min(30, minutes)) - 1) / 30;
 }
 
-export function PresentationSetup({ deck, error, initialValues = { requiredDurationSeconds: 600, audience: '' }, onConfirm, onBackPan, onChange, recovery, disabled = false, fixedHint = false, onHintVisibilityChange }: {
-  deck: Presentation; error: string; initialValues?: RequirementValues; onConfirm: (seconds: number | null, audience: string) => void; onBackPan: PanHandlers;
-  onChange?: () => void; recovery?: ReactNode; disabled?: boolean; fixedHint?: boolean; onHintVisibilityChange?: (visible: boolean) => void;
+export function PresentationSetup({ deck, error, status, initialValues = { requiredDurationSeconds: 600, audience: '' }, onConfirm, onBackPan, onChange, recovery, disabled = false, fixedHint = false, onHintVisibilityChange, onReviewSavedRecording }: {
+  deck: Presentation; error: string; status?: string; initialValues?: RequirementValues; onConfirm: (seconds: number | null, audience: string) => void; onBackPan: PanHandlers;
+  onChange?: () => void; recovery?: ReactNode; disabled?: boolean; fixedHint?: boolean; onHintVisibilityChange?: (visible: boolean) => void; onReviewSavedRecording?: () => void;
 }) {
   const ui = useUiText();
   const frame = useFrame();
@@ -102,6 +103,10 @@ export function PresentationSetup({ deck, error, initialValues = { requiredDurat
         <Txt verbatim numberOfLines={1} style={styles.deckTitle}>{deck.title}</Txt>
         <Txt style={styles.slideCount}>{deck.pageCount} slides</Txt>
       </View>
+      {onReviewSavedRecording && <Pressable accessibilityRole="button" accessibilityLabel={ui('Review saved recording')}
+        style={styles.reviewRecording} onPress={onReviewSavedRecording}>
+        <Txt style={[styles.feedbackText, { color: c.secondary }]}>Review saved recording</Txt>
+      </Pressable>}
       <View style={styles.timeArea} pointerEvents="none">
         <Txt style={styles.time}>{required ? dialValue : '10'}</Txt>
         <Txt style={styles.minutes}>minutes</Txt>
@@ -146,8 +151,9 @@ export function PresentationSetup({ deck, error, initialValues = { requiredDurat
         })}
         </View>
       </View>
-      {!!(validation || error || recovery) && <View style={styles.feedback}>
-        {!!(validation || error) && <Txt accessibilityRole="alert" style={styles.error}>{validation || error}</Txt>}
+      {!!(validation || error || status || recovery) && <View style={styles.feedback}>
+        {validation || error ? <Txt accessibilityRole="alert" style={[styles.feedbackText, { color: c.bad }]}>{validation || error}</Txt>
+          : status ? <Txt accessibilityLiveRegion="polite" style={[styles.feedbackText, { color: c.secondary }]}>{status}</Txt> : null}
         {recovery && <View style={styles.recovery}>{recovery}</View>}
       </View>}
       <View style={[styles.saveSlot, frame.compact && { top: 610 }]}>
@@ -193,6 +199,7 @@ const styles = createThemedStyles({
   counter: { alignSelf: 'flex-end', fontSize: 13.5, color: C.secondary },
   recovery: { marginHorizontal: 22, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', columnGap: 18, rowGap: 12 },
   heading: { position: 'absolute', left: 40, right: 40, top: 46, alignItems: 'center' },
+  reviewRecording: { position: 'absolute', alignSelf: 'center', top: 98, minHeight: 44, justifyContent: 'center' },
   deckTitle: { fontFamily: F.display, fontSize: 18, lineHeight: 22, color: C.text, textAlign: 'center' },
   slideCount: { fontFamily: F.medium, fontSize: 14.5, color: C.secondary, marginTop: 3 },
   // OpenAI Codex, 2026-11-23: center the readout in the same bounds as the dial.
@@ -205,14 +212,14 @@ const styles = createThemedStyles({
   chips: { flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap', gap: 8, marginTop: 10 },
   chip: { minHeight: 34, borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
   chipText: { fontFamily: F.semibold, fontSize: 14.5, lineHeight: 20 },
-  error: { marginHorizontal: 25, textAlign: 'center', fontFamily: F.medium, fontSize: 13.5, lineHeight: 18, color: C.bad },
+  feedbackText: { marginHorizontal: 25, textAlign: 'center', fontFamily: F.medium, fontSize: 13.5, lineHeight: 18 },
   confirm: { top: 0 },
 });
 
 /** The same editor is used after import and over the idle rehearsal page. */
-export function PresentationRequirementsEditor({ deck, initialImport = false, onSaved, onBackPan, active = true, fixedHint = false, onHintVisibilityChange }: {
+export function PresentationRequirementsEditor({ deck, initialImport = false, onSaved, onBackPan, active = true, fixedHint = false, onHintVisibilityChange, onReviewSavedRecording }: {
   deck: Presentation; initialImport?: boolean; onSaved: () => void; onBackPan: PanHandlers; active?: boolean;
-  fixedHint?: boolean; onHintVisibilityChange?: (visible: boolean) => void;
+  fixedHint?: boolean; onHintVisibilityChange?: (visible: boolean) => void; onReviewSavedRecording?: () => void;
 }) {
   const ui = useUiText();
   const requirementsVersion = useSyncExternalStore(subscribeRequirements, getRequirementsVersion);
@@ -245,10 +252,12 @@ export function PresentationRequirementsEditor({ deck, initialImport = false, on
   const initialValues = pending?.desired ?? (initialImport && base.revision === 0 &&
     base.requiredDurationSeconds === null && !base.audience.trim()
     ? { requiredDurationSeconds: 600, audience: '' } : base);
+  const syncError = pending?.conflict ? pending.error : pending?.error && pending.error !== SYNC_PENDING
+    ? 'Saved on this phone. Tap Save to retry syncing.' : '';
   return <PresentationSetup key={`${base.contextId}:${base.revision}`} deck={deck} initialValues={initialValues}
-    error={error || (pending?.conflict ? pending.error : pending ? 'Saved on phone · sync pending' : '')}
+    error={error || syncError} status={pending?.pending ? SYNC_PENDING : undefined}
     onChange={() => { touched.current = true; }} onConfirm={save} onBackPan={onBackPan} disabled={!!pending?.conflict || !active}
-    fixedHint={fixedHint} onHintVisibilityChange={onHintVisibilityChange}
+    fixedHint={fixedHint} onHintVisibilityChange={onHintVisibilityChange} onReviewSavedRecording={active ? onReviewSavedRecording : undefined}
     recovery={pending?.conflict ? <>
       <Pressable accessibilityRole="button" accessibilityLabel={ui("Use server presentation choices")} onPress={() => { acceptServerRequirements(deck.id, API_URL); onSaved(); }}><Txt style={[styles.recoveryText, { color: c.text }]}>Use server</Txt></Pressable>
       <Pressable accessibilityRole="button" accessibilityLabel={ui("Keep my presentation choices")} onPress={() => { keepLocalRequirements(deck.id, API_URL); sync(); onSaved(); }}><Txt style={[styles.recoveryText, { color: c.text }]}>Keep mine</Txt></Pressable>

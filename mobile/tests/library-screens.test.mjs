@@ -11,18 +11,22 @@ import { select } from './helpers/pdf-picker-stub.mjs';
 import { demoNative } from './helpers/bundled-demo-native.mjs';
 import { network, response } from './helpers/upload-native.mjs';
 import { pressBack } from './helpers/library-screen-native.mjs';
+import { runtime } from './helpers/ai-overview-screen-native.mjs';
 registerHooks({ resolve, load });
 
 const { HomeScreen } = await import('../src/screens/HomeScreen.tsx');
 const { UploadScreen } = await import('../src/screens/UploadScreen.tsx');
 const { HomeContext, ShellContext, TUTORIAL_SEEN } = await import('../src/screens/shared.ts');
-const { deckById, savePresentation, saveDeckState, getDeckState, forgetPresentation, visibleDecks } =
+const { bump, deckById, savePresentation, saveDeckState, getDeckState, forgetPresentation, visibleDecks } =
   await import('../src/features/presentations/store.ts');
+const { useDeckModel } = await import('../src/features/presentations/useDeckModel.ts');
+const { notifyRequirementsChanged } = await import('../src/features/presentations/requirementsStore.ts');
 const { getImportedPdfs } = await import('../src/features/pdf/service.ts');
-const { ensureSlideText, ensurePages } = await import('../src/features/presentations/importer.ts');
+const { analyzePdf, ensureSlideText, ensurePages, pickPdf, SLIDE_TEXT_WAIT_MS } = await import('../src/features/presentations/importer.ts');
 const { serverSlides, serverPdfUnconfirmed } = await import('../src/features/presentations/serverDeck.ts');
 const { defaultRequirementsPending } = await import('../src/features/presentations/defaultRequirements.ts');
 const { API_URL } = await import('../src/services/api.ts');
+const { DARK_PALETTE } = await import('../src/design/tokens.ts');
 const { readStored, writeStored, removeStored } = await import('../src/services/storage.ts');
 // Claude prototype guide integrated by OpenAI Codex, Iteration 4 (2026-11-21): skip first-run overlay in older Home tests.
 const { TUTORIAL_PAGES } = await import('../src/screens/HomeTutorial.tsx');
@@ -39,18 +43,21 @@ afterEach(async () => {
   network.requests.length = 0;
   network.respond = null;
   demoNative.failRender = false;
+  demoNative.pageCount = 7;
+  delete runtime.reducedMotion;
   select({ canceled: true, assets: null });
 });
 after(() => fs.rm(root, { recursive: true, force: true }));
 
 async function mount(Screen, props) {
-  const home = Object.fromEntries(['p', 'vy', 'gap', 'hold', 'uploadBlur', 'analyzing', 'setup', 'press', 'picker']
-    .map(key => [key, box(key === 'press' ? 1 : 0)]));
+  const home = Object.fromEntries(['p', 'vy', 'gap', 'hold', 'uploadBlur', 'uploadReturn', 'analyzing', 'setup', 'press', 'picker', 'titleReturn']
+    .map(key => [key, box(key === 'press' || key === 'titleReturn' ? 1 : 0)]));
   const routes = [];
   const ctx = { home, go: (...args) => routes.push(args), nav: { nav: null } };
   const Context = Screen === HomeScreen ? HomeContext : ShellContext;
   await act(async () => { renderer = create(h(Context.Provider, { value: ctx }, h(Screen, props))); });
-  return { home, routes };
+  const rerender = next => act(async () => renderer.update(h(Context.Provider, { value: ctx }, h(Screen, next))));
+  return { home, routes, rerender };
 }
 const byLabel = label => renderer.root.find(node => typeof node.type === 'string' && node.props.accessibilityLabel === label);
 const click = label => act(async () => byLabel(label).props.onPress());
@@ -85,6 +92,197 @@ test('home carousel opens rehearsal or saved review and restores a deck after Un
   assert.deepEqual(routes.pop(), ['upload', { nav: 'fade' }]);
 });
 
+test('portrait rehearsal keeps Home controls ready beneath the page without enabling them', async () => {
+  savePresentation(deck('Current talk', 1));
+  await mount(HomeScreen, { mode: 'rehearse', uploadLook: null });
+  const underlay = renderer.root.find(node => node.type === 'view' && node.props.pointerEvents === 'none'
+    && node.props.accessibilityElementsHidden === true && node.props.importantForAccessibility === 'no-hide-descendants');
+  assert.equal(underlay.findAllByProps({ accessibilityRole: 'switch' }).length, 2);
+  assert.equal(textShown('Spin'), true);
+  assert.ok(underlay.findByType('gesture').props.gesture.every(gesture => gesture.enabled === false));
+  assert.equal(underlay.findByType('home-stats').props.active, false);
+});
+
+test('Home footer and score stay hidden through the first half of the rehearsal return', async () => {
+  savePresentation(deck('Footer handoff talk', 1));
+  const props = { mode: 'rehearse', uploadLook: null };
+  const { home, rerender } = await mount(HomeScreen, props);
+  const footerOpacity = () => renderer.root.findAllByType('animated').find(view =>
+    view.findAllByType('text').some(node => node.children.join('') === 'Spin')).props.style.at(-1).opacity;
+  const scoreOpacity = () => renderer.root.findByType('home-stats').parent.props.style.at(-1).opacity;
+
+  for (const [progress, opacity] of [[0, 0], [0.25, 0], [0.5, 0], [0.75, 0.5], [1, 1], [0.25, 0]]) {
+    home.titleReturn.set(progress);
+    // The native adapter samples animated styles on React render.
+    await rerender({ ...props, onFrontDeckChange: () => {} });
+    assert.equal(footerOpacity(), opacity);
+    assert.equal(scoreOpacity(), opacity);
+  }
+  await rerender({ ...props, mode: 'home' });
+  assert.equal(footerOpacity(), 1);
+  assert.equal(scoreOpacity(), 1);
+});
+
+test('Add and Home share the backdrop, icon and control handoff on return', async () => {
+  savePresentation(deck('Upload backdrop talk', 1));
+  const home = Object.fromEntries(['p', 'vy', 'gap', 'hold', 'uploadBlur', 'uploadReturn', 'analyzing', 'setup', 'press', 'picker', 'titleReturn']
+    .map(key => [key, box(['gap', 'press', 'titleReturn'].includes(key) ? 1 : 0)]));
+  const routes = [];
+  const ctx = { home, go: (...args) => routes.push(args), nav: { nav: null } };
+  // The native adapter samples shared styles during React renders.
+  const view = (mode, readingPdf = false) => h(HomeContext.Provider, { value: { ...ctx, home: { ...home } } },
+    h(HomeScreen, { mode, uploadLook: null, readingPdf, onFrontDeckChange: () => {} }),
+    mode === 'upload' && h(ShellContext.Provider, { value: ctx }, h(UploadScreen)));
+  await act(async () => { renderer = create(view('upload')); });
+  const part = testID => renderer.root.findByProps({ testID }).props;
+  const opacity = testID => flat(part(testID).style).opacity;
+  const carousel = () => renderer.root.findByProps({ accessibilityRole: 'adjustable' });
+  const pan = () => renderer.root.findByType('pan').props;
+  const move = distance => act(async () => {
+    pan().onMove({}, { dx: 0, dy: distance });
+    renderer.update(view('upload'));
+  });
+  const check = (outgoing, incoming, appearance) => {
+    assert.ok(Math.abs(opacity('upload-hints') - outgoing) < 1e-6);
+    assert.ok(Math.abs(opacity('add-copy') - outgoing) < 1e-6);
+    assert.ok(Math.abs(opacity('home-hints') - incoming) < 1e-6);
+    assert.ok(Math.abs(opacity('home-card-caption') - incoming) < 1e-6);
+    assert.ok(Math.abs(opacity('home-appearance') - appearance) < 1e-6);
+    assert.equal(part('home-appearance').pointerEvents, 'none');
+    assert.equal(part('home-hints').importantForAccessibility, 'no-hide-descendants');
+    assert.equal(renderer.root.findAllByType('home-stats').length, 0);
+    assert.equal(renderer.root.findAllByType('text').filter(node => node.children.join('') === 'OutLoud').length, 1);
+  };
+  const iconStyle = () => flat(renderer.root.find(node => typeof node.type === 'string' && flat(node.props.style).zIndex === 300).props.style);
+  await act(async () => renderer.update(view('upload')));
+  check(1, 0, 0);
+  assert.notEqual(flat(carousel().props.style).display, 'none', 'the Add picker keeps the neighboring cards for the handoff');
+  home.gap.set(0);
+  await act(async () => renderer.update(view('upload')));
+  check(1, 0, 0);
+  assert.equal(opacity('upload-content'), 1, 'a carousel-gap update cannot hide the upload surface');
+  await move(63);
+  check(0.3, 0, 2 / 15);
+  assert.ok(Math.abs(iconStyle().transform[1].scale - 0.86) < 1e-6);
+  assert.ok(Math.abs(iconStyle().opacity - 0.65 ** 2) < 1e-6);
+  await act(async () => { pan().onRelease(); renderer.update(view('upload')); });
+  check(1, 0, 0);
+  assert.equal(iconStyle().transform[1].scale, 1);
+  assert.deepEqual(routes, []);
+  await move(135);
+  check(0, 0.5, 2 / 3);
+  runtime.timingCallbacks = [];
+  try {
+    await act(async () => { pan().onRelease(); renderer.update(view('upload')); });
+    check(0, 1, 1);
+    assert.equal(iconStyle().opacity, 0, 'the real deck has closed over the Add slot');
+    assert.deepEqual(routes, [], 'Home is still inert when the fade reaches its last frame');
+    await act(async () => runtime.timingCallbacks.shift()(true));
+    assert.deepEqual(routes, [['home', { nav: null }]]);
+  } finally {
+    delete runtime.timingCallbacks;
+  }
+  await act(async () => renderer.update(view('home')));
+  assert.equal(renderer.root.findByType('home-stats').props.active, true);
+  assert.equal(part('home-appearance').pointerEvents, 'box-none');
+  assert.equal(opacity('home-appearance'), 1);
+  assert.equal(opacity('home-hints'), 1);
+  assert.equal(textShown('Upload backdrop talk'), true);
+  assert.equal(textShown('Spin'), true);
+  await act(async () => renderer.update(view('upload', true)));
+  assert.equal(flat(carousel().props.style).display, 'none', 'PDF progress hides even the icons and shadows');
+  assert.equal(renderer.root.findAllByProps({ testID: 'home-card-caption' }).length, 0);
+  assert.equal(renderer.root.findAllByProps({ testID: 'home-appearance' }).length, 0);
+  assert.equal(renderer.root.findAllByProps({ testID: 'home-hints' }).length, 0);
+  await act(async () => renderer.update(view('home')));
+  assert.notEqual(flat(carousel().props.style).display, 'none', 'the carousel returns with Home');
+});
+
+test('portrait rehearsal reveals the carousel at the same icon height when returning Home', async () => {
+  const talk = deck('Home return talk', 1);
+  savePresentation(talk);
+  const { home, rerender } = await mount(HomeScreen, { mode: 'home', uploadLook: null });
+  const slot = () => renderer.root.find(node => node.props.deck?.id === talk.id && node.props.floatPhase);
+  const iconOpacity = () => slot().findByProps({ renderToHardwareTextureAndroid: true }).props.style.at(-1).opacity;
+  const homeTitleOpacity = () => slot().findAllByType('animated').filter(layer =>
+    layer.findAllByType('text').some(node => node.children.join('') === talk.title)).at(-1).props.style.opacity;
+  const phase = slot().props.floatPhase;
+  const pausedAt = Math.PI / 2;
+  phase.set(pausedAt);
+
+  await act(async () => { home.titleReturn.set(0); savePresentation({ ...talk }); });
+  assert.equal(homeTitleOpacity(), 1, 'the active Home title stays visible before rehearsal takes over');
+
+  home.titleReturn.set(0.65);
+  await rerender({ mode: 'rehearse', uploadLook: null });
+  assert.equal(slot().props.floatEnabled, true);
+  assert.equal(phase.get(), pausedAt);
+  assert.equal(iconOpacity(), 0, 'the PDF is still moving toward the selected icon');
+  assert.equal(homeTitleOpacity(), 0, 'rehearsal carries the title during the swipe');
+  await act(async () => { home.titleReturn.set(1); savePresentation({ ...talk }); });
+  assert.ok(Math.abs(iconOpacity() - 1) < 0.000001);
+  assert.equal(homeTitleOpacity(), 1, 'Home owns the title before the gesture commits');
+
+  await rerender({ mode: 'home', uploadLook: null });
+  assert.ok(Math.abs(homeTitleOpacity() - 1) < 0.000001);
+  assert.equal(slot().props.floatEnabled, true);
+  assert.ok(Math.abs(phase.get() - pausedAt - 2 * Math.PI) < 0.000001);
+});
+
+for (const title of ['Seoul', 'Presentation skills workshop with a long title for the November rehearsal']) {
+  test(`Home keeps its title layout and fades slide count in during the return for ${title}`, async () => {
+    const selected = { ...deck(title, 1), pageCount: 10 };
+    const neighbour = deck('Neighbour', 2);
+    savePresentation(selected);
+    savePresentation(neighbour);
+    const { home, rerender } = await mount(HomeScreen, { mode: 'rehearse', uploadLook: null });
+    const label = (deckId, text) => renderer.root.find(node => node.props.deck?.id === deckId && node.props.floatPhase)
+      .findAllByType('text').find(node => node.children.join('') === text);
+    const opacity = (deckId, text) => hostParent(label(deckId, text)).props.style.opacity;
+    const titleOpacity = () => opacity(title, title);
+    const countOpacity = () => opacity(title, '10 slides · 01');
+    const sideOpacity = () => opacity(neighbour.id, neighbour.title);
+    const returnTo = progress => act(async () => {
+      home.titleReturn.set(progress);
+      savePresentation({ ...selected });
+      savePresentation({ ...neighbour });
+    });
+    const titleLayout = () => {
+      const node = label(title, title);
+      return { width: flat(node.props.style).width, lines: node.props.numberOfLines };
+    };
+
+    await returnTo(0.65);
+    assert.deepEqual(titleLayout(), { width: 244, lines: 2 });
+    assert.equal(titleOpacity(), 0);
+    assert.equal(countOpacity(), 0);
+    assert.equal(sideOpacity(), 0);
+    await returnTo(0.70);
+    const earlyCount = countOpacity();
+    assert.equal(titleOpacity(), 0);
+    assert.ok(earlyCount > 0 && earlyCount < 1);
+    await returnTo(0.82);
+    assert.ok(titleOpacity() > 0 && titleOpacity() < 1);
+    assert.ok(countOpacity() > earlyCount && countOpacity() < 1);
+    assert.equal(sideOpacity(), 0, 'nearby titles wait for the wider rehearsal title to fade');
+    await returnTo(0.94);
+    assert.equal(titleOpacity(), 1);
+    assert.ok(sideOpacity() > 0 && sideOpacity() < 1);
+    assert.deepEqual(titleLayout(), { width: 244, lines: 2 });
+    await returnTo(0.5);
+    assert.equal(titleOpacity(), 0, 'a reversing swipe restores rehearsal ownership');
+    assert.equal(countOpacity(), 0);
+    assert.equal(sideOpacity(), 0);
+    await returnTo(1);
+    assert.equal(titleOpacity(), 1);
+    assert.equal(countOpacity(), 1);
+    await rerender({ mode: 'home', uploadLook: null });
+    assert.equal(titleOpacity(), 1);
+    assert.equal(countOpacity(), 1);
+    assert.deepEqual(titleLayout(), { width: 244, lines: 2 });
+  });
+}
+
 // OpenAI Codex integrated supplied Home blur regression: docs/ai-collaboration-prompts-iteration-2.md#widen-and-blur-home-carousel--november-20-2026
 test('Home side cards, titles included, are blurred and the front card is sharp', async () => {
   for (const [id, order] of [['Front talk', 1], ['Next talk', 2], ['Last talk', 3]]) savePresentation(deck(id, order));
@@ -99,6 +297,119 @@ test('Home side cards, titles included, are blurred and the front card is sharp'
   assert.equal(byTitle['Front talk'], 0);
   assert.equal(byTitle['Next talk'], 2);
   assert.equal(byTitle['Last talk'], 2);
+});
+
+test('a fast Home wrap reuses card views and defers stats and blur until settling', async () => {
+  for (let index = 0; index < 14; index++) savePresentation(deck(`Library talk ${index}`, index + 1));
+  const prepared = [];
+  const { home } = await mount(HomeScreen, { mode: 'home', uploadLook: null, onFrontDeckChange: id => prepared.push(id) });
+  const flatten = style => Object.assign({}, ...[style].flat(Infinity).filter(Boolean));
+  const cards = () => renderer.root.findAll(node => typeof node.type === 'string'
+    && (flatten(node.props.style).transform ?? []).some(t => t.perspective === 700));
+  const slots = () => renderer.root.findAll(node => node.props.deck?.id && node.props.floatPhase);
+  const originalSlots = slots();
+  const sameSlots = () => slots().every((slot, index) => slot === originalSlots[index]);
+  const hasBlur = () => cards().some(node => flatten(node.props.style).filter?.some(filter => filter.blur > 0));
+  // The mock reads animated styles on render; Android observes the shared values directly.
+  const rereadStyles = () => visibleDecks().forEach(item => savePresentation({ ...item }));
+  assert.equal(cards().length, 5);
+  assert.equal(hasBlur(), true);
+  assert.deepEqual(prepared, ['Library talk 0']);
+  const gesture = () => renderer.root.findByType('gesture').props.gesture[0];
+  const drag = (pan, x) => {
+    pan.onBegin();
+    pan.onActivate();
+    pan.onUpdate({ translationX: 12, translationY: 0, velocityX: 400 });
+    pan.onUpdate({ translationX: x, translationY: 0, velocityX: 400 });
+  };
+  const pan = gesture();
+  await act(async () => { drag(pan, 620); rereadStyles(); });
+  assert.ok(home.p.value < -2, 'the drag crossed the wrap point');
+  assert.equal(cards().length, 5);
+  assert.equal(sameSlots(), true);
+  assert.equal(hasBlur(), false);
+  assert.equal(renderer.root.findAllByType('home-stats').length, 3, 'slow movement preserves the stats crossfade');
+  assert.deepEqual(prepared, ['Library talk 0']);
+  await act(async () => {
+    pan.onUpdate({ translationX: 1040, translationY: 0, velocityX: 3000 });
+    rereadStyles();
+  });
+  assert.equal(cards().length, 5);
+  assert.equal(sameSlots(), true);
+  assert.equal(renderer.root.findAllByType('home-stats').length, 0);
+
+  const fastPosition = async position => act(async () => {
+    pan.onUpdate({ translationX: 12 - position * 190, translationY: 0, velocityX: 3000 });
+    rereadStyles();
+  });
+  await fastPosition(-8.1);
+  const retainedCards = slots().map(slot => slot.props.deck.id);
+  await fastPosition(-7.4);
+  assert.deepEqual(slots().map(slot => slot.props.deck.id), retainedCards, 'crossing one fast card reuses the buffered window');
+  assert.ok(retainedCards.includes('Library talk 6') && retainedCards.includes('Library talk 8'), 'both sides of the visible fast spin stay populated');
+
+  runtime.timingCallbacks = [];
+  try {
+    await act(async () => { pan.onDeactivate({ velocityX: 1400, canceled: false }); rereadStyles(); });
+    const selected = ((home.p.value % 14) + 14) % 14;
+    const selectedTitle = `Library talk ${selected}`;
+    assert.equal(cards().length, 5);
+    assert.equal(hasBlur(), false);
+    assert.equal(renderer.root.findAllByType('home-stats').length, 0);
+    assert.deepEqual(prepared, ['Library talk 0']);
+    await act(async () => { runtime.timingCallbacks.pop()(true); rereadStyles(); });
+    assert.equal(hasBlur(), true);
+    assert.equal(renderer.root.findAllByType('home-stats').find(node => node.props.active).props.deckId, selectedTitle);
+    assert.deepEqual(prepared, ['Library talk 0', selectedTitle]);
+    assert.ok(byLabel(`${selectedTitle}, 1 slides`));
+
+    const startFling = async () => {
+      const next = gesture();
+      await act(async () => {
+        drag(next, -200);
+        next.onDeactivate({ velocityX: -1600, canceled: false });
+        rereadStyles();
+      });
+      assert.equal(hasBlur(), false);
+    };
+    await startFling();
+    await action('delete');
+    await act(async () => { runtime.timingCallbacks.pop()(false); rereadStyles(); });
+    assert.equal(visibleDecks().length, 13);
+    assert.equal(hasBlur(), true);
+    assert.ok(renderer.root.findAllByType('home-stats').some(node => node.props.active));
+
+    await startFling();
+    const undo = renderer.root.findAllByType('pressable').find(node =>
+      node.findAllByType('text').some(child => child.children.join('') === 'Undo'));
+    await act(async () => { undo.props.onPress(); runtime.timingCallbacks.pop()(false); rereadStyles(); });
+    assert.equal(visibleDecks().length, 14);
+    assert.equal(hasBlur(), true);
+    assert.ok(renderer.root.findAllByType('home-stats').some(node => node.props.active));
+  } finally {
+    delete runtime.timingCallbacks;
+  }
+});
+
+test('mounted pages share a long deck model and refresh it after analysis or timing changes', async () => {
+  const talk = deck('Long saved talk', 1);
+  savePresentation({ ...talk, pageCount: 91, slides: Array.from({ length: 91 }, (_, i) => ({ title: `Slide ${i + 1}`, text: '', points: [] })) });
+  const results = [];
+  function Reader({ index }) {
+    results[index] = useDeckModel(talk.id);
+    return null;
+  }
+  await act(async () => { renderer = create(h(React.Fragment, null, h(Reader, { index: 0 }), h(Reader, { index: 1 }))); });
+  const initial = results[0];
+  assert.equal(initial.n, 91);
+  assert.strictEqual(results[0], results[1]);
+  await act(async () => bump());
+  const afterAnalysis = results[0];
+  assert.notStrictEqual(afterAnalysis, initial);
+  assert.strictEqual(afterAnalysis, results[1]);
+  await act(async () => notifyRequirementsChanged());
+  assert.notStrictEqual(results[0], afterAnalysis);
+  assert.strictEqual(results[0], results[1]);
 });
 
 test('Home card tap shows and releases a press response before navigation', async () => {
@@ -131,6 +442,70 @@ test('home opens the icon picker, logo tutorial and credits, and leaves the last
   await act(async () => byLabel('How OutLoud works').props.onLongPress());
   await act(async () => assert.equal(pressBack(), true));
   assert.equal(routes.length, 0);
+});
+
+test('reopened tutorial pauses Home icons at their current position through the downward dismissal', async () => {
+  writeStored(TUTORIAL_SEEN, true);
+  const talk = deck('Tutorial position talk', 1);
+  savePresentation(talk);
+  const props = { mode: 'home', uploadLook: null };
+  const { rerender } = await mount(HomeScreen, props);
+  const slot = () => renderer.root.find(node => node.props.deck?.id === talk.id && node.props.floatPhase);
+  const phase = slot().props.floatPhase;
+  const pausedAt = Math.PI / 2;
+  phase.set(pausedAt);
+
+  await click('How OutLoud works');
+  assert.equal(slot().props.floatEnabled, true);
+  assert.equal(phase.get(), pausedAt);
+  const pan = () => renderer.root.findAllByType('gesture').find(node =>
+    node.findAllByProps({ accessibilityLabel: 'Close tutorial' }).length > 0).props.gesture;
+  const part = testID => renderer.root.findByProps({ testID }).props;
+  const opacity = testID => flat(part(testID).style).opacity;
+  const coordinates = flat(byLabel('Light mode').props.style);
+  const update = () => rerender({ ...props, onFrontDeckChange: () => {} });
+  await update();
+  assert.equal(opacity('home-appearance'), 0);
+  assert.equal(part('home-appearance').pointerEvents, 'none');
+  assert.equal(opacity('tutorial-hints'), 1);
+  await act(async () => {
+    pan().onActivate();
+    pan().onUpdate({ translationX: 0, translationY: 63 });
+  });
+  await update();
+  assert.ok(opacity('home-appearance') > 0);
+  assert.ok(opacity('tutorial-hints') > 0);
+  assert.equal(opacity('home-hints'), 0);
+  await act(async () => pan().onDeactivate({ translationX: 0, translationY: 63, canceled: false }));
+  await update();
+  assert.equal(opacity('home-appearance'), 0);
+  assert.equal(opacity('tutorial-hints'), 1);
+  await act(async () => {
+    pan().onActivate();
+    pan().onUpdate({ translationX: 0, translationY: 135 });
+  });
+  await update();
+  assert.equal(opacity('tutorial-hints'), 0);
+  assert.equal(opacity('home-hints'), 0.5);
+  assert.equal(part('home-appearance').pointerEvents, 'none');
+  assert.deepEqual(flat(byLabel('Light mode').props.style), coordinates);
+  assert.equal(phase.get(), pausedAt);
+  runtime.timingCallbacks = [];
+  try {
+    await act(async () => pan().onDeactivate({ translationX: 0, translationY: 135, canceled: false }));
+    await update();
+    assert.equal(opacity('tutorial-hints'), 0);
+    assert.equal(opacity('home-hints'), 1);
+    assert.equal(opacity('home-appearance'), 1);
+    assert.equal(part('home-appearance').pointerEvents, 'none');
+    await act(async () => runtime.timingCallbacks.shift()(true));
+  } finally {
+    delete runtime.timingCallbacks;
+  }
+  assert.equal(renderer.root.findAllByProps({ accessibilityLabel: 'Close tutorial' }).length, 0);
+  assert.equal(opacity('home-hints'), 1);
+  assert.equal(part('home-appearance').pointerEvents, 'box-none');
+  assert.ok(Math.abs(phase.get() - pausedAt - 2 * Math.PI) < 0.000001);
 });
 
 // OpenAI Codex, 2026-11-20: the picker fades from the top while its bottom cue stays fixed.
@@ -253,11 +628,114 @@ async function choosePdf(title) {
   select({ canceled: false, assets: [{ uri, name: title + '.pdf', mimeType: 'application/pdf' }] });
 }
 const serverId = '11111111-1111-4111-8111-111111111111';
-function extractedText(method) {
-  const deckFields = { id: serverId, page_count: 7 };
+function extractedText(method, pageCount = 7) {
+  const deckFields = { id: serverId, page_count: pageCount };
   const slides = [{ slide_index: 0, extracted_text: 'Recovered slide title' }];
   return method === 'POST' ? response(201, { deck: deckFields, slides }) : response(200, { ...deckFields, slides });
 }
+const progressRing = () => renderer.root.findAllByType('circle').filter(node => node.props.animatedProps);
+const ringFill = ({ props }) => 1 - props.animatedProps.strokeDashoffset / (2 * Math.PI * props.r);
+
+test('PDF import reads slide text and lets setup finish without touching the cue API', async t => {
+  const { routes, home, rerender } = await mount(UploadScreen);
+  await choosePdf('Online text-only import');
+  demoNative.pageCount = 10;
+  let finishText;
+  const unexpected = [];
+  t.mock.method(globalThis, 'fetch', async url => {
+    unexpected.push(url);
+    throw new Error('Unexpected direct request during import');
+  });
+  network.respond = async (url, init) => {
+    assert.match(url, /\/decks\/$/);
+    assert.equal(init.method, 'POST');
+    return new Promise(resolve => { finishText = () => resolve(extractedText(init.method, 10)); });
+  };
+  await click('Choose a PDF to upload');
+  await waitFor(() => textShown('Finding slides'));
+  assert.equal(progressRing().length, 1);
+  const fill = progressRing()[0];
+  assert.ok(ringFill(fill) < 0.34);
+  await waitFor(() => !!finishText && textShown('Found 10 slides'));
+  assert.equal(textShown('Reading the text'), true);
+  home.gap.set(0);
+  await rerender();
+  assert.equal(flat(renderer.root.findByProps({ testID: 'upload-content' }).props.style).opacity, 1);
+  assert.deepEqual(progressRing(), [fill]);
+  assert.ok(ringFill(fill) > 0.34 && ringFill(fill) < 0.67);
+  assert.equal(renderer.root.findAllByType('requirements').length, 0);
+  await act(async () => finishText());
+  await waitFor(() => ringFill(fill) > 0.67 && ringFill(fill) < 1);
+  assert.equal(textShown('Planning time per slide'), true);
+  assert.equal(renderer.root.findAllByType('requirements').length, 0);
+  await waitFor(() => ringFill(fill) === 1);
+  assert.equal(renderer.root.findAllByType('requirements').length, 0);
+  assert.deepEqual(progressRing(), [fill]);
+  await waitFor(() => renderer.root.findAllByType('requirements').length === 1);
+  assert.equal(progressRing().length, 0, 'the completed ring is removed before Timing enters');
+  assert.equal(flat(renderer.root.findByProps({ testID: 'upload-content' }).props.style).opacity, 1);
+  const imported = visibleDecks()[0];
+  assert.equal(imported.text, 'ready');
+  assert.equal(imported.slides[0].text, 'Recovered slide title');
+  await act(async () => renderer.root.findByType('requirements').props.onSaved());
+  assert.deepEqual(routes, [['rehearse', { nav: 'fade', deckId: imported.id, slide: 0 }]]);
+  assert.equal(network.requests.length, 1, 'no cue status or generation request before rehearsal opens');
+  assert.deepEqual(unexpected, []);
+});
+
+test('reduced motion keeps same ring and ordered PDF stages for immediately available text', async () => {
+  runtime.reducedMotion = true;
+  await mount(UploadScreen);
+  await choosePdf('Quick reduced-motion import');
+  network.respond = async (_url, init) => extractedText(init.method);
+  await click('Choose a PDF to upload');
+  await waitFor(() => textShown('Finding slides'));
+  const fill = progressRing()[0];
+  assert.ok(ringFill(fill) < 0.34);
+  await waitFor(() => textShown('Found 7 slides'));
+  assert.ok(ringFill(fill) > 0.34 && ringFill(fill) < 0.67);
+  await waitFor(() => ringFill(fill) > 0.67);
+  assert.ok(ringFill(fill) < 1);
+  assert.deepEqual(progressRing(), [fill]);
+  assert.equal(renderer.root.findAllByType('requirements').length, 0);
+  await waitFor(() => renderer.root.findAllByType('requirements').length === 1);
+  assert.equal(progressRing().length, 0);
+  assert.equal(network.requests.length, 1);
+});
+
+test('leaving while the ring shows text extraction cancels the import', async () => {
+  const { routes } = await mount(UploadScreen);
+  await choosePdf('Cancelled text reading');
+  let uploadSignal;
+  network.respond = async (_url, init) => {
+    uploadSignal = init.signal;
+    return new Promise((_resolve, reject) => uploadSignal.addEventListener('abort', () => reject(new Error('Aborted')), { once: true }));
+  };
+  await click('Choose a PDF to upload');
+  await waitFor(() => !!uploadSignal && textShown('Found 7 slides'));
+  assert.equal(progressRing().length, 1);
+  await act(async () => assert.equal(pressBack(), true));
+  assert.equal(uploadSignal.aborted, true);
+  await waitFor(async () => !(await getImportedPdfs()).some(pdf => pdf.title === 'Cancelled text reading'));
+  assert.deepEqual(routes, [['home', { nav: null }]]);
+  assert.equal(renderer.root.findAllByType('requirements').length, 0);
+  assert.deepEqual(visibleDecks(), []);
+});
+
+test('leaving during time planning cancels the queued setup and discards the imported PDF', async () => {
+  const { routes } = await mount(UploadScreen);
+  await choosePdf('Abandoned time planning');
+  network.respond = async (_url, init) => extractedText(init.method);
+  await click('Choose a PDF to upload');
+  await waitFor(() => progressRing().some(ring => ringFill(ring) > 0.67 && ringFill(ring) < 1));
+  assert.equal(visibleDecks().length, 1);
+  await act(async () => assert.equal(pressBack(), true));
+  await waitFor(async () => !(await getImportedPdfs()).some(pdf => pdf.title === 'Abandoned time planning'));
+  await act(async () => delay(400));
+  assert.deepEqual(routes, [['home', { nav: null }]]);
+  assert.equal(renderer.root.findAllByType('requirements').length, 0);
+  assert.deepEqual(visibleDecks(), []);
+});
 
 // OpenAI Codex, 2026-11-21: an offline POST with an unknown outcome needs an explicit refresh before upload replay.
 test('upload saves an offline deck and refresh explicitly recovers slide text when the API returns', async () => {
@@ -268,6 +746,9 @@ test('upload saves an offline deck and refresh explicitly recovers slide text wh
   network.respond = async () => { throw new Error('Offline fixture'); };
   await click('Choose a PDF to upload');
   await waitFor(() => renderer.root.findAllByType('requirements').length === 1);
+  assert.equal(progressRing().length, 0);
+  const backdrop = flat(renderer.root.findByProps({ testID: 'upload-timing-surface' }).props.style);
+  assert.equal(backdrop.backgroundColor, DARK_PALETTE.bg, 'the setup covers the Home and import layers');
   const saved = visibleDecks()[0];
   assert.equal(saved.text, 'pending');
   assert.equal(saved.pages.length, 7);
@@ -286,8 +767,44 @@ test('upload saves an offline deck and refresh explicitly recovers slide text wh
   assert.equal(deckById(saved.id).text, 'ready');
 });
 
+test('slow PDF confirmation survives the import wait and links the saved deck without another upload', async t => {
+  await choosePdf('Slow online deck');
+  const pdf = await pickPdf();
+  const setTimeout = globalThis.setTimeout;
+  t.mock.method(globalThis, 'setTimeout', (callback, ms, ...args) =>
+    setTimeout(callback, ms === SLIDE_TEXT_WAIT_MS ? 0 : ms, ...args));
+  let finish, uploadSignal;
+  network.respond = async (_url, init) => {
+    assert.equal(init.method, 'POST');
+    uploadSignal = init.signal;
+    return new Promise((resolve, reject) => {
+      uploadSignal.addEventListener('abort', () => reject(new Error('Upload aborted')), { once: true });
+      finish = () => resolve(extractedText('POST'));
+    });
+  };
+
+  const locallySaved = await analyzePdf(pdf, () => {}, new AbortController().signal);
+  try {
+    assert.equal(locallySaved.text, 'pending');
+    assert.equal(uploadSignal.aborted, false, 'waiting for setup must not cancel the upload');
+    assert.equal(serverPdfUnconfirmed(pdf.id), false, 'the upload is still active');
+    const awaiting = serverSlides(locallySaved);
+    const mismatch = assert.rejects(serverSlides({ ...locallySaved, pageCount: 8 }), /different presentation/);
+    finish();
+    assert.equal((await awaiting).deckId, serverId);
+    await mismatch;
+    await waitFor(() => deckById(pdf.id)?.text === 'ready');
+    assert.equal(deckById(pdf.id).slides[0].text, 'Recovered slide title');
+    assert.equal(network.requests.length, 1);
+  } finally {
+    finish?.();
+  }
+});
+
 test('upload reports a failed render and lets the user leave without a saved deck', async () => {
   const { routes } = await mount(UploadScreen);
+  assert.ok(textShown('New'));
+  assert.equal(textShown('New presentation'), false);
   await choosePdf('Damaged talk');
   demoNative.failRender = true;
   await click('Choose a PDF to upload');
@@ -317,19 +834,144 @@ test('legacy deck page recovery renders once and updates page count and timing t
 const flat = style => Object.assign({}, ...[style].flat(Infinity).filter(Boolean));
 const hostParent = node => { let p = node.parent; while (p && typeof p.type !== 'string') p = p.parent; return p; };
 
-test('analysis ring is centred on the shrunk New presentation icon and the stages are centred below it', async () => {
+test('opening Add leaves a seated carousel quiet and dims the backdrop continuously', async () => {
+  savePresentation(deck('Existing talk', 1));
+  const { home, routes, rerender } = await mount(HomeScreen, { mode: 'home', uploadLook: null });
+  runtime.timingCallbacks = [];
+  try {
+    await action('add');
+    assert.deepEqual(routes, [['upload', { nav: 'fade' }]]);
+    assert.equal(home.gap.value, 1);
+    assert.equal(runtime.timingCallbacks.length, 0, 'an already seated deck does not start a carousel spin');
+  } finally {
+    delete runtime.timingCallbacks;
+  }
+
+  const backdrop = () => flat(renderer.root.findByProps({ accessibilityRole: 'adjustable' }).props.style);
+  const sample = async (coverage, pull, position = 0) => {
+    home.uploadBlur.set(coverage);
+    home.vy.set(pull);
+    home.p.set(position);
+    await rerender({ mode: 'upload', uploadLook: null, onFrontDeckChange() {} });
+  };
+  for (const [coverage, pull, position] of [[0, -90], [0.5, -20], [1, -2], [1, 0, 0.23]]) {
+    await sample(coverage, pull, position);
+    assert.equal(backdrop().filter, undefined);
+    assert.equal(backdrop().opacity, 1 - 0.69 * coverage);
+  }
+  await sample(1, 0);
+  assert.equal(backdrop().opacity, 1 - 0.69);
+  assert.equal(backdrop().filter, undefined, 'the backdrop cannot snap into a new filter at the last frame');
+  await sample(0.75, 0);
+  assert.equal(backdrop().opacity, 1 - 0.69 * 0.75);
+});
+
+test('the Add glow stays selected through entry and blends out with the return gesture', async () => {
+  const { uploadGlowReturn } = await import('../src/screens/homeGeometry.ts');
+  assert.deepEqual([0, 0.25, 0.5, 1].map(uploadGlowReturn), [0, 65 / 220, 130 / 220, 1]);
+});
+
+test('the Add icon stays in place while the opening swipe settles', async () => {
+  savePresentation(deck('Existing talk', 1));
+  const home = Object.fromEntries(['p', 'vy', 'gap', 'hold', 'uploadBlur', 'uploadReturn', 'analyzing', 'setup', 'press', 'picker', 'titleReturn']
+    .map(key => [key, box(['press', 'titleReturn'].includes(key) ? 1 : 0)]));
+  const ctx = { home, go: () => {}, nav: { nav: null } };
+  const view = mode => h(HomeContext.Provider, { value: ctx },
+    h(HomeScreen, { mode, uploadLook: null, onFrontDeckChange: () => {} }),
+    mode === 'upload' && h(ShellContext.Provider, { value: ctx }, h(UploadScreen, { hue: 'violet' })));
+  await act(async () => { renderer = create(view('home')); });
+  const assertSeated = () => {
+    const ghost = renderer.root.find(n => typeof n.type === 'string' && flat(n.props.style).zIndex === 300);
+    const { transform: [{ translateY }, { scale }], opacity } = flat(ghost.props.style);
+    assert.equal(Math.abs(translateY), 0);
+    assert.equal(scale, 1);
+    assert.equal(opacity, 1);
+    assert.equal(renderer.root.findAllByType('text').filter(n => n.children.join('') === 'OutLoud').length, 1);
+  };
+  home.vy.set(-90);
+  await act(async () => renderer.update(view('home')));
+  assertSeated();
+
+  home.gap.set(1);
+  for (const remainingPull of [-90, -45, 0]) {
+    home.vy.set(remainingPull);
+    await act(async () => renderer.update(view('upload')));
+    assertSeated();
+    assert.ok(renderer.root.findByProps({ testID: 'upload-artwork' }));
+  }
+});
+
+test('Add opens sideways without a vertical drag offset and preserves the neighbors’ floating height', async () => {
+  const talks = ['First talk', 'Neighbor talk', 'Last talk'].map((title, index) => deck(title, index + 1));
+  talks.forEach(savePresentation);
+  const { home, routes, rerender } = await mount(HomeScreen, { mode: 'home', uploadLook: null });
+  const slot = talk => renderer.root.find(node => node.props.deck?.id === talk.id && node.props.floatPhase);
+  const layout = talk => {
+    const [{ translateY: y }, { translateX: x }, { scale }] = flat(slot(talk).findAllByType('animated')[0].props.style).transform;
+    const [{ translateY: floatY }] = flat(slot(talk).findByProps({ renderToHardwareTextureAndroid: true }).props.style).transform;
+    return { y, x, scale, floatY: Math.round(floatY * 1e6) / 1e6 };
+  };
+  const phase = slot(talks[0]).props.floatPhase;
+  const redraw = () => talks.forEach(talk => savePresentation({ ...talk }));
+  const pan = renderer.root.findByType('gesture').props.gesture[0];
+  const pull = y => pan.onUpdate({ translationX: 0, translationY: y });
+  const begin = () => { pan.onBegin(); pan.onActivate(); };
+  const finish = canceled => pan.onDeactivate({ canceled, velocityX: 0 });
+  phase.set(Math.PI / 2);
+  await act(async () => redraw());
+  const atRest = talks.map(layout);
+  await act(async () => { begin(); pull(-135); redraw(); });
+  const expanded = talks.map(layout);
+  assert.deepEqual(expanded[1], atRest[1], 'the right neighbor stays still at its floating height');
+  assert.ok(expanded[0].x < atRest[0].x, 'the carousel still separates horizontally');
+  assert.ok(expanded[0].scale < atRest[0].scale, 'the selected card still scales with depth');
+  await act(async () => { finish(true); redraw(); });
+  assert.deepEqual(routes, []);
+  assert.deepEqual(talks.map(layout), atRest, 'cancel returns both sides to their resting layout');
+
+  await act(async () => { begin(); pull(-135); finish(false); redraw(); });
+  assert.deepEqual(routes, [['upload', { nav: 'fade' }]]);
+  await rerender({ mode: 'upload', uploadLook: null });
+  assert.equal(slot(talks[0]).props.floatEnabled, true);
+  assert.deepEqual(talks.map(layout), expanded, 'the entire layout is continuous at the Add handoff');
+
+  home.gap.set(0);
+  await rerender({ mode: 'home', uploadLook: null });
+  await act(async () => { begin(); pull(30); redraw(); });
+  const draggedDown = layout(talks[1]);
+  assert.ok(draggedDown.y > atRest[1].y, 'downward Delete retains its vertical movement');
+  await act(async () => finish(true));
+});
+
+test('a 31-slide PDF keeps its centered artwork through analysis and removes it before Timing fades in', async () => {
   const { analyzeRing } = await import('../src/screens/homeGeometry.ts');
   const ringAt = analyzeRing(false);
   const compactRing = analyzeRing(true);
   assert.ok(Math.abs(compactRing.cy - 352.16) < 0.01);
   assert.ok(Math.abs(compactRing.r - 60.8) < 0.01);
   assert.ok(Math.abs(compactRing.bottom - ringAt.bottom) < 0.01);
-  // Where Home actually draws the icon while a PDF is analysed.
-  const home = Object.fromEntries(['p', 'vy', 'gap', 'hold', 'uploadBlur', 'analyzing', 'setup', 'press', 'picker']
-    .map(key => [key, box(['press', 'uploadBlur', 'analyzing'].includes(key) ? 1 : 0)]));
-  await act(async () => { renderer = create(h(HomeContext.Provider, { value: { home, go: () => {}, nav: { nav: null } } },
-    h(HomeScreen, { mode: 'upload', uploadLook: { hue: 'violet', order: 1 } }))); });
-  const ghost = renderer.root.find(n => typeof n.type === 'string' && flat(n.props.style).zIndex === 300);
+  const reading = [];
+  const props = { hue: 'violet', onReadingPdf: value => reading.push(value) };
+  const { home, rerender, routes } = await mount(UploadScreen, props);
+  await choosePdf('Centred 31-slide talk');
+  demoNative.pageCount = 31;
+  let finishText;
+  network.respond = async (_url, init) => new Promise(resolve => {
+    finishText = () => resolve(extractedText(init.method, 31));
+  });
+  await click('Choose a PDF to upload');
+  await waitFor(() => !!finishText && textShown('Found 31 slides'));
+  home.gap.set(0);
+  home.uploadBlur.set(0);
+  home.setup.set(1);
+  await rerender(props);
+  assert.deepEqual(reading, [true]);
+  assert.equal(flat(renderer.root.findByProps({ testID: 'upload-hints' }).props.style).opacity, 1);
+  const upload = renderer.root.findByProps({ testID: 'upload-content' });
+  const artwork = upload.findByProps({ testID: 'upload-artwork' });
+  assert.equal(flat(upload.props.style).opacity, 1);
+  assert.equal(artwork.findAllByType('text').filter(node => node.children.join('') === 'OutLoud').length, 1);
+  const ghost = artwork.find(n => typeof n.type === 'string' && flat(n.props.style).zIndex === 300);
   const slot = flat(ghost.props.style), layer = flat(hostParent(ghost).props.style);
   const [{ translateY }, { scale }] = slot.transform;
   const item = ghost.find(n => typeof n.type === 'string' && flat(n.props.style).height === 223);
@@ -337,21 +979,41 @@ test('analysis ring is centred on the shrunk New presentation icon and the stage
   const top = layer.top + slot.top, mid = top + slot.height / 2;
   const drawn = mid + (top + flat(item.props.style).height - size / 2 - mid) * scale + translateY;
   assert.ok(Math.abs(drawn - ringAt.cy) < 0.01, `icon centre ${drawn} vs ring centre ${ringAt.cy}`);
+  assert.equal(slot.opacity, 1);
   assert.equal(ghost.findAll(n => typeof n.type === 'string' && flat(n.props.style).opacity === 0).length > 0, true, 'floor shadow hidden');
-  await act(async () => renderer.unmount());
 
-  await mount(UploadScreen);
-  await choosePdf('Centred talk');
-  network.respond = async () => { throw new Error('Offline fixture'); };
-  await click('Choose a PDF to upload');
-  await waitFor(() => renderer.root.findAllByType('requirements').length === 1);
   const arc = renderer.root.find(n => n.type === 'circle' && n.props.stroke === 'url(#gMultiUp)');
   const svg = renderer.root.find(n => n.type === 'svg' && n.findAll(c => c === arc).length === 1);
   assert.equal(arc.props.r, ringAt.r);
   assert.ok(Math.abs(flat(hostParent(svg).props.style).top + svg.props.height / 2 - ringAt.cy) < 0.01);
-  const stages = flat(renderer.root.findByProps({ accessibilityLiveRegion: 'polite' }).props.style);
-  assert.deepEqual([stages.top, stages.bottom, stages.justifyContent, stages.alignItems], [ringAt.bottom, 0, 'center', 'center']);
-  assert.equal(renderer.root.findByProps({ accessibilityLiveRegion: 'polite' }).props.pointerEvents, 'box-none');
+  const progress = renderer.root.findByProps({ accessibilityLiveRegion: 'polite' });
+  const stages = flat(progress.props.style);
+  assert.deepEqual([stages.top, stages.bottom, stages.paddingTop, stages.justifyContent, stages.alignItems], [ringAt.bottom, 0, 40, 'flex-start', 'center']);
+  assert.ok(progress.findAllByType('view').some(node => flat(node.props.style).gap === 12));
+  assert.equal(progress.props.pointerEvents, 'box-none');
+  runtime.timingCallbacks = [];
+  try {
+    await act(async () => finishText());
+    await waitFor(() => progressRing().some(ring => ringFill(ring) === 1));
+    assert.equal(renderer.root.findAllByProps({ testID: 'upload-artwork' }).length, 1);
+    assert.equal(renderer.root.findAllByType('requirements').length, 0);
+    await waitFor(() => renderer.root.findAllByType('requirements').length === 1);
+    assert.equal(runtime.timingCallbacks.length, 1, 'the Timing entry animation is still pending');
+    const surface = renderer.root.findByProps({ testID: 'upload-timing-surface' });
+    assert.equal(flat(surface.props.style).backgroundColor, DARK_PALETTE.bg);
+    assert.equal(flat(renderer.root.findByProps({ testID: 'upload-hints' }).props.style).opacity, 1);
+    assert.ok(surface.findByType('requirements'));
+    assert.equal(renderer.root.findAllByProps({ testID: 'upload-artwork' }).length, 0);
+    assert.equal(progressRing().length, 0);
+    assert.equal(textShown('OutLoud'), false);
+    assert.equal(textShown('Centred 31-slide talk.pdf'), false);
+    await act(async () => runtime.timingCallbacks.shift()(true));
+  } finally {
+    delete runtime.timingCallbacks;
+  }
+  await act(async () => assert.equal(pressBack(), true));
+  assert.deepEqual(routes, [['home', { nav: null }]]);
+  assert.deepEqual(visibleDecks(), []);
 });
 
 // OpenAI Codex, Iteration 4 (2026-11-21): first-run prototype guide and its native swipe stay usable on the bilingual branch.
@@ -402,14 +1064,14 @@ test('the guide opens once, walks eight pages and responds to native page swipes
   assert.ok(byLabel('App language: English'));
   assert.ok(byLabel('Light mode'));
   await click('How OutLoud works');
-  assert.equal(renderer.root.findAllByProps({ accessibilityRole: 'switch' }).length, 0);
+  assert.equal(renderer.root.findByProps({ testID: 'home-appearance' }).props.importantForAccessibility, 'no-hide-descendants');
   await act(async () => assert.equal(pressBack(), true));
   await act(async () => renderer.unmount()); renderer = undefined;
   await mount(HomeScreen, { mode: 'home', uploadLook: null });
   assert.equal(renderer.root.findAllByProps({ accessibilityLabel: 'Close tutorial' }).length, 0);
   await click('How OutLoud works');
   assert.equal(textShown('1 of 8 · Gestures'), true);
-  assert.equal(renderer.root.findAllByProps({ accessibilityRole: 'switch' }).length, 0);
+  assert.equal(renderer.root.findByProps({ testID: 'home-appearance' }).props.importantForAccessibility, 'no-hide-descendants');
   await act(async () => assert.equal(pressBack(), true));
   assert.equal(renderer.root.findAllByProps({ accessibilityLabel: 'Close tutorial' }).length, 0);
 });

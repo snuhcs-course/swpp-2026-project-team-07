@@ -8,6 +8,7 @@ registerHooks({ resolve });
 const { API_URL } = await import('../src/services/api.ts');
 const { uploadAttempt, isUploading, serverDeckId } = await import('../src/features/recording/upload.ts');
 const { beginAttempt, checkpointAttempt, getSavedAttempt, saveAttempt } = await import('../src/features/recording/storage.ts');
+const { serverSlides } = await import('../src/features/presentations/serverDeck.ts');
 const { writeStored } = await import('../src/services/storage.ts');
 const DECK = '11111111-1111-4111-8111-111111111111';
 let serial = 0;
@@ -118,6 +119,26 @@ test('same-attempt concurrent calls share a request; different attempts share de
   await Promise.all([one, uploadAttempt(second.id)]);
   assert.equal(pdfRequests().length, 1);
   assert.equal(audioRequests().length, 2);
+});
+
+test('a legacy recording upload shares the slow PDF import before submitting audio', async () => {
+  const { id, localId } = setup();
+  let finishPdf;
+  network.respond = (url, init) => url.endsWith('/decks/')
+    ? new Promise(resolve => { finishPdf ??= () => resolve(success(url, init)); })
+    : success(url, init);
+  const linking = serverSlides({ id: localId, title: 'Synthetic slides', uri: 'file:///synthetic.pdf', pageCount: 2 });
+  const uploading = uploadAttempt(id);
+  try {
+    await new Promise(setImmediate);
+    assert.equal(pdfRequests().length, 1);
+    assert.equal(audioRequests().length, 0);
+    finishPdf();
+    await Promise.all([linking, uploading]);
+    assert.equal(JSON.parse(audioRequests()[0].body.get('metadata')).deck_id, DECK);
+  } finally {
+    finishPdf?.();
+  }
 });
 
 test('mapping persistence failure stops before audio; retry recovers the acknowledged deck', async () => {

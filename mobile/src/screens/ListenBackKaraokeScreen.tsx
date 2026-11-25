@@ -3,14 +3,14 @@
 // Timing rules live in domain/karaoke.ts; see LISTEN_BACK_SPEC.md in the implementation package.
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Pressable, StyleSheet, View, type TextStyle } from 'react-native';
-import { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 import { useUiText } from '../design/language';
 import { Enter, Txt, useFrame } from '../design/frame';
 import { Glyph } from '../design/icons';
 import { PanView } from '../design/PanView';
 import { EASE_SCREEN, F, FRAME_W, type Palette } from '../design/tokens';
-import { BACK_FADE_Y } from '../domain/gestures';
+import { BACK_FADE_Y, REVIEW_PAGE_SWIPE } from '../domain/gestures';
 import { useTheme } from '../design/theme';
 import { HintRow, PageSurface } from '../design/ui';
 import { fmt } from '../domain/format';
@@ -20,8 +20,10 @@ import { audioOf } from '../features/rehearsal/analysis';
 import { useSegmentPlayer, type Segment } from '../features/rehearsal/useSegmentPlayer';
 import { useDeckModel, type DeckModel } from '../features/presentations/useDeckModel';
 import { STORE_MODE } from '../services/apiConfig';
+import { demoAccess } from '../services/backendFetch';
 import { onlineAllowed, subscribePrivacy } from '../services/storePrivacy';
 import { useBack, useShell } from './shared';
+import { usePageFooter } from './pageFooter';
 
 const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
 type AudioPlan = ListenVisit & { playbackStartMs: number };
@@ -33,6 +35,9 @@ export function ListenBackKaraokeScreen({ active = true }: { active?: boolean })
   const { go, nav } = useShell();
   // OpenAI Codex, 2026-11-19: let the review beneath show through a downward swipe.
   const fadeY = useSharedValue(0);
+  const returnScreen = nav.from === 'wait' || nav.from === 'full' ? 'full'
+    : nav.from === 'review' || nav.from === 'rehearse' ? nav.from : 'home';
+  const footer = usePageFooter(active, fadeY, returnScreen);
   const swipeFade = useAnimatedStyle(() => ({ opacity: Math.max(0, 1 - fadeY.value / BACK_FADE_Y) }));
   const model = useDeckModel(nav.deckId);
   const player = useSegmentPlayer();
@@ -190,19 +195,19 @@ export function ListenBackKaraokeScreen({ active = true }: { active?: boolean })
   const fadeBack = () => {
     if (leaving.current) return;
     leaving.current = true;
-    fadeY.set(withTiming(BACK_FADE_Y, { duration: 460, easing: EASE_SCREEN }, done => {
+    fadeY.set(withTiming(BACK_FADE_Y, { duration: REVIEW_PAGE_SWIPE.exitMs, easing: EASE_SCREEN }, done => {
       if (done) runOnJS(back)();
     }));
   };
   if (!model || !run) return null;
 
-  return <><Enter kind={nav.nav}><PanView style={[StyleSheet.absoluteFill, swipeFade]}
+  return <><Enter kind={nav.nav} duration={REVIEW_PAGE_SWIPE.enterMs}><PanView style={[StyleSheet.absoluteFill, swipeFade]}
     // OpenAI Codex, 2026-11-21: capture a downward drag from controls, including the scrubber, while transcript drags keep browsing.
     onMoveShouldCapture={(_e, g) => !inTranscript(g.y0) && g.dy > 12 && g.dy > Math.abs(g.dx)}
     onMove={(_e, g) => fadeY.set(Math.max(0, Math.min(BACK_FADE_Y, g.dy / frame.s)))}
     onRelease={(_e, g) => { if (g.dy > 90 * frame.s) fadeBack();
-      else fadeY.set(withTiming(0, { duration: 360, easing: EASE_SCREEN })); }}
-    onTerminate={() => { if (!leaving.current) fadeY.set(withTiming(0, { duration: 360, easing: EASE_SCREEN })); }}>
+      else fadeY.set(withTiming(0, { duration: REVIEW_PAGE_SWIPE.resetMs, easing: EASE_SCREEN })); }}
+    onTerminate={() => { if (!leaving.current) fadeY.set(withTiming(0, { duration: REVIEW_PAGE_SWIPE.resetMs, easing: EASE_SCREEN })); }}>
     <PageSurface hue={model.deck.hue} />
     <View testID="listenTranscriptTouchArea" style={StyleSheet.absoluteFill}
       // OpenAI Codex, 2026-11-21: track both regions here so child touches cannot steal the outside exit gesture.
@@ -219,10 +224,10 @@ export function ListenBackKaraokeScreen({ active = true }: { active?: boolean })
         if (start.transcript) {
           if (Math.abs(dy) > 45 * frame.s && Math.abs(dy) > Math.abs(dx)) browse(dy > 0 ? -1 : 1);
         } else if (dy > 90 * frame.s && dy > Math.abs(dx)) fadeBack();
-        else fadeY.set(withTiming(0, { duration: 360, easing: EASE_SCREEN }));
+        else fadeY.set(withTiming(0, { duration: REVIEW_PAGE_SWIPE.resetMs, easing: EASE_SCREEN }));
       }}
       onTouchCancel={() => { browseTouch.current = null;
-        if (!leaving.current) fadeY.set(withTiming(0, { duration: 360, easing: EASE_SCREEN })); }}>
+        if (!leaving.current) fadeY.set(withTiming(0, { duration: REVIEW_PAGE_SWIPE.resetMs, easing: EASE_SCREEN })); }}>
       <View style={styles.header} pointerEvents="none">
         <Txt numberOfLines={1} style={[styles.title, { color: c.text }]}>Listen back</Txt>
         <Txt style={[styles.subtitle, { color: c.secondary }]}>{`Whole run · ${fmt(total)}`}</Txt>
@@ -272,14 +277,21 @@ export function ListenBackKaraokeScreen({ active = true }: { active?: boolean })
     </View>
   </PanView></Enter>
   {/* OpenAI Codex, 2026-11-20: playback gestures do not animate the footer. */}
-  <HintRow hints={[{ icon: 'h-vert', text: 'Browse text', hidden: hideTranscriptHints }, { icon: 'h-tap', text: 'Tap a word', hidden: hideTranscriptHints }, { icon: 'h-dn', text: 'Back to review', nudge: 'down' }]} />
+  {footer.visible && <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, footer.style]}>
+    <HintRow style={{ bottom: frame.compact ? 42 : 58 }} hints={[
+      { icon: 'h-vert', text: 'Browse text', hidden: hideTranscriptHints },
+      { icon: 'h-tap', text: 'Tap a word', hidden: hideTranscriptHints },
+    ]} />
+    <HintRow hints={[{ icon: 'h-dn', text: 'Back to review', nudge: 'down' }]} />
+  </Animated.View>}
   </>;
 }
 
 const EmptyTranscript = memo(function EmptyTranscript({ pending, stages }: Pick<DeckModel, 'pending' | 'stages'>) {
   const { c } = useTheme();
-  const allowed = useSyncExternalStore(subscribePrivacy, onlineAllowed);
-  const processing = pending && allowed && (!STORE_MODE || [...stages.values()].includes('processing'));
+  const access = useSyncExternalStore(demoAccess.subscribe, demoAccess.getSnapshot, demoAccess.getSnapshot);
+  const allowed = useSyncExternalStore(subscribePrivacy, onlineAllowed, onlineAllowed);
+  const processing = pending && allowed && access.state === 'ready' && (!STORE_MODE || [...stages.values()].includes('processing'));
   const message = processing ? 'Transcript is still processing.' : 'No transcript for this run';
   return <View style={styles.noTranscript}><Txt style={[styles.noTranscriptText, { color: c.secondary }]}>{message}</Txt></View>;
 });

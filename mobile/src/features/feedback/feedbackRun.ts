@@ -9,7 +9,7 @@ import type { ScoreLevel } from './presentationScore';
 import { budgetStatus } from '../../services/storeBudget';
 
 export type V3Evidence =
-  | { kind: 'speech'; id: string; slide_index: number; start_ms: number; end_ms: number; text: string }
+  | { kind: 'speech'; id: string; slide_index: number; start_ms: number; end_ms: number; text: string; attempt_id?: string }
   | { kind: 'measurement'; id: string; text: string };
 export type V3Criterion = { id: string; label: string; maximum_points: number; level: ScoreLevel | null; anchor: string | null;
   points: number | null; reason: string; next_level: string; evidence: V3Evidence[] };
@@ -66,7 +66,8 @@ function evidence(value: unknown): V3Evidence[] {
     if (e.kind === 'measurement') return [{ kind: 'measurement', id: str(e.id), text: str(e.text) }];
     const start = int(e.start_ms), end = int(e.end_ms), slide = int(e.slide_index);
     return start !== null && end !== null && slide !== null && end > start && start >= 0
-      ? [{ kind: 'speech', id: str(e.id), slide_index: slide, start_ms: start, end_ms: end, text: str(e.text) }] : [];
+      ? [{ kind: 'speech', id: str(e.id), slide_index: slide, start_ms: start, end_ms: end, text: str(e.text),
+        ...(str(e.attempt_id) ? { attempt_id: str(e.attempt_id) } : {}) }] : [];
   });
 }
 function criteria(value: unknown): V3Criterion[] {
@@ -129,6 +130,11 @@ export const feedbackRunNeedsStart = (run: FeedbackRun | null) =>
 export const feedbackRunOutdated = (run: FeedbackRun | null) => !!run && (run.outdated || run.status === 'stale') && !feedbackRunActive(run);
 export const feedbackRunHasFailures = (run: FeedbackRun | null) =>
   !!run && (run.status === 'failed' || run.slides.some(s => s.status === 'failed') || run.whole?.status === 'failed');
+export function selectedRunBudgetStatus(run: FeedbackRun | null) {
+  if (!run || feedbackRunActive(run)) return null;
+  return budgetStatus(run.error?.code) ?? budgetStatus(run.whole?.error)
+    ?? budgetStatus(run.slides.find(slide => budgetStatus(slide.error))?.error);
+}
 
 // ------------------------------------------------------------------ selection for the selected run
 
@@ -140,7 +146,8 @@ export type V3Input = { n: number; parts: (SlidePart | null)[]; stages: Readonly
   /** Saved run per attempt id, for attempts whose transcript is ready. */ runs: ReadonlyMap<string, FeedbackRun | null>;
   ready: ReadonlySet<string>;
   /** New recordings whose feedback starts automatically after transcription. */ expected: ReadonlySet<string>;
-  /** New recordings whose automatic start waits for presentation settings to synchronize. */ waitingForSettings?: ReadonlySet<string> };
+  /** New recordings whose automatic start waits for presentation settings to synchronize. */ waitingForSettings?: ReadonlySet<string>;
+  /** Server assessment for the exact selected take composition. */ selected?: { run: FeedbackRun | null; status: string } | null };
 
 const CODE_LABELS: Partial<Record<V3SlideStatus, string>> = {
   not_applicable: 'Not applicable', not_recorded: 'Not recorded', insufficient_speech: 'Too little speech',
@@ -161,14 +168,20 @@ function runStatus(run: FeedbackRun | null, ready: boolean, stage: string | unde
 
 /** Per-slide and overall display for the selected run; mirrors the v2 shapes the screens already use. */
 export function selectRunFeedbackV3(input: V3Input) {
+  const selectedRun = input.selected?.run ?? null;
+  const selectedSlides = !selectedRun?.outdated && selectedRun?.status !== 'stale'
+    ? new Map(selectedRun?.slides.map(slide => [slide.slide_index, slide])) : new Map<number, V3Slide>();
   const items: V3SlideDisplay[] = Array.from({ length: input.n }, (_, slideIndex) => {
     const part = input.parts[slideIndex];
     const recorded = !!part?.segments.some(s => s.endMs > s.startMs);
     const base = { slide: slideIndex, score: null, level: null, state: null, result: null, target: null,
       attemptId: part?.attemptId ?? null, v3: null, run: null, outdated: false } as const;
     if (!part || !recorded) return { ...base, status: 'Not recorded', settled: true };
-    const run = input.runs.get(part.attemptId) ?? null, ready = input.ready.has(part.attemptId);
-    const v3 = run?.slides.find(s => s.slide_index === slideIndex) ?? null;
+    const selectedSlide = selectedSlides.get(slideIndex);
+    const useSelected = !!selectedSlide && !selectedSlide.provisional && !['pending', 'failed'].includes(selectedSlide.status);
+    const run = useSelected ? selectedRun : input.runs.get(part.attemptId) ?? null;
+    const ready = input.ready.has(part.attemptId);
+    const v3 = useSelected ? selectedSlide : run?.slides.find(s => s.slide_index === slideIndex) ?? null;
     const expected = input.expected.has(part.attemptId);
     const pending = runStatus(run, ready, input.stages.get(part.attemptId), expected, !!input.waitingForSettings?.has(part.attemptId));
     const usable = !!v3 && v3.status !== 'pending';
@@ -188,7 +201,24 @@ export function selectRunFeedbackV3(input: V3Input) {
   const base = { score: null, level: null, state: null, result: null, target: null, outdated: false } as const;
   let overall: V3OverallDisplay;
   if (ids.length === 0) overall = { ...base, status: 'Not graded', attemptId: null, run: null };
-  else if (ids.length > 1) overall = { ...base, status: 'Combined recordings', attemptId: null, run: null };
+  else if (ids.length > 1) {
+    const run = selectedRun;
+    const pending = input.selected?.status ?? 'Overall score unavailable';
+    const scores = run?.scores;
+    const budget = selectedRunBudgetStatus(run);
+    overall = { ...base, status: pending, attemptId: null, run: null };
+    if (budget) overall = { ...overall, status: budget, run };
+    else if (feedbackRunOutdated(run)) overall = { ...overall, status: 'Score outdated', outdated: true };
+    else if (feedbackRunHasFailures(run)) overall = { ...overall, status: 'Feedback failed', run };
+    else if (run?.status === 'completed') {
+      if (scores?.overall != null && scores.overall_level && !scores.withheld.length) {
+        overall = { ...overall, status: 'Scored', score: scores.overall, level: scores.overall_level, run };
+      } else {
+        overall = { ...overall, status: scores?.withheld.some(w => w.reason === 'presentation_incomplete')
+          ? 'Record missing slides for an overall score' : withheldLabel(scores?.withheld ?? []), run };
+      }
+    }
+  }
   else {
     const run = input.runs.get(ids[0]) ?? null;
     const pending = budgetStatus(run?.whole?.error) ?? runStatus(run, input.ready.has(ids[0]), input.stages.get(ids[0]), input.expected.has(ids[0]),

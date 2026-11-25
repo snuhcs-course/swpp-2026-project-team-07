@@ -54,3 +54,27 @@ test('a separate selected retake starts at first visit and leaves old slide visi
   const otherTake = { ...lines[0], audio: { ...lines[0].audio, attemptId: 'another' } };
   assert.equal(visitHeading(otherTake, lines[0]), 'First visit · 0:00 in recording');
 });
+
+test('a long recording only inspects sentences around each selected slide visit', () => {
+  const count = 91, duration = count * 2000;
+  let timestampReads = 0;
+  const words = Array.from({ length: count * 4 }, (_, i) => ({ text: `word${i}`,
+    get start_ms() { timestampReads++; return i * 500; }, end_ms: i * 500 + 300 }));
+  const transcript = { text: words.map(word => `${word.text}.`).join(' '), words };
+  const events = Array.from({ length: count }, (_, i) => ({ slide_index: i, at_ms: i * 2000 }));
+  const longRun = mergeTake(null, { attemptId: 'long', visits: takeVisits(events, duration),
+    spoken: Array(count).fill(true), whole: true, createdAt: '2026-10-15T00:00:00Z',
+  }, { ...ctx, n: count, targets: Array(count).fill(2), deckTarget: duration / 1000 }).run;
+  const lines = buildLines(longRun, count, new Map([['long', transcript]]), {}, vocab);
+  assert.deepEqual(lines.map(line => [line.slide, line.audio.startMs]), words.map((_, i) => [Math.floor(i / 4), i * 500]));
+  assert.ok(timestampReads < 10_000, `read ${timestampReads} timestamps for ${words.length} words`);
+});
+
+test('older out-of-order word timings retain their original sentence placement', () => {
+  const unsorted = { text: 'Early. Later. Again.', words: [
+    { text: 'Early', start_ms: 100, end_ms: 400 }, { text: 'Later', start_ms: 2500, end_ms: 2800 },
+    { text: 'Again', start_ms: 500, end_ms: 800 },
+  ] };
+  const lines = buildLines(run, 2, new Map([['original', unsorted]]), {}, vocab);
+  assert.deepEqual(lines.map(line => [line.slide, line.text]), [[0, 'Early.'], [0, 'Again.'], [1, 'Later.']]);
+});

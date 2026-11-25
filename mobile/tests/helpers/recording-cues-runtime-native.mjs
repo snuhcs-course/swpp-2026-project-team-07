@@ -1,33 +1,48 @@
 // Synthetic capture/player adapters; no microphone, providers or user data.
 import React from 'react';
-export const Text='text', View='view', Pressable='pressable', TextInput='input';
+export const Text='text', View='view', Pressable='pressable', TextInput='input', Image='image';
 export const setupNative={frame:{top:0,left:0,s:1,width:390,height:844},scrolls:[],keyboard:null,listeners:new Map()};
 export const ScrollView=React.forwardRef(function NativeScroll(props,ref){React.useImperativeHandle(ref,()=>({scrollTo:options=>setupNative.scrolls.push(options)}));return React.createElement('scroll',props);});
 export const Keyboard={metrics:()=>setupNative.keyboard,addListener:(name,listener)=>{const listeners=setupNative.listeners.get(name)??new Set();listeners.add(listener);setupNative.listeners.set(name,listeners);return{remove:()=>listeners.delete(listener)};},dismiss:()=>{setupNative.keyboard=null;for(const fn of setupNative.listeners.get('keyboardDidHide')??[])fn({});}};
 export function emitSetupKeyboard(name,screenY){setupNative.keyboard=name==='keyboardDidHide'?null:{screenY};for(const fn of setupNative.listeners.get(name)??[])fn({endCoordinates:{screenY}});}
 export const StyleSheet={create:v=>v,absoluteFill:{}};
 export const Enter=({children})=>React.createElement('enter',null,children), Txt='text';
-export const useFrame=()=>setupNative.frame;
-export const Glyph='glyph',UIIcon='icon',PanView='pan',SlideCard='slide-card',MiniSlide='mini-slide',CARD_H=196,CARD_W=358;
+export const FrameContext=React.createContext(null);
+export const useFrame=()=>React.useContext(FrameContext)??setupNative.frame;
+export const useFrameLayout=(landscape=false)=>setupNative.rotationLayouts?.[Number(landscape)]??{
+ info:setupNative.frame,width:390,height:844,designW:landscape?844:390,designH:landscape?390:844,rotatedPortrait:landscape,
+};
+export const Glyph='glyph',UIIcon='icon',PresentationIcon='presentation-icon',PanView='pan',SlideCard='slide-card',MiniSlide='mini-slide',CARD_H=196,CARD_W=358;
 export const Chip='chip',Confetti='confetti',Dialog='dialog',HintRow='hints',OrbitalCaption='orbital-caption',PageSurface='page-surface',RecordButton='record-button',RecordRing='record-ring',RoundButton='round-button',Waveform='waveform',IDLE_WAVE=[];
 export const Easing={linear:v=>v,cubic:v=>v,bezier:()=>v=>v,inOut:f=>f,out:f=>f};
 export const cancelAnimation=()=>{},runOnJS=f=>f,withTiming=(value,config,complete)=>{
  const timing={value,duration:config?.duration,complete};runtime.timings.push(timing);
- return value===1&&config?.duration===600&&complete?{openingPage:timing}:value;
+ const pageMotion=(value===1&&[160,240,260,300].includes(timing.duration))||(value===0&&timing.duration===180);
+ if(pageMotion&&complete)return{pageMotion:timing};
+ if(timing.duration===0&&complete)queueMicrotask(()=>complete(true));
+ return value;
 };
-export const useSharedValue=value=>{const r=React.useRef({value,get(){return this.value;},set(v){
- if(v?.openingPage){const timing=v.openingPage,finish=timing.complete;timing.complete=done=>{if(done)this.value=timing.value;finish?.(done);};return;}
+export const withRepeat=value=>value;
+const sharedValue=value=>({value,get(){return this.value;},set(v){
+ if(v?.pageMotion){const timing=v.pageMotion,finish=timing.complete;timing.sample=progress=>{this.value=progress;};timing.complete=done=>{if(done)this.value=timing.value;finish?.(done);};return;}
  this.value=v;
-}});return r.current;};
-export const useAnimatedStyle=()=>({}),useReducedMotion=()=>runtime.reducedMotion;
+}});
+export const useSharedValue=value=>React.useRef(sharedValue(value)).current;
+export const useDerivedValue=read=>({get value(){return read();}});
+export const useAnimatedStyle=read=>{
+ const [initial]=React.useState(()=>runtime.inspectAnimatedStyles?read():undefined);
+ return runtime.inspectAnimatedStyles?{read,initial}:{};
+};
+export const useReducedMotion=()=>runtime.reducedMotion;
+export const useAnimatedReaction=()=>{};
 const Animated=Object.assign(({children})=>React.createElement('svg',null,children),{View:'animated'});export default Animated;
 export const Rect='rect',Path='path',Circle='circle',Line='line',Defs='defs',LinearGradient='linear-gradient',Stop='stop',StatusBar='status-bar',selectionAsync=async()=>{},impactAsync=async()=>{},ImpactFeedbackStyle={Medium:'medium'};
 export const OrientationLock={PORTRAIT_UP:1},lockAsync=async()=>{};
 export const useSafeAreaInsets=()=>({top:0,bottom:0,left:0,right:0});
 const setFullscreenLandscape=()=>{};
-export const runtime={model:null,version:0,listeners:new Set(),shell:null,captures:[],played:[],stops:0,routes:[],recoveries:[],audio:new Map(),startWait:null,reducedMotion:true,timings:[],
- reset(model,slide=0){this.model=model;this.version++;this.captures=[];this.played=[];this.stops=0;this.routes=[];this.recoveries=[];this.audio=new Map();this.startWait=null;this.reducedMotion=true;this.timings=[];
- this.shell={nav:{deckId:model.deck.id,slide,nav:null},go:(...a)=>this.routes.push(a),setFullscreenLandscape,home:{p:{get:()=>0,set(){}},titleReturn:{value:1,set(v){this.value=v;}}}};},
+export const runtime={model:null,version:0,listeners:new Set(),shell:null,captures:[],played:[],stops:0,routes:[],recoveries:[],audio:new Map(),startWait:null,reducedMotion:true,inspectAnimatedStyles:false,timings:[],
+ reset(model,slide=0){this.model=model;this.version++;this.captures=[];this.played=[];this.stops=0;this.routes=[];this.recoveries=[];this.audio=new Map();this.startWait=null;this.reducedMotion=true;this.inspectAnimatedStyles=false;this.timings=[];
+ this.shell={nav:{deckId:model.deck.id,slide,nav:null},go:(...a)=>this.routes.push(a),setFullscreenLandscape,home:{p:sharedValue(0),titleReturn:sharedValue(1)}};},
  emit(){this.version++;for(const l of this.listeners)l();}};
 const subscribe=l=>{runtime.listeners.add(l);return()=>runtime.listeners.delete(l);};
 export function useDeckModel(){React.useSyncExternalStore(subscribe,()=>runtime.version);return runtime.model;}
@@ -40,7 +55,7 @@ export function saveDeckState(_id,state){runtime.model.state=state;runtime.emit(
 export const savedAttempts=()=>runtime.recoveries,audioOf=id=>runtime.audio.get(id)??null;
 export function commitTake(_deck,take){const takes=(runtime.model.state.takes??0)+1,sel=take.events[0].slide_index;const run={id:'recovered-run',sel,takeNo:takes,parts:Array.from({length:runtime.model.n},(_,i)=>i===sel?{attemptId:take.attemptId,segments:[{startMs:0,endMs:take.durationMs}]}:null)};runtime.model.state={...runtime.model.state,run,takes};runtime.emit();return{run,compare:null};}
 export const CaptureEngine=React.forwardRef(function SyntheticCapture(props,ref){
- const[capture]=React.useState(()=>{const c={started:0,slides:[],props,async start(current){this.started++;this.slides.push(current());if(runtime.startWait)await runtime.startWait;},slideChanged(i){this.slides.push(i);},async stop(){return{attemptId:'synthetic-capture',durationMs:5000,events:[{slide_index:this.slides[0],at_ms:0}]};}};runtime.captures.push(c);return c;});
+ const[capture]=React.useState(()=>{const c={started:0,slides:[],props,async checkLiveFeedback(){return false;},async start(current){this.started++;this.slides.push(current());if(runtime.startWait)await runtime.startWait;},slideChanged(i){this.slides.push(i);},async stop(){return{attemptId:'synthetic-capture',durationMs:5000,events:[{slide_index:this.slides[0],at_ms:0}]};}};runtime.captures.push(c);return c;});
  capture.props=props;React.useImperativeHandle(ref,()=>capture,[capture]);return null;});
 export function useSegmentPlayer(){const[,render]=React.useState(0);const[p]=React.useState(()=>({playingKey:null,paused:false,error:null,
  stop(){runtime.stops++;this.playingKey=null;this.paused=false;render(n=>n+1);},async playSegments(key,segments){runtime.played.push({key,segments});if(this.playingKey===key)this.paused=!this.paused;else{this.playingKey=key;this.paused=false;}render(n=>n+1);}}));
