@@ -81,3 +81,21 @@ Through December 31, 2026
 - Codex replaced the scrolling native consent prompt with a themed modal that pins both decision buttons and the privacy link. The signed Build 88 removes the overlay permission and contains the licensed Seoul sample. Type checking, lint, and 872 mobile tests passed. Codex verified the controls on a fresh 320 × 640 Android emulator and updated the Samsung in place with the signed APK.
 - Codex deployed the selected-take scoring route and worker with the compatible database migration. A public synthetic rehearsal assembled from two kept recordings received live 88/100 feedback citing both sources. A separate fresh slide received live cues. Codex set the approved December 31 KST cutoff on the public services, preserved the US$50 lifetime cap and ledger, and verified service health.
 - Codex published the updated bilingual privacy policy and verified the saved Korean and English ONEconsole descriptions, privacy URL, and installation ID disclosure. Reviewer instructions were prepared in the release handoff.
+
+## Publish Build 88 source and APK on GitHub — November 25, 2026
+
+- Contributor: Injoon.
+- Tool and model: OpenAI Codex, GPT-6, with an independent Codex release review.
+- Prompts (verbatim):
+
+```text
+upload the code changes to a new PR
+```
+
+```text
+and also release the build on github
+```
+
+- Codex ported the Build 88 changes onto the current PR #70 branch, kept its durable cue processing, and matched the selected-score migration to the production schema. Codex compared 360 mobile files with the signed build input and pinned Android build code 88.
+- Mobile type checking, lint, 872 tests, and the Android bundle passed. Django checks and PostgreSQL migrations passed. The Django suite ran 837 tests with one skip.
+- Codex opened [PR #71](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/71) and published the [Build 88 GitHub prerelease](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-onestore-v88-20261125). The release tag matches the PR head, and GitHub reported the same SHA-256 values as the submitted signed APK and checksum file.
