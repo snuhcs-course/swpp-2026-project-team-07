@@ -113,3 +113,41 @@ When I close the app and reopen it, for a short period amount of time, shows a s
 - Codex reproduced the flash with the saved catalog still unread. Home treated the initial empty array as an empty library. The carousel, Add card and hints, and library glow now wait until the catalog finishes loading. The tutorial and appearance controls can render independently.
 - The regression failed on Build 88 source, then passed with the fix for both a saved presentation and a confirmed empty library. The independent review reproduced the existing consent fixture’s missing load and Codex added that startup step. Type checking, lint, and all 873 mobile tests passed.
 - Codex captured the placeholder on a cold launch of Build 88 on the Android emulator. Signed Build 89 updated the emulator in place, and the cold-launch replay showed the same saved library without the placeholder. Android Debug Bridge listed only the emulator at install time.
+
+## Remove the Home Add swipe caption — November 25, 2026
+
+- Contributor: Injoon.
+- Tool and model: OpenAI Codex, GPT-6.
+- Prompts (verbatim):
+
+```text
+When we try to add new page by swiping on home page, let's remove the title above the icon
+```
+
+```text
+Do a fresh reinstall after
+```
+
+```text
+In the review page after recording there's lots of useless text like overall feedback just now and full run
+```
+
+```text
+run another subagent to fix this problem: the +13.3 looks misfit in the field
+```
+
+```text
+Switching between the different cards in slide feedback seems a bit choppy: can you investigate why
+```
+
+```text
+that's not slide feeback that's home page
+```
+
+```text
+individual slide feedback page
+```
+
+- Codex removed the caption above the Add icon during the upward swipe with saved decks and faded the empty library caption at the start of its swipe. The existing swipe regression checks the early movement and normal Add handoff.
+- Codex removed the redundant run subtitles from Overall Review, its loading screen, and the slide title fallback. A separate Codex subagent fixed the wrapping point-gain badge and extended the compact layout test. All 873 mobile tests passed. Codex signed Build 91 and checked its package, signature, and checksum.
+- The Android emulator recording of the Home Add swipe verified the caption removal. A separate trace and Android replay on the individual slide page confirmed that the current card exits before the next scroll view mounts and measures. The replay showed several blank frames between a timing card and the feedback summary. The Samsung refresh was held while awaiting confirmation to erase the on-device data.
