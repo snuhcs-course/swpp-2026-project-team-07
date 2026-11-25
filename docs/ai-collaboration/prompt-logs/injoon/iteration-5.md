@@ -24,3 +24,17 @@ I checked changes, looks fine can you update PR and then release this version as
 
 - Injoon reported checking the separate phone build and approved the spacing change. Codex cherry-picked the tested commit `4c72a11` into [PR #68](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/68) as `f2ec181` and verified the resulting source trees match.
 - Codex built and signed OutLoud 0.1.0 (build 41) from `997ae9c` and published a [GitHub prerelease](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-onestore-v41-20261123) with the APK and SHA-256 file. Type checking, lint, all 777 mobile tests and Android bundling passed. The signed APK upgraded build 40 on an emulator, preserved Korean and tutorial completion, and passed a fresh first run including demo-code focus and the Add card. GitHub asset digests and the tag matched the tested artifacts and source.
+
+## Connect Home and Add presentation in both directions — November 25, 2026
+
+- Contributor: Injoon.
+- Tool and model: OpenAI Codex, GPT-6, with a read-only Codex transition subagent.
+- Prompt (verbatim):
+
+```text
+the transitioins between add presentation page and home page should be smoother. it should connect
+```
+
+- The code and Android recordings showed that Home removed its labels when the route changed, while Add started a separate entrance. On return the center icon simply faded while the carousel closed around it. Codex kept the wordmark aligned, used the picker progress for both sets of controls, and linked the icon scale and opacity to the carousel gap on the way back. Existing deck depth supplies the background blur while the carousel dims continuously.
+- The first emulator build showed Home controls behind PDF progress after closing Android's file picker. Codex excluded Home controls and captions while the PDF progress or Timing screen is active and restored the independent import footer. Build 85 remained an emulator comparison.
+- On signed Build 86, Android recordings verified opening Add, returning Home with a steady wordmark and shrinking Add icon, and releasing an incomplete swipe to stay on Add. A synthetic 31-slide PDF reached Timing with the import footer and without Home controls behind it. Type checking, lint, and all 872 mobile tests passed. The Samsung updated at 16:42:45 KST over the existing installation. Codex matched the APK checksum and verified the launch.
