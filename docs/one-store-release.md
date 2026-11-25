@@ -74,6 +74,6 @@ The published builds 40 and 41 use signer SHA-256 `6fa1ce0c3adf91895b0aafeb0a545
 ## Verify the signed file and submit
 
 - On a clean Android install, cold-launch the signed APK without a tester code. Decline uploads, open Seoul, record and play back locally. Open the privacy policy and explicitly enable coaching.
-- Against the funded store service, import a PDF, record a short rehearsal, wait for a real transcript and grounded score, then generate and answer a Q&A question. Check the provider receipts and lifetime ledger. Keep recordings and keys out of release evidence.
+- In a fresh workspace, open the bundled seven-slide Seoul deck and check the title, middle and last slides. Confirm that content slides show grounded cues. A title-only slide can have none. Import a different multi-slide PDF, record a short rehearsal, wait for a real transcript and grounded score, then generate and answer a Q&A question. Check the provider receipts and lifetime ledger. Keep recordings and keys out of release evidence.
 - On a separate installation of the signed build 41, create a local rehearsal and install the same signed build 42 as an update. Verify that local audio remains playable, online consent starts unselected, and the store workspace contains only that installation's uploads.
 - Upload the tested signed APK and its checksum to the team's GitHub release. The ONE Store submitter uploads the signed APK and supplies the public privacy-policy URL. The signing kit provides the unsigned input.
