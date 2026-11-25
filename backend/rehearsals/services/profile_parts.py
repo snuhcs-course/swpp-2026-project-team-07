@@ -10,7 +10,7 @@ from .feedback import (Fact, FeedbackError, MAX_CONTEXT_BYTES, MAX_OUTPUT_BYTES,
                        PreparedDeck, PrivateModel, ShortText, SlideIndex,
                        description_facts, json_bytes, validated)
 from .pdf import PUBLIC_MAX_PAGES
-from .slide_profile_schema import Cue, PROFILE_SCHEMAS, validate_profiles
+from .slide_profile_schema import Cue, PROFILE_SCHEMAS, canonical_guidance, cue_word_count, validate_profiles
 
 
 PART_THRESHOLD = 10
@@ -183,6 +183,21 @@ def _with_enrichments(deck, facts, enrichments):
     return validate_profiles({'slides': rows}, deck, V5, max_bytes=MAX_ASSEMBLED_BYTES)
 
 
+def _citable_facts(cue, selectors, registry, seen, *, slide_facts=None):
+    """An existing uncertain fact disqualifies just this candidate; other v5 rules still apply."""
+    facts = [registry.get(selector) for selector in selectors]
+    if any(fact is None for fact in facts):
+        raise FeedbackError('invalid_descriptions')
+    key = canonical_guidance(cue['text'])
+    verbatim = facts if slide_facts is None else slide_facts
+    if (not key or key in seen or cue_word_count(cue['text']) > 25 or
+            len(set(selectors)) != len(selectors) or any(key == canonical_guidance(fact.text) for fact in verbatim) or
+            ('kind' in cue and (cue['kind'] == 'question') != bool(cue['information_needed'].strip()))):
+        raise FeedbackError('invalid_descriptions')
+    seen.add(key)
+    return None if any(fact.uncertain for fact in facts) else facts
+
+
 def normalize_part(prepared, receipt, phase, offset, *, fact_parts=()):
     """Normalize a persisted receipt without keys, media, or a second provider call."""
     deck = prepared.analysis
@@ -197,8 +212,13 @@ def normalize_part(prepared, receipt, phase, offset, *, fact_parts=()):
     parsed = validated(schema, value, 'invalid_descriptions', MAX_OUTPUT_BYTES)
     rows = _ordered(parsed.model_dump(mode='json')['slides'], indexes)
     if phase == FACTS:
+        by_slide = {slide.slide_index: description_facts(slide) for slide in parsed.slides}
         for row in rows:
-            row.update(deck_id=deck.source.deck_id, source_id=deck.source_ids[row['slide_index']], go_deeper=[])
+            i = row['slide_index']
+            row.update(deck_id=deck.source.deck_id, source_id=deck.source_ids[i], go_deeper=[])
+            registry, seen = by_slide[i], set()
+            row['must_cover'] = [cue for cue in row['must_cover']
+                                 if _citable_facts(cue, cue['evidence_refs'], registry, seen, slide_facts=registry.values())]
         return validate_profiles({'slides': rows}, deck, V5, slide_indexes=indexes).model_dump(mode='json')
 
     facts = _frozen_facts(deck, fact_parts)
@@ -206,17 +226,21 @@ def normalize_part(prepared, receipt, phase, offset, *, fact_parts=()):
     # the original slide files are gone. A different registry cannot reinterpret a selector.
     if _request(deck, prepared.config, phase, indexes, facts).input_hash != prepared.input_hash:
         raise FeedbackError('receipt_mismatch')
-    registry = {slide.slide_index: description_facts(slide) for slide in facts}
+    registry = {(slide.slide_index, ref): fact for slide in facts for ref, fact in description_facts(slide).items()}
     for row in rows:
         i = row['slide_index']
         row.update(deck_id=deck.source.deck_id, source_id=deck.source_ids[i])
+        retained = []
+        seen = {canonical_guidance(cue.text) for cue in facts[i].must_cover}
         for cue in row['go_deeper']:
-            for ref in cue['evidence_refs']:
-                other = ref['slide_index']
-                fact = registry.get(other, {}).get(ref['fact_ref'])
-                if fact is None or fact.uncertain:
-                    raise FeedbackError('invalid_descriptions')
-                ref.update(source_id=deck.source_ids[other], quote=fact.text)
+            refs = cue['evidence_refs']
+            selected = _citable_facts(cue, [(ref['slide_index'], ref['fact_ref']) for ref in refs], registry, seen)
+            if selected is None:
+                continue
+            for ref, fact in zip(refs, selected):
+                ref.update(source_id=deck.source_ids[ref['slide_index']], quote=fact.text)
+            retained.append(cue)
+        row['go_deeper'] = retained
     _with_enrichments(deck, facts, {row['slide_index']: row['go_deeper'] for row in rows})
     return {'slides': rows}
 
