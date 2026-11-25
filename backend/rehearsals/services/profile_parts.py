@@ -6,6 +6,7 @@ from typing import Annotated, Literal
 from pydantic import Field
 
 from . import feedback_provider as provider
+from .evidence import words
 from .feedback import (Fact, FeedbackError, MAX_CONTEXT_BYTES, MAX_OUTPUT_BYTES,
                        PreparedDeck, PrivateModel, ShortText, SlideIndex,
                        description_facts, json_bytes, validated)
@@ -184,18 +185,17 @@ def _with_enrichments(deck, facts, enrichments):
 
 
 def _citable_facts(cue, selectors, registry, seen, *, slide_facts=None):
-    """An existing uncertain fact disqualifies just this candidate; other v5 rules still apply."""
+    """Accept a generated candidate only if its evidence and wording satisfy v5."""
     facts = [registry.get(selector) for selector in selectors]
-    if any(fact is None for fact in facts):
-        raise FeedbackError('invalid_descriptions')
     key = canonical_guidance(cue['text'])
     verbatim = facts if slide_facts is None else slide_facts
-    if (not key or key in seen or cue_word_count(cue['text']) > 25 or
+    if (any(fact is None or fact.uncertain or not words(fact.text) for fact in facts) or
+            not key or key in seen or cue_word_count(cue['text']) > 25 or
             len(set(selectors)) != len(selectors) or any(key == canonical_guidance(fact.text) for fact in verbatim) or
             ('kind' in cue and (cue['kind'] == 'question') != bool(cue['information_needed'].strip()))):
-        raise FeedbackError('invalid_descriptions')
+        return None
     seen.add(key)
-    return None if any(fact.uncertain for fact in facts) else facts
+    return facts
 
 
 def normalize_part(prepared, receipt, phase, offset, *, fact_parts=()):

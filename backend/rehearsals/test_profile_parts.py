@@ -100,9 +100,10 @@ class ProfilePartsTests(SimpleTestCase):
         self.assertEqual(result['slides'][0]['source_id'], deck.source_ids[10])
         for mutate in (lambda r: r.pop(), lambda r: r[0].update(slide_index=10),
                        lambda r: r[0].update(slide_index=0), lambda r: r[0].update(source_id='f' * 64),
-                       lambda r: r[0]['must_cover'][0].update(evidence_refs=['visual_facts/4']),
+                       lambda r: r[0]['must_cover'][0].update(evidence_refs=[]),
+                       lambda r: r[0]['must_cover'][0].update(evidence_refs=['unsupported_field']),
                        lambda r: r[0]['key_ideas'][0].update(uncertain=True, uncertainty=''),
-                       lambda r: r[0]['must_cover'][0].update(text=' '.join(['word'] * 26))):
+                       lambda r: r[0]['must_cover'][0].update(text='x' * 401)):
             bad = deepcopy(rows)
             mutate(bad)
             with self.assertRaisesRegex(FeedbackError, 'invalid_descriptions'):
@@ -130,15 +131,14 @@ class ProfilePartsTests(SimpleTestCase):
         result = parts.normalize_part(recovered, saved, parts.ENRICHMENT, 10, fact_parts=list(reversed(frozen)))
         ref = result['slides'][0]['go_deeper'][0]['evidence_refs'][0]
         self.assertEqual((ref['source_id'], ref['quote']), (deck.source_ids[0], fact_row(0)['key_ideas'][0]['text']))
-        for mutate in (lambda r: r.update(slide_index=12), lambda r: r.update(fact_ref='key_ideas/4'),
+        for mutate in (lambda r: r.update(slide_index=-1), lambda r: r.update(fact_ref='unsupported_field'),
                        lambda r: r.update(quote='Unverified content')):
             bad = deepcopy(rows)
             mutate(bad[0]['go_deeper'][0]['evidence_refs'][0])
             with self.assertRaisesRegex(FeedbackError, 'invalid_descriptions'):
                 parts.normalize_part(request, receipt(request, bad), parts.ENRICHMENT, 10, fact_parts=frozen)
-        for mutate in (lambda c: c.update(information_needed=''),
-                       lambda c: c.update(evidence_refs=c['evidence_refs'] * 2),
-                       lambda c: c.update(text=fact_row(10)['must_cover'][0]['text'])):
+        for mutate in (lambda c: c.pop('information_needed'), lambda c: c.update(kind='invented'),
+                       lambda c: c.update(evidence_refs=c['evidence_refs'] * 6)):
             bad = deepcopy(rows)
             mutate(bad[0]['go_deeper'][0])
             with self.assertRaisesRegex(FeedbackError, 'invalid_descriptions'):
@@ -148,12 +148,12 @@ class ProfilePartsTests(SimpleTestCase):
         with self.assertRaisesRegex(FeedbackError, 'receipt_mismatch'):
             parts.normalize_part(recovered, saved, parts.ENRICHMENT, 10, fact_parts=changed)
 
-    def test_must_cover_omits_only_cues_with_real_uncertain_evidence(self):
+    def test_must_cover_preserves_facts_and_supported_siblings_after_candidate_rejection(self):
         deck = deck_of(12)
         request = parts.prepare_part(deck, CONFIG, parts.FACTS, 10)
         rows = [fact_row(10), fact_row(11)]
         unreadable = {'text': 'Axis labels are unreadable.', 'uncertain': True, 'uncertainty': 'Low resolution.'}
-        rows[0]['visual_facts'] = [unreadable]
+        rows[0]['visual_facts'] = [unreadable, fact('\ufeff')]
         kept = rows[0]['must_cover'][0]
         excluded = {'text': 'Interpret the difference between the plotted endpoints.',
                     'evidence_refs': ['visual_facts/0', 'summary']}
@@ -163,7 +163,7 @@ class ProfilePartsTests(SimpleTestCase):
         saved = receipt(request, rows)
         result = parts.normalize_part(request, saved, parts.FACTS, 10)['slides']
         self.assertEqual(result[0]['must_cover'], [kept])
-        self.assertEqual(result[0]['visual_facts'], [unreadable])
+        self.assertEqual(result[0]['visual_facts'], [unreadable, fact('\ufeff')])
         self.assertEqual((result[1]['summary'], result[1]['must_cover']), (unreadable, []))
         self.assertEqual(saved.body, receipt(request, rows).body)
         # The ordinary v5 contract still rejects an unfiltered public profile.
@@ -171,18 +171,23 @@ class ProfilePartsTests(SimpleTestCase):
         candidate[0]['must_cover'].insert(0, excluded)
         with self.assertRaisesRegex(FeedbackError, 'invalid_descriptions'):
             validate_profiles({'slides': candidate}, deck, parts.V5, slide_indexes=(10, 11))
-        for change in ({'evidence_refs': ['visual_facts/0', 'key_ideas/4']},
-                       {'evidence_refs': ['visual_facts/0', 'visual_facts/0']},
-                       {'text': ' '.join(['word'] * 26)}, {'text': kept['text']}, {'text': unreadable['text']}):
+        for change in ({'evidence_refs': ['summary', 'key_ideas/4']}, {'evidence_refs': ['summary', 'summary']},
+                       {'evidence_refs': ['summary', 'visual_facts/1']},
+                       {'text': kept['text'], 'evidence_refs': ['key_ideas/4']},
+                       {'text': kept['text'], 'evidence_refs': ['visual_facts/0']},
+                       {'text': ' '.join(['word'] * 26)}, {'text': unreadable['text']}, {'text': '...'}):
             bad = deepcopy(rows)
-            bad[0]['must_cover'][0].update(change)
-            with self.assertRaisesRegex(FeedbackError, 'invalid_descriptions'):
-                parts.normalize_part(request, receipt(request, bad), parts.FACTS, 10)
+            candidate = {'text': 'Interpret the change in participation.', 'evidence_refs': ['summary'], **change}
+            bad[0]['must_cover'] = [candidate, kept, kept]
+            with self.subTest(change=change):
+                filtered = parts.normalize_part(request, receipt(request, bad), parts.FACTS, 10)
+                self.assertEqual(filtered['slides'], result)
 
-    def test_enrichment_omits_uncertain_cross_slide_cues_and_keeps_other_rules_strict(self):
+    def test_enrichment_discards_schema_valid_unverifiable_cues_without_suppressing_supported_siblings(self):
         deck = deck_of(12)
         frozen = freeze_facts(deck)
         frozen[0]['slides'][0]['visual_facts'][0].update(uncertain=True, uncertainty='Obscured axis.')
+        frozen[0]['slides'][0]['visual_facts'].append(fact('\ufeff'))
         request = parts.prepare_part(deck, CONFIG, parts.ENRICHMENT, 10, fact_parts=frozen)
         known = enrichment_row(10, 9)['go_deeper'][0]
         uncertain = {'slide_index': 0, 'fact_ref': 'visual_facts/0'}
@@ -195,14 +200,21 @@ class ProfilePartsTests(SimpleTestCase):
         self.assertEqual(result[0]['go_deeper'][0]['evidence_refs'][0]['quote'], fact_row(9)['key_ideas'][0]['text'])
         self.assertEqual(result[1]['go_deeper'], [])
         self.assertEqual(saved.body, receipt(request, rows).body)
-        for change in ({'evidence_refs': [uncertain, {'slide_index': 12, 'fact_ref': 'summary'}]},
-                       {'evidence_refs': [uncertain, {'slide_index': 0, 'fact_ref': 'key_ideas/4'}]},
-                       {'evidence_refs': [uncertain, uncertain]}, {'kind': 'connection'},
-                       {'text': fact_row(10)['must_cover'][0]['text']}, {'text': known['text']}):
+        good_ref = known['evidence_refs'][0]
+        missing = {'slide_index': 0, 'fact_ref': 'key_ideas/4'}
+        for change in ({'evidence_refs': [good_ref, {'slide_index': 12, 'fact_ref': 'summary'}]},
+                       {'evidence_refs': [good_ref, {'slide_index': 0, 'fact_ref': 'visual_facts/1'}]},
+                       {'evidence_refs': [missing]}, {'evidence_refs': [good_ref, good_ref]},
+                       {'text': known['text'], 'evidence_refs': [missing]},
+                       {'text': known['text'], 'evidence_refs': [uncertain]},
+                       {'kind': 'connection'}, {'information_needed': ''}, {'text': ' '.join(['word'] * 26)},
+                       {'text': fact_row(10)['must_cover'][0]['text']}, {'text': fact_row(9)['key_ideas'][0]['text']}):
             bad = deepcopy(rows)
-            bad[0]['go_deeper'][0].update(change)
-            with self.assertRaisesRegex(FeedbackError, 'invalid_descriptions'):
-                parts.normalize_part(request, receipt(request, bad), parts.ENRICHMENT, 10, fact_parts=frozen)
+            candidate = {**known, 'text': 'Which measurement could confirm this comparison?', **change}
+            bad[0]['go_deeper'] = [candidate, known, known]
+            with self.subTest(change=change):
+                filtered = parts.normalize_part(request, receipt(request, bad), parts.ENRICHMENT, 10, fact_parts=frozen)
+                self.assertEqual(filtered['slides'], result)
 
     def test_91_slide_result_keeps_cross_group_evidence_and_rejects_missing_or_foreign_parts(self):
         deck = deck_of(91)

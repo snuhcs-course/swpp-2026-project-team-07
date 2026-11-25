@@ -1,7 +1,7 @@
 """Immutable, audience-independent slide profiles for Iteration 2."""
 from typing import Annotated, Literal
 import re
-from .evidence import verified_excerpt
+from .evidence import verified_excerpt, words
 from pydantic import Field
 from .feedback import (Description, Descriptions, PrivateModel, ShortText, FeedbackError,
                        MAX_OUTPUT_BYTES, validated, description_facts, validate_descriptions)
@@ -90,8 +90,9 @@ def _repair_copied_source_id(entry, source_ids):
         entry['source_id'] = source_ids[index]
 
 
-def validate_generated_profiles(value, prepared, schema_version):
-    if schema_version in {'slide-profile-v5', 'slide-profile-gemini-v5'}:
+def validate_generated_profiles(value, prepared, schema_version, *, public_service=False):
+    v5 = schema_version in {'slide-profile-v5', 'slide-profile-gemini-v5'}
+    if v5:
         # Structural validation ensures integer indexes and 64 lowercase hex digits.
         # Work on a new object so the saved provider receipt retains its original IDs.
         value = validated(GuidanceProfiles, value, 'invalid_descriptions', MAX_OUTPUT_BYTES).model_dump(mode='json')
@@ -100,10 +101,60 @@ def validate_generated_profiles(value, prepared, schema_version):
             for insight in slide['go_deeper']:
                 for ref in insight['evidence_refs']:
                     _repair_copied_source_id(ref, prepared.source_ids)
-    return validate_profiles(value, prepared, schema_version)
+    return _validate_profiles(value, prepared, schema_version, MAX_OUTPUT_BYTES, None,
+                              omit_invalid_cues=public_service and v5)
 
 
 def validate_profiles(value, prepared, schema_version=None, *, max_bytes=MAX_OUTPUT_BYTES, slide_indexes=None):
+    return _validate_profiles(value, prepared, schema_version, max_bytes, slide_indexes, omit_invalid_cues=False)
+
+
+def _grounded(cue, key, facts, deck_facts, historical):
+    if isinstance(cue, Cue):
+        return (len(set(cue.evidence_refs)) == len(cue.evidence_refs)
+                and all(ref in facts and not facts[ref].uncertain for ref in cue.evidence_refs)
+                and (historical or all(key != canonical_guidance(f.text) for f in facts.values())))
+
+    refs = [(ref.slide_index, ref.source_id, ref.fact_ref) for ref in cue.evidence_refs]
+    if len(set(refs)) != len(refs) or (cue.kind == 'question') != bool(cue.information_needed.strip()):
+        return False
+    for ref in cue.evidence_refs:
+        source, referenced_facts = deck_facts.get(ref.slide_index, (None, {}))
+        fact = referenced_facts.get(ref.fact_ref)
+        if (source != ref.source_id or fact is None or fact.uncertain
+                or verified_excerpt(ref.quote, fact.text) is None or key == canonical_guidance(fact.text)):
+            return False
+    return True
+
+
+def _validate_slide_cues(slide, deck_facts, historical, limit, omit_invalid_cues):
+    facts = deck_facts[slide.slide_index][1]
+    if omit_invalid_cues:
+        facts = {ref: fact for ref, fact in facts.items() if words(fact.text)}
+    seen = set()
+
+    def keep(cue):
+        key = cue.text if historical else canonical_guidance(cue.text)
+        if (key and key not in seen and (limit is None or cue_word_count(cue.text) <= limit)
+                and _grounded(cue, key, facts, deck_facts, historical)):
+            seen.add(key)
+            return True
+        if not omit_invalid_cues:
+            raise FeedbackError('invalid_descriptions')
+        return False
+
+    if historical:
+        for cue in slide.cues:
+            keep(cue)
+        return slide
+    must_cover = tuple(cue for cue in slide.must_cover if keep(cue))
+    go_deeper = tuple(cue for cue in slide.go_deeper if keep(cue))
+    if len(must_cover) == len(slide.must_cover) and len(go_deeper) == len(slide.go_deeper):
+        return slide
+    return slide.model_copy(update={'must_cover': must_cover, 'go_deeper': go_deeper})
+
+
+def _validate_profiles(value, prepared, schema_version, max_bytes, slide_indexes, *, omit_invalid_cues):
     historical = schema_version in HISTORICAL_PROFILE_SCHEMAS.values()
     limit = 25 if schema_version is None or schema_version in PROFILE_SCHEMAS.values() else 15 if schema_version in STRICT_PROFILE_SCHEMAS.values() else None
     profiles = validated(SlideProfiles if historical else GuidanceProfiles, value, 'invalid_descriptions', max_bytes)
@@ -113,35 +164,6 @@ def validate_profiles(value, prepared, schema_version=None, *, max_bytes=MAX_OUT
                           if k not in {'slide_kind', 'cues', 'must_cover', 'go_deeper'}} for s in profiles.slides]}
     validate_descriptions(legacy, prepared, max_bytes=max_bytes, slide_indexes=slide_indexes)
     deck_facts = {s.slide_index: (s.source_id, description_facts(s)) for s in profiles.slides}
-    for slide in profiles.slides:
-        facts = description_facts(slide)
-        seen = set()
-        for cue in (slide.cues if historical else slide.must_cover):
-            if limit is not None and cue_word_count(cue.text) > limit:
-                raise FeedbackError('invalid_descriptions')
-            key = cue.text if historical else canonical_guidance(cue.text)
-            if (not key or key in seen or len(set(cue.evidence_refs)) != len(cue.evidence_refs)
-                    or any(ref not in facts or facts[ref].uncertain for ref in cue.evidence_refs)):
-                raise FeedbackError('invalid_descriptions')
-            if not historical and any(key == canonical_guidance(f.text) for f in facts.values()):
-                raise FeedbackError('invalid_descriptions')
-            seen.add(key)
-        if historical:
-            continue
-        for cue in slide.go_deeper:
-            if limit is not None and cue_word_count(cue.text) > limit:
-                raise FeedbackError('invalid_descriptions')
-            key = canonical_guidance(cue.text)
-            refs = [(r.slide_index, r.source_id, r.fact_ref) for r in cue.evidence_refs]
-            if (not key or key in seen or len(set(refs)) != len(refs)
-                    or (cue.kind == 'question') != bool(cue.information_needed.strip())):
-                raise FeedbackError('invalid_descriptions')
-            for ref in cue.evidence_refs:
-                source, other = deck_facts.get(ref.slide_index, (None, {}))
-                fact = other.get(ref.fact_ref)
-                if source != ref.source_id or fact is None or fact.uncertain or verified_excerpt(ref.quote,fact.text) is None:
-                    raise FeedbackError('invalid_descriptions')
-                if key == canonical_guidance(fact.text):
-                    raise FeedbackError('invalid_descriptions')
-            seen.add(key)
-    return profiles
+    slides = tuple(_validate_slide_cues(slide, deck_facts, historical, limit, omit_invalid_cues)
+                   for slide in profiles.slides)
+    return profiles.model_copy(update={'slides': slides}) if omit_invalid_cues else profiles

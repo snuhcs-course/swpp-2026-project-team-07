@@ -713,7 +713,8 @@ def normalize(prepared: PreparedRequest, receipt: RawReceipt):
     value = _output(receipt)
     if prepared.stage == "descriptions":
         if is_profile_schema(prepared.description_schema_version):
-            descriptions = validate_generated_profiles(value, prepared.analysis, prepared.description_schema_version)
+            descriptions = validate_generated_profiles(value, prepared.analysis, prepared.description_schema_version,
+                                                       public_service=public_budget.enabled())
         else:
             descriptions = validate_descriptions(value, prepared.analysis)
         return DescriptionResult(receipt.provider, receipt.model, prepared.analysis.input_id, descriptions)

@@ -1,7 +1,8 @@
-"""Generated v5 profile receipts may recover an unambiguous copied digest."""
+"""Generated v5 source identity and candidate-level evidence validation."""
+from copy import deepcopy
 from dataclasses import replace
 
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, override_settings
 
 from .services import feedback_provider as provider
 from .services.feedback import FeedbackError, json_bytes, prepare_analysis
@@ -66,6 +67,7 @@ class GeneratedProfileSourceTests(SimpleTestCase):
                 prepared = replace(self.request, analysis=replace(self.deck, source_ids=ids))
                 provider.normalize(prepared, self.receipt())
 
+    @override_settings(OUTLOUD_PUBLIC_SERVICE=False)
     def test_wrong_reference_index_source_or_quote_and_wrong_deck_are_rejected(self):
         ref = self.value['slides'][0]['go_deeper'][0]['evidence_refs'][0]
         for obj, field, wrong in ((ref, 'slide_index', 2), (ref, 'slide_index', -1),
@@ -79,3 +81,77 @@ class GeneratedProfileSourceTests(SimpleTestCase):
                     provider.normalize(self.request, self.receipt())
                 finally:
                     obj[field] = original
+
+    @override_settings(OUTLOUD_PUBLIC_SERVICE=True)
+    def test_public_unverified_quote_drops_whole_candidate_only(self):
+        expected = provider.normalize(self.request, self.receipt()).descriptions.model_dump(mode='json')
+        self.value = deepcopy(expected)  # Canonical source IDs isolate the quote failure.
+        first = self.value['slides'][0]
+        ungrounded = deepcopy(first['go_deeper'][0])
+        ungrounded['text'] = 'Compare opening hours with the unverified closing time.'
+        ungrounded['evidence_refs'].append(dict(reference(first), quote='There is a midnight curfew.'))
+        first['go_deeper'].insert(0, ungrounded)
+        saved = self.receipt()
+        original_body = saved.body
+        result = provider.normalize(self.request, saved).descriptions.model_dump(mode='json')
+        self.assertEqual(result, expected)
+        self.assertEqual(saved.body, original_body)
+        self.assertEqual(provider.output_json(saved), self.value)
+
+        with override_settings(OUTLOUD_PUBLIC_SERVICE=False), self.assertRaisesMessage(FeedbackError, 'invalid_descriptions'):
+            provider.normalize(self.request, saved)
+        with self.assertRaisesMessage(FeedbackError, 'invalid_descriptions'):
+            validate_profiles(self.value, self.deck, 'slide-profile-v5')
+        with self.assertRaisesMessage(FeedbackError, 'invalid_descriptions'):
+            provider.normalize(replace(self.request, description_schema_version='slide-profile-v4'), saved)
+
+    @override_settings(OUTLOUD_PUBLIC_SERVICE=True)
+    def test_only_retained_candidates_reserve_their_text_across_both_categories(self):
+        first = self.value['slides'][0]
+        verified = first['must_cover'][0]
+        enrichment = first['go_deeper'][0]
+        first['must_cover'] = [
+            dict(verified, text=enrichment['text'], evidence_refs=['visual_facts/4']),
+            dict(verified, evidence_refs=['key_ideas/4']),
+            verified,
+        ]
+        first['go_deeper'] = [
+            dict(enrichment, evidence_refs=[dict(reference(self.last), quote='Unsupported market hours.')]),
+            enrichment, dict(enrichment, text=verified['text']),
+        ]
+        result = provider.normalize(self.request, self.receipt()).descriptions.slides[0]
+        self.assertEqual([c.text for c in result.must_cover], [verified['text']])
+        self.assertEqual([c.text for c in result.go_deeper], [enrichment['text']])
+        self.assertEqual(result.go_deeper[0].evidence_refs[0].source_id, self.correct)
+
+    @override_settings(OUTLOUD_PUBLIC_SERVICE=True)
+    def test_evidence_without_words_cannot_support_public_cues(self):
+        self.value = provider.normalize(self.request, self.receipt()).descriptions.model_dump(mode='json')
+        first = self.value['slides'][0]
+        first['visual_facts'] = [{'text': '\ufeff', 'uncertain': False, 'uncertainty': ''}]
+        expected = deepcopy(self.value)
+        first['must_cover'].insert(0, {'text': 'Explain the trend in the displayed figure.',
+                                       'evidence_refs': ['summary', 'visual_facts/0']})
+        strict = validate_profiles(self.value, self.deck, 'slide-profile-v5')
+        self.assertEqual(len(strict.slides[0].must_cover), 2)
+        enrichment = first['go_deeper'][0]
+        empty_ref = dict(reference(first, 'visual_facts/0'), quote='\ufeff')
+        first['go_deeper'].insert(0, dict(enrichment, evidence_refs=[empty_ref, *enrichment['evidence_refs']]))
+        saved = self.receipt()
+        self.assertEqual(provider.normalize(self.request, saved).descriptions.model_dump(mode='json'), expected)
+        self.assertEqual(provider.output_json(saved), self.value)
+
+    @override_settings(OUTLOUD_PUBLIC_SERVICE=True)
+    def test_public_bad_slide_identity_fact_or_candidate_protocol_rejects_whole_receipt(self):
+        original = deepcopy(self.value)
+        for mutate in (
+            lambda s: s.update(deck_id='22222222-2222-4222-8222-222222222222'),
+            lambda s: s.update(source_id=self.deck.source_ids[2]), lambda s: s.update(slide_index=2),
+            lambda s: s['summary'].update(uncertain=True, uncertainty=''),
+            lambda s: s.update(must_cover=s['must_cover'] * 4),
+            lambda s: s['go_deeper'][0].update(unexpected='extra field'),
+        ):
+            with self.subTest(mutate=mutate), self.assertRaisesMessage(FeedbackError, 'invalid_descriptions'):
+                self.value = deepcopy(original)
+                mutate(self.value['slides'][-1])
+                provider.normalize(self.request, self.receipt())
