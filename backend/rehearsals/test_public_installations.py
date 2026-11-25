@@ -96,6 +96,29 @@ class PublicInstallationTests(TestCase):
             self.assertEqual(APIClient().post("/api/installations/").status_code, 503)
         self.assertEqual(Installation.objects.count(), 2)
 
+    def test_selected_retake_routes_are_installation_scoped(self):
+        # OpenAI Codex, 2026-11-25: protect selected score reads and submissions in store mode.
+        from .test_feedback_v3 import ENV
+
+        self.a_attempt.status = "completed"
+        self.a_attempt.processing_state = "completed"
+        self.a_attempt.slide_events = [{"slide_index": 0, "at_ms": 0}]
+        self.a_attempt.transcript = {"text": "", "words": []}
+        self.a_attempt.save()
+        url = f"/api/attempts/{self.a_attempt.pk}/selected-feedback-run/"
+        source = {"slide_index": 0, "attempt_id": str(self.a_attempt.pk),
+                  "segments": [{"start_ms": 0, "end_ms": 1000}]}
+        payload = {"scope": {"context_id": None, "slides": [source]}}
+
+        with patch.dict("os.environ", ENV):
+            self.assertEqual(APIClient().post(url, payload, format="json").status_code, 401)
+            self.assertEqual(self.b.post(url, payload, format="json").status_code, 404)
+            admitted = self.a.post(url, payload, format="json")
+            self.assertEqual(admitted.status_code, 202, admitted.data)
+            run_url = f"{url}{admitted.data['run_id']}/"
+            self.assertEqual(self.a.get(run_url).status_code, 200)
+            self.assertEqual(self.b.get(run_url).status_code, 404)
+
     def test_public_pdf_limits_and_shared_disk_headroom(self):
         url = '/api/decks/'
         before = Deck.objects.count()
@@ -160,10 +183,12 @@ class PublicInstallationTests(TestCase):
             self.assertEqual(response.status_code, 201, response.content)
             return response.json()
 
-        with patch("rehearsals.services.slide_profiles.after_upload"):
-            first = upload(self.a, "First Seoul")
-            self.assertEqual(upload(self.a, "First duplicate")["deck"]["id"], first["deck"]["id"])
-            second = upload(self.b, "Second Seoul")
+        first = upload(self.a, "First Seoul")
+        self.assertEqual(upload(self.a, "First duplicate")["deck"]["id"], first["deck"]["id"])
+        second = upload(self.b, "Second Seoul")
+        self.assertTrue(any(slide["extracted_text"].strip() for slide in first["slides"]))
+        with installation_scope(self.a_owner.pk):
+            self.assertFalse(DescriptionJob.objects.exists())
         self.assertNotEqual(first["deck"]["id"], second["deck"]["id"])
         self.assertEqual(second["deck"]["title"], "Second Seoul")
         self.assertEqual(len(first["slides"]), len(second["slides"]))

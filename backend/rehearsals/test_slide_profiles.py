@@ -131,17 +131,30 @@ class SlideProfileTests(SyntheticDecks, TestCase):
             self.assertEqual(hashlib.sha256(json_bytes(provider.response_schema(name, 'descriptions', version))).hexdigest(), schema)
             self.assertEqual(prompt_digest(name, version), prompt)
 
-    def test_upload_admits_once_and_ai_failure_does_not_break_import(self):
+    def test_upload_returns_slide_text_without_admitting_cues(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
-        url = '/api/decks/'
+        profiles_url = f'/api/decks/{self.deck.pk}/profiles/'
         with patch('rehearsals.views.store_deck', return_value=self.deck), self.captureOnCommitCallbacks(execute=True):
             for _ in range(2):
-                response = self.client.post(url, {'file': SimpleUploadedFile('synthetic.pdf', b'%PDF synthetic'), 'title': 'Synthetic'})
+                response = self.client.post('/api/decks/', {
+                    'file': SimpleUploadedFile('synthetic.pdf', b'%PDF synthetic'), 'title': 'Synthetic',
+                })
                 self.assertEqual(response.status_code, 201)
+                self.assertEqual(response.data['slides'][0]['extracted_text'], 'Synthetic slide one')
+        self.assertEqual(self.client.get(profiles_url).data['state'], 'absent')
+        self.assertFalse(DescriptionSet.objects.exists())
+        self.assertFalse(DescriptionJob.objects.exists())
+        self.broker.assert_not_called()
+
+        with self.captureOnCommitCallbacks(execute=True):
+            first = self.client.post(profiles_url + 'generate/', {}, format='json')
+            again = self.client.post(profiles_url + 'generate/', {}, format='json')
+        self.assertEqual(first.status_code, 202)
+        self.assertEqual(again.status_code, 202)
+        self.assertEqual(first.data['description_set_id'], again.data['description_set_id'])
         self.assertEqual(DescriptionSet.objects.count(), 1)
         self.assertEqual(DescriptionJob.objects.count(), 1)
-        with patch('rehearsals.views.store_deck', return_value=self.deck), patch.dict('os.environ', {'FEEDBACK_ENABLED': 'false'}):
-            self.assertEqual(self.client.post(url, {'title': 'Synthetic'}).status_code, 201)
+        self.broker.assert_called_once()
 
     def test_new_source_invalidates_old_profile_without_modifying_it(self):
         value = profiles.ensure(self.deck.pk)

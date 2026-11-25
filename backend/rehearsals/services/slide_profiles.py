@@ -77,13 +77,3 @@ def read(deck_id, set_id=None):
     result = descriptions.public_state(deck_id, absent=state)
     result['selection'] = selection_descriptor(selection) if selection else None
     return result
-
-
-def after_upload(deck_id):
-    """Import succeeds even when AI is disabled/unavailable; reads never enqueue."""
-    try:
-        ensure(deck_id)
-    except Exception:
-        # Fixed public status is available via GET; don't echo private source or
-        # configuration failures and never turn successful PDF import into failure.
-        pass
