@@ -51,3 +51,33 @@ After i add the presentation and in the presentation uploading page I can see th
 
 - Codex traced the icons to Home's dimmed carousel behind the PDF progress screen. The app now hides the carousel when the selected PDF begins processing. Add still uses the neighboring cards to connect with Home. The upload icon and progress ring keep their existing positions.
 - A dark-mode Android replay with a synthetic 31-slide PDF verified all progress steps, the Timing handoff, and the return of the library carousel when backing out to Home. Type checking, lint, and all 872 mobile tests passed. Signed Build 87 updated the Samsung in place at 16:49:26 KST. The installed checksum matched and the app launched.
+
+## Resolve the Build 87 ONE Store findings — November 25, 2026
+
+- Contributor: Injoon.
+- Tool and model: OpenAI Codex, GPT-6, with independent subagents for Android, backend preparation and verification, and the store metadata.
+- Prompts and replies (verbatim):
+
+```text
+Ok can you resolve these problems
+```
+
+```text
+I’ve signed in
+```
+
+```text
+what does committed mean. does that mean used
+```
+
+```text
+did you fix the other things
+```
+
+```text
+Through December 31, 2026
+```
+
+- Codex replaced the scrolling native consent prompt with a themed modal that pins both decision buttons and the privacy link. The signed Build 88 removes the overlay permission and contains the licensed Seoul sample. Type checking, lint, and 872 mobile tests passed. Codex verified the controls on a fresh 320 × 640 Android emulator and updated the Samsung in place with the signed APK.
+- Codex deployed the selected-take scoring route and worker with the compatible database migration. A public synthetic rehearsal assembled from two kept recordings received live 88/100 feedback citing both sources. A separate fresh slide received live cues. Codex set the approved December 31 KST cutoff on the public services, preserved the US$50 lifetime cap and ledger, and verified service health.
+- Codex published the updated bilingual privacy policy and verified the saved Korean and English ONEconsole descriptions, privacy URL, and installation ID disclosure. Reviewer instructions were prepared in the release handoff.
