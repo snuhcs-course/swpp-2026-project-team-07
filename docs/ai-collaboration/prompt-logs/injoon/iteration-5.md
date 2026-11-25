@@ -99,3 +99,17 @@ and also release the build on github
 - Codex ported the Build 88 changes onto the current PR #70 branch, kept its durable cue processing, and matched the selected-score migration to the production schema. Codex compared 360 mobile files with the signed build input and pinned Android build code 88.
 - Mobile type checking, lint, 872 tests, and the Android bundle passed. Django checks and PostgreSQL migrations passed. The Django suite ran 837 tests with one skip.
 - Codex opened [PR #71](https://github.com/snuhcs-course/swpp-2026-project-team-07/pull/71) and published the [Build 88 GitHub prerelease](https://github.com/snuhcs-course/swpp-2026-project-team-07/releases/tag/outloud-onestore-v88-20261125). The release tag matches the PR head, and GitHub reported the same SHA-256 values as the submitted signed APK and checksum file.
+
+## Prevent the Add card from flashing during startup — November 25, 2026
+
+- Contributor: Injoon.
+- Tool and model: OpenAI Codex, GPT-6, with an independent Codex review.
+- Prompt (verbatim):
+
+```text
+When I close the app and reopen it, for a short period amount of time, shows a single presentation called new presentation then goes back to show normal library
+```
+
+- Codex reproduced the flash with the saved catalog still unread. Home treated the initial empty array as an empty library. The carousel, Add card and hints, and library glow now wait until the catalog finishes loading. The tutorial and appearance controls can render independently.
+- The regression failed on Build 88 source, then passed with the fix for both a saved presentation and a confirmed empty library. The independent review reproduced the existing consent fixture’s missing load and Codex added that startup step. Type checking, lint, and all 873 mobile tests passed.
+- Codex captured the placeholder on a cold launch of Build 88 on the Android emulator. Signed Build 89 updated the emulator in place, and the cold-launch replay showed the same saved library without the placeholder. Android Debug Bridge listed only the emulator at install time.
