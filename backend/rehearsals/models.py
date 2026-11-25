@@ -243,10 +243,24 @@ class FeedbackQuotaBucket(models.Model):
         constraints = [models.UniqueConstraint(fields=['provider', 'project_id', 'model'], name='unique_feedback_quota_bucket')]
 
 
+class ProfilePart(InstallationOwned):
+    """One bounded provider result in a larger deck's existing cue revision."""
+    installation_lookup = 'job__description_set__deck__installation_id'
+    job = models.ForeignKey(DescriptionJob, on_delete=models.CASCADE, related_name='profile_parts')
+    phase = models.CharField(max_length=12)
+    offset = models.PositiveSmallIntegerField()
+    result = models.JSONField(null=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['job', 'phase', 'offset'], name='unique_profile_part')]
+
+
 class FeedbackRequest(InstallationOwned):
     """Private durable evidence, entirely separate from Whisper ProviderRequest."""
     installation_lookup = "job__description_set__deck__installation_id"
-    alternate_installation_lookup = "coaching_job__analysis__attempt__deck__installation_id"
+    alternate_installation_lookups = ("coaching_job__analysis__attempt__deck__installation_id",
+                                     "profile_part__job__description_set__deck__installation_id")
+    profile_part = models.OneToOneField(ProfilePart, on_delete=models.PROTECT, related_name='request', null=True)
     job = models.OneToOneField(DescriptionJob, on_delete=models.PROTECT, related_name='request', null=True)
     coaching_job = models.OneToOneField(FeedbackJob, on_delete=models.PROTECT, related_name='request', null=True)
     generation = models.PositiveIntegerField()
@@ -273,8 +287,9 @@ class FeedbackRequest(InstallationOwned):
 
     class Meta:
         constraints = [models.CheckConstraint(
-            condition=(models.Q(job__isnull=False, coaching_job__isnull=True, stage='descriptions') |
-                       models.Q(job__isnull=True, coaching_job__isnull=False, stage='coaching')),
+            condition=(models.Q(job__isnull=False, coaching_job__isnull=True, profile_part__isnull=True, stage='descriptions') |
+                       models.Q(job__isnull=True, coaching_job__isnull=False, profile_part__isnull=True, stage='coaching') |
+                       models.Q(job__isnull=True, coaching_job__isnull=True, profile_part__isnull=False, stage='descriptions')),
             name='feedback_request_exact_stage_owner')]
 
 

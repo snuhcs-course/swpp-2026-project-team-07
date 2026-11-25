@@ -589,6 +589,9 @@ def finish(value, job, result=None, error=None):
 
 @_private_database_logging()
 def run_description(set_id, revision):
+    from . import profile_work
+    if profile_work.run_if_needed(set_id, revision):
+        return
     try:
         claimed = claim(set_id, revision)
     except (DescriptionSet.DoesNotExist, DescriptionJob.DoesNotExist):
@@ -645,7 +648,9 @@ def recover_descriptions():
     """Beat wakes durable work; terminal invalid receipts never normalize forever."""
     # Receipt evidence outlives job state/revision: a late response may arrive
     # after needs_confirmation was superseded by an explicit retry or edit.
-    ids = DescriptionJob.objects.filter(
+    from . import profile_work
+    profile_work.recover()
+    ids = DescriptionJob.objects.exclude(profile_parts__isnull=False).filter(
         Q(state__in=ACTIVE | {'superseded'}) |
         Q(request__received_at__isnull=False, request__completed_at__isnull=True)
     ).values_list('description_set_id', 'generation')

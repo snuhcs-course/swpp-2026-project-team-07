@@ -17,7 +17,7 @@ from django.db.models import F
 LIMIT_MICROUSD = 50_000_000
 OPENROUTER_URL = 'https://openrouter.ai/api/v1/responses'
 # A workspace can enforce one hosted search and up to three alignment retries.
-# A successful plain-model receipt releases these conservative holds.
+# A verified final plain-model bill releases these conservative holds.
 MAX_UPSTREAM_ATTEMPTS = 4
 PLUGIN_HOLD_MICROUSD = 1_500_000
 MESSAGES = {
@@ -139,7 +139,7 @@ def _unexpected_receipt(body, usage, details):
     if (usage.get('is_byok') or body.get('is_byok') or metadata.get('is_byok')
             or (body.get('alignment') or {}).get('calls')
             or usage.get('server_tool_cost') or details.get('server_tool_cost')
-            or (usage.get('server_tool_use') or {}).get('web_search_requests')):
+            or any((usage.get('server_tool_use') or {}).values())):
         return True
     for part in body.get('output') or []:
         if part.get('type') not in ('reasoning', 'message'):
@@ -151,7 +151,7 @@ def _unexpected_receipt(body, usage, details):
 
 
 def settle_openrouter(reservation, raw):
-    """Release excess only for a completed provider receipt with billed cost."""
+    """Settle a verified final bill even if generation ended at the output-token cap."""
     try:
         from .models import LifetimeBudget, ProviderCharge
         body = json.loads(raw, parse_float=Decimal, object_pairs_hook=_unique_json_keys)
@@ -164,7 +164,11 @@ def settle_openrouter(reservation, raw):
             # Stop even when this receipt has no trustworthy bill. Its hold is already durable.
             with _ledger_transaction():
                 LifetimeBudget.objects.filter(pk=1).update(halted=True)
-        if body.get('status') != 'completed' or body.get('error'):
+        status = body.get('status')
+        incomplete = body.get('incomplete_details')
+        token_limited = (status == 'incomplete' and isinstance(incomplete, dict)
+                         and incomplete.get('reason') == 'max_output_tokens')
+        if body.get('error') is not None or not (token_limited or (status == 'completed' and incomplete is None)):
             return
         cost = usage.get('cost')
         upstream = details.get('upstream_inference_cost')
@@ -175,6 +179,11 @@ def settle_openrouter(reservation, raw):
         if any(type(value) not in (int, Decimal) or not Decimal(value).is_finite() or value < 0
                for value in (cost, upstream)):
             return
+        inputs, outputs = usage.get('input_tokens'), usage.get('output_tokens')
+        valid_tokens = all(type(value) is int and 0 <= value <= 1_000_000_000 for value in (inputs, outputs))
+        if token_limited and (unexpected or not confirmed_route or not valid_tokens or outputs == 0
+                              or cost == 0 or not isinstance(body.get('output'), list)):
+            return
         # An unexpected route may bill an upstream account separately.
         cost = cost + upstream if unexpected else max(cost, upstream)
         if cost == 0:
@@ -184,8 +193,7 @@ def settle_openrouter(reservation, raw):
                 LifetimeBudget.objects.filter(pk=1).update(halted=True)
             return
         billed = Decimal(cost) * 1_000_000
-        inputs, outputs = usage.get('input_tokens'), usage.get('output_tokens')
-        if all(type(value) is int and 0 <= value <= 1_000_000_000 for value in (inputs, outputs)):
+        if valid_tokens:
             # Preserve funding/surcharge margins in the verified rates.
             billed = max(billed, inputs * reservation.input_rate + outputs * reservation.output_rate)
         elif billed <= reservation.reserved_microusd:

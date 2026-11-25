@@ -14,7 +14,7 @@ from typing import Annotated, Literal
 from pydantic import Field
 
 from .feedback import (PrivateModel, FeedbackError, validated, json_bytes, strict_json,
-                       validate_descriptions, description_facts, UUIDText, Digest, restore_analysis)
+                       revalidate_description_input, description_facts, UUIDText, Digest, restore_analysis)
 from .evidence import quotes_equal, authoritative_quote, span_in_visit
 from . import feedback_provider as provider
 from . import presentation_rubric as rubric
@@ -276,7 +276,7 @@ def capture(analysis, descriptions, *, measurements, requirements, correction, r
             or (requirements['context_id'] is None and (requirements['revision'] is not None
                 or requirements['audience'] or requirements['required_duration_seconds'] is not None))):
         raise FeedbackError('invalid_score_input')
-    descriptions = validate_descriptions(descriptions.model_dump(mode='json'), analysis)
+    descriptions = revalidate_description_input(descriptions, analysis)
     original = analysis.source.transcript.model_dump(mode='json')
     edits = normalize(correction['edits'], original)
     if (correction.get('source_changed', False) or edits != correction['edits']

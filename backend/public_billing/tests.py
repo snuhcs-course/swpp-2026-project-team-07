@@ -130,6 +130,69 @@ class PublicBudgetTests(TransactionTestCase):
         with self.assertRaises(budget.BudgetError):
             budget.authorize_scribe('synthetic-scribe', 1)
 
+    def test_output_limit_receipt_settles_before_the_independently_reserved_retry(self):
+        held_at_send = []
+
+        def handle(request):
+            held_at_send.append(self.committed())
+            if len(held_at_send) == 1:
+                receipt = response_body({'input_tokens': 10, 'output_tokens': 10, 'cost': 0.00005})
+                receipt.update(status='incomplete', incomplete_details={'reason': 'max_output_tokens'}, error=None)
+                return httpx.Response(200, json=receipt)
+            return httpx.Response(200, json=response_body({'input_tokens': 10, 'output_tokens': 5, 'cost': 0.0001}))
+
+        self.assertEqual(self.call(handle).tries, 2)
+        retry_hold = 4 * (1_500_000 + 45_120)
+        self.assertEqual(held_at_send, [FIRST_HOLD, 75 + retry_hold])
+        self.assertEqual(list(ProviderCharge.objects.order_by('pk').values_list('confirmed_microusd', flat=True)),
+                         [75, 100])
+        self.assertEqual(self.committed(), 175)
+
+    def test_reported_token_limit_bills_settle_once_with_upward_rounding(self):
+        # Sanitized billing metadata from three separate 6,000-output-token responses.
+        cases = ((119789, 0.0149789, 14979), (29079, 0.0059079, 5908), (72085, 0.0102085, 10209))
+        prices = {'OUTLOUD_PUBLIC_OPENROUTER_CONTEXT_TOKENS': '150000',
+                  'OUTLOUD_PUBLIC_OPENROUTER_INPUT_USD_PER_MTOK': '0.1',
+                  'OUTLOUD_PUBLIC_OPENROUTER_OUTPUT_USD_PER_MTOK': '0.5'}
+        with patch.dict(os.environ, prices):
+            for inputs, cost, expected in cases:
+                with self.subTest(input_tokens=inputs):
+                    charge = budget.authorize_openrouter(budget.OPENROUTER_URL, {'model': MODEL, 'max_output_tokens': 6000}, 'synthetic')
+                    body = response_body({'input_tokens': inputs, 'output_tokens': 6000, 'cost': cost,
+                                          'cost_details': {'upstream_inference_cost': cost}})
+                    body.update(status='incomplete', incomplete_details={'reason': 'max_output_tokens'}, alignment={'calls': []})
+                    body['output'].insert(0, {'type': 'reasoning'})
+                    if inputs != cases[0][0]:
+                        body['error'] = None
+                        body['usage']['cost_details']['server_tool_cost'] = None
+                    raw = json.dumps(body).encode()
+                    budget.settle_openrouter(charge, raw)
+                    budget.settle_openrouter(charge, raw)
+                    self.assertEqual(ProviderCharge.objects.get(pk=charge.charge_id).confirmed_microusd, expected)
+        self.assertEqual(self.committed(), sum(case[2] for case in cases))
+
+    def test_ambiguous_terminal_status_or_incomplete_billing_evidence_keeps_the_hold(self):
+        receipt = response_body({'cost': 0.0001, 'input_tokens': 10, 'output_tokens': 10})
+        receipt.update(status='incomplete', incomplete_details={'reason': 'max_output_tokens'})
+        usage = receipt['usage']
+        for target, changes in (
+                (receipt, {'status': 'in_progress'}), (receipt, {'status': 'cancelled'}),
+                (receipt, {'status': 'failed'}), (receipt, {'status': 'completed'}),
+                (receipt, {'incomplete_details': None}), (receipt, {'incomplete_details': {}}),
+                (receipt, {'incomplete_details': {'reason': 'content_filter'}}), (receipt, {'output': None}),
+                (receipt, {'error': {'code': 'provider_error'}}), (receipt, {'error': {}}),
+                (usage, {'cost': None}), (usage, {'cost': '0.0001'}), (usage, {'cost': 0}),
+                (usage, {'cost': 0, 'cost_details': {'upstream_inference_cost': 0.001}}),
+                (usage, {'is_byok': None}), (usage, {'cost_details': {}}),
+                (usage, {'cost_details': {'upstream_inference_cost': '0'}}),
+                (usage, {'input_tokens': None}), (usage, {'output_tokens': True}), (usage, {'output_tokens': 0})):
+            with self.subTest(changes=changes), patch.dict(target, changes):
+                LifetimeBudget.objects.update(committed_microusd=0)
+                charge = budget.authorize_openrouter(budget.OPENROUTER_URL, {'model': MODEL, 'max_output_tokens': 10}, 'synthetic')
+                budget.settle_openrouter(charge, json.dumps(receipt).encode())
+                self.assertEqual(self.committed(), charge.reserved_microusd)
+                self.assertIsNone(ProviderCharge.objects.get(pk=charge.charge_id).confirmed_microusd)
+
     def test_receipt_without_explicit_route_or_upstream_cost_keeps_the_reservation(self):
         charge = budget.authorize_openrouter(budget.OPENROUTER_URL, {'model': MODEL, 'max_output_tokens': 10}, 'synthetic')
         for missing in ('is_byok', 'cost_details'):
@@ -140,7 +203,7 @@ class PublicBudgetTests(TransactionTestCase):
             self.assertIsNone(ProviderCharge.objects.get(pk=charge.charge_id).confirmed_microusd)
 
     def test_unexpected_route_or_search_keeps_hold_and_halts_future_work(self):
-        for mode in ('byok', 'search', 'alignment', 'incomplete_search'):
+        for mode in ('byok', 'search', 'alignment', 'incomplete_search', 'output_limit_with_tool', 'output_limit_tool_count'):
             with self.subTest(mode=mode):
                 LifetimeBudget.objects.update(halted=False, committed_microusd=0)
                 charge = budget.authorize_openrouter(budget.OPENROUTER_URL, {'model': MODEL, 'max_output_tokens': 10}, 'synthetic')
@@ -152,9 +215,17 @@ class PublicBudgetTests(TransactionTestCase):
                     body['alignment'] = {'calls': [{'outcome': 'allowed'}]}
                 if mode == 'incomplete_search':
                     body = {'status': 'incomplete', 'usage': {'server_tool_use': {'web_search_requests': 1}}}
+                if mode.startswith('output_limit'):
+                    body.update(status='incomplete', incomplete_details={'reason': 'max_output_tokens'})
+                    if mode == 'output_limit_tool_count':
+                        body['usage']['server_tool_use'] = {'file_search_requests': 1}
+                    else:
+                        body['output'] = [{'type': 'web_search_call'}]
                 budget.settle_openrouter(charge, json.dumps(body).encode())
                 self.assertEqual(self.committed(), charge.reserved_microusd)
                 self.assertTrue(LifetimeBudget.objects.get(pk=1).halted)
+                if mode.startswith('output_limit'):
+                    self.assertIsNone(ProviderCharge.objects.get(pk=charge.charge_id).confirmed_microusd)
 
     def test_submissions_fail_closed_for_unverified_tariffs_routes_and_ledger(self):
         def forbidden(request):

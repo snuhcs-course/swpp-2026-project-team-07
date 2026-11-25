@@ -77,15 +77,41 @@ def canonical_guidance(text):
     return re.sub(r'[^\w]', '', text.casefold())
 
 
-def validate_profiles(value, prepared, schema_version=None):
+def _repair_copied_source_id(entry, source_ids):
+    index, copied = entry['slide_index'], entry['source_id']
+    if index >= len(source_ids) or copied == source_ids[index]:
+        return
+
+    def differences(candidate):
+        return sum(a != b for a, b in zip(copied, candidate, strict=True))
+
+    if differences(source_ids[index]) == 1 and all(
+            differences(other) > 1 for i, other in enumerate(source_ids) if i != index):
+        entry['source_id'] = source_ids[index]
+
+
+def validate_generated_profiles(value, prepared, schema_version):
+    if schema_version in {'slide-profile-v5', 'slide-profile-gemini-v5'}:
+        # Structural validation ensures integer indexes and 64 lowercase hex digits.
+        # Work on a new object so the saved provider receipt retains its original IDs.
+        value = validated(GuidanceProfiles, value, 'invalid_descriptions', MAX_OUTPUT_BYTES).model_dump(mode='json')
+        for slide in value['slides']:
+            _repair_copied_source_id(slide, prepared.source_ids)
+            for insight in slide['go_deeper']:
+                for ref in insight['evidence_refs']:
+                    _repair_copied_source_id(ref, prepared.source_ids)
+    return validate_profiles(value, prepared, schema_version)
+
+
+def validate_profiles(value, prepared, schema_version=None, *, max_bytes=MAX_OUTPUT_BYTES, slide_indexes=None):
     historical = schema_version in HISTORICAL_PROFILE_SCHEMAS.values()
     limit = 25 if schema_version is None or schema_version in PROFILE_SCHEMAS.values() else 15 if schema_version in STRICT_PROFILE_SCHEMAS.values() else None
-    profiles = validated(SlideProfiles if historical else GuidanceProfiles, value, 'invalid_descriptions', MAX_OUTPUT_BYTES)
+    profiles = validated(SlideProfiles if historical else GuidanceProfiles, value, 'invalid_descriptions', max_bytes)
     # Reuse strict source identities and fact/uncertainty checks without changing
     # the historical description schemas or their serialized bytes.
     legacy = {'slides': [{k: v for k, v in s.model_dump(mode='json').items()
                           if k not in {'slide_kind', 'cues', 'must_cover', 'go_deeper'}} for s in profiles.slides]}
-    validate_descriptions(legacy, prepared)
+    validate_descriptions(legacy, prepared, max_bytes=max_bytes, slide_indexes=slide_indexes)
     deck_facts = {s.slide_index: (s.source_id, description_facts(s)) for s in profiles.slides}
     for slide in profiles.slides:
         facts = description_facts(slide)

@@ -36,8 +36,7 @@ class InstallationManager(models.Manager):
             return rows.filter(installation_id=installation_id)
         # Keep joins inside a subquery: SELECT FOR UPDATE keeps its existing lock order.
         owner = models.Q(**{lookup: installation_id})
-        alternative = getattr(self.model, "alternate_installation_lookup", None)
-        if alternative:
+        for alternative in getattr(self.model, "alternate_installation_lookups", ()):
             owner |= models.Q(**{alternative: installation_id})
         owned = self.model._base_manager.filter(owner).values("pk")
         return rows.filter(pk__in=owned)

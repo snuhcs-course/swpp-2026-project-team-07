@@ -11,6 +11,7 @@ import hashlib
 import logging
 import uuid
 
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
@@ -18,12 +19,14 @@ from public_billing.budget import MESSAGES as PUBLIC_BUDGET_MESSAGES
 
 from ..models import (Attempt, Deck, DescriptionSet, FeedbackAnalysis, FeedbackJob,
                       FeedbackRequest, FeedbackReservation)
+from ..ownership import current_installation_id
 from . import descriptions as descriptions_service, feedback_provider as provider
 from . import corrections
 from .alignment import align_words
 from .descriptions import (Conflict, StaleClaim, LEASE_SECONDS, _private_database_logging,
                            effective_retry_at, saved_receipt, uncertain_submission as _uncertain)
-from .feedback import (FeedbackError, Transcript, validated, analysis_source, restore_analysis, json_bytes)
+from .feedback import (FeedbackError, Transcript, SavedProfileFacts, validated,
+                       validate_descriptions, analysis_source, restore_analysis, json_bytes)
 from .feedback_config import Selection, QuotaPolicy, coaching_digest, check_coaching_versions, enabled, selection_descriptor, assert_selection
 from .feedback_quota import locked_bucket, reserve, cooldown, stop_legacy_gemini_wait, QUOTA_STOPPED_MESSAGE
 
@@ -181,6 +184,11 @@ def _fresh(value, analysis, job, token):
         raise StaleClaim()
 
 
+def _plain_profile_facts(profiles):
+    fields = ('deck_id', 'slide_index', 'source_id', 'summary', 'key_ideas', 'visual_facts')
+    return {'slides': [{key: slide[key] for key in fields} for slide in profiles['slides']]}
+
+
 def _attach(value, job):
     # Called only with set and job locks. Copy exact revision, including edits.
     if value.descriptions is not None and job.descriptions_snapshot is None:
@@ -189,7 +197,7 @@ def _attach(value, job):
             # Profiles share descriptions' source/fact schema. Preserve guidance
             # separately while the legacy adapter validates the common facts.
             job.source_snapshot = {**job.source_snapshot, 'review_profile': value.descriptions}
-            job.descriptions_snapshot = {'slides': [{k: s[k] for k in ('deck_id', 'slide_index', 'source_id', 'summary', 'key_ideas', 'visual_facts')} for s in value.descriptions['slides']]}
+            job.descriptions_snapshot = _plain_profile_facts(value.descriptions)
         job.description_revision = value.description_revision
         job.state = 'queued'
         job.source_snapshot = {**job.source_snapshot, 'description_origin': 'edited' if value.edited else 'generated'}
@@ -343,6 +351,29 @@ def _queue(analysis, value, snapshot, previous=None):
     return analysis
 
 
+def saved_description_result(value, job, analysis, adapter):
+    from .profile_parts import ENRICHMENT, MAX_ASSEMBLED_BYTES, PART_THRESHOLD, V5
+    snapshot = job.descriptions_snapshot
+    if (not settings.OUTLOUD_PUBLIC_SERVICE or current_installation_id() is None or value.provider != 'openrouter' or
+            value.prompt_version != V5 or value.schema_version != V5 or value.edited or
+            not job.analysis.analysis_type.startswith(('qa_', 'review_', 'score_')) or
+            len(analysis.source.slides) <= PART_THRESHOLD or
+            not value.jobs.filter(generation=job.description_generation, state='completed',
+                                  profile_parts__phase=ENRICHMENT, profile_parts__result__isnull=False).exists()):
+        return adapter.edited_descriptions(analysis, snapshot)
+
+    # Establish provenance before allowing more than a single provider response can contain.
+    # Only the server can attach this exact immutable projection of a completed part job.
+    if (job.description_set_id != value.pk or job.description_revision != value.description_revision or
+            job.description_generation != value.processing_revision or job.source_snapshot.get('description_origin') != 'generated' or
+            str(value.deck_id) != analysis.source.deck_id or value.source_fingerprint != analysis.deck.input_id or
+            not value.descriptions or job.source_snapshot.get('review_profile') != value.descriptions or
+            snapshot != _plain_profile_facts(value.descriptions)):
+        raise FeedbackError('snapshot_unavailable')
+    facts = validate_descriptions(snapshot, analysis, max_bytes=MAX_ASSEMBLED_BYTES)
+    return provider.DescriptionResult(value.provider, value.model, analysis.deck.input_id, SavedProfileFacts(slides=facts.slides))
+
+
 def _prepared(value, job):
     if job.analysis.analysis_type.startswith('score_'):
         from .presentation_scoring import prepared
@@ -356,7 +387,7 @@ def _prepared(value, job):
             analysis.transcript_id != job.source_snapshot['transcript_id']):
         raise FeedbackError('snapshot_unavailable')
     adapter = selection.adapter(coaching_schema_version=job.schema_version)
-    descriptions = adapter.edited_descriptions(analysis, job.descriptions_snapshot)
+    descriptions = saved_description_result(value, job, analysis, adapter)
     prepared = adapter.prepare_coaching(analysis, descriptions)
     if job.analysis.analysis_type.startswith('qa_'):
         from .audience_qa import augment

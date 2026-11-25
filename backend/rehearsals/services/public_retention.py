@@ -29,7 +29,8 @@ def purge_expired_installations():
             decks = models.Deck.objects.filter(installation=installation)
             attempts = models.Attempt.objects.filter(deck__in=decks)
             requests = models.FeedbackRequest.objects.filter(
-                Q(job__description_set__deck__in=decks) | Q(coaching_job__analysis__attempt__in=attempts))
+                Q(job__description_set__deck__in=decks) | Q(coaching_job__analysis__attempt__in=attempts) |
+                Q(profile_part__job__description_set__deck__in=decks))
             models.PreparedDisplayResource.objects.filter(installation=installation).delete()
             models.DisplayTranslation.objects.filter(installation=installation).delete()
             models.FeedbackReservation.objects.filter(request__in=requests).delete()

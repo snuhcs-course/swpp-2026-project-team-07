@@ -90,7 +90,7 @@ def augment(prepared, snapshot):
         if snapshot['audience_qa'].get('question_schema') != 'names-v1':
             # Frozen request schema for historical durable payload reconstruction.
             schema['$defs']['Question']['properties']['panelist']['maxLength']=8
-    payload=provider.strict_json(prepared.payload)
+    payload=provider.coaching_request_json(prepared)
     # Replace legacy whole-attempt speech: only selected speech may reach the evaluator.
     if prepared.config.provider in provider.RESPONSES_PROVIDERS:
         payload['instructions']=rules
